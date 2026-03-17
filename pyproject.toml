@@ -1,0 +1,20 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "prts-mcp"
+version = "0.1.0"
+description = "MCP Server for Arknights PRTS Wiki & game data"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp[cli]",
+    "httpx",
+    "pydantic",
+]
+
+[project.scripts]
+prts-mcp = "prts_mcp.server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/prts_mcp"]
