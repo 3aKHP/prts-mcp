@@ -21,6 +21,19 @@ def _get_config() -> Config:
     return _config
 
 
+def _missing_operator_data_message() -> str:
+    config = _get_config()
+    searched_path = str(config.excel_path) if config.excel_path is not None else "未配置"
+    missing = ", ".join(path.name for path in config.missing_operator_files) or ", ".join(
+        ["character_table.json", "handbook_info_table.json", "charword_table.json"]
+    )
+    return (
+        "本地干员数据不可用。请设置 `GAMEDATA_PATH` 指向 ArknightsGameData 仓库，"
+        "或将当前功能所需的 3 个文件打包到 `data/gamedata/zh_CN/gamedata/excel/` 下。"
+        f"当前检查路径：`{searched_path}`。缺失文件：{missing}。"
+    )
+
+
 @lru_cache(maxsize=1)
 def _load_character_table() -> dict[str, Any]:
     path = _get_config().excel_path / "character_table.json"
@@ -58,6 +71,9 @@ def _resolve_char_id(name: str) -> str | None:
 
 def get_operator_archives(name: str) -> str:
     """Return formatted archive text for an operator by Chinese name."""
+    if not _get_config().has_operator_data:
+        return _missing_operator_data_message()
+
     char_id = _resolve_char_id(name)
     if char_id is None:
         return f"未找到干员 '{name}'。请使用游戏内中文名称（如'阿米娅'）。"
@@ -81,6 +97,9 @@ def get_operator_archives(name: str) -> str:
 
 def get_operator_voicelines(name: str) -> str:
     """Return formatted voice-line text for an operator by Chinese name."""
+    if not _get_config().has_operator_data:
+        return _missing_operator_data_message()
+
     char_id = _resolve_char_id(name)
     if char_id is None:
         return f"未找到干员 '{name}'。请使用游戏内中文名称（如'阿米娅'）。"

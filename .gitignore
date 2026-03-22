@@ -8,6 +8,7 @@ build/
 *.egg
 .venv/
 venv/
+dev/
 .env
 *.so
 .mypy_cache/
@@ -19,3 +20,12 @@ local_repo.jsonc
 docker-compose.override.yml
 .mcp.json
 PRTS维基.md
+prts-mcp.tar
+data/*
+!data/.gitkeep
+!data/gamedata/
+!data/storyjson/
+data/gamedata/**
+data/storyjson/**
+!data/gamedata/.gitkeep
+!data/storyjson/.gitkeep
