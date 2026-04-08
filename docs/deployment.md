@@ -22,33 +22,33 @@ docker build -t prts-mcp .
 
 ## 2. 运行容器
 
-### 推荐方式：挂载持久化 volume
-
-将数据目录持久化到宿主机，重启容器后无需重新同步：
-
-**使用 Docker named volume（最简单）**
+### 推荐方式：Docker named volume
 
 ```bash
 docker run -i --rm -v prts-mcp-data:/data/gamedata prts-mcp
 ```
 
-**使用宿主机目录（Windows PowerShell）**
-
-```powershell
-docker run -i --rm -v "${env:USERPROFILE}\.prts-mcp\gamedata:/data/gamedata" prts-mcp
-```
-
-**使用宿主机目录（Linux / macOS）**
-
-```bash
-docker run -i --rm -v "$HOME/.local/share/prts-mcp/gamedata:/data/gamedata" prts-mcp
-```
-
-首次运行时 auto-sync 会将数据下载到 volume；此后每次启动在 TTL（1小时）内跳过网络检查，超出后做 commit hash 校验，有更新才重新下载。
+Named volume 由 Docker 自动管理，无需关心宿主机路径，**在所有平台和所有 MCP 客户端配置里都能直接使用**。首次运行时 auto-sync 自动下载数据；此后重启复用缓存，超过 TTL（1小时）时做 commit hash 校验，有更新才重新下载。
 
 > 如需降低 GitHub 匿名 API 限流风险，可追加 `-e GITHUB_TOKEN=ghp_xxx`。
 
-### 无持久化方式（简单场景）
+### 使用宿主机目录（仅命令行直接运行，不适用于 MCP 客户端配置）
+
+MCP 客户端（Chatbox、Claude Desktop 等）直接调用 Docker 进程，不经过 shell，因此环境变量（`$HOME`、`$env:USERPROFILE`）不会被展开。**如需绑定宿主机目录，必须写硬编码的绝对路径，且只能在命令行手动运行时使用。**
+
+**Linux / macOS**
+
+```bash
+docker run -i --rm -v /home/yourname/.local/share/prts-mcp/gamedata:/data/gamedata prts-mcp
+```
+
+**Windows (PowerShell)**
+
+```powershell
+docker run -i --rm -v "C:\Users\yourname\.prts-mcp\gamedata:/data/gamedata" prts-mcp
+```
+
+### 无持久化方式
 
 ```bash
 docker run -i --rm prts-mcp
@@ -58,16 +58,7 @@ docker run -i --rm prts-mcp
 
 ### 使用自定义数据目录（禁用 auto-sync）
 
-如果你有自己管理的 ArknightsGameData 目录，可通过 `GAMEDATA_PATH` 指定，此时 **auto-sync 被完全禁用**：
-
-**Windows (PowerShell)**
-
-```powershell
-docker run -i --rm `
-  -v "F:\path\to\ArknightsGameData:/data/custom:ro" `
-  -e GAMEDATA_PATH=/data/custom `
-  prts-mcp
-```
+如果你有自己管理的 ArknightsGameData 目录，可通过 `GAMEDATA_PATH` 指定，此时 **auto-sync 被完全禁用**。同样只适合命令行直接运行，需填写硬编码绝对路径：
 
 **Linux / macOS**
 
@@ -75,6 +66,15 @@ docker run -i --rm `
 docker run -i --rm \
   -v /path/to/ArknightsGameData:/data/custom:ro \
   -e GAMEDATA_PATH=/data/custom \
+  prts-mcp
+```
+
+**Windows (PowerShell)**
+
+```powershell
+docker run -i --rm `
+  -v "C:\path\to\ArknightsGameData:/data/custom:ro" `
+  -e GAMEDATA_PATH=/data/custom `
   prts-mcp
 ```
 
