@@ -29,6 +29,9 @@ jobs:
 
       - name: Verify import and config fallback
         run: |
+          mkdir -p .ci-empty/gamedata .ci-empty/storyjson
+          export GAMEDATA_PATH="$PWD/.ci-empty/gamedata"
+          export STORYJSON_PATH="$PWD/.ci-empty/storyjson"
           python - <<'PY'
           from pathlib import Path
           from prts_mcp.config import Config
@@ -36,7 +39,7 @@ jobs:
 
           cfg = Config.load()
           assert cfg.gamedata_path is not None
-          assert Path("data/gamedata") == cfg.gamedata_path
+          assert cfg.gamedata_path.resolve() == Path(".ci-empty/gamedata").resolve()
           assert cfg.has_operator_data is False
           message = get_operator_archives("阿米娅")
           assert "本地干员数据不可用" in message
