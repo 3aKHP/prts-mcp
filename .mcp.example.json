@@ -2,16 +2,7 @@
   "mcpServers": {
     "prts_wiki": {
       "command": "docker",
-      "args": [
-        "run",
-        "-i",
-        "--rm",
-        "-v",
-        "/absolute/path/to/ArknightsGameData:/data/gamedata:ro",
-        "-v",
-        "/absolute/path/to/ArknightsStoryJson:/data/storyjson:ro",
-        "prts-mcp"
-      ]
+      "args": ["run", "-i", "--rm", "prts-mcp"]
     }
   }
 }

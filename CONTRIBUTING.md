@@ -41,7 +41,7 @@ ci(github): add minimal install and import verification
 
 ## Public Repo Boundary
 
-公开仓库默认只接收源码、文档和必要的空目录占位。
+公开仓库默认只接收源码、文档和必要的空目录占位。当前版本的数据主路径是 GitHub-backed auto-sync，而不是提交真实数据文件。
 
 请不要提交以下内容：
 
@@ -54,7 +54,6 @@ ci(github): add minimal install and import verification
 
 如果你需要本地配置，请优先使用仓库里的示例文件：
 
-- `local_repo.example.jsonc`
 - `.mcp.example.json`
 - `docker-compose.override.example.yml`
 
@@ -65,13 +64,13 @@ pip install -e .
 python -m compileall src scripts
 ```
 
-如果你需要完整干员功能，请通过以下任一方式接入你自己的数据：
+如果你需要完整干员功能，请优先使用当前默认流程：
 
-- 设置 `GAMEDATA_PATH`
-- 复制 `local_repo.example.jsonc` 为 `local_repo.jsonc`
-- 本地私下运行 `scripts/package_operator_data.py`
+- 直接运行服务，让它自动同步最小数据集
+- 如担心 GitHub 匿名限流，设置 `GITHUB_TOKEN`
+- 如需强制使用你自己的数据目录，再设置 `GAMEDATA_PATH`
 
-当前版本不建议把打包后的最小数据直接提交到公开 Git 仓库。
+兼容脚本 `scripts/package_operator_data.py` 仍在仓库中，但已是 deprecated 入口。当前版本不建议把同步或打包得到的数据文件直接提交到公开 Git 仓库。
 
 ## Pull Requests
 

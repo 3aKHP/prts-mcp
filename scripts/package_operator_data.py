@@ -30,7 +30,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--gamedata-source",
         type=Path,
-        help="Path to the ArknightsGameData repository root. Defaults to the resolved GAMEDATA_PATH/local_repo.jsonc value.",
+        help="Path to the ArknightsGameData repository root. Defaults to the path resolved via GAMEDATA_PATH env var.",
     )
     parser.add_argument(
         "--output",
@@ -46,7 +46,7 @@ def main() -> int:
     config = Config.load()
     source_root = args.gamedata_source or config.gamedata_path
     if source_root is None:
-        raise SystemExit("未找到 ArknightsGameData 路径。请传入 --gamedata-source，或先配置 GAMEDATA_PATH/local_repo.jsonc。")
+        raise SystemExit("未找到 ArknightsGameData 路径。请传入 --gamedata-source，或先设置 GAMEDATA_PATH 环境变量。")
 
     source_root = source_root.resolve()
     excel_dir = source_root / "zh_CN" / "gamedata" / "excel"

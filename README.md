@@ -1,15 +1,16 @@
 # PRTS MCP Server
 
-明日方舟同人创作辅助 MCP Server。通过 [PRTS Wiki](https://prts.wiki) API 和本地 [ArknightsGameData](https://github.com/Kengxxiao/ArknightsGameData) 仓库，为 AI Agent 提供泰拉世界观检索与干员资料查询能力。
+明日方舟同人创作辅助 MCP Server。通过 [PRTS Wiki](https://prts.wiki) API 和 GitHub-backed 的干员数据同步能力，为 AI Agent 提供泰拉世界观检索与干员资料查询能力。
 
 ## 仓库边界
 
-本仓库的公开版本默认只包含代码、文档和空的 `data/` 占位目录，不附带任何打包后的游戏数据。
+本仓库的公开版本默认只包含代码、文档和空的 `data/` 占位目录，不提交真实游戏数据。运行时优先使用 GitHub 自动同步所需的最小数据集；你也可以显式覆盖为自己的本地数据目录。
 
-- 公开仓库 / 可发行源码版：通过环境变量、`local_repo.jsonc` 或 Docker 挂载接入你自己的本地数据。
-- 本地自用 / 私有部署版：你可以在本机执行 `scripts/package_operator_data.py` 打包最小数据集，用于私有镜像或私有目录部署，但当前版本不建议将这些数据文件直接提交到公开 Git 仓库。
+- 公开仓库 / 可发行源码版：默认走 GitHub-backed auto-sync，首次启动时拉取干员工具所需的最小数据集。
+- 显式覆盖 / 自管数据版：通过环境变量或 Docker 挂载接入你自己的本地数据目录。
+- 兼容脚本：`scripts/package_operator_data.py` 仍保留，但已是 deprecated 兼容入口，不再是推荐主流程。
 
-仓库内提供的是示例文件：`local_repo.example.jsonc`、`.mcp.example.json`、`docker-compose.override.example.yml`。实际本机配置请复制为被 `.gitignore` 忽略的本地文件后再填写真实路径。
+仓库内提供的是示例文件：`.mcp.example.json`、`docker-compose.override.example.yml`。如果你需要本机路径覆盖，请复制为被 `.gitignore` 忽略的本地文件后再填写真实路径。
 
 ## Tools
 
@@ -28,17 +29,19 @@
 # 安装
 pip install -e .
 
-# 配置数据路径（三选一）
-# 方式 1: 环境变量
+# 可选：为 GitHub API 提供 token，降低匿名限流风险
+export GITHUB_TOKEN=ghp_xxx
+
+# 可选：如果你想强制使用自己的本地数据目录，而不是 auto-sync
 export GAMEDATA_PATH=/path/to/ArknightsGameData
-# 方式 2: 复制 local_repo.example.jsonc -> local_repo.jsonc
-# 方式 3: 本地打包最小数据到 data/gamedata/（不建议直接提交到公开仓库）
 
 # 启动
 prts-mcp
 # 或
 python -m prts_mcp.server
 ```
+
+默认情况下，服务会在启动时检查上游版本，并将干员工具所需的最小数据同步到默认数据目录。同步失败时，如果本地已有缓存，会回退到缓存继续运行。
 
 ### Docker
 
@@ -47,8 +50,14 @@ docker build -t prts-mcp .
 docker run -i --rm prts-mcp
 ```
 
-镜像默认不内置游戏数据；完整功能请通过 `-v /path/to/ArknightsGameData:/data/gamedata:ro` 挂载宿主机数据。
-如果需要私有部署版，可以先在本机把最小数据包写入 `data/gamedata/` 后再构建镜像，但不建议把这些数据文件直接提交到公开仓库。
+镜像默认会在运行时自动同步最小数据集；如果你想强制使用宿主机上的完整数据目录，也可以通过 `-v /path/to/ArknightsGameData:/data/gamedata:ro` 挂载覆盖。
+
+如果需要在构建阶段预热最小数据集，可先执行：
+
+```bash
+python scripts/fetch_gamedata.py
+docker build -t prts-mcp .
+```
 
 ### 接入 Claude Desktop
 
@@ -66,7 +75,7 @@ docker run -i --rm prts-mcp
 ## 数据源
 
 - **PRTS Wiki API** (`https://prts.wiki/api.php`) — 世界观词条、阵营设定
-- **ArknightsGameData** (本地 JSON) — 干员档案、语音记录、基础信息
+- **ArknightsGameData** (`Kengxxiao/ArknightsGameData`) — 干员档案、语音记录、基础信息；当前版本通过 GitHub 自动同步最小子集，或使用你显式指定的本地目录
 
 ## Ubuntu 部署建议
 
@@ -87,7 +96,7 @@ type = “stdio”
 command = “/opt/prts-mcp/scripts/run_prts_mcp.sh”
 ```
 
-如需在不挂载本地数据的情况下使用干员工具，可先打包最小数据集，详见 `docs/deployment.md`。
+如需提前预热最小数据集，可执行 `python scripts/fetch_gamedata.py`；更完整的部署说明见 `docs/deployment.md`。
 
 ## 依赖
 

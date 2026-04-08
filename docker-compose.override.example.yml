@@ -1,8 +1,11 @@
 services:
   prts-mcp:
     environment:
+      # Optional: provide a token to reduce anonymous GitHub API rate-limit risk
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
+      # Optional: force the container to use your own mounted data directory
       GAMEDATA_PATH: /data/gamedata
-      STORYJSON_PATH: /data/storyjson
     volumes:
+      # Linux/macOS: - /absolute/path/to/ArknightsGameData:/data/gamedata:ro
+      # Windows:     - C:\path\to\ArknightsGameData:/data/gamedata:ro
       - /absolute/path/to/ArknightsGameData:/data/gamedata:ro
-      - /absolute/path/to/ArknightsStoryJson:/data/storyjson:ro

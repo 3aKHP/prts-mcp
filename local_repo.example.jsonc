@@ -1,4 +1,0 @@
-{
-  "ArknightsGameData": "/absolute/path/to/ArknightsGameData", // local-only; do not commit your real path
-  "ArknightsStoryJson": "/absolute/path/to/ArknightsStoryJson" // optional for future features
-}
