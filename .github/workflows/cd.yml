@@ -111,31 +111,37 @@ jobs:
           python - <<'PY'
           import subprocess, json, sys
 
-          msgs = [
-            {"jsonrpc":"2.0","method":"initialize","id":1,"params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}},
-            {"jsonrpc":"2.0","method":"notifications/initialized","params":{}},
-            {"jsonrpc":"2.0","method":"tools/list","id":2,"params":{}},
-          ]
-          inp = "\n".join(json.dumps(m) for m in msgs) + "\n"
-          proc = subprocess.run(
+          proc = subprocess.Popen(
               ["docker","run","-i","--rm","prts-mcp:release"],
-              input=inp.encode(), capture_output=True, timeout=30
+              stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
           )
-          for line in proc.stdout.decode().splitlines():
-              try:
-                  r = json.loads(line)
-                  if r.get("id") == 2:
-                      names = {t["name"] for t in r["result"]["tools"]}
-                      assert "get_operator_archives" in names, f"Missing tool. Got: {names}"
-                      assert "search_prts" in names, f"Missing tool. Got: {names}"
-                      print("Smoke test passed:", sorted(names))
-                      sys.exit(0)
-              except (json.JSONDecodeError, KeyError):
-                  pass
-          print("ERROR: no tools/list response found", file=sys.stderr)
-          print("stdout:", proc.stdout.decode(), file=sys.stderr)
-          print("stderr:", proc.stderr.decode(), file=sys.stderr)
-          sys.exit(1)
+
+          def send(msg):
+              proc.stdin.write((json.dumps(msg) + "\n").encode())
+              proc.stdin.flush()
+
+          def recv():
+              line = proc.stdout.readline()
+              if not line:
+                  raise RuntimeError("stdout closed unexpectedly")
+              return json.loads(line)
+
+          send({"jsonrpc":"2.0","method":"initialize","id":1,"params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}})
+          r = recv()
+          assert r.get("id") == 1, f"Expected initialize response, got: {r}"
+
+          send({"jsonrpc":"2.0","method":"notifications/initialized","params":{}})
+          send({"jsonrpc":"2.0","method":"tools/list","id":2,"params":{}})
+          r = recv()
+          assert r.get("id") == 2, f"Expected tools/list response, got: {r}"
+
+          names = {t["name"] for t in r["result"]["tools"]}
+          assert "get_operator_archives" in names, f"Missing tool. Got: {names}"
+          assert "search_prts" in names, f"Missing tool. Got: {names}"
+          print("Smoke test passed:", sorted(names))
+
+          proc.stdin.close()
+          proc.wait(timeout=10)
           PY
 
       - name: Login to GitHub Container Registry
