@@ -1,3 +1,7 @@
+# DEPRECATED: This script has been superseded by scripts/fetch_gamedata.py,
+# which downloads data directly from GitHub without requiring a local clone
+# of ArknightsGameData. This file is retained for reference and will be
+# removed in a future release.
 from __future__ import annotations
 
 import argparse

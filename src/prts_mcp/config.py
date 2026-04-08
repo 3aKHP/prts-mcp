@@ -1,12 +1,20 @@
 from __future__ import annotations
 
-import json
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
-_PROJECT_ROOT = Path(__file__).resolve().parents[2]  # -> PRTS-MCP/
-_LOCAL_REPO_FILE = _PROJECT_ROOT / "local_repo.jsonc"
+# ---------------------------------------------------------------------------
+# Project root resolution
+#
+# When the package is installed via `pip install .`, __file__ resolves to a
+# location inside site-packages, not the project checkout. We use the
+# PRTS_MCP_ROOT environment variable (set to /app in the Docker image) as the
+# authoritative project root, falling back to the parents[2] heuristic for
+# editable / development installs.
+# ---------------------------------------------------------------------------
+
+_PROJECT_ROOT = Path(os.environ.get("PRTS_MCP_ROOT", str(Path(__file__).resolve().parents[2])))
 _BUNDLED_DATA_ROOT = _PROJECT_ROOT / "data"
 _DEFAULT_GAMEDATA_PATH = _BUNDLED_DATA_ROOT / "gamedata"
 _DEFAULT_STORYJSON_PATH = _BUNDLED_DATA_ROOT / "storyjson"
@@ -19,32 +27,6 @@ _REQUIRED_OPERATOR_FILES = (
 PRTS_API_ENDPOINT = "https://prts.wiki/api.php"
 USER_AGENT = "PRTS-MCP-Bot/0.1 (Arknights fan-creation helper)"
 RATE_LIMIT_INTERVAL = 1.5  # seconds between PRTS API requests
-
-
-def _load_local_repo_jsonc() -> dict[str, str]:
-    """Parse local_repo.jsonc (strip // comments) and return path mapping."""
-    if not _LOCAL_REPO_FILE.exists():
-        return {}
-    text = _LOCAL_REPO_FILE.read_text(encoding="utf-8")
-    lines = [line.split("//")[0] for line in text.splitlines()]
-    try:
-        return json.loads("\n".join(lines))
-    except json.JSONDecodeError:
-        return {}
-
-
-def _resolve_data_path(*candidates: str | Path | None) -> Path | None:
-    normalized: list[Path] = []
-    for candidate in candidates:
-        if candidate in (None, ""):
-            continue
-        normalized.append(Path(candidate))
-
-    for path in normalized:
-        if path.exists():
-            return path
-
-    return normalized[0] if normalized else None
 
 
 @dataclass(frozen=True)
@@ -78,18 +60,10 @@ class Config:
 
     @classmethod
     def load(cls) -> Config:
-        repo_map = _load_local_repo_jsonc()
-        gamedata = _resolve_data_path(
-            os.environ.get("GAMEDATA_PATH"),
-            repo_map.get("ArknightsGameData"),
-            _DEFAULT_GAMEDATA_PATH,
+        gamedata = (
+            Path(os.environ["GAMEDATA_PATH"]) if "GAMEDATA_PATH" in os.environ else _DEFAULT_GAMEDATA_PATH
         )
-        storyjson = _resolve_data_path(
-            os.environ.get("STORYJSON_PATH"),
-            repo_map.get("ArknightsStoryJson"),
-            _DEFAULT_STORYJSON_PATH,
+        storyjson = (
+            Path(os.environ["STORYJSON_PATH"]) if "STORYJSON_PATH" in os.environ else _DEFAULT_STORYJSON_PATH
         )
-        return cls(
-            gamedata_path=gamedata,
-            storyjson_path=storyjson,
-        )
+        return cls(gamedata_path=gamedata, storyjson_path=storyjson)
