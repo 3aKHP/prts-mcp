@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.0] - TBD
+
 ### Added
 
 - GitHub-backed operator data sync via `src/prts_mcp/data/sync.py`, including upstream SHA checks, TTL-based cache reuse, atomic file replacement, and offline fallback behavior

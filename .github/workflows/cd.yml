@@ -1,0 +1,217 @@
+name: CD
+
+on:
+  push:
+    tags:
+      - "v[0-9]*.[0-9]*.[0-9]*"
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install package
+        run: python -m pip install -e .
+
+      - name: Compile source files
+        run: python -m compileall src scripts
+
+      - name: Check tag matches package version
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PKG_VERSION=$(python -c "import importlib.metadata; print(importlib.metadata.version('prts-mcp'))")
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::Tag version ($TAG_VERSION) does not match package version ($PKG_VERSION) in pyproject.toml"
+            exit 1
+          fi
+          echo "Version check passed: $TAG_VERSION"
+
+      - name: Verify import and config fallback
+        run: |
+          mkdir -p .ci-empty/gamedata .ci-empty/storyjson
+          export GAMEDATA_PATH="$PWD/.ci-empty/gamedata"
+          export STORYJSON_PATH="$PWD/.ci-empty/storyjson"
+          python - <<'PY'
+          from pathlib import Path
+          from prts_mcp.config import Config
+          from prts_mcp.data.operator import get_operator_archives
+
+          cfg = Config.load()
+          assert cfg.gamedata_path is not None
+          assert cfg.gamedata_path.resolve() == Path(".ci-empty/gamedata").resolve()
+          assert cfg.has_operator_data is False
+          message = get_operator_archives("阿米娅")
+          assert "本地干员数据不可用" in message
+          print("Import/config verification passed.")
+          PY
+
+  build-and-push:
+    runs-on: ubuntu-latest
+    needs: verify
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.image.outputs.name }}
+      version: ${{ steps.version.outputs.value }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install package
+        run: python -m pip install -e .
+
+      - name: Restore cached gamedata
+        uses: actions/cache/restore@v4
+        with:
+          path: data/gamedata
+          key: gamedata-${{ hashFiles('data/gamedata/cache_meta.json') }}
+          restore-keys: gamedata-
+
+      - name: Fetch latest gamedata from GitHub
+        run: python scripts/fetch_gamedata.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Save gamedata cache
+        uses: actions/cache/save@v4
+        with:
+          path: data/gamedata
+          key: gamedata-${{ hashFiles('data/gamedata/cache_meta.json') }}
+
+      - name: Resolve image name and version
+        id: image
+        run: |
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "name=ghcr.io/${OWNER}/prts-mcp" >> $GITHUB_OUTPUT
+
+      - name: Extract version from tag
+        id: version
+        run: echo "value=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Build Docker image
+        run: docker build -t prts-mcp:release .
+
+      - name: Smoke test Docker image
+        run: |
+          python - <<'PY'
+          import subprocess, json, sys
+
+          msgs = [
+            {"jsonrpc":"2.0","method":"initialize","id":1,"params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}},
+            {"jsonrpc":"2.0","method":"notifications/initialized","params":{}},
+            {"jsonrpc":"2.0","method":"tools/list","id":2,"params":{}},
+          ]
+          inp = "\n".join(json.dumps(m) for m in msgs) + "\n"
+          proc = subprocess.run(
+              ["docker","run","-i","--rm","prts-mcp:release"],
+              input=inp.encode(), capture_output=True, timeout=30
+          )
+          for line in proc.stdout.decode().splitlines():
+              try:
+                  r = json.loads(line)
+                  if r.get("id") == 2:
+                      names = {t["name"] for t in r["result"]["tools"]}
+                      assert "get_operator_archives" in names, f"Missing tool. Got: {names}"
+                      assert "search_prts" in names, f"Missing tool. Got: {names}"
+                      print("Smoke test passed:", sorted(names))
+                      sys.exit(0)
+              except (json.JSONDecodeError, KeyError):
+                  pass
+          print("ERROR: no tools/list response found", file=sys.stderr)
+          print("stdout:", proc.stdout.decode(), file=sys.stderr)
+          print("stderr:", proc.stderr.decode(), file=sys.stderr)
+          sys.exit(1)
+          PY
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag and push Docker image
+        run: |
+          IMAGE="${{ steps.image.outputs.name }}"
+          VERSION="${{ steps.version.outputs.value }}"
+          docker tag prts-mcp:release "${IMAGE}:${VERSION}"
+          docker tag prts-mcp:release "${IMAGE}:latest"
+          docker push "${IMAGE}:${VERSION}"
+          docker push "${IMAGE}:latest"
+
+  github-release:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract changelog section
+        env:
+          VERSION: ${{ needs.build-and-push.outputs.version }}
+        run: |
+          python3 - <<'PY' > release_notes.txt
+          import re, os
+          version = os.environ["VERSION"]
+          text = open("CHANGELOG.md").read()
+          m = re.search(
+              r"## \[" + re.escape(version) + r"\][^\n]*\n(.*?)(?=\n## \[|\Z)",
+              text, re.DOTALL
+          )
+          print(m.group(1).strip() if m else "See CHANGELOG.md for details.")
+          PY
+
+      - name: Append Docker pull instructions
+        env:
+          IMAGE: ${{ needs.build-and-push.outputs.image }}
+          VERSION: ${{ needs.build-and-push.outputs.version }}
+        run: |
+          printf '\n---\n\n**Docker image**\n```\ndocker pull %s:%s\n```\n' \
+            "$IMAGE" "$VERSION" >> release_notes.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: release_notes.txt
+
+  publish-pypi:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    environment: pypi
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build distribution
+        run: |
+          pip install build
+          python -m build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
