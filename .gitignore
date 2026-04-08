@@ -10,6 +10,7 @@ build/
 venv/
 dev/
 .env
+.claude/
 *.so
 .mypy_cache/
 .ruff_cache/

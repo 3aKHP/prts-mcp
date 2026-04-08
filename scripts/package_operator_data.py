@@ -65,7 +65,8 @@ def main() -> int:
     print(f"已写入最小干员数据包：{output_root}")
     for path in copied:
         print(f" - {path}")
-    print("现在可以直接将整个仓库上传到 Ubuntu，或构建包含 data/ 的 Docker 镜像。")
+    print("现在可以将这些文件用于本地自用/私有部署，或构建包含 data/ 的私有 Docker 镜像。")
+    print("当前版本不建议将这些打包数据直接提交到公开 Git 仓库。")
     return 0
 
 

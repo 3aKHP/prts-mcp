@@ -17,7 +17,7 @@ _REQUIRED_OPERATOR_FILES = (
 )
 
 PRTS_API_ENDPOINT = "https://prts.wiki/api.php"
-USER_AGENT = "PRTS-MCP-Bot/0.1 (Arknights fan-creation helper; +https://github.com)"
+USER_AGENT = "PRTS-MCP-Bot/0.1 (Arknights fan-creation helper)"
 RATE_LIMIT_INTERVAL = 1.5  # seconds between PRTS API requests
 
 

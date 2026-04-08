@@ -1,5 +1,7 @@
 # PRTS MCP Server — Docker 部署指南
 
+> 当前公开仓库默认不附带任何打包后的游戏数据。完整功能请优先通过挂载本地数据目录实现；如需打包最小数据集，建议仅用于本地自用或私有部署产物。
+
 ## 前置条件
 
 - [Docker](https://docs.docker.com/get-docker/) 已安装并正常运行
@@ -89,7 +91,7 @@ docker run -i --rm \
 
 ### Claude Code
 
-在项目根目录创建 `.mcp.json`（建议加入 `.gitignore`，因为包含本机路径）：
+可先复制仓库内的 `.mcp.example.json` 为 `.mcp.json`，再填写你自己的本机路径。`.mcp.json` 建议保持未跟踪状态，因为它包含本机路径：
 
 ```json
 {
@@ -150,6 +152,20 @@ docker run -i --rm \
   -v /path/to/ArknightsStoryJson:/data/storyjson:ro \
   prts-mcp
 ```
+
+## 私有部署版：本地打包最小数据集
+
+如果你明确需要“一次打包，到处运行”的私有发行版，可以先在本地生成最小数据包，再构建镜像或拷贝整个目录：
+
+```bash
+pip install -e .
+python scripts/package_operator_data.py --gamedata-source /path/to/ArknightsGameData
+```
+
+生成结果会写入 `data/gamedata/zh_CN/gamedata/excel/`。
+
+- 可以把这些文件用于私有镜像、私有服务器或本地备份目录。
+- 不要将这些打包数据提交到公开 Git 仓库。
 
 ---
 

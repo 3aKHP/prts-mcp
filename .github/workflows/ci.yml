@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - feat/**
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install package
+        run: python -m pip install -e .
+
+      - name: Compile source files
+        run: python -m compileall src scripts
+
+      - name: Verify import and config fallback
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from prts_mcp.config import Config
+          from prts_mcp.data.operator import get_operator_archives
+
+          cfg = Config.load()
+          assert cfg.gamedata_path is not None
+          assert Path("data/gamedata") == cfg.gamedata_path
+          assert cfg.has_operator_data is False
+          message = get_operator_archives("阿米娅")
+          assert "本地干员数据不可用" in message
+          print("Import/config verification passed.")
+          PY

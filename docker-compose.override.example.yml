@@ -1,0 +1,8 @@
+services:
+  prts-mcp:
+    environment:
+      GAMEDATA_PATH: /data/gamedata
+      STORYJSON_PATH: /data/storyjson
+    volumes:
+      - /absolute/path/to/ArknightsGameData:/data/gamedata:ro
+      - /absolute/path/to/ArknightsStoryJson:/data/storyjson:ro
