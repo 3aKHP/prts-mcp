@@ -1,13 +1,54 @@
 from __future__ import annotations
 
-import json
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
-_PROJECT_ROOT = Path(__file__).resolve().parents[2]  # -> PRTS-MCP/
-_LOCAL_REPO_FILE = _PROJECT_ROOT / "local_repo.jsonc"
-_BUNDLED_DATA_ROOT = _PROJECT_ROOT / "data"
+# ---------------------------------------------------------------------------
+# Default data directory resolution
+#
+# Priority (highest to lowest):
+#   1. GAMEDATA_PATH / STORYJSON_PATH env vars  — always honoured in Config.load()
+#   2. PRTS_MCP_ROOT env var                    — set to /app in the Docker image;
+#                                                 data lives at $PRTS_MCP_ROOT/data/
+#   3. Editable-install heuristic               — parents[2] of __file__ points at
+#                                                 the checkout root when installed
+#                                                 with `pip install -e .`
+#   4. User data directory                      — ~/.local/share/prts-mcp/ on Linux/
+#                                                 macOS; %LOCALAPPDATA%\prts-mcp\ on
+#                                                 Windows.  Used when the package is
+#                                                 installed non-editably and neither
+#                                                 PRTS_MCP_ROOT nor a checkout is
+#                                                 detectable.
+#
+# Non-editable installs (pip install .) without PRTS_MCP_ROOT: the parents[2]
+# heuristic points into site-packages, which is unlikely to contain a data/
+# directory.  In that case _resolve_default_data_root() falls through to the
+# user data directory so the server and fetch_gamedata.py agree on where data
+# lives without any manual env var configuration.
+# ---------------------------------------------------------------------------
+
+
+def _resolve_default_data_root() -> Path:
+    # Explicit override wins unconditionally.
+    if "PRTS_MCP_ROOT" in os.environ:
+        return Path(os.environ["PRTS_MCP_ROOT"]) / "data"
+
+    # Editable-install / development checkout: __file__ is inside src/prts_mcp/,
+    # so parents[2] is the project root.
+    candidate = Path(__file__).resolve().parents[2] / "data"
+    if candidate.is_dir():
+        return candidate
+
+    # Non-editable install fallback: use a per-user data directory.
+    if os.name == "nt":
+        base = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local"))
+    else:
+        base = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share"))
+    return base / "prts-mcp"
+
+
+_BUNDLED_DATA_ROOT = _resolve_default_data_root()
 _DEFAULT_GAMEDATA_PATH = _BUNDLED_DATA_ROOT / "gamedata"
 _DEFAULT_STORYJSON_PATH = _BUNDLED_DATA_ROOT / "storyjson"
 _REQUIRED_OPERATOR_FILES = (
@@ -19,32 +60,6 @@ _REQUIRED_OPERATOR_FILES = (
 PRTS_API_ENDPOINT = "https://prts.wiki/api.php"
 USER_AGENT = "PRTS-MCP-Bot/0.1 (Arknights fan-creation helper)"
 RATE_LIMIT_INTERVAL = 1.5  # seconds between PRTS API requests
-
-
-def _load_local_repo_jsonc() -> dict[str, str]:
-    """Parse local_repo.jsonc (strip // comments) and return path mapping."""
-    if not _LOCAL_REPO_FILE.exists():
-        return {}
-    text = _LOCAL_REPO_FILE.read_text(encoding="utf-8")
-    lines = [line.split("//")[0] for line in text.splitlines()]
-    try:
-        return json.loads("\n".join(lines))
-    except json.JSONDecodeError:
-        return {}
-
-
-def _resolve_data_path(*candidates: str | Path | None) -> Path | None:
-    normalized: list[Path] = []
-    for candidate in candidates:
-        if candidate in (None, ""):
-            continue
-        normalized.append(Path(candidate))
-
-    for path in normalized:
-        if path.exists():
-            return path
-
-    return normalized[0] if normalized else None
 
 
 @dataclass(frozen=True)
@@ -78,18 +93,10 @@ class Config:
 
     @classmethod
     def load(cls) -> Config:
-        repo_map = _load_local_repo_jsonc()
-        gamedata = _resolve_data_path(
-            os.environ.get("GAMEDATA_PATH"),
-            repo_map.get("ArknightsGameData"),
-            _DEFAULT_GAMEDATA_PATH,
+        gamedata = (
+            Path(os.environ["GAMEDATA_PATH"]) if "GAMEDATA_PATH" in os.environ else _DEFAULT_GAMEDATA_PATH
         )
-        storyjson = _resolve_data_path(
-            os.environ.get("STORYJSON_PATH"),
-            repo_map.get("ArknightsStoryJson"),
-            _DEFAULT_STORYJSON_PATH,
+        storyjson = (
+            Path(os.environ["STORYJSON_PATH"]) if "STORYJSON_PATH" in os.environ else _DEFAULT_STORYJSON_PATH
         )
-        return cls(
-            gamedata_path=gamedata,
-            storyjson_path=storyjson,
-        )
+        return cls(gamedata_path=gamedata, storyjson_path=storyjson)
