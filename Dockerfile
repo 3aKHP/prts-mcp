@@ -5,15 +5,22 @@ WORKDIR /app
 COPY pyproject.toml .
 COPY README.md .
 COPY src/ src/
-# data/ is pre-populated by scripts/fetch_gamedata.py in CI before docker build.
-# The bundled files serve as the offline fallback baseline; at runtime the server
-# checks GitHub for updates and refreshes them if a newer commit is available.
+# Bundled game data baked in at build time (pre-fetched by CI via
+# scripts/fetch_gamedata.py).  Serves as a read-only offline fallback
+# when /data/gamedata (the volume mount-point) has no data yet.
 COPY data/ data/
 
 RUN pip install --no-cache-dir .
 
-# Tell config.py where the project root is (needed when the package is installed
-# via pip and __file__ resolves inside site-packages rather than /app/src/).
+# Tell config.py we are running inside Docker so it uses /data/gamedata
+# (the volume mount-point) as the auto-sync target instead of the
+# per-user data directory.
 ENV PRTS_MCP_ROOT=/app
+
+# Create the volume mount-point as an empty directory.  Docker will
+# populate it with the named-volume or bind-mount contents at runtime;
+# if no volume is attached it remains writable by the container so
+# auto-sync can still write data here (data lost on container removal).
+RUN mkdir -p /data/gamedata /data/storyjson
 
 ENTRYPOINT ["prts-mcp"]

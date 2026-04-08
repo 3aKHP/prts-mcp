@@ -2,7 +2,7 @@
   "mcpServers": {
     "prts_wiki": {
       "command": "docker",
-      "args": ["run", "-i", "--rm", "prts-mcp"]
+      "args": ["run", "-i", "--rm", "-v", "prts-mcp-data:/data/gamedata", "prts-mcp"]
     }
   }
 }

@@ -42,7 +42,7 @@ jobs:
           assert cfg.gamedata_path.resolve() == Path(".ci-empty/gamedata").resolve()
           assert cfg.has_operator_data is False
           message = get_operator_archives("阿米娅")
-          assert "本地干员数据不可用" in message
+          assert "干员数据暂不可用" in message
           print("Import/config verification passed.")
           PY
 

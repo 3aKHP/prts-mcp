@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-04-14
+
+### Added
+
+- Bundled operator data files (`data/gamedata/zh_CN/gamedata/excel/*.json`) now committed to the repository and baked into the Docker image at build time, serving as a read-only offline fallback when the volume has no data yet
+
+### Changed
+
+- Data path architecture split into two independent roots: `/data/gamedata` (volume, auto-sync write target) and `/app/data/gamedata` (bundled, read-only fallback inside Docker); `config.py` resolves the effective read path by preferring the volume when its files are present, falling back to bundled otherwise
+- `_DEFAULT_GAMEDATA_PATH` inside Docker now fixed to `/data/gamedata` (the volume mount-point) instead of being derived from `PRTS_MCP_ROOT`; outside Docker retains the per-user data directory fallback
+- Auto-sync skip condition changed from path comparison to `is_custom_gamedata` flag: sync is disabled only when `GAMEDATA_PATH` is explicitly set by the user, regardless of the path value
+- `Config` dataclass gains `is_custom_gamedata: bool` and `effective_excel_path: Path | None` fields; `has_operator_data` now reflects both the volume path and the bundled fallback
+- Operator tool error message updated to indicate that auto-sync may still be in progress, rather than asking the user to set `GAMEDATA_PATH`
+- Dockerfile creates `/data/gamedata` and `/data/storyjson` as empty directories (volume mount-points)
+- Recommended Docker invocation updated to include a named volume: `docker run -i --rm -v prts-mcp-data:/data/gamedata prts-mcp`
+- `.mcp.example.json`, `docker-compose.override.example.yml`, `README.md`, `CONTRIBUTING.md`, and `docs/deployment.md` updated to reflect the new volume-first workflow
+- CI verify assertions updated to match the new error message prefix
+
+### Fixed
+
+- Volume-mounted data directory was silently ignored when `GAMEDATA_PATH` was not set; the server now correctly uses `/data/gamedata` as the sync target inside Docker without requiring the user to set any environment variable
+- Raw `[Errno 2] No such file or directory` propagated to MCP clients when operator data files were missing; now caught and returned as a human-readable message
+
+### Removed
+
+- `PRTS_MCP_ROOT`-based data root resolution no longer drives the sync write path (retained only as a Docker/non-Docker environment marker)
+
 ## [0.2.0] - 2026-04-08
 
 ### Added

@@ -26,7 +26,7 @@ data/*
 !data/.gitkeep
 !data/gamedata/
 !data/storyjson/
-data/gamedata/**
-data/storyjson/**
-!data/gamedata/.gitkeep
+!data/gamedata/**
 !data/storyjson/.gitkeep
+data/gamedata/**/*.zip
+data/gamedata/**/*.7z

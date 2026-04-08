@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 import logging
-import os
 import sys
 import threading
-from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
 
@@ -52,17 +50,21 @@ async def get_operator_voicelines(operator_name: str) -> str:
 
 
 def _run_startup_sync() -> None:
-    """Check upstream GitHub repos and download data files if outdated.
+    """Check upstream GitHub and download data files if outdated.
 
-    Skipped when GAMEDATA_PATH is overridden to a non-default location
-    (e.g. a read-only Docker volume mount managed by the user).
+    Skipped when GAMEDATA_PATH is explicitly set to a custom location —
+    in that case the user is managing their own data and we must not
+    overwrite it.
     """
-    from prts_mcp.config import _DEFAULT_GAMEDATA_PATH
+    from prts_mcp.config import Config, _DEFAULT_GAMEDATA_PATH
     from prts_mcp.data.sync import GAMEDATA_FILES, RepoSpec, sync_all
 
-    override = os.environ.get("GAMEDATA_PATH")
-    if override and Path(override).resolve() != _DEFAULT_GAMEDATA_PATH.resolve():
-        _logger.info("GAMEDATA_PATH is overridden (%s); skipping auto-sync.", override)
+    cfg = Config.load()
+    if cfg.is_custom_gamedata:
+        _logger.info(
+            "GAMEDATA_PATH is set to a custom location (%s); auto-sync disabled.",
+            cfg.gamedata_path,
+        )
         return
 
     specs = [
@@ -92,7 +94,8 @@ def _run_startup_sync() -> None:
             )
         elif r.status == "no_data":
             _logger.warning(
-                "No data available for %s. Operator tools will be non-functional. Error: %s",
+                "Sync failed for %s — no data written to volume. "
+                "Operator tools will fall back to bundled data if available. Error: %s",
                 repo,
                 r.error,
             )

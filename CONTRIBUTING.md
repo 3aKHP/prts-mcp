@@ -34,18 +34,17 @@ type(scope): summary
 示例：
 
 ```text
-feat(config): support local data path fallback
-docs(deployment): clarify public and private packaging boundary
-ci(github): add minimal install and import verification
+feat(config): add bundled data fallback path
+docs(deployment): update volume mount instructions
+ci(github): update verify assertion for new error message
 ```
 
 ## Public Repo Boundary
 
-公开仓库默认只接收源码、文档和必要的空目录占位。当前版本的数据主路径是 GitHub-backed auto-sync，而不是提交真实数据文件。
+本仓库包含源码、文档和预置的干员数据文件（`data/gamedata/`）。预置数据由 CI 在构建镜像时通过 `scripts/fetch_gamedata.py` 拉取并提交，作为镜像内的离线保底。
 
 请不要提交以下内容：
 
-- `data/gamedata/` 或 `data/storyjson/` 下的真实数据文件
 - `local_repo.jsonc`
 - `.mcp.json`
 - `docker-compose.override.yml`
@@ -64,24 +63,26 @@ pip install -e .
 python -m compileall src scripts
 ```
 
-如果你需要完整干员功能，请优先使用当前默认流程：
+如果你需要完整干员功能，直接运行服务即可，auto-sync 会在启动时自动下载数据：
 
-- 直接运行服务，让它自动同步最小数据集
-- 如担心 GitHub 匿名限流，设置 `GITHUB_TOKEN`
-- 如需强制使用你自己的数据目录，再设置 `GAMEDATA_PATH`
+```bash
+prts-mcp
+```
 
-兼容脚本 `scripts/package_operator_data.py` 仍在仓库中，但已是 deprecated 入口。当前版本不建议把同步或打包得到的数据文件直接提交到公开 Git 仓库。
+如担心 GitHub 匿名限流，设置 `GITHUB_TOKEN`；如需强制使用自己的本地数据目录并禁用 auto-sync，设置 `GAMEDATA_PATH`。
+
+如果你要在本地构建 Docker 镜像并希望镜像内含 bundled 数据：
+
+```bash
+python scripts/fetch_gamedata.py
+docker build -t prts-mcp .
+```
+
+兼容脚本 `scripts/package_operator_data.py` 仍在仓库中，但已是 deprecated 入口，不再推荐使用。
 
 ## Pull Requests
 
 - 保持单个 PR 聚焦一个主题。
 - 在描述中说明改动动机、行为变化和验证方式。
-- 如果改动影响部署、数据路径或公开仓库边界，请同步更新 `README.md` 或 `docs/deployment.md`。
+- 如果改动影响部署、数据路径或仓库边界，请同步更新 `README.md` 或 `docs/deployment.md`。
 - 提交前请确认 CI 能通过。
-
-## Architecture Note
-
-下一个大版本预计会重构数据拉取、缓存和更新流程。因此：
-
-- 可以修复明显问题并改进文档、工具链和边界约束。
-- 涉及大规模数据架构的设计改动，建议先开 issue 或草案讨论，避免和即将到来的重构方向冲突。

@@ -3,9 +3,19 @@ services:
     environment:
       # Optional: provide a token to reduce anonymous GitHub API rate-limit risk
       GITHUB_TOKEN: ${GITHUB_TOKEN}
-      # Optional: force the container to use your own mounted data directory
-      GAMEDATA_PATH: /data/gamedata
+      # Optional: set GAMEDATA_PATH to use your own data directory.
+      # WARNING: setting this disables auto-sync entirely.
+      # GAMEDATA_PATH: /data/custom
     volumes:
-      # Linux/macOS: - /absolute/path/to/ArknightsGameData:/data/gamedata:ro
-      # Windows:     - C:\path\to\ArknightsGameData:/data/gamedata:ro
-      - /absolute/path/to/ArknightsGameData:/data/gamedata:ro
+      # Recommended: mount a named volume for persistent data across restarts.
+      # Use this pattern in docker-compose.override.yml (copy this file):
+      #
+      #   volumes:
+      #     - prts-mcp-data:/data/gamedata
+      #
+      # Alternatively, bind-mount your own ArknightsGameData repo root (read-only).
+      # The server expects zh_CN/gamedata/excel/*.json under the mounted path.
+      # When using a custom path, also set GAMEDATA_PATH above.
+      #
+      # Linux/macOS: - /absolute/path/to/ArknightsGameData:/data/custom:ro
+      # Windows:     - C:\path\to\ArknightsGameData:/data/custom:ro
