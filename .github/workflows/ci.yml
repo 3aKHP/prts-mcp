@@ -49,6 +49,7 @@ jobs:
   build-image:
     runs-on: ubuntu-latest
     needs: verify
+    if: github.ref == 'refs/heads/main'
 
     steps:
       - name: Checkout repository
@@ -85,13 +86,32 @@ jobs:
 
       - name: Smoke test Docker image
         run: |
-          echo '{"jsonrpc":"2.0","method":"tools/list","id":1}' | \
-          docker run -i --rm prts-mcp:latest | \
-          python -c "
-          import sys, json
-          d = json.loads(sys.stdin.read())
-          names = {t['name'] for t in d['result']['tools']}
-          assert 'get_operator_archives' in names, f'Missing tool. Got: {names}'
-          assert 'search_prts' in names, f'Missing tool. Got: {names}'
-          print('Smoke test passed. Tools:', sorted(names))
-          "
+          python - <<'PY'
+          import subprocess, json, sys
+
+          msgs = [
+            {"jsonrpc":"2.0","method":"initialize","id":1,"params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}},
+            {"jsonrpc":"2.0","method":"notifications/initialized","params":{}},
+            {"jsonrpc":"2.0","method":"tools/list","id":2,"params":{}},
+          ]
+          inp = "\n".join(json.dumps(m) for m in msgs) + "\n"
+          proc = subprocess.run(
+              ["docker","run","-i","--rm","prts-mcp:latest"],
+              input=inp.encode(), capture_output=True, timeout=30
+          )
+          for line in proc.stdout.decode().splitlines():
+              try:
+                  r = json.loads(line)
+                  if r.get("id") == 2:
+                      names = {t["name"] for t in r["result"]["tools"]}
+                      assert "get_operator_archives" in names, f"Missing tool. Got: {names}"
+                      assert "search_prts" in names, f"Missing tool. Got: {names}"
+                      print("Smoke test passed:", sorted(names))
+                      sys.exit(0)
+              except (json.JSONDecodeError, KeyError):
+                  pass
+          print("ERROR: no tools/list response found", file=sys.stderr)
+          print("stdout:", proc.stdout.decode(), file=sys.stderr)
+          print("stderr:", proc.stderr.decode(), file=sys.stderr)
+          sys.exit(1)
+          PY

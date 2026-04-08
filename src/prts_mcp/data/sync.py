@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -30,6 +31,14 @@ GAMEDATA_FILES: tuple[str, ...] = (
 _GITHUB_COMMITS_URL = "https://api.github.com/repos/{owner}/{repo}/commits/{branch}"
 _GITHUB_RAW_URL = "https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{path}"
 _GITHUB_UA = "PRTS-MCP-Bot/0.1 (Arknights fan-creation helper)"
+
+
+def _github_headers() -> dict[str, str]:
+    headers: dict[str, str] = {"User-Agent": _GITHUB_UA}
+    token = os.environ.get("GITHUB_TOKEN")
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    return headers
 
 # Skip the upstream SHA check if cached data is fresher than this many seconds.
 _CACHE_TTL_SECONDS = 3600
@@ -129,7 +138,7 @@ def check_upstream_sha(spec: RepoSpec, timeout: float = 10.0) -> str | None:
     """Return the latest commit SHA from GitHub, or None on any failure."""
     url = _GITHUB_COMMITS_URL.format(owner=spec.owner, repo=spec.repo, branch=spec.branch)
     try:
-        response = httpx.get(url, headers={"User-Agent": _GITHUB_UA}, timeout=timeout)
+        response = httpx.get(url, headers=_github_headers(), timeout=timeout)
         response.raise_for_status()
         return response.json()["sha"]
     except Exception as exc:  # noqa: BLE001
@@ -145,7 +154,7 @@ def download_files(spec: RepoSpec, sha: str, timeout: float = 60.0) -> None:
     """
     tmp_pairs: list[tuple[Path, Path]] = []
     try:
-        with httpx.Client(headers={"User-Agent": _GITHUB_UA}, timeout=timeout) as client:
+        with httpx.Client(headers=_github_headers(), timeout=timeout) as client:
             for file_path in spec.files:
                 url = _GITHUB_RAW_URL.format(
                     owner=spec.owner,

@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import os
 import sys
+import threading
 from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
@@ -98,7 +99,8 @@ def _run_startup_sync() -> None:
 
 
 def main() -> None:
-    _run_startup_sync()
+    t = threading.Thread(target=_run_startup_sync, daemon=True, name="prts-sync")
+    t.start()
     mcp.run()
 
 

@@ -17,7 +17,6 @@ dev/
 .pytest_cache/
 _check_data.py
 _smoke_test*.py
-local_repo.jsonc
 docker-compose.override.yml
 .mcp.json
 PRTS维基.md
