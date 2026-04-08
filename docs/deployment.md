@@ -35,7 +35,7 @@ docker run -i --rm -v prts-mcp-data:/data/gamedata prts-mcp
 **使用宿主机目录（Windows PowerShell）**
 
 ```powershell
-docker run -i --rm -v "$env:USERPROFILE\.prts-mcp\gamedata:/data/gamedata" prts-mcp
+docker run -i --rm -v "${env:USERPROFILE}\.prts-mcp\gamedata:/data/gamedata" prts-mcp
 ```
 
 **使用宿主机目录（Linux / macOS）**
