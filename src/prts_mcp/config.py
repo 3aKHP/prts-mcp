@@ -5,17 +5,50 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
-# Project root resolution
+# Default data directory resolution
 #
-# When the package is installed via `pip install .`, __file__ resolves to a
-# location inside site-packages, not the project checkout. We use the
-# PRTS_MCP_ROOT environment variable (set to /app in the Docker image) as the
-# authoritative project root, falling back to the parents[2] heuristic for
-# editable / development installs.
+# Priority (highest to lowest):
+#   1. GAMEDATA_PATH / STORYJSON_PATH env vars  — always honoured in Config.load()
+#   2. PRTS_MCP_ROOT env var                    — set to /app in the Docker image;
+#                                                 data lives at $PRTS_MCP_ROOT/data/
+#   3. Editable-install heuristic               — parents[2] of __file__ points at
+#                                                 the checkout root when installed
+#                                                 with `pip install -e .`
+#   4. User data directory                      — ~/.local/share/prts-mcp/ on Linux/
+#                                                 macOS; %LOCALAPPDATA%\prts-mcp\ on
+#                                                 Windows.  Used when the package is
+#                                                 installed non-editably and neither
+#                                                 PRTS_MCP_ROOT nor a checkout is
+#                                                 detectable.
+#
+# Non-editable installs (pip install .) without PRTS_MCP_ROOT: the parents[2]
+# heuristic points into site-packages, which is unlikely to contain a data/
+# directory.  In that case _resolve_default_data_root() falls through to the
+# user data directory so the server and fetch_gamedata.py agree on where data
+# lives without any manual env var configuration.
 # ---------------------------------------------------------------------------
 
-_PROJECT_ROOT = Path(os.environ.get("PRTS_MCP_ROOT", str(Path(__file__).resolve().parents[2])))
-_BUNDLED_DATA_ROOT = _PROJECT_ROOT / "data"
+
+def _resolve_default_data_root() -> Path:
+    # Explicit override wins unconditionally.
+    if "PRTS_MCP_ROOT" in os.environ:
+        return Path(os.environ["PRTS_MCP_ROOT"]) / "data"
+
+    # Editable-install / development checkout: __file__ is inside src/prts_mcp/,
+    # so parents[2] is the project root.
+    candidate = Path(__file__).resolve().parents[2] / "data"
+    if candidate.is_dir():
+        return candidate
+
+    # Non-editable install fallback: use a per-user data directory.
+    if os.name == "nt":
+        base = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local"))
+    else:
+        base = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share"))
+    return base / "prts-mcp"
+
+
+_BUNDLED_DATA_ROOT = _resolve_default_data_root()
 _DEFAULT_GAMEDATA_PATH = _BUNDLED_DATA_ROOT / "gamedata"
 _DEFAULT_STORYJSON_PATH = _BUNDLED_DATA_ROOT / "storyjson"
 _REQUIRED_OPERATOR_FILES = (
