@@ -21,8 +21,9 @@ import sys
 from pathlib import Path
 
 # Make the src/ package importable when running this script directly.
-_PROJECT_ROOT = Path(__file__).resolve().parents[1]
-_SRC_DIR = _PROJECT_ROOT / "src"
+_PYTHON_DIR = Path(__file__).resolve().parents[1]   # python/
+_REPO_ROOT = _PYTHON_DIR.parent                     # repo root
+_SRC_DIR = _PYTHON_DIR / "src"
 if str(_SRC_DIR) not in sys.path:
     sys.path.insert(0, str(_SRC_DIR))
 
@@ -53,7 +54,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output",
         type=Path,
-        default=_PROJECT_ROOT / "data" / "gamedata",
+        default=_REPO_ROOT / "data" / "gamedata",
         help="Local root directory for cached game data. Default: data/gamedata",
     )
     return parser.parse_args()

@@ -2,11 +2,11 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY pyproject.toml .
+COPY python/pyproject.toml .
 COPY README.md .
-COPY src/ src/
+COPY python/src/ src/
 # Bundled game data baked in at build time (pre-fetched by CI via
-# scripts/fetch_gamedata.py).  Serves as a read-only offline fallback
+# python/scripts/fetch_gamedata.py).  Serves as a read-only offline fallback
 # when /data/gamedata (the volume mount-point) has no data yet.
 COPY data/ data/
 

@@ -22,6 +22,11 @@ docker-compose.override.yml
 .mcp.json
 PRTS维基.md
 prts-mcp.tar
+
+# TypeScript / Node
+ts/node_modules/
+ts/dist/
+
 data/*
 !data/.gitkeep
 !data/gamedata/
