@@ -1,5 +1,7 @@
 services:
   prts-mcp:
-    build: .
+    build:
+      context: ..
+      dockerfile: python/Dockerfile
     image: prts-mcp
     stdin_open: true
