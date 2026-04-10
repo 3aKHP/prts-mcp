@@ -1,0 +1,141 @@
+name: CD (TypeScript)
+
+on:
+  push:
+    tags:
+      - "ts/v[0-9]*.[0-9]*.[0-9]*"
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: 'ts/package.json'
+          cache: 'npm'
+          cache-dependency-path: 'ts/package-lock.json'
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ts
+
+      - name: Type-check
+        run: npx tsc --noEmit
+        working-directory: ts
+
+      - name: Build
+        run: npx tsc
+        working-directory: ts
+
+      - name: Check tag matches package version
+        working-directory: ts
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#ts/v}"
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::Tag version ($TAG_VERSION) does not match package version ($PKG_VERSION)"
+            exit 1
+          fi
+          echo "Version check passed: $TAG_VERSION"
+
+      - name: Smoke test (health + tools/list)
+        working-directory: ts
+        run: |
+          node dist/server.js &
+          SERVER_PID=$!
+          for i in $(seq 1 10); do
+            if curl -sf http://localhost:3000/health; then break; fi
+            sleep 1
+          done
+          node -e "
+          const http = require('http');
+          function post(body, headers) {
+            return new Promise((resolve, reject) => {
+              const data = JSON.stringify(body);
+              const req = http.request({
+                host: 'localhost', port: 3000, path: '/mcp', method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream', 'Content-Length': Buffer.byteLength(data), ...headers }
+              }, res => { let buf = ''; res.on('data', d => buf += d); res.on('end', () => resolve({ headers: res.headers, body: buf })); });
+              req.write(data); req.end();
+            });
+          }
+          async function main() {
+            const init = await post({ jsonrpc: '2.0', method: 'initialize', id: 1, params: { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'ci', version: '0' } } }, {});
+            const sid = init.headers['mcp-session-id'];
+            const list = await post({ jsonrpc: '2.0', method: 'tools/list', id: 2, params: {} }, { 'mcp-session-id': sid });
+            const line = list.body.split('\n').find(l => l.startsWith('data: '));
+            const result = JSON.parse(line.slice(6));
+            const names = result.result.tools.map(t => t.name);
+            const required = ['search_prts', 'read_prts_page', 'get_operator_archives', 'get_operator_voicelines'];
+            for (const t of required) {
+              if (!names.includes(t)) throw new Error('Missing tool: ' + t);
+            }
+            console.log('Smoke test passed:', names.sort().join(', '));
+          }
+          main().catch(e => { console.error(e); process.exit(1); });
+          "
+          kill $SERVER_PID
+
+  publish-npm:
+    runs-on: ubuntu-latest
+    needs: verify
+    environment: npm
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: 'ts/package.json'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ts
+
+      - name: Publish to npm
+        run: npm publish --provenance --access public
+        working-directory: ts
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  github-release:
+    runs-on: ubuntu-latest
+    needs: publish-npm
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "value=${GITHUB_REF_NAME#ts/v}" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body: |
+            TypeScript MCP Server v${{ steps.version.outputs.value }}
+
+            **Install via npm / npx**
+            ```bash
+            # Run directly (Streamable HTTP on :3000)
+            npx prts-mcp-ts
+
+            # Or install globally
+            npm install -g prts-mcp-ts
+            prts-mcp-ts
+            ```
+
+            MCP 端点：`http://localhost:3000/mcp`

@@ -28,6 +28,16 @@ http://localhost:3000/mcp
 
 ---
 
+## 快速试用（npx）
+
+无需克隆仓库，直接运行：
+
+```bash
+npx prts-mcp-ts
+```
+
+服务启动后 MCP 端点为 `http://localhost:3000/mcp`。
+
 ## 本地开发
 
 ```bash
