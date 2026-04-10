@@ -1,6 +1,7 @@
+import { randomUUID } from "node:crypto";
 import express from "express";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
 
 import { loadConfig } from "./config.js";
@@ -18,71 +19,72 @@ function log(level: "INFO" | "WARN" | "ERROR", msg: string): void {
 }
 
 // ---------------------------------------------------------------------------
-// MCP Server + tools
+// MCP Server factory — one instance per session
 // ---------------------------------------------------------------------------
 
-const server = new McpServer({
-  name: "PRTS_Wiki_Assistant",
-  version: "0.1.0",
-});
+function createMcpServer(): McpServer {
+  const server = new McpServer({
+    name: "PRTS_Wiki_Assistant",
+    version: "0.1.0",
+  });
 
-server.tool(
-  "search_prts",
-  "搜索 PRTS 明日方舟中文维基词条。返回匹配的词条标题和摘要。",
-  { query: z.string(), limit: z.number().int().min(1).max(20).default(5) },
-  async ({ query, limit }) => {
-    const results = await searchPrts(query, limit);
-    if (results.length === 0) {
-      return { content: [{ type: "text", text: `未找到与 '${query}' 相关的词条。` }] };
+  server.tool(
+    "search_prts",
+    "搜索 PRTS 明日方舟中文维基词条。返回匹配的词条标题和摘要。",
+    { query: z.string(), limit: z.number().int().min(1).max(20).default(5) },
+    async ({ query, limit }) => {
+      const results = await searchPrts(query, limit);
+      if (results.length === 0) {
+        return { content: [{ type: "text", text: `未找到与 '${query}' 相关的词条。` }] };
+      }
+      const text = results
+        .map((r) => `**${r.title}**\n${r.snippet}`)
+        .join("\n\n---\n\n");
+      return { content: [{ type: "text", text }] };
     }
-    const text = results
-      .map((r) => `**${r.title}**\n${r.snippet}`)
-      .join("\n\n---\n\n");
-    return { content: [{ type: "text", text }] };
-  }
-);
+  );
 
-server.tool(
-  "read_prts_page",
-  "读取 PRTS 维基指定词条的纯文本内容。",
-  { page_title: z.string() },
-  async ({ page_title }) => {
-    const text = await readPage(page_title);
-    return { content: [{ type: "text", text }] };
-  }
-);
+  server.tool(
+    "read_prts_page",
+    "读取 PRTS 维基指定词条的纯文本内容。",
+    { page_title: z.string() },
+    async ({ page_title }) => {
+      const text = await readPage(page_title);
+      return { content: [{ type: "text", text }] };
+    }
+  );
 
-server.tool(
-  "get_operator_archives",
-  '获取指定干员的档案资料（使用游戏内中文名，如"阿米娅"）。',
-  { operator_name: z.string() },
-  ({ operator_name }) => {
-    const text = getOperatorArchives(operator_name);
-    return { content: [{ type: "text", text }] };
-  }
-);
+  server.tool(
+    "get_operator_archives",
+    '获取指定干员的档案资料（使用游戏内中文名，如"阿米娅"）。',
+    { operator_name: z.string() },
+    ({ operator_name }) => {
+      const text = getOperatorArchives(operator_name);
+      return { content: [{ type: "text", text }] };
+    }
+  );
 
-server.tool(
-  "get_operator_voicelines",
-  '获取指定干员的语音记录（使用游戏内中文名，如"阿米娅"）。',
-  { operator_name: z.string() },
-  ({ operator_name }) => {
-    const text = getOperatorVoicelines(operator_name);
-    return { content: [{ type: "text", text }] };
-  }
-);
+  server.tool(
+    "get_operator_voicelines",
+    '获取指定干员的语音记录（使用游戏内中文名，如"阿米娅"）。',
+    { operator_name: z.string() },
+    ({ operator_name }) => {
+      const text = getOperatorVoicelines(operator_name);
+      return { content: [{ type: "text", text }] };
+    }
+  );
+
+  return server;
+}
 
 // ---------------------------------------------------------------------------
-// Startup data sync (fire-and-forget, runs in background)
+// Startup data sync (fire-and-forget)
 // ---------------------------------------------------------------------------
 
 function runStartupSync(): void {
   const cfg = loadConfig();
   if (cfg.isCustomGamedata) {
-    log(
-      "INFO",
-      `GAMEDATA_PATH is set to a custom location (${cfg.gamedataPath}); auto-sync disabled.`
-    );
+    log("INFO", `GAMEDATA_PATH is custom (${cfg.gamedataPath}); auto-sync disabled.`);
     return;
   }
 
@@ -96,8 +98,6 @@ function runStartupSync(): void {
     },
   ];
 
-  // Intentionally not awaited — sync runs in the background while the
-  // HTTP server accepts connections immediately.
   syncAll(specs).then((results) => {
     for (const r of results) {
       const sha = r.commitSha ? r.commitSha.slice(0, 8) : "unknown";
@@ -106,44 +106,49 @@ function runStartupSync(): void {
       } else if (r.status === "up_to_date") {
         log("INFO", `Data is up to date (${r.spec.repo} @ ${sha}).`);
       } else if (r.status === "offline_fallback") {
-        log(
-          "WARN",
-          `Network unavailable; using cached data (${r.spec.repo} @ ${sha}). Error: ${r.error}`
-        );
+        log("WARN", `Network unavailable; using cached data (${r.spec.repo} @ ${sha}). Error: ${r.error}`);
       } else {
-        log(
-          "ERROR",
-          `Sync failed for ${r.spec.repo} — no data available. Error: ${r.error}`
-        );
+        log("ERROR", `Sync failed for ${r.spec.repo} — no data. Error: ${r.error}`);
       }
     }
   });
 }
 
 // ---------------------------------------------------------------------------
-// Express HTTP server with SSE transport
+// Express + StreamableHTTP
 // ---------------------------------------------------------------------------
 
 const app = express();
+// Parse JSON bodies — StreamableHTTP transport accepts req.body as parsedBody.
 app.use(express.json());
 
-const transports = new Map<string, SSEServerTransport>();
+const transports = new Map<string, StreamableHTTPServerTransport>();
 
-app.get("/sse", async (_req, res) => {
-  const transport = new SSEServerTransport("/message", res);
-  transports.set(transport.sessionId, transport);
-  res.on("close", () => transports.delete(transport.sessionId));
-  await server.connect(transport);
-});
+app.all("/mcp", async (req, res) => {
+  const sessionId = req.headers["mcp-session-id"] as string | undefined;
+  let transport = sessionId ? transports.get(sessionId) : undefined;
 
-app.post("/message", async (req, res) => {
-  const sessionId = req.query["sessionId"] as string | undefined;
-  const transport = sessionId ? transports.get(sessionId) : undefined;
   if (!transport) {
-    res.status(400).json({ error: "Unknown or missing sessionId" });
-    return;
+    transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: () => randomUUID(),
+      onsessioninitialized: (id) => {
+        transports.set(id, transport!);
+        log("INFO", `Session ${id} initialized.`);
+      },
+    });
+    transport.onclose = () => {
+      if (transport?.sessionId) {
+        transports.delete(transport.sessionId);
+        log("INFO", `Session ${transport.sessionId} closed.`);
+      }
+    };
+    const server = createMcpServer();
+    await server.connect(transport);
   }
-  await transport.handlePostMessage(req, res);
+
+  // Pass req.body explicitly so the transport uses the already-parsed body
+  // rather than attempting to re-read the consumed stream.
+  await transport.handleRequest(req, res, req.body);
 });
 
 app.get("/health", (_req, res) => {
@@ -155,9 +160,10 @@ app.get("/health", (_req, res) => {
 // ---------------------------------------------------------------------------
 
 const PORT = Number(process.env["PORT"] ?? 3000);
+const HOST = process.env["HOST"] ?? "0.0.0.0";
 
 runStartupSync();
 
-app.listen(PORT, () => {
-  log("INFO", `PRTS MCP Server listening on port ${PORT}`);
+app.listen(PORT, HOST, () => {
+  log("INFO", `PRTS MCP Server listening on ${HOST}:${PORT} (StreamableHTTP at /mcp)`);
 });
