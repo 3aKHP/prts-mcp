@@ -25,6 +25,23 @@
     "url": "https://github.com/3aKHP/prts-mcp.git",
     "directory": "ts"
   },
+  "homepage": "https://github.com/3aKHP/prts-mcp",
+  "bugs": "https://github.com/3aKHP/prts-mcp/issues",
+  "license": "MIT",
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "model-context-protocol",
+    "arknights",
+    "prts",
+    "prts-wiki",
+    "game-data",
+    "claude",
+    "anthropic",
+    "fanfiction",
+    "ai-agent",
+    "streamable-http"
+  ],
   "volta": {
     "node": "24.14.0"
   },
