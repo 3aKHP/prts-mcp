@@ -9,6 +9,7 @@ Zip internal layout (all paths prefixed with "zh_CN/"):
 """
 from __future__ import annotations
 
+import json
 import re
 import zipfile
 from dataclasses import dataclass
@@ -86,6 +87,15 @@ class ChapterSummary:
     sort_order: int
 
 
+@dataclass(frozen=True)
+class ActivityResult:
+    event_id: str
+    event_name: str
+    total_chapters: int
+    has_more: bool
+    chapters: list[StoryChapter]
+
+
 # ---------------------------------------------------------------------------
 # Core helpers
 # ---------------------------------------------------------------------------
@@ -125,7 +135,6 @@ def _parse_story_list(story_list: list[dict]) -> list[StoryLine]:
 
 def _load_json(zf: zipfile.ZipFile, path: str) -> dict | list:
     with zf.open(path) as f:
-        import json
         return json.load(f)
 
 
@@ -245,7 +254,7 @@ def read_activity(
     include_narration: bool = True,
     page: int | None = None,
     page_size: int = 5,
-) -> dict:
+) -> ActivityResult:
     """Read all chapters of an activity in official story order.
 
     Args:
@@ -256,13 +265,7 @@ def read_activity(
         page_size: Chapters per page (used only when page is set).
 
     Returns:
-        {
-            "event_id": str,
-            "event_name": str,
-            "total_chapters": int,
-            "has_more": bool,       # always False when page is None
-            "chapters": [StoryChapter, ...]
-        }
+        ActivityResult with event metadata and (paginated) chapters.
 
     Raises:
         KeyError: If event_id is not found.
@@ -291,10 +294,10 @@ def read_activity(
             # Story file missing from zip — skip silently
             pass
 
-    return {
-        "event_id": event_id,
-        "event_name": event_name,
-        "total_chapters": total,
-        "has_more": has_more,
-        "chapters": chapters,
-    }
+    return ActivityResult(
+        event_id=event_id,
+        event_name=event_name,
+        total_chapters=total,
+        has_more=has_more,
+        chapters=chapters,
+    )

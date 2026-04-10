@@ -209,11 +209,11 @@ def read_activity(
     except Exception as e:
         return f"读取活动剧情失败：{e}"
 
-    chapters = result["chapters"]
-    total = result["total_chapters"]
-    has_more = result["has_more"]
+    chapters = result.chapters
+    total = result.total_chapters
+    has_more = result.has_more
 
-    header = f"【{result['event_name']}】共 {total} 章"
+    header = f"【{result.event_name}】共 {total} 章"
     if page is not None:
         header += f"，当前第 {page} 页（{len(chapters)} 章）"
         if has_more:

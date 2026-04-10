@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from prts_mcp.data.story import (
+    ActivityResult,
     ChapterSummary,
     EventInfo,
     StoryChapter,
@@ -217,36 +218,36 @@ class TestReadStory:
 
 
 class TestReadActivity:
-    def test_returns_dict(self, story_zip):
+    def test_returns_activity_result(self, story_zip):
         result = read_activity(story_zip, "act31side")
-        assert isinstance(result, dict)
-        assert "chapters" in result
-        assert "total_chapters" in result
+        assert isinstance(result, ActivityResult)
+        assert hasattr(result, "chapters")
+        assert hasattr(result, "total_chapters")
 
     def test_total_chapters(self, story_zip):
         chapters = list_stories(story_zip, "act31side")
         result = read_activity(story_zip, "act31side")
-        assert result["total_chapters"] == len(chapters)
+        assert result.total_chapters == len(chapters)
 
     def test_no_page_returns_all(self, story_zip):
         result = read_activity(story_zip, "act31side", page=None)
-        assert result["has_more"] is False
-        assert len(result["chapters"]) == result["total_chapters"]
+        assert result.has_more is False
+        assert len(result.chapters) == result.total_chapters
 
     def test_pagination_page1(self, story_zip):
         result = read_activity(story_zip, "act31side", page=1, page_size=3)
-        assert len(result["chapters"]) == 3
-        assert result["has_more"] is True
+        assert len(result.chapters) == 3
+        assert result.has_more is True
 
     def test_pagination_last_page(self, story_zip):
-        total = read_activity(story_zip, "act31side")["total_chapters"]
+        total = read_activity(story_zip, "act31side").total_chapters
         last_page = (total + 4) // 5  # page_size=5
         result = read_activity(story_zip, "act31side", page=last_page, page_size=5)
-        assert result["has_more"] is False
+        assert result.has_more is False
 
     def test_chapters_are_story_chapters(self, story_zip):
         result = read_activity(story_zip, "act31side", page=1, page_size=2)
-        for ch in result["chapters"]:
+        for ch in result.chapters:
             assert isinstance(ch, StoryChapter)
 
     def test_unknown_event_raises(self, story_zip):
