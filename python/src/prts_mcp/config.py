@@ -31,6 +31,10 @@ _DOCKER_VOLUME_PATH = Path("/data/gamedata")
 # Bundled data baked into the image at build time (COPY data/ data/).
 _BUNDLED_GAMEDATA_PATH = Path("/app/data/gamedata")
 
+# storyjson zip paths
+_DOCKER_STORYJSON_ZIP = Path("/data/storyjson/zh_CN.zip")
+_BUNDLED_STORYJSON_ZIP = Path("/app/data/storyjson/zh_CN.zip")
+
 _REQUIRED_OPERATOR_FILES = (
     "character_table.json",
     "handbook_info_table.json",
@@ -63,8 +67,8 @@ def _resolve_default_gamedata_path() -> Path:
 
 _DEFAULT_GAMEDATA_PATH = _resolve_default_gamedata_path()
 
-# storyjson is reserved for future use; keep it alongside gamedata.
-_DEFAULT_STORYJSON_PATH = _DEFAULT_GAMEDATA_PATH.parent / "storyjson"
+# storyjson zip alongside gamedata in the user data directory.
+_DEFAULT_STORYJSON_ZIP = _DEFAULT_GAMEDATA_PATH.parent / "storyjson" / "zh_CN.zip"
 
 
 def _excel_path(gamedata_root: Path) -> Path:
@@ -78,13 +82,14 @@ def _files_complete(excel: Path) -> bool:
 @dataclass(frozen=True)
 class Config:
     gamedata_path: Path          # sync write target (volume or user dir)
-    storyjson_path: Path
+    storyjson_zip: Path          # storyjson zip path (custom, volume, or default)
     is_custom_gamedata: bool     # True when GAMEDATA_PATH was set by the user
 
     # Derived paths — set in __post_init__, never passed to __init__.
     excel_path: Path = field(init=False)
     bundled_excel_path: Path = field(init=False)
     effective_excel_path: Path | None = field(init=False)
+    effective_storyjson_zip: Path | None = field(init=False)
 
     def __post_init__(self) -> None:
         ep = _excel_path(self.gamedata_path)
@@ -103,9 +108,24 @@ class Config:
         else:
             object.__setattr__(self, "effective_excel_path", None)
 
+        # effective_storyjson_zip: priority — custom env var / volume path →
+        # bundled zip.  Returns None when no zip is found anywhere.
+        if self.storyjson_zip.is_file():
+            object.__setattr__(self, "effective_storyjson_zip", self.storyjson_zip)
+        elif _DOCKER_STORYJSON_ZIP.is_file():
+            object.__setattr__(self, "effective_storyjson_zip", _DOCKER_STORYJSON_ZIP)
+        elif _BUNDLED_STORYJSON_ZIP.is_file():
+            object.__setattr__(self, "effective_storyjson_zip", _BUNDLED_STORYJSON_ZIP)
+        else:
+            object.__setattr__(self, "effective_storyjson_zip", None)
+
     @property
     def has_operator_data(self) -> bool:
         return self.effective_excel_path is not None
+
+    @property
+    def has_story_data(self) -> bool:
+        return self.effective_storyjson_zip is not None
 
     @property
     def missing_operator_files(self) -> tuple[Path, ...]:
@@ -120,9 +140,9 @@ class Config:
     def load(cls) -> Config:
         custom = "GAMEDATA_PATH" in os.environ
         gamedata = Path(os.environ["GAMEDATA_PATH"]) if custom else _DEFAULT_GAMEDATA_PATH
-        storyjson = (
+        storyjson_zip = (
             Path(os.environ["STORYJSON_PATH"])
             if "STORYJSON_PATH" in os.environ
-            else _DEFAULT_STORYJSON_PATH
+            else _DEFAULT_STORYJSON_ZIP
         )
-        return cls(gamedata_path=gamedata, storyjson_path=storyjson, is_custom_gamedata=custom)
+        return cls(gamedata_path=gamedata, storyjson_zip=storyjson_zip, is_custom_gamedata=custom)

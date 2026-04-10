@@ -71,7 +71,7 @@ jobs:
             const line = list.body.split('\n').find(l => l.startsWith('data: '));
             const result = JSON.parse(line.slice(6));
             const names = result.result.tools.map(t => t.name);
-            const required = ['search_prts', 'read_prts_page', 'get_operator_archives', 'get_operator_voicelines'];
+            const required = ['search_prts', 'read_prts_page', 'get_operator_archives', 'get_operator_voicelines', 'get_operator_basic_info'];
             for (const t of required) {
               if (!names.includes(t)) throw new Error('Missing tool: ' + t);
             }

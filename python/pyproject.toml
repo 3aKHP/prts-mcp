@@ -55,3 +55,7 @@ prts-mcp = "prts_mcp.server:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/prts_mcp"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

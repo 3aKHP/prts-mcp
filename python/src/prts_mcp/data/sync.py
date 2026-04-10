@@ -26,6 +26,7 @@ GAMEDATA_FILES: tuple[str, ...] = (
     "zh_CN/gamedata/excel/character_table.json",
     "zh_CN/gamedata/excel/handbook_info_table.json",
     "zh_CN/gamedata/excel/charword_table.json",
+    "zh_CN/gamedata/excel/story_review_table.json",
 )
 
 _GITHUB_COMMITS_URL = "https://api.github.com/repos/{owner}/{repo}/commits/{branch}"
@@ -259,3 +260,141 @@ def sync_repo(spec: RepoSpec) -> SyncResult:
 def sync_all(specs: list[RepoSpec]) -> list[SyncResult]:
     """Sync each repo spec sequentially and return all results."""
     return [sync_repo(spec) for spec in specs]
+
+
+# ---------------------------------------------------------------------------
+# Release-based sync (for storyjson zip)
+# ---------------------------------------------------------------------------
+
+_GITHUB_RELEASES_LATEST_URL = "https://api.github.com/repos/{owner}/{repo}/releases/latest"
+_TAG_PREFIX = "upstream-"
+
+
+@dataclass(frozen=True)
+class ReleaseSpec:
+    """Describes a GitHub Release asset to download as a local zip."""
+
+    owner: str
+    repo: str
+    asset_name: str   # e.g. "zh_CN.zip"
+    local_zip: Path   # destination path on disk
+
+
+def _release_cache_path(spec: ReleaseSpec) -> Path:
+    return spec.local_zip.parent / "release_meta.json"
+
+
+def _release_cache_is_fresh(cache: CacheMeta) -> bool:
+    return _cache_is_fresh(cache)
+
+
+def check_latest_release(spec: ReleaseSpec, timeout: float = 10.0) -> tuple[str, str] | None:
+    """Return (tag_name, asset_download_url) for the latest release, or None on failure."""
+    url = _GITHUB_RELEASES_LATEST_URL.format(owner=spec.owner, repo=spec.repo)
+    try:
+        response = httpx.get(url, headers=_github_headers(), timeout=timeout)
+        response.raise_for_status()
+        data = response.json()
+        tag = data["tag_name"]
+        for asset in data.get("assets", []):
+            if asset["name"] == spec.asset_name:
+                return tag, asset["browser_download_url"]
+        _logger.debug("Asset %s not found in release %s", spec.asset_name, tag)
+        return None
+    except Exception as exc:  # noqa: BLE001
+        _logger.debug("Failed to check latest release for %s/%s: %s", spec.owner, spec.repo, exc)
+        return None
+
+
+def download_release_asset(spec: ReleaseSpec, tag: str, url: str, timeout: float = 120.0) -> None:
+    """Download a release asset zip atomically, then write cache metadata."""
+    spec.local_zip.parent.mkdir(parents=True, exist_ok=True)
+    tmp = spec.local_zip.with_suffix(spec.local_zip.suffix + ".tmp")
+    try:
+        _logger.debug("Downloading release asset %s", url)
+        with httpx.Client(headers=_github_headers(), timeout=timeout) as client:
+            response = client.get(url, follow_redirects=True)
+            response.raise_for_status()
+            tmp.write_bytes(response.content)
+        tmp.replace(spec.local_zip)
+
+        # Extract upstream SHA from tag (format: "upstream-<sha>")
+        commit_sha = tag[len(_TAG_PREFIX):] if tag.startswith(_TAG_PREFIX) else tag
+        CacheMeta(
+            repo=f"{spec.owner}/{spec.repo}",
+            branch="releases",
+            commit_sha=commit_sha,
+            fetched_at=datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            files=[spec.asset_name],
+        ).save(_release_cache_path(spec))
+    except Exception:
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
+
+
+def sync_release(spec: ReleaseSpec) -> SyncResult:
+    """Check latest GitHub Release and download asset if the tag has changed.
+
+    Decision tree mirrors sync_repo:
+      1. Cache fresh + zip exists → up_to_date
+      2. Network failure → offline_fallback / no_data
+      3. Tag unchanged + zip exists → up_to_date (refresh fetched_at)
+      4. Tag changed or zip missing → download → updated / offline_fallback / no_data
+    """
+    # Wrap ReleaseSpec in a minimal RepoSpec-like object for SyncResult
+    _dummy_spec = RepoSpec(
+        owner=spec.owner,
+        repo=spec.repo,
+        branch="releases",
+        files=(spec.asset_name,),
+        local_root=spec.local_zip.parent,
+    )
+
+    cache = CacheMeta.load(_release_cache_path(spec))
+    zip_ok = spec.local_zip.is_file()
+
+    if cache is not None and zip_ok and _release_cache_is_fresh(cache):
+        _logger.debug("Release cache is fresh for %s/%s; skipping check.", spec.owner, spec.repo)
+        return SyncResult(spec=_dummy_spec, status="up_to_date", commit_sha=cache.commit_sha, error=None)
+
+    result = check_latest_release(spec)
+
+    if result is None:
+        if zip_ok:
+            return SyncResult(
+                spec=_dummy_spec,
+                status="offline_fallback",
+                commit_sha=cache.commit_sha if cache else None,
+                error="Network unavailable",
+            )
+        return SyncResult(spec=_dummy_spec, status="no_data", commit_sha=None, error="Network unavailable and no cached zip")
+
+    tag, asset_url = result
+    upstream_sha = tag[len(_TAG_PREFIX):] if tag.startswith(_TAG_PREFIX) else tag
+
+    if cache is not None and cache.commit_sha == upstream_sha and zip_ok:
+        CacheMeta(
+            repo=cache.repo,
+            branch=cache.branch,
+            commit_sha=cache.commit_sha,
+            fetched_at=datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            files=cache.files,
+        ).save(_release_cache_path(spec))
+        return SyncResult(spec=_dummy_spec, status="up_to_date", commit_sha=upstream_sha, error=None)
+
+    try:
+        download_release_asset(spec, tag, asset_url)
+        return SyncResult(spec=_dummy_spec, status="updated", commit_sha=upstream_sha, error=None)
+    except Exception as exc:  # noqa: BLE001
+        error_msg = str(exc)
+        if zip_ok:
+            return SyncResult(
+                spec=_dummy_spec,
+                status="offline_fallback",
+                commit_sha=cache.commit_sha if cache else None,
+                error=error_msg,
+            )
+        return SyncResult(spec=_dummy_spec, status="no_data", commit_sha=None, error=error_msg)

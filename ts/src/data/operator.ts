@@ -9,6 +9,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { loadConfig, hasOperatorData } from "../config.js";
+import { stripWikitext } from "../utils/sanitizer.js";
 
 // ---------------------------------------------------------------------------
 // Module-level lazy caches
@@ -32,6 +33,30 @@ let _nameToId: Map<string, string> | null = null;
 
 interface CharacterEntry {
   name?: string;
+  appellation?: string;
+  displayNumber?: string;
+  description?: string;
+  rarity?: string;
+  profession?: string;
+  subProfessionId?: string;
+  position?: string;
+  nationId?: string;
+  groupId?: string;
+  teamId?: string;
+  tagList?: string[];
+  itemUsage?: string;
+  itemDesc?: string;
+  itemObtainApproach?: string;
+  talents?: TalentSlot[];
+}
+
+interface TalentCandidate {
+  name?: string;
+  description?: string;
+}
+
+interface TalentSlot {
+  candidates?: TalentCandidate[];
 }
 
 interface StoryEntry {
@@ -203,4 +228,106 @@ export function getOperatorVoicelines(name: string): string {
 
   if (lines.length === 0) return `干员 '${name}' 暂无语音数据。`;
   return `# ${name} - 语音记录\n\n` + lines.join("\n");
+}
+
+// ---------------------------------------------------------------------------
+// Basic info
+// ---------------------------------------------------------------------------
+
+const PROFESSION_ZH: Record<string, string> = {
+  CASTER: "术师",
+  MEDIC: "医疗",
+  PIONEER: "先锋",
+  SNIPER: "狙击",
+  SPECIAL: "特种",
+  SUPPORT: "辅助",
+  TANK: "重装",
+  WARRIOR: "近卫",
+};
+
+const POSITION_ZH: Record<string, string> = {
+  RANGED: "远程",
+  MELEE: "近战",
+  ALL: "通用",
+  NONE: "-",
+};
+
+/** Return basic profile info for an operator by Chinese name. */
+export function getOperatorBasicInfo(name: string): string {
+  const cfg = loadConfig();
+  if (!hasOperatorData(cfg)) return missingDataMessage();
+
+  let charId: string | null;
+  try {
+    charId = resolveCharId(name);
+  } catch (err) {
+    return err instanceof Error ? err.message : String(err);
+  }
+  if (charId === null) {
+    return `未找到干员 '${name}'。请使用游戏内中文名称（如'阿米娅'）。`;
+  }
+
+  let ct: Record<string, CharacterEntry>;
+  try {
+    ct = getCharacterTable();
+  } catch (err) {
+    return err instanceof Error ? err.message : String(err);
+  }
+  const info = ct[charId];
+  if (!info) return `干员 '${name}' 暂无基本信息。`;
+
+  const rarityRaw = info.rarity ?? "";
+  const rarity = rarityRaw.startsWith("TIER_")
+    ? rarityRaw.replace("TIER_", "") + "★"
+    : rarityRaw;
+
+  const profession = PROFESSION_ZH[info.profession ?? ""] ?? (info.profession ?? "");
+  const position = POSITION_ZH[info.position ?? ""] ?? (info.position ?? "");
+
+  const affiliationParts = [info.nationId, info.groupId, info.teamId].filter(Boolean) as string[];
+  const affiliation = affiliationParts.length > 0 ? affiliationParts.join(" / ") : "-";
+
+  const lines: string[] = [`# ${name} - 干员基本信息\n`];
+  lines.push(`- **编号**：${info.displayNumber ?? ""}`);
+  lines.push(`- **英文名**：${info.appellation ?? ""}`);
+  lines.push(`- **稀有度**：${rarity}`);
+  lines.push(`- **职业**：${profession}（${info.subProfessionId ?? ""}）`);
+  lines.push(`- **站位**：${position}`);
+  lines.push(`- **所属**：${affiliation}`);
+  if (info.tagList && info.tagList.length > 0) {
+    lines.push(`- **招募标签**：${info.tagList.join("、")}`);
+  }
+  if (info.description) {
+    lines.push(`- **攻击属性**：${stripWikitext(info.description)}`);
+  }
+  if (info.itemUsage) {
+    lines.push(`\n**图鉴**：${info.itemUsage}`);
+  }
+  if (info.itemDesc) {
+    lines.push(`\n> ${info.itemDesc}`);
+  }
+  if (info.itemObtainApproach) {
+    lines.push(`\n**获取方式**：${info.itemObtainApproach}`);
+  }
+
+  const talents = info.talents ?? [];
+  if (talents.length > 0) {
+    lines.push("\n## 天赋");
+    for (const slot of talents) {
+      const candidates = slot.candidates ?? [];
+      let chosen: TalentCandidate | undefined;
+      for (let i = candidates.length - 1; i >= 0; i--) {
+        const c = candidates[i];
+        if (c.name && c.name !== "？？？") {
+          chosen = c;
+          break;
+        }
+      }
+      if (chosen) {
+        lines.push(`- **${chosen.name ?? ""}**：${stripWikitext(chosen.description ?? "")}`);
+      }
+    }
+  }
+
+  return lines.join("\n");
 }

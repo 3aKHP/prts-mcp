@@ -41,9 +41,8 @@ jobs:
 
       - name: Verify import and config fallback
         run: |
-          mkdir -p .ci-empty/gamedata .ci-empty/storyjson
+          mkdir -p .ci-empty/gamedata
           export GAMEDATA_PATH="$PWD/.ci-empty/gamedata"
-          export STORYJSON_PATH="$PWD/.ci-empty/storyjson"
           python - <<'PY'
           from pathlib import Path
           from prts_mcp.config import Config
@@ -53,6 +52,7 @@ jobs:
           assert cfg.gamedata_path is not None
           assert cfg.gamedata_path.resolve() == Path(".ci-empty/gamedata").resolve()
           assert cfg.has_operator_data is False
+          assert cfg.has_story_data is False
           message = get_operator_archives("阿米娅")
           assert "干员数据暂不可用" in message
           print("Import/config verification passed.")
@@ -126,8 +126,9 @@ jobs:
           assert r.get("id") == 2, f"Expected tools/list response, got: {r}"
 
           names = {t["name"] for t in r["result"]["tools"]}
-          assert "get_operator_archives" in names, f"Missing tool. Got: {names}"
-          assert "search_prts" in names, f"Missing tool. Got: {names}"
+          expected = {"get_operator_archives", "search_prts", "list_story_events", "list_stories", "read_story", "read_activity"}
+          for tool in expected:
+              assert tool in names, f"Missing tool: {tool}. Got: {names}"
           print("Smoke test passed:", sorted(names))
 
           proc.stdin.close()
