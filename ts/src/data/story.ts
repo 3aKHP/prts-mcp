@@ -1,0 +1,327 @@
+/**
+ * Story data reader for PRTS-MCP (TypeScript).
+ *
+ * Reads from the bundled/synced zh_CN.zip (ArknightsStoryJson fork release).
+ * Mirrors python/src/prts_mcp/data/story.py.
+ *
+ * Zip internal layout (all paths prefixed with "zh_CN/"):
+ *   zh_CN/storyinfo.json                          — {story_key: summary_text}
+ *   zh_CN/gamedata/excel/story_review_table.json  — event metadata + ordered chapter list
+ *   zh_CN/gamedata/story/{story_key}.json         — per-chapter dialogue JSON
+ */
+
+import AdmZip from "adm-zip";
+
+// ---------------------------------------------------------------------------
+// Zip path constants
+// ---------------------------------------------------------------------------
+
+const STORYINFO = "zh_CN/storyinfo.json";
+const STORY_REVIEW_TABLE = "zh_CN/gamedata/excel/story_review_table.json";
+
+function storyZipPath(storyKey: string): string {
+  return `zh_CN/gamedata/story/${storyKey}.json`;
+}
+
+// entryType → category filter mapping (mirrors Python _CATEGORY_MAP)
+const CATEGORY_MAP: Record<string, string[]> = {
+  main: ["MAINLINE"],
+  activities: ["ACTIVITY", "MINI_ACTIVITY"],
+};
+
+// ---------------------------------------------------------------------------
+// Text cleaning
+// ---------------------------------------------------------------------------
+
+const RICH_TAG_RE = /<[^>]+>/g;
+
+function cleanText(text: string): string {
+  return text.replace(/\{@nickname\}/g, "博士").replace(RICH_TAG_RE, "").trim();
+}
+
+// ---------------------------------------------------------------------------
+// JSON shape types (only fields we use)
+// ---------------------------------------------------------------------------
+
+interface RawStoryItem {
+  prop?: string;
+  attributes?: Record<string, unknown>;
+}
+
+interface RawStoryChapter {
+  storyCode?: string;
+  storyName?: string;
+  avgTag?: string | null;
+  eventName?: string;
+  storyInfo?: string;
+  storyList?: RawStoryItem[];
+}
+
+interface RawInfoUnlockData {
+  storyTxt?: string;
+  storyCode?: string;
+  storyName?: string;
+  avgTag?: string | null;
+  storySort?: number;
+}
+
+interface RawReviewEntry {
+  id?: string;
+  name?: string;
+  entryType?: string;
+  infoUnlockDatas?: RawInfoUnlockData[];
+}
+
+// ---------------------------------------------------------------------------
+// Public types
+// ---------------------------------------------------------------------------
+
+export interface StoryLine {
+  type: "dialog" | "narration" | "choice";
+  role: string | null;
+  text: string;
+}
+
+export interface StoryChapter {
+  storyKey: string;
+  storyCode: string;
+  storyName: string;
+  avgTag: string | null;
+  eventName: string;
+  storyInfo: string;
+  lines: StoryLine[];
+}
+
+export interface EventInfo {
+  eventId: string;
+  name: string;
+  entryType: string;
+  storyCount: number;
+}
+
+export interface ChapterSummary {
+  storyKey: string;
+  storyCode: string;
+  storyName: string;
+  avgTag: string | null;
+  sortOrder: number;
+}
+
+export interface ActivityResult {
+  eventId: string;
+  eventName: string;
+  totalChapters: number;
+  hasMore: boolean;
+  chapters: StoryChapter[];
+}
+
+// ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
+
+function readZipEntry(zip: AdmZip, path: string): string {
+  const entry = zip.getEntry(path);
+  if (!entry) throw new Error(`Entry not found in zip: ${path}`);
+  return entry.getData().toString("utf-8");
+}
+
+function parseJsonFromZip<T>(zip: AdmZip, path: string): T {
+  return JSON.parse(readZipEntry(zip, path)) as T;
+}
+
+function parseStoryList(
+  storyList: RawStoryItem[],
+  includeNarration: boolean
+): StoryLine[] {
+  const lines: StoryLine[] = [];
+  for (const item of storyList) {
+    const prop = (item.prop ?? "").toLowerCase();
+    const attrs = (item.attributes ?? {}) as Record<string, unknown>;
+
+    if (prop === "name") {
+      const name = String(attrs["name"] ?? "");
+      const content = String(attrs["content"] ?? "");
+      if (content) {
+        lines.push({
+          type: "dialog",
+          role: name ? cleanText(name) : null,
+          text: cleanText(content),
+        });
+      }
+    } else if (
+      includeNarration &&
+      (prop === "sticker" || prop === "subtitle" || prop === "animtext")
+    ) {
+      // Sticker uses "text" OR "content" field — check both (see porting guide §4.2)
+      const content = String(attrs["content"] ?? attrs["text"] ?? "");
+      if (content) {
+        lines.push({ type: "narration", role: null, text: cleanText(content) });
+      }
+    } else if (prop === "decision") {
+      const options = attrs["options"];
+      if (Array.isArray(options)) {
+        for (const opt of options) {
+          let text = "";
+          if (typeof opt === "string") text = opt;
+          else if (opt !== null && typeof opt === "object") {
+            text = String((opt as Record<string, unknown>)["text"] ?? "");
+          }
+          if (text) {
+            lines.push({ type: "choice", role: null, text: cleanText(text) });
+          }
+        }
+      }
+    }
+    // All other props (Dialog, Background, PlayMusic, etc.) are skipped.
+  }
+  return lines;
+}
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+/**
+ * Return a list of events from story_review_table.json.
+ *
+ * @param zipPath  Absolute path to zh_CN.zip.
+ * @param category Optional filter — "main" or "activities".
+ */
+export function listStoryEvents(
+  zipPath: string,
+  category?: string
+): EventInfo[] {
+  const allowedTypes = category ? (CATEGORY_MAP[category] ?? null) : null;
+  const zip = new AdmZip(zipPath);
+  const table = parseJsonFromZip<Record<string, RawReviewEntry>>(
+    zip,
+    STORY_REVIEW_TABLE
+  );
+
+  const events: EventInfo[] = [];
+  for (const [eventId, entry] of Object.entries(table)) {
+    const entryType = entry.entryType ?? "NONE";
+    if (allowedTypes !== null && !allowedTypes.includes(entryType)) continue;
+    events.push({
+      eventId,
+      name: entry.name ?? eventId,
+      entryType,
+      storyCount: (entry.infoUnlockDatas ?? []).length,
+    });
+  }
+  return events;
+}
+
+/**
+ * Return ordered chapter list for an event.
+ *
+ * @param zipPath  Absolute path to zh_CN.zip.
+ * @param eventId  Event key, e.g. "act31side".
+ * @throws Error if eventId is not found in story_review_table.
+ */
+export function listStories(
+  zipPath: string,
+  eventId: string
+): ChapterSummary[] {
+  const zip = new AdmZip(zipPath);
+  const table = parseJsonFromZip<Record<string, RawReviewEntry>>(
+    zip,
+    STORY_REVIEW_TABLE
+  );
+
+  const entry = table[eventId];
+  if (!entry) throw new Error(`Event not found: "${eventId}"`);
+
+  const datas = (entry.infoUnlockDatas ?? []).slice();
+  datas.sort((a, b) => (a.storySort ?? 0) - (b.storySort ?? 0));
+
+  const chapters: ChapterSummary[] = [];
+  for (const d of datas) {
+    if (!d.storyTxt) continue;
+    chapters.push({
+      storyKey: d.storyTxt,
+      storyCode: d.storyCode ?? "",
+      storyName: d.storyName ?? "",
+      avgTag: d.avgTag ?? null,
+      sortOrder: d.storySort ?? 0,
+    });
+  }
+  return chapters;
+}
+
+/**
+ * Read and parse a single story chapter from the zip.
+ *
+ * @param zipPath         Absolute path to zh_CN.zip.
+ * @param storyKey        Story key from storyTxt / storyinfo.json.
+ * @param includeNarration Whether to include narration/scene lines (default true).
+ * @throws Error if the story file is not found in the zip.
+ */
+export function readStory(
+  zipPath: string,
+  storyKey: string,
+  includeNarration = true
+): StoryChapter {
+  const innerPath = storyZipPath(storyKey);
+  const zip = new AdmZip(zipPath);
+  const raw = parseJsonFromZip<RawStoryChapter>(zip, innerPath);
+
+  const lines = parseStoryList(raw.storyList ?? [], includeNarration);
+
+  return {
+    storyKey,
+    storyCode: raw.storyCode ?? "",
+    storyName: raw.storyName ?? "",
+    avgTag: raw.avgTag ?? null,
+    eventName: raw.eventName ?? "",
+    storyInfo: raw.storyInfo ?? "",
+    lines,
+  };
+}
+
+/**
+ * Read all chapters of an activity in official story order.
+ *
+ * @param zipPath         Absolute path to zh_CN.zip.
+ * @param eventId         Event key, e.g. "act31side".
+ * @param includeNarration Whether to include narration lines (default true).
+ * @param page            1-based page index. undefined = return all chapters.
+ * @param pageSize        Chapters per page when page is set (default 5).
+ * @throws Error if eventId is not found.
+ */
+export function readActivity(
+  zipPath: string,
+  eventId: string,
+  includeNarration = true,
+  page?: number,
+  pageSize = 5
+): ActivityResult {
+  const summaries = listStories(zipPath, eventId);
+  const total = summaries.length;
+
+  let selected: ChapterSummary[];
+  let hasMore: boolean;
+  if (page !== undefined) {
+    const start = (page - 1) * pageSize;
+    const end = start + pageSize;
+    selected = summaries.slice(start, end);
+    hasMore = end < total;
+  } else {
+    selected = summaries;
+    hasMore = false;
+  }
+
+  const chapters: StoryChapter[] = [];
+  let eventName = "";
+  for (const summary of selected) {
+    try {
+      const chapter = readStory(zipPath, summary.storyKey, includeNarration);
+      if (!eventName) eventName = chapter.eventName;
+      chapters.push(chapter);
+    } catch {
+      // Story file missing from zip — skip silently (see porting guide §10)
+    }
+  }
+
+  return { eventId, eventName, totalChapters: total, hasMore, chapters };
+}

@@ -5,10 +5,18 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
 
-import { loadConfig } from "./config.js";
+import { loadConfig, hasOperatorData, hasStoryData } from "./config.js";
 import { searchPrts, readPage } from "./api/prtsWiki.js";
 import { getOperatorArchives, getOperatorVoicelines, getOperatorBasicInfo } from "./data/operator.js";
-import { syncAll, GAMEDATA_FILES, type RepoSpec } from "./data/sync.js";
+import { syncAll, syncRelease, GAMEDATA_FILES, type RepoSpec, type ReleaseSpec } from "./data/sync.js";
+import {
+  listStoryEvents as _listStoryEvents,
+  listStories as _listStories,
+  readStory as _readStory,
+  readActivity as _readActivity,
+  type StoryChapter,
+  type StoryLine,
+} from "./data/story.js";
 
 // ---------------------------------------------------------------------------
 // Logging
@@ -17,6 +25,42 @@ import { syncAll, GAMEDATA_FILES, type RepoSpec } from "./data/sync.js";
 function log(level: "INFO" | "WARN" | "ERROR", msg: string): void {
   const ts = new Date().toISOString();
   process.stderr.write(`${ts} ${level} prts_mcp.server: ${msg}\n`);
+}
+
+// ---------------------------------------------------------------------------
+// Story formatting helpers
+// ---------------------------------------------------------------------------
+
+function formatLine(line: StoryLine): string {
+  if (line.type === "dialog") {
+    return `${line.role ?? ""}：${line.text}`;
+  } else if (line.type === "narration") {
+    return `*${line.text}*`;
+  } else {
+    return `【选项】${line.text}`;
+  }
+}
+
+function formatChapter(chapter: StoryChapter): string {
+  const parts: string[] = [];
+  parts.push(`【${chapter.eventName}】${chapter.storyName}`);
+  if (chapter.storyInfo) parts.push(`简介：${chapter.storyInfo}\n`);
+  for (const line of chapter.lines) {
+    parts.push(formatLine(line));
+  }
+  return parts.join("\n");
+}
+
+function requireStoryZip(): string {
+  const cfg = loadConfig();
+  if (!hasStoryData(cfg)) {
+    throw new Error(
+      "剧情数据暂不可用。容器启动时的 auto-sync 可能仍在进行中，请稍后重试；" +
+        "若持续出现此提示，请检查网络连接，或提供 STORYJSON_PATH 指向本地 zh_CN.zip。" +
+        `（当前同步目标路径：${cfg.storyjsonZip}）`
+    );
+  }
+  return cfg.effectiveStoryjsonZip!;
 }
 
 // ---------------------------------------------------------------------------
@@ -85,6 +129,195 @@ function createMcpServer(): McpServer {
     }
   );
 
+  // -------------------------------------------------------------------------
+  // Story tools
+  // -------------------------------------------------------------------------
+
+  server.tool(
+    "list_story_events",
+    [
+      "列出明日方舟剧情活动列表。",
+      "category 可选过滤：\"main\"（主线）或 \"activities\"（活动 + 插曲）。",
+      "不传 category 则返回全部条目。",
+      "返回格式：每行 - [类型] 活动ID：名称（N 章）",
+      "获取活动 ID 后，可调用 list_stories 查看该活动的章节列表。",
+    ].join(" "),
+    { category: z.string().optional() },
+    ({ category }) => {
+      let zipPath: string;
+      try {
+        zipPath = requireStoryZip();
+      } catch (e) {
+        return { content: [{ type: "text", text: (e as Error).message }] };
+      }
+      try {
+        const events = _listStoryEvents(zipPath, category);
+        if (events.length === 0) {
+          return { content: [{ type: "text", text: "未找到匹配的活动。" }] };
+        }
+        const lines = events.map(
+          (ev) => `- [${ev.entryType}] ${ev.eventId}：${ev.name}（${ev.storyCount} 章）`
+        );
+        return { content: [{ type: "text", text: lines.join("\n") }] };
+      } catch (e) {
+        return { content: [{ type: "text", text: `读取剧情数据失败：${(e as Error).message}` }] };
+      }
+    }
+  );
+
+  server.tool(
+    "list_stories",
+    [
+      "列出指定活动的所有章节，按官方顺序排列。",
+      "event_id 为活动 ID（可从 list_story_events 获取，如 \"act31side\"）。",
+      "返回格式：每行 - 关卡代码 [标签] 章节名（key: 章节key）",
+      "获取章节 key 后，可调用 read_story 阅读具体章节内容。",
+    ].join(" "),
+    { event_id: z.string() },
+    ({ event_id }) => {
+      let zipPath: string;
+      try {
+        zipPath = requireStoryZip();
+      } catch (e) {
+        return { content: [{ type: "text", text: (e as Error).message }] };
+      }
+      try {
+        const chapters = _listStories(zipPath, event_id);
+        if (chapters.length === 0) {
+          return { content: [{ type: "text", text: `活动 "${event_id}" 没有章节数据。` }] };
+        }
+        const lines = chapters.map((ch) => {
+          const tag = ch.avgTag ? `[${ch.avgTag}] ` : "";
+          return `- ${ch.storyCode} ${tag}${ch.storyName}（key: ${ch.storyKey}）`;
+        });
+        return { content: [{ type: "text", text: lines.join("\n") }] };
+      } catch (e) {
+        const msg = (e as Error).message;
+        if (msg.includes("not found")) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `未找到活动："${event_id}"。请先调用 list_story_events 确认活动 ID。`,
+              },
+            ],
+          };
+        }
+        return { content: [{ type: "text", text: `读取章节列表失败：${msg}` }] };
+      }
+    }
+  );
+
+  server.tool(
+    "read_story",
+    [
+      "阅读指定章节的完整剧情内容。",
+      "story_key 为章节 key（可从 list_stories 获取，如 \"activities/act31side/level_act31side_01_beg\"）。",
+      "include_narration 控制是否包含旁白/场景描述（默认 true）。",
+    ].join(" "),
+    {
+      story_key: z.string(),
+      include_narration: z.boolean().default(true),
+    },
+    ({ story_key, include_narration }) => {
+      let zipPath: string;
+      try {
+        zipPath = requireStoryZip();
+      } catch (e) {
+        return { content: [{ type: "text", text: (e as Error).message }] };
+      }
+      try {
+        const chapter = _readStory(zipPath, story_key, include_narration);
+        return { content: [{ type: "text", text: formatChapter(chapter) }] };
+      } catch (e) {
+        const msg = (e as Error).message;
+        if (msg.includes("not found") || msg.includes("Entry not found")) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `未找到剧情："${story_key}"。请通过 list_stories 确认章节 key。`,
+              },
+            ],
+          };
+        }
+        return { content: [{ type: "text", text: `读取剧情失败：${msg}` }] };
+      }
+    }
+  );
+
+  server.tool(
+    "read_activity",
+    [
+      "阅读指定活动的完整剧情（按官方顺序，合并所有章节）。",
+      "event_id 为活动 ID（可从 list_story_events 获取）。",
+      "include_narration 控制是否包含旁白（默认 true）。",
+      "page 为章节分页（从 1 开始），不传则返回全部章节。",
+      "page_size 控制每页章节数（默认 5）。",
+      "返回内容含 total_chapters 和 has_more，便于判断是否还有后续内容。",
+    ].join(" "),
+    {
+      event_id: z.string(),
+      include_narration: z.boolean().default(true),
+      page: z.number().int().min(1).optional(),
+      page_size: z.number().int().min(1).max(20).default(5),
+    },
+    ({ event_id, include_narration, page, page_size }) => {
+      let zipPath: string;
+      try {
+        zipPath = requireStoryZip();
+      } catch (e) {
+        return { content: [{ type: "text", text: (e as Error).message }] };
+      }
+      try {
+        const result = _readActivity(
+          zipPath,
+          event_id,
+          include_narration,
+          page,
+          page_size
+        );
+        const parts: string[] = [];
+        if (result.eventName) {
+          parts.push(
+            `# ${result.eventName}（共 ${result.totalChapters} 章${result.hasMore ? "，当前为部分内容" : ""}）`
+          );
+        }
+        for (const chapter of result.chapters) {
+          const tag = chapter.avgTag ? ` [${chapter.avgTag}]` : "";
+          parts.push(`\n=== ${chapter.storyCode}${tag} ${chapter.storyName} ===`);
+          if (chapter.storyInfo) parts.push(`简介：${chapter.storyInfo}`);
+          for (const line of chapter.lines) {
+            parts.push(formatLine(line));
+          }
+        }
+        if (result.chapters.length === 0) {
+          parts.push("该活动暂无可读取的章节数据。");
+        }
+        if (result.hasMore) {
+          const nextPage = (page ?? 1) + 1;
+          parts.push(
+            `\n[还有更多章节，请调用 read_activity(event_id="${event_id}", page=${nextPage})]`
+          );
+        }
+        return { content: [{ type: "text", text: parts.join("\n") }] };
+      } catch (e) {
+        const msg = (e as Error).message;
+        if (msg.includes("not found")) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `未找到活动："${event_id}"。请先调用 list_story_events 确认活动 ID。`,
+              },
+            ],
+          };
+        }
+        return { content: [{ type: "text", text: `读取活动剧情失败：${msg}` }] };
+      }
+    }
+  );
+
   return server;
 }
 
@@ -94,39 +327,69 @@ function createMcpServer(): McpServer {
 
 function runStartupSync(): void {
   const cfg = loadConfig();
+
+  // Gamedata sync
   if (cfg.isCustomGamedata) {
     log("INFO", `GAMEDATA_PATH is custom (${cfg.gamedataPath}); auto-sync disabled.`);
-    return;
+  } else {
+    const specs: RepoSpec[] = [
+      {
+        owner: "Kengxxiao",
+        repo: "ArknightsGameData",
+        branch: "master",
+        files: GAMEDATA_FILES,
+        localRoot: cfg.gamedataPath,
+      },
+    ];
+
+    syncAll(specs)
+      .then((results) => {
+        for (const r of results) {
+          const sha = r.commitSha ? r.commitSha.slice(0, 8) : "unknown";
+          if (r.status === "updated") {
+            log("INFO", `Data updated from GitHub (${r.spec.repo} @ ${sha}).`);
+          } else if (r.status === "up_to_date") {
+            log("INFO", `Data is up to date (${r.spec.repo} @ ${sha}).`);
+          } else if (r.status === "offline_fallback") {
+            log("WARN", `Network unavailable; using cached data (${r.spec.repo} @ ${sha}). Error: ${r.error}`);
+          } else {
+            log("ERROR", `Sync failed for ${r.spec.repo} — no data. Error: ${r.error}`);
+          }
+        }
+      })
+      .catch((err: unknown) => {
+        log("ERROR", `Startup sync threw unexpectedly: ${err instanceof Error ? err.message : String(err)}`);
+      });
   }
 
-  const specs: RepoSpec[] = [
-    {
-      owner: "Kengxxiao",
-      repo: "ArknightsGameData",
-      branch: "master",
-      files: GAMEDATA_FILES,
-      localRoot: cfg.gamedataPath,
-    },
-  ];
+  // Storyjson release sync (always attempt unless user supplied STORYJSON_PATH)
+  if (!process.env["STORYJSON_PATH"]) {
+    const releaseSpec: ReleaseSpec = {
+      owner: "3aKHP",
+      repo: "ArknightsStoryJson",
+      assetName: "zh_CN.zip",
+      localZip: cfg.storyjsonZip,
+    };
 
-  syncAll(specs)
-    .then((results) => {
-      for (const r of results) {
+    syncRelease(releaseSpec)
+      .then((r) => {
         const sha = r.commitSha ? r.commitSha.slice(0, 8) : "unknown";
         if (r.status === "updated") {
-          log("INFO", `Data updated from GitHub (${r.spec.repo} @ ${sha}).`);
+          log("INFO", `Storyjson updated from GitHub Release (${r.spec.repo} @ ${sha}).`);
         } else if (r.status === "up_to_date") {
-          log("INFO", `Data is up to date (${r.spec.repo} @ ${sha}).`);
+          log("INFO", `Storyjson is up to date (${r.spec.repo} @ ${sha}).`);
         } else if (r.status === "offline_fallback") {
-          log("WARN", `Network unavailable; using cached data (${r.spec.repo} @ ${sha}). Error: ${r.error}`);
+          log("WARN", `Network unavailable; using cached storyjson (${r.spec.repo} @ ${sha}). Error: ${r.error}`);
         } else {
-          log("ERROR", `Sync failed for ${r.spec.repo} — no data. Error: ${r.error}`);
+          log("ERROR", `Storyjson sync failed for ${r.spec.repo} — no zip. Error: ${r.error}`);
         }
-      }
-    })
-    .catch((err: unknown) => {
-      log("ERROR", `Startup sync threw unexpectedly: ${err instanceof Error ? err.message : String(err)}`);
-    });
+      })
+      .catch((err: unknown) => {
+        log("ERROR", `Storyjson sync threw unexpectedly: ${err instanceof Error ? err.message : String(err)}`);
+      });
+  } else {
+    log("INFO", `STORYJSON_PATH is set (${process.env["STORYJSON_PATH"]}); story auto-sync disabled.`);
+  }
 }
 
 // ---------------------------------------------------------------------------
