@@ -93,6 +93,17 @@ jobs:
           path: data/gamedata
           key: gamedata-${{ hashFiles('data/gamedata/cache_meta.json') }}
 
+      - name: Download bundled storyjson zip
+        run: |
+          mkdir -p data/storyjson
+          gh release download \
+            --repo 3aKHP/ArknightsStoryJson \
+            --pattern "zh_CN.zip" \
+            --dir data/storyjson/ \
+            --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Resolve image name and version
         id: image
         run: |
