@@ -9,7 +9,7 @@
 | 目录 | 语言 | 传输方式 | 适用场景 |
 |------|------|----------|----------|
 | [`python/`](python/) | Python 3.10+ | stdio | Claude Desktop / Claude Code 本地接入、Docker |
-| [`ts/`](ts/) | TypeScript / Node.js | HTTP SSE | 个人网站部署，供他人通过 HTTP 调用 |
+| [`ts/`](ts/) | TypeScript / Node.js | Streamable HTTP | 个人网站部署，供他人通过 HTTP 调用 |
 
 ## Tools
 
