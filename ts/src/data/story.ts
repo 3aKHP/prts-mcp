@@ -16,7 +16,6 @@ import AdmZip from "adm-zip";
 // Zip path constants
 // ---------------------------------------------------------------------------
 
-const STORYINFO = "zh_CN/storyinfo.json";
 const STORY_REVIEW_TABLE = "zh_CN/gamedata/excel/story_review_table.json";
 
 function storyZipPath(storyKey: string): string {

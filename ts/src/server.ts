@@ -5,7 +5,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
 
-import { loadConfig, hasOperatorData, hasStoryData } from "./config.js";
+import { loadConfig, hasStoryData } from "./config.js";
 import { searchPrts, readPage } from "./api/prtsWiki.js";
 import { getOperatorArchives, getOperatorVoicelines, getOperatorBasicInfo } from "./data/operator.js";
 import { syncAll, syncRelease, GAMEDATA_FILES, type RepoSpec, type ReleaseSpec } from "./data/sync.js";
@@ -33,7 +33,7 @@ function log(level: "INFO" | "WARN" | "ERROR", msg: string): void {
 
 function formatLine(line: StoryLine): string {
   if (line.type === "dialog") {
-    return `${line.role ?? ""}：${line.text}`;
+    return `${line.role ?? "（旁白）"}：${line.text}`;
   } else if (line.type === "narration") {
     return `*${line.text}*`;
   } else {
