@@ -27,6 +27,7 @@ export const GAMEDATA_FILES: readonly string[] = [
   "zh_CN/gamedata/excel/character_table.json",
   "zh_CN/gamedata/excel/handbook_info_table.json",
   "zh_CN/gamedata/excel/charword_table.json",
+  "zh_CN/gamedata/excel/story_review_table.json",
 ];
 
 const GITHUB_UA = "PRTS-MCP-Bot/0.1 (Arknights fan-creation helper)";
