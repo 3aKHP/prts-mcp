@@ -20,6 +20,11 @@
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "tsc"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/3aKHP/prts-mcp.git",
+    "directory": "ts"
+  },
   "volta": {
     "node": "24.14.0"
   },
