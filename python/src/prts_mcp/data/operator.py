@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from prts_mcp.config import Config
+from prts_mcp.utils.sanitizer import strip_wikitext
 
 # ---------------------------------------------------------------------------
 # Internal caches (loaded lazily on first call)
@@ -136,3 +137,107 @@ def get_operator_voicelines(name: str) -> str:
     if not lines:
         return f"干员 '{name}' 暂无语音数据。"
     return f"# {name} - 语音记录\n\n" + "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Basic info helpers
+# ---------------------------------------------------------------------------
+
+_PROFESSION_ZH: dict[str, str] = {
+    "CASTER": "术师",
+    "MEDIC": "医疗",
+    "PIONEER": "先锋",
+    "SNIPER": "狙击",
+    "SPECIAL": "特种",
+    "SUPPORT": "辅助",
+    "TANK": "重装",
+    "WARRIOR": "近卫",
+}
+
+_POSITION_ZH: dict[str, str] = {
+    "RANGED": "远程",
+    "MELEE": "近战",
+    "ALL": "通用",
+    "NONE": "-",
+}
+
+
+def get_operator_basic_info(name: str) -> str:
+    """Return basic profile info for an operator by Chinese name."""
+    if not _get_config().has_operator_data:
+        return _missing_operator_data_message()
+
+    try:
+        char_id = _resolve_char_id(name)
+    except FileNotFoundError as exc:
+        return str(exc)
+    if char_id is None:
+        return f"未找到干员 '{name}'。请使用游戏内中文名称（如'阿米娅'）。"
+
+    try:
+        ct = _load_character_table()
+    except FileNotFoundError as exc:
+        return str(exc)
+    info = ct.get(char_id)
+    if info is None:
+        return f"干员 '{name}' 暂无基本信息。"
+
+    rarity_raw: str = info.get("rarity", "")
+    rarity = rarity_raw.replace("TIER_", "") + "★" if rarity_raw.startswith("TIER_") else rarity_raw
+
+    profession_raw: str = info.get("profession", "")
+    profession = _PROFESSION_ZH.get(profession_raw, profession_raw)
+
+    position_raw: str = info.get("position", "")
+    position = _POSITION_ZH.get(position_raw, position_raw)
+
+    appellation: str = info.get("appellation", "")
+    display_number: str = info.get("displayNumber", "")
+    description: str = info.get("description", "")
+    item_usage: str = info.get("itemUsage", "")
+    item_desc: str = info.get("itemDesc", "")
+    item_obtain: str = info.get("itemObtainApproach", "")
+    tag_list: list[str] = info.get("tagList") or []
+
+    nation_id: str = info.get("nationId") or ""
+    group_id: str = info.get("groupId") or ""
+    team_id: str = info.get("teamId") or ""
+    affiliation_parts = [x for x in [nation_id, group_id, team_id] if x]
+    affiliation = " / ".join(affiliation_parts) if affiliation_parts else "-"
+
+    lines: list[str] = [f"# {name} - 干员基本信息\n"]
+    lines.append(f"- **编号**：{display_number}")
+    lines.append(f"- **英文名**：{appellation}")
+    lines.append(f"- **稀有度**：{rarity}")
+    lines.append(f"- **职业**：{profession}（{info.get('subProfessionId', '')}）")
+    lines.append(f"- **站位**：{position}")
+    lines.append(f"- **所属**：{affiliation}")
+    if tag_list:
+        lines.append(f"- **招募标签**：{'、'.join(tag_list)}")
+    if description:
+        lines.append(f"- **攻击属性**：{strip_wikitext(description)}")
+    if item_usage:
+        lines.append(f"\n**图鉴**：{item_usage}")
+    if item_desc:
+        lines.append(f"\n> {item_desc}")
+    if item_obtain:
+        lines.append(f"\n**获取方式**：{item_obtain}")
+
+    # Talents — show the highest-unlock candidate for each talent slot
+    talents: list[Any] = info.get("talents") or []
+    if talents:
+        lines.append("\n## 天赋")
+        for talent in talents:
+            candidates: list[Any] = talent.get("candidates") or []
+            # Pick last candidate with a real name
+            chosen = None
+            for c in reversed(candidates):
+                if c.get("name") and c["name"] not in ("？？？",):
+                    chosen = c
+                    break
+            if chosen:
+                t_name: str = chosen.get("name", "")
+                t_desc: str = strip_wikitext(chosen.get("description", ""))
+                lines.append(f"- **{t_name}**：{t_desc}")
+
+    return "\n".join(lines)

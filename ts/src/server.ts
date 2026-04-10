@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { loadConfig } from "./config.js";
 import { searchPrts, readPage } from "./api/prtsWiki.js";
-import { getOperatorArchives, getOperatorVoicelines } from "./data/operator.js";
+import { getOperatorArchives, getOperatorVoicelines, getOperatorBasicInfo } from "./data/operator.js";
 import { syncAll, GAMEDATA_FILES, type RepoSpec } from "./data/sync.js";
 
 // ---------------------------------------------------------------------------
@@ -71,6 +71,16 @@ function createMcpServer(): McpServer {
     { operator_name: z.string() },
     ({ operator_name }) => {
       const text = getOperatorVoicelines(operator_name);
+      return { content: [{ type: "text", text }] };
+    }
+  );
+
+  server.tool(
+    "get_operator_basic_info",
+    '获取指定干员的基本信息：职业、稀有度、所属、招募标签、天赋等（使用游戏内中文名，如"阿米娅"）。',
+    { operator_name: z.string() },
+    ({ operator_name }) => {
+      const text = getOperatorBasicInfo(operator_name);
       return { content: [{ type: "text", text }] };
     }
   );

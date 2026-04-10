@@ -7,7 +7,11 @@ import threading
 from mcp.server.fastmcp import FastMCP
 
 from prts_mcp.api.prts_wiki import search_prts as _search_prts, read_page as _read_page
-from prts_mcp.data.operator import get_operator_archives as _get_archives, get_operator_voicelines as _get_voicelines
+from prts_mcp.data.operator import (
+    get_operator_archives as _get_archives,
+    get_operator_voicelines as _get_voicelines,
+    get_operator_basic_info as _get_basic_info,
+)
 
 logging.basicConfig(
     stream=sys.stderr,
@@ -47,6 +51,12 @@ async def get_operator_archives(operator_name: str) -> str:
 async def get_operator_voicelines(operator_name: str) -> str:
     """获取指定干员的语音记录（使用游戏内中文名，如"阿米娅"）。"""
     return _get_voicelines(operator_name)
+
+
+@mcp.tool()
+async def get_operator_basic_info(operator_name: str) -> str:
+    """获取指定干员的基本信息：职业、稀有度、所属、招募标签、天赋等（使用游戏内中文名，如"阿米娅"）。"""
+    return _get_basic_info(operator_name)
 
 
 def _run_startup_sync() -> None:
