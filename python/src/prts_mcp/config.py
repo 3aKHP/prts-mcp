@@ -39,7 +39,6 @@ _REQUIRED_OPERATOR_FILES = (
     "character_table.json",
     "handbook_info_table.json",
     "charword_table.json",
-    "story_review_table.json",
 )
 
 PRTS_API_ENDPOINT = "https://prts.wiki/api.php"

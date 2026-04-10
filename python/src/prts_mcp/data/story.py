@@ -19,7 +19,6 @@ from typing import Literal
 # Zip path constants
 # ---------------------------------------------------------------------------
 
-_STORYINFO = "zh_CN/storyinfo.json"
 _STORY_REVIEW_TABLE = "zh_CN/gamedata/excel/story_review_table.json"
 
 # entryType values → user-facing category strings
@@ -116,7 +115,8 @@ def _parse_story_list(story_list: list[dict]) -> list[StoryLine]:
         elif prop_lower == "decision":
             options = attrs.get("options") or []
             for opt in options:
-                text = opt.get("text") or opt if isinstance(opt, str) else ""
+                # options elements may be plain strings or dicts with a "text" key
+                text = opt if isinstance(opt, str) else (opt.get("text") or "")
                 if text:
                     lines.append(StoryLine(type="choice", role=None, text=_clean_text(str(text))))
 

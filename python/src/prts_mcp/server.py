@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import logging
+import os
 import sys
 import threading
+from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
 
@@ -65,7 +67,7 @@ async def get_operator_basic_info(operator_name: str) -> str:
     return _get_basic_info(operator_name)
 
 
-def _require_story_zip(cfg) -> "Path":
+def _require_story_zip(cfg: "Config") -> Path:
     """Return effective_storyjson_zip or raise RuntimeError."""
     if not cfg.has_story_data:
         raise RuntimeError(
@@ -265,7 +267,7 @@ def _run_startup_sync() -> None:
             _log_sync_result(r)
 
     # Always try to sync storyjson from GitHub Release (unless user supplied their own zip)
-    if "STORYJSON_PATH" not in __import__("os").environ:
+    if "STORYJSON_PATH" not in os.environ:
         release_spec = ReleaseSpec(
             owner="3aKHP",
             repo="ArknightsStoryJson",
