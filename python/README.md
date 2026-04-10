@@ -2,7 +2,7 @@
 
 明日方舟同人创作辅助 MCP Server，Python 版本。通过 **stdio 传输**接入 MCP 客户端（Claude Desktop、Claude Code、Chatbox 等），支持 Docker 部署。
 
-提供工具集：`search_prts` / `read_prts_page` / `get_operator_archives` / `get_operator_voicelines`
+提供工具集：`search_prts` / `read_prts_page` / `get_operator_archives` / `get_operator_voicelines` / `get_operator_basic_info` / `list_story_events` / `list_stories` / `read_story` / `read_activity`
 
 ---
 
@@ -13,7 +13,7 @@
 docker build -f python/Dockerfile -t prts-mcp .
 
 # 运行（named volume 持久化游戏数据，推荐）
-docker run -i --rm -v prts-mcp-data:/data/gamedata prts-mcp
+docker run -i --rm -v prts-mcp-data:/data/gamedata -v prts-mcp-storyjson:/data/storyjson prts-mcp
 ```
 
 ### 接入 MCP 客户端
@@ -23,7 +23,7 @@ docker run -i --rm -v prts-mcp-data:/data/gamedata prts-mcp
   "mcpServers": {
     "prts_wiki": {
       "command": "docker",
-      "args": ["run", "-i", "--rm", "-v", "prts-mcp-data:/data/gamedata", "prts-mcp"]
+      "args": ["run", "-i", "--rm", "-v", "prts-mcp-data:/data/gamedata", "-v", "prts-mcp-storyjson:/data/storyjson", "prts-mcp"]
     }
   }
 }
@@ -46,7 +46,12 @@ GAMEDATA_PATH=/path/to/ArknightsGameData prts-mcp
 
 ## 数据机制
 
-服务器启动时自动从 [ArknightsGameData](https://github.com/Kengxxiao/ArknightsGameData) 同步干员数据，结果缓存至挂载的 volume。镜像内置 bundled 数据作为网络不可用时的离线保底。
+服务器启动时自动同步两类数据：
+
+- **干员数据**（`gamedata` volume）：从 [ArknightsGameData](https://github.com/Kengxxiao/ArknightsGameData) 同步
+- **剧情数据**（`storyjson` volume）：从 [ArknightsStoryJson](https://github.com/3aKHP/ArknightsStoryJson) Releases 下载 `zh_CN.zip`
+
+镜像内置 bundled 数据作为网络不可用时的离线保底。
 
 ---
 

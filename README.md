@@ -33,6 +33,11 @@ Both implementations expose the same tool set:
 | `read_prts_page(page_title)` | Fetch the plain-text content of a PRTS Wiki article |
 | `get_operator_archives(operator_name)` | Retrieve operator archive records (Chinese name) |
 | `get_operator_voicelines(operator_name)` | Retrieve operator voice lines (Chinese name) |
+| `get_operator_basic_info(operator_name)` | Retrieve basic operator profile: class, rarity, faction, recruit tags, talents (Chinese name) |
+| `list_story_events(category?)` | List story events; optional filter: `main` (main story) or `activities` |
+| `list_stories(event_id)` | List chapters of an event in official order |
+| `read_story(story_key, include_narration)` | Read full dialogue for a single chapter |
+| `read_activity(event_id, include_narration, page, page_size)` | Read a complete activity's transcript, with pagination |
 
 ### Quick Start
 
@@ -43,8 +48,9 @@ Both implementations expose the same tool set:
 
 - **PRTS Wiki API** (`https://prts.wiki/api.php`) — lore articles, faction info, world-building entries
 - **ArknightsGameData** ([`Kengxxiao/ArknightsGameData`](https://github.com/Kengxxiao/ArknightsGameData)) — operator archives, voice lines, base stats
+- **ArknightsStoryJson** ([`3aKHP/ArknightsStoryJson`](https://github.com/3aKHP/ArknightsStoryJson)) — parsed story dialogue, auto-synced from GitHub Releases (`zh_CN.zip`)
 
-Shared game data lives in [`data/gamedata/`](data/gamedata/). The Python implementation maintains it via an auto-sync mechanism; the TypeScript implementation reads from the same directory.
+Game data lives in the `gamedata` volume. Story data lives in the `storyjson` volume. Both are auto-synced on server startup.
 
 ---
 
@@ -73,6 +79,11 @@ Shared game data lives in [`data/gamedata/`](data/gamedata/). The Python impleme
 | `read_prts_page(page_title)` | 读取指定词条的纯文本内容 |
 | `get_operator_archives(operator_name)` | 获取干员档案资料（中文名） |
 | `get_operator_voicelines(operator_name)` | 获取干员语音记录（中文名） |
+| `get_operator_basic_info(operator_name)` | 获取干员基本信息：职业、稀有度、所属、招募标签、天赋（中文名） |
+| `list_story_events(category?)` | 列出剧情活动，可选过滤：`main`（主线）或 `activities`（活动） |
+| `list_stories(event_id)` | 列出指定活动的章节（按官方顺序） |
+| `read_story(story_key, include_narration)` | 读取单章完整台词 |
+| `read_activity(event_id, include_narration, page, page_size)` | 读取整个活动的完整剧情，支持分页 |
 
 ### 快速开始
 
@@ -83,8 +94,9 @@ Shared game data lives in [`data/gamedata/`](data/gamedata/). The Python impleme
 
 - **PRTS Wiki API** (`https://prts.wiki/api.php`) — 世界观词条、阵营设定
 - **ArknightsGameData** ([`Kengxxiao/ArknightsGameData`](https://github.com/Kengxxiao/ArknightsGameData)) — 干员档案、语音记录、基础信息
+- **ArknightsStoryJson** ([`3aKHP/ArknightsStoryJson`](https://github.com/3aKHP/ArknightsStoryJson)) — 剧情台词解析数据，从 GitHub Releases 自动同步（`zh_CN.zip`）
 
-共享游戏数据位于 [`data/gamedata/`](data/gamedata/)，由 Python 版 auto-sync 机制维护，TS 版同样读取此目录。
+干员数据存放在 `gamedata` volume，剧情数据存放在 `storyjson` volume，均在服务器启动时自动同步。
 
 ---
 

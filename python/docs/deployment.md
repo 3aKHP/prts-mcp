@@ -25,7 +25,7 @@ docker build -t prts-mcp .
 ### 推荐方式：Docker named volume
 
 ```bash
-docker run -i --rm -v prts-mcp-data:/data/gamedata prts-mcp
+docker run -i --rm -v prts-mcp-data:/data/gamedata -v prts-mcp-storyjson:/data/storyjson prts-mcp
 ```
 
 Named volume 由 Docker 自动管理，无需关心宿主机路径，**在所有平台和所有 MCP 客户端配置里都能直接使用**。首次运行时 auto-sync 自动下载数据；此后重启复用缓存，超过 TTL（1小时）时做 commit hash 校验，有更新才重新下载。
@@ -95,7 +95,7 @@ docker run -i --rm `
   "mcpServers": {
     "prts_wiki": {
       "command": "docker",
-      "args": ["run", "-i", "--rm", "-v", "prts-mcp-data:/data/gamedata", "prts-mcp"]
+      "args": ["run", "-i", "--rm", "-v", "prts-mcp-data:/data/gamedata", "-v", "prts-mcp-storyjson:/data/storyjson", "prts-mcp"]
     }
   }
 }
@@ -110,7 +110,7 @@ docker run -i --rm `
   "mcpServers": {
     "prts_wiki": {
       "command": "docker",
-      "args": ["run", "-i", "--rm", "-v", "prts-mcp-data:/data/gamedata", "prts-mcp"]
+      "args": ["run", "-i", "--rm", "-v", "prts-mcp-data:/data/gamedata", "-v", "prts-mcp-storyjson:/data/storyjson", "prts-mcp"]
     }
   }
 }
@@ -123,12 +123,17 @@ docker run -i --rm `
 ```json
 "prts_wiki": {
     "command": "docker",
-    "args": ["run", "-i", "--rm", "-v", "prts-mcp-data:/data/gamedata", "prts-mcp"],
+    "args": ["run", "-i", "--rm", "-v", "prts-mcp-data:/data/gamedata", "-v", "prts-mcp-storyjson:/data/storyjson", "prts-mcp"],
     "alwaysAllow": [
         "search_prts",
         "read_prts_page",
         "get_operator_archives",
-        "get_operator_voicelines"
+        "get_operator_voicelines",
+        "get_operator_basic_info",
+        "list_story_events",
+        "list_stories",
+        "read_story",
+        "read_activity"
     ]
 }
 ```
@@ -141,7 +146,7 @@ docker run -i --rm `
 [mcp_servers.prts_wiki]
 type = "stdio"
 command = "docker"
-args = ["run", "-i", "--rm", "-v", "prts-mcp-data:/data/gamedata", "prts-mcp"]
+args = ["run", "-i", "--rm", "-v", "prts-mcp-data:/data/gamedata", "-v", "prts-mcp-storyjson:/data/storyjson", "prts-mcp"]
 ```
 
 ### 其他 MCP 客户端
@@ -149,7 +154,7 @@ args = ["run", "-i", "--rm", "-v", "prts-mcp-data:/data/gamedata", "prts-mcp"]
 任何支持 stdio 传输的 MCP 客户端均可接入，最简命令：
 
 ```bash
-docker run -i --rm -v prts-mcp-data:/data/gamedata prts-mcp
+docker run -i --rm -v prts-mcp-data:/data/gamedata -v prts-mcp-storyjson:/data/storyjson prts-mcp
 ```
 
 ---
@@ -159,17 +164,22 @@ docker run -i --rm -v prts-mcp-data:/data/gamedata prts-mcp
 启动后可通过 MCP Inspector 测试：
 
 ```bash
-npx @modelcontextprotocol/inspector docker run -i --rm -v prts-mcp-data:/data/gamedata prts-mcp
+npx @modelcontextprotocol/inspector docker run -i --rm -v prts-mcp-data:/data/gamedata -v prts-mcp-storyjson:/data/storyjson prts-mcp
 ```
 
-预期能看到 4 个 Tool：
+预期能看到 9 个 Tool：
 
 | Tool | 测试参数 | 依赖 |
 |------|---------|------|
 | `search_prts` | `query`: `莱茵生命` | 网络 |
 | `read_prts_page` | `page_title`: `阿米娅` | 网络 |
-| `get_operator_archives` | `operator_name`: `阿米娅` | 数据（auto-sync 或 bundled） |
-| `get_operator_voicelines` | `operator_name`: `阿米娅` | 数据（auto-sync 或 bundled） |
+| `get_operator_archives` | `operator_name`: `阿米娅` | 干员数据 |
+| `get_operator_voicelines` | `operator_name`: `阿米娅` | 干员数据 |
+| `get_operator_basic_info` | `operator_name`: `阿米娅` | 干员数据 |
+| `list_story_events` | `category`: `activities` | 剧情数据 |
+| `list_stories` | `event_id`: `act31side` | 剧情数据 |
+| `read_story` | `story_key`: `activities/act31side/level_act31side_01_beg` | 剧情数据 |
+| `read_activity` | `event_id`: `act31side`, `page`: `1` | 剧情数据 |
 
 ---
 
@@ -188,7 +198,7 @@ docker build -t prts-mcp .
 MCP Server 通过 stdio 通信，诊断信息输出到 stderr：
 
 ```bash
-docker run -i --rm -v prts-mcp-data:/data/gamedata prts-mcp 2>debug.log
+docker run -i --rm -v prts-mcp-data:/data/gamedata -v prts-mcp-storyjson:/data/storyjson prts-mcp 2>debug.log
 ```
 
 ### 强制重新同步
@@ -209,7 +219,7 @@ Remove-Item "$env:USERPROFILE\.prts-mcp\gamedata\cache_meta.json"
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
-| `GAMEDATA_PATH` | 未设置（使用 `/data/gamedata`） | 设置后指向自定义数据目录，**auto-sync 被禁用** |
-| `STORYJSON_PATH` | 未设置 | 为未来扩展保留 |
+| `GAMEDATA_PATH` | 未设置（使用 `/data/gamedata`） | 设置后指向自定义干员数据目录，**auto-sync 被禁用** |
+| `STORYJSON_PATH` | 未设置（使用 `/data/storyjson/zh_CN.zip`） | 设置后指向本地 `zh_CN.zip`，**剧情 auto-sync 被禁用** |
 | `GITHUB_TOKEN` | 空 | 用于提高 GitHub API 限额，降低限流风险 |
 | `PRTS_MCP_ROOT` | `/app`（Docker 内） | 标识 Docker 环境，供 config.py 选择正确的默认路径 |

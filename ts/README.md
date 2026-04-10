@@ -2,7 +2,7 @@
 
 明日方舟同人创作辅助 MCP Server，TypeScript 版本。通过 **Streamable HTTP 传输**（单端点 `/mcp`）对外提供服务，适合部署在个人服务器或云环境，供他人通过 HTTP 接入。
 
-提供工具集：`search_prts` / `read_prts_page` / `get_operator_archives` / `get_operator_voicelines`
+提供工具集：`search_prts` / `read_prts_page` / `get_operator_archives` / `get_operator_voicelines` / `get_operator_basic_info` / `list_story_events` / `list_stories` / `read_story` / `read_activity`
 
 ---
 
@@ -52,7 +52,12 @@ npm start         # 运行编译后的版本
 
 ## 数据机制
 
-服务器启动时自动从 [ArknightsGameData](https://github.com/Kengxxiao/ArknightsGameData) 同步干员数据，结果缓存至挂载的 volume（`/data/gamedata`）。镜像内置 bundled 数据作为网络不可用时的离线保底。
+服务器启动时自动同步两类数据：
+
+- **干员数据**（`/data/gamedata` volume）：从 [ArknightsGameData](https://github.com/Kengxxiao/ArknightsGameData) 同步
+- **剧情数据**（`/data/storyjson` volume）：从 [ArknightsStoryJson](https://github.com/3aKHP/ArknightsStoryJson) Releases 下载 `zh_CN.zip`
+
+镜像内置 bundled 数据作为网络不可用时的离线保底。
 
 ---
 
@@ -62,7 +67,8 @@ npm start         # 运行编译后的版本
 |------|--------|------|
 | `PORT` | `3000` | 监听端口 |
 | `HOST` | `0.0.0.0` | 监听地址 |
-| `GAMEDATA_PATH` | 未设置 | 设置后指向自定义数据目录，**auto-sync 被禁用** |
+| `GAMEDATA_PATH` | 未设置 | 设置后指向自定义干员数据目录，**auto-sync 被禁用** |
+| `STORYJSON_PATH` | 未设置 | 设置后指向本地 `zh_CN.zip`，**剧情 auto-sync 被禁用** |
 | `GITHUB_TOKEN` | 空 | 用于提高 GitHub API 限额，降低限流风险 |
 
 ---
