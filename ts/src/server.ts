@@ -70,7 +70,7 @@ function requireStoryZip(): string {
 function createMcpServer(): McpServer {
   const server = new McpServer({
     name: "PRTS_Wiki_Assistant",
-    version: "0.1.0",
+    version: "0.2.0",
   });
 
   server.tool(
