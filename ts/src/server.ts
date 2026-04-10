@@ -148,7 +148,7 @@ function createMcpServer(): McpServer {
       try {
         zipPath = requireStoryZip();
       } catch (e) {
-        return { content: [{ type: "text", text: (e as Error).message }] };
+        return { content: [{ type: "text", text: e instanceof Error ? e.message : String(e) }] };
       }
       try {
         const events = _listStoryEvents(zipPath, category);
@@ -160,7 +160,7 @@ function createMcpServer(): McpServer {
         );
         return { content: [{ type: "text", text: lines.join("\n") }] };
       } catch (e) {
-        return { content: [{ type: "text", text: `读取剧情数据失败：${(e as Error).message}` }] };
+        return { content: [{ type: "text", text: `读取剧情数据失败：${e instanceof Error ? e.message : String(e)}` }] };
       }
     }
   );
@@ -179,7 +179,7 @@ function createMcpServer(): McpServer {
       try {
         zipPath = requireStoryZip();
       } catch (e) {
-        return { content: [{ type: "text", text: (e as Error).message }] };
+        return { content: [{ type: "text", text: e instanceof Error ? e.message : String(e) }] };
       }
       try {
         const chapters = _listStories(zipPath, event_id);
@@ -192,7 +192,7 @@ function createMcpServer(): McpServer {
         });
         return { content: [{ type: "text", text: lines.join("\n") }] };
       } catch (e) {
-        const msg = (e as Error).message;
+        const msg = e instanceof Error ? e.message : String(e);
         if (msg.includes("not found")) {
           return {
             content: [
@@ -224,13 +224,13 @@ function createMcpServer(): McpServer {
       try {
         zipPath = requireStoryZip();
       } catch (e) {
-        return { content: [{ type: "text", text: (e as Error).message }] };
+        return { content: [{ type: "text", text: e instanceof Error ? e.message : String(e) }] };
       }
       try {
         const chapter = _readStory(zipPath, story_key, include_narration);
         return { content: [{ type: "text", text: formatChapter(chapter) }] };
       } catch (e) {
-        const msg = (e as Error).message;
+        const msg = e instanceof Error ? e.message : String(e);
         if (msg.includes("not found") || msg.includes("Entry not found")) {
           return {
             content: [
@@ -267,7 +267,7 @@ function createMcpServer(): McpServer {
       try {
         zipPath = requireStoryZip();
       } catch (e) {
-        return { content: [{ type: "text", text: (e as Error).message }] };
+        return { content: [{ type: "text", text: e instanceof Error ? e.message : String(e) }] };
       }
       try {
         const result = _readActivity(
@@ -302,7 +302,7 @@ function createMcpServer(): McpServer {
         }
         return { content: [{ type: "text", text: parts.join("\n") }] };
       } catch (e) {
-        const msg = (e as Error).message;
+        const msg = e instanceof Error ? e.message : String(e);
         if (msg.includes("not found")) {
           return {
             content: [
