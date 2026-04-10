@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-04-10
+
+### Changed
+
+- Repository restructured as a monorepo: Python implementation moved to `python/` subdirectory, shared game data resides in `data/gamedata/` at the repo root. No functional changes to the package itself.
+
+### Fixed
+
+- `fetch_gamedata.py` and `package_operator_data.py` path resolution updated for the new `python/` subdirectory location
+- Docker build context updated to repo root so `COPY data/` correctly bundles game data into the image
+
 ## [0.2.1] - 2026-04-14
 
 ### Added
