@@ -1,0 +1,25 @@
+# Git
+.git/
+.gitignore
+
+# Node
+ts/node_modules/
+ts/dist/
+
+# Python build artifacts
+python/__pycache__/
+python/src/**/__pycache__/
+python/*.egg-info/
+python/dist/
+python/build/
+
+# Local dev / secrets
+.env
+.mcp.json
+docker-compose.override.yml
+local_repo.jsonc
+
+# Archives
+*.tar
+*.zip
+*.7z

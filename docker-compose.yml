@@ -1,5 +1,0 @@
-services:
-  prts-mcp:
-    build: .
-    image: prts-mcp
-    stdin_open: true
