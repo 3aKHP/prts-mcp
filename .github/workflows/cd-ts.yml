@@ -102,11 +102,10 @@ jobs:
         run: npm ci
         working-directory: ts
 
-      - name: Publish to npm
+      - name: Publish to npm (Trusted Publishing)
         run: npm publish --provenance --access public
         working-directory: ts
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        # No NODE_AUTH_TOKEN needed — authentication via OIDC Trusted Publishing.
 
   github-release:
     runs-on: ubuntu-latest
