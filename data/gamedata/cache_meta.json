@@ -6,6 +6,7 @@
   "files": [
     "zh_CN/gamedata/excel/character_table.json",
     "zh_CN/gamedata/excel/handbook_info_table.json",
-    "zh_CN/gamedata/excel/charword_table.json"
+    "zh_CN/gamedata/excel/charword_table.json",
+    "zh_CN/gamedata/excel/story_review_table.json"
   ]
 }

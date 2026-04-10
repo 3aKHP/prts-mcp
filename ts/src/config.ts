@@ -24,6 +24,7 @@
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -44,14 +45,20 @@ const REQUIRED_OPERATOR_FILES = [
 /** Fixed volume mount-point inside Docker. */
 const DOCKER_VOLUME_PATH = "/data/gamedata";
 
-/** Bundled data baked into the image at build time. */
-export const BUNDLED_GAMEDATA_PATH = "/app/data/gamedata";
+/**
+ * Bundled data directory baked into the package at publish/build time.
+ * Resolved relative to this file so it works for both:
+ *   - npm global install: <package_root>/dist/config.js → <package_root>/data/gamedata
+ *   - Docker:             /app/dist/config.js           → /app/data/gamedata
+ */
+const _PACKAGE_ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
+export const BUNDLED_GAMEDATA_PATH = join(_PACKAGE_ROOT, "data", "gamedata");
 
 /** Fixed storyjson volume mount-point inside Docker. */
 const DOCKER_STORYJSON_ZIP = "/data/storyjson/zh_CN.zip";
 
-/** Bundled storyjson zip baked into the image at build time. */
-const BUNDLED_STORYJSON_ZIP = "/app/data/storyjson/zh_CN.zip";
+/** Bundled storyjson zip baked into the package at publish/build time. */
+const BUNDLED_STORYJSON_ZIP = join(_PACKAGE_ROOT, "data", "storyjson", "zh_CN.zip");
 
 // ---------------------------------------------------------------------------
 // Path resolution

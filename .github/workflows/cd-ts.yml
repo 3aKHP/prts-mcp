@@ -102,6 +102,26 @@ jobs:
         run: npm ci
         working-directory: ts
 
+      - name: Fetch bundled gamedata
+        run: |
+          mkdir -p ts/data/gamedata/zh_CN/gamedata/excel
+          for f in character_table.json handbook_info_table.json charword_table.json story_review_table.json; do
+            curl -fsSL \
+              "https://raw.githubusercontent.com/Kengxxiao/ArknightsGameData/master/zh_CN/gamedata/excel/$f" \
+              -o "ts/data/gamedata/zh_CN/gamedata/excel/$f"
+          done
+
+      - name: Download bundled storyjson zip
+        run: |
+          mkdir -p ts/data/storyjson
+          gh release download \
+            --repo 3aKHP/ArknightsStoryJson \
+            --pattern "zh_CN.zip" \
+            --dir ts/data/storyjson/ \
+            --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Publish to npm (Trusted Publishing)
         run: npm publish --provenance --access public
         working-directory: ts

@@ -27,6 +27,13 @@ prts-mcp.tar
 ts/node_modules/
 ts/dist/
 
+# TS npm bundled data — directories tracked, content downloaded by CI at publish time
+ts/data/*
+!ts/data/gamedata/
+!ts/data/storyjson/
+!ts/data/gamedata/.gitkeep
+!ts/data/storyjson/.gitkeep
+
 data/*
 !data/.gitkeep
 !data/gamedata/
