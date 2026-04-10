@@ -283,3 +283,163 @@ export async function syncAll(specs: RepoSpec[]): Promise<SyncResult[]> {
   }
   return results;
 }
+
+// ---------------------------------------------------------------------------
+// Release-based sync (for zh_CN.zip from GitHub Releases)
+// ---------------------------------------------------------------------------
+
+const GITHUB_RELEASES_LATEST_URL =
+  "https://api.github.com/repos/{owner}/{repo}/releases/latest";
+const TAG_PREFIX = "upstream-";
+
+/** Describes a GitHub Release asset to download as a local zip. */
+export interface ReleaseSpec {
+  owner: string;
+  repo: string;
+  /** Asset filename in the release, e.g. "zh_CN.zip". */
+  assetName: string;
+  /** Absolute destination path for the downloaded zip. */
+  localZip: string;
+}
+
+function releaseCachePath(spec: ReleaseSpec): string {
+  return join(dirname(spec.localZip), "release_meta.json");
+}
+
+async function loadReleaseMeta(spec: ReleaseSpec): Promise<CacheMeta | null> {
+  try {
+    const text = await readFile(releaseCachePath(spec), "utf-8");
+    return JSON.parse(text) as CacheMeta;
+  } catch {
+    return null;
+  }
+}
+
+async function saveReleaseMeta(
+  spec: ReleaseSpec,
+  meta: CacheMeta
+): Promise<void> {
+  const p = releaseCachePath(spec);
+  await mkdir(dirname(p), { recursive: true });
+  await writeFile(p, JSON.stringify(meta, null, 2), "utf-8");
+}
+
+/**
+ * Fetch the latest release tag and asset download URL.
+ * Returns null on any network or API failure.
+ */
+export async function checkLatestRelease(
+  spec: ReleaseSpec,
+  timeoutMs = 10_000
+): Promise<{ tag: string; url: string } | null> {
+  const url = GITHUB_RELEASES_LATEST_URL.replace("{owner}", spec.owner).replace(
+    "{repo}",
+    spec.repo
+  );
+  try {
+    const res = await fetch(url, {
+      headers: githubHeaders(),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = (await res.json()) as {
+      tag_name: string;
+      assets: Array<{ name: string; browser_download_url: string }>;
+    };
+    const asset = data.assets.find((a) => a.name === spec.assetName);
+    if (!asset) return null;
+    return { tag: data.tag_name, url: asset.browser_download_url };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Download the release asset zip atomically, then write cache metadata.
+ * Uses write-to-tmp-then-rename for crash safety.
+ */
+export async function downloadReleaseAsset(
+  spec: ReleaseSpec,
+  tag: string,
+  assetUrl: string,
+  timeoutMs = 120_000
+): Promise<void> {
+  const tmp = spec.localZip + ".tmp";
+  await mkdir(dirname(spec.localZip), { recursive: true });
+  try {
+    const res = await fetch(assetUrl, {
+      headers: githubHeaders(),
+      redirect: "follow",
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status} downloading ${spec.assetName}`);
+    await writeFile(tmp, Buffer.from(await res.arrayBuffer()));
+    await rename(tmp, spec.localZip);
+
+    const commitSha = tag.startsWith(TAG_PREFIX) ? tag.slice(TAG_PREFIX.length) : tag;
+    await saveReleaseMeta(spec, {
+      repo: `${spec.owner}/${spec.repo}`,
+      branch: "releases",
+      commitSha,
+      fetchedAt: new Date().toISOString(),
+      files: [spec.assetName],
+    });
+  } catch (err) {
+    try { await unlink(tmp); } catch { /* best-effort */ }
+    throw err;
+  }
+}
+
+/**
+ * Check latest GitHub Release and download the zip if the tag has changed.
+ *
+ * Decision tree mirrors syncRepo:
+ *   1. Cache is fresh AND zip exists → up_to_date (skip API call)
+ *   2. Network failure → offline_fallback / no_data
+ *   3. Tag unchanged AND zip exists → up_to_date (refresh fetchedAt)
+ *   4. Tag changed or zip missing → downloadReleaseAsset → updated / fallback
+ */
+export async function syncRelease(spec: ReleaseSpec): Promise<SyncResult> {
+  // Use a dummy RepoSpec so the result shape is compatible with syncAll logging.
+  const dummySpec: RepoSpec = {
+    owner: spec.owner,
+    repo: spec.repo,
+    branch: "releases",
+    files: [spec.assetName],
+    localRoot: dirname(spec.localZip),
+  };
+
+  const cache = await loadReleaseMeta(spec);
+  const zipOk = existsSync(spec.localZip);
+
+  if (cache !== null && zipOk && cacheIsFresh(cache)) {
+    return { spec: dummySpec, status: "up_to_date", commitSha: cache.commitSha, error: null };
+  }
+
+  const latest = await checkLatestRelease(spec);
+
+  if (latest === null) {
+    return zipOk
+      ? { spec: dummySpec, status: "offline_fallback", commitSha: cache?.commitSha ?? null, error: "Network unavailable" }
+      : { spec: dummySpec, status: "no_data", commitSha: null, error: "Network unavailable and no cached zip" };
+  }
+
+  const commitSha = latest.tag.startsWith(TAG_PREFIX)
+    ? latest.tag.slice(TAG_PREFIX.length)
+    : latest.tag;
+
+  if (cache !== null && cache.commitSha === commitSha && zipOk) {
+    await saveReleaseMeta(spec, { ...cache, fetchedAt: new Date().toISOString() });
+    return { spec: dummySpec, status: "up_to_date", commitSha, error: null };
+  }
+
+  try {
+    await downloadReleaseAsset(spec, latest.tag, latest.url);
+    return { spec: dummySpec, status: "updated", commitSha, error: null };
+  } catch (err) {
+    const error = errorMessage(err);
+    return zipOk
+      ? { spec: dummySpec, status: "offline_fallback", commitSha: cache?.commitSha ?? null, error }
+      : { spec: dummySpec, status: "no_data", commitSha: null, error };
+  }
+}

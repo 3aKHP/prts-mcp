@@ -13,11 +13,17 @@
  *
  *   BUNDLED_GAMEDATA_PATH — read-only fallback baked into the Docker image.
  *     Always /app/data/gamedata inside the container.
+ *
+ *   effective_storyjson_zip — priority:
+ *     1. STORYJSON_PATH env var — user-supplied zip path.
+ *     2. /data/storyjson/zh_CN.zip — Docker volume mount-point.
+ *     3. /app/data/storyjson/zh_CN.zip — bundled zip (only inside Docker).
+ *     4. null — no story data available.
  */
 
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -40,6 +46,12 @@ const DOCKER_VOLUME_PATH = "/data/gamedata";
 
 /** Bundled data baked into the image at build time. */
 export const BUNDLED_GAMEDATA_PATH = "/app/data/gamedata";
+
+/** Fixed storyjson volume mount-point inside Docker. */
+const DOCKER_STORYJSON_ZIP = "/data/storyjson/zh_CN.zip";
+
+/** Bundled storyjson zip baked into the image at build time. */
+const BUNDLED_STORYJSON_ZIP = "/app/data/storyjson/zh_CN.zip";
 
 // ---------------------------------------------------------------------------
 // Path resolution
@@ -89,10 +101,24 @@ export interface Config {
    * when neither location has data.
    */
   effectiveExcelPath: string | null;
+  /**
+   * Configured storyjson zip path (STORYJSON_PATH env var or default).
+   * This is the sync write target, not necessarily the file that exists.
+   */
+  storyjsonZip: string;
+  /**
+   * The storyjson zip story.ts should actually read from.
+   * Null when no zip is found anywhere.
+   */
+  effectiveStoryjsonZip: string | null;
 }
 
 export function hasOperatorData(cfg: Config): boolean {
   return cfg.effectiveExcelPath !== null;
+}
+
+export function hasStoryData(cfg: Config): boolean {
+  return cfg.effectiveStoryjsonZip !== null;
 }
 
 export function loadConfig(): Config {
@@ -108,11 +134,29 @@ export function loadConfig(): Config {
   if (filesComplete(ep)) effectiveExcelPath = ep;
   else if (filesComplete(bep)) effectiveExcelPath = bep;
 
+  // storyjson zip: default is alongside gamedata in the user data dir.
+  const defaultStoryjsonZip = join(
+    dirname(gamedataPath),
+    "storyjson",
+    "zh_CN.zip"
+  );
+  const storyjsonZip =
+    process.env["STORYJSON_PATH"] ?? defaultStoryjsonZip;
+
+  let effectiveStoryjsonZip: string | null = null;
+  if (existsSync(storyjsonZip)) effectiveStoryjsonZip = storyjsonZip;
+  else if (existsSync(DOCKER_STORYJSON_ZIP))
+    effectiveStoryjsonZip = DOCKER_STORYJSON_ZIP;
+  else if (existsSync(BUNDLED_STORYJSON_ZIP))
+    effectiveStoryjsonZip = BUNDLED_STORYJSON_ZIP;
+
   return {
     gamedataPath,
     isCustomGamedata,
     excelPath: ep,
     bundledExcelPath: bep,
     effectiveExcelPath,
+    storyjsonZip,
+    effectiveStoryjsonZip,
   };
 }
