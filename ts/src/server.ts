@@ -98,20 +98,24 @@ function runStartupSync(): void {
     },
   ];
 
-  syncAll(specs).then((results) => {
-    for (const r of results) {
-      const sha = r.commitSha ? r.commitSha.slice(0, 8) : "unknown";
-      if (r.status === "updated") {
-        log("INFO", `Data updated from GitHub (${r.spec.repo} @ ${sha}).`);
-      } else if (r.status === "up_to_date") {
-        log("INFO", `Data is up to date (${r.spec.repo} @ ${sha}).`);
-      } else if (r.status === "offline_fallback") {
-        log("WARN", `Network unavailable; using cached data (${r.spec.repo} @ ${sha}). Error: ${r.error}`);
-      } else {
-        log("ERROR", `Sync failed for ${r.spec.repo} — no data. Error: ${r.error}`);
+  syncAll(specs)
+    .then((results) => {
+      for (const r of results) {
+        const sha = r.commitSha ? r.commitSha.slice(0, 8) : "unknown";
+        if (r.status === "updated") {
+          log("INFO", `Data updated from GitHub (${r.spec.repo} @ ${sha}).`);
+        } else if (r.status === "up_to_date") {
+          log("INFO", `Data is up to date (${r.spec.repo} @ ${sha}).`);
+        } else if (r.status === "offline_fallback") {
+          log("WARN", `Network unavailable; using cached data (${r.spec.repo} @ ${sha}). Error: ${r.error}`);
+        } else {
+          log("ERROR", `Sync failed for ${r.spec.repo} — no data. Error: ${r.error}`);
+        }
       }
-    }
-  });
+    })
+    .catch((err: unknown) => {
+      log("ERROR", `Startup sync threw unexpectedly: ${err instanceof Error ? err.message : String(err)}`);
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -129,21 +133,28 @@ app.all("/mcp", async (req, res) => {
   let transport = sessionId ? transports.get(sessionId) : undefined;
 
   if (!transport) {
-    transport = new StreamableHTTPServerTransport({
+    const newTransport = new StreamableHTTPServerTransport({
       sessionIdGenerator: () => randomUUID(),
       onsessioninitialized: (id) => {
-        transports.set(id, transport!);
+        transports.set(id, newTransport);
         log("INFO", `Session ${id} initialized.`);
       },
     });
-    transport.onclose = () => {
-      if (transport?.sessionId) {
-        transports.delete(transport.sessionId);
-        log("INFO", `Session ${transport.sessionId} closed.`);
+    newTransport.onclose = () => {
+      if (newTransport.sessionId) {
+        transports.delete(newTransport.sessionId);
+        log("INFO", `Session ${newTransport.sessionId} closed.`);
       }
     };
-    const server = createMcpServer();
-    await server.connect(transport);
+    try {
+      const server = createMcpServer();
+      await server.connect(newTransport);
+    } catch (err) {
+      log("ERROR", `Failed to connect MCP server to transport: ${err instanceof Error ? err.message : String(err)}`);
+      res.status(500).json({ error: "Internal server error" });
+      return;
+    }
+    transport = newTransport;
   }
 
   // Pass req.body explicitly so the transport uses the already-parsed body

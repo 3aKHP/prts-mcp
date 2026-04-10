@@ -8,18 +8,15 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { loadConfig, hasOperatorData, type Config } from "../config.js";
+import { loadConfig, hasOperatorData } from "../config.js";
 
 // ---------------------------------------------------------------------------
 // Module-level lazy caches
 // ---------------------------------------------------------------------------
 
-let _config: Config | null = null;
-
-function getConfig(): Config {
-  if (_config === null) _config = loadConfig();
-  return _config;
-}
+// Config is NOT cached here: loadConfig() re-checks file existence on each
+// call, so effectiveExcelPath correctly reflects data written by auto-sync
+// after startup. The cost is negligible (env-var reads + existsSync calls).
 
 // Raw table caches — null means "not yet loaded", undefined means "failed".
 type TableCache<T> = T | null | undefined;
@@ -65,7 +62,7 @@ interface CharwordTable {
 // ---------------------------------------------------------------------------
 
 function missingDataMessage(): string {
-  const cfg = getConfig();
+  const cfg = loadConfig();
   return (
     "干员数据暂不可用。" +
     "容器启动时的 auto-sync 可能仍在进行中，请稍后重试；" +
@@ -85,7 +82,7 @@ function loadJson<T>(filePath: string): T {
 }
 
 function excelFile(name: string): string {
-  const ep = getConfig().effectiveExcelPath;
+  const ep = loadConfig().effectiveExcelPath;
   if (ep === null) throw new Error("effectiveExcelPath is null");
   return join(ep, name);
 }
@@ -136,7 +133,7 @@ function resolveCharId(name: string): string | null {
 
 /** Return formatted archive text for an operator by Chinese name. */
 export function getOperatorArchives(name: string): string {
-  const cfg = getConfig();
+  const cfg = loadConfig();
   if (!hasOperatorData(cfg)) return missingDataMessage();
 
   let charId: string | null;
@@ -176,7 +173,7 @@ export function getOperatorArchives(name: string): string {
 
 /** Return formatted voice-line text for an operator by Chinese name. */
 export function getOperatorVoicelines(name: string): string {
-  const cfg = getConfig();
+  const cfg = loadConfig();
   if (!hasOperatorData(cfg)) return missingDataMessage();
 
   let charId: string | null;

@@ -14,17 +14,21 @@ import { stripWikitext } from "../utils/sanitizer.js";
 // Rate limiter
 // ---------------------------------------------------------------------------
 
-let lastRequestTime = 0;
+// Tracks the earliest time the next request is allowed to fire.
+// Updated immediately (before any await) so concurrent callers each
+// reserve a distinct slot — avoiding the check-then-act race.
+let nextAllowedTime = 0;
 
 async function rateLimit(): Promise<void> {
   const now = Date.now();
-  const elapsed = (now - lastRequestTime) / 1000;
-  if (elapsed < RATE_LIMIT_INTERVAL) {
-    await new Promise((resolve) =>
-      setTimeout(resolve, (RATE_LIMIT_INTERVAL - elapsed) * 1000)
-    );
+  const intervalMs = RATE_LIMIT_INTERVAL * 1000;
+  // Reserve a slot: advance nextAllowedTime by one interval.
+  const slot = Math.max(now, nextAllowedTime);
+  nextAllowedTime = slot + intervalMs;
+  const waitMs = slot - now;
+  if (waitMs > 0) {
+    await new Promise<void>((resolve) => setTimeout(resolve, waitMs));
   }
-  lastRequestTime = Date.now();
 }
 
 // ---------------------------------------------------------------------------
