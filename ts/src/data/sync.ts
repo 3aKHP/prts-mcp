@@ -83,6 +83,61 @@ function githubHeaders(): Record<string, string> {
   return headers;
 }
 
+/**
+ * Parse GITHUB_MIRRORS env var into a list of proxy base URLs (trailing slash stripped).
+ *
+ * Unset / empty  → [] (direct only, no cascade)
+ * "https://ghproxy.net"              → ["https://ghproxy.net"]
+ * "https://a.example,https://b.example" → ["https://a.example", "https://b.example"]
+ *
+ * Mirror URL format (ghproxy-style): <mirror>/<original_url>
+ * e.g. "https://ghproxy.net/https://raw.githubusercontent.com/..."
+ */
+function parseMirrors(): string[] {
+  return (process.env["GITHUB_MIRRORS"] ?? "")
+    .split(",")
+    .map((s) => s.trim().replace(/\/$/, ""))
+    .filter(Boolean);
+}
+
+/** Return [url, mirroredUrl1, mirroredUrl2, ...] */
+function urlCandidates(url: string): string[] {
+  return [url, ...parseMirrors().map((m) => `${m}/${url}`)];
+}
+
+/**
+ * fetch() wrapper that cascades through URL candidates on failure.
+ *
+ * - A fresh AbortSignal.timeout is created per attempt so an earlier
+ *   timeout does not consume the budget for later candidates.
+ * - HTTP 4xx from the direct URL propagates immediately (resource is
+ *   genuinely missing — mirrors won't help).
+ * - Network error or HTTP 5xx from any candidate → try the next one.
+ */
+async function fetchCascading(
+  url: string,
+  options: Omit<RequestInit, "signal">,
+  timeoutMs: number,
+): Promise<Response> {
+  const candidates = urlCandidates(url);
+  let lastErr: unknown = new Error("All URL candidates failed");
+  for (let i = 0; i < candidates.length; i++) {
+    try {
+      const res = await fetch(candidates[i], {
+        ...options,
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+      if (res.ok) return res;
+      lastErr = new Error(`HTTP ${res.status}`);
+      // Direct 4xx → the resource does not exist; mirrors cannot help.
+      if (i === 0 && res.status >= 400 && res.status < 500) break;
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr;
+}
+
 function cacheMetaPath(spec: RepoSpec): string {
   return join(spec.localRoot, "cache_meta.json");
 }
@@ -135,11 +190,7 @@ export async function checkUpstreamSha(
 ): Promise<string | null> {
   const url = `https://api.github.com/repos/${spec.owner}/${spec.repo}/commits/${spec.branch}`;
   try {
-    const res = await fetch(url, {
-      headers: githubHeaders(),
-      signal: AbortSignal.timeout(timeoutMs),
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const res = await fetchCascading(url, { headers: githubHeaders() }, timeoutMs);
     const data = (await res.json()) as { sha: string };
     return data.sha;
   } catch {
@@ -162,11 +213,10 @@ export async function downloadFiles(
   try {
     for (const filePath of spec.files) {
       const url = `https://raw.githubusercontent.com/${spec.owner}/${spec.repo}/${spec.branch}/${filePath}`;
-      const res = await fetch(url, {
-        headers: githubHeaders(),
-        signal: AbortSignal.timeout(timeoutMs),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status} for ${filePath}`);
+      const res = await fetchCascading(url, { headers: githubHeaders() }, timeoutMs)
+        .catch((err: unknown) => {
+          throw new Error(`${errorMessage(err)} for ${filePath}`);
+        });
 
       const dest = join(spec.localRoot, filePath);
       const tmp = dest + ".tmp";
@@ -233,19 +283,31 @@ export async function syncRepo(spec: RepoSpec): Promise<SyncResult> {
   const upstreamSha = await checkUpstreamSha(spec);
 
   if (upstreamSha === null) {
-    return filesOk
-      ? {
-          spec,
-          status: "offline_fallback",
-          commitSha: cache?.commitSha ?? null,
-          error: "Network unavailable",
-        }
-      : {
-          spec,
-          status: "no_data",
-          commitSha: null,
-          error: "Network unavailable and no cached data",
-        };
+    if (filesOk) {
+      return {
+        spec,
+        status: "offline_fallback",
+        commitSha: cache?.commitSha ?? null,
+        error: "Network unavailable",
+      };
+    }
+    // No local files and API unreachable — attempt a blind download via mirrors
+    // (skips SHA comparison; TTL in the written cache_meta prevents re-downloading
+    // on every restart once files are present).
+    if (parseMirrors().length > 0) {
+      try {
+        await downloadFiles(spec, "unknown");
+        return { spec, status: "updated", commitSha: "unknown", error: null };
+      } catch (err) {
+        return { spec, status: "no_data", commitSha: null, error: errorMessage(err) };
+      }
+    }
+    return {
+      spec,
+      status: "no_data",
+      commitSha: null,
+      error: "Network unavailable and no cached data",
+    };
   }
 
   if (cache !== null && cache.commitSha === upstreamSha && filesOk) {
@@ -337,11 +399,7 @@ export async function checkLatestRelease(
     spec.repo
   );
   try {
-    const res = await fetch(url, {
-      headers: githubHeaders(),
-      signal: AbortSignal.timeout(timeoutMs),
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const res = await fetchCascading(url, { headers: githubHeaders() }, timeoutMs);
     const data = (await res.json()) as {
       tag_name: string;
       assets: Array<{ name: string; browser_download_url: string }>;
@@ -367,12 +425,13 @@ export async function downloadReleaseAsset(
   const tmp = spec.localZip + ".tmp";
   await mkdir(dirname(spec.localZip), { recursive: true });
   try {
-    const res = await fetch(assetUrl, {
-      headers: githubHeaders(),
-      redirect: "follow",
-      signal: AbortSignal.timeout(timeoutMs),
+    const res = await fetchCascading(
+      assetUrl,
+      { headers: githubHeaders(), redirect: "follow" },
+      timeoutMs,
+    ).catch((err: unknown) => {
+      throw new Error(`${errorMessage(err)} downloading ${spec.assetName}`);
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status} downloading ${spec.assetName}`);
     await writeFile(tmp, Buffer.from(await res.arrayBuffer()));
     await rename(tmp, spec.localZip);
 
@@ -419,9 +478,21 @@ export async function syncRelease(spec: ReleaseSpec): Promise<SyncResult> {
   const latest = await checkLatestRelease(spec);
 
   if (latest === null) {
-    return zipOk
-      ? { spec: dummySpec, status: "offline_fallback", commitSha: cache?.commitSha ?? null, error: "Network unavailable" }
-      : { spec: dummySpec, status: "no_data", commitSha: null, error: "Network unavailable and no cached zip" };
+    if (zipOk) {
+      return { spec: dummySpec, status: "offline_fallback", commitSha: cache?.commitSha ?? null, error: "Network unavailable" };
+    }
+    // No zip and API unreachable — attempt blind download via releases/latest/download/
+    // (does not require the GitHub API; ghproxy and similar mirrors support this URL).
+    if (parseMirrors().length > 0) {
+      const blindUrl = `https://github.com/${spec.owner}/${spec.repo}/releases/latest/download/${spec.assetName}`;
+      try {
+        await downloadReleaseAsset(spec, "unknown", blindUrl);
+        return { spec: dummySpec, status: "updated", commitSha: "unknown", error: null };
+      } catch (err) {
+        return { spec: dummySpec, status: "no_data", commitSha: null, error: errorMessage(err) };
+      }
+    }
+    return { spec: dummySpec, status: "no_data", commitSha: null, error: "Network unavailable and no cached zip" };
   }
 
   const commitSha = latest.tag.startsWith(TAG_PREFIX)

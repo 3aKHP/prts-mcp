@@ -41,6 +41,50 @@ def _github_headers() -> dict[str, str]:
         headers["Authorization"] = f"Bearer {token}"
     return headers
 
+
+def _parse_mirrors() -> list[str]:
+    """Parse GITHUB_MIRRORS env var into a list of proxy base URLs (trailing slash stripped).
+
+    Unset / empty → [] (direct only, no cascade)
+    "https://ghproxy.net" → ["https://ghproxy.net"]
+    "https://a.example,https://b.example" → ["https://a.example", "https://b.example"]
+
+    Mirror URL format (ghproxy-style): <mirror>/<original_url>
+    e.g. "https://ghproxy.net/https://raw.githubusercontent.com/..."
+    """
+    raw = os.environ.get("GITHUB_MIRRORS", "")
+    return [m.rstrip("/") for m in raw.split(",") if m.strip()]
+
+
+def _url_candidates(url: str) -> list[str]:
+    """Return [url, mirror1/url, mirror2/url, ...]."""
+    return [url] + [f"{m}/{url}" for m in _parse_mirrors()]
+
+
+def _get_cascading(url: str, *, timeout: float, **kwargs: object) -> httpx.Response:
+    """httpx.get() wrapper that cascades through URL candidates on failure.
+
+    - HTTP 4xx from the direct URL propagates immediately (resource missing).
+    - Network error or HTTP 5xx from any candidate → try the next one.
+    """
+    candidates = _url_candidates(url)
+    last_exc: BaseException = RuntimeError("All URL candidates failed")
+    for i, candidate in enumerate(candidates):
+        try:
+            response = httpx.get(candidate, timeout=timeout, **kwargs)  # type: ignore[arg-type]
+            if response.is_success:
+                return response
+            last_exc = Exception(f"HTTP {response.status_code}")
+            # Direct 4xx → resource genuinely missing; mirrors cannot help.
+            if i == 0 and 400 <= response.status_code < 500:
+                break
+        except httpx.HTTPStatusError:
+            raise  # only reached for direct 4xx via raise_for_status(); propagate as-is
+        except Exception as exc:  # noqa: BLE001
+            last_exc = exc
+    raise last_exc
+
+
 # Skip the upstream SHA check if cached data is fresher than this many seconds.
 _CACHE_TTL_SECONDS = 3600
 
@@ -139,8 +183,7 @@ def check_upstream_sha(spec: RepoSpec, timeout: float = 10.0) -> str | None:
     """Return the latest commit SHA from GitHub, or None on any failure."""
     url = _GITHUB_COMMITS_URL.format(owner=spec.owner, repo=spec.repo, branch=spec.branch)
     try:
-        response = httpx.get(url, headers=_github_headers(), timeout=timeout)
-        response.raise_for_status()
+        response = _get_cascading(url, timeout=timeout, headers=_github_headers())
         return response.json()["sha"]
     except Exception as exc:  # noqa: BLE001
         _logger.debug("Failed to check upstream SHA for %s/%s: %s", spec.owner, spec.repo, exc)
@@ -155,23 +198,21 @@ def download_files(spec: RepoSpec, sha: str, timeout: float = 60.0) -> None:
     """
     tmp_pairs: list[tuple[Path, Path]] = []
     try:
-        with httpx.Client(headers=_github_headers(), timeout=timeout) as client:
-            for file_path in spec.files:
-                url = _GITHUB_RAW_URL.format(
-                    owner=spec.owner,
-                    repo=spec.repo,
-                    branch=spec.branch,
-                    path=file_path,
-                )
-                _logger.debug("Downloading %s", url)
-                response = client.get(url)
-                response.raise_for_status()
+        for file_path in spec.files:
+            url = _GITHUB_RAW_URL.format(
+                owner=spec.owner,
+                repo=spec.repo,
+                branch=spec.branch,
+                path=file_path,
+            )
+            _logger.debug("Downloading %s", url)
+            response = _get_cascading(url, timeout=timeout, headers=_github_headers())
 
-                dest = spec.local_root / file_path
-                dest.parent.mkdir(parents=True, exist_ok=True)
-                tmp = dest.with_suffix(dest.suffix + ".tmp")
-                tmp.write_bytes(response.content)
-                tmp_pairs.append((tmp, dest))
+            dest = spec.local_root / file_path
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            tmp = dest.with_suffix(dest.suffix + ".tmp")
+            tmp.write_bytes(response.content)
+            tmp_pairs.append((tmp, dest))
 
         # All downloads succeeded — atomically rename
         for tmp, dest in tmp_pairs:
@@ -229,6 +270,14 @@ def sync_repo(spec: RepoSpec) -> SyncResult:
                 commit_sha=cache.commit_sha if cache else None,
                 error="Network unavailable",
             )
+        # No local files and API unreachable — attempt a blind download via mirrors.
+        # TTL in the written cache_meta prevents re-downloading on every restart.
+        if _parse_mirrors():
+            try:
+                download_files(spec, "unknown")
+                return SyncResult(spec=spec, status="updated", commit_sha="unknown", error=None)
+            except Exception as exc:  # noqa: BLE001
+                return SyncResult(spec=spec, status="no_data", commit_sha=None, error=str(exc))
         return SyncResult(spec=spec, status="no_data", commit_sha=None, error="Network unavailable and no cached data")
 
     if cache is not None and cache.commit_sha == upstream_sha and files_ok:
@@ -292,8 +341,7 @@ def check_latest_release(spec: ReleaseSpec, timeout: float = 10.0) -> tuple[str,
     """Return (tag_name, asset_download_url) for the latest release, or None on failure."""
     url = _GITHUB_RELEASES_LATEST_URL.format(owner=spec.owner, repo=spec.repo)
     try:
-        response = httpx.get(url, headers=_github_headers(), timeout=timeout)
-        response.raise_for_status()
+        response = _get_cascading(url, timeout=timeout, headers=_github_headers())
         data = response.json()
         tag = data["tag_name"]
         for asset in data.get("assets", []):
@@ -312,10 +360,8 @@ def download_release_asset(spec: ReleaseSpec, tag: str, url: str, timeout: float
     tmp = spec.local_zip.with_suffix(spec.local_zip.suffix + ".tmp")
     try:
         _logger.debug("Downloading release asset %s", url)
-        with httpx.Client(headers=_github_headers(), timeout=timeout) as client:
-            response = client.get(url, follow_redirects=True)
-            response.raise_for_status()
-            tmp.write_bytes(response.content)
+        response = _get_cascading(url, timeout=timeout, headers=_github_headers(), follow_redirects=True)
+        tmp.write_bytes(response.content)
         tmp.replace(spec.local_zip)
 
         # Extract upstream SHA from tag (format: "upstream-<sha>")
@@ -370,6 +416,15 @@ def sync_release(spec: ReleaseSpec) -> SyncResult:
                 commit_sha=cache.commit_sha if cache else None,
                 error="Network unavailable",
             )
+        # No zip and API unreachable — attempt blind download via releases/latest/download/
+        # (does not require the GitHub API; ghproxy and similar mirrors support this URL).
+        if _parse_mirrors():
+            blind_url = f"https://github.com/{spec.owner}/{spec.repo}/releases/latest/download/{spec.asset_name}"
+            try:
+                download_release_asset(spec, "unknown", blind_url)
+                return SyncResult(spec=_dummy_spec, status="updated", commit_sha="unknown", error=None)
+            except Exception as exc:  # noqa: BLE001
+                return SyncResult(spec=_dummy_spec, status="no_data", commit_sha=None, error=str(exc))
         return SyncResult(spec=_dummy_spec, status="no_data", commit_sha=None, error="Network unavailable and no cached zip")
 
     tag, asset_url = result

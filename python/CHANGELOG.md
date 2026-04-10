@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-04-25
+
+### Added
+
+- `GITHUB_MIRRORS` environment variable: comma-separated list of ghproxy-style proxy base URLs
+  (e.g. `GITHUB_MIRRORS=https://ghproxy.net`) tried in order after the direct GitHub URL fails,
+  enabling auto-sync on servers behind the GFW
+- Blind download path in `sync_repo` and `sync_release`: when the GitHub API is unreachable but
+  mirrors are configured and no local data exists, files are fetched directly via mirrors without a
+  prior SHA check; storyjson uses the `releases/latest/download/` redirect URL which does not
+  require an API call
+
+### Changed
+
+- `download_files` replaced shared `httpx.Client` with per-file `_get_cascading` calls to enable
+  independent mirror cascade per file
+
 ## [0.2.2] - 2026-04-10
 
 ### Changed

@@ -222,4 +222,5 @@ Remove-Item "$env:USERPROFILE\.prts-mcp\gamedata\cache_meta.json"
 | `GAMEDATA_PATH` | 未设置（使用 `/data/gamedata`） | 设置后指向自定义干员数据目录，**auto-sync 被禁用** |
 | `STORYJSON_PATH` | 未设置（使用 `/data/storyjson/zh_CN.zip`） | 设置后指向本地 `zh_CN.zip`，**剧情 auto-sync 被禁用** |
 | `GITHUB_TOKEN` | 空 | 用于提高 GitHub API 限额，降低限流风险 |
+| `GITHUB_MIRRORS` | 空 | 逗号分隔的 ghproxy 风格代理前缀列表（如 `https://ghproxy.net`），依次在直连失败后尝试；适用于 GitHub 被 GFW 封锁的服务器 |
 | `PRTS_MCP_ROOT` | `/app`（Docker 内） | 标识 Docker 环境，供 config.py 选择正确的默认路径 |
