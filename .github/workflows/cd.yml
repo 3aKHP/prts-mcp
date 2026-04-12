@@ -181,6 +181,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build distribution
+        run: |
+          pip install build
+          python -m build python/
+
       - name: Extract changelog section
         env:
           VERSION: ${{ needs.build-and-push.outputs.version }}
@@ -196,18 +206,19 @@ jobs:
           print(m.group(1).strip() if m else "See CHANGELOG.md for details.")
           PY
 
-      - name: Append Docker pull instructions
+      - name: Append install instructions
         env:
           IMAGE: ${{ needs.build-and-push.outputs.image }}
           VERSION: ${{ needs.build-and-push.outputs.version }}
         run: |
-          printf '\n---\n\n**Docker image**\n```\ndocker pull %s:%s\n```\n' \
-            "$IMAGE" "$VERSION" >> release_notes.txt
+          printf '\n---\n\n**Install**\n```bash\npip install prts-mcp==%s\n```\n\n**Docker**\n```bash\ndocker pull %s:%s\n```\n' \
+            "$VERSION" "$IMAGE" "$VERSION" >> release_notes.txt
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           body_path: release_notes.txt
+          files: python/dist/*
 
   publish-pypi:
     runs-on: ubuntu-latest

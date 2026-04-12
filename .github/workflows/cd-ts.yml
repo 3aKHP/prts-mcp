@@ -136,24 +136,47 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: 'ts/package.json'
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ts
+
+      - name: Pack npm tarball
+        run: npm pack
+        working-directory: ts
+
       - name: Extract version from tag
         id: version
         run: echo "value=${GITHUB_REF_NAME#ts/v}" >> $GITHUB_OUTPUT
 
+      - name: Extract changelog section
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          python3 - <<'PY' > release_notes.txt
+          import re, os
+          version = os.environ["VERSION"]
+          text = open("ts/CHANGELOG.md").read()
+          m = re.search(
+              r"## \[" + re.escape(version) + r"\][^\n]*\n(.*?)(?=\n## \[|\Z)",
+              text, re.DOTALL
+          )
+          print(m.group(1).strip() if m else "See CHANGELOG.md for details.")
+          PY
+
+      - name: Append install instructions
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          printf '\n---\n\n**Install**\n```bash\n# Run directly (Streamable HTTP on :3000)\nnpx prts-mcp-ts\n\n# Or install globally\nnpm install -g prts-mcp-ts@%s\n```\n\nMCP endpoint: `http://localhost:3000/mcp`\n' \
+            "$VERSION" >> release_notes.txt
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          body: |
-            TypeScript MCP Server v${{ steps.version.outputs.value }}
-
-            **Install via npm / npx**
-            ```bash
-            # Run directly (Streamable HTTP on :3000)
-            npx prts-mcp-ts
-
-            # Or install globally
-            npm install -g prts-mcp-ts
-            prts-mcp-ts
-            ```
-
-            MCP 端点：`http://localhost:3000/mcp`
+          body_path: release_notes.txt
+          files: ts/prts-mcp-ts-*.tgz
