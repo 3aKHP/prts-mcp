@@ -6,9 +6,10 @@ import sys
 import threading
 from pathlib import Path
 
+from typing import Annotated
+
 from mcp.server.fastmcp import FastMCP
 from pydantic import Field
-from typing import Annotated
 
 from prts_mcp.api.prts_wiki import search_prts as _search_prts, read_page as _read_page
 from prts_mcp.data.operator import (
@@ -229,7 +230,8 @@ def read_activity(
 
     适合需要了解完整活动故事的场景。返回各章节台词的合并文本，格式与
     read_story 一致，章节间以分隔标题区分。单次活动文本量可能较大，建议
-    使用 page 参数分批获取；返回结果会提示是否还有更多页。
+    使用 page 参数分批获取；返回结果末尾会附上 total_chapters 和 has_more
+    字段，便于判断是否还有后续内容。
     """
     from prts_mcp.config import Config
     cfg = Config.load()
