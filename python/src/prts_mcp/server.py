@@ -33,7 +33,16 @@ mcp = FastMCP("PRTS_Wiki_Assistant")
 
 @mcp.tool()
 async def search_prts(query: str, limit: int = 5) -> str:
-    """搜索 PRTS 明日方舟中文维基词条。返回匹配的词条标题和摘要。"""
+    """搜索 PRTS 明日方舟中文维基词条。
+
+    返回匹配词条的标题和简短摘要列表。这是探索维基的第一步：当需要查找
+    不确定的专有名词、干员、关卡或世界观设定时，先用此工具搜索获取准确
+    标题，再将标题传入 read_prts_page 获取完整内容。
+
+    Args:
+        query: 搜索关键词，支持中文，如"罗德岛"、"整合运动"。
+        limit: 返回结果数量上限，默认 5，最大建议不超过 10。
+    """
     results = await _search_prts(query, limit)
     if not results:
         return f"未找到与 '{query}' 相关的词条。"
@@ -45,25 +54,58 @@ async def search_prts(query: str, limit: int = 5) -> str:
 
 @mcp.tool()
 async def read_prts_page(page_title: str) -> str:
-    """读取 PRTS 维基指定词条的纯文本内容。"""
+    """读取 PRTS 维基指定词条的纯文本内容。
+
+    返回该词条经过清洗的纯文本，已去除 Wikitext 模板、文件链接和 HTML 标签，
+    内容可能较长。强烈建议先调用 search_prts 确认词条的准确标题，避免因
+    拼写错误导致读取失败。
+
+    Args:
+        page_title: 词条标题，需与维基页面标题完全一致，如"阿米娅"、"整合运动"。
+                    建议通过 search_prts 获取准确标题后再传入。
+    """
     return await _read_page(page_title)
 
 
 @mcp.tool()
 async def get_operator_archives(operator_name: str) -> str:
-    """获取指定干员的档案资料（使用游戏内中文名，如"阿米娅"）。"""
+    """获取指定干员的档案资料。
+
+    返回干员的客观履历、个人档案（基础档案及解锁档案）等背景故事文本。
+    若需查询干员的职业、稀有度等数值信息，请使用 get_operator_basic_info；
+    若需查询语音台词，请使用 get_operator_voicelines。
+
+    Args:
+        operator_name: 干员的游戏内中文名，如"阿米娅"、"能天使"。
+    """
     return _get_archives(operator_name)
 
 
 @mcp.tool()
 async def get_operator_voicelines(operator_name: str) -> str:
-    """获取指定干员的语音记录（使用游戏内中文名，如"阿米娅"）。"""
+    """获取指定干员的所有语音台词记录。
+
+    返回包含触发条件（如"交谈1"、"晋升后交谈"、"信赖提升后交谈"）及对应
+    台词文本的完整列表。此工具仅返回语音文本；若需查询干员背景故事或客观
+    履历，请使用 get_operator_archives。
+
+    Args:
+        operator_name: 干员的游戏内中文名，如"阿米娅"、"能天使"。
+    """
     return _get_voicelines(operator_name)
 
 
 @mcp.tool()
 async def get_operator_basic_info(operator_name: str) -> str:
-    """获取指定干员的基本信息：职业、稀有度、所属、招募标签、天赋等（使用游戏内中文名，如"阿米娅"）。"""
+    """获取指定干员的基本数值信息。
+
+    返回干员的职业、子职业、稀有度（星级）、所属阵营、招募标签、天赋名称
+    及描述等结构化信息。适合快速了解干员定位；若需完整背景故事请使用
+    get_operator_archives，若需语音台词请使用 get_operator_voicelines。
+
+    Args:
+        operator_name: 干员的游戏内中文名，如"阿米娅"、"能天使"。
+    """
     return _get_basic_info(operator_name)
 
 
@@ -80,6 +122,9 @@ def _require_story_zip(cfg: "Config") -> Path:
 @mcp.tool()
 def list_story_events(category: str | None = None) -> str:
     """列出明日方舟剧情活动列表。
+
+    返回格式：每行 `- [类型] 活动ID：名称（N 章）`，类型为 MAINLINE / ACTIVITY /
+    MINI_ACTIVITY 之一。获取活动 ID 后，可调用 list_stories 查看该活动的章节列表。
 
     Args:
         category: 可选过滤分类。"main" = 主线章节，"activities" = 活动剧情（含联动）。
@@ -109,6 +154,10 @@ def list_story_events(category: str | None = None) -> str:
 @mcp.tool()
 def list_stories(event_id: str) -> str:
     """列出指定活动的所有剧情章节（按官方顺序排列）。
+
+    返回格式：每行 `- 章节编号 [标签] 章节名（key: story_key）`，其中 story_key
+    可直接传入 read_story 读取该章台词。如需一次性读取整个活动，可使用
+    read_activity。
 
     Args:
         event_id: 活动 ID，如 "act31side"（可从 list_story_events 获取）。
@@ -141,9 +190,13 @@ def list_stories(event_id: str) -> str:
 def read_story(story_key: str, include_narration: bool = True) -> str:
     """读取单章剧情的完整台词。
 
+    返回格式：首行为【活动名】章节名，随后按顺序输出对话（`角色：台词`）、
+    旁白（`*旁白文本*`）和选项（`【选项】文本`）。story_key 可从 list_stories
+    的返回结果中获取。
+
     Args:
         story_key: 章节 key，如 "activities/act31side/level_act31side_01_beg"（可从 list_stories 获取）。
-        include_narration: 是否包含旁白和场景描述，默认 True。
+        include_narration: 是否包含旁白和场景描述，默认 True。设为 False 可只保留对话台词。
     """
     from prts_mcp.config import Config
     cfg = Config.load()
@@ -182,7 +235,9 @@ def read_activity(
 ) -> str:
     """读取整个活动的完整剧情台词（按官方章节顺序合并）。
 
-    适合需要了解完整活动故事的场景。单次活动文本量可能较大，可用 page 参数分批获取。
+    适合需要了解完整活动故事的场景。返回各章节台词的合并文本，格式与
+    read_story 一致，章节间以分隔标题区分。单次活动文本量可能较大，建议
+    使用 page 参数分批获取；返回结果会提示是否还有更多页。
 
     Args:
         event_id: 活动 ID，如 "act31side"。
