@@ -3,6 +3,7 @@
 [![PyPI](https://img.shields.io/pypi/v/prts-mcp)](https://pypi.org/project/prts-mcp/)
 [![npm](https://img.shields.io/npm/v/prts-mcp-ts)](https://www.npmjs.com/package/prts-mcp-ts)
 [![License: MIT](https://img.shields.io/github/license/3aKHP/prts-mcp)](LICENSE)
+[![SafeSkill 50/100](https://img.shields.io/badge/SafeSkill-50%2F100_Use%20with%20Caution-orange)](https://safeskill.dev/scan/3akhp-prts-mcp)
 
 **Language / 语言：** [English](#english) | [中文](#中文)
 
