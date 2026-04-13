@@ -26,6 +26,7 @@ prts-mcp.tar
 # TypeScript / Node
 ts/node_modules/
 ts/dist/
+ts/*.tgz
 
 # TS npm bundled data — directories tracked, content downloaded by CI at publish time
 ts/data/*
