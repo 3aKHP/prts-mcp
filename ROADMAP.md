@@ -1,31 +1,108 @@
-# ROADMAP
+# PRTS-MCP Roadmap
 
-## 待办：工具描述补全（Glama 全 A 冲刺）
+_Last updated: 2026-05-03_
 
-**背景**：2026-04-13 评分后，剧情四件套已全部达到 A 级（3.5~4.2），
-干员三件套及 Wiki 两件套停留在 B 级（3.1~3.4）。
-差距在于后者缺少"返回格式具象化"和"边界情况说明"。
+PRTS-MCP is moving from a fast-evolving dual implementation project toward a
+stable 1.0 architecture. The next major release is planned as a compatibility
+and data-layer milestone rather than a new-feature sprint.
 
-**需要补充的内容（同时修改 Python `server.py` 和 TS `server.ts`）：**
+## Current Transition Release
 
-### `search_prts`
-- 补充：返回格式为 Markdown 列表，标题加粗，附简短摘要
-- 补充：若未匹配到任何内容，返回空结果提示
+- Python: `0.4.2`
+- TypeScript: `0.3.3`
+- Main purpose: unify upstream game-data delivery through GitHub Release
+  archives while preserving the existing runtime data layout.
+- Bundled fallback data policy:
+  - Docker images include CI-prewarmed fallback data.
+  - npm releases include CI-prewarmed fallback data.
+  - PyPI packages remain lightweight and rely on startup auto-sync or
+    user-provided data paths.
 
-### `read_prts_page`
-- 补充：返回格式为较长的纯文本（已清洗 Wikitext）
-- 补充：若 `page_title` 不存在，返回"页面未找到"提示
+## Next Major Target: 1.0.0
 
-### `get_operator_archives`
-- 补充：返回格式为结构化 Markdown 文本
-- 补充：若干员名称拼写错误或不存在，返回错误提示
+The next major line is planned as:
 
-### `get_operator_voicelines`
-- 补充：返回格式（触发条件 + 台词文本的列表形式）
-- 补充：若干员不存在，返回错误提示
+- Python `1.0.0`
+- TypeScript `1.0.0`
 
-### `get_operator_basic_info`
-- 补充：返回格式（结构化字段列表）
-- 补充：若干员不存在，返回错误提示
+The goal is not to include every future feature. The goal is to make the public
+tool surface, versioning rules, and data parsing architecture stable enough to
+support future feature work without duplicating sync and parsing paths.
 
-**参考**：`dev/reports/reportsFromGemini_04130955.md`
+## 1.0 Goals
+
+1. **Version alignment**
+   - Python and TypeScript share the same major and minor versions.
+   - Patch versions may diverge only for implementation-specific fixes.
+   - Release notes explicitly state cross-implementation compatibility.
+
+2. **Standardized data pipeline**
+   - Separate upstream source, local storage, JSON reading, and domain parsing.
+   - Keep existing `GAMEDATA_PATH` and `STORYJSON_PATH` semantics compatible.
+   - Hide zip-vs-directory details behind a shared reader abstraction.
+   - Make new data-backed tools easier to add without new one-off sync logic.
+
+3. **Cross-implementation behavior parity**
+   - Python and TypeScript expose the same MCP tools.
+   - Core outputs are covered by shared fixture/golden tests.
+   - CI verifies both implementations before release.
+
+4. **Documented compatibility boundary**
+   - Docker, npm, and PyPI data-bundling behavior is explicit.
+   - Migration notes cover custom data paths and startup auto-sync behavior.
+   - 1.0 starts the compatibility contract for public tool parameters and
+     response formats.
+
+## 1.0 Non-Goals
+
+- Shipping every possible Arknights data table.
+- Embedding large fallback data in PyPI wheels.
+- Replacing GitHub Release based sync with a different hosting model.
+- Adding generated LLM summaries as a required runtime dependency.
+
+## Release Plan
+
+### `1.0.0-alpha.1`: Architecture Skeleton
+
+- Introduce the dataset/reader abstraction in both implementations.
+- Move existing operator and story readers behind the new abstraction.
+- Keep current user-facing behavior compatible.
+- Add focused tests around directory-backed and zip-backed reads.
+
+### `1.0.0-alpha.2`: Sync and Storage Consolidation
+
+- Normalize release metadata, cache freshness, and fallback decisions.
+- Decide which datasets remain zip-backed at runtime and which are extracted.
+- Verify Docker and npm bundled fallback data through CI package inspection.
+
+### `1.0.0-beta.1`: Behavior Freeze
+
+- Freeze the public tool list and core response formats for 1.0.
+- Add migration notes from the 0.x line.
+- Expand cross-implementation fixture tests.
+
+### `1.0.0`: Stable Release
+
+- Publish Python and TypeScript 1.0 releases together.
+- Announce version alignment and compatibility rules.
+- Keep later 1.0.x releases focused on bug fixes and documentation.
+
+## Optional Post-1.0 Feature Track
+
+The most likely next feature candidate is a story-summary tool, but it should
+not block 1.0 unless it can be implemented from existing structured story data.
+
+Possible shape:
+
+- `get_story_summary(story_key)`: return an existing official/source-provided
+  summary when available.
+- Later: `get_stage_story_summary(stage_id)`, if stage-to-story mapping proves
+  stable enough.
+
+Generated summaries should remain out of scope until caching, reproducibility,
+and dependency boundaries are designed.
+
+## Detailed Plans
+
+- [1.0 architecture plan](docs/dev/plans/1.0-architecture-plan.md)
+- [1.0 development roadmap](docs/dev/plans/1.0-development-roadmap.md)

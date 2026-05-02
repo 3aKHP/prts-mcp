@@ -8,7 +8,7 @@ build/
 *.egg
 .venv/
 venv/
-dev/
+/dev/
 .env
 .claude/
 *.so
