@@ -133,8 +133,19 @@ jobs:
       - name: Verify bundled package data
         run: python python/scripts/check_package_data.py --data-root ts/data
 
+      - name: Resolve npm dist-tag
+        id: dist_tag
+        run: |
+          VERSION="${GITHUB_REF_NAME#ts/v}"
+          if [[ "${VERSION}" == *-* ]]; then
+            PRERELEASE="${VERSION#*-}"
+            echo "value=${PRERELEASE%%.*}" >> $GITHUB_OUTPUT
+          else
+            echo "value=latest" >> $GITHUB_OUTPUT
+          fi
+
       - name: Publish to npm (Trusted Publishing)
-        run: npm publish --provenance --access public
+        run: npm publish --provenance --access public --tag "${{ steps.dist_tag.outputs.value }}"
         working-directory: ts
 
   github-release:
@@ -187,7 +198,14 @@ jobs:
 
       - name: Extract version from tag
         id: version
-        run: echo "value=${GITHUB_REF_NAME#ts/v}" >> $GITHUB_OUTPUT
+        run: |
+          VERSION="${GITHUB_REF_NAME#ts/v}"
+          echo "value=${VERSION}" >> $GITHUB_OUTPUT
+          if [[ "${VERSION}" == *-* ]]; then
+            echo "prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "prerelease=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Extract changelog section
         env:
@@ -216,3 +234,5 @@ jobs:
         with:
           body_path: release_notes.txt
           files: ts/prts-mcp-ts-*.tgz
+          prerelease: ${{ steps.version.outputs.prerelease }}
+          make_latest: ${{ steps.version.outputs.prerelease == 'true' && 'false' || 'true' }}

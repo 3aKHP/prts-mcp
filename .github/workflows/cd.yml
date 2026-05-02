@@ -61,6 +61,7 @@ jobs:
     outputs:
       image: ${{ steps.image.outputs.name }}
       version: ${{ steps.version.outputs.value }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
 
     steps:
       - name: Checkout repository
@@ -114,7 +115,14 @@ jobs:
 
       - name: Extract version from tag
         id: version
-        run: echo "value=${GITHUB_REF_NAME#python/v}" >> $GITHUB_OUTPUT
+        run: |
+          VERSION="${GITHUB_REF_NAME#python/v}"
+          echo "value=${VERSION}" >> $GITHUB_OUTPUT
+          if [[ "${VERSION}" == *-* ]]; then
+            echo "prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "prerelease=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Build Docker image
         run: docker build -f python/Dockerfile -t prts-mcp:release .
@@ -169,9 +177,11 @@ jobs:
           IMAGE="${{ steps.image.outputs.name }}"
           VERSION="${{ steps.version.outputs.value }}"
           docker tag prts-mcp:release "${IMAGE}:${VERSION}"
-          docker tag prts-mcp:release "${IMAGE}:latest"
           docker push "${IMAGE}:${VERSION}"
-          docker push "${IMAGE}:latest"
+          if [[ "${{ steps.version.outputs.prerelease }}" != "true" ]]; then
+            docker tag prts-mcp:release "${IMAGE}:latest"
+            docker push "${IMAGE}:latest"
+          fi
 
   github-release:
     runs-on: ubuntu-latest
@@ -221,6 +231,8 @@ jobs:
         with:
           body_path: release_notes.txt
           files: python/dist/*
+          prerelease: ${{ needs.build-and-push.outputs.prerelease }}
+          make_latest: ${{ needs.build-and-push.outputs.prerelease == 'true' && 'false' || 'true' }}
 
   publish-pypi:
     runs-on: ubuntu-latest

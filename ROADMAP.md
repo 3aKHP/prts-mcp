@@ -6,12 +6,12 @@ PRTS-MCP is moving from a fast-evolving dual implementation project toward a
 stable 1.0 architecture. The next major release is planned as a compatibility
 and data-layer milestone rather than a new-feature sprint.
 
-## Current Transition Release
+## Current Alpha Release
 
-- Python: `0.4.2`
-- TypeScript: `0.3.3`
-- Main purpose: unify upstream game-data delivery through GitHub Release
-  archives while preserving the existing runtime data layout.
+- Python: `1.0.0-alpha.1`
+- TypeScript: `1.0.0-alpha.1`
+- Main purpose: validate the 1.0 data reader architecture, aligned public tool
+  surface, and release packaging path before the stable 1.0 line.
 - Bundled fallback data policy:
   - Docker images include CI-prewarmed fallback data.
   - npm releases include CI-prewarmed fallback data.
@@ -64,10 +64,12 @@ support future feature work without duplicating sync and parsing paths.
 
 ### `1.0.0-alpha.1`: Architecture Skeleton
 
-- Introduce the dataset/reader abstraction in both implementations.
-- Move existing operator and story readers behind the new abstraction.
-- Keep current user-facing behavior compatible.
-- Add focused tests around directory-backed and zip-backed reads.
+- Status: ready for prerelease tagging from the current `main` commit.
+- Introduced the dataset/reader abstraction in both implementations.
+- Moved existing operator and story readers behind the new abstraction.
+- Kept current user-facing behavior compatible.
+- Added focused tests around directory-backed and zip-backed reads.
+- Added prerelease-aware release workflows for Python and TypeScript tags.
 
 ### `1.0.0-alpha.2`: Sync and Storage Consolidation
 
