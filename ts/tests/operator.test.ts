@@ -38,9 +38,47 @@ test("core operator tools read the shared minimal fixture", async () => {
   writeMinimalGamedata(root);
   const operator = await loadOperatorModule();
 
-  assert.match(operator.getOperatorArchives("阿米娅"), /阿米娅的档案文本/);
-  assert.match(operator.getOperatorVoicelines("阿米娅"), /博士，今天也请多指教/);
-  assert.match(operator.getOperatorBasicInfo("阿米娅"), /情绪吸收/);
+  assert.equal(
+    operator.getOperatorArchives("阿米娅"),
+    [
+      "# 阿米娅 - 干员档案",
+      "",
+      "### 档案资料一",
+      "阿米娅的档案文本。",
+    ].join("\n"),
+  );
+  assert.equal(
+    operator.getOperatorVoicelines("阿米娅"),
+    [
+      "# 阿米娅 - 语音记录",
+      "",
+      "**任命助理**: 博士，今天也请多指教。",
+    ].join("\n"),
+  );
+  assert.equal(
+    operator.getOperatorBasicInfo("阿米娅"),
+    [
+      "# 阿米娅 - 干员基本信息",
+      "",
+      "- **编号**：R001",
+      "- **英文名**：Amiya",
+      "- **稀有度**：5★",
+      "- **职业**：术师（corecaster）",
+      "- **站位**：远程",
+      "- **所属**：rhodes",
+      "- **招募标签**：输出、支援",
+      "- **攻击属性**：法术伤害",
+      "",
+      "**图鉴**：罗德岛的公开领袖。",
+      "",
+      "> 阿米娅的信物。",
+      "",
+      "**获取方式**：主线获得",
+      "",
+      "## 天赋",
+      "- **情绪吸收**：攻击回复技力",
+    ].join("\n"),
+  );
 });
 
 test("table caches can be cleared explicitly", async () => {

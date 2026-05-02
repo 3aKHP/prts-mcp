@@ -6,9 +6,8 @@
  * lazily on first call and cached in module-level variables.
  */
 
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
 import { loadConfig, hasOperatorData } from "../config.js";
+import { DirectoryStore } from "./stores.js";
 import { stripWikitext } from "../utils/sanitizer.js";
 
 // ---------------------------------------------------------------------------
@@ -104,25 +103,26 @@ function missingDataMessage(): string {
 }
 
 function loadJson<T>(filePath: string): T {
-  if (!existsSync(filePath)) {
+  const store = operatorStore();
+  if (!store.exists(filePath)) {
     throw new Error(
-      `干员数据文件不存在：${filePath}。` +
+      `干员数据文件不存在：${store.resolveForDiagnostics(filePath)}。` +
         "数据目录可能为空，或挂载路径有误（GAMEDATA_PATH 应指向 ArknightsGameData 仓库根目录）。"
     );
   }
-  return JSON.parse(readFileSync(filePath, "utf-8")) as T;
+  return store.readJson<T>(filePath);
 }
 
-function excelFile(name: string): string {
+function operatorStore(): DirectoryStore {
   const ep = loadConfig().effectiveExcelPath;
   if (ep === null) throw new Error("effectiveExcelPath is null");
-  return join(ep, name);
+  return new DirectoryStore(ep);
 }
 
 function getCharacterTable(): Record<string, CharacterEntry> {
   if (_characterTable === null) {
     _characterTable = loadJson<Record<string, CharacterEntry>>(
-      excelFile("character_table.json")
+      "character_table.json"
     );
   }
   if (_characterTable === undefined) throw new Error("character_table failed");
@@ -132,7 +132,7 @@ function getCharacterTable(): Record<string, CharacterEntry> {
 function getHandbookTable(): HandbookTable {
   if (_handbookTable === null) {
     _handbookTable = loadJson<HandbookTable>(
-      excelFile("handbook_info_table.json")
+      "handbook_info_table.json"
     );
   }
   if (_handbookTable === undefined) throw new Error("handbook_table failed");
@@ -141,7 +141,7 @@ function getHandbookTable(): HandbookTable {
 
 function getCharwordTable(): CharwordTable {
   if (_charwordTable === null) {
-    _charwordTable = loadJson<CharwordTable>(excelFile("charword_table.json"));
+    _charwordTable = loadJson<CharwordTable>("charword_table.json");
   }
   if (_charwordTable === undefined) throw new Error("charword_table failed");
   return _charwordTable;

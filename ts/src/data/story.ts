@@ -10,7 +10,7 @@
  *   zh_CN/gamedata/story/{story_key}.json         — per-chapter dialogue JSON
  */
 
-import AdmZip from "adm-zip";
+import { JsonStore, ZipStore } from "./stores.js";
 
 // ---------------------------------------------------------------------------
 // Zip path constants
@@ -118,14 +118,8 @@ export interface ActivityResult {
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-function readZipEntry(zip: AdmZip, path: string): string {
-  const entry = zip.getEntry(path);
-  if (!entry) throw new Error(`Entry not found in zip: ${path}`);
-  return entry.getData().toString("utf-8");
-}
-
-function parseJsonFromZip<T>(zip: AdmZip, path: string): T {
-  return JSON.parse(readZipEntry(zip, path)) as T;
+function storyStore(zipPath: string): ZipStore {
+  return new ZipStore(zipPath);
 }
 
 function parseStoryList(
@@ -190,10 +184,15 @@ export function listStoryEvents(
   zipPath: string,
   category?: string
 ): EventInfo[] {
+  return listStoryEventsFromStore(storyStore(zipPath), category);
+}
+
+export function listStoryEventsFromStore(
+  store: JsonStore,
+  category?: string
+): EventInfo[] {
   const allowedTypes = category ? (CATEGORY_MAP[category] ?? null) : null;
-  const zip = new AdmZip(zipPath);
-  const table = parseJsonFromZip<Record<string, RawReviewEntry>>(
-    zip,
+  const table = store.readJson<Record<string, RawReviewEntry>>(
     STORY_REVIEW_TABLE
   );
 
@@ -222,9 +221,14 @@ export function listStories(
   zipPath: string,
   eventId: string
 ): ChapterSummary[] {
-  const zip = new AdmZip(zipPath);
-  const table = parseJsonFromZip<Record<string, RawReviewEntry>>(
-    zip,
+  return listStoriesFromStore(storyStore(zipPath), eventId);
+}
+
+export function listStoriesFromStore(
+  store: JsonStore,
+  eventId: string
+): ChapterSummary[] {
+  const table = store.readJson<Record<string, RawReviewEntry>>(
     STORY_REVIEW_TABLE
   );
 
@@ -261,9 +265,19 @@ export function readStory(
   storyKey: string,
   includeNarration = true
 ): StoryChapter {
+  return readStoryFromStore(storyStore(zipPath), storyKey, includeNarration);
+}
+
+export function readStoryFromStore(
+  store: JsonStore,
+  storyKey: string,
+  includeNarration = true
+): StoryChapter {
   const innerPath = storyZipPath(storyKey);
-  const zip = new AdmZip(zipPath);
-  const raw = parseJsonFromZip<RawStoryChapter>(zip, innerPath);
+  if (!store.exists(innerPath)) {
+    throw new Error(`Story not found in store: "${storyKey}"`);
+  }
+  const raw = store.readJson<RawStoryChapter>(innerPath);
 
   const lines = parseStoryList(raw.storyList ?? [], includeNarration);
 
@@ -295,7 +309,23 @@ export function readActivity(
   page?: number,
   pageSize = 5
 ): ActivityResult {
-  const summaries = listStories(zipPath, eventId);
+  return readActivityFromStore(
+    storyStore(zipPath),
+    eventId,
+    includeNarration,
+    page,
+    pageSize,
+  );
+}
+
+export function readActivityFromStore(
+  store: JsonStore,
+  eventId: string,
+  includeNarration = true,
+  page?: number,
+  pageSize = 5
+): ActivityResult {
+  const summaries = listStoriesFromStore(store, eventId);
   const total = summaries.length;
 
   let selected: ChapterSummary[];
@@ -314,7 +344,7 @@ export function readActivity(
   let eventName = "";
   for (const summary of selected) {
     try {
-      const chapter = readStory(zipPath, summary.storyKey, includeNarration);
+      const chapter = readStoryFromStore(store, summary.storyKey, includeNarration);
       if (!eventName) eventName = chapter.eventName;
       chapters.push(chapter);
     } catch {

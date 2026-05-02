@@ -10,7 +10,8 @@ import { z } from "zod";
 import { loadConfig, hasStoryData } from "./config.js";
 import { searchPrts, readPage } from "./api/prtsWiki.js";
 import { clearOperatorCaches, getOperatorArchives, getOperatorVoicelines, getOperatorBasicInfo } from "./data/operator.js";
-import { syncRelease, syncReleaseArchive, GAMEDATA_FILES, type ReleaseArchiveSpec, type ReleaseSpec } from "./data/sync.js";
+import { syncRelease, syncReleaseArchive } from "./data/sync.js";
+import { archiveSpecForDataset, releaseSpecForDataset, GAMEDATA_EXCEL, STORY_ZH_CN } from "./data/datasets.js";
 import {
   listStoryEvents as _listStoryEvents,
   listStories as _listStories,
@@ -389,14 +390,11 @@ async function runStartupSync(): Promise<void> {
   if (cfg.isCustomGamedata) {
     log("INFO", `GAMEDATA_PATH is custom (${cfg.gamedataPath}); auto-sync disabled.`);
   } else {
-    const archiveSpec: ReleaseArchiveSpec = {
-      owner: "3aKHP",
-      repo: "ArknightsGameData",
-      assetName: "zh_CN-excel.zip",
-      localZip: join(cfg.gamedataPath, "archives", "zh_CN-excel.zip"),
-      localRoot: cfg.gamedataPath,
-      requiredFiles: GAMEDATA_FILES,
-    };
+    const archiveSpec = archiveSpecForDataset(
+      GAMEDATA_EXCEL,
+      join(cfg.gamedataPath, "archives", "zh_CN-excel.zip"),
+      cfg.gamedataPath,
+    );
 
     const runGamedataSync = async (): Promise<boolean> => {
       const r = await syncReleaseArchive(archiveSpec);
@@ -428,12 +426,7 @@ async function runStartupSync(): Promise<void> {
 
   // Storyjson release sync (always attempt unless user supplied STORYJSON_PATH)
   if (!process.env["STORYJSON_PATH"]) {
-    const releaseSpec: ReleaseSpec = {
-      owner: "3aKHP",
-      repo: "ArknightsStoryJson",
-      assetName: "zh_CN.zip",
-      localZip: cfg.storyjsonZip,
-    };
+    const releaseSpec = releaseSpecForDataset(STORY_ZH_CN, cfg.storyjsonZip);
 
     const runStorySync = async (): Promise<boolean> => {
       const r = await syncRelease(releaseSpec);
