@@ -27,7 +27,8 @@ _SRC_DIR = _PYTHON_DIR / "src"
 if str(_SRC_DIR) not in sys.path:
     sys.path.insert(0, str(_SRC_DIR))
 
-from prts_mcp.data.sync import GAMEDATA_FILES, ReleaseArchiveSpec, SyncResult, sync_release_archive  # noqa: E402
+from prts_mcp.data.datasets import GAMEDATA_EXCEL  # noqa: E402
+from prts_mcp.data.sync import SyncResult, sync_release_archive  # noqa: E402
 
 logging.basicConfig(
     stream=sys.stderr,
@@ -64,13 +65,9 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
 
-    spec = ReleaseArchiveSpec(
-        owner="3aKHP",
-        repo="ArknightsGameData",
-        asset_name="zh_CN-excel.zip",
+    spec = GAMEDATA_EXCEL.archive_spec(
         local_zip=(args.archive_cache or args.output / "archives" / "zh_CN-excel.zip").resolve(),
         local_root=args.output.resolve(),
-        required_files=GAMEDATA_FILES,
     )
 
     if args.force:

@@ -14,7 +14,7 @@ import zipfile
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Literal
+from typing import Callable, Literal
 
 import httpx
 
@@ -329,6 +329,7 @@ class ReleaseSpec:
     repo: str
     asset_name: str   # e.g. "zh_CN.zip"
     local_zip: Path   # destination path on disk
+    validate_zip: Callable[[Path], list[str]] | None = None
 
 
 @dataclass(frozen=True)
@@ -376,6 +377,10 @@ def download_release_asset(spec: ReleaseSpec, tag: str, url: str, timeout: float
         _logger.debug("Downloading release asset %s", url)
         response = _get_cascading(url, timeout=timeout, headers=_github_headers(), follow_redirects=True)
         tmp.write_bytes(response.content)
+        if spec.validate_zip is not None:
+            missing = spec.validate_zip(tmp)
+            if missing:
+                raise ValueError("Downloaded release asset is invalid: " + "; ".join(missing[:10]))
         tmp.replace(spec.local_zip)
 
         # Extract upstream SHA from tag (format: "upstream-<sha>")
@@ -414,7 +419,8 @@ def sync_release(spec: ReleaseSpec) -> SyncResult:
     )
 
     cache = CacheMeta.load(_release_cache_path(spec))
-    zip_ok = spec.local_zip.is_file()
+    zip_error = _release_zip_error(spec)
+    zip_ok = zip_error is None
 
     if cache is not None and zip_ok and _release_cache_is_fresh(cache):
         _logger.debug("Release cache is fresh for %s/%s; skipping check.", spec.owner, spec.repo)
@@ -439,7 +445,10 @@ def sync_release(spec: ReleaseSpec) -> SyncResult:
                 return SyncResult(spec=_dummy_spec, status="updated", commit_sha="unknown", error=None)
             except Exception as exc:  # noqa: BLE001
                 return SyncResult(spec=_dummy_spec, status="no_data", commit_sha=None, error=str(exc))
-        return SyncResult(spec=_dummy_spec, status="no_data", commit_sha=None, error="Network unavailable and no cached zip")
+        error = "Network unavailable and no cached zip"
+        if spec.local_zip.is_file() and zip_error:
+            error += f"; cached zip invalid: {zip_error}"
+        return SyncResult(spec=_dummy_spec, status="no_data", commit_sha=None, error=error)
 
     tag, asset_url = result
     upstream_sha = tag[len(_TAG_PREFIX):] if tag.startswith(_TAG_PREFIX) else tag
@@ -467,6 +476,18 @@ def sync_release(spec: ReleaseSpec) -> SyncResult:
                 error=error_msg,
             )
         return SyncResult(spec=_dummy_spec, status="no_data", commit_sha=None, error=error_msg)
+
+
+def _release_zip_error(spec: ReleaseSpec) -> str | None:
+    if not spec.local_zip.is_file():
+        return "zip file is missing"
+    validator = spec.validate_zip
+    if validator is None:
+        return None
+    missing = validator(spec.local_zip)
+    if not missing:
+        return None
+    return "; ".join(str(path) for path in missing[:10])
 
 
 def _archive_files_present(spec: ReleaseArchiveSpec) -> bool:

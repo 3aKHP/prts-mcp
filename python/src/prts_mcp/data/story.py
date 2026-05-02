@@ -9,12 +9,12 @@ Zip internal layout (all paths prefixed with "zh_CN/"):
 """
 from __future__ import annotations
 
-import json
 import re
-import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
+
+from prts_mcp.data.stores import JsonStore, ZipStore
 
 # ---------------------------------------------------------------------------
 # Zip path constants
@@ -133,9 +133,12 @@ def _parse_story_list(story_list: list[dict]) -> list[StoryLine]:
     return lines
 
 
-def _load_json(zf: zipfile.ZipFile, path: str) -> dict | list:
-    with zf.open(path) as f:
-        return json.load(f)
+def _story_store(zip_path: Path) -> ZipStore:
+    return ZipStore(zip_path)
+
+
+def _load_json(store: JsonStore, path: str) -> dict | list:
+    return store.read_json(path)
 
 
 # ---------------------------------------------------------------------------
@@ -156,8 +159,16 @@ def list_story_events(
     """
     allowed_types: list[str] | None = _CATEGORY_MAP.get(category) if category else None
 
-    with zipfile.ZipFile(zip_path) as zf:
-        table: dict = _load_json(zf, _STORY_REVIEW_TABLE)  # type: ignore[assignment]
+    return list_story_events_from_store(_story_store(zip_path), category=category)
+
+
+def list_story_events_from_store(
+    store: JsonStore,
+    category: str | None = None,
+) -> list[EventInfo]:
+    """Return a list of events from story_review_table.json using a JSON store."""
+    allowed_types: list[str] | None = _CATEGORY_MAP.get(category) if category else None
+    table: dict = _load_json(store, _STORY_REVIEW_TABLE)  # type: ignore[assignment]
 
     events = []
     for event_id, entry in table.items():
@@ -188,8 +199,12 @@ def list_stories(zip_path: Path, event_id: str) -> list[ChapterSummary]:
     Raises:
         KeyError: If event_id is not found in story_review_table.
     """
-    with zipfile.ZipFile(zip_path) as zf:
-        table: dict = _load_json(zf, _STORY_REVIEW_TABLE)  # type: ignore[assignment]
+    return list_stories_from_store(_story_store(zip_path), event_id)
+
+
+def list_stories_from_store(store: JsonStore, event_id: str) -> list[ChapterSummary]:
+    """Return ordered chapter list for an event using a JSON store."""
+    table: dict = _load_json(store, _STORY_REVIEW_TABLE)  # type: ignore[assignment]
 
     entry = table.get(event_id)
     if entry is None:
@@ -227,11 +242,19 @@ def read_story(
     Raises:
         KeyError: If the story file is not found in the zip.
     """
-    zip_inner = _story_zip_path(story_key)
-    with zipfile.ZipFile(zip_path) as zf:
-        if zip_inner not in zf.namelist():
-            raise KeyError(f"Story not found in zip: {story_key!r}")
-        raw: dict = _load_json(zf, zip_inner)  # type: ignore[assignment]
+    return read_story_from_store(_story_store(zip_path), story_key, include_narration=include_narration)
+
+
+def read_story_from_store(
+    store: JsonStore,
+    story_key: str,
+    include_narration: bool = True,
+) -> StoryChapter:
+    """Read and parse a single story chapter using a JSON store."""
+    story_path = _story_zip_path(story_key)
+    if not store.exists(story_path):
+        raise KeyError(f"Story not found in store: {story_key!r}")
+    raw: dict = _load_json(store, story_path)  # type: ignore[assignment]
 
     all_lines = _parse_story_list(raw.get("storyList") or [])
     if not include_narration:
@@ -270,7 +293,24 @@ def read_activity(
     Raises:
         KeyError: If event_id is not found.
     """
-    summaries = list_stories(zip_path, event_id)
+    return read_activity_from_store(
+        _story_store(zip_path),
+        event_id,
+        include_narration=include_narration,
+        page=page,
+        page_size=page_size,
+    )
+
+
+def read_activity_from_store(
+    store: JsonStore,
+    event_id: str,
+    include_narration: bool = True,
+    page: int | None = None,
+    page_size: int = 5,
+) -> ActivityResult:
+    """Read all chapters of an activity in official story order using a JSON store."""
+    summaries = list_stories_from_store(store, event_id)
     total = len(summaries)
 
     if page is not None:
@@ -286,7 +326,7 @@ def read_activity(
     event_name = ""
     for summary in selected:
         try:
-            chapter = read_story(zip_path, summary.story_key, include_narration)
+            chapter = read_story_from_store(store, summary.story_key, include_narration)
             if not event_name:
                 event_name = chapter.event_name
             chapters.append(chapter)

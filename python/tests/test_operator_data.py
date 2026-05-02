@@ -43,9 +43,35 @@ class TestOperatorDataRefresh:
         with patch.dict(os.environ, {"GAMEDATA_PATH": str(tmp_path)}, clear=False):
             os.environ.pop("STORYJSON_PATH", None)
 
-            assert "阿米娅的档案文本" in get_operator_archives("阿米娅")
-            assert "博士，今天也请多指教" in get_operator_voicelines("阿米娅")
-            assert "情绪吸收" in get_operator_basic_info("阿米娅")
+            assert get_operator_archives("阿米娅") == (
+                "# 阿米娅 - 干员档案\n\n"
+                "### 档案资料一\n"
+                "阿米娅的档案文本。"
+            )
+            assert get_operator_voicelines("阿米娅") == (
+                "# 阿米娅 - 语音记录\n\n"
+                "**任命助理**: 博士，今天也请多指教。"
+            )
+            assert get_operator_basic_info("阿米娅") == (
+                "# 阿米娅 - 干员基本信息\n\n"
+                "- **编号**：R001\n"
+                "- **英文名**：Amiya\n"
+                "- **稀有度**：5★\n"
+                "- **职业**：术师（corecaster）\n"
+                "- **站位**：远程\n"
+                "- **所属**：rhodes\n"
+                "- **招募标签**：输出、支援\n"
+                "- **攻击属性**：法术伤害\n"
+                "\n"
+                "**图鉴**：罗德岛的公开领袖。\n"
+                "\n"
+                "> 阿米娅的信物。\n"
+                "\n"
+                "**获取方式**：主线获得\n"
+                "\n"
+                "## 天赋\n"
+                "- **情绪吸收**：攻击回复技力"
+            )
 
     def test_table_caches_can_be_cleared_explicitly(self, tmp_path):
         write_minimal_gamedata(tmp_path)
