@@ -8,18 +8,16 @@ from typing import Any
 from prts_mcp.config import Config
 from prts_mcp.utils.sanitizer import strip_wikitext
 
-# ---------------------------------------------------------------------------
-# Internal caches (loaded lazily on first call)
-# ---------------------------------------------------------------------------
-
-_config: Config | None = None
-
-
 def _get_config() -> Config:
-    global _config
-    if _config is None:
-        _config = Config.load()
-    return _config
+    return Config.load()
+
+
+def clear_operator_caches() -> None:
+    """Clear lazy table caches after synced game data changes on disk."""
+    _load_character_table.cache_clear()
+    _load_handbook_table.cache_clear()
+    _load_charword_table.cache_clear()
+    _build_name_to_id.cache_clear()
 
 
 def _missing_operator_data_message() -> str:

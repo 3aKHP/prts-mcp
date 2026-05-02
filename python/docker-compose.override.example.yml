@@ -3,6 +3,8 @@ services:
     environment:
       # Optional: provide a token to reduce anonymous GitHub API rate-limit risk
       GITHUB_TOKEN: ${GITHUB_TOKEN}
+      # Optional: comma-separated ghproxy-style GitHub mirror prefixes
+      GITHUB_MIRRORS: ${GITHUB_MIRRORS}
       # Optional: set GAMEDATA_PATH to use your own data directory.
       # WARNING: setting this disables auto-sync entirely.
       # GAMEDATA_PATH: /data/custom

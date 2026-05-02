@@ -10,8 +10,10 @@ import pytest
 
 from prts_mcp.data.sync import (
     ReleaseSpec,
+    ReleaseArchiveSpec,
     SyncResult,
     check_latest_release,
+    sync_release_archive,
     sync_release,
 )
 
@@ -173,3 +175,116 @@ class TestSyncRelease:
 
         mock_check.assert_not_called()
         assert result.status == "up_to_date"
+
+
+# ---------------------------------------------------------------------------
+# sync_release_archive
+# ---------------------------------------------------------------------------
+
+class TestSyncReleaseArchive:
+    def test_extracts_updated_archive(self, tmp_path):
+        zip_path = tmp_path / "archives" / "zh_CN-excel.zip"
+        zip_path.parent.mkdir(parents=True)
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            zf.writestr("zh_CN/gamedata/excel/character_table.json", "{}")
+            zf.writestr("zh_CN/gamedata/excel/handbook_info_table.json", "{}")
+
+        spec = ReleaseArchiveSpec(
+            owner="3aKHP",
+            repo="ArknightsGameData",
+            asset_name="zh_CN-excel.zip",
+            local_zip=zip_path,
+            local_root=tmp_path / "gamedata",
+            required_files=(
+                "zh_CN/gamedata/excel/character_table.json",
+                "zh_CN/gamedata/excel/handbook_info_table.json",
+            ),
+        )
+
+        with patch(
+            "prts_mcp.data.sync.sync_release",
+            return_value=SyncResult(
+                spec=ReleaseSpec(
+                    owner=spec.owner,
+                    repo=spec.repo,
+                    asset_name=spec.asset_name,
+                    local_zip=spec.local_zip,
+                ),
+                status="updated",
+                commit_sha="abc123",
+                error=None,
+            ),
+        ):
+            result = sync_release_archive(spec)
+
+        assert result.status == "updated"
+        assert (spec.local_root / "zh_CN/gamedata/excel/character_table.json").is_file()
+        assert (spec.local_root / "zh_CN/gamedata/excel/handbook_info_table.json").is_file()
+
+    def test_up_to_date_archive_extracts_when_required_files_missing(self, tmp_path):
+        zip_path = tmp_path / "archives" / "zh_CN-excel.zip"
+        zip_path.parent.mkdir(parents=True)
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            zf.writestr("zh_CN/gamedata/excel/character_table.json", "{}")
+
+        spec = ReleaseArchiveSpec(
+            owner="3aKHP",
+            repo="ArknightsGameData",
+            asset_name="zh_CN-excel.zip",
+            local_zip=zip_path,
+            local_root=tmp_path / "gamedata",
+            required_files=("zh_CN/gamedata/excel/character_table.json",),
+        )
+
+        with patch(
+            "prts_mcp.data.sync.sync_release",
+            return_value=SyncResult(
+                spec=ReleaseSpec(
+                    owner=spec.owner,
+                    repo=spec.repo,
+                    asset_name=spec.asset_name,
+                    local_zip=spec.local_zip,
+                ),
+                status="up_to_date",
+                commit_sha="abc123",
+                error=None,
+            ),
+        ):
+            result = sync_release_archive(spec)
+
+        assert result.status == "up_to_date"
+        assert (spec.local_root / "zh_CN/gamedata/excel/character_table.json").is_file()
+
+    def test_rejects_unsafe_zip_member(self, tmp_path):
+        zip_path = tmp_path / "archives" / "zh_CN-excel.zip"
+        zip_path.parent.mkdir(parents=True)
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            zf.writestr("../evil.json", "{}")
+
+        spec = ReleaseArchiveSpec(
+            owner="3aKHP",
+            repo="ArknightsGameData",
+            asset_name="zh_CN-excel.zip",
+            local_zip=zip_path,
+            local_root=tmp_path / "gamedata",
+            required_files=("zh_CN/gamedata/excel/character_table.json",),
+        )
+
+        with patch(
+            "prts_mcp.data.sync.sync_release",
+            return_value=SyncResult(
+                spec=ReleaseSpec(
+                    owner=spec.owner,
+                    repo=spec.repo,
+                    asset_name=spec.asset_name,
+                    local_zip=spec.local_zip,
+                ),
+                status="updated",
+                commit_sha="abc123",
+                error=None,
+            ),
+        ):
+            result = sync_release_archive(spec)
+
+        assert result.status == "no_data"
+        assert "Unsafe zip member path" in (result.error or "")

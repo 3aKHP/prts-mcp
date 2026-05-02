@@ -28,6 +28,10 @@ jobs:
         run: npx tsc --noEmit
         working-directory: ts
 
+      - name: Run tests
+        run: npm test
+        working-directory: ts
+
       - name: Build
         run: npx tsc
         working-directory: ts
@@ -86,6 +90,7 @@ jobs:
     needs: verify
     environment: npm
     permissions:
+      contents: read
       id-token: write
 
     steps:
@@ -98,18 +103,20 @@ jobs:
           node-version-file: 'ts/package.json'
           registry-url: 'https://registry.npmjs.org'
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
       - name: Install dependencies
         run: npm ci
         working-directory: ts
 
+      - name: Install Python package (for fetch_gamedata script)
+        run: python -m pip install -e python/
+
       - name: Fetch bundled gamedata
-        run: |
-          mkdir -p ts/data/gamedata/zh_CN/gamedata/excel
-          for f in character_table.json handbook_info_table.json charword_table.json story_review_table.json; do
-            curl -fsSL \
-              "https://raw.githubusercontent.com/Kengxxiao/ArknightsGameData/master/zh_CN/gamedata/excel/$f" \
-              -o "ts/data/gamedata/zh_CN/gamedata/excel/$f"
-          done
+        run: python python/scripts/fetch_gamedata.py --output ts/data/gamedata
 
       - name: Download bundled storyjson zip
         run: |
@@ -144,6 +151,28 @@ jobs:
       - name: Install dependencies
         run: npm ci
         working-directory: ts
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python package (for fetch_gamedata script)
+        run: python -m pip install -e python/
+
+      - name: Fetch bundled gamedata
+        run: python python/scripts/fetch_gamedata.py --output ts/data/gamedata
+
+      - name: Download bundled storyjson zip
+        run: |
+          mkdir -p ts/data/storyjson
+          gh release download \
+            --repo 3aKHP/ArknightsStoryJson \
+            --pattern "zh_CN.zip" \
+            --dir ts/data/storyjson/ \
+            --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Pack npm tarball
         run: npm pack

@@ -9,7 +9,7 @@
  * - Skips the upstream check entirely when cached data is fresher than the TTL.
  */
 
-import { existsSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import {
   mkdir,
   readFile,
@@ -17,7 +17,8 @@ import {
   unlink,
   writeFile,
 } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import AdmZip from "adm-zip";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -364,6 +365,16 @@ export interface ReleaseSpec {
   localZip: string;
 }
 
+/** Describes a GitHub Release zip asset that should be extracted locally. */
+export interface ReleaseArchiveSpec {
+  owner: string;
+  repo: string;
+  assetName: string;
+  localZip: string;
+  localRoot: string;
+  requiredFiles: readonly string[];
+}
+
 function releaseCachePath(spec: ReleaseSpec): string {
   return join(dirname(spec.localZip), "release_meta.json");
 }
@@ -513,4 +524,114 @@ export async function syncRelease(spec: ReleaseSpec): Promise<SyncResult> {
       ? { spec: dummySpec, status: "offline_fallback", commitSha: cache?.commitSha ?? null, error }
       : { spec: dummySpec, status: "no_data", commitSha: null, error };
   }
+}
+
+function archiveFilesPresent(spec: ReleaseArchiveSpec): boolean {
+  return spec.requiredFiles.every((f) => {
+    const p = join(spec.localRoot, f);
+    return existsSync(p) && statSync(p).isFile();
+  });
+}
+
+async function safeExtractZip(zipPath: string, localRoot: string): Promise<void> {
+  const root = resolve(localRoot);
+  const zip = new AdmZip(zipPath);
+  const tmpPaths: string[] = [];
+  try {
+    for (const entry of zip.getEntries()) {
+      if (entry.isDirectory) continue;
+      const dest = resolve(localRoot, entry.entryName);
+      const rel = relative(root, dest);
+      if (rel === "" || rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute(rel)) {
+        throw new Error(`Unsafe zip member path: ${entry.entryName}`);
+      }
+
+      await mkdir(dirname(dest), { recursive: true });
+      const tmp = `${dest}.tmp`;
+      await writeFile(tmp, entry.getData());
+      tmpPaths.push(tmp);
+      await rename(tmp, dest);
+      tmpPaths.pop();
+    }
+  } catch (err) {
+    for (const tmp of tmpPaths) {
+      try {
+        await unlink(tmp);
+      } catch {
+        // best-effort cleanup
+      }
+    }
+    throw err;
+  }
+}
+
+/**
+ * Download a GitHub Release zip asset and extract it into localRoot.
+ *
+ * This keeps the gamedata distribution path aligned with storyjson releases
+ * while preserving the existing on-disk ArknightsGameData layout.
+ */
+export async function syncReleaseArchive(
+  spec: ReleaseArchiveSpec
+): Promise<SyncResult> {
+  const releaseResult = await syncRelease({
+    owner: spec.owner,
+    repo: spec.repo,
+    assetName: spec.assetName,
+    localZip: spec.localZip,
+  });
+
+  const dummySpec: RepoSpec = {
+    owner: spec.owner,
+    repo: spec.repo,
+    branch: "releases",
+    files: spec.requiredFiles,
+    localRoot: spec.localRoot,
+  };
+
+  const filesOk = archiveFilesPresent(spec);
+  if (releaseResult.status === "no_data") {
+    return filesOk
+      ? {
+          spec: dummySpec,
+          status: "offline_fallback",
+          commitSha: releaseResult.commitSha,
+          error: releaseResult.error,
+        }
+      : {
+          spec: dummySpec,
+          status: "no_data",
+          commitSha: releaseResult.commitSha,
+          error: releaseResult.error,
+        };
+  }
+
+  const shouldExtract = releaseResult.status === "updated" || !filesOk;
+  if (shouldExtract) {
+    try {
+      await safeExtractZip(spec.localZip, spec.localRoot);
+    } catch (err) {
+      const error = errorMessage(err);
+      return archiveFilesPresent(spec)
+        ? {
+            spec: dummySpec,
+            status: "offline_fallback",
+            commitSha: releaseResult.commitSha,
+            error,
+          }
+        : {
+            spec: dummySpec,
+            status: "no_data",
+            commitSha: releaseResult.commitSha,
+            error,
+          };
+    }
+  }
+
+  return {
+    spec: dummySpec,
+    status: releaseResult.status,
+    commitSha: releaseResult.commitSha,
+    error: releaseResult.error,
+  };
 }

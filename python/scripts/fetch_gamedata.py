@@ -1,4 +1,4 @@
-"""Fetch the latest operator data files from GitHub into data/gamedata/.
+"""Fetch the latest game data archive from GitHub Releases into data/gamedata/.
 
 Used by CI during Docker image build to bake fresh data into the image.
 Can also be run manually during local development.
@@ -27,12 +27,7 @@ _SRC_DIR = _PYTHON_DIR / "src"
 if str(_SRC_DIR) not in sys.path:
     sys.path.insert(0, str(_SRC_DIR))
 
-from prts_mcp.data.sync import (  # noqa: E402
-    GAMEDATA_FILES,
-    RepoSpec,
-    SyncResult,
-    sync_repo,
-)
+from prts_mcp.data.sync import GAMEDATA_FILES, ReleaseArchiveSpec, SyncResult, sync_release_archive  # noqa: E402
 
 logging.basicConfig(
     stream=sys.stderr,
@@ -44,7 +39,7 @@ _logger = logging.getLogger(__name__)
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Fetch the latest ArknightsGameData operator files from GitHub."
+        description="Fetch the latest ArknightsGameData excel archive from GitHub Releases."
     )
     parser.add_argument(
         "--force",
@@ -57,29 +52,36 @@ def parse_args() -> argparse.Namespace:
         default=_REPO_ROOT / "data" / "gamedata",
         help="Local root directory for cached game data. Default: data/gamedata",
     )
+    parser.add_argument(
+        "--archive-cache",
+        type=Path,
+        default=None,
+        help="Local path for the downloaded release zip. Default: <output>/archives/zh_CN-excel.zip",
+    )
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
 
-    spec = RepoSpec(
-        owner="Kengxxiao",
+    spec = ReleaseArchiveSpec(
+        owner="3aKHP",
         repo="ArknightsGameData",
-        branch="master",
-        files=GAMEDATA_FILES,
+        asset_name="zh_CN-excel.zip",
+        local_zip=(args.archive_cache or args.output / "archives" / "zh_CN-excel.zip").resolve(),
         local_root=args.output.resolve(),
+        required_files=GAMEDATA_FILES,
     )
 
     if args.force:
-        # Wipe cache metadata so sync_repo always downloads
-        cache_path = spec.local_root / "cache_meta.json"
+        # Wipe release metadata so sync_release_archive always downloads
+        cache_path = spec.local_zip.parent / "release_meta.json"
         if cache_path.exists():
             cache_path.unlink()
-            _logger.info("--force: removed cache_meta.json to trigger full re-download.")
+            _logger.info("--force: removed release_meta.json to trigger full re-download.")
 
-    _logger.info("Syncing %s/%s → %s", spec.owner, spec.repo, spec.local_root)
-    result: SyncResult = sync_repo(spec)
+    _logger.info("Syncing %s/%s:%s → %s", spec.owner, spec.repo, spec.asset_name, spec.local_root)
+    result: SyncResult = sync_release_archive(spec)
 
     sha_short = result.commit_sha[:8] if result.commit_sha else "unknown"
 

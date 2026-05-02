@@ -41,7 +41,7 @@ ci(github): update verify assertion for new error message
 
 ## Public Repo Boundary
 
-本仓库包含源码、文档和预置的干员数据文件（`data/gamedata/`）。预置数据由 CI 在构建镜像时通过 `scripts/fetch_gamedata.py` 拉取并提交，作为镜像内的离线保底。
+本仓库包含源码、文档和预置的干员数据文件（`data/gamedata/`）。预置数据由 CI 在构建镜像时通过 `scripts/fetch_gamedata.py` 从 `3aKHP/ArknightsGameData` Release 压缩包拉取，作为镜像内的离线保底。
 
 请不要提交以下内容：
 
@@ -77,6 +77,8 @@ prts-mcp
 python scripts/fetch_gamedata.py
 docker build -t prts-mcp .
 ```
+
+`fetch_gamedata.py` 会下载 `zh_CN-excel.zip` 并解压到 `data/gamedata/`，运行时 auto-sync 也使用同一条 Release archive 链路。
 
 兼容脚本 `scripts/package_operator_data.py` 仍在仓库中，但已是 deprecated 入口，不再推荐使用。
 

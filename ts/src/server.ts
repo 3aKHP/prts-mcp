@@ -1,5 +1,7 @@
 #!/usr/bin/env node
+import { createRequire } from "node:module";
 import { randomUUID } from "node:crypto";
+import { dirname, join } from "node:path";
 import express from "express";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
@@ -7,8 +9,8 @@ import { z } from "zod";
 
 import { loadConfig, hasStoryData } from "./config.js";
 import { searchPrts, readPage } from "./api/prtsWiki.js";
-import { getOperatorArchives, getOperatorVoicelines, getOperatorBasicInfo } from "./data/operator.js";
-import { syncAll, syncRelease, GAMEDATA_FILES, type RepoSpec, type ReleaseSpec } from "./data/sync.js";
+import { clearOperatorCaches, getOperatorArchives, getOperatorVoicelines, getOperatorBasicInfo } from "./data/operator.js";
+import { syncRelease, syncReleaseArchive, GAMEDATA_FILES, type ReleaseArchiveSpec, type ReleaseSpec } from "./data/sync.js";
 import {
   listStoryEvents as _listStoryEvents,
   listStories as _listStories,
@@ -21,6 +23,10 @@ import {
 // ---------------------------------------------------------------------------
 // Logging
 // ---------------------------------------------------------------------------
+
+const require = createRequire(import.meta.url);
+const packageJson = require("../package.json") as { version?: string };
+const SERVER_VERSION = packageJson.version ?? "0.0.0";
 
 function log(level: "INFO" | "WARN" | "ERROR", msg: string): void {
   const ts = new Date().toISOString();
@@ -70,7 +76,7 @@ function requireStoryZip(): string {
 function createMcpServer(): McpServer {
   const server = new McpServer({
     name: "PRTS_Wiki_Assistant",
-    version: "0.2.0",
+    version: SERVER_VERSION,
   });
 
   server.tool(
@@ -340,44 +346,84 @@ function createMcpServer(): McpServer {
 }
 
 // ---------------------------------------------------------------------------
-// Startup data sync (fire-and-forget)
+// Startup data sync
 // ---------------------------------------------------------------------------
 
-function runStartupSync(): void {
+const SYNC_RETRY_DELAYS_MS = [30_000, 120_000, 600_000] as const;
+
+function shouldRetrySync(status: string): boolean {
+  return status === "offline_fallback" || status === "no_data";
+}
+
+function scheduleSyncRetry(
+  label: string,
+  runSync: () => Promise<boolean>,
+  attempt = 0,
+): void {
+  const delayMs = SYNC_RETRY_DELAYS_MS[attempt];
+  if (delayMs === undefined) {
+    log("WARN", `${label} sync still needs retry after ${SYNC_RETRY_DELAYS_MS.length} attempts; waiting for next process start.`);
+    return;
+  }
+
+  const timer = setTimeout(() => {
+    void runSync()
+      .then((needsRetry) => {
+        if (needsRetry) scheduleSyncRetry(label, runSync, attempt + 1);
+      })
+      .catch((err: unknown) => {
+        log("ERROR", `${label} retry sync threw unexpectedly: ${err instanceof Error ? err.message : String(err)}`);
+        scheduleSyncRetry(label, runSync, attempt + 1);
+      });
+  }, delayMs);
+  timer.unref();
+
+  log("INFO", `${label} sync will retry in ${Math.round(delayMs / 1000)}s.`);
+}
+
+async function runStartupSync(): Promise<void> {
   const cfg = loadConfig();
+  const startupTasks: Promise<void>[] = [];
 
   // Gamedata sync
   if (cfg.isCustomGamedata) {
     log("INFO", `GAMEDATA_PATH is custom (${cfg.gamedataPath}); auto-sync disabled.`);
   } else {
-    const specs: RepoSpec[] = [
-      {
-        owner: "Kengxxiao",
-        repo: "ArknightsGameData",
-        branch: "master",
-        files: GAMEDATA_FILES,
-        localRoot: cfg.gamedataPath,
-      },
-    ];
+    const archiveSpec: ReleaseArchiveSpec = {
+      owner: "3aKHP",
+      repo: "ArknightsGameData",
+      assetName: "zh_CN-excel.zip",
+      localZip: join(cfg.gamedataPath, "archives", "zh_CN-excel.zip"),
+      localRoot: cfg.gamedataPath,
+      requiredFiles: GAMEDATA_FILES,
+    };
 
-    syncAll(specs)
-      .then((results) => {
-        for (const r of results) {
-          const sha = r.commitSha ? r.commitSha.slice(0, 8) : "unknown";
-          if (r.status === "updated") {
-            log("INFO", `Data updated from GitHub (${r.spec.repo} @ ${sha}).`);
-          } else if (r.status === "up_to_date") {
-            log("INFO", `Data is up to date (${r.spec.repo} @ ${sha}).`);
-          } else if (r.status === "offline_fallback") {
-            log("WARN", `Network unavailable; using cached data (${r.spec.repo} @ ${sha}). Error: ${r.error}`);
-          } else {
-            log("ERROR", `Sync failed for ${r.spec.repo} — no data. Error: ${r.error}`);
-          }
-        }
-      })
-      .catch((err: unknown) => {
-        log("ERROR", `Startup sync threw unexpectedly: ${err instanceof Error ? err.message : String(err)}`);
-      });
+    const runGamedataSync = async (): Promise<boolean> => {
+      const r = await syncReleaseArchive(archiveSpec);
+      const sha = r.commitSha ? r.commitSha.slice(0, 8) : "unknown";
+      if (r.status === "updated") {
+        clearOperatorCaches();
+        log("INFO", `Data updated from GitHub Release (${r.spec.repo} @ ${sha}).`);
+      } else if (r.status === "up_to_date") {
+        log("INFO", `Data is up to date (${r.spec.repo} @ ${sha}).`);
+      } else if (r.status === "offline_fallback") {
+        log("WARN", `Network unavailable; using cached data (${r.spec.repo} @ ${sha}). Error: ${r.error}`);
+      } else {
+        log("ERROR", `Sync failed for ${r.spec.repo} — no data. Error: ${r.error}`);
+      }
+      return shouldRetrySync(r.status);
+    };
+
+    startupTasks.push(
+      runGamedataSync()
+        .catch((err: unknown) => {
+          log("ERROR", `Startup sync threw unexpectedly: ${err instanceof Error ? err.message : String(err)}`);
+          return true;
+        })
+        .then((needsRetry) => {
+          if (needsRetry) scheduleSyncRetry("Gamedata", runGamedataSync);
+        }),
+    );
   }
 
   // Storyjson release sync (always attempt unless user supplied STORYJSON_PATH)
@@ -389,25 +435,36 @@ function runStartupSync(): void {
       localZip: cfg.storyjsonZip,
     };
 
-    syncRelease(releaseSpec)
-      .then((r) => {
-        const sha = r.commitSha ? r.commitSha.slice(0, 8) : "unknown";
-        if (r.status === "updated") {
-          log("INFO", `Storyjson updated from GitHub Release (${r.spec.repo} @ ${sha}).`);
-        } else if (r.status === "up_to_date") {
-          log("INFO", `Storyjson is up to date (${r.spec.repo} @ ${sha}).`);
-        } else if (r.status === "offline_fallback") {
-          log("WARN", `Network unavailable; using cached storyjson (${r.spec.repo} @ ${sha}). Error: ${r.error}`);
-        } else {
-          log("ERROR", `Storyjson sync failed for ${r.spec.repo} — no zip. Error: ${r.error}`);
-        }
-      })
-      .catch((err: unknown) => {
-        log("ERROR", `Storyjson sync threw unexpectedly: ${err instanceof Error ? err.message : String(err)}`);
-      });
+    const runStorySync = async (): Promise<boolean> => {
+      const r = await syncRelease(releaseSpec);
+      const sha = r.commitSha ? r.commitSha.slice(0, 8) : "unknown";
+      if (r.status === "updated") {
+        log("INFO", `Storyjson updated from GitHub Release (${r.spec.repo} @ ${sha}).`);
+      } else if (r.status === "up_to_date") {
+        log("INFO", `Storyjson is up to date (${r.spec.repo} @ ${sha}).`);
+      } else if (r.status === "offline_fallback") {
+        log("WARN", `Network unavailable; using cached storyjson (${r.spec.repo} @ ${sha}). Error: ${r.error}`);
+      } else {
+        log("ERROR", `Storyjson sync failed for ${r.spec.repo} — no zip. Error: ${r.error}`);
+      }
+      return shouldRetrySync(r.status);
+    };
+
+    startupTasks.push(
+      runStorySync()
+        .catch((err: unknown) => {
+          log("ERROR", `Storyjson sync threw unexpectedly: ${err instanceof Error ? err.message : String(err)}`);
+          return true;
+        })
+        .then((needsRetry) => {
+          if (needsRetry) scheduleSyncRetry("Storyjson", runStorySync);
+        }),
+    );
   } else {
     log("INFO", `STORYJSON_PATH is set (${process.env["STORYJSON_PATH"]}); story auto-sync disabled.`);
   }
+
+  await Promise.all(startupTasks);
 }
 
 // ---------------------------------------------------------------------------
@@ -465,8 +522,8 @@ app.get("/health", (_req, res) => {
 const PORT = Number(process.env["PORT"] ?? 3000);
 const HOST = process.env["HOST"] ?? "0.0.0.0";
 
-runStartupSync();
+await runStartupSync();
 
 app.listen(PORT, HOST, () => {
-  log("INFO", `PRTS MCP Server listening on ${HOST}:${PORT} (StreamableHTTP at /mcp)`);
+  log("INFO", `PRTS MCP Server ${SERVER_VERSION} listening on ${HOST}:${PORT} (StreamableHTTP at /mcp)`);
 });

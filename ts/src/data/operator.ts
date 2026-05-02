@@ -27,6 +27,13 @@ let _handbookTable: TableCache<HandbookTable> = null;
 let _charwordTable: TableCache<CharwordTable> = null;
 let _nameToId: Map<string, string> | null = null;
 
+export function clearOperatorCaches(): void {
+  _characterTable = null;
+  _handbookTable = null;
+  _charwordTable = null;
+  _nameToId = null;
+}
+
 // ---------------------------------------------------------------------------
 // JSON shape types (only the fields we actually use)
 // ---------------------------------------------------------------------------

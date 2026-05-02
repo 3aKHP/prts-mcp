@@ -48,10 +48,12 @@ GAMEDATA_PATH=/path/to/ArknightsGameData prts-mcp
 
 服务器启动时自动同步两类数据：
 
-- **干员数据**（`gamedata` volume）：从 [ArknightsGameData](https://github.com/Kengxxiao/ArknightsGameData) 同步
+- **干员数据**（`gamedata` volume）：从 [3aKHP/ArknightsGameData](https://github.com/3aKHP/ArknightsGameData) Release 下载 `zh_CN-excel.zip`，其内容同步自 [Kengxxiao/ArknightsGameData](https://github.com/Kengxxiao/ArknightsGameData)
 - **剧情数据**（`storyjson` volume）：从 [ArknightsStoryJson](https://github.com/3aKHP/ArknightsStoryJson) Releases 下载 `zh_CN.zip`
 
 镜像内置 bundled 数据作为网络不可用时的离线保底。
+
+> PyPI 包本身不内置 bundled 数据；直接 `pip install prts-mcp` 时会在启动时自动同步，或使用 `GAMEDATA_PATH` / `STORYJSON_PATH` 指向你自己的本地数据。正式 Docker 镜像会由 CI 预置兜底数据。
 
 ---
 

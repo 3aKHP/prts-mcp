@@ -54,10 +54,12 @@ npm start         # 运行编译后的版本
 
 服务器启动时自动同步两类数据：
 
-- **干员数据**（`/data/gamedata` volume）：从 [ArknightsGameData](https://github.com/Kengxxiao/ArknightsGameData) 同步
+- **干员数据**（`/data/gamedata` volume）：从 [3aKHP/ArknightsGameData](https://github.com/3aKHP/ArknightsGameData) Release 下载 `zh_CN-excel.zip`，其内容同步自 [Kengxxiao/ArknightsGameData](https://github.com/Kengxxiao/ArknightsGameData)
 - **剧情数据**（`/data/storyjson` volume）：从 [ArknightsStoryJson](https://github.com/3aKHP/ArknightsStoryJson) Releases 下载 `zh_CN.zip`
 
 镜像内置 bundled 数据作为网络不可用时的离线保底。
+
+> 正式发布到 npm 的包会由 CI 预置 bundled 数据；本地 `npm pack` 或手动发布前需先运行下方预置步骤，否则包内只会包含空目录占位。
 
 ---
 
@@ -70,6 +72,7 @@ npm start         # 运行编译后的版本
 | `GAMEDATA_PATH` | 未设置 | 设置后指向自定义干员数据目录，**auto-sync 被禁用** |
 | `STORYJSON_PATH` | 未设置 | 设置后指向本地 `zh_CN.zip`，**剧情 auto-sync 被禁用** |
 | `GITHUB_TOKEN` | 空 | 用于提高 GitHub API 限额，降低限流风险 |
+| `GITHUB_MIRRORS` | 空 | 逗号分隔的 ghproxy 风格代理前缀列表（如 `https://ghproxy.net`），依次在直连失败后尝试 |
 
 ---
 
@@ -77,6 +80,8 @@ npm start         # 运行编译后的版本
 
 ```bash
 pip install -e python/
-python python/scripts/fetch_gamedata.py
+python python/scripts/fetch_gamedata.py --output ts/data/gamedata
+mkdir -p ts/data/storyjson
+gh release download --repo 3aKHP/ArknightsStoryJson --pattern "zh_CN.zip" --dir ts/data/storyjson/ --clobber
 docker build -f ts/Dockerfile -t prts-mcp-ts .
 ```

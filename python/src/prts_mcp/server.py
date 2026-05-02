@@ -287,7 +287,7 @@ def _run_startup_sync() -> None:
     overwrite it.
     """
     from prts_mcp.config import Config, _DEFAULT_GAMEDATA_PATH
-    from prts_mcp.data.sync import GAMEDATA_FILES, RepoSpec, ReleaseSpec, sync_all, sync_release
+    from prts_mcp.data.sync import GAMEDATA_FILES, ReleaseArchiveSpec, ReleaseSpec, sync_release, sync_release_archive
 
     cfg = Config.load()
     if cfg.is_custom_gamedata:
@@ -296,18 +296,20 @@ def _run_startup_sync() -> None:
             cfg.gamedata_path,
         )
     else:
-        specs = [
-            RepoSpec(
-                owner="Kengxxiao",
-                repo="ArknightsGameData",
-                branch="master",
-                files=GAMEDATA_FILES,
-                local_root=_DEFAULT_GAMEDATA_PATH,
-            )
-        ]
-        results = sync_all(specs)
-        for r in results:
-            _log_sync_result(r)
+        archive_spec = ReleaseArchiveSpec(
+            owner="3aKHP",
+            repo="ArknightsGameData",
+            asset_name="zh_CN-excel.zip",
+            local_zip=_DEFAULT_GAMEDATA_PATH / "archives" / "zh_CN-excel.zip",
+            local_root=_DEFAULT_GAMEDATA_PATH,
+            required_files=GAMEDATA_FILES,
+        )
+        r = sync_release_archive(archive_spec)
+        _log_sync_result(r)
+        if r.status == "updated":
+            from prts_mcp.data.operator import clear_operator_caches
+
+            clear_operator_caches()
 
     # Always try to sync storyjson from GitHub Release (unless user supplied their own zip)
     if "STORYJSON_PATH" not in os.environ:

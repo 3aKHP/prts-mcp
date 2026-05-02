@@ -1,6 +1,6 @@
 # PRTS MCP Server — Docker 部署指南
 
-> 服务器启动时会自动从 GitHub 同步干员数据到挂载的 volume（或容器内部），无需手动下载或配置数据文件。镜像内置了构建时预置的 bundled 数据作为离线保底。
+> 服务器启动时会自动从 GitHub Release 同步干员数据压缩包到挂载的 volume（或容器内部），无需手动下载或配置数据文件。镜像内置了构建时预置的 bundled 数据作为离线保底。
 
 ## 前置条件
 
@@ -18,6 +18,8 @@ docker build -t prts-mcp .
 
 > 本地构建的镜像不含 bundled 数据（游戏数据文件已从 git 历史中排除）。首次运行时 auto-sync 会自动下载，需要网络连接。如需包含 bundled 数据，先运行 `python scripts/fetch_gamedata.py` 再构建。
 
+正式发布的 Docker 镜像由 CI 在构建前预置 `data/gamedata` 与 `data/storyjson/zh_CN.zip`，可作为网络不可用时的兜底。PyPI wheel/sdist 不内置这些数据文件。
+
 ---
 
 ## 2. 运行容器
@@ -28,7 +30,7 @@ docker build -t prts-mcp .
 docker run -i --rm -v prts-mcp-data:/data/gamedata -v prts-mcp-storyjson:/data/storyjson prts-mcp
 ```
 
-Named volume 由 Docker 自动管理，无需关心宿主机路径，**在所有平台和所有 MCP 客户端配置里都能直接使用**。首次运行时 auto-sync 自动下载数据；此后重启复用缓存，超过 TTL（1小时）时做 commit hash 校验，有更新才重新下载。
+Named volume 由 Docker 自动管理，无需关心宿主机路径，**在所有平台和所有 MCP 客户端配置里都能直接使用**。首次运行时 auto-sync 自动下载 `3aKHP/ArknightsGameData` 的 `zh_CN-excel.zip` 并解压到 `/data/gamedata`；此后重启复用缓存，超过 TTL（1小时）时做 Release tag 校验，有更新才重新下载。
 
 > 如需降低 GitHub 匿名 API 限流风险，可追加 `-e GITHUB_TOKEN=ghp_xxx`。
 
@@ -190,6 +192,8 @@ npx @modelcontextprotocol/inspector docker run -i --rm -v prts-mcp-data:/data/ga
 ```bash
 pip install -e .
 python scripts/fetch_gamedata.py
+mkdir -p ../data/storyjson
+gh release download --repo 3aKHP/ArknightsStoryJson --pattern "zh_CN.zip" --dir ../data/storyjson/ --clobber
 docker build -t prts-mcp .
 ```
 
@@ -203,14 +207,14 @@ docker run -i --rm -v prts-mcp-data:/data/gamedata -v prts-mcp-storyjson:/data/s
 
 ### 强制重新同步
 
-删除 volume 中的 `cache_meta.json` 即可触发下次启动时重新下载：
+删除 volume 中的 `archives/release_meta.json` 即可触发下次启动时重新下载：
 
 ```bash
 # named volume 场景
-docker run --rm -v prts-mcp-data:/data/gamedata alpine rm /data/gamedata/cache_meta.json
+docker run --rm -v prts-mcp-data:/data/gamedata alpine rm /data/gamedata/archives/release_meta.json
 
 # 宿主机目录场景（Windows）
-Remove-Item "$env:USERPROFILE\.prts-mcp\gamedata\cache_meta.json"
+Remove-Item "$env:LOCALAPPDATA\prts-mcp\gamedata\archives\release_meta.json"
 ```
 
 ---

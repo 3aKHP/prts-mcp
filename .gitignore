@@ -41,5 +41,6 @@ data/*
 !data/storyjson/
 !data/gamedata/**
 !data/storyjson/.gitkeep
+data/gamedata/archives/
 data/gamedata/**/*.zip
 data/gamedata/**/*.7z

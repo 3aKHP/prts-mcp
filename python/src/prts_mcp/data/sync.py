@@ -9,6 +9,8 @@ from __future__ import annotations
 import json
 import logging
 import os
+import shutil
+import zipfile
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -329,6 +331,18 @@ class ReleaseSpec:
     local_zip: Path   # destination path on disk
 
 
+@dataclass(frozen=True)
+class ReleaseArchiveSpec:
+    """Describes a GitHub Release zip asset that should be extracted locally."""
+
+    owner: str
+    repo: str
+    asset_name: str
+    local_zip: Path
+    local_root: Path
+    required_files: tuple[str, ...]
+
+
 def _release_cache_path(spec: ReleaseSpec) -> Path:
     return spec.local_zip.parent / "release_meta.json"
 
@@ -453,3 +467,101 @@ def sync_release(spec: ReleaseSpec) -> SyncResult:
                 error=error_msg,
             )
         return SyncResult(spec=_dummy_spec, status="no_data", commit_sha=None, error=error_msg)
+
+
+def _archive_files_present(spec: ReleaseArchiveSpec) -> bool:
+    return all((spec.local_root / f).is_file() for f in spec.required_files)
+
+
+def _safe_extract_zip(zip_path: Path, local_root: Path) -> None:
+    """Extract zip entries under local_root with a write-to-tmp-then-replace pattern."""
+    root = local_root.resolve()
+    tmp_paths: list[Path] = []
+    try:
+        with zipfile.ZipFile(zip_path) as zf:
+            for member in zf.infolist():
+                if member.is_dir():
+                    continue
+                dest = (local_root / member.filename).resolve()
+                if not dest.is_relative_to(root):
+                    raise ValueError(f"Unsafe zip member path: {member.filename}")
+
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                tmp = dest.with_name(dest.name + ".tmp")
+                with zf.open(member) as src, tmp.open("wb") as dst:
+                    shutil.copyfileobj(src, dst)
+                tmp_paths.append(tmp)
+                tmp.replace(dest)
+                tmp_paths.remove(tmp)
+    except Exception:
+        for tmp in tmp_paths:
+            try:
+                tmp.unlink(missing_ok=True)
+            except OSError:
+                pass
+        raise
+
+
+def sync_release_archive(spec: ReleaseArchiveSpec) -> SyncResult:
+    """Download a GitHub Release zip asset and extract it into local_root.
+
+    This keeps the data distribution path aligned with storyjson releases while
+    preserving the existing on-disk ArknightsGameData layout.
+    """
+    release_result = sync_release(
+        ReleaseSpec(
+            owner=spec.owner,
+            repo=spec.repo,
+            asset_name=spec.asset_name,
+            local_zip=spec.local_zip,
+        )
+    )
+    dummy_spec = RepoSpec(
+        owner=spec.owner,
+        repo=spec.repo,
+        branch="releases",
+        files=spec.required_files,
+        local_root=spec.local_root,
+    )
+
+    files_ok = _archive_files_present(spec)
+    if release_result.status == "no_data":
+        if files_ok:
+            return SyncResult(
+                spec=dummy_spec,
+                status="offline_fallback",
+                commit_sha=release_result.commit_sha,
+                error=release_result.error,
+            )
+        return SyncResult(
+            spec=dummy_spec,
+            status="no_data",
+            commit_sha=release_result.commit_sha,
+            error=release_result.error,
+        )
+
+    should_extract = release_result.status == "updated" or not files_ok
+    if should_extract:
+        try:
+            _safe_extract_zip(spec.local_zip, spec.local_root)
+        except Exception as exc:  # noqa: BLE001
+            if _archive_files_present(spec):
+                return SyncResult(
+                    spec=dummy_spec,
+                    status="offline_fallback",
+                    commit_sha=release_result.commit_sha,
+                    error=str(exc),
+                )
+            return SyncResult(
+                spec=dummy_spec,
+                status="no_data",
+                commit_sha=release_result.commit_sha,
+                error=str(exc),
+            )
+
+    return SyncResult(
+        spec=dummy_spec,
+        status=release_result.status,
+        commit_sha=release_result.commit_sha,
+        error=release_result.error,
+    )

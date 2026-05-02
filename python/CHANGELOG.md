@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-05-03
+
+### Changed
+
+- ArknightsGameData auto-sync now downloads the `zh_CN-excel.zip` Release asset from
+  `3aKHP/ArknightsGameData` and extracts it into the existing `gamedata` layout, aligning
+  the game-data and story-data sync paths around GitHub Release archives.
+- `fetch_gamedata.py` now prewarms bundled game data from the same Release archive instead
+  of downloading individual raw JSON files.
+- Python operator-data completeness now requires `story_review_table.json`, matching the
+  TypeScript implementation and the new full-excel archive.
+- Operator data config is re-resolved on each tool call, and table caches are cleared after
+  startup auto-sync writes updated game data.
+- Added regression coverage for data becoming available later in the same process.
+
 ## [0.4.0] - 2026-04-25
 
 ### Added

@@ -21,7 +21,7 @@
  *     4. null — no story data available.
  */
 
-import { existsSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -86,7 +86,10 @@ function excelPath(gamedataRoot: string): string {
 }
 
 function filesComplete(excel: string): boolean {
-  return REQUIRED_OPERATOR_FILES.every((f) => existsSync(join(excel, f)));
+  return REQUIRED_OPERATOR_FILES.every((f) => {
+    const p = join(excel, f);
+    return existsSync(p) && statSync(p).isFile();
+  });
 }
 
 // ---------------------------------------------------------------------------
