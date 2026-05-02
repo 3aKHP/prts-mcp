@@ -23,6 +23,19 @@ This repository contains two independent implementations for different deploymen
 | [`python/`](python/) | Python 3.10+ | stdio | Local Claude Desktop / Claude Code, Docker |
 | [`ts/`](ts/) | TypeScript / Node.js | Streamable HTTP | Self-hosted server, remote HTTP access |
 
+### 1.0 Compatibility Matrix
+
+| Area | Python | TypeScript | 1.0 policy |
+|------|--------|------------|------------|
+| Current line | `1.0.0-alpha.1` | `0.3.3` | Alpha releases are cut from the same commit when possible |
+| MCP tools | Same public tool names and required parameters | Same public tool names and required parameters | Tool names and required parameters stay stable through 1.0 |
+| GameData | `GAMEDATA_PATH` or auto-synced `zh_CN-excel.zip` | `GAMEDATA_PATH` or auto-synced `zh_CN-excel.zip` | Custom paths disable auto-sync |
+| Story data | `STORYJSON_PATH` or auto-synced `zh_CN.zip` | `STORYJSON_PATH` or auto-synced `zh_CN.zip` | Custom zip paths disable auto-sync |
+| Bundled fallback data | Docker image only | Docker image and published npm package | PyPI remains data-light |
+
+See [`docs/migration-0.x-to-1.0.md`](docs/migration-0.x-to-1.0.md) for the
+0.x to 1.0 migration notes.
+
 ### Tools
 
 Both implementations expose the same tool set:
@@ -70,6 +83,18 @@ Published Docker images and the npm package include bundled fallback game/story 
 |------|------|----------|----------|
 | [`python/`](python/) | Python 3.10+ | stdio | Claude Desktop / Claude Code 本地接入、Docker |
 | [`ts/`](ts/) | TypeScript / Node.js | Streamable HTTP | 个人服务器部署，供他人通过 HTTP 调用 |
+
+### 1.0 兼容矩阵
+
+| 范围 | Python | TypeScript | 1.0 策略 |
+|------|--------|------------|----------|
+| 当前版本线 | `1.0.0-alpha.1` | `0.3.3` | Alpha 尽量从同一 commit 发布 |
+| MCP 工具 | 相同工具名和必填参数 | 相同工具名和必填参数 | 1.0 期间保持工具名和必填参数稳定 |
+| 干员数据 | `GAMEDATA_PATH` 或自动同步 `zh_CN-excel.zip` | `GAMEDATA_PATH` 或自动同步 `zh_CN-excel.zip` | 自定义路径会禁用自动同步 |
+| 剧情数据 | `STORYJSON_PATH` 或自动同步 `zh_CN.zip` | `STORYJSON_PATH` 或自动同步 `zh_CN.zip` | 自定义 zip 会禁用自动同步 |
+| bundled 兜底数据 | Docker 镜像 | Docker 镜像和正式 npm 包 | PyPI 继续保持轻量 |
+
+0.x 到 1.0 的迁移说明见 [`docs/migration-0.x-to-1.0.md`](docs/migration-0.x-to-1.0.md)。
 
 ### 工具集
 

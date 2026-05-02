@@ -287,7 +287,8 @@ def _run_startup_sync() -> None:
     overwrite it.
     """
     from prts_mcp.config import Config, _DEFAULT_GAMEDATA_PATH
-    from prts_mcp.data.sync import GAMEDATA_FILES, ReleaseArchiveSpec, ReleaseSpec, sync_release, sync_release_archive
+    from prts_mcp.data.datasets import GAMEDATA_EXCEL, STORY_ZH_CN
+    from prts_mcp.data.sync import sync_release, sync_release_archive
 
     cfg = Config.load()
     if cfg.is_custom_gamedata:
@@ -296,13 +297,9 @@ def _run_startup_sync() -> None:
             cfg.gamedata_path,
         )
     else:
-        archive_spec = ReleaseArchiveSpec(
-            owner="3aKHP",
-            repo="ArknightsGameData",
-            asset_name="zh_CN-excel.zip",
+        archive_spec = GAMEDATA_EXCEL.archive_spec(
             local_zip=_DEFAULT_GAMEDATA_PATH / "archives" / "zh_CN-excel.zip",
             local_root=_DEFAULT_GAMEDATA_PATH,
-            required_files=GAMEDATA_FILES,
         )
         r = sync_release_archive(archive_spec)
         _log_sync_result(r)
@@ -313,12 +310,7 @@ def _run_startup_sync() -> None:
 
     # Always try to sync storyjson from GitHub Release (unless user supplied their own zip)
     if "STORYJSON_PATH" not in os.environ:
-        release_spec = ReleaseSpec(
-            owner="3aKHP",
-            repo="ArknightsStoryJson",
-            asset_name="zh_CN.zip",
-            local_zip=cfg.storyjson_zip,
-        )
+        release_spec = STORY_ZH_CN.release_spec(cfg.storyjson_zip)
         r = sync_release(release_spec)
         _log_sync_result(r)
 
