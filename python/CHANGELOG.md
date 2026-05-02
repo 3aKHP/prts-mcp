@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.0.0-alpha.1] - 2026-05-03
+
+### Added
+
+- Added a shared local dataset reader layer with directory, zip, and fallback stores.
+- Added dataset specs for GameData excel and story JSON Release assets.
+- Added bundled package-data verification for Docker and npm release pipelines.
+
+### Changed
+
+- Operator and story parsers now read through the new store abstraction while preserving
+  current MCP tool names, parameters, and output formatting.
+- Runtime sync setup now consumes dataset specs instead of repeating Release metadata in
+  server startup code and prewarm scripts.
+
 ## [0.4.2] - 2026-05-03
 
 ### Changed

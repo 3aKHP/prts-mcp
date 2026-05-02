@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import json
 from functools import lru_cache
-from pathlib import Path
 from typing import Any
 
 from prts_mcp.config import Config
+from prts_mcp.data.stores import DirectoryStore
 from prts_mcp.utils.sanitizer import strip_wikitext
 
 def _get_config() -> Config:
@@ -31,34 +30,35 @@ def _missing_operator_data_message() -> str:
     )
 
 
-def _load_json(path: Path) -> dict[str, Any]:
-    if not path.is_file():
+def _operator_store() -> DirectoryStore:
+    ep = _get_config().effective_excel_path
+    assert ep is not None
+    return DirectoryStore(ep)
+
+
+def _load_json(filename: str) -> dict[str, Any]:
+    store = _operator_store()
+    if not store.exists(filename):
         raise FileNotFoundError(
-            f"干员数据文件不存在：{path}。"
+            f"干员数据文件不存在：{store.root / filename}。"
             "数据目录可能为空，或挂载路径有误（GAMEDATA_PATH 应指向 ArknightsGameData 仓库根目录）。"
         )
-    return json.loads(path.read_text(encoding="utf-8"))
+    return store.read_json(filename)
 
 
 @lru_cache(maxsize=1)
 def _load_character_table() -> dict[str, Any]:
-    ep = _get_config().effective_excel_path
-    assert ep is not None
-    return _load_json(ep / "character_table.json")
+    return _load_json("character_table.json")
 
 
 @lru_cache(maxsize=1)
 def _load_handbook_table() -> dict[str, Any]:
-    ep = _get_config().effective_excel_path
-    assert ep is not None
-    return _load_json(ep / "handbook_info_table.json")
+    return _load_json("handbook_info_table.json")
 
 
 @lru_cache(maxsize=1)
 def _load_charword_table() -> dict[str, Any]:
-    ep = _get_config().effective_excel_path
-    assert ep is not None
-    return _load_json(ep / "charword_table.json")
+    return _load_json("charword_table.json")
 
 
 @lru_cache(maxsize=1)
