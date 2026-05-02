@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "ts/v[0-9]*.[0-9]*.[0-9]*"
+      - "ts/v[0-9]*.[0-9]*.[0-9]*-*"
 
 jobs:
   verify:
@@ -129,6 +130,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Verify bundled package data
+        run: python python/scripts/check_package_data.py --data-root ts/data
+
       - name: Publish to npm (Trusted Publishing)
         run: npm publish --provenance --access public
         working-directory: ts
@@ -173,6 +177,9 @@ jobs:
             --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify bundled package data
+        run: python python/scripts/check_package_data.py --data-root ts/data
 
       - name: Pack npm tarball
         run: npm pack
