@@ -522,8 +522,9 @@ app.get("/health", (_req, res) => {
 const PORT = Number(process.env["PORT"] ?? 3000);
 const HOST = process.env["HOST"] ?? "0.0.0.0";
 
-await runStartupSync();
-
 app.listen(PORT, HOST, () => {
   log("INFO", `PRTS MCP Server ${SERVER_VERSION} listening on ${HOST}:${PORT} (StreamableHTTP at /mcp)`);
+  void runStartupSync().catch((err: unknown) => {
+    log("ERROR", `Startup sync threw unexpectedly: ${err instanceof Error ? err.message : String(err)}`);
+  });
 });

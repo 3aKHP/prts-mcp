@@ -50,7 +50,7 @@ Both implementations expose the same tool set:
 - **ArknightsGameData** ([`3aKHP/ArknightsGameData`](https://github.com/3aKHP/ArknightsGameData)) — Release archive mirror of [`Kengxxiao/ArknightsGameData`](https://github.com/Kengxxiao/ArknightsGameData), used for operator archives, voice lines, base stats, and other game tables
 - **ArknightsStoryJson** ([`3aKHP/ArknightsStoryJson`](https://github.com/3aKHP/ArknightsStoryJson)) — parsed story dialogue, auto-synced from GitHub Releases (`zh_CN.zip`)
 
-Game data lives in the `gamedata` volume. Story data lives in the `storyjson` volume. Both are auto-synced on server startup.
+Game data lives in the `gamedata` volume. Story data lives in the `storyjson` volume. Both are auto-synced in the background after the server starts listening.
 
 Published Docker images and the npm package include bundled fallback game/story data prepared by CI. The PyPI package stays lightweight and does not embed these data files; it relies on startup auto-sync or user-provided data paths.
 
@@ -98,7 +98,7 @@ Published Docker images and the npm package include bundled fallback game/story 
 - **ArknightsGameData** ([`3aKHP/ArknightsGameData`](https://github.com/3aKHP/ArknightsGameData)) — [`Kengxxiao/ArknightsGameData`](https://github.com/Kengxxiao/ArknightsGameData) 的 Release 压缩包镜像，用于干员档案、语音记录、基础信息及其他游戏表
 - **ArknightsStoryJson** ([`3aKHP/ArknightsStoryJson`](https://github.com/3aKHP/ArknightsStoryJson)) — 剧情台词解析数据，从 GitHub Releases 自动同步（`zh_CN.zip`）
 
-干员数据存放在 `gamedata` volume，剧情数据存放在 `storyjson` volume，均在服务器启动时自动同步。
+干员数据存放在 `gamedata` volume，剧情数据存放在 `storyjson` volume，均在服务器开始监听后于后台自动同步。
 
 正式发布的 Docker 镜像和 npm 包会由 CI 预置 bundled 兜底数据；PyPI 包保持轻量，不内置这些数据文件，依赖启动时 auto-sync 或用户自行提供数据路径。
 

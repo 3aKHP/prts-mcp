@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-05-03
+
+### Fixed
+
+- The HTTP server now starts listening before GameData and story auto-sync run
+  in the background, so slow GitHub Release downloads no longer leave systemd
+  active while the port is unavailable.
+
 ## [0.3.2] - 2026-05-03
 
 ### Changed

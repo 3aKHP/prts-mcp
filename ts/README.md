@@ -52,7 +52,7 @@ npm start         # 运行编译后的版本
 
 ## 数据机制
 
-服务器启动时自动同步两类数据：
+服务器开始监听后会在后台自动同步两类数据：
 
 - **干员数据**（`/data/gamedata` volume）：从 [3aKHP/ArknightsGameData](https://github.com/3aKHP/ArknightsGameData) Release 下载 `zh_CN-excel.zip`，其内容同步自 [Kengxxiao/ArknightsGameData](https://github.com/Kengxxiao/ArknightsGameData)
 - **剧情数据**（`/data/storyjson` volume）：从 [ArknightsStoryJson](https://github.com/3aKHP/ArknightsStoryJson) Releases 下载 `zh_CN.zip`
