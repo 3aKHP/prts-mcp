@@ -17,8 +17,9 @@ const EXPECTED_TOOLS = [
 
 test("TypeScript MCP tool names are frozen", () => {
   const source = readFileSync(join(import.meta.dirname, "..", "src", "server.ts"), "utf-8");
+  // Alpha hardening assumes tool names are registered as direct string literals.
+  // Update this parser if server.tool(...) moves to constants or helper wrappers.
   const toolNames = Array.from(source.matchAll(/server\.tool\(\s*"([^"]+)"/g), (match) => match[1]);
 
   assert.deepEqual(toolNames, EXPECTED_TOOLS);
 });
-

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import AdmZip from "adm-zip";
@@ -46,6 +46,14 @@ test("DirectoryStore reports missing files and rejects parent paths", () => {
   assert.throws(() => store.exists("../outside.json"), /Unsafe dataset path/);
 });
 
+test("DirectoryStore rejects absolute paths", (t) => {
+  const root = mkdtempSync(join(tmpdir(), "prts-store-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const store = new DirectoryStore(root);
+
+  assert.throws(() => store.exists("/zh_CN/gamedata/excel/sample.json"), /Unsafe dataset path/);
+});
+
 test("ZipStore reads JSON from zip", () => {
   const root = tempRoot();
   const zipPath = join(root, "fixture.zip");
@@ -67,6 +75,15 @@ test("ZipStore reports missing entries and rejects parent paths", () => {
   assert.equal(store.exists("zh_CN/missing.json"), false);
   assert.throws(() => store.readText("zh_CN/missing.json"), /Dataset zip entry not found/);
   assert.throws(() => store.exists("../outside.json"), /Unsafe dataset path/);
+});
+
+test("ZipStore rejects absolute paths", (t) => {
+  const root = mkdtempSync(join(tmpdir(), "prts-store-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const zipPath = join(root, "fixture.zip");
+  const store = new ZipStore(zipPath);
+
+  assert.throws(() => store.exists("/zh_CN/gamedata/excel/sample.json"), /Unsafe dataset path/);
 });
 
 test("FallbackStore prefers primary store", () => {
@@ -103,4 +120,3 @@ test("FallbackStore reports files missing in both stores", () => {
   assert.equal(store.exists(FIXTURE_PATH), false);
   assert.throws(() => store.readText(FIXTURE_PATH), /fallback chain/);
 });
-

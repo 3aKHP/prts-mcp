@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
-import { resolve } from "node:path";
+import { isAbsolute, relative, resolve } from "node:path";
 import AdmZip from "adm-zip";
 
 export interface JsonStore {
@@ -10,7 +10,10 @@ export interface JsonStore {
 }
 
 function normalizePath(path: string): string {
-  const normalized = path.replace(/\\/g, "/").replace(/^\/+/, "");
+  const normalized = path.replace(/\\/g, "/");
+  if (normalized.startsWith("/")) {
+    throw new Error(`Unsafe dataset path: ${path}`);
+  }
   const parts = normalized.split("/").filter((part) => part !== "" && part !== ".");
   if (parts.includes("..")) {
     throw new Error(`Unsafe dataset path: ${path}`);
@@ -19,8 +22,8 @@ function normalizePath(path: string): string {
 }
 
 function isInsideRoot(root: string, target: string): boolean {
-  const relative = target.slice(root.length);
-  return target === root || relative.startsWith("\\") || relative.startsWith("/");
+  const rel = relative(root, target);
+  return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
 }
 
 export class DirectoryStore implements JsonStore {
@@ -77,8 +80,8 @@ export class ZipStore implements JsonStore {
   }
 
   exists(path: string): boolean {
-    if (!existsSync(this.zipPath)) return false;
     const innerPath = normalizePath(path);
+    if (!existsSync(this.zipPath)) return false;
     return this.zip().getEntry(innerPath) !== null;
   }
 

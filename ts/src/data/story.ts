@@ -347,8 +347,8 @@ export function readActivityFromStore(
       const chapter = readStoryFromStore(store, summary.storyKey, includeNarration);
       if (!eventName) eventName = chapter.eventName;
       chapters.push(chapter);
-    } catch {
-      // Story file missing from zip — skip silently (see porting guide §10)
+    } catch (error) {
+      console.warn(`Skipping unreadable chapter "${summary.storyKey}":`, error);
     }
   }
 
