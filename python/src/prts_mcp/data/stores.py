@@ -23,7 +23,9 @@ class JsonStore(Protocol):
 
 
 def _normalize_path(path: str) -> str:
-    normalized = path.replace("\\", "/").lstrip("/")
+    normalized = path.replace("\\", "/")
+    if normalized.startswith("/"):
+        raise ValueError(f"Unsafe dataset path: {path!r}")
     parts = [part for part in normalized.split("/") if part not in ("", ".")]
     if any(part == ".." for part in parts):
         raise ValueError(f"Unsafe dataset path: {path!r}")
@@ -116,4 +118,3 @@ class FallbackStore:
 
     def describe(self) -> str:
         return f"fallback:{self.primary.describe()} -> {self.fallback.describe()}"
-

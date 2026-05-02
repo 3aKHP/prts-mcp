@@ -18,6 +18,8 @@ EXPECTED_TOOL_SURFACE = {
 
 
 def test_python_tool_function_signatures_are_frozen() -> None:
+    # Alpha hardening intentionally freezes required and optional parameters.
+    # Relax this before 1.0 final if additive optional parameters become policy.
     source = Path(__file__).parents[1] / "src" / "prts_mcp" / "server.py"
     module = ast.parse(source.read_text(encoding="utf-8"))
     functions = {

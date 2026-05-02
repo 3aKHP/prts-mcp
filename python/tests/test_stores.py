@@ -48,6 +48,12 @@ class TestDirectoryStore:
         with pytest.raises(ValueError):
             store.exists("../outside.json")
 
+    def test_rejects_absolute_path(self, tmp_path):
+        store = DirectoryStore(tmp_path)
+
+        with pytest.raises(ValueError):
+            store.exists("/zh_CN/gamedata/excel/sample.json")
+
 
 class TestZipStore:
     def test_reads_json_from_zip(self, tmp_path):
@@ -74,6 +80,12 @@ class TestZipStore:
 
         with pytest.raises(ValueError):
             store.exists("../outside.json")
+
+    def test_rejects_absolute_path(self, tmp_path):
+        store = ZipStore(tmp_path / "fixture.zip")
+
+        with pytest.raises(ValueError):
+            store.exists("/zh_CN/gamedata/excel/sample.json")
 
 
 class TestFallbackStore:
@@ -108,4 +120,3 @@ class TestFallbackStore:
         assert not store.exists(FIXTURE_PATH)
         with pytest.raises(FileNotFoundError):
             store.read_text(FIXTURE_PATH)
-

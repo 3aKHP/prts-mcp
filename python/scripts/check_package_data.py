@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import argparse
 import sys
-import zipfile
 from pathlib import Path
 
 _PYTHON_DIR = Path(__file__).resolve().parents[1]
@@ -43,16 +42,10 @@ def main() -> int:
         print(f"Missing bundled story zip: {story_zip}", file=sys.stderr)
         return 1
 
-    try:
-        with zipfile.ZipFile(story_zip) as zf:
-            names = set(zf.namelist())
-            missing_entries = [path for path in STORY_ZH_CN.required_files if path not in names]
-    except zipfile.BadZipFile:
-        print(f"Bundled story zip is not a valid zip: {story_zip}", file=sys.stderr)
-        return 1
+    missing_entries = STORY_ZH_CN.validate_zip(story_zip)
 
     if missing_entries:
-        print("Missing bundled story zip entries:", file=sys.stderr)
+        print("Invalid bundled story zip entries:", file=sys.stderr)
         for path in missing_entries:
             print(f" - {path}", file=sys.stderr)
         return 1
@@ -63,4 +56,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
