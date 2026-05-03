@@ -102,6 +102,8 @@ function assertStoryStore(store: JsonStore): void {
     events.map((ev) => [ev.eventId, ev.name, ev.entryType, ev.storyCount]),
     [["act_test", "测试活动", "ACTIVITY", 2]],
   );
+  const mainlineEvents = listStoryEventsFromStore(store, "main");
+  assert.deepEqual(mainlineEvents.map((ev) => [ev.eventId, ev.entryType]), [["main_test", "MAINLINE"]]);
 
   assert.deepEqual(listStoriesFromStore(store, "act_test"), [
     {
@@ -169,4 +171,3 @@ test("missing story raises", () => {
 
   assert.throws(() => readStoryFromStore(store, "activities/act_test/missing"), /Story not found/);
 });
-
