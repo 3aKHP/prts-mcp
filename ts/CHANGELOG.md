@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.0.0-alpha.2] - 2026-05-04
+
 ### Added
 
 - Post-download zip integrity validation for the storyjson Release asset:
