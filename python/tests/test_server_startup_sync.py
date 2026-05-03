@@ -89,3 +89,15 @@ def test_schedule_sync_retry_stops_after_configured_attempts(monkeypatch):
         index += 1
 
     assert [timer.delay for timer in FakeTimer.instances] == [30, 120, 600]
+
+
+def test_run_initial_sync_treats_unexpected_exceptions_as_retry_needed():
+    def raises() -> bool:
+        raise RuntimeError("boom")
+
+    assert server._run_initial_sync("Gamedata", raises) is True
+
+
+def test_run_initial_sync_returns_sync_func_value_on_success():
+    assert server._run_initial_sync("Gamedata", lambda: False) is False
+    assert server._run_initial_sync("Storyjson", lambda: True) is True

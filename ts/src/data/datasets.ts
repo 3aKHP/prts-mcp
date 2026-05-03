@@ -79,20 +79,20 @@ export function validateStoryjsonZip(zipPath: string): string[] {
   let table: Record<string, { infoUnlockDatas?: Array<{ storyTxt?: string }> }>;
   try {
     const entry = zip.getEntry(STORYJSON_REVIEW_TABLE);
-    if (!entry) return missing;
-    table = JSON.parse(entry.getData().toString("utf-8")) as typeof table;
+    table = JSON.parse(entry!.getData().toString("utf-8")) as typeof table;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return [...missing, `${STORYJSON_REVIEW_TABLE} is unreadable: ${message}`];
   }
 
   const names = new Set(zip.getEntries().map((entry) => entry.entryName));
-  const storyPaths = Object.values(table)
-    .flatMap((entry) => entry.infoUnlockDatas ?? [])
-    .map((data) => data.storyTxt)
-    .filter((storyKey): storyKey is string => Boolean(storyKey))
-    .map(storyPath)
-    .sort();
+  const storyPaths = [...new Set(
+    Object.values(table)
+      .flatMap((entry) => entry.infoUnlockDatas ?? [])
+      .map((data) => data.storyTxt)
+      .filter((storyKey): storyKey is string => Boolean(storyKey))
+      .map(storyPath),
+  )].sort();
 
   return [...missing, ...storyPaths.filter((path) => !names.has(path))];
 }
