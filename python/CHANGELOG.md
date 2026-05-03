@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Bounded retry loop for startup sync: `offline_fallback` and `no_data`
+  results schedule daemon-thread retries at 30s, 120s, and 600s before
+  giving up until the next process start. Matches the existing TypeScript
+  behavior so both implementations recover from transient network failures
+  without manual restart.
+
 ## [1.0.0-alpha.1] - 2026-05-03
 
 ### Added
