@@ -1,6 +1,6 @@
 # PRTS-MCP Roadmap
 
-_Last updated: 2026-05-03_
+_Last updated: 2026-05-04_
 
 PRTS-MCP is moving from a fast-evolving dual implementation project toward a
 stable 1.0 architecture. The next major release is planned as a compatibility
@@ -8,10 +8,13 @@ and data-layer milestone rather than a new-feature sprint.
 
 ## Current Alpha Release
 
-- Python: `1.0.0-alpha.1`
-- TypeScript: `1.0.0-alpha.1`
+- Python: `1.0.0-alpha.2`
+- TypeScript: `1.0.0-alpha.2`
 - Main purpose: validate the 1.0 data reader architecture, aligned public tool
   surface, and release packaging path before the stable 1.0 line.
+- alpha.2 adds cross-implementation parity for startup-sync hardening:
+  bounded retry on transient network failures and post-download zip
+  integrity validation for the storyjson Release asset.
 - Bundled fallback data policy:
   - Docker images include CI-prewarmed fallback data.
   - npm releases include CI-prewarmed fallback data.
@@ -73,6 +76,11 @@ support future feature work without duplicating sync and parsing paths.
 
 ### `1.0.0-alpha.2`: Sync and Storage Consolidation
 
+- Status: ready for prerelease tagging from the current `main` commit.
+- Added bounded retry for `offline_fallback` / `no_data` startup-sync
+  results on the Python side (TypeScript already had it).
+- Added post-download zip integrity validation for the storyjson Release
+  asset on the TypeScript side (Python already had it).
 - Normalize release metadata, cache freshness, and fallback decisions.
 - Decide which datasets remain zip-backed at runtime and which are extracted.
 - Verify Docker and npm bundled fallback data through CI package inspection.

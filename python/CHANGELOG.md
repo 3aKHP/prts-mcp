@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.0.0-alpha.2] - 2026-05-04
+
 ### Added
 
 - Bounded retry loop for startup sync: `offline_fallback` and `no_data`
@@ -14,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   giving up until the next process start. Matches the existing TypeScript
   behavior so both implementations recover from transient network failures
   without manual restart.
+- The first sync attempt is wrapped in `_run_initial_sync`, so an
+  unexpected exception in `sync_release` / `sync_release_archive` no longer
+  kills the daemon sync thread; it is logged and treated as retry-needed,
+  matching the TypeScript `.catch(() => true)` baseline.
 
 ## [1.0.0-alpha.1] - 2026-05-03
 

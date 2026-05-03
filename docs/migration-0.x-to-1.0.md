@@ -1,6 +1,6 @@
 # Migration Guide: 0.x to 1.0
 
-_Status: 1.0.0-alpha.1_
+_Status: 1.0.0-alpha.2_
 
 PRTS-MCP 1.0 keeps the public MCP tool surface stable while normalizing the
 internal data layer.
