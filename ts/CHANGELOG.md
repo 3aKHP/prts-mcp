@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Post-download zip integrity validation for the storyjson Release asset:
+  every chapter referenced by `story_review_table.json` must exist in the
+  downloaded zip before it replaces the cached copy. A missing or unreadable
+  archive is rejected and falls through the normal `offline_fallback` /
+  retry path instead of silently corrupting the local cache. Matches the
+  pre-existing Python behavior.
+
 ## [1.0.0-alpha.1] - 2026-05-03
 
 ### Added

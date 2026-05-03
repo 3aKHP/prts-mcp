@@ -6,7 +6,7 @@ import sys
 import threading
 from pathlib import Path
 
-from typing import Annotated
+from typing import Annotated, Callable
 
 from mcp.server.fastmcp import FastMCP
 from pydantic import Field
@@ -32,6 +32,7 @@ logging.basicConfig(
 _logger = logging.getLogger("prts_mcp.server")
 
 mcp = FastMCP("PRTS_Wiki_Assistant")
+_SYNC_RETRY_DELAYS_SECONDS = (30, 120, 600)
 
 
 @mcp.tool()
@@ -279,6 +280,44 @@ def read_activity(
     return "\n".join(parts)
 
 
+def _sync_needs_retry(status: str) -> bool:
+    return status in {"offline_fallback", "no_data"}
+
+
+def _run_initial_sync(label: str, sync_func: Callable[[], bool]) -> bool:
+    """Run the first sync attempt, treating unexpected exceptions as retry-needed."""
+    try:
+        return sync_func()
+    except Exception as exc:  # noqa: BLE001
+        _logger.exception("%s sync threw unexpectedly: %s", label, exc)
+        return True
+
+
+def _schedule_sync_retry(label: str, sync_func: Callable[[], bool], attempt: int = 0) -> None:
+    delay = _SYNC_RETRY_DELAYS_SECONDS[attempt] if attempt < len(_SYNC_RETRY_DELAYS_SECONDS) else None
+    if delay is None:
+        _logger.warning(
+            "%s sync still needs retry after %s attempts; waiting for next process start.",
+            label,
+            len(_SYNC_RETRY_DELAYS_SECONDS),
+        )
+        return
+
+    def _retry() -> None:
+        try:
+            needs_retry = sync_func()
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("%s retry sync threw unexpectedly: %s", label, exc)
+            needs_retry = True
+        if needs_retry:
+            _schedule_sync_retry(label, sync_func, attempt + 1)
+
+    timer = threading.Timer(delay, _retry)
+    timer.daemon = True
+    timer.start()
+    _logger.info("%s sync will retry in %ss.", label, delay)
+
+
 def _run_startup_sync() -> None:
     """Check upstream GitHub and download data files if outdated.
 
@@ -301,18 +340,32 @@ def _run_startup_sync() -> None:
             local_zip=_DEFAULT_GAMEDATA_PATH / "archives" / "zh_CN-excel.zip",
             local_root=_DEFAULT_GAMEDATA_PATH,
         )
-        r = sync_release_archive(archive_spec)
-        _log_sync_result(r)
-        if r.status == "updated":
-            from prts_mcp.data.operator import clear_operator_caches
 
-            clear_operator_caches()
+        def _sync_gamedata() -> bool:
+            r = sync_release_archive(archive_spec)
+            _log_sync_result(r)
+            if r.status == "updated":
+                from prts_mcp.data.operator import clear_operator_caches
+
+                clear_operator_caches()
+            return _sync_needs_retry(r.status)
+
+        needs_retry = _run_initial_sync("Gamedata", _sync_gamedata)
+        if needs_retry:
+            _schedule_sync_retry("Gamedata", _sync_gamedata)
 
     # Always try to sync storyjson from GitHub Release (unless user supplied their own zip)
     if "STORYJSON_PATH" not in os.environ:
         release_spec = STORY_ZH_CN.release_spec(cfg.storyjson_zip)
-        r = sync_release(release_spec)
-        _log_sync_result(r)
+
+        def _sync_storyjson() -> bool:
+            r = sync_release(release_spec)
+            _log_sync_result(r)
+            return _sync_needs_retry(r.status)
+
+        needs_retry = _run_initial_sync("Storyjson", _sync_storyjson)
+        if needs_retry:
+            _schedule_sync_retry("Storyjson", _sync_storyjson)
 
 
 def _log_sync_result(r) -> None:

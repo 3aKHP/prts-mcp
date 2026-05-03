@@ -363,6 +363,8 @@ export interface ReleaseSpec {
   assetName: string;
   /** Absolute destination path for the downloaded zip. */
   localZip: string;
+  /** Optional validator returning missing or invalid zip entries. */
+  validateZip?: (zipPath: string) => string[];
 }
 
 /** Describes a GitHub Release zip asset that should be extracted locally. */
@@ -444,6 +446,10 @@ export async function downloadReleaseAsset(
       throw new Error(`${errorMessage(err)} downloading ${spec.assetName}`);
     });
     await writeFile(tmp, Buffer.from(await res.arrayBuffer()));
+    const missing = spec.validateZip?.(tmp) ?? [];
+    if (missing.length > 0) {
+      throw new Error(`Downloaded ${spec.assetName} is missing required entries: ${missing.join(", ")}`);
+    }
     await rename(tmp, spec.localZip);
 
     const commitSha = tag.startsWith(TAG_PREFIX) ? tag.slice(TAG_PREFIX.length) : tag;
