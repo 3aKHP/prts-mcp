@@ -1,25 +1,18 @@
 # PRTS-MCP Roadmap
 
-_Last updated: 2026-05-04_
+_Last updated: 2026-05-12_
 
 PRTS-MCP is moving from a fast-evolving dual implementation project toward a
-stable 1.0 architecture. The next major release is planned as a compatibility
-and data-layer milestone rather than a new-feature sprint.
+stable 1.0 architecture. The current release is `1.0.0-beta.1` — the behavior
+freeze milestone before the 1.0 stable release.
 
-## Current Alpha Release
+## Current Release
 
-- Python: `1.0.0-alpha.2`
-- TypeScript: `1.0.0-alpha.2`
-- Main purpose: validate the 1.0 data reader architecture, aligned public tool
-  surface, and release packaging path before the stable 1.0 line.
-- alpha.2 adds cross-implementation parity for startup-sync hardening:
-  bounded retry on transient network failures and post-download zip
-  integrity validation for the storyjson Release asset.
-- Bundled fallback data policy:
-  - Docker images include CI-prewarmed fallback data.
-  - npm releases include CI-prewarmed fallback data.
-  - PyPI packages remain lightweight and rely on startup auto-sync or
-    user-provided data paths.
+- Python: `1.0.0-beta.1`
+- TypeScript: `1.0.0-beta.1`
+- The public tool surface (9 MCP tools, required parameters, response formats)
+  is now frozen. Automated CI checks enforce this.
+- The migration guide covers behavioral changes for users upgrading from 0.x.
 
 ## Next Major Target: 1.0.0
 
