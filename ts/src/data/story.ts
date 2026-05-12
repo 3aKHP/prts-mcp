@@ -134,7 +134,7 @@ function parseStoryList(
     if (prop === "name") {
       const name = String(attrs["name"] ?? "");
       const content = String(attrs["content"] ?? "");
-      if (content) {
+      if (content && (includeNarration || name)) {
         lines.push({
           type: "dialog",
           role: name ? cleanText(name) : null,

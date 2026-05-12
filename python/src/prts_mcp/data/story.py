@@ -258,7 +258,11 @@ def read_story_from_store(
 
     all_lines = _parse_story_list(raw.get("storyList") or [])
     if not include_narration:
-        all_lines = [ln for ln in all_lines if ln.type != "narration"]
+        all_lines = [
+            ln for ln in all_lines
+            if ln.type != "narration"
+            and not (ln.type == "dialog" and ln.role is None)
+        ]
 
     return StoryChapter(
         story_key=story_key,
