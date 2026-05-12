@@ -39,8 +39,21 @@ jobs:
       - name: Compile source files
         run: python -m compileall python/src python/scripts
 
+      - name: Download storyjson zip for integration tests
+        run: |
+          mkdir -p .ci-data/storyjson
+          gh release download \
+            --repo 3aKHP/ArknightsStoryJson \
+            --pattern "zh_CN.zip" \
+            --dir .ci-data/storyjson/ \
+            --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Run tests
         run: python -m pytest python/tests
+        env:
+          STORYJSON_ZIP: ${{ github.workspace }}/.ci-data/storyjson/zh_CN.zip
 
       - name: Verify import and config fallback
         run: |
