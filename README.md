@@ -27,7 +27,7 @@ This repository contains two independent implementations for different deploymen
 
 | Area | Python | TypeScript | 1.0 policy |
 |------|--------|------------|------------|
-| Current line | `1.0.0-alpha.2` | `1.0.0-alpha.2` | Alpha releases are cut from the same commit when possible |
+| Current line | `1.0.0` | `1.0.0` | Stable releases are cut from the same commit when possible |
 | MCP tools | Same public tool names and required parameters | Same public tool names and required parameters | Tool names and required parameters stay stable through 1.0 |
 | GameData | `GAMEDATA_PATH` or auto-synced `zh_CN-excel.zip` | `GAMEDATA_PATH` or auto-synced `zh_CN-excel.zip` | Custom paths disable auto-sync |
 | Story data | `STORYJSON_PATH` or auto-synced `zh_CN.zip` | `STORYJSON_PATH` or auto-synced `zh_CN.zip` | Custom zip paths disable auto-sync |
@@ -88,7 +88,7 @@ Published Docker images and the npm package include bundled fallback game/story 
 
 | 范围 | Python | TypeScript | 1.0 策略 |
 |------|--------|------------|----------|
-| 当前版本线 | `1.0.0-alpha.2` | `1.0.0-alpha.2` | Alpha 尽量从同一 commit 发布 |
+| 当前版本线 | `1.0.0` | `1.0.0` | 稳定发布尽量从同一 commit 发布 |
 | MCP 工具 | 相同工具名和必填参数 | 相同工具名和必填参数 | 1.0 期间保持工具名和必填参数稳定 |
 | 干员数据 | `GAMEDATA_PATH` 或自动同步 `zh_CN-excel.zip` | `GAMEDATA_PATH` 或自动同步 `zh_CN-excel.zip` | 自定义路径会禁用自动同步 |
 | 剧情数据 | `STORYJSON_PATH` 或自动同步 `zh_CN.zip` | `STORYJSON_PATH` 或自动同步 `zh_CN.zip` | 自定义 zip 会禁用自动同步 |

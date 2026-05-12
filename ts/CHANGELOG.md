@@ -7,18 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-## [1.0.0-beta.1] - 2026-05-12
+## [1.0.0] - 2026-05-13
 
 ### Changed
 
-- **Public tool surface frozen for 1.0.** The 9 MCP tool names, required
-  parameters, and response formats are now locked. Automated tests enforce
-  this in CI for both Python and TypeScript.
+- **Public tool surface frozen.** The 9 MCP tool names, required parameters,
+  and response formats are locked. Automated tests enforce this in CI for
+  both Python and TypeScript.
 - CI now downloads the storyjson `zh_CN.zip` fixture before running Python
   tests so story integration tests are no longer silently skipped.
 - Migration guide expanded with behavioral changes from 0.x: Release archive
   sync, `archives/` cache metadata, `local_repo.jsonc` removal, and
   `story_review_table.json` as a required gamedata file.
+
+### Fixed
+
+- `include_narration=false` in `readStory` now also excludes unnamed speaker
+  lines (stage directions displayed as `（旁白）：text`) instead of only
+  excluding `type="narration"` sticker/subtitle/animation lines.
+
+## [1.0.0-beta.1] - 2026-05-12
 
 ## [1.0.0-alpha.2] - 2026-05-04
 

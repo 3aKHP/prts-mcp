@@ -1,29 +1,22 @@
 # PRTS-MCP Roadmap
 
-_Last updated: 2026-05-12_
+_Last updated: 2026-05-13_
 
-PRTS-MCP is moving from a fast-evolving dual implementation project toward a
-stable 1.0 architecture. The current release is `1.0.0-beta.1` — the behavior
-freeze milestone before the 1.0 stable release.
+PRTS-MCP has reached its first stable release. The public tool surface and
+data architecture are now under a compatibility contract.
 
 ## Current Release
 
-- Python: `1.0.0-beta.1`
-- TypeScript: `1.0.0-beta.1`
+- Python: `1.0.0`
+- TypeScript: `1.0.0`
 - The public tool surface (9 MCP tools, required parameters, response formats)
-  is now frozen. Automated CI checks enforce this.
-- The migration guide covers behavioral changes for users upgrading from 0.x.
+  is frozen. Automated CI checks enforce this.
+- A migration guide covers behavioral changes for users upgrading from 0.x.
 
-## Next Major Target: 1.0.0
+## 1.0.x Patch Policy
 
-The next major line is planned as:
-
-- Python `1.0.0`
-- TypeScript `1.0.0`
-
-The goal is not to include every future feature. The goal is to make the public
-tool surface, versioning rules, and data parsing architecture stable enough to
-support future feature work without duplicating sync and parsing paths.
+Patch releases (1.0.1, 1.0.2, …) are limited to bug fixes and documentation
+improvements within the 1.0 compatibility contract.
 
 ## 1.0 Goals
 
