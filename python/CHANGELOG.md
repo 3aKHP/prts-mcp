@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-05-14
+
+### Fixed
+
+- **`read_prts_page` now returns full page content.** Switched from
+  `action=query&prop=extracts` (which strips all template-rendered content)
+  to `action=parse&prop=text`. Character pages now return 22K+ chars of
+  readable text instead of ~400 chars of empty section headers.
+- **`search_prts` restricts to main namespace.** Added `srnamespace=0`
+  so search results are no longer polluted by technical data pages from
+  other MediaWiki namespaces.
+- **Search snippets are cleaned of HTML entities and JSON fragments.**
+  Added `html.unescape` decoding and residual-wikitext cleanup after
+  `strip_wikitext`.
+
 ## [1.1.0] - 2026-05-14
 
 ### Added

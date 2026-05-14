@@ -22,7 +22,6 @@ let nextAllowedTime = 0;
 async function rateLimit(): Promise<void> {
   const now = Date.now();
   const intervalMs = RATE_LIMIT_INTERVAL * 1000;
-  // Reserve a slot: advance nextAllowedTime by one interval.
   const slot = Math.max(now, nextAllowedTime);
   nextAllowedTime = slot + intervalMs;
   const waitMs = slot - now;
@@ -52,6 +51,40 @@ async function prtsGet(params: Record<string, string | number>): Promise<unknown
 }
 
 // ---------------------------------------------------------------------------
+// Text cleanup helpers
+// ---------------------------------------------------------------------------
+
+const CSS_JS_RE =
+  /@(font-face|keyframes|media|import|charset|namespace|supports|page)[^{]*\{[^}]*\}|\(window\.RLQ\s*\|\|\s*\[\]\)\.push\([^)]*\)|<style[^>]*>.*?<\/style>|<script[^>]*>.*?<\/script>/gis;
+
+const HTML_TAG_RE = /<[^>]+>/g;
+
+function unescapeHTMLEntities(text: string): string {
+  return text
+    .replace(/&#(\d+);/g, (_, d) => String.fromCharCode(Number(d)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCharCode(parseInt(h, 16)))
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&#039;/g, "'")
+    .replace(/&nbsp;/g, " ");
+}
+
+function cleanSnippet(snippet: string): string {
+  // Remove JSON key-value fragments from technical data pages
+  snippet = snippet.replace(/\s*"[^"]*"\s*:\s*"[^"]*"\s*,?\s*/g, " ");
+  // Remove isolated pipe-value artifacts with Chinese keys
+  snippet = snippet.replace(/\|[一-鿿\w]+\s*=[^\n]*/g, "");
+  snippet = snippet.replace(/#重定向|#REDIRECT/g, "");
+  // Collapse whitespace
+  snippet = snippet.replace(/[ \t]+/g, " ");
+  snippet = snippet.replace(/,{2,}/g, "");
+  snippet = snippet.replace(/\n{2,}/g, "\n");
+  return snippet.replace(/^[ ,\n]+|[ ,\n]+$/g, "");
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -73,31 +106,50 @@ export async function searchPrts(
     list: "search",
     srsearch: query,
     srlimit: limit,
+    srnamespace: 0,
     format: "json",
   })) as { query?: { search?: Array<{ title: string; snippet: string }> } };
 
-  return (data.query?.search ?? []).map((item) => ({
-    title: item.title,
-    snippet: stripWikitext(item.snippet ?? ""),
-  }));
+  return (data.query?.search ?? []).map((item) => {
+    let snippet = stripWikitext(item.snippet ?? "");
+    snippet = unescapeHTMLEntities(snippet);
+    snippet = cleanSnippet(snippet);
+    return { title: item.title, snippet };
+  });
 }
 
 /**
- * Fetch plain-text extract for a PRTS wiki page.
+ * Fetch rendered plain-text content for a PRTS wiki page.
  * Mirrors prts_wiki.read_page().
  */
 export async function readPage(title: string): Promise<string> {
   const data = (await prtsGet({
-    action: "query",
-    titles: title,
-    prop: "extracts",
-    explaintext: "1",
+    action: "parse",
+    page: title,
+    prop: "text",
     format: "json",
-  })) as { query?: { pages?: Record<string, { extract?: string }> } };
+  })) as {
+    error?: { info?: string };
+    parse?: { text?: { "*"?: string } };
+  };
 
-  const pages = data.query?.pages ?? {};
-  for (const page of Object.values(pages)) {
-    if (page.extract) return stripWikitext(page.extract);
+  if (data.error?.info) {
+    return `页面 '${title}' 未找到或内容为空。`;
   }
-  return `页面 '${title}' 未找到或内容为空。`;
+
+  const htmlText = data.parse?.text?.["*"] ?? "";
+  if (!htmlText) {
+    return `页面 '${title}' 未找到或内容为空。`;
+  }
+
+  // Remove CSS rules and inline JS that survive HTML stripping as noise
+  let text = htmlText.replace(CSS_JS_RE, "");
+  // Strip HTML tags
+  text = text.replace(HTML_TAG_RE, "");
+  // Decode remaining HTML entities
+  text = unescapeHTMLEntities(text);
+  // Collapse whitespace
+  text = text.replace(/[ \t]+/g, " ");
+  text = text.replace(/\n{3,}/g, "\n\n");
+  return text.trim();
 }
