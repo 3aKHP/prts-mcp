@@ -354,3 +354,167 @@ export function readActivityFromStore(
 
   return { eventId, eventName, totalChapters: total, hasMore, chapters };
 }
+
+// ---------------------------------------------------------------------------
+// Search helpers
+// ---------------------------------------------------------------------------
+
+const VALID_LINE_TYPES = new Set(["dialog", "narration", "choice"]);
+
+function formatStoryLine(line: StoryLine): string {
+  if (line.type === "dialog") {
+    return `${line.role ?? "（旁白）"}：${line.text}`;
+  } else if (line.type === "narration") {
+    return `*${line.text}*`;
+  } else {
+    return `【选项】${line.text}`;
+  }
+}
+
+/**
+ * Search story text across all events (or a single event).
+ *
+ * Convenience wrapper around searchStoriesFromStore that auto-creates
+ * a ZipStore from *zipPath*.
+ */
+export function searchStories(
+  zipPath: string,
+  pattern: string,
+  character?: string,
+  lineType?: string,
+  contextLines = 1,
+  maxResults = 30,
+  eventId?: string,
+): string {
+  return searchStoriesFromStore(
+    new ZipStore(zipPath),
+    pattern,
+    character,
+    lineType,
+    contextLines,
+    maxResults,
+    eventId,
+  );
+}
+
+interface SearchResult {
+  eventId: string;
+  storyCode: string;
+  lineNumber: number;
+  context: string;
+}
+
+/**
+ * Full-text search across story dialogue, narration and choice lines.
+ */
+export function searchStoriesFromStore(
+  store: JsonStore,
+  pattern: string,
+  character?: string,
+  lineType?: string,
+  contextLines = 1,
+  maxResults = 30,
+  eventId?: string,
+): string {
+  let regex: RegExp;
+  try {
+    regex = new RegExp(pattern, "i");
+  } catch (exc) {
+    return `正则表达式无效：${exc instanceof Error ? exc.message : String(exc)}`;
+  }
+
+  if (lineType !== undefined && !VALID_LINE_TYPES.has(lineType)) {
+    const valid = Array.from(VALID_LINE_TYPES).sort().join(", ");
+    return `无效的 line_type：${JSON.stringify(lineType)}，可选值：${valid}`;
+  }
+
+  let table: Record<string, RawReviewEntry>;
+  try {
+    table = store.readJson<Record<string, RawReviewEntry>>(STORY_REVIEW_TABLE);
+  } catch (exc) {
+    return `读取剧情数据索引失败：${exc instanceof Error ? exc.message : String(exc)}`;
+  }
+
+  // Build active event list, excluding NONE entries
+  const activeEvents: Array<[string, RawReviewEntry]> = [];
+  for (const [evId, entry] of Object.entries(table)) {
+    if (eventId !== undefined && evId !== eventId) continue;
+    if ((entry.entryType ?? "NONE") === "NONE") continue;
+    activeEvents.push([evId, entry]);
+  }
+
+  if (eventId !== undefined && activeEvents.length === 0) {
+    return `未找到匹配的活动：${JSON.stringify(eventId)}。`;
+  }
+
+  const results: SearchResult[] = [];
+
+  for (const [evId, entry] of activeEvents) {
+    if (results.length >= maxResults) break;
+
+    const datas = (entry.infoUnlockDatas ?? []).slice();
+    datas.sort((a, b) => (a.storySort ?? 0) - (b.storySort ?? 0));
+
+    for (const d of datas) {
+      if (results.length >= maxResults) break;
+      if (!d.storyTxt) continue;
+      const storyCode = d.storyCode ?? "";
+
+      let chapter: StoryChapter;
+      try {
+        chapter = readStoryFromStore(store, d.storyTxt, true);
+      } catch {
+        continue;
+      }
+
+      for (let i = 0; i < chapter.lines.length; i++) {
+        if (results.length >= maxResults) break;
+        const line = chapter.lines[i];
+
+        // --- filters ---
+        if (character !== undefined) {
+          if (line.type !== "dialog" || (line.role ?? "").toLowerCase() !== character.toLowerCase()) {
+            continue;
+          }
+        }
+        if (lineType !== undefined && line.type !== lineType) continue;
+
+        if (!regex.test(line.text)) continue;
+
+        // --- context collection ---
+        const start = Math.max(0, i - contextLines);
+        const end = Math.min(chapter.lines.length, i + contextLines + 1);
+        const ctxParts: string[] = [];
+        for (let j = start; j < end; j++) {
+          const prefix = j === i ? ">>> " : "    ";
+          ctxParts.push(prefix + formatStoryLine(chapter.lines[j]));
+        }
+
+        results.push({
+          eventId: evId,
+          storyCode,
+          lineNumber: i + 1,
+          context: ctxParts.join("\n"),
+        });
+      }
+    }
+  }
+
+  if (results.length === 0) {
+    const filters: string[] = [];
+    if (eventId) filters.push(`event_id=${JSON.stringify(eventId)}`);
+    if (character) filters.push(`character=${JSON.stringify(character)}`);
+    if (lineType) filters.push(`line_type=${JSON.stringify(lineType)}`);
+    const filterSuffix = filters.length > 0 ? `（过滤条件：${filters.join("。")}）` : "";
+    return `未找到匹配 '${pattern}' 的剧情台词。${filterSuffix}`;
+  }
+
+  const parts: string[] = [`# 搜索 "${pattern}" 的结果（共 ${results.length} 条）`];
+  for (const r of results) {
+    parts.push(
+      `\n---\n\n[stories/${r.eventId}/${r.storyCode} L${r.lineNumber}]\n${r.context}`
+    );
+  }
+
+  return parts.join("\n");
+}

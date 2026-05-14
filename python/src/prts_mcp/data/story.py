@@ -345,3 +345,174 @@ def read_activity_from_store(
         has_more=has_more,
         chapters=chapters,
     )
+
+
+# ---------------------------------------------------------------------------
+# Search helpers
+# ---------------------------------------------------------------------------
+
+
+def _format_story_line(line: StoryLine) -> str:
+    """Format a single StoryLine for display in search results."""
+    if line.type == "dialog":
+        return f"{line.role or '（旁白）'}：{line.text}"
+    elif line.type == "narration":
+        return f"*{line.text}*"
+    else:
+        return f"【选项】{line.text}"
+
+
+_VALID_LINE_TYPES = {"dialog", "narration", "choice"}
+
+
+def search_stories(
+    zip_path: Path,
+    pattern: str,
+    character: str | None = None,
+    line_type: str | None = None,
+    context_lines: int = 1,
+    max_results: int = 30,
+    event_id: str | None = None,
+) -> str:
+    """Search story text across all events (or a single event).
+
+    Convenience wrapper around search_stories_from_store that auto-creates
+    a ZipStore from *zip_path*.
+    """
+    return search_stories_from_store(
+        ZipStore(zip_path),
+        pattern,
+        character=character,
+        line_type=line_type,
+        context_lines=context_lines,
+        max_results=max_results,
+        event_id=event_id,
+    )
+
+
+def search_stories_from_store(
+    store: JsonStore,
+    pattern: str,
+    character: str | None = None,
+    line_type: str | None = None,
+    context_lines: int = 1,
+    max_results: int = 30,
+    event_id: str | None = None,
+) -> str:
+    """Full-text search across story dialogue, narration and choice lines.
+
+    Args:
+        store: JsonStore (ZipStore or DirectoryStore) for story data.
+        pattern: Case-insensitive regex pattern.
+        character: Optional speaker name filter (dialog lines only).
+        line_type: Optional line type filter — "dialog", "narration" or "choice".
+        context_lines: Number of surrounding lines to include per match.
+        max_results: Maximum matches to return.
+        event_id: Optional event filter (e.g. "act31side").
+
+    Returns:
+        Formatted multi-block search result string.
+    """
+    try:
+        regex = re.compile(pattern, re.IGNORECASE)
+    except re.error as exc:
+        return f"正则表达式无效：{exc}"
+
+    if line_type is not None and line_type not in _VALID_LINE_TYPES:
+        return f"无效的 line_type：{line_type!r}，可选值：{', '.join(sorted(_VALID_LINE_TYPES))}"
+
+    # --- build active event list --------------------------------------------------
+    try:
+        table: dict = _load_json(store, _STORY_REVIEW_TABLE)
+    except Exception as exc:
+        return f"读取剧情数据索引失败：{exc}"
+
+    # Respect the same category semantics as list_story_events
+    active_events: list[tuple[str, dict]] = []
+    for ev_id, entry in table.items():
+        if event_id is not None and ev_id != event_id:
+            continue
+        if entry.get("entryType", "NONE") == "NONE":
+            continue
+        active_events.append((ev_id, entry))
+
+    if event_id is not None and not active_events:
+        return f"未找到匹配的活动：{event_id!r}。"
+
+    results: list[dict] = []
+
+    for ev_id, entry in active_events:
+        if len(results) >= max_results:
+            break
+
+        datas = sorted(
+            entry.get("infoUnlockDatas") or [],
+            key=lambda x: x.get("storySort", 0),
+        )
+
+        for d in datas:
+            if len(results) >= max_results:
+                break
+            story_key = d.get("storyTxt")
+            if not story_key:
+                continue
+            story_code = d.get("storyCode", "")
+
+            try:
+                chapter = read_story_from_store(
+                    store, story_key, include_narration=True,
+                )
+            except KeyError:
+                continue
+            except Exception:
+                continue
+
+            for i, line in enumerate(chapter.lines):
+                if len(results) >= max_results:
+                    break
+
+                # --- filters ---
+                if character is not None:
+                    if line.type != "dialog" or (line.role or "").lower() != character.lower():
+                        continue
+                if line_type is not None and line.type != line_type:
+                    continue
+
+                if not regex.search(line.text):
+                    continue
+
+                # --- context collection ---
+                start = max(0, i - context_lines)
+                end = min(len(chapter.lines), i + context_lines + 1)
+                ctx_parts: list[str] = []
+                for j in range(start, end):
+                    prefix = ">>> " if j == i else "    "
+                    ctx_parts.append(prefix + _format_story_line(chapter.lines[j]))
+
+                results.append({
+                    "event_id": ev_id,
+                    "story_code": story_code,
+                    "line_number": i + 1,
+                    "context": "\n".join(ctx_parts),
+                })
+
+    if not results:
+        filter_desc = "。".join(
+            f for f in [
+                f"event_id={event_id!r}" if event_id else "",
+                f"character={character!r}" if character else "",
+                f"line_type={line_type!r}" if line_type else "",
+            ] if f
+        )
+        filter_suffix = f"（过滤条件：{filter_desc}）" if filter_desc else ""
+        return f"未找到匹配 '{pattern}' 的剧情台词。{filter_suffix}"
+
+    parts = [f"# 搜索 \"{pattern}\" 的结果（共 {len(results)} 条）"]
+    for r in results:
+        parts.append(
+            f"\n---\n\n"
+            f"[stories/{r['event_id']}/{r['story_code']} L{r['line_number']}]\n"
+            f"{r['context']}"
+        )
+
+    return "\n".join(parts)

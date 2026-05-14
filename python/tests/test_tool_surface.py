@@ -14,6 +14,9 @@ EXPECTED_TOOL_SURFACE = {
     "list_stories": ("event_id",),
     "read_story": ("story_key", "include_narration"),
     "read_activity": ("event_id", "include_narration", "page", "page_size"),
+    "list_search_scopes": (),
+    "search_data": ("pattern", "scope", "max_results"),
+    "search_stories": ("pattern", "character", "line_type", "context_lines", "max_results", "event_id"),
 }
 
 

@@ -27,8 +27,8 @@ This repository contains two independent implementations for different deploymen
 
 | Area | Python | TypeScript | 1.0 policy |
 |------|--------|------------|------------|
-| Current line | `1.0.0` | `1.0.0` | Stable releases are cut from the same commit when possible |
-| MCP tools | Same public tool names and required parameters | Same public tool names and required parameters | Tool names and required parameters stay stable through 1.0 |
+| Current line | `1.1.0` | `1.1.0` | Stable releases are cut from the same commit when possible |
+| MCP tools | Same 12 public tool names and required parameters | Same 12 public tool names and required parameters | Tool names and required parameters stay stable through 1.x |
 | GameData | `GAMEDATA_PATH` or auto-synced `zh_CN-excel.zip` | `GAMEDATA_PATH` or auto-synced `zh_CN-excel.zip` | Custom paths disable auto-sync |
 | Story data | `STORYJSON_PATH` or auto-synced `zh_CN.zip` | `STORYJSON_PATH` or auto-synced `zh_CN.zip` | Custom zip paths disable auto-sync |
 | Bundled fallback data | Docker image only | Docker image and published npm package | PyPI remains data-light |
@@ -51,6 +51,9 @@ Both implementations expose the same tool set:
 | `list_stories(event_id)` | List chapters of an event in official order |
 | `read_story(story_key, include_narration)` | Read full dialogue for a single chapter |
 | `read_activity(event_id, include_narration, page, page_size)` | Read a complete activity's transcript, with pagination |
+| `list_search_scopes` | List available search domains (operators, stories) with descriptions |
+| `search_data(pattern, scope, max_results)` | Full-text regex search across operator names, descriptions, archives, and voice lines |
+| `search_stories(pattern, character?, line_type?, context_lines?, max_results?, event_id?)` | Full-text regex search across story dialogue, narration, and choice lines with filtering |
 
 ### Quick Start
 
@@ -88,8 +91,8 @@ Published Docker images and the npm package include bundled fallback game/story 
 
 | 范围 | Python | TypeScript | 1.0 策略 |
 |------|--------|------------|----------|
-| 当前版本线 | `1.0.0` | `1.0.0` | 稳定发布尽量从同一 commit 发布 |
-| MCP 工具 | 相同工具名和必填参数 | 相同工具名和必填参数 | 1.0 期间保持工具名和必填参数稳定 |
+| 当前版本线 | `1.1.0` | `1.1.0` | 稳定发布尽量从同一 commit 发布 |
+| MCP 工具 | 相同的 12 个工具名和必填参数 | 相同的 12 个工具名和必填参数 | 1.x 期间保持工具名和必填参数稳定 |
 | 干员数据 | `GAMEDATA_PATH` 或自动同步 `zh_CN-excel.zip` | `GAMEDATA_PATH` 或自动同步 `zh_CN-excel.zip` | 自定义路径会禁用自动同步 |
 | 剧情数据 | `STORYJSON_PATH` 或自动同步 `zh_CN.zip` | `STORYJSON_PATH` 或自动同步 `zh_CN.zip` | 自定义 zip 会禁用自动同步 |
 | bundled 兜底数据 | Docker 镜像 | Docker 镜像和正式 npm 包 | PyPI 继续保持轻量 |
@@ -111,6 +114,9 @@ Published Docker images and the npm package include bundled fallback game/story 
 | `list_stories(event_id)` | 列出指定活动的章节（按官方顺序） |
 | `read_story(story_key, include_narration)` | 读取单章完整台词 |
 | `read_activity(event_id, include_narration, page, page_size)` | 读取整个活动的完整剧情，支持分页 |
+| `list_search_scopes` | 列出可搜索的数据域（干员、剧情）及其内容类型 |
+| `search_data(pattern, scope, max_results)` | 在干员名称、描述、档案、语音中执行全文正则搜索 |
+| `search_stories(pattern, character?, line_type?, context_lines?, max_results?, event_id?)` | 在剧情台词中执行全文正则搜索，支持按角色和台词类型过滤 |
 
 ### 快速开始
 

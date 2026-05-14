@@ -17,11 +17,13 @@ from prts_mcp.data.operator import (
     get_operator_voicelines as _get_voicelines,
     get_operator_basic_info as _get_basic_info,
 )
+from prts_mcp.data.search import search_operator_data as _search_operator_data
 from prts_mcp.data.story import (
     list_story_events as _list_story_events,
     list_stories as _list_stories,
     read_story as _read_story,
     read_activity as _read_activity,
+    search_stories as _search_stories,
 )
 
 logging.basicConfig(
@@ -278,6 +280,77 @@ def read_activity(
         parts.append("")
 
     return "\n".join(parts)
+
+
+@mcp.tool()
+def list_search_scopes() -> str:
+    """列出所有可搜索的数据域及其内容类型。
+
+    返回可用搜索域的名称和简介，帮助 Agent 选择合适的搜索工具和 scope 参数。
+    无需参数，始终返回当前服务器支持的所有搜索域。
+    """
+    return (
+        "可用搜索域：\n"
+        "- operators：干员数据（名称、基本信息描述、档案文本、语音台词）\n"
+        "  使用 search_data(scope=\"operators\") 搜索。\n"
+        "- stories：剧情台词（对话、旁白、选项），按活动/章节组织，支持按角色和台词类型过滤。\n"
+        "  使用 search_stories 搜索。"
+    )
+
+
+@mcp.tool()
+def search_data(
+    pattern: Annotated[str, Field(description="正则表达式搜索模式，大小写不敏感。例如「博士」、「法术伤害」。")],
+    scope: Annotated[str, Field(default="operators", description="搜索域，目前支持 \"operators\"。")] = "operators",
+    max_results: Annotated[int, Field(default=30, description="最多返回条数，默认 30。")] = 30,
+) -> str:
+    """在干员数据中执行全文正则搜索。
+
+    搜索范围覆盖干员名称、攻击属性描述、档案文本和语音台词。
+    返回带领域标签（operators/basic、operators/archives、operators/voicelines）的
+    匹配结果，包含匹配字段名和完整文本。
+
+    如需搜索剧情台词，请使用 search_stories。
+    """
+    if scope != "operators":
+        return f"不支持的搜索域：{scope!r}。当前仅支持 scope=\"operators\"。"
+    return _search_operator_data(pattern, max_results=max_results)
+
+
+@mcp.tool()
+def search_stories(
+    pattern: Annotated[str, Field(description="正则表达式搜索模式，大小写不敏感。")],
+    character: Annotated[str | None, Field(default=None, description="按说话角色名过滤（仅匹配 dialog 行），如「博士」、「阿米娅」。")] = None,
+    line_type: Annotated[str | None, Field(default=None, description="台词类型过滤：dialog（对话）、narration（旁白）、choice（选项）。")] = None,
+    context_lines: Annotated[int, Field(default=1, description="匹配行前后的上下文行数，默认 1。设 0 则只返回匹配行本身。")] = 1,
+    max_results: Annotated[int, Field(default=30, description="最多返回条数，默认 30。")] = 30,
+    event_id: Annotated[str | None, Field(default=None, description="限定活动 ID，如「act31side」。不填则搜索全部活动。")] = None,
+) -> str:
+    """在剧情台词中执行全文正则搜索，支持角色和台词类型过滤。
+
+    返回格式：以 `[stories/活动ID/章节编号 L行号]` 标注位置，
+    命中行前缀 `>>> ` 标记，上下文行以 4 空格缩进显示。
+    可结合 list_story_events 和 list_stories 确认活动 ID 后过滤到特定活动。
+    """
+    from prts_mcp.config import Config
+    cfg = Config.load()
+    try:
+        zip_path = _require_story_zip(cfg)
+    except RuntimeError as e:
+        return str(e)
+
+    try:
+        return _search_stories(
+            zip_path,
+            pattern,
+            character=character,
+            line_type=line_type,
+            context_lines=context_lines,
+            max_results=max_results,
+            event_id=event_id,
+        )
+    except Exception as e:
+        return f"剧情搜索失败：{e}"
 
 
 def _sync_needs_retry(status: str) -> bool:

@@ -10,6 +10,7 @@ import { z } from "zod";
 import { loadConfig, hasStoryData } from "./config.js";
 import { searchPrts, readPage } from "./api/prtsWiki.js";
 import { clearOperatorCaches, getOperatorArchives, getOperatorVoicelines, getOperatorBasicInfo } from "./data/operator.js";
+import { searchOperatorData } from "./data/search.js";
 import { syncRelease, syncReleaseArchive } from "./data/sync.js";
 import { archiveSpecForDataset, releaseSpecForDataset, GAMEDATA_EXCEL, STORY_ZH_CN } from "./data/datasets.js";
 import {
@@ -17,6 +18,7 @@ import {
   listStories as _listStories,
   readStory as _readStory,
   readActivity as _readActivity,
+  searchStories as _searchStories,
   type StoryChapter,
   type StoryLine,
 } from "./data/story.js";
@@ -339,6 +341,91 @@ function createMcpServer(): McpServer {
           };
         }
         return { content: [{ type: "text", text: `读取活动剧情失败：${msg}` }] };
+      }
+    }
+  );
+
+  // -------------------------------------------------------------------------
+  // Search tools
+  // -------------------------------------------------------------------------
+
+  server.tool(
+    "list_search_scopes",
+    "列出所有可搜索的数据域及其内容类型。返回可用搜索域的名称和简介，帮助 Agent 选择合适的搜索工具和 scope 参数。",
+    {},
+    () => {
+      return {
+        content: [
+          {
+            type: "text",
+            text:
+              "可用搜索域：\n" +
+              "- operators：干员数据（名称、基本信息描述、档案文本、语音台词）\n" +
+              '  使用 search_data(scope="operators") 搜索。\n' +
+              "- stories：剧情台词（对话、旁白、选项），按活动/章节组织，支持按角色和台词类型过滤。\n" +
+              "  使用 search_stories 搜索。",
+          },
+        ],
+      };
+    }
+  );
+
+  server.tool(
+    "search_data",
+    [
+      "在干员数据中执行全文正则搜索。",
+      "搜索范围覆盖干员名称、攻击属性描述、档案文本和语音台词。",
+      "返回带领域标签的匹配结果，包含匹配字段名和完整文本。",
+    ].join(" "),
+    {
+      pattern: z.string().describe("正则表达式搜索模式，大小写不敏感。例如「博士」、「法术伤害」。"),
+      scope: z.string().default("operators").describe('搜索域，目前支持 "operators"。'),
+      max_results: z.number().int().min(1).max(100).default(30).describe("最多返回条数，默认 30。"),
+    },
+    ({ pattern, scope, max_results }) => {
+      if (scope !== "operators") {
+        return { content: [{ type: "text", text: `不支持的搜索域：${JSON.stringify(scope)}。当前仅支持 scope="operators"。` }] };
+      }
+      const text = searchOperatorData(pattern, max_results);
+      return { content: [{ type: "text", text }] };
+    }
+  );
+
+  server.tool(
+    "search_stories",
+    [
+      "在剧情台词中执行全文正则搜索，支持角色和台词类型过滤。",
+      "返回格式：以 [stories/活动ID/章节编号 L行号] 标注位置，",
+      "命中行前缀 >>> 标记，上下文行以 4 空格缩进显示。",
+    ].join(" "),
+    {
+      pattern: z.string().describe("正则表达式搜索模式，大小写不敏感。"),
+      character: z.string().optional().describe("按说话角色名过滤（仅匹配 dialog 行），如「博士」、「阿米娅」。"),
+      line_type: z.string().optional().describe("台词类型过滤：dialog（对话）、narration（旁白）、choice（选项）。"),
+      context_lines: z.number().int().min(0).max(5).default(1).describe("匹配行前后的上下文行数，默认 1。"),
+      max_results: z.number().int().min(1).max(100).default(30).describe("最多返回条数，默认 30。"),
+      event_id: z.string().optional().describe("限定活动 ID，如「act31side」。不填则搜索全部活动。"),
+    },
+    ({ pattern, character, line_type, context_lines, max_results, event_id }) => {
+      let zipPath: string;
+      try {
+        zipPath = requireStoryZip();
+      } catch (e) {
+        return { content: [{ type: "text", text: e instanceof Error ? e.message : String(e) }] };
+      }
+      try {
+        const text = _searchStories(
+          zipPath,
+          pattern,
+          character,
+          line_type,
+          context_lines,
+          max_results,
+          event_id,
+        );
+        return { content: [{ type: "text", text }] };
+      } catch (e) {
+        return { content: [{ type: "text", text: `剧情搜索失败：${e instanceof Error ? e.message : String(e)}` }] };
       }
     }
   );

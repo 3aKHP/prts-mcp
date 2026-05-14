@@ -119,7 +119,7 @@ function operatorStore(): DirectoryStore {
   return new DirectoryStore(ep);
 }
 
-function getCharacterTable(): Record<string, CharacterEntry> {
+export function getCharacterTable(): Record<string, CharacterEntry> {
   if (_characterTable === null) {
     _characterTable = loadJson<Record<string, CharacterEntry>>(
       "character_table.json"
@@ -129,7 +129,7 @@ function getCharacterTable(): Record<string, CharacterEntry> {
   return _characterTable;
 }
 
-function getHandbookTable(): HandbookTable {
+export function getHandbookTable(): HandbookTable {
   if (_handbookTable === null) {
     _handbookTable = loadJson<HandbookTable>(
       "handbook_info_table.json"
@@ -139,7 +139,7 @@ function getHandbookTable(): HandbookTable {
   return _handbookTable;
 }
 
-function getCharwordTable(): CharwordTable {
+export function getCharwordTable(): CharwordTable {
   if (_charwordTable === null) {
     _charwordTable = loadJson<CharwordTable>("charword_table.json");
   }
@@ -147,7 +147,7 @@ function getCharwordTable(): CharwordTable {
   return _charwordTable;
 }
 
-function resolveCharId(name: string): string | null {
+export function resolveCharId(name: string): string | null {
   if (_nameToId === null) {
     const ct = getCharacterTable();
     _nameToId = new Map(

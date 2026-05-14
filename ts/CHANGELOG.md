@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-05-14
+
+### Added
+
+- **Search tools.** Three new MCP tools provide full-text regex search across
+  operator data and story dialogue, enabling exploratory queries without
+  knowing exact operator names or story keys upfront:
+  - `list_search_scopes` — list searchable data domains and their content types.
+  - `search_data(pattern, scope, max_results)` — search operator names,
+    descriptions, archive texts, and voice lines.
+  - `search_stories(pattern, character, line_type, context_lines, max_results, event_id)`
+    — search story dialogue, narration, and choice lines with filtering by
+    speaker and line type, plus configurable context lines around each match.
+
 ## [1.0.0] - 2026-05-13
 
 ### Changed

@@ -1,22 +1,23 @@
 # PRTS-MCP Roadmap
 
-_Last updated: 2026-05-13_
+_Last updated: 2026-05-14_
 
 PRTS-MCP has reached its first stable release. The public tool surface and
 data architecture are now under a compatibility contract.
 
 ## Current Release
 
-- Python: `1.0.0`
-- TypeScript: `1.0.0`
-- The public tool surface (9 MCP tools, required parameters, response formats)
-  is frozen. Automated CI checks enforce this.
+- Python: `1.1.0`
+- TypeScript: `1.1.0`
+- The public tool surface (12 MCP tools) is frozen in the 1.x line.
+  Automated CI checks enforce this.
+- 1.1.0 adds 3 search tools: `list_search_scopes`, `search_data`, `search_stories`.
 - A migration guide covers behavioral changes for users upgrading from 0.x.
 
-## 1.0.x Patch Policy
+## 1.x Patch Policy
 
-Patch releases (1.0.1, 1.0.2, …) are limited to bug fixes and documentation
-improvements within the 1.0 compatibility contract.
+Patch releases (1.1.1, 1.1.2, …) are limited to bug fixes and documentation
+improvements within the 1.x compatibility contract.
 
 ## 1.0 Goals
 
@@ -83,10 +84,16 @@ improvements within the 1.0 compatibility contract.
 - Announce version alignment and compatibility rules.
 - Keep later 1.0.x releases focused on bug fixes and documentation.
 
-## Optional Post-1.0 Feature Track
+## 1.1.0 Added
+
+- **Search tools** (`list_search_scopes`, `search_data`, `search_stories`):
+  full-text regex search across operator data and story dialogue, with filtering
+  by speaker, line type, and configurable context lines.
+
+## Optional Future Feature Track
 
 The most likely next feature candidate is a story-summary tool, but it should
-not block 1.0 unless it can be implemented from existing structured story data.
+only be implemented from existing structured story data.
 
 Possible shape:
 
