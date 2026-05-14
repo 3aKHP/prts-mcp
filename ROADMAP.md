@@ -90,20 +90,83 @@ improvements within the 1.x compatibility contract.
   full-text regex search across operator data and story dialogue, with filtering
   by speaker, line type, and configurable context lines.
 
-## Optional Future Feature Track
+## 1.1.1 Fixed
 
-The most likely next feature candidate is a story-summary tool, but it should
-only be implemented from existing structured story data.
+- **PRTS API investigation.** Systematic testing uncovered severe quality issues
+  in the two PRTS Wiki tools dating back to 0.1.0:
 
-Possible shape:
+  *`read_prts_page`*
+  - Used `action=query&prop=extracts&explaintext=1`. MediaWiki's `explaintext`
+    strips all template-rendered content. PRTS character pages are >99% template-
+    driven (infoboxes, skill tables, archive templates). Result: ~400 chars of
+    empty section headers for a page like "阿米娅".
+  - **Fix**: switched to `action=parse&prop=text`, which returns fully rendered
+    HTML. After HTML-tag stripping and CSS/JS removal, "阿米娅" yields 22K+ chars
+    of readable text covering all sections (attributes, talents, skills, archives).
 
-- `get_story_summary(story_key)`: return an existing official/source-provided
-  summary when available.
-- Later: `get_stage_story_summary(stage_id)`, if stage-to-story mapping proves
-  stable enough.
+  *`search_prts`*
+  - No namespace filtering. Default MediaWiki search scans ALL namespaces,
+    returning technical data pages (JSON-like spine data, Lua module dumps)
+    mixed with real articles.
+  - Snippets contained raw HTML entities (`&quot;`, `&#039;`) and wikitext
+    template parameter syntax (`|名称=xxx`).
+  - **Fix**: added `srnamespace=0` (main namespace only), HTML entity decoding,
+    and residual-wikitext snippet cleanup.
 
-Generated summaries should remain out of scope until caching, reproducibility,
-and dependency boundaries are designed.
+  *Known remaining issues (PRTS Wiki structural, not our code)*
+  - PRTS puts auto-generated technical pages (`*/spine`) in the main namespace
+    (ns=0), so namespace filtering alone can't fully sanitise results.
+  - Redirect pages appear as search results without being resolved to their
+    targets (MediaWiki `list=search` does not auto-resolve redirects).
+  - Free-text snippets from MediaWiki's search index are inherently imprecise;
+    the only fully reliable way to identify a page's topic is to retrieve and
+    parse the rendered content via `action=parse`.
+
+## 1.2.0 PRTS API Enhancement Candidates
+
+Based on the 1.1.1 investigation, PRTS Wiki's MediaWiki API exposes significant
+capabilities beyond the current `search_prts` + `read_prts_page` pair. No
+decisions yet; this section captures what's possible.
+
+*Categories and navigation*
+- `prop=categories` on `action=parse` returns page categories. PRTS categorises
+  pages under labels like "干员", "敌方", "阵营", "势力", "物品". Category-driven
+  queries would let agents discover related pages precisely.
+- `prop=links` / `prop=backlinks` would allow graph traversal — e.g. from a
+  character page to all pages that reference that character.
+
+*Structured sections*
+- `action=parse&prop=sections` returns a table of contents with section indices,
+  levels, and byte offsets. Combined with `action=parse&section=N`, agents could
+  read specific sections (e.g. "天赋", "档案") without fetching the entire page.
+- This would enable tools like `read_prts_page_section(title, section_index)` or
+  `list_prts_page_sections(title)`.
+
+*Search quality*
+- `srwhat=title` could power an exact-title lookup mode. Combined with
+  `srredirects=1`, searches could resolve redirects transparently.
+- `srinfo=totalhits` would give agents a sense of result volume before paginating.
+- Pre-filtering known technical page patterns (e.g. titles ending in `/spine`,
+  `/data`, `Widget:`) could further clean results client-side.
+
+*Template data extraction*
+- PRTS infobox data lives in raw wikitext templates (`{{干员信息|...}}`).
+  `action=parse&prop=parsetree` returns a structured parse tree that could be
+  mined for key-value pairs. This is complex but would yield machine-readable
+  structured data without relying on external ArknightsGameData JSON files.
+
+## Next Feature: Story Chapter Summaries
+
+### Status: implemented (pending release)
+
+Two enhancements built on `zh_CN/storyinfo.json` (1,945 entries, previously
+unused despite being required for zip validation):
+
+- **`list_stories` now accepts `include_summaries` parameter.** When `true`,
+  each chapter line includes an indented summary below it.
+- **New tool `get_event_summary(event_id)`.** Returns a clean narrative overview
+  of all chapters in an event — code, tag, name, and full summary text. Designed
+  for "what is this event about?" queries before committing to `read_activity`.
 
 ## Detailed Plans
 

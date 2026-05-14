@@ -17,6 +17,7 @@ import { JsonStore, ZipStore } from "./stores.js";
 // ---------------------------------------------------------------------------
 
 const STORY_REVIEW_TABLE = "zh_CN/gamedata/excel/story_review_table.json";
+const STORYINFO = "zh_CN/storyinfo.json";
 
 function storyZipPath(storyKey: string): string {
   return `zh_CN/gamedata/story/${storyKey}.json`;
@@ -517,4 +518,79 @@ export function searchStoriesFromStore(
   }
 
   return parts.join("\n");
+}
+
+// ---------------------------------------------------------------------------
+// Event summary
+// ---------------------------------------------------------------------------
+
+/**
+ * Return a chapter-by-chapter summary overview of an event.
+ *
+ * Convenience wrapper around getEventSummaryFromStore.
+ */
+export function getEventSummary(zipPath: string, eventId: string): string {
+  return getEventSummaryFromStore(new ZipStore(zipPath), eventId);
+}
+
+/**
+ * Return a chapter-by-chapter summary overview of an event.
+ *
+ * Reads story_review_table for chapter ordering and storyinfo.json
+ * for per-chapter summaries.
+ */
+export function getEventSummaryFromStore(store: JsonStore, eventId: string): string {
+  // --- event metadata ---
+  let table: Record<string, RawReviewEntry>;
+  try {
+    table = store.readJson<Record<string, RawReviewEntry>>(STORY_REVIEW_TABLE);
+  } catch (exc) {
+    return `读取剧情数据索引失败：${exc instanceof Error ? exc.message : String(exc)}`;
+  }
+
+  const entry = table[eventId];
+  if (!entry) {
+    return `未找到活动：${JSON.stringify(eventId)}。请先调用 list_story_events 确认活动 ID。`;
+  }
+
+  const eventName = entry.name ?? eventId;
+  const datas = (entry.infoUnlockDatas ?? []).slice();
+  datas.sort((a, b) => (a.storySort ?? 0) - (b.storySort ?? 0));
+
+  if (datas.length === 0) {
+    return `活动 ${JSON.stringify(eventId)}（${eventName}）暂无剧情章节。`;
+  }
+
+  // --- load summary index ---
+  let summaries: Record<string, string> = {};
+  if (store.exists(STORYINFO)) {
+    try {
+      const raw = store.readJson<Record<string, unknown>>(STORYINFO);
+      for (const [k, v] of Object.entries(raw)) {
+        if (v) summaries[k] = String(v);
+      }
+    } catch {
+      // storyinfo.json is optional for this tool
+    }
+  }
+
+  // --- build output ---
+  const total = datas.length;
+  const lines: string[] = [`# ${eventName} — 共 ${total} 章`];
+  for (const d of datas) {
+    const storyKey = d.storyTxt;
+    if (!storyKey) continue;
+    const code = d.storyCode ?? "";
+    const name = d.storyName ?? "";
+    const tag = d.avgTag ? `[${d.avgTag}] ` : "";
+
+    const summary = summaries[storyKey] ?? "";
+    if (summary) {
+      lines.push(`\n${code} ${tag}${name}\n  ${summary}`);
+    } else {
+      lines.push(`\n${code} ${tag}${name}`);
+    }
+  }
+
+  return lines.join("\n");
 }

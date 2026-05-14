@@ -11,6 +11,7 @@ const EXPECTED_TOOLS = [
   "get_operator_basic_info",
   "list_story_events",
   "list_stories",
+  "get_event_summary",
   "read_story",
   "read_activity",
   "list_search_scopes",

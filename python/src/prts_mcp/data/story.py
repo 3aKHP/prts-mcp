@@ -21,6 +21,7 @@ from prts_mcp.data.stores import JsonStore, ZipStore
 # ---------------------------------------------------------------------------
 
 _STORY_REVIEW_TABLE = "zh_CN/gamedata/excel/story_review_table.json"
+_STORYINFO = "zh_CN/storyinfo.json"
 
 # entryType values → user-facing category strings
 _CATEGORY_MAP: dict[str, list[str]] = {
@@ -516,3 +517,72 @@ def search_stories_from_store(
         )
 
     return "\n".join(parts)
+
+
+# ---------------------------------------------------------------------------
+# Event summary
+# ---------------------------------------------------------------------------
+
+
+def get_event_summary(zip_path: Path, event_id: str) -> str:
+    """Return a chapter-by-chapter summary overview of an event.
+
+    Convenience wrapper around get_event_summary_from_store.
+    """
+    return get_event_summary_from_store(ZipStore(zip_path), event_id)
+
+
+def get_event_summary_from_store(store: JsonStore, event_id: str) -> str:
+    """Return a chapter-by-chapter summary overview of an event.
+
+    Reads story_review_table for chapter ordering and storyinfo.json
+    for per-chapter summaries, producing a narrative table of contents
+    suitable for getting the big picture of an event at a glance.
+    """
+    # --- event metadata ---
+    try:
+        table: dict = _load_json(store, _STORY_REVIEW_TABLE)
+    except Exception as exc:
+        return f"读取剧情数据索引失败：{exc}"
+
+    entry = table.get(event_id)
+    if entry is None:
+        return f"未找到活动：{event_id!r}。请先调用 list_story_events 确认活动 ID。"
+
+    event_name = entry.get("name") or event_id
+    datas = sorted(
+        entry.get("infoUnlockDatas") or [],
+        key=lambda x: x.get("storySort", 0),
+    )
+
+    if not datas:
+        return f"活动 {event_id!r}（{event_name}）暂无剧情章节。"
+
+    # --- load summary index ---
+    summaries: dict[str, str] = {}
+    if store.exists(_STORYINFO):
+        try:
+            raw = _load_json(store, _STORYINFO)
+            if isinstance(raw, dict):
+                summaries = {str(k): str(v) for k, v in raw.items() if v}
+        except Exception:
+            pass  # storyinfo.json is optional for this tool
+
+    # --- build output ---
+    total = len(datas)
+    lines = [f"# {event_name} — 共 {total} 章"]
+    for d in datas:
+        story_key = d.get("storyTxt")
+        if not story_key:
+            continue
+        code = d.get("storyCode", "")
+        name = d.get("storyName", "")
+        tag = f"[{d['avgTag']}] " if d.get("avgTag") else ""
+
+        summary = summaries.get(story_key, "")
+        if summary:
+            lines.append(f"\n{code} {tag}{name}\n  {summary}")
+        else:
+            lines.append(f"\n{code} {tag}{name}")
+
+    return "\n".join(lines)

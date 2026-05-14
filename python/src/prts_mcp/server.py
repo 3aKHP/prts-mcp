@@ -24,6 +24,7 @@ from prts_mcp.data.story import (
     read_story as _read_story,
     read_activity as _read_activity,
     search_stories as _search_stories,
+    get_event_summary as _get_event_summary,
 )
 
 logging.basicConfig(
@@ -152,14 +153,16 @@ def list_story_events(
 @mcp.tool()
 def list_stories(
     event_id: Annotated[str, Field(description="活动 ID，如 \"act31side\"（可从 list_story_events 获取）。")],
+    include_summaries: Annotated[bool, Field(default=False, description="是否附带每章梗概，默认 False。")] = False,
 ) -> str:
     """列出指定活动的所有剧情章节（按官方顺序排列）。
 
     返回格式：每行 `- 章节编号 [标签] 章节名（key: story_key）`，其中 story_key
-    可直接传入 read_story 读取该章台词。如需一次性读取整个活动，可使用
-    read_activity。
+    可直接传入 read_story 读取该章台词。设置 include_summaries=True 时每章下方会
+    附带梗概。如需一次性了解活动整体剧情脉络，可使用 get_event_summary。
     """
     from prts_mcp.config import Config
+    from prts_mcp.data.stores import ZipStore
     cfg = Config.load()
     try:
         zip_path = _require_story_zip(cfg)
@@ -176,11 +179,49 @@ def list_stories(
     if not chapters:
         return f"活动 {event_id!r} 暂无剧情章节。"
 
+    summaries: dict[str, str] = {}
+    if include_summaries:
+        store = ZipStore(zip_path)
+        try:
+            if store.exists("zh_CN/storyinfo.json"):
+                raw = store.read_json("zh_CN/storyinfo.json")
+                if isinstance(raw, dict):
+                    summaries = {str(k): str(v) for k, v in raw.items() if v}
+        except Exception:
+            pass
+
     lines = []
     for ch in chapters:
         tag = f"[{ch.avg_tag}] " if ch.avg_tag else ""
         lines.append(f"- {ch.story_code} {tag}{ch.story_name}（key: {ch.story_key}）")
+        if include_summaries:
+            summary = summaries.get(ch.story_key, "")
+            if summary:
+                lines.append(f"  {summary}")
     return "\n".join(lines)
+
+
+@mcp.tool()
+def get_event_summary(
+    event_id: Annotated[str, Field(description="活动 ID，如 \"act31side\"（可从 list_story_events 获取）。")],
+) -> str:
+    """获取指定活动的章节梗概概览。
+
+    返回活动的所有章节编号、标题和每章故事简介，按官方顺序排列，
+    适合快速了解一个活动的整体剧情脉络。如需读取完整台词，请使用
+    read_story 或 read_activity。
+    """
+    from prts_mcp.config import Config
+    cfg = Config.load()
+    try:
+        zip_path = _require_story_zip(cfg)
+    except RuntimeError as e:
+        return str(e)
+
+    try:
+        return _get_event_summary(zip_path, event_id)
+    except Exception as e:
+        return f"读取活动梗概失败：{e}"
 
 
 @mcp.tool()
