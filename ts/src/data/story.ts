@@ -19,6 +19,7 @@ import { JsonStore, ZipStore } from "./stores.js";
 const STORY_REVIEW_TABLE = "zh_CN/gamedata/excel/story_review_table.json";
 const STORYINFO = "zh_CN/storyinfo.json";
 const SUMMARIES = "zh_CN/summaries.json";
+const EVENT_SUMMARIES = "zh_CN/event_summaries.json";
 
 function storyZipPath(storyKey: string): string {
   return `zh_CN/gamedata/story/${storyKey}.json`;
@@ -575,9 +576,22 @@ export function getEventSummaryFromStore(store: JsonStore, eventId: string): str
     }
   }
 
+  // --- tier 1: LLM event summary ---
+  let eventSummaryText = "";
+  if (store.exists(EVENT_SUMMARIES)) {
+    try {
+      const raw = store.readJson<Record<string, unknown>>(EVENT_SUMMARIES);
+      const text = raw[eventId];
+      if (typeof text === "string") eventSummaryText = text.trim();
+    } catch {
+      // continue without LLM event summary
+    }
+  }
+
   // --- build output ---
   const total = datas.length;
   const lines: string[] = [`# ${eventName} — 共 ${total} 章`];
+  if (eventSummaryText) lines.push(`\n${eventSummaryText}`);
   for (const d of datas) {
     const storyKey = d.storyTxt;
     if (!storyKey) continue;

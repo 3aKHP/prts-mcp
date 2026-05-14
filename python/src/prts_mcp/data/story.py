@@ -23,6 +23,7 @@ from prts_mcp.data.stores import JsonStore, ZipStore
 _STORY_REVIEW_TABLE = "zh_CN/gamedata/excel/story_review_table.json"
 _STORYINFO = "zh_CN/storyinfo.json"
 _SUMMARIES = "zh_CN/summaries.json"
+_EVENT_SUMMARIES = "zh_CN/event_summaries.json"
 
 # entryType values → user-facing category strings
 _CATEGORY_MAP: dict[str, list[str]] = {
@@ -569,9 +570,21 @@ def get_event_summary_from_store(store: JsonStore, event_id: str) -> str:
         except Exception:
             pass  # storyinfo.json is optional for this tool
 
+    # --- tier 1: LLM event summary ---
+    event_summary_text = ""
+    if store.exists(_EVENT_SUMMARIES):
+        try:
+            raw = _load_json(store, _EVENT_SUMMARIES)
+            if isinstance(raw, dict):
+                event_summary_text = str(raw.get(event_id) or "").strip()
+        except Exception:
+            pass
+
     # --- build output ---
     total = len(datas)
     lines = [f"# {event_name} — 共 {total} 章"]
+    if event_summary_text:
+        lines.append(f"\n{event_summary_text}")
     for d in datas:
         story_key = d.get("storyTxt")
         if not story_key:
