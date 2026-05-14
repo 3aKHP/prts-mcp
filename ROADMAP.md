@@ -7,11 +7,11 @@ data architecture are now under a compatibility contract.
 
 ## Current Release
 
-- Python: `1.1.1`
-- TypeScript: `1.1.1`
+- Python: `1.2.0`
+- TypeScript: `1.2.0`
 - The public tool surface (12 MCP tools) is frozen in the 1.x line.
   Automated CI checks enforce this.
-- 1.1.0 adds 3 search tools: `list_search_scopes`, `search_data`, `search_stories`.
+- 1.1.0 adds 3 search tools. 1.2.0 adds 2 story summary tools.
 - A migration guide covers behavioral changes for users upgrading from 0.x.
 
 ## 1.x Patch Policy
@@ -155,18 +155,18 @@ decisions yet; this section captures what's possible.
   mined for key-value pairs. This is complex but would yield machine-readable
   structured data without relying on external ArknightsGameData JSON files.
 
-## Next Feature: Story Chapter Summaries
+## 1.2.0 Added
 
-### Status: implemented (pending release)
+- **Story summary tools** (`get_event_summary`, `get_story_summary`, enhanced
+  `list_stories`): chapter-by-chapter and event-level narrative overviews with
+  LLM-generated long summaries (5~7:1 per-chapter, 10:1 per-event). Three-tier
+  fallback ensures graceful degradation when LLM data is unavailable.
 
-Two enhancements built on `zh_CN/storyinfo.json` (1,945 entries, previously
-unused despite being required for zip validation):
+## Next Feature: PRTS API Deep Integration
 
-- **`list_stories` now accepts `include_summaries` parameter.** When `true`,
-  each chapter line includes an indented summary below it.
-- **New tool `get_event_summary(event_id)`.** Returns a clean narrative overview
-  of all chapters in an event — code, tag, name, and full summary text. Designed
-  for "what is this event about?" queries before committing to `read_activity`.
+See the [1.2.0 PRTS API Enhancement Candidates](#120-prts-api-enhancement-candidates)
+section above. Categories, sections, search quality, and template parsing are
+all viable targets for the next release cycle.
 
 ## Detailed Plans
 

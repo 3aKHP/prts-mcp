@@ -27,7 +27,7 @@ This repository contains two independent implementations for different deploymen
 
 | Area | Python | TypeScript | 1.0 policy |
 |------|--------|------------|------------|
-| Current line | `1.1.1` | `1.1.1` | Stable releases are cut from the same commit when possible |
+| Current line | `1.2.0` | `1.2.0` | Stable releases are cut from the same commit when possible |
 | MCP tools | Same 12 public tool names and required parameters | Same 12 public tool names and required parameters | Tool names and required parameters stay stable through 1.x |
 | GameData | `GAMEDATA_PATH` or auto-synced `zh_CN-excel.zip` | `GAMEDATA_PATH` or auto-synced `zh_CN-excel.zip` | Custom paths disable auto-sync |
 | Story data | `STORYJSON_PATH` or auto-synced `zh_CN.zip` | `STORYJSON_PATH` or auto-synced `zh_CN.zip` | Custom zip paths disable auto-sync |
@@ -48,7 +48,9 @@ Both implementations expose the same tool set:
 | `get_operator_voicelines(operator_name)` | Retrieve operator voice lines (Chinese name) |
 | `get_operator_basic_info(operator_name)` | Retrieve basic operator profile: class, rarity, faction, recruit tags, talents (Chinese name) |
 | `list_story_events(category?)` | List story events; optional filter: `main` (main story) or `activities` |
-| `list_stories(event_id)` | List chapters of an event in official order |
+| `list_stories(event_id, include_summaries?)` | List chapters of an event in official order, with optional summaries |
+| `get_event_summary(event_id)` | Narrative overview of all chapters in an event with summaries |
+| `get_story_summary(story_key)` | Single-chapter summary (LLM long summary or official one-liner) |
 | `read_story(story_key, include_narration)` | Read full dialogue for a single chapter |
 | `read_activity(event_id, include_narration, page, page_size)` | Read a complete activity's transcript, with pagination |
 | `list_search_scopes` | List available search domains (operators, stories) with descriptions |
@@ -91,7 +93,7 @@ Published Docker images and the npm package include bundled fallback game/story 
 
 | 范围 | Python | TypeScript | 1.0 策略 |
 |------|--------|------------|----------|
-| 当前版本线 | `1.1.1` | `1.1.1` | 稳定发布尽量从同一 commit 发布 |
+| 当前版本线 | `1.2.0` | `1.2.0` | 稳定发布尽量从同一 commit 发布 |
 | MCP 工具 | 相同的 12 个工具名和必填参数 | 相同的 12 个工具名和必填参数 | 1.x 期间保持工具名和必填参数稳定 |
 | 干员数据 | `GAMEDATA_PATH` 或自动同步 `zh_CN-excel.zip` | `GAMEDATA_PATH` 或自动同步 `zh_CN-excel.zip` | 自定义路径会禁用自动同步 |
 | 剧情数据 | `STORYJSON_PATH` 或自动同步 `zh_CN.zip` | `STORYJSON_PATH` 或自动同步 `zh_CN.zip` | 自定义 zip 会禁用自动同步 |
@@ -111,7 +113,9 @@ Published Docker images and the npm package include bundled fallback game/story 
 | `get_operator_voicelines(operator_name)` | 获取干员语音记录（中文名） |
 | `get_operator_basic_info(operator_name)` | 获取干员基本信息：职业、稀有度、所属、招募标签、天赋（中文名） |
 | `list_story_events(category?)` | 列出剧情活动，可选过滤：`main`（主线）或 `activities`（活动） |
-| `list_stories(event_id)` | 列出指定活动的章节（按官方顺序） |
+| `list_stories(event_id, include_summaries?)` | 列出指定活动的章节（按官方顺序），可选附带梗概 |
+| `get_event_summary(event_id)` | 获取活动的章节梗概概览，含 LLM 长摘要 |
+| `get_story_summary(story_key)` | 获取单章梗概（LLM 长摘要或官方一句话简介） |
 | `read_story(story_key, include_narration)` | 读取单章完整台词 |
 | `read_activity(event_id, include_narration, page, page_size)` | 读取整个活动的完整剧情，支持分页 |
 | `list_search_scopes` | 列出可搜索的数据域（干员、剧情）及其内容类型 |

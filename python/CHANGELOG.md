@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-05-14
+
+### Added
+
+- **Story chapter summaries.** Two new tools and one enhancement built on the
+  previously-unused `zh_CN/storyinfo.json` index (1,945 entries), plus an
+  LLM summarization pipeline in the data-source fork:
+  - `get_event_summary(event_id)` — narrative overview of every chapter in an
+    event, with chapter codes, tags, names, and summary text. When LLM event
+    summaries are available (`zh_CN/event_summaries.json`), a full-dialogue
+    V2 synopsis is prepended above the chapter listing.
+  - `get_story_summary(story_key)` — single-chapter summary with a three-tier
+    fallback chain: LLM long summary (`zh_CN/summaries.json`, 5~7:1 compression),
+    official one-liner (`zh_CN/storyinfo.json`), and chapter `storyInfo` field.
+  - `list_stories` now accepts `include_summaries` (bool). When `true`, each
+    chapter line includes an indented summary below it.
+- **LLM summarization pipeline** (`3aKHP/ArknightsStoryJson` fork):
+  `scripts/summarize.py` generates per-chapter (5~7:1) and per-event (10:1)
+  summaries via DeepSeek V4 Flash API during CI release, injecting them into
+  `zh_CN.zip` for transparent consumption by the MCP server.
+
 ## [1.1.1] - 2026-05-14
 
 ### Fixed
