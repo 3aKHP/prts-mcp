@@ -22,6 +22,7 @@ from prts_mcp.data.stores import JsonStore, ZipStore
 
 _STORY_REVIEW_TABLE = "zh_CN/gamedata/excel/story_review_table.json"
 _STORYINFO = "zh_CN/storyinfo.json"
+_SUMMARIES = "zh_CN/summaries.json"
 
 # entryType values → user-facing category strings
 _CATEGORY_MAP: dict[str, list[str]] = {
@@ -586,3 +587,61 @@ def get_event_summary_from_store(store: JsonStore, event_id: str) -> str:
             lines.append(f"\n{code} {tag}{name}")
 
     return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Per-chapter summary
+# ---------------------------------------------------------------------------
+
+
+def get_story_summary(zip_path: Path, story_key: str) -> str:
+    """Return a summary for a single story chapter.
+
+    Convenience wrapper around get_story_summary_from_store.
+    """
+    return get_story_summary_from_store(ZipStore(zip_path), story_key)
+
+
+def get_story_summary_from_store(store: JsonStore, story_key: str) -> str:
+    """Return a summary for a single story chapter.
+
+    Fallback chain:
+    1. zh_CN/summaries.json — LLM-generated long summary (future)
+    2. zh_CN/storyinfo.json — official one-line summary
+    3. Chapter JSON ``storyInfo`` field — identical to #2, last resort
+    """
+    # --- tier 1: LLM summaries (future) ---
+    if store.exists(_SUMMARIES):
+        try:
+            raw = _load_json(store, _SUMMARIES)
+            if isinstance(raw, dict):
+                text = raw.get(story_key)
+                if text and isinstance(text, str):
+                    return text.strip()
+        except Exception:
+            pass
+
+    # --- tier 2: storyinfo.json ---
+    if store.exists(_STORYINFO):
+        try:
+            raw = _load_json(store, _STORYINFO)
+            if isinstance(raw, dict):
+                text = raw.get(story_key)
+                if text and isinstance(text, str):
+                    return text.strip()
+        except Exception:
+            pass
+
+    # --- tier 3: chapter JSON storyInfo ---
+    story_path = _story_zip_path(story_key)
+    if store.exists(story_path):
+        try:
+            raw = _load_json(store, story_path)
+            if isinstance(raw, dict):
+                text = raw.get("storyInfo")
+                if text and isinstance(text, str):
+                    return text.strip()
+        except Exception:
+            pass
+
+    return f"未找到剧情章节 '{story_key}' 的梗概。"

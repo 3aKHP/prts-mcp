@@ -25,6 +25,7 @@ from prts_mcp.data.story import (
     read_activity as _read_activity,
     search_stories as _search_stories,
     get_event_summary as _get_event_summary,
+    get_story_summary as _get_story_summary,
 )
 
 logging.basicConfig(
@@ -222,6 +223,33 @@ def get_event_summary(
         return _get_event_summary(zip_path, event_id)
     except Exception as e:
         return f"读取活动梗概失败：{e}"
+
+
+@mcp.tool()
+def get_story_summary(
+    story_key: Annotated[str, Field(description="章节 key，如 \"activities/act31side/level_act31side_01_beg\"（可从 list_stories 获取）。")],
+) -> str:
+    """获取单章剧情的梗概。
+
+    返回指定章节的故事摘要。优先使用 LLM 生成的长摘要（zh_CN/summaries.json），
+    未就绪时回退到官方一句话梗概（zh_CN/storyinfo.json），最后回退到章节
+    JSON 中的 storyInfo 字段。
+
+    如需获取整个活动的章节概览，请使用 get_event_summary。
+    """
+    from prts_mcp.config import Config
+    cfg = Config.load()
+    try:
+        zip_path = _require_story_zip(cfg)
+    except RuntimeError as e:
+        return str(e)
+
+    try:
+        return _get_story_summary(zip_path, story_key)
+    except KeyError:
+        return f"未找到剧情章节：{story_key!r}。请通过 list_stories 确认章节 key。"
+    except Exception as e:
+        return f"读取梗概失败：{e}"
 
 
 @mcp.tool()

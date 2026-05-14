@@ -13,6 +13,7 @@ EXPECTED_TOOL_SURFACE = {
     "list_story_events": ("category",),
     "list_stories": ("event_id", "include_summaries"),
     "get_event_summary": ("event_id",),
+    "get_story_summary": ("story_key",),
     "read_story": ("story_key", "include_narration"),
     "read_activity": ("event_id", "include_narration", "page", "page_size"),
     "list_search_scopes": (),

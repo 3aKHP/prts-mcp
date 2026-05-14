@@ -21,6 +21,7 @@ import {
   readActivity as _readActivity,
   searchStories as _searchStories,
   getEventSummary as _getEventSummary,
+  getStorySummary as _getStorySummary,
   type StoryChapter,
   type StoryLine,
 } from "./data/story.js";
@@ -285,6 +286,34 @@ function createMcpServer(): McpServer {
         return { content: [{ type: "text", text }] };
       } catch (e) {
         return { content: [{ type: "text", text: `读取活动梗概失败：${e instanceof Error ? e.message : String(e)}` }] };
+      }
+    }
+  );
+
+  server.tool(
+    "get_story_summary",
+    [
+      "获取单章剧情的梗概。",
+      "返回指定章节的故事摘要。优先使用 LLM 生成的长摘要，",
+      "未就绪时回退到官方一句话梗概，最后回退到章节自带的 storyInfo。",
+    ].join(" "),
+    { story_key: z.string().describe("章节 key，如 \"activities/act31side/level_act31side_01_beg\"（可从 list_stories 获取）。") },
+    ({ story_key }) => {
+      let zipPath: string;
+      try {
+        zipPath = requireStoryZip();
+      } catch (e) {
+        return { content: [{ type: "text", text: e instanceof Error ? e.message : String(e) }] };
+      }
+      try {
+        const text = _getStorySummary(zipPath, story_key);
+        return { content: [{ type: "text", text }] };
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (msg.includes("not found")) {
+          return { content: [{ type: "text", text: `未找到剧情章节："${story_key}"。请通过 list_stories 确认章节 key。` }] };
+        }
+        return { content: [{ type: "text", text: `读取梗概失败：${msg}` }] };
       }
     }
   );

@@ -18,6 +18,7 @@ import { JsonStore, ZipStore } from "./stores.js";
 
 const STORY_REVIEW_TABLE = "zh_CN/gamedata/excel/story_review_table.json";
 const STORYINFO = "zh_CN/storyinfo.json";
+const SUMMARIES = "zh_CN/summaries.json";
 
 function storyZipPath(storyKey: string): string {
   return `zh_CN/gamedata/story/${storyKey}.json`;
@@ -593,4 +594,63 @@ export function getEventSummaryFromStore(store: JsonStore, eventId: string): str
   }
 
   return lines.join("\n");
+}
+
+// ---------------------------------------------------------------------------
+// Per-chapter summary
+// ---------------------------------------------------------------------------
+
+/**
+ * Return a summary for a single story chapter.
+ *
+ * Convenience wrapper around getStorySummaryFromStore.
+ */
+export function getStorySummary(zipPath: string, storyKey: string): string {
+  return getStorySummaryFromStore(new ZipStore(zipPath), storyKey);
+}
+
+/**
+ * Return a summary for a single story chapter.
+ *
+ * Fallback chain:
+ * 1. zh_CN/summaries.json — LLM-generated long summary (future)
+ * 2. zh_CN/storyinfo.json — official one-line summary
+ * 3. Chapter JSON storyInfo field — identical to #2, last resort
+ */
+export function getStorySummaryFromStore(store: JsonStore, storyKey: string): string {
+  // --- tier 1: LLM summaries (future) ---
+  if (store.exists(SUMMARIES)) {
+    try {
+      const raw = store.readJson<Record<string, unknown>>(SUMMARIES);
+      const text = raw[storyKey];
+      if (typeof text === "string" && text) return text.trim();
+    } catch {
+      // continue to next fallback
+    }
+  }
+
+  // --- tier 2: storyinfo.json ---
+  if (store.exists(STORYINFO)) {
+    try {
+      const raw = store.readJson<Record<string, unknown>>(STORYINFO);
+      const text = raw[storyKey];
+      if (typeof text === "string" && text) return text.trim();
+    } catch {
+      // continue to next fallback
+    }
+  }
+
+  // --- tier 3: chapter JSON storyInfo ---
+  const storyPath = storyZipPath(storyKey);
+  if (store.exists(storyPath)) {
+    try {
+      const raw = store.readJson<Record<string, unknown>>(storyPath);
+      const text = raw["storyInfo"];
+      if (typeof text === "string" && text) return text.trim();
+    } catch {
+      // continue to not-found
+    }
+  }
+
+  return `未找到剧情章节 '${storyKey}' 的梗概。`;
 }

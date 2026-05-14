@@ -12,6 +12,7 @@ const EXPECTED_TOOLS = [
   "list_story_events",
   "list_stories",
   "get_event_summary",
+  "get_story_summary",
   "read_story",
   "read_activity",
   "list_search_scopes",
