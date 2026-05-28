@@ -66,6 +66,22 @@ test("ZipStore reads JSON from zip", () => {
   assert.match(store.describe(), /^zip:/);
 });
 
+test("ZipStore close clears cached AdmZip instance", () => {
+  const root = tempRoot();
+  const zipPath = join(root, "fixture.zip");
+  writeFixtureZip(zipPath);
+  const store = new ZipStore(zipPath);
+
+  assert.equal(store.exists(FIXTURE_PATH), true);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  assert.ok((store as any)._zip);
+
+  store.close();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  assert.equal((store as any)._zip, null);
+});
+
 test("ZipStore reports missing entries and rejects parent paths", () => {
   const root = tempRoot();
   const zipPath = join(root, "fixture.zip");
@@ -119,4 +135,25 @@ test("FallbackStore reports files missing in both stores", () => {
 
   assert.equal(store.exists(FIXTURE_PATH), false);
   assert.throws(() => store.readText(FIXTURE_PATH), /fallback chain/);
+});
+
+test("FallbackStore close propagates to child stores", () => {
+  const root = tempRoot();
+  const primaryZip = join(root, "primary.zip");
+  const fallbackZip = join(root, "fallback.zip");
+  writeFixtureZip(primaryZip, { source: "primary" });
+  writeFixtureZip(fallbackZip, { source: "fallback" });
+  const primary = new ZipStore(primaryZip);
+  const fallback = new ZipStore(fallbackZip);
+  const store = new FallbackStore(primary, fallback);
+
+  assert.equal(store.exists(FIXTURE_PATH), true);
+  assert.equal(fallback.exists(FIXTURE_PATH), true);
+
+  store.close();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  assert.equal((primary as any)._zip, null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  assert.equal((fallback as any)._zip, null);
 });

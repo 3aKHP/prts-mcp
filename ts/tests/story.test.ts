@@ -164,6 +164,27 @@ test("public zip path API still reads zip", () => {
   assert.equal(chapter.lines[0].text, "你好，博士。");
 });
 
+test("public zip path API closes transient store", () => {
+  const root = tempRoot();
+  const zipPath = join(root, "zh_CN.zip");
+  writeStoryZip(zipPath);
+  const originalClose = ZipStore.prototype.close;
+  const closedPaths: string[] = [];
+
+  ZipStore.prototype.close = function closeForTest(this: ZipStore): void {
+    closedPaths.push(this.zipPath);
+    originalClose.call(this);
+  };
+  try {
+    const chapter = readStory(zipPath, FIRST_STORY_KEY);
+
+    assert.equal(chapter.storyCode, "TEST-1");
+    assert.deepEqual(closedPaths, [zipPath]);
+  } finally {
+    ZipStore.prototype.close = originalClose;
+  }
+});
+
 test("missing story raises", () => {
   const root = tempRoot();
   writeStoryDir(root);

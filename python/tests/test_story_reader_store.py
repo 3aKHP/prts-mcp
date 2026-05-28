@@ -153,10 +153,28 @@ def test_public_zip_path_api_still_reads_zip(tmp_path):
     assert chapter.lines[0].text == "你好，博士。"
 
 
+def test_public_zip_path_api_closes_transient_store(tmp_path, monkeypatch):
+    zip_path = tmp_path / "zh_CN.zip"
+    write_story_zip(zip_path)
+    closed_paths: list[Path] = []
+
+    original_close = ZipStore.close
+
+    def tracked_close(self: ZipStore) -> None:
+        closed_paths.append(self.zip_path)
+        original_close(self)
+
+    monkeypatch.setattr(ZipStore, "close", tracked_close)
+
+    chapter = read_story(zip_path, FIRST_STORY_KEY)
+
+    assert chapter.story_code == "TEST-1"
+    assert closed_paths == [zip_path]
+
+
 def test_missing_story_raises_key_error(tmp_path):
     write_story_dir(tmp_path)
     store = DirectoryStore(tmp_path)
 
     with pytest.raises(KeyError):
         read_story_from_store(store, "activities/act_test/missing")
-

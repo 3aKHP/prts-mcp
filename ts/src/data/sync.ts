@@ -17,7 +17,7 @@ import {
   unlink,
   writeFile,
 } from "node:fs/promises";
-import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import AdmZip from "adm-zip";
 
 // ---------------------------------------------------------------------------
@@ -178,6 +178,17 @@ function filesPresent(spec: RepoSpec): boolean {
 
 function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
+}
+
+function releaseZipError(spec: ReleaseSpec): string | null {
+  if (!existsSync(spec.localZip)) return "zip file is missing";
+  try {
+    const missing = spec.validateZip?.(spec.localZip) ?? [];
+    if (missing.length === 0) return null;
+    return missing.slice(0, 10).join("; ");
+  } catch (err) {
+    return `${basename(spec.localZip)} is not a valid zip: ${errorMessage(err)}`;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -488,7 +499,8 @@ export async function syncRelease(spec: ReleaseSpec): Promise<SyncResult> {
   };
 
   const cache = await loadReleaseMeta(spec);
-  const zipOk = existsSync(spec.localZip);
+  const zipError = releaseZipError(spec);
+  const zipOk = zipError === null;
 
   if (cache !== null && zipOk && cacheIsFresh(cache)) {
     return { spec: dummySpec, status: "up_to_date", commitSha: cache.commitSha, error: null };
@@ -511,7 +523,11 @@ export async function syncRelease(spec: ReleaseSpec): Promise<SyncResult> {
         return { spec: dummySpec, status: "no_data", commitSha: null, error: errorMessage(err) };
       }
     }
-    return { spec: dummySpec, status: "no_data", commitSha: null, error: "Network unavailable and no cached zip" };
+    const error =
+      existsSync(spec.localZip) && zipError
+        ? `Network unavailable and no cached zip; cached zip invalid: ${zipError}`
+        : "Network unavailable and no cached zip";
+    return { spec: dummySpec, status: "no_data", commitSha: null, error };
   }
 
   const commitSha = latest.tag.startsWith(TAG_PREFIX)

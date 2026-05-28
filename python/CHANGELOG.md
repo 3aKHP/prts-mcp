@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Fixed
+
+- **ZipStore lifecycle hardening.** `ZipStore` now supports explicit
+  `close()` and context-manager use. Zip-path story helpers close their
+  transient stores after each call, avoiding lingering `ZipFile` handles in
+  repeated story reads/searches.
+
 ## [1.5.0] - 2026-05-25
 
 ### Added

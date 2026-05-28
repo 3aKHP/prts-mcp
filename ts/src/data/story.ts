@@ -125,6 +125,15 @@ function storyStore(zipPath: string): ZipStore {
   return new ZipStore(zipPath);
 }
 
+function withStoryStore<T>(zipPath: string, read: (store: ZipStore) => T): T {
+  const store = storyStore(zipPath);
+  try {
+    return read(store);
+  } finally {
+    store.close();
+  }
+}
+
 function parseStoryList(
   storyList: RawStoryItem[],
   includeNarration: boolean
@@ -187,7 +196,7 @@ export function listStoryEvents(
   zipPath: string,
   category?: string
 ): EventInfo[] {
-  return listStoryEventsFromStore(storyStore(zipPath), category);
+  return withStoryStore(zipPath, (store) => listStoryEventsFromStore(store, category));
 }
 
 export function listStoryEventsFromStore(
@@ -224,7 +233,7 @@ export function listStories(
   zipPath: string,
   eventId: string
 ): ChapterSummary[] {
-  return listStoriesFromStore(storyStore(zipPath), eventId);
+  return withStoryStore(zipPath, (store) => listStoriesFromStore(store, eventId));
 }
 
 export function listStoriesFromStore(
@@ -268,7 +277,7 @@ export function readStory(
   storyKey: string,
   includeNarration = true
 ): StoryChapter {
-  return readStoryFromStore(storyStore(zipPath), storyKey, includeNarration);
+  return withStoryStore(zipPath, (store) => readStoryFromStore(store, storyKey, includeNarration));
 }
 
 export function readStoryFromStore(
@@ -312,13 +321,13 @@ export function readActivity(
   page?: number,
   pageSize = 5
 ): ActivityResult {
-  return readActivityFromStore(
-    storyStore(zipPath),
+  return withStoryStore(zipPath, (store) => readActivityFromStore(
+    store,
     eventId,
     includeNarration,
     page,
     pageSize,
-  );
+  ));
 }
 
 export function readActivityFromStore(
@@ -392,15 +401,15 @@ export function searchStories(
   maxResults = 30,
   eventId?: string,
 ): string {
-  return searchStoriesFromStore(
-    storyStore(zipPath),
+  return withStoryStore(zipPath, (store) => searchStoriesFromStore(
+    store,
     pattern,
     character,
     lineType,
     contextLines,
     maxResults,
     eventId,
-  );
+  ));
 }
 
 interface SearchResult {
@@ -537,7 +546,7 @@ export function searchStoriesFromStore(
  * Convenience wrapper around getEventSummaryFromStore.
  */
 export function getEventSummary(zipPath: string, eventId: string): string {
-  return getEventSummaryFromStore(storyStore(zipPath), eventId);
+  return withStoryStore(zipPath, (store) => getEventSummaryFromStore(store, eventId));
 }
 
 /**
@@ -625,7 +634,7 @@ export function getEventSummaryFromStore(store: JsonStore, eventId: string): str
  * Convenience wrapper around getStorySummaryFromStore.
  */
 export function getStorySummary(zipPath: string, storyKey: string): string {
-  return getStorySummaryFromStore(storyStore(zipPath), storyKey);
+  return withStoryStore(zipPath, (store) => getStorySummaryFromStore(store, storyKey));
 }
 
 /**

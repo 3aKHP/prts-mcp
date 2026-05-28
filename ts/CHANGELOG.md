@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Fixed
+
+- **Release zip cache validation parity.** `syncRelease` now treats a cached
+  zip that fails the dataset validator as unusable during network fallback,
+  matching Python behavior and preventing corrupt story archives from being
+  reported as healthy fallback data.
+- **Session timer lifecycle.** Idle-session timers now call `unref()` so they
+  do not keep an otherwise idle Node process alive.
+
 ## [1.5.0] - 2026-05-25
 
 ### Added

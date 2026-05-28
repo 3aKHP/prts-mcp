@@ -46,6 +46,84 @@ test("syncRelease returns offline_fallback when network fails but zip exists", a
   });
 });
 
+test("syncRelease treats invalid validated zip as no_data", async () => {
+  const spec = {
+    ...tempSpec(),
+    validateZip: () => ["zh_CN/storyinfo.json"],
+  };
+  mkdirSync(dirname(spec.localZip), { recursive: true });
+  writeFileSync(spec.localZip, "cached");
+
+  await withFetchMock((async () => {
+    throw new Error("network down");
+  }) as typeof fetch, async () => {
+    const result = await syncRelease(spec);
+
+    assert.equal(result.status, "no_data");
+    assert.equal(result.commitSha, null);
+    assert.equal(
+      result.error,
+      "Network unavailable and no cached zip; cached zip invalid: zh_CN/storyinfo.json",
+    );
+  });
+});
+
+test("syncRelease validates zip before fresh-cache fast path", async () => {
+  const spec = {
+    ...tempSpec(),
+    validateZip: () => ["zh_CN/storyinfo.json"],
+  };
+  mkdirSync(dirname(spec.localZip), { recursive: true });
+  writeFileSync(spec.localZip, "cached");
+  writeFileSync(
+    join(dirname(spec.localZip), "release_meta.json"),
+    JSON.stringify({
+      repo: "3aKHP/ArknightsStoryJson",
+      branch: "releases",
+      commitSha: "cached-sha",
+      fetchedAt: new Date().toISOString(),
+      files: ["zh_CN.zip"],
+    }),
+    "utf-8",
+  );
+
+  let fetchCalls = 0;
+  await withFetchMock((async () => {
+    fetchCalls += 1;
+    throw new Error("network down");
+  }) as typeof fetch, async () => {
+    const result = await syncRelease(spec);
+
+    assert.equal(fetchCalls, 1);
+    assert.equal(result.status, "no_data");
+    assert.equal(result.commitSha, null);
+    assert.equal(
+      result.error,
+      "Network unavailable and no cached zip; cached zip invalid: zh_CN/storyinfo.json",
+    );
+  });
+});
+
+test("syncRelease converts zip validation exceptions to no_data", async () => {
+  const spec = {
+    ...tempSpec(),
+    validateZip: () => {
+      throw new Error("bad zip");
+    },
+  };
+  mkdirSync(dirname(spec.localZip), { recursive: true });
+  writeFileSync(spec.localZip, "cached");
+
+  await withFetchMock((async () => {
+    throw new Error("network down");
+  }) as typeof fetch, async () => {
+    const result = await syncRelease(spec);
+
+    assert.equal(result.status, "no_data");
+    assert.match(result.error ?? "", /cached zip invalid: .* is not a valid zip: bad zip/);
+  });
+});
+
 test("syncRelease returns no_data when network fails and no zip exists", async () => {
   const spec = tempSpec();
 

@@ -7,6 +7,7 @@ export interface JsonStore {
   readText(path: string): string;
   readJson<T = unknown>(path: string): T;
   describe(): string;
+  close(): void;
 }
 
 function normalizePath(path: string): string {
@@ -66,6 +67,10 @@ export class DirectoryStore implements JsonStore {
   describe(): string {
     return `directory:${this.root}`;
   }
+
+  close(): void {
+    // DirectoryStore does not hold open resources.
+  }
 }
 
 export class ZipStore implements JsonStore {
@@ -81,6 +86,10 @@ export class ZipStore implements JsonStore {
       this._zip = new AdmZip(this.zipPath);
     }
     return this._zip;
+  }
+
+  close(): void {
+    this._zip = null;
   }
 
   exists(path: string): boolean {
@@ -140,5 +149,10 @@ export class FallbackStore implements JsonStore {
 
   describe(): string {
     return `fallback:${this.primary.describe()} -> ${this.fallback.describe()}`;
+  }
+
+  close(): void {
+    this.primary.close();
+    this.fallback.close();
   }
 }

@@ -134,6 +134,23 @@ class TestSyncRelease:
 
         assert result.status == "offline_fallback"
 
+    def test_validator_exception_returns_no_data(self, tmp_path):
+        spec = _make_spec(tmp_path)
+        _write_zip(spec.local_zip)
+        spec = ReleaseSpec(
+            owner=spec.owner,
+            repo=spec.repo,
+            asset_name=spec.asset_name,
+            local_zip=spec.local_zip,
+            validate_zip=lambda _path: (_ for _ in ()).throw(ValueError("bad zip")),
+        )
+
+        with patch("prts_mcp.data.sync.check_latest_release", return_value=None):
+            result = sync_release(spec)
+
+        assert result.status == "no_data"
+        assert result.error == "Network unavailable and no cached zip; cached zip invalid: zh_CN.zip is not a valid zip: bad zip"
+
     def test_no_data_when_network_fails_and_no_zip(self, tmp_path):
         spec = _make_spec(tmp_path)
 

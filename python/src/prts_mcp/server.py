@@ -376,12 +376,12 @@ def list_stories(
 
     summaries: dict[str, str] = {}
     if include_summaries:
-        store = ZipStore(zip_path)
         try:
-            if store.exists("zh_CN/storyinfo.json"):
-                raw = store.read_json("zh_CN/storyinfo.json")
-                if isinstance(raw, dict):
-                    summaries = {str(k): str(v) for k, v in raw.items() if v}
+            with ZipStore(zip_path) as store:
+                if store.exists("zh_CN/storyinfo.json"):
+                    raw = store.read_json("zh_CN/storyinfo.json")
+                    if isinstance(raw, dict):
+                        summaries = {str(k): str(v) for k, v in raw.items() if v}
         except Exception:
             pass
 

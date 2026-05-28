@@ -21,6 +21,9 @@ class JsonStore(Protocol):
     def describe(self) -> str:
         ...
 
+    def close(self) -> None:
+        ...
+
 
 def _normalize_path(path: str) -> str:
     normalized = path.replace("\\", "/")
@@ -60,6 +63,9 @@ class DirectoryStore:
     def describe(self) -> str:
         return f"directory:{self.root}"
 
+    def close(self) -> None:
+        return None
+
 
 class ZipStore:
     """Read JSON entries from a zip file."""
@@ -72,6 +78,17 @@ class ZipStore:
         if self._zf is None:
             self._zf = zipfile.ZipFile(self.zip_path)
         return self._zf
+
+    def close(self) -> None:
+        if self._zf is not None:
+            self._zf.close()
+            self._zf = None
+
+    def __enter__(self) -> ZipStore:
+        return self
+
+    def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
+        self.close()
 
     def exists(self, path: str) -> bool:
         inner_path = _normalize_path(path)
@@ -96,6 +113,13 @@ class ZipStore:
 
     def describe(self) -> str:
         return f"zip:{self.zip_path}"
+
+    def __del__(self) -> None:
+        if getattr(self, "_zf", None) is not None:
+            try:
+                self.close()
+            except Exception:
+                pass
 
 
 class FallbackStore:
@@ -126,3 +150,7 @@ class FallbackStore:
 
     def describe(self) -> str:
         return f"fallback:{self.primary.describe()} -> {self.fallback.describe()}"
+
+    def close(self) -> None:
+        self.primary.close()
+        self.fallback.close()

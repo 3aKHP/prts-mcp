@@ -66,6 +66,36 @@ class TestZipStore:
         assert store.read_json(FIXTURE_PATH) == FIXTURE_DATA
         assert store.describe().startswith("zip:")
 
+    def test_close_releases_cached_zipfile(self, tmp_path):
+        zip_path = tmp_path / "fixture.zip"
+        write_fixture_zip(zip_path)
+        store = ZipStore(zip_path)
+
+        assert store.exists(FIXTURE_PATH)
+        zf = store._zf
+        assert zf is not None
+        fp = zf.fp
+        assert fp is not None
+
+        store.close()
+
+        assert store._zf is None
+        assert fp.closed
+
+    def test_context_manager_closes_cached_zipfile(self, tmp_path):
+        zip_path = tmp_path / "fixture.zip"
+        write_fixture_zip(zip_path)
+
+        with ZipStore(zip_path) as store:
+            assert store.exists(FIXTURE_PATH)
+            zf = store._zf
+            assert zf is not None
+            fp = zf.fp
+            assert fp is not None
+
+        assert store._zf is None
+        assert fp.closed
+
     def test_missing_entry_raises(self, tmp_path):
         zip_path = tmp_path / "fixture.zip"
         write_fixture_zip(zip_path)
@@ -120,3 +150,30 @@ class TestFallbackStore:
         assert not store.exists(FIXTURE_PATH)
         with pytest.raises(FileNotFoundError):
             store.read_text(FIXTURE_PATH)
+
+    def test_close_propagates_to_child_stores(self, tmp_path):
+        primary_zip = tmp_path / "primary.zip"
+        fallback_zip = tmp_path / "fallback.zip"
+        write_fixture_zip(primary_zip, {"source": "primary"})
+        write_fixture_zip(fallback_zip, {"source": "fallback"})
+        primary = ZipStore(primary_zip)
+        fallback = ZipStore(fallback_zip)
+        store = FallbackStore(primary, fallback)
+
+        assert store.exists(FIXTURE_PATH)
+        assert fallback.exists(FIXTURE_PATH)
+        primary_zf = primary._zf
+        fallback_zf = fallback._zf
+        assert primary_zf is not None
+        assert fallback_zf is not None
+        primary_fp = primary_zf.fp
+        fallback_fp = fallback_zf.fp
+        assert primary_fp is not None
+        assert fallback_fp is not None
+
+        store.close()
+
+        assert primary._zf is None
+        assert fallback._zf is None
+        assert primary_fp.closed
+        assert fallback_fp.closed

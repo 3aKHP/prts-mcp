@@ -163,7 +163,8 @@ def list_story_events(
     """
     allowed_types: list[str] | None = _CATEGORY_MAP.get(category) if category else None
 
-    return list_story_events_from_store(_story_store(zip_path), category=category)
+    with _story_store(zip_path) as store:
+        return list_story_events_from_store(store, category=category)
 
 
 def list_story_events_from_store(
@@ -203,7 +204,8 @@ def list_stories(zip_path: Path, event_id: str) -> list[ChapterSummary]:
     Raises:
         KeyError: If event_id is not found in story_review_table.
     """
-    return list_stories_from_store(_story_store(zip_path), event_id)
+    with _story_store(zip_path) as store:
+        return list_stories_from_store(store, event_id)
 
 
 def list_stories_from_store(store: JsonStore, event_id: str) -> list[ChapterSummary]:
@@ -246,7 +248,8 @@ def read_story(
     Raises:
         KeyError: If the story file is not found in the zip.
     """
-    return read_story_from_store(_story_store(zip_path), story_key, include_narration=include_narration)
+    with _story_store(zip_path) as store:
+        return read_story_from_store(store, story_key, include_narration=include_narration)
 
 
 def read_story_from_store(
@@ -301,13 +304,14 @@ def read_activity(
     Raises:
         KeyError: If event_id is not found.
     """
-    return read_activity_from_store(
-        _story_store(zip_path),
-        event_id,
-        include_narration=include_narration,
-        page=page,
-        page_size=page_size,
-    )
+    with _story_store(zip_path) as store:
+        return read_activity_from_store(
+            store,
+            event_id,
+            include_narration=include_narration,
+            page=page,
+            page_size=page_size,
+        )
 
 
 def read_activity_from_store(
@@ -385,15 +389,16 @@ def search_stories(
     Convenience wrapper around search_stories_from_store that auto-creates
     a ZipStore from *zip_path*.
     """
-    return search_stories_from_store(
-        _story_store(zip_path),
-        pattern,
-        character=character,
-        line_type=line_type,
-        context_lines=context_lines,
-        max_results=max_results,
-        event_id=event_id,
-    )
+    with _story_store(zip_path) as store:
+        return search_stories_from_store(
+            store,
+            pattern,
+            character=character,
+            line_type=line_type,
+            context_lines=context_lines,
+            max_results=max_results,
+            event_id=event_id,
+        )
 
 
 def search_stories_from_store(
@@ -532,7 +537,8 @@ def get_event_summary(zip_path: Path, event_id: str) -> str:
 
     Convenience wrapper around get_event_summary_from_store.
     """
-    return get_event_summary_from_store(_story_store(zip_path), event_id)
+    with _story_store(zip_path) as store:
+        return get_event_summary_from_store(store, event_id)
 
 
 def get_event_summary_from_store(store: JsonStore, event_id: str) -> str:
@@ -613,7 +619,8 @@ def get_story_summary(zip_path: Path, story_key: str) -> str:
 
     Convenience wrapper around get_story_summary_from_store.
     """
-    return get_story_summary_from_store(_story_store(zip_path), story_key)
+    with _story_store(zip_path) as store:
+        return get_story_summary_from_store(store, story_key)
 
 
 def get_story_summary_from_store(store: JsonStore, story_key: str) -> str:

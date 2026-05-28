@@ -486,7 +486,10 @@ def _release_zip_error(spec: ReleaseSpec) -> str | None:
     validator = spec.validate_zip
     if validator is None:
         return None
-    missing = validator(spec.local_zip)
+    try:
+        missing = validator(spec.local_zip)
+    except Exception as exc:  # noqa: BLE001
+        return f"{spec.local_zip.name} is not a valid zip: {exc}"
     if not missing:
         return None
     return "; ".join(str(path) for path in missing[:10])

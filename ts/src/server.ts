@@ -427,8 +427,8 @@ function createMcpServer(): McpServer {
         // Load summaries if requested
         let summaries: Record<string, string> = {};
         if (include_summaries) {
+          const store = new ZipStore(zipPath);
           try {
-            const store = new ZipStore(zipPath);
             if (store.exists("zh_CN/storyinfo.json")) {
               const raw = store.readJson<Record<string, unknown>>("zh_CN/storyinfo.json");
               for (const [k, v] of Object.entries(raw)) {
@@ -437,6 +437,8 @@ function createMcpServer(): McpServer {
             }
           } catch {
             // storyinfo.json missing is non-fatal
+          } finally {
+            store.close();
           }
         }
 
@@ -887,6 +889,7 @@ function scheduleSessionTimeout(id: string): void {
       scheduleSessionTimeout(id);
     }
   }, SESSION_IDLE_TIMEOUT_MS);
+  meta.timer.unref();
 }
 
 app.all("/mcp", async (req, res) => {
