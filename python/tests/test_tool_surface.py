@@ -37,18 +37,30 @@ EXPECTED_TOOL_SURFACE = {
 }
 
 
+def _collect_tool_functions() -> dict[str, ast.FunctionDef | ast.AsyncFunctionDef]:
+    """Parse all tools_*.py modules under src/prts_mcp/ for tool function definitions.
+
+    The server tool registrations were split into focused modules and each tool
+    function is nested inside a register_*() wrapper, so we walk recursively
+    to find all def/async def nodes regardless of nesting depth.
+    """
+    src = Path(__file__).parents[1] / "src" / "prts_mcp"
+    functions: dict[str, ast.FunctionDef | ast.AsyncFunctionDef] = {}
+    for tool_file in sorted(src.glob("tools_*.py")):
+        module = ast.parse(tool_file.read_text(encoding="utf-8"))
+        for node in ast.walk(module):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                functions[node.name] = node
+    return functions
+
+
 def test_python_tool_function_signatures_are_frozen() -> None:
     # Alpha hardening intentionally freezes required and optional parameters.
     # Relax this before 1.0 final if additive optional parameters become policy.
-    source = Path(__file__).parents[1] / "src" / "prts_mcp" / "server.py"
-    module = ast.parse(source.read_text(encoding="utf-8"))
-    functions = {
-        node.name: node
-        for node in module.body
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-    }
+    functions = _collect_tool_functions()
 
     for name, expected_params in EXPECTED_TOOL_SURFACE.items():
+        assert name in functions, f"Tool {name!r} not found in any tools_*.py module"
         fn = functions[name]
         params = [arg.arg for arg in fn.args.args]
-        assert tuple(params) == expected_params
+        assert tuple(params) == expected_params, f"Signature mismatch for {name!r}"
