@@ -10,21 +10,47 @@
  * - storyMemoir: operator memoir discovery via chardict.json
  * - storySummary: event and per-chapter summaries
  *
- * All public symbols are re-exported here so existing
- * `import { ... } from "./story.js"` imports continue to work unchanged.
+ * Only the public symbols that existed on main are re-exported here — internal
+ * helpers from storyReader are NOT re-exported, to avoid widening the public API.
  * Mirrors python/src/prts_mcp/data/story.py.
  */
 
-export * from "./storyReader.js";
+// Public types from storyReader
+export type {
+  StoryLine,
+  StoryChapter,
+  EventInfo,
+  ChapterSummary,
+  ActivityResult,
+  MemoirChapter,
+  OperatorMemoirResult,
+} from "./storyReader.js";
+
+// Public reader functions from storyReader
+export {
+  listStoryEvents,
+  listStoryEventsFromStore,
+  listStories,
+  listStoriesFromStore,
+  readStory,
+  readStoryFromStore,
+  readActivity,
+  readActivityFromStore,
+} from "./storyReader.js";
+
+// Search
 export {
   searchStories,
   searchStoriesFromStore,
-  clearSearchCache,
 } from "./storySearch.js";
+
+// Memoir
 export {
   getOperatorMemoirs,
   getOperatorMemoirsFromStore,
 } from "./storyMemoir.js";
+
+// Summary
 export {
   getEventSummary,
   getEventSummaryFromStore,
@@ -32,6 +58,7 @@ export {
   getStorySummaryFromStore,
 } from "./storySummary.js";
 
+// Cache management
 import { clearSearchCache } from "./storySearch.js";
 import { clearCharDictCache } from "./storyMemoir.js";
 

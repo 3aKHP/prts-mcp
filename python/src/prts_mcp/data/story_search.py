@@ -18,6 +18,7 @@ from prts_mcp.data.story_reader import (
     _is_memoir_event,
     _load_json,
     _STORY_REVIEW_TABLE,
+    _story_store,
     read_story_from_store,
 )
 
@@ -84,8 +85,6 @@ def search_stories(
     Convenience wrapper around search_stories_from_store that auto-creates
     a ZipStore from *zip_path*.
     """
-    from prts_mcp.data.story_reader import _story_store
-
     with _story_store(zip_path) as store:
         return search_stories_from_store(
             store,

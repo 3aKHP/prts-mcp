@@ -260,7 +260,7 @@ def download_release_asset(spec: ReleaseSpec, tag: str, url: str, timeout: float
 def sync_release(spec: ReleaseSpec) -> SyncResult:
     """Check latest GitHub Release and download asset if the tag has changed.
 
-    Decision tree mirrors sync_repo:
+    Decision tree mirrors the legacy per-file sync path:
       1. Cache fresh + zip exists → up_to_date
       2. Network failure → offline_fallback / no_data
       3. Tag unchanged + zip exists → up_to_date (refresh fetched_at)

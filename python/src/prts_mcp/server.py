@@ -27,9 +27,6 @@ from prts_mcp.startup_sync import (
     _sync_needs_retry,
 )
 
-# Keep `threading` accessible as server.threading for tests that monkeypatch Timer
-_threading = threading
-
 logging.basicConfig(
     stream=sys.stderr,
     level=logging.INFO,
