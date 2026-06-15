@@ -11,12 +11,12 @@ from pathlib import Path
 
 from prts_mcp.data.stores import DirectoryStore, JsonStore, ZipStore
 from prts_mcp.data.story_reader import (
+    CHARDICT,
+    STORY_REVIEW_TABLE,
     MemoirChapter,
     OperatorMemoirResult,
-    _load_json,
-    _story_store,
-    _STORY_REVIEW_TABLE,
-    _CHARDICT,
+    load_json,
+    story_store,
 )
 
 # ---------------------------------------------------------------------------
@@ -29,14 +29,14 @@ def _load_chardict(store: JsonStore) -> dict[str, dict[str, object]]:
     descriptor = _chardict_store_descriptor(store)
     if descriptor is not None:
         return _cached_chardict(descriptor)
-    if not store.exists(_CHARDICT):
+    if not store.exists(CHARDICT):
         return {}
     return _read_chardict_from_store(store)
 
 
 def _read_chardict_from_store(store: JsonStore) -> dict[str, dict[str, object]]:
     try:
-        data: dict = _load_json(store, _CHARDICT)  # type: ignore[assignment]
+        data: dict = load_json(store, CHARDICT)  # type: ignore[assignment]
         return {str(k): v for k, v in data.items() if isinstance(v, dict)}
     except (KeyError, FileNotFoundError, json.JSONDecodeError):
         return {}
@@ -51,7 +51,7 @@ def _chardict_store_descriptor(store: JsonStore) -> tuple[str, str, int, int] | 
         return ("zip", str(path), stat.st_size, stat.st_mtime_ns)
     if isinstance(store, DirectoryStore):
         root = store.root.resolve()
-        chardict = root / _CHARDICT
+        chardict = root / CHARDICT
         if not chardict.is_file():
             return None
         stat = chardict.stat()
@@ -110,7 +110,7 @@ def get_operator_memoirs(
     Raises:
         KeyError: If the operator is not found in chardict or has no memoirs.
     """
-    with _story_store(zip_path) as store:
+    with story_store(zip_path) as store:
         return get_operator_memoirs_from_store(store, operator_name)
 
 
@@ -137,7 +137,7 @@ def get_operator_memoirs_from_store(
     char_info = chardict[code]
     operator_id = char_info.get("id", "")
 
-    table: dict = _load_json(store, _STORY_REVIEW_TABLE)  # type: ignore[assignment]
+    table: dict = load_json(store, STORY_REVIEW_TABLE)  # type: ignore[assignment]
     prefix = f"story_{code}_set_"
     memoir_events = sorted(
         (eid for eid in table if eid.startswith(prefix)),

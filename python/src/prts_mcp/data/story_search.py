@@ -14,12 +14,12 @@ from pathlib import Path
 
 from prts_mcp.data.stores import DirectoryStore, JsonStore, ZipStore
 from prts_mcp.data.story_reader import (
+    STORY_REVIEW_TABLE,
     StoryLine,
-    _is_memoir_event,
-    _load_json,
-    _STORY_REVIEW_TABLE,
-    _story_store,
+    is_memoir_event,
+    load_json,
     read_story_from_store,
+    story_store,
 )
 
 # ---------------------------------------------------------------------------
@@ -85,7 +85,7 @@ def search_stories(
     Convenience wrapper around search_stories_from_store that auto-creates
     a ZipStore from *zip_path*.
     """
-    with _story_store(zip_path) as store:
+    with story_store(zip_path) as store:
         return search_stories_from_store(
             store,
             pattern,
@@ -225,7 +225,7 @@ def _story_store_descriptor(store: JsonStore) -> tuple[str, str, int, int] | Non
         return ("zip", str(path), stat.st_size, stat.st_mtime_ns)
     if isinstance(store, DirectoryStore):
         root = store.root.resolve()
-        review = root / _STORY_REVIEW_TABLE
+        review = root / STORY_REVIEW_TABLE
         if not review.is_file():
             return None
         stat = review.stat()
@@ -250,7 +250,7 @@ def _cached_story_search_index(
 
 
 def _build_story_search_index(store: JsonStore) -> _StorySearchIndex:
-    table: dict = _load_json(store, _STORY_REVIEW_TABLE)  # type: ignore[assignment]
+    table: dict = load_json(store, STORY_REVIEW_TABLE)  # type: ignore[assignment]
     event_ids: set[str] = set()
     chapters: list[_StorySearchChapter] = []
     records: list[_StorySearchRecord] = []
@@ -263,7 +263,7 @@ def _build_story_search_index(store: JsonStore) -> _StorySearchIndex:
         if not datas:
             continue
         # Only include NONE entries that are operator memoirs
-        if entry.get("entryType", "NONE") == "NONE" and not _is_memoir_event(ev_id):
+        if entry.get("entryType", "NONE") == "NONE" and not is_memoir_event(ev_id):
             continue
         event_ids.add(ev_id)
         for d in datas:

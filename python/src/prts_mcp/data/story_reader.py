@@ -12,33 +12,28 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-from prts_mcp.data.stores import DirectoryStore, JsonStore, ZipStore
+from prts_mcp.data.stores import JsonStore, ZipStore
 
 # ---------------------------------------------------------------------------
-# Zip path constants
+# Zip path constants (public — consumed by sibling story submodules)
 # ---------------------------------------------------------------------------
 
-_STORY_REVIEW_TABLE = "zh_CN/gamedata/excel/story_review_table.json"
-_STORYINFO = "zh_CN/storyinfo.json"
-_SUMMARIES = "zh_CN/summaries.json"
-_EVENT_SUMMARIES = "zh_CN/event_summaries.json"
-_CHARDICT = "zh_CN/chardict.json"
+STORY_REVIEW_TABLE = "zh_CN/gamedata/excel/story_review_table.json"
+STORYINFO = "zh_CN/storyinfo.json"
+SUMMARIES = "zh_CN/summaries.json"
+EVENT_SUMMARIES = "zh_CN/event_summaries.json"
+CHARDICT = "zh_CN/chardict.json"
 
 # entryType values → user-facing category strings
-_CATEGORY_MAP: dict[str, list[str]] = {
+CATEGORY_MAP: dict[str, list[str]] = {
     "main": ["MAINLINE"],
     "activities": ["ACTIVITY", "MINI_ACTIVITY"],
     "memoirs": ["NONE"],
 }
 
 
-def _story_zip_path(story_key: str) -> str:
-    return f"zh_CN/gamedata/story/{story_key}.json"
-
-
 def story_zip_path(story_key: str) -> str:
-    """Public alias for _story_zip_path (used by summary module)."""
-    return _story_zip_path(story_key)
+    return f"zh_CN/gamedata/story/{story_key}.json"
 
 
 # ---------------------------------------------------------------------------
@@ -57,13 +52,16 @@ def _clean_text(text: str) -> str:
 
 
 def _is_memoir_event(event_id: str) -> bool:
-    """Check if an event_id matches the memoir pattern story_{code}_set_N."""
+    """Check if an event_id matches the memoir pattern story_{code}_set_N.
+
+    Public alias ``is_memoir_event`` is provided below for sibling modules.
+    """
     return bool(_MEMOIR_EVENT_RE.match(event_id))
 
 
-# Expose category map and constants for sibling modules
-def category_map() -> dict[str, list[str]]:
-    return _CATEGORY_MAP
+def is_memoir_event(event_id: str) -> bool:
+    """Public alias for :func:`_is_memoir_event` (used by sibling modules)."""
+    return _is_memoir_event(event_id)
 
 
 # ---------------------------------------------------------------------------
@@ -137,11 +135,13 @@ class OperatorMemoirResult:
 # ---------------------------------------------------------------------------
 
 
-def _story_store(zip_path: Path) -> ZipStore:
+def story_store(zip_path: Path) -> ZipStore:
+    """Create a ZipStore for the given story zip path (public for sibling modules)."""
     return ZipStore(zip_path)
 
 
-def _load_json(store: JsonStore, path: str) -> dict | list:
+def load_json(store: JsonStore, path: str) -> dict | list:
+    """Read and parse a JSON entry from a store (public for sibling modules)."""
     return store.read_json(path)
 
 
@@ -192,13 +192,13 @@ def list_story_events(
     category: str | None = None,
 ) -> list[EventInfo]:
     """Return a list of events from story_review_table.json."""
-    with _story_store(zip_path) as store:
+    with story_store(zip_path) as store:
         return list_story_events_from_store(store, category=category)
 
 
 def list_stories(zip_path: Path, event_id: str) -> list[ChapterSummary]:
     """Return ordered chapter list for an event."""
-    with _story_store(zip_path) as store:
+    with story_store(zip_path) as store:
         return list_stories_from_store(store, event_id)
 
 
@@ -208,7 +208,7 @@ def read_story(
     include_narration: bool = True,
 ) -> StoryChapter:
     """Read and parse a single story chapter."""
-    with _story_store(zip_path) as store:
+    with story_store(zip_path) as store:
         return read_story_from_store(store, story_key, include_narration=include_narration)
 
 
@@ -220,7 +220,7 @@ def read_activity(
     page_size: int = 5,
 ) -> ActivityResult:
     """Read all chapters of an activity in official story order."""
-    with _story_store(zip_path) as store:
+    with story_store(zip_path) as store:
         return read_activity_from_store(
             store,
             event_id,
@@ -240,8 +240,8 @@ def list_story_events_from_store(
     category: str | None = None,
 ) -> list[EventInfo]:
     """Return a list of events from story_review_table.json using a JSON store."""
-    allowed_types: list[str] | None = _CATEGORY_MAP.get(category) if category else None
-    table: dict = _load_json(store, _STORY_REVIEW_TABLE)  # type: ignore[assignment]
+    allowed_types: list[str] | None = CATEGORY_MAP.get(category) if category else None
+    table: dict = load_json(store, STORY_REVIEW_TABLE)  # type: ignore[assignment]
 
     events = []
     for event_id, entry in table.items():
@@ -266,7 +266,7 @@ def list_story_events_from_store(
 
 def list_stories_from_store(store: JsonStore, event_id: str) -> list[ChapterSummary]:
     """Return ordered chapter list for an event using a JSON store."""
-    table: dict = _load_json(store, _STORY_REVIEW_TABLE)  # type: ignore[assignment]
+    table: dict = load_json(store, STORY_REVIEW_TABLE)  # type: ignore[assignment]
 
     entry = table.get(event_id)
     if entry is None:
@@ -294,10 +294,10 @@ def read_story_from_store(
     include_narration: bool = True,
 ) -> StoryChapter:
     """Read and parse a single story chapter using a JSON store."""
-    story_path = _story_zip_path(story_key)
+    story_path = story_zip_path(story_key)
     if not store.exists(story_path):
         raise KeyError(f"Story not found in store: {story_key!r}")
-    raw: dict = _load_json(store, story_path)  # type: ignore[assignment]
+    raw: dict = load_json(store, story_path)  # type: ignore[assignment]
 
     all_lines = _parse_story_list(raw.get("storyList") or [])
     if not include_narration:

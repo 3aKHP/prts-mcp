@@ -10,13 +10,13 @@ from pathlib import Path
 
 from prts_mcp.data.stores import JsonStore
 from prts_mcp.data.story_reader import (
-    _load_json,
-    _story_store,
-    _story_zip_path,
-    _STORY_REVIEW_TABLE,
-    _STORYINFO,
-    _SUMMARIES,
-    _EVENT_SUMMARIES,
+    EVENT_SUMMARIES,
+    STORY_REVIEW_TABLE,
+    STORYINFO,
+    SUMMARIES,
+    load_json,
+    story_store,
+    story_zip_path,
 )
 
 
@@ -30,7 +30,7 @@ def get_event_summary(zip_path: Path, event_id: str) -> str:
 
     Convenience wrapper around get_event_summary_from_store.
     """
-    with _story_store(zip_path) as store:
+    with story_store(zip_path) as store:
         return get_event_summary_from_store(store, event_id)
 
 
@@ -43,7 +43,7 @@ def get_event_summary_from_store(store: JsonStore, event_id: str) -> str:
     """
     # --- event metadata ---
     try:
-        table: dict = _load_json(store, _STORY_REVIEW_TABLE)
+        table: dict = load_json(store, STORY_REVIEW_TABLE)
     except Exception as exc:
         return f"读取剧情数据索引失败：{exc}"
 
@@ -62,9 +62,9 @@ def get_event_summary_from_store(store: JsonStore, event_id: str) -> str:
 
     # --- load summary index ---
     summaries: dict[str, str] = {}
-    if store.exists(_STORYINFO):
+    if store.exists(STORYINFO):
         try:
-            raw = _load_json(store, _STORYINFO)
+            raw = load_json(store, STORYINFO)
             if isinstance(raw, dict):
                 summaries = {str(k): str(v) for k, v in raw.items() if v}
         except Exception:
@@ -72,9 +72,9 @@ def get_event_summary_from_store(store: JsonStore, event_id: str) -> str:
 
     # --- tier 1: LLM event summary ---
     event_summary_text = ""
-    if store.exists(_EVENT_SUMMARIES):
+    if store.exists(EVENT_SUMMARIES):
         try:
-            raw = _load_json(store, _EVENT_SUMMARIES)
+            raw = load_json(store, EVENT_SUMMARIES)
             if isinstance(raw, dict):
                 event_summary_text = str(raw.get(event_id) or "").strip()
         except Exception:
@@ -112,7 +112,7 @@ def get_story_summary(zip_path: Path, story_key: str) -> str:
 
     Convenience wrapper around get_story_summary_from_store.
     """
-    with _story_store(zip_path) as store:
+    with story_store(zip_path) as store:
         return get_story_summary_from_store(store, story_key)
 
 
@@ -125,9 +125,9 @@ def get_story_summary_from_store(store: JsonStore, story_key: str) -> str:
     3. Chapter JSON ``storyInfo`` field — identical to #2, last resort
     """
     # --- tier 1: LLM summaries (future) ---
-    if store.exists(_SUMMARIES):
+    if store.exists(SUMMARIES):
         try:
-            raw = _load_json(store, _SUMMARIES)
+            raw = load_json(store, SUMMARIES)
             if isinstance(raw, dict):
                 text = raw.get(story_key)
                 if text and isinstance(text, str):
@@ -136,9 +136,9 @@ def get_story_summary_from_store(store: JsonStore, story_key: str) -> str:
             pass
 
     # --- tier 2: storyinfo.json ---
-    if store.exists(_STORYINFO):
+    if store.exists(STORYINFO):
         try:
-            raw = _load_json(store, _STORYINFO)
+            raw = load_json(store, STORYINFO)
             if isinstance(raw, dict):
                 text = raw.get(story_key)
                 if text and isinstance(text, str):
@@ -147,10 +147,10 @@ def get_story_summary_from_store(store: JsonStore, story_key: str) -> str:
             pass
 
     # --- tier 3: chapter JSON storyInfo ---
-    story_path = _story_zip_path(story_key)
+    story_path = story_zip_path(story_key)
     if store.exists(story_path):
         try:
-            raw = _load_json(store, story_path)
+            raw = load_json(store, story_path)
             if isinstance(raw, dict):
                 text = raw.get("storyInfo")
                 if text and isinstance(text, str):
