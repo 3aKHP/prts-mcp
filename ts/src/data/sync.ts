@@ -1,9 +1,9 @@
 /**
  * GitHub-backed data sync for PRTS-MCP (TypeScript implementation).
  *
- * Mirrors the behaviour of python/src/prts_mcp/data/sync.py exactly:
- * - Checks the upstream commit SHA via the GitHub Commits API.
- * - Downloads required game data files only when the upstream has changed.
+ * Mirrors the behaviour of python/src/prts_mcp/data/sync.py:
+ * - Downloads GitHub Release zip assets (gamedata excel/levels, storyjson)
+ *   only when the release tag has changed.
  * - Falls back gracefully to cached / bundled data when the network is
  *   unavailable.
  * - Skips the upstream check entirely when cached data is fresher than the TTL.
@@ -143,26 +143,8 @@ async function fetchCascading(
   throw lastErr;
 }
 
-function cacheMetaPath(spec: RepoSpec): string {
-  return join(spec.localRoot, "cache_meta.json");
-}
-
-async function loadCacheMeta(spec: RepoSpec): Promise<CacheMeta | null> {
-  try {
-    const text = await readFile(cacheMetaPath(spec), "utf-8");
-    return JSON.parse(text) as CacheMeta;
-  } catch {
-    return null;
-  }
-}
-
-async function saveCacheMeta(
-  spec: RepoSpec,
-  meta: CacheMeta
-): Promise<void> {
-  const p = cacheMetaPath(spec);
-  await mkdir(dirname(p), { recursive: true });
-  await writeFile(p, JSON.stringify(meta, null, 2), "utf-8");
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
 }
 
 function cacheIsFresh(cache: CacheMeta): boolean {
@@ -174,14 +156,6 @@ function cacheIsFresh(cache: CacheMeta): boolean {
   }
 }
 
-function filesPresent(spec: RepoSpec): boolean {
-  return spec.files.every((f) => existsSync(join(spec.localRoot, f)));
-}
-
-function errorMessage(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}
-
 function releaseZipError(spec: ReleaseSpec): string | null {
   if (!existsSync(spec.localZip)) return "zip file is missing";
   try {
@@ -191,175 +165,6 @@ function releaseZipError(spec: ReleaseSpec): string | null {
   } catch (err) {
     return `${basename(spec.localZip)} is not a valid zip: ${errorMessage(err)}`;
   }
-}
-
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
-
-/**
- * Return the latest commit SHA from GitHub, or `null` on any failure.
- */
-export async function checkUpstreamSha(
-  spec: RepoSpec,
-  timeoutMs = 10_000
-): Promise<string | null> {
-  const url = `https://api.github.com/repos/${spec.owner}/${spec.repo}/commits/${spec.branch}`;
-  try {
-    const res = await fetchCascading(url, { headers: githubHeaders() }, timeoutMs);
-    const data = (await res.json()) as { sha: string };
-    return data.sha;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Download all required files atomically, then write cache metadata.
- *
- * Uses a write-to-tmp-then-rename pattern so partially downloaded files
- * never appear to the data loader as complete.
- */
-export async function downloadFiles(
-  spec: RepoSpec,
-  sha: string,
-  timeoutMs = 60_000
-): Promise<void> {
-  const tmpPairs: Array<[tmp: string, dest: string]> = [];
-  try {
-    for (const filePath of spec.files) {
-      const url = `https://raw.githubusercontent.com/${spec.owner}/${spec.repo}/${spec.branch}/${filePath}`;
-      const res = await fetchCascading(url, { headers: githubHeaders() }, timeoutMs)
-        .catch((err: unknown) => {
-          throw new Error(`${errorMessage(err)} for ${filePath}`);
-        });
-
-      const dest = join(spec.localRoot, filePath);
-      const tmp = dest + ".tmp";
-      await mkdir(dirname(dest), { recursive: true });
-      // Write raw bytes to preserve exact encoding from upstream.
-      await writeFile(tmp, Buffer.from(await res.arrayBuffer()));
-      tmpPairs.push([tmp, dest]);
-    }
-
-    // All downloads succeeded — atomically rename into place.
-    for (const [tmp, dest] of tmpPairs) {
-      await rename(tmp, dest);
-    }
-    tmpPairs.length = 0;
-
-    await saveCacheMeta(spec, {
-      repo: `${spec.owner}/${spec.repo}`,
-      branch: spec.branch,
-      commitSha: sha,
-      fetchedAt: new Date().toISOString(),
-      files: [...spec.files],
-    });
-  } catch (err) {
-    // Clean up any temp files on failure.
-    for (const [tmp] of tmpPairs) {
-      try {
-        await unlink(tmp);
-      } catch {
-        // best-effort cleanup
-      }
-    }
-    throw err;
-  }
-}
-
-/**
- * Check upstream and download files if needed.
- *
- * Decision tree (mirrors Python sync.py):
- *   1. Cache is fresh AND files exist → up_to_date (skip API call)
- *   2. Call GitHub commits API:
- *      a. Network failure:
- *           files present → offline_fallback
- *           no files      → no_data
- *      b. SHA matches cache AND files present → up_to_date (refresh fetchedAt)
- *      c. Otherwise → downloadFiles()
- *           success → updated
- *           failure → files present → offline_fallback / no files → no_data
- */
-export async function syncRepo(spec: RepoSpec): Promise<SyncResult> {
-  const cache = await loadCacheMeta(spec);
-  const filesOk = filesPresent(spec);
-
-  // Fast path: cache is fresh, no need to hit the API.
-  if (cache !== null && filesOk && cacheIsFresh(cache)) {
-    return {
-      spec,
-      status: "up_to_date",
-      commitSha: cache.commitSha,
-      error: null,
-    };
-  }
-
-  const upstreamSha = await checkUpstreamSha(spec);
-
-  if (upstreamSha === null) {
-    if (filesOk) {
-      return {
-        spec,
-        status: "offline_fallback",
-        commitSha: cache?.commitSha ?? null,
-        error: "Network unavailable",
-      };
-    }
-    // No local files and API unreachable — attempt a blind download via mirrors
-    // (skips SHA comparison; TTL in the written cache_meta prevents re-downloading
-    // on every restart once files are present).
-    if (parseMirrors().length > 0) {
-      try {
-        await downloadFiles(spec, "unknown");
-        return { spec, status: "updated", commitSha: "unknown", error: null };
-      } catch (err) {
-        return { spec, status: "no_data", commitSha: null, error: errorMessage(err) };
-      }
-    }
-    return {
-      spec,
-      status: "no_data",
-      commitSha: null,
-      error: "Network unavailable and no cached data",
-    };
-  }
-
-  if (cache !== null && cache.commitSha === upstreamSha && filesOk) {
-    // Refresh fetchedAt so the TTL resets from now.
-    await saveCacheMeta(spec, { ...cache, fetchedAt: new Date().toISOString() });
-    return {
-      spec,
-      status: "up_to_date",
-      commitSha: upstreamSha,
-      error: null,
-    };
-  }
-
-  try {
-    await downloadFiles(spec, upstreamSha);
-    return { spec, status: "updated", commitSha: upstreamSha, error: null };
-  } catch (err) {
-    const error = errorMessage(err);
-    return filesOk
-      ? {
-          spec,
-          status: "offline_fallback",
-          commitSha: cache?.commitSha ?? null,
-          error,
-        }
-      : { spec, status: "no_data", commitSha: null, error };
-  }
-}
-
-/** Sync each RepoSpec sequentially and return all results. */
-export async function syncAll(specs: RepoSpec[]): Promise<SyncResult[]> {
-  const results: SyncResult[] = [];
-  for (const spec of specs) {
-    results.push(await syncRepo(spec));
-  }
-  return results;
 }
 
 // ---------------------------------------------------------------------------
@@ -484,14 +289,14 @@ export async function downloadReleaseAsset(
 /**
  * Check latest GitHub Release and download the zip if the tag has changed.
  *
- * Decision tree mirrors syncRepo:
+ * Release sync decision tree:
  *   1. Cache is fresh AND zip exists → up_to_date (skip API call)
  *   2. Network failure → offline_fallback / no_data
  *   3. Tag unchanged AND zip exists → up_to_date (refresh fetchedAt)
  *   4. Tag changed or zip missing → downloadReleaseAsset → updated / fallback
  */
 export async function syncRelease(spec: ReleaseSpec): Promise<SyncResult> {
-  // Use a dummy RepoSpec so the result shape is compatible with syncAll logging.
+  // Use a dummy RepoSpec so existing result logging can share the same shape.
   const dummySpec: RepoSpec = {
     owner: spec.owner,
     repo: spec.repo,

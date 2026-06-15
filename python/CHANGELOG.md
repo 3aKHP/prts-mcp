@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- **Module split: story and server god files.** `data/story.py` (916 lines) and
+  `server.py` (914 lines) were split into focused submodules to meet the
+  STYLE.md file-size guideline (~300 lines). `story.py` is now a re-export shim
+  over `story_reader`, `story_search`, `story_memoir`, and `story_summary`.
+  `server.py` is now a ~60-line entry point that delegates tool registration to
+  `tools_prts`, `tools_gamedata`, and `tools_story`, and sync orchestration to
+  `startup_sync`. All public symbols are re-exported — no behaviour change.
+- **Dead code removal in sync.** The original GitHub raw file sync path
+  (`sync_repo`, `download_files`, `check_upstream_sha`, `sync_all`) had no
+  external callers and has been removed. `sync.py` shrank from 626 to 479 lines.
+  Shared symbols (`CacheMeta`, `SyncResult`, `RepoSpec`, `GAMEDATA_FILES`)
+  are retained for the Release-based sync path.
+
 ## [1.6.1] - 2026-06-03
 
 ### Added

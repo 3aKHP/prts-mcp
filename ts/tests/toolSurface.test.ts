@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const EXPECTED_TOOLS = [
@@ -37,10 +37,17 @@ const EXPECTED_TOOLS = [
 ];
 
 test("TypeScript MCP tool names are frozen", () => {
-  const source = readFileSync(join(import.meta.dirname, "..", "src", "server.ts"), "utf-8");
+  // The tool registrations were split into modules under src/tools/.
   // Alpha hardening assumes tool names are registered as direct string literals.
-  // Update this parser if server.tool(...) moves to constants or helper wrappers.
+  // Update this parser if tool registration moves to constants or helper wrappers.
+  const toolsDir = join(import.meta.dirname, "..", "src", "tools");
+  const toolFiles = readdirSync(toolsDir).filter((f) => f.endsWith(".ts"));
+  const source = toolFiles
+    .map((f) => readFileSync(join(toolsDir, f), "utf-8"))
+    .join("\n");
   const toolNames = Array.from(source.matchAll(/server\.tool\(\s*"([^"]+)"/g), (match) => match[1]);
 
-  assert.deepEqual(toolNames, EXPECTED_TOOLS);
+  // Compare as sets — tool registration order is not part of the frozen surface.
+  assert.deepEqual(toolNames.sort(), [...EXPECTED_TOOLS].sort());
+  assert.equal(toolNames.length, EXPECTED_TOOLS.length, "tool count mismatch");
 });
