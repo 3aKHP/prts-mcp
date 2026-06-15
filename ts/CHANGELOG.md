@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Changed
+
+- **Module split: story and server god files.** `data/story.ts` (907 lines) and
+  `server.ts` (1173 lines) were split into focused submodules to meet the
+  STYLE.md file-size guideline (~300 lines). `story.ts` is now a re-export shim
+  over `storyReader`, `storySearch`, `storyMemoir`, and `storySummary`.
+  `server.ts` is now a ~200-line entry point (Express + session management) that
+  delegates tool registration to `tools/prtsTools`, `tools/gamedataTools`, and
+  `tools/storyTools`, and sync orchestration to `startupSync`. All public
+  symbols are re-exported — no behaviour change.
+- **Dead code removal in sync.** The original GitHub raw file sync path
+  (`syncRepo`, `downloadFiles`, `checkUpstreamSha`, `syncAll`, `cacheMetaPath`,
+  `loadCacheMeta`, `saveCacheMeta`, `filesPresent`) had no external callers and
+  has been removed. `sync.ts` shrank from 700 to 504 lines. Shared symbols
+  (`CacheMeta`, `SyncResult`, `RepoSpec`, `GAMEDATA_FILES`) are retained for the
+  Release-based sync path.
+
 ## [1.6.1] - 2026-06-03
 
 ### Added
