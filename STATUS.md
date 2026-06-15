@@ -24,8 +24,8 @@ PRTS-MCP/
 ├── python/                 # Python 实现 (stdio, FastMCP)
 │   ├── src/prts_mcp/       # 源码
 │   │   ├── server.py       # 入口点 → tools_* 模块
-│   │   ├── tools_prts.py   # PRTS Wiki 工具注册（5 工具）
-│   │   ├── tools_gamedata.py # GameData 工具注册（17 工具）
+│   │   ├── tools_prts.py   # PRTS Wiki 工具注册（6 工具）
+│   │   ├── tools_gamedata.py # GameData 工具注册（16 工具）
 │   │   ├── tools_story.py  # 剧情工具注册（8 工具）
 │   │   ├── config.py       # 路径解析、环境变量
 │   │   ├── startup_sync.py # 后台数据同步编排
@@ -88,7 +88,7 @@ PRTS-MCP/
 | [ArknightsStoryJson](https://github.com/3aKHP/ArknightsStoryJson) | 剧情台词 | GitHub Release `zh_CN.zip` |
 | [PRTS Wiki API](https://prts.wiki/api.php) | 世界观词条/阵营设定 | 实时 HTTP 请求 |
 
-## 工具清单 (29, main)
+## 工具清单 (30, current branch)
 
 | # | 工具 | 数据源 | 版本 |
 |---|------|--------|------|

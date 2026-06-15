@@ -289,14 +289,14 @@ export async function downloadReleaseAsset(
 /**
  * Check latest GitHub Release and download the zip if the tag has changed.
  *
- * Decision tree mirrors syncRepo:
+ * Release sync decision tree:
  *   1. Cache is fresh AND zip exists → up_to_date (skip API call)
  *   2. Network failure → offline_fallback / no_data
  *   3. Tag unchanged AND zip exists → up_to_date (refresh fetchedAt)
  *   4. Tag changed or zip missing → downloadReleaseAsset → updated / fallback
  */
 export async function syncRelease(spec: ReleaseSpec): Promise<SyncResult> {
-  // Use a dummy RepoSpec so the result shape is compatible with syncAll logging.
+  // Use a dummy RepoSpec so existing result logging can share the same shape.
   const dummySpec: RepoSpec = {
     owner: spec.owner,
     repo: spec.repo,

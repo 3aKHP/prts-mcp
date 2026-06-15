@@ -19,9 +19,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - **Dead code removal in sync.** The original GitHub raw file sync path
   (`syncRepo`, `downloadFiles`, `checkUpstreamSha`, `syncAll`, `cacheMetaPath`,
   `loadCacheMeta`, `saveCacheMeta`, `filesPresent`) had no external callers and
-  has been removed. `sync.ts` shrank from 700 to 504 lines. Shared symbols
-  (`CacheMeta`, `SyncResult`, `RepoSpec`, `GAMEDATA_FILES`) are retained for the
-  Release-based sync path.
+  has been removed. `sync.ts` shrank from 700 to 504 lines. The remaining
+  exported sync symbols (`SyncResult`, `RepoSpec`, `GAMEDATA_FILES`) are retained
+  for the Release-based sync path.
 
 ## [1.6.1] - 2026-06-03
 
