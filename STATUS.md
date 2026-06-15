@@ -1,6 +1,6 @@
 # PRTS-MCP 项目状态
 
-_Last updated: 2026-06-03_
+_Last updated: 2026-06-15_
 
 ## 当前版本
 
@@ -13,22 +13,53 @@ _Last updated: 2026-06-03_
 - 当前稳定发布：29 个 MCP 工具（1.6.0）
 - 兼容性合约：1.x 期间既有工具名和必填参数不变；minor 版本允许新增工具和可选参数
 
+## 当前分支：`refactor/v1.7-server-story-split`（重构，未合并）
+
+将 server.py/server.ts 和 story.py/story.ts 单体文件拆分为聚焦子模块，为 1.7.0 功能开发做准备。原有公开 API 通过向后兼容垫片（shim）保持不变。
+
 ## 仓库结构
 
 ```
 PRTS-MCP/
 ├── python/                 # Python 实现 (stdio, FastMCP)
 │   ├── src/prts_mcp/       # 源码
-│   │   ├── server.py       # MCP 工具注册 + 启动同步
+│   │   ├── server.py       # 入口点 → tools_* 模块
+│   │   ├── tools_prts.py   # PRTS Wiki 工具注册（5 工具）
+│   │   ├── tools_gamedata.py # GameData 工具注册（17 工具）
+│   │   ├── tools_story.py  # 剧情工具注册（8 工具）
 │   │   ├── config.py       # 路径解析、环境变量
+│   │   ├── startup_sync.py # 后台数据同步编排
 │   │   ├── api/            # PRTS Wiki MediaWiki API 客户端
-│   │   ├── data/           # 干员/剧情/搜索/同步/store 抽象
+│   │   ├── data/           # 数据抽象层
+│   │   │   ├── story.py    # 兼容性垫片 → 子模块重导出
+│   │   │   ├── story_reader.py  # 剧情类型、常量、章节解析
+│   │   │   ├── story_search.py  # 全文搜索索引
+│   │   │   ├── story_memoir.py  # 干员密录发现
+│   │   │   ├── story_summary.py # 活动/章节摘要
+│   │   │   ├── operators.py     # 干员数据
+│   │   │   ├── enemies.py       # 敌人数据
+│   │   │   ├── stages.py        # 关卡数据
+│   │   │   ├── items.py         # 物品/材料数据
+│   │   │   ├── stores.py        # 存储抽象 (Directory/Zip/Fallback)
+│   │   │   └── sync.py          # GitHub Release 同步
 │   │   └── utils/          # wikitext 清洗等工具
 │   ├── tests/              # pytest 测试
 │   ├── pyproject.toml      # 包元数据、依赖
 │   └── CHANGELOG.md
 ├── ts/                     # TypeScript 实现 (Streamable HTTP, Express)
 │   ├── src/                # 源码，结构对齐 python/
+│   │   ├── server.ts       # 入口点 → tools/* 模块
+│   │   ├── startupSync.ts  # 后台数据同步编排
+│   │   ├── tools/          # 工具注册模块
+│   │   │   ├── prtsTools.ts
+│   │   │   ├── gamedataTools.ts
+│   │   │   └── storyTools.ts
+│   │   └── data/           # 数据抽象层（对齐 python/src/prts_mcp/data/）
+│   │       ├── story.ts        # 兼容性垫片
+│   │       ├── storyReader.ts / storySearch.ts / storyMemoir.ts / storySummary.ts
+│   │       ├── operators.ts / enemies.ts / stages.ts / items.ts
+│   │       ├── stores.ts / sync.ts
+│   │       └── ...
 │   ├── tests/              # node --test 测试
 │   ├── package.json
 │   └── CHANGELOG.md
