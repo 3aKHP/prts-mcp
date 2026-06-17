@@ -48,38 +48,88 @@ PRTS-MCP 是面向明日方舟同人创作的 MCP Server，包含 Python（stdio
 
 ---
 
+## 分支模型
+
+两条长期分支：
+
+| 分支 | 用途 | 版本号后缀 |
+|------|------|-----------|
+| `main` | 生产代码。每次发布 = `main` 的当前 HEAD | （无，已发布版本如 `1.6.1`） |
+| `dev` | 开发集成。所有非紧急改动 PR 到这里 | `.dev0`（下个目标版本如 `1.7.0.dev0`） |
+
+合并方向：
+
+```
+feat/fix/refactor/perf/docs/* ──→ dev ──→ main（发布时）
+fix/*（hotfix）────────────────→ main ──→ dev（forward merge）
+```
+
+不允许反向合并（`dev → feature`、`main → dev` 以外的方向）。
+
 ## 启动准则
 
 三条硬规则：
 
 - **需明确指令才 Commit**。对话里讨论到"要提交"不算指令，必须出现"请提交 / 请 commit / 请开 PR"这类明确祈使句
-- **一般不在 main 直接工作**，但**允许例外**：大 PR merge 完后的 chore/docs 级小修补（补一个版本号遗漏、改 typo）可以直接在 main 上。feat/fix/refactor 级一律走分支
+- **不在 main 直接工作（hotfix 除外）**。所有 feat / refactor / perf / 非紧急 fix / docs / chore 都 PR 到 `dev`，`dev` 上的改动累积到下一 minor/patch 发布时一次性合入 `main`。紧急修复（hotfix）从 `main` 拉分支，PR 回 `main`
 - **不主动 push**。即使刚 commit 完，也等用户说"请推"
 
 ## 分支命名
 
-`<type>/v<version>-<topic>`，type 用 Conventional Commits 的类型。例：
-- `chore/v1.4.0-housekeeping`
-- `feat/v1.4.0-template-extraction`
-- `fix/v1.3.1-search-crash`
+`<type>/v<version>-<topic>`，type 用 Conventional Commits 的类型。
+
+- PR 到 `dev`：version = 下个目标版本（如 `feat/v1.7.0-character-tracking`）
+- PR 到 `main`（hotfix）：version = 即将发布的 patch（如 `fix/v1.6.2-critical-bug`）
+
+例：
+- `feat/v1.7.0-character-tracking`
+- `refactor/v1.7.0-clean-stores`
+- `fix/v1.6.2-critical-bug`
 
 ## 单次迭代循环
 
-一个大修改（从"你决定要做 X"到"main 合进 X"）的标准循环：
+### 路径 A：普通改动（→ dev）
+
+用于 feat / refactor / perf / 非紧急 fix / docs / chore。
 
 1. **对齐计划**：动手前用 1-2 段话描述打算做什么、拆成几个 commit、可能的风险。等用户点头
-2. **拉分支**：按上面的命名约定
+2. **拉分支**：从 `dev` 拉，按上面的命名约定
 3. **动手**：按 commit 主题分批提交，每个中间 commit 都能独立编译（bisect-friendly）
 4. **本地验证**：
    - Windows 本机一键验证：`.\scripts\check-runtime.ps1 -Full`
    - Python: `cd python && E:\Anaconda3\envs\python311\python.exe -m pytest tests -q`
    - TypeScript: `cd ts && npm.cmd test && npm.cmd run typecheck`
    - 双实现同步改动时两边都要跑
-5. **推分支 + 开 PR**：PR body 包含 Summary / Test plan / 未尽事宜三段
+5. **推分支 + 开 PR**：PR 目标为 `dev`，PR body 包含 Summary / Test plan / 未尽事宜三段
 6. **独立 CR**：spawn 子代理做独立 review（见下文）
 7. **应对 CR**：blocking 和 should-fix 处理掉，推到同分支；nits 酌情
-8. **人类 merge**：Claude 不做 merge，等用户确认
-9. **本地清扫**：`git checkout main && git pull && git branch -d <branch> && git remote prune origin`
+8. **人类 merge**：Claude 不做 merge，等用户确认合并到 `dev`
+9. **本地清扫**：`git checkout dev && git pull && git branch -d <branch> && git remote prune origin`
+
+### 路径 B：紧急修复（→ main，hotfix）
+
+1. **从 `main` 拉分支**：`fix/vX.Y.Z-<topic>`
+2. **动手 + commit + 本地验证**（同路径 A）
+3. **推分支 + 开 PR**：PR 目标为 `main`
+4. **独立 CR** → **应对 CR** → **人类 merge** 到 `main`
+5. **打 tag**：`git tag python/vX.Y.Z && git tag ts/vX.Y.Z && git push origin --tags`
+6. **forward merge**：`git checkout dev && git merge main`（把 fix 同步回 dev）
+7. **本地清扫**：`git checkout dev && git pull && git branch -d <branch> && git remote prune origin`
+
+### 路径 C：dev 发布（dev → main）
+
+dev 上改动累积到发布时机时：
+
+1. 确认 dev 上 `[Unreleased]` 段内容齐全
+2. 去掉版本号 `-dev` 后缀（`pyproject.toml` + `package.json`）
+3. CHANGELOG：`[Unreleased]` → `[X.Y.Z] - YYYY-MM-DD`，上方插入新的空 `[Unreleased]`
+4. PR：`dev` → `main`（纯合并 PR）
+5. **独立 CR** → **应对 CR** → **人类 merge**
+6. 打 tag：`git tag python/vX.Y.Z && git tag ts/vX.Y.Z && git push origin --tags`
+7. `git checkout dev && git merge main`
+8. 在 dev 上 bump 版本到下一目标 + 加回 `-dev` 后缀，commit
+9. `git push origin dev main --tags`
+10. **本地清扫**：`git checkout dev && git pull`
 
 ## Commit 规范
 
@@ -134,15 +184,15 @@ EOF
 
 | 文件 | 内容 |
 |------|------|
-| `python/pyproject.toml` | `version` 字段 |
-| `ts/package.json` | `version` 字段 |
+| `python/pyproject.toml` | `version` 字段（dev 分支带 `.dev0` 后缀） |
+| `ts/package.json` | `version` 字段（dev 分支带 `-dev.0` 后缀） |
 | `python/CHANGELOG.md` | 新版本条目 |
 | `ts/CHANGELOG.md` | 新版本条目 |
 | `ROADMAP.md` | 当前版本号 |
 
 涉及用户可见行为变化时，顺手更新 `README.md`。
 
-**打 tag 时使用实现级前缀**，CI 的 CD workflow 按前缀分发：
+**打 tag 时使用实现级前缀**，CI 的 CD workflow 按前缀分发。Tag 必须打在 `main` 分支的 merge commit 上（不在 `dev` 打 tag）：
 
 ```bash
 git tag python/v1.3.1 && git tag ts/v1.3.1

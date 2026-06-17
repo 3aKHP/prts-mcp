@@ -6,10 +6,13 @@
 
 ## Branch Strategy
 
+两条长期分支：`main`（生产）和 `dev`（开发集成）。
+
 - 默认分支是 `main`。
-- 功能开发请从 `main` 拉出新分支。
-- 分支命名建议使用 `feat/<topic>`、`fix/<topic>`、`docs/<topic>` 这类形式。
-- 未经过整理的实验分支、临时部署分支和本地备份分支不要直接推到公开远程作为默认入口。
+- **功能开发、重构、性能优化、文档更新**：从 `dev` 拉出新分支，PR 目标为 `dev`。
+- **紧急修复**：从 `main` 拉出新分支，PR 目标为 `main`，合并后 forward merge 到 `dev`。
+- 分支命名：`<type>/v<version>-<topic>`，如 `feat/v1.7.0-character-tracking`。
+- 未经过整理的实验分支、临时部署分支和本地备份分支不要推到公开远程。
 
 ## Commit Convention
 

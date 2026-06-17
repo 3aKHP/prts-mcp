@@ -228,17 +228,24 @@ TS 文件头注释应注明对应的 Python 文件：`Mirrors python/src/prts_mc
 
 遵循 [SemVer](https://semver.org/)。预发布用 `-alpha.N` / `-beta.N` / `-rc.N` 后缀。
 
+**`dev` 分支上的版本号**始终带开发后缀，发布时去掉：
+
+| 文件 | dev 分支 | main 分支（发布时） |
+|------|---------|-------------------|
+| `python/pyproject.toml` | `1.7.0.dev0` | `1.7.0` |
+| `ts/package.json` | `1.7.0-dev.0` | `1.7.0` |
+
 **版本号需要同步更新的地方**：
 
 | 文件 | 内容 |
 |------|------|
-| `python/pyproject.toml` | `version` 字段 |
-| `ts/package.json` | `version` 字段 |
+| `python/pyproject.toml` | `version` 字段（dev 分支带 `.dev0` 后缀） |
+| `ts/package.json` | `version` 字段（dev 分支带 `-dev.0` 后缀） |
 | `python/CHANGELOG.md` | 新版本条目 |
 | `ts/CHANGELOG.md` | 新版本条目 |
 | `ROADMAP.md` | 当前版本号 |
 
-tag 名带 `v` 前缀：`v1.4.0`。含 `-` 后缀的 tag 会被 CD workflow 识别为 prerelease。
+tag 名带 `v` 前缀：`v1.4.0`。含 `-` 后缀的 tag 会被 CD workflow 识别为 prerelease。Tag 必须打在 `main` 分支上。
 
 ---
 
@@ -252,12 +259,16 @@ tag 名带 `v` 前缀：`v1.4.0`。含 `-` 后缀的 tag 会被 CD workflow 识�
 
 ### 日常开发
 
-每个模块级改动（feat / fix / refactor）在 `## [Unreleased]` 段落对应分类下追加一行。小型 chore / docs / style 无需改 CHANGELOG。
+在 `dev` 分支上，每个模块级改动（feat / fix / refactor）在 `## [Unreleased]`
+段落对应分类下追加一行。小型 chore / docs / style 无需改 CHANGELOG。
 
-### 准备发版（打 tag 前）
+`main` 分支上不应出现 `[Unreleased]` 段——main 的 CHANGELOG 只包含已发布版本。
+
+### 准备发版（dev → main 发布时）
 
 1. 将 `## [Unreleased]` 改为 `## [X.Y.Z] - YYYY-MM-DD`
 2. 在其上方插入新的空 `## [Unreleased]` 段
+3. 版本号去掉 `-dev` 后缀后合并到 `main`，打 tag
 
 ---
 

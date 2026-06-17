@@ -3,6 +3,22 @@
 This file is intentionally repo-local so a fresh Codex session starts with the
 known-good runtime on this Windows workstation.
 
+## Branch Model
+
+Two long-lived branches:
+
+| Branch | Purpose | Version suffix |
+|--------|---------|---------------|
+| `main` | Production. HEAD = last release (`1.6.1`) | (none) |
+| `dev` | Development integration. All non-hotfix changes land here. | `.dev0` (next target, e.g. `1.7.0.dev0`) |
+
+- Feature / refactor / perf / non-urgent fix / docs / chore → branch from `dev`, PR to `dev`.
+- Hotfix (urgent fix) → branch from `main`, PR to `main`, then forward-merge `main` → `dev`.
+- Release → merge `dev` → `main`, tag on `main`, then merge `main` back to `dev`.
+
+Never push directly to `main` or `dev`. Always create a feature/fix branch and
+open a PR. See `CLAUDE.md` for the detailed iteration cycle.
+
 ## Startup Reads
 
 - Read `CLAUDE.md` and `docs/dev/STYLE.md` before non-trivial code changes.

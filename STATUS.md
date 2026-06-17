@@ -13,7 +13,10 @@ _Last updated: 2026-06-15_
 - 当前稳定发布：29 个 MCP 工具（1.6.0）
 - 兼容性合约：1.x 期间既有工具名和必填参数不变；minor 版本允许新增工具和可选参数
 
-## 当前分支：`refactor/v1.7-server-story-split`（重构，未合并）
+## 当前分支
+
+- `main`：1.6.1（已发布）
+- `dev`：1.7.0-dev（开发中）
 
 将 server.py/server.ts 和 story.py/story.ts 单体文件拆分为聚焦子模块，为 1.7.0 功能开发做准备。原有公开 API 通过向后兼容垫片（shim）保持不变。
 
