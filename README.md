@@ -50,8 +50,7 @@ Both implementations expose the same tool set:
 | `get_operator_voicelines(name)` | Retrieve operator voice lines (Chinese name) |
 | `get_operator_basic_info(name)` | Retrieve basic operator profile: class, rarity, faction, recruit tags, talents (Chinese name) |
 | `list_story_events(category?)` | List story events; optional filter: `main` (main story) or `activities` |
-| `list_stories(event_id, include_summaries?)` | List chapters of an event in official order, with optional summaries |
-| `get_event_summary(event_id)` | Narrative overview of all chapters in an event with summaries |
+| `list_stories(event_id, include_summaries?)` | List chapters of an event in official order; `include_summaries` adds the event-level overview + per-chapter summaries |
 | `get_story_summary(story_key)` | Single-chapter summary (LLM long summary or official one-liner) |
 | `read_story(story_key, include_narration)` | Read full dialogue for a single chapter |
 | `read_activity(event_id, include_narration, page, page_size)` | Read a complete activity's transcript, with pagination |
@@ -125,8 +124,7 @@ Published Docker images and the npm package include bundled fallback game/level/
 | `get_operator_voicelines(name)` | 获取干员语音记录（中文名） |
 | `get_operator_basic_info(name)` | 获取干员基本信息：职业、稀有度、所属、招募标签、天赋（中文名） |
 | `list_story_events(category?)` | 列出剧情活动，可选过滤：`main`（主线）或 `activities`（活动） |
-| `list_stories(event_id, include_summaries?)` | 列出指定活动的章节（按官方顺序），可选附带梗概 |
-| `get_event_summary(event_id)` | 获取活动的章节梗概概览，含 LLM 长摘要 |
+| `list_stories(event_id, include_summaries?)` | 列出指定活动的章节（按官方顺序）；`include_summaries` 附活动级概览 + 每章梗概 |
 | `get_story_summary(story_key)` | 获取单章梗概（LLM 长摘要或官方一句话简介） |
 | `read_story(story_key, include_narration)` | 读取单章完整台词 |
 | `read_activity(event_id, include_narration, page, page_size)` | 读取整个活动的完整剧情，支持分页 |

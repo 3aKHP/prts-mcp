@@ -31,7 +31,7 @@ PRTS-MCP/
 │   │   ├── server.py       # 入口点 → tools_* 模块
 │   │   ├── tools_prts.py   # PRTS Wiki 工具注册（2 工具）
 │   │   ├── tools_gamedata.py # GameData 工具注册（12 工具）
-│   │   ├── tools_story.py  # 剧情工具注册（10 工具）
+│   │   ├── tools_story.py  # 剧情工具注册（9 工具）
 │   │   ├── config.py       # 路径解析、环境变量
 │   │   ├── startup_sync.py # 后台数据同步编排
 │   │   ├── api/            # PRTS Wiki MediaWiki API 客户端
@@ -93,7 +93,7 @@ PRTS-MCP/
 | [ArknightsStoryJson](https://github.com/3aKHP/ArknightsStoryJson) | 剧情台词 | GitHub Release `zh_CN.zip` |
 | [PRTS Wiki API](https://prts.wiki/api.php) | 世界观词条/阵营设定 | 实时 HTTP 请求 |
 
-## 工具清单 (24, current branch)
+## 工具清单 (23, current branch)
 
 | # | 工具 | 数据源 | 版本 |
 |---|------|--------|------|
@@ -108,19 +108,18 @@ PRTS-MCP/
 | 9 | `read_activity` | StoryJson | 0.3.0 |
 | 10 | `search` | GameData | 2.0.0 |
 | 11 | `search_stories` | StoryJson | 1.1.0 |
-| 12 | `get_event_summary` | StoryJson | 1.2.0 |
-| 13 | `get_story_summary` | StoryJson | 1.2.0 |
-| 14 | `list_enemies` | GameData | 1.4.0 |
-| 15 | `get_enemy_info` | GameData | 1.4.0 |
-| 16 | `get_stage_enemies` | GameData levels | 1.6.0 |
-| 17 | `get_enemy_appearances` | GameData levels | 1.6.0 |
-| 18 | `list_stages` | GameData | 1.5.0 |
-| 19 | `get_stage_info` | GameData | 1.5.0 |
-| 20 | `list_items` | GameData | 1.6.0 |
-| 21 | `get_item_info` | GameData | 1.6.0 |
-| 22 | `get_operator_memoirs` | StoryJson | 1.6.1 |
-| 23 | `find_character_appearances` | StoryJson | 1.7.0 |
-| 24 | `find_speakers_in` | StoryJson | 1.7.0 |
+| 12 | `get_story_summary` | StoryJson | 1.2.0 |
+| 13 | `list_enemies` | GameData | 1.4.0 |
+| 14 | `get_enemy_info` | GameData | 1.4.0 |
+| 15 | `get_stage_enemies` | GameData levels | 1.6.0 |
+| 16 | `get_enemy_appearances` | GameData levels | 1.6.0 |
+| 17 | `list_stages` | GameData | 1.5.0 |
+| 18 | `get_stage_info` | GameData | 1.5.0 |
+| 19 | `list_items` | GameData | 1.6.0 |
+| 20 | `get_item_info` | GameData | 1.6.0 |
+| 21 | `get_operator_memoirs` | StoryJson | 1.6.1 |
+| 22 | `find_character_appearances` | StoryJson | 1.7.0 |
+| 23 | `find_speakers_in` | StoryJson | 1.7.0 |
 
 > `search(scope, pattern, max_results)` 统一了 1.x 的 `search_data` /
 > `search_enemies` / `search_stages` / `search_items` 与 `list_search_scopes`
@@ -131,6 +130,9 @@ PRTS-MCP/
 > `list_prts_sections` / `get_prts_categories` / `get_prts_links` /
 > `get_prts_template`（action ∈ read/sections/categories/links/template）。
 > 维基关键词搜索仍为独立的 `search_prts`。
+>
+> `list_stories(event_id, include_summaries=True)` 现附带活动级长摘要（吸收了
+> 1.x 的 `get_event_summary`）；单章深摘要仍为独立的 `get_story_summary`。
 
 ## 遗留 TODO
 

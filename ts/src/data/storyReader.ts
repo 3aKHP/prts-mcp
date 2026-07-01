@@ -16,7 +16,6 @@ import { JsonStore, ZipStore } from "./stores.js";
 export const STORY_REVIEW_TABLE = "zh_CN/gamedata/excel/story_review_table.json";
 export const STORYINFO = "zh_CN/storyinfo.json";
 export const SUMMARIES = "zh_CN/summaries.json";
-export const EVENT_SUMMARIES = "zh_CN/event_summaries.json";
 export const CHARDICT = "zh_CN/chardict.json";
 
 export function storyZipPath(storyKey: string): string {

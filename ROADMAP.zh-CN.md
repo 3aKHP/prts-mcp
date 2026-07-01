@@ -136,7 +136,7 @@ PRTS-MCP 已进入 1.x 稳定期。1.7.0 是最后一个 1.x 功能版本和 1.7
   输出形态和长度差异大，合并反而降低 LLM 选择准确率，得不偿失。
 - 敌人三件套（`list_enemies` / `get_enemy_info` / `search_enemies`）：
   同上。
-- 剧情工具（`read_story` / `read_activity` / `get_event_summary`）：
+- 剧情工具（`read_story` / `read_activity` / `get_story_summary`）：
   在相关但不同的数据上做真正不同的动作。
 
 合并的门槛：参数形态相同、输出长度和结构相似、LLM 在它们之间 做选择本质上是在选近义词。
