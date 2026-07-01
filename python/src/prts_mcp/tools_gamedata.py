@@ -5,7 +5,7 @@ Split from server.py. Covers 12 tools that read local gamedata tables
 """
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import Field
 
@@ -178,7 +178,7 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
 
     @mcp.tool()
     def search(
-        scope: Annotated[str, Field(description="搜索域（必填）：operators（干员）/ enemies（敌人）/ stages（关卡）/ items（物品）。")],
+        scope: Annotated[Literal["operators", "enemies", "stages", "items"], Field(description="搜索域（必填）：operators（干员）/ enemies（敌人）/ stages（关卡）/ items（物品）。")],
         pattern: Annotated[str, Field(description="正则表达式搜索模式，大小写不敏感。")],
         max_results: Annotated[int, Field(default=30, ge=1, le=100, description="返回结果数量上限，默认 30。")] = 30,
     ) -> str:

@@ -189,7 +189,7 @@ export function registerGamedataTools(server: McpServer): void {
       "返回带域标签的匹配结果。剧情台词搜索请用 search_stories（参数不同）。",
     ].join(" "),
     {
-      scope: z.string().describe("搜索域（必填）：operators / enemies / stages / items。"),
+      scope: z.enum(["operators", "enemies", "stages", "items"]).describe("搜索域（必填）：operators / enemies / stages / items。"),
       pattern: z.string().describe("正则表达式搜索模式，大小写不敏感。"),
       max_results: z.number().int().min(1).max(100).default(30).describe("返回结果数量上限，默认 30。"),
     },

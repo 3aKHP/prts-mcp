@@ -31,7 +31,7 @@ PRTS-MCP/
 │   │   ├── server.py       # 入口点 → tools_* 模块
 │   │   ├── tools_prts.py   # PRTS Wiki 工具注册（6 工具）
 │   │   ├── tools_gamedata.py # GameData 工具注册（12 工具）
-│   │   ├── tools_story.py  # 剧情工具注册（8 工具）
+│   │   ├── tools_story.py  # 剧情工具注册（10 工具）
 │   │   ├── config.py       # 路径解析、环境变量
 │   │   ├── startup_sync.py # 后台数据同步编排
 │   │   ├── api/            # PRTS Wiki MediaWiki API 客户端
