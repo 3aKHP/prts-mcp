@@ -224,3 +224,74 @@ test("find_speakers_in: unknown event throws", () => {
   const store = storyStore("directory", tempRoot());
   assert.throws(() => findSpeakersInFromStore(store, "no_such_event"));
 });
+
+// ---------------------------------------------------------------------------
+// Edge case: event exists but has no dialog (narration only)
+// ---------------------------------------------------------------------------
+
+const NARRATION_ONLY_KEY = "activities/act_narration/level_narration_01";
+
+function narrationOnlyFiles(): Record<string, unknown> {
+  return {
+    [STORY_REVIEW_PATH]: {
+      act_narration: {
+        name: "纯旁白活动",
+        entryType: "ACTIVITY",
+        infoUnlockDatas: [
+          {
+            storyTxt: NARRATION_ONLY_KEY,
+            storyCode: "NAR-1",
+            storyName: "旁白章",
+            avgTag: null,
+            storySort: 1,
+          },
+        ],
+      },
+    },
+    [storyPath(NARRATION_ONLY_KEY)]: {
+      storyCode: "NAR-1",
+      storyName: "旁白章",
+      avgTag: null,
+      eventName: "纯旁白活动",
+      storyInfo: "",
+      storyList: [
+        { prop: "sticker", attributes: { content: "只有旁白文本。" } },
+      ],
+    },
+  };
+}
+
+function narrationOnlyStore(kind: "directory" | "zip", root: string): JsonStore {
+  const files = narrationOnlyFiles();
+  if (kind === "directory") {
+    for (const [path, data] of Object.entries(files)) {
+      const target = join(root, path);
+      mkdirSync(dirname(target), { recursive: true });
+      writeFileSync(target, JSON.stringify(data), "utf-8");
+    }
+    return new DirectoryStore(root);
+  } else {
+    const zipPath = join(root, "zh_CN.zip");
+    mkdirSync(dirname(zipPath), { recursive: true });
+    const zip = new AdmZip();
+    for (const [innerPath, data] of Object.entries(files)) {
+      zip.addFile(innerPath, Buffer.from(JSON.stringify(data), "utf-8"));
+    }
+    zip.writeZip(zipPath);
+    return new ZipStore(zipPath);
+  }
+}
+
+for (const kind of ["directory", "zip"] as const) {
+  test(`find_speakers_in: narration-only event returns empty (${kind})`, () => {
+    const store = narrationOnlyStore(kind, tempRoot());
+    const speakers = findSpeakersInFromStore(store, "act_narration");
+    assert.deepEqual(speakers, []);
+  });
+
+  test(`find_character_appearances: narration-only event has no speaker match (${kind})`, () => {
+    const store = narrationOnlyStore(kind, tempRoot());
+    const result = findCharacterAppearancesFromStore(store, "博士");
+    assert.equal(result.totalChapters, 0);
+  });
+}

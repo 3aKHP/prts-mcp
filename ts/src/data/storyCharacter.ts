@@ -146,6 +146,8 @@ export function findSpeakersInFromStore(
   for (const [speakerName, lineCount] of counts) {
     speakers.push({ name: speakerName, lineCount });
   }
-  speakers.sort((a, b) => b.lineCount - a.lineCount || a.name.localeCompare(b.name));
+  // Sort by line count desc, then by name using codepoint ordering to match
+  // the Python implementation's `(-line_count, name)` tuple sort.
+  speakers.sort((a, b) => b.lineCount - a.lineCount || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
   return speakers;
 }

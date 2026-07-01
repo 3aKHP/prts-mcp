@@ -410,7 +410,7 @@ export function registerStoryTools(server: McpServer): void {
       "每章标注 speaks / mentioned / 两者皆有。如需精确台词，可用返回的 story_key 调用 read_story。",
     ].join(" "),
     {
-      name: z.string().describe("角色名（干员中文名或「博士」）。speaks 按对话角色名精确匹配，mentioned 按名字在台词/旁白文本中的子串匹配——请使用完整名字以免误报。"),
+      name: z.string().describe("角色名（干员中文名或「博士」）。speaks 按对话角色名精确匹配，mentioned 按名字在台词/旁白文本中的子串匹配——请使用完整名字以免误报（如「阿」会命中「阿米娅」）。"),
       scope: z.string().optional().describe("限定活动 ID，如「act31side」。不填则检索全部活动。"),
       max_events: z.number().int().min(1).max(200).default(50).describe("最多返回章节数，默认 50。"),
     },
@@ -439,7 +439,10 @@ export function registerStoryTools(server: McpServer): void {
         return { content: [{ type: "text", text: parts.join("\n") }] };
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        return { content: [{ type: "text", text: msg.includes("未找到") ? msg : `查询角色出场失败：${msg}` }] };
+        // Validation errors (不能为空 / 必须) and not-found (未找到) are
+        // user-facing messages returned bare; only unexpected errors get a prefix.
+        const isUserFacing = msg.includes("未找到") || msg.includes("不能为空") || msg.includes("必须");
+        return { content: [{ type: "text", text: isUserFacing ? msg : `查询角色出场失败：${msg}` }] };
       }
     }
   );

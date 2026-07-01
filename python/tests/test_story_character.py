@@ -225,3 +225,74 @@ class TestFindSpeakersIn:
         store = _story_store("directory", tmp_path)
         with pytest.raises(KeyError):
             find_speakers_in_from_store(store, "no_such_event")
+
+
+# ---------------------------------------------------------------------------
+# Edge case: event exists but has no dialog (narration only)
+# ---------------------------------------------------------------------------
+
+
+NARRATION_ONLY_KEY = "activities/act_narration/level_narration_01"
+
+
+def _narration_only_files() -> dict[str, object]:
+    return {
+        STORY_REVIEW_PATH: {
+            "act_narration": {
+                "name": "纯旁白活动",
+                "entryType": "ACTIVITY",
+                "infoUnlockDatas": [
+                    {
+                        "storyTxt": NARRATION_ONLY_KEY,
+                        "storyCode": "NAR-1",
+                        "storyName": "旁白章",
+                        "avgTag": None,
+                        "storySort": 1,
+                    },
+                ],
+            },
+        },
+        _story_path(NARRATION_ONLY_KEY): {
+            "storyCode": "NAR-1",
+            "storyName": "旁白章",
+            "avgTag": None,
+            "eventName": "纯旁白活动",
+            "storyInfo": "",
+            "storyList": [
+                {"prop": "sticker", "attributes": {"content": "只有旁白文本。"}},
+            ],
+        },
+    }
+
+
+def _narration_only_store(kind: str, tmp_path: Path) -> DirectoryStore | ZipStore:
+    files = _narration_only_files()
+    if kind == "directory":
+        for path, data in files.items():
+            target = tmp_path / path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+        return DirectoryStore(tmp_path)
+    else:
+        zip_path = tmp_path / "zh_CN.zip"
+        zip_path.parent.mkdir(parents=True, exist_ok=True)
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            for inner_path, data in files.items():
+                zf.writestr(inner_path, json.dumps(data, ensure_ascii=False))
+        return ZipStore(zip_path)
+
+
+class TestNarrationOnlyEvent:
+    @pytest.mark.parametrize("store_kind", ["directory", "zip"])
+    def test_speakers_empty(self, tmp_path: Path, store_kind: str) -> None:
+        # Event exists in the index but has zero dialog lines → empty speakers.
+        store = _narration_only_store(store_kind, tmp_path)
+        speakers = find_speakers_in_from_store(store, "act_narration")
+        assert speakers == []
+
+    @pytest.mark.parametrize("store_kind", ["directory", "zip"])
+    def test_character_no_match(self, tmp_path: Path, store_kind: str) -> None:
+        # The narration text mentions no real speaker name; any lookup is empty.
+        store = _narration_only_store(store_kind, tmp_path)
+        result = find_character_appearances_from_store(store, "博士")
+        assert result.total_chapters == 0
