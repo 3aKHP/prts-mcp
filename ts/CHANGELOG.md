@@ -12,6 +12,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
   (`get_operator_archives`, `get_operator_voicelines`, `get_operator_basic_info`,
   `get_operator_memoirs`) now take `name` instead of `operator_name`, matching
   the `name` convention already used by the enemy/stage/item/character tools.
+- **Unified search (2.0, breaking).** `search_data`, `search_enemies`,
+  `search_stages`, and `search_items` are consolidated into a single
+  `search(scope, pattern, max_results)` tool with a required `scope` enum
+  (`operators` / `enemies` / `stages` / `items`). Story dialogue search remains a
+  separate `search_stories` (its filters differ). Tool surface drops 32 → 28.
+
+### Removed
+
+- **`search_data`, `search_enemies`, `search_stages`, `search_items`,
+  `list_search_scopes` (2.0, breaking).** Replaced by unified `search(scope, ...)`;
+  the scope catalogue previously returned by `list_search_scopes` is folded into
+  the `search` tool description.
 
 ## [1.7.0] - 2026-07-02
 

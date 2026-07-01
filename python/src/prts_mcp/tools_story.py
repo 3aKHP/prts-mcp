@@ -295,7 +295,7 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
 
         返回干员的密录章节列表，包含章节 key（story_key）和元数据。
         获取 story_key 后可传入 read_story 读取密录台词。
-        若需先查找正确的干员名称，可使用 search_data 搜索干员数据。
+        若需先查找正确的干员名称，可用 search（scope=operators）搜索干员数据。
         """
         from prts_mcp.config import Config
         cfg = Config.load()

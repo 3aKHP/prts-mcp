@@ -142,12 +142,12 @@ EXPECTED_TOOLS = {
     "search_prts", "read_prts_page", "list_prts_sections",
     "get_prts_categories", "get_prts_links", "get_prts_template",
     "get_operator_archives", "get_operator_voicelines", "get_operator_basic_info",
-    "list_enemies", "get_enemy_info", "search_enemies",
+    "list_enemies", "get_enemy_info",
     "get_stage_enemies", "get_enemy_appearances",
-    "list_stages", "get_stage_info", "search_stages",
-    "list_items", "get_item_info", "search_items",
+    "list_stages", "get_stage_info",
+    "list_items", "get_item_info",
     "list_story_events", "list_stories", "read_story", "read_activity",
-    "list_search_scopes", "search_data", "search_stories",
+    "search", "search_stories",
     "get_event_summary", "get_story_summary",
     "get_operator_memoirs",
     "find_character_appearances", "find_speakers_in",
@@ -181,7 +181,7 @@ def test_tools_list(server: subprocess.Popen) -> None:
     tools = resp["result"]["tools"]
     names = {t["name"] for t in tools}
 
-    assert len(names) == 32, f"Expected 32 tools, got {len(names)}: {sorted(names)}"
+    assert len(names) == 28, f"Expected 28 tools, got {len(names)}: {sorted(names)}"
     for name in EXPECTED_TOOLS:
         assert name in names, f"Missing tool: {name}"
 
@@ -211,8 +211,8 @@ def test_operator_voicelines(server: subprocess.Popen) -> None:
 
 
 @pytest.mark.skipif(not _has_operator_data, reason="No bundled operator data")
-def test_search_data(server: subprocess.Popen) -> None:
-    text = _call_result_text(server, "search_data", {"pattern": "法术伤害", "scope": "operators", "max_results": 3}, 7)
+def test_search(server: subprocess.Popen) -> None:
+    text = _call_result_text(server, "search", {"scope": "operators", "pattern": "法术伤害", "max_results": 3}, 7)
     assert "法术伤害" in text
 
 
@@ -225,11 +225,6 @@ def test_list_story_events_graceful(server: subprocess.Popen) -> None:
     text = _call_result_text(server, "list_story_events", {}, 9)
     assert "[MAINLINE]" in text or "[ACTIVITY]" in text or _data_unavailable(text), \
         f"unexpected: {text[:120]}"
-
-
-def test_list_search_scopes(server: subprocess.Popen) -> None:
-    text = _call_result_text(server, "list_search_scopes", {}, 10)
-    assert "operators" in text and "stories" in text
 
 
 @pytest.mark.skipif(not _run_prts_api, reason="E2E_PRTS_API not set")

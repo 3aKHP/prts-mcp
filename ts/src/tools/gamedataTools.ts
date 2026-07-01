@@ -1,7 +1,7 @@
 /**
  * GameData tool registrations — operators, enemies, stages, items, search.
  *
- * Split from server.ts. Exports registerGamedataTools which attaches the 16
+ * Split from server.ts. Exports registerGamedataTools which attaches the 12
  * game-data-backed tools to a McpServer instance.
  */
 
@@ -94,20 +94,6 @@ export function registerGamedataTools(server: McpServer): void {
   );
 
   server.tool(
-    "search_enemies",
-    [
-      "在敌人图鉴中进行全文正则搜索。",
-      "搜索范围包含敌人名称、描述和特殊能力文本。",
-      "可用于探索特定种族、阵营或关键词相关的敌人信息。",
-    ].join(" "),
-    {
-      pattern: z.string().describe("正则表达式模式，如 '萨卡兹|骑士'。"),
-      max_results: z.number().int().min(1).max(100).default(30).describe("返回结果数量上限，默认 30。"),
-    },
-    ({ pattern, max_results }) => ({ content: [{ type: "text", text: searchEnemies(pattern, max_results) }] })
-  );
-
-  server.tool(
     "get_stage_enemies",
     [
       "获取指定关卡实际出场的敌人列表。",
@@ -162,21 +148,6 @@ export function registerGamedataTools(server: McpServer): void {
     ({ stage_id }) => ({ content: [{ type: "text", text: getStageInfo(stage_id) }] })
   );
 
-  server.tool(
-    "search_stages",
-    [
-      "在关卡数据库中执行全文正则搜索。",
-      "搜索范围覆盖关卡名称、编号、描述。返回匹配关卡的基本信息块。",
-    ].join(" "),
-    {
-      pattern: z.string().describe("正则表达式搜索模式，大小写不敏感。例如 'H10'、'切尔诺伯格'。"),
-      max_results: z.number().int().min(1).max(100).default(30).describe("最多返回条数，默认 30。"),
-    },
-    ({ pattern, max_results }) => ({
-      content: [{ type: "text", text: searchStages(pattern, max_results) }],
-    })
-  );
-
   // --- Item tools ---
 
   server.tool(
@@ -208,70 +179,32 @@ export function registerGamedataTools(server: McpServer): void {
     ({ name }) => ({ content: [{ type: "text", text: getItemInfo(name) }] })
   );
 
-  server.tool(
-    "search_items",
-    [
-      "在物品/材料数据中进行全文正则搜索。",
-      "搜索范围包含物品名称、描述、用途、获取方式和类型。",
-    ].join(" "),
-    {
-      pattern: z.string().describe("正则表达式搜索模式，如「源岩|装置」。"),
-      max_results: z.number().int().min(1).max(100).default(30).describe("返回结果数量上限，默认 30。"),
-    },
-    ({ pattern, max_results }) => ({
-      content: [{ type: "text", text: searchItems(pattern, max_results) }],
-    })
-  );
-
   // --- Search tools ---
 
   server.tool(
-    "list_search_scopes",
-    "列出所有可搜索的数据域及其内容类型。返回可用搜索域的名称和简介，帮助 Agent 选择合适的搜索工具和 scope 参数。",
-    {},
-    () => {
-      return {
-        content: [
-          {
-            type: "text",
-            text:
-              "可用搜索域：\n" +
-              "- operators：干员数据（名称、基本信息描述、档案文本、语音台词）\n" +
-              '  使用 search_data(scope="operators") 搜索。\n' +
-              "- stories：剧情台词（对话、旁白、选项），按活动/章节组织，支持按角色和台词类型过滤。\n" +
-              "  使用 search_stories 搜索。\n" +
-              "- stages：关卡数据（名称、编号、描述、类型、掉落、解锁条件）。\n" +
-              "  使用 list_stages / get_stage_info / search_stages 查询。\n" +
-              "- enemies：敌人图鉴（名称、威胁等级、描述、属性）。\n" +
-              "  使用 list_enemies / get_enemy_info / search_enemies 查询。\n" +
-              "- items：物品/材料（名称、描述、用途、掉落、商店关联）。\n" +
-              "  使用 list_items / get_item_info / search_items 查询。\n" +
-              "- memoirs：干员密录剧情，可通过 get_operator_memoirs 按干员名查找。\n" +
-              "  获取 story_key 后使用 read_story 读取完整台词。",
-          },
-        ],
-      };
-    }
-  );
-
-  server.tool(
-    "search_data",
+    "search",
     [
-      "在干员数据中执行全文正则搜索。",
-      "搜索范围覆盖干员名称、攻击属性描述、档案文本和语音台词。",
-      "返回带领域标签的匹配结果，包含匹配字段名和完整文本。",
+      "在指定数据域中执行全文正则搜索。",
+      "scope 选择搜索域：operators（干员：名称/属性/档案/语音）、enemies（敌人图鉴）、stages（关卡）、items（物品/材料）。",
+      "返回带域标签的匹配结果。剧情台词搜索请用 search_stories（参数不同）。",
     ].join(" "),
     {
-      pattern: z.string().describe("正则表达式搜索模式，大小写不敏感。例如「博士」、「法术伤害」。"),
-      scope: z.string().default("operators").describe('搜索域，目前支持 "operators"。'),
-      max_results: z.number().int().min(1).max(100).default(30).describe("最多返回条数，默认 30。"),
+      scope: z.enum(["operators", "enemies", "stages", "items"]).describe("搜索域（必填）：operators / enemies / stages / items。"),
+      pattern: z.string().describe("正则表达式搜索模式，大小写不敏感。"),
+      max_results: z.number().int().min(1).max(100).default(30).describe("返回结果数量上限，默认 30。"),
     },
-    ({ pattern, scope, max_results }) => {
-      if (scope !== "operators") {
-        return { content: [{ type: "text", text: `不支持的搜索域：${JSON.stringify(scope)}。当前仅支持 scope="operators"。` }] };
+    ({ scope, pattern, max_results }) => {
+      const searchers: Record<string, (p: string, n: number) => string> = {
+        operators: searchOperatorData,
+        enemies: searchEnemies,
+        stages: searchStages,
+        items: searchItems,
+      };
+      const fn = searchers[scope];
+      if (!fn) {
+        return { content: [{ type: "text", text: `不支持的搜索域：${JSON.stringify(scope)}。可选：operators、enemies、stages、items。` }] };
       }
-      const text = searchOperatorData(pattern, max_results);
-      return { content: [{ type: "text", text }] };
+      return { content: [{ type: "text", text: fn(pattern, max_results) }] };
     }
   );
 }

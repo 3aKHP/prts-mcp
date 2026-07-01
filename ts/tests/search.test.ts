@@ -332,10 +332,10 @@ for (const kind of ["directory", "zip"] as const) {
 }
 
 // ---------------------------------------------------------------------------
-// list_search_scopes test (sanity check on server registration)
+// search module export sanity check
 // ---------------------------------------------------------------------------
 
-test("list_search_scopes is registered as a tool", () => {
+test("search modules export the expected functions", () => {
   // Tool surface test already validates server.tool() calls, so here we
   // just verify the search modules export the expected functions.
   assert.equal(typeof searchOperatorData, "function");
