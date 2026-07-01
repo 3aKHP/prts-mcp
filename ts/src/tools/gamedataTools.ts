@@ -81,7 +81,8 @@ export function registerGamedataTools(server: McpServer): void {
     "get_enemy_info",
     [
       "获取指定敌人的详细图鉴资料。",
-      "默认返回威胁等级、描述、攻击方式、伤害类型和特殊能力等图鉴信息；提供 stage_id 时改为返回该敌人在指定关卡内的等级与关卡覆盖后的战斗属性。",
+      "默认返回威胁等级、描述、攻击方式、伤害类型和特殊能力等图鉴信息。",
+      "提供 stage_id 时改为返回该敌人在指定关卡内的等级与关卡覆盖后的战斗属性。",
     ].join(" "),
     {
       name: z.string().describe("敌人的游戏内中文名，如「源石虫」、「霜星」。"),
