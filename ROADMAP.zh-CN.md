@@ -1,36 +1,35 @@
 # PRTS-MCP 路线图
 
-_最近更新：2026-05-28_ · [English](ROADMAP.md)
+_最近更新：2026-07-02_ · [English](ROADMAP.md)
 
-PRTS-MCP 已进入 1.x 稳定期。公共工具面和数据架构受 1.x 兼容合约 约束。本文档记录**接下来要做什么**——已发布的内容请查看 Python 和 TypeScript 各自的 CHANGELOG。
+PRTS-MCP 已进入 1.x 稳定期。1.7.0 是最后一个 1.x 功能版本和 1.7 LTS 基线。本文档记录**接下来要做什么**——已发布的内容请查看 Python 和 TypeScript 各自的 CHANGELOG。
 
 ## 当前发布
 
-- Python：`1.6.1`
-- TypeScript：`1.6.1`
-- `dev` 分支当前目标版本：`1.7.0-dev`
-- 1.x 期间冻结 30 个公共 MCP 工具（CI 强制检查）。
+- Python：`1.7.0` LTS
+- TypeScript：`1.7.0` LTS
+- LTS 发布后 `dev` 分支当前目标版本：`2.0.0-dev`
+- 1.7 LTS 线冻结 32 个公共 MCP 工具（CI 强制检查）。
 - 0.x → 1.0 迁移说明见 [迁移指南](docs/migration-0.x-to-1.0.md)。
 
 ## 1.x 兼容合约
 
-1.x 期间保持稳定的内容：
+1.7.x 期间保持稳定的内容：
 
 - 工具名称和必填参数。
-- 响应**格式**（markdown 形态）；具体措辞和细节可能演进。
+- 响应**格式**（markdown 形态）；修复中的具体措辞和细节可能演进。
 - `GAMEDATA_PATH` 和 `STORYJSON_PATH` 语义。
 - 默认从 GitHub Releases 自动同步。
 
-minor 版本中可能变动的内容：
+1.7.x 维护版本中可能变动的内容：
 
-- 新增工具（增量、不破坏）。
-- 新增可选参数（带安全默认值）。
-- 新增可选数据源 / 兜底机制。
-- 在相同格式内丰富输出内容。
+- 兼容性和安全性修复。
+- 数据同步韧性和上游数据兼容修复。
+- 保持既有工具名、必填参数和默认输出格式不变的关键缺陷修复。
 
 ## 1.x Patch 策略
 
-Patch 版本（1.x.y）仅用于 bug 修复、文档以及不破坏兼容的体验改进 （见下方"Patch 线"）。**不引入新能力，不增加必填参数。**
+1.7 LTS 线上的 Patch 版本仅用于 bug 修复、文档、兼容性、安全性和 数据同步维护。**不新增工具，不增加必填参数，不改变默认输出格式。**
 
 ## 1.x Non-Goals
 
@@ -61,20 +60,26 @@ Patch 版本（1.x.y）仅用于 bug 修复、文档以及不破坏兼容的体�
 - `get_item_info(name)` — 物品详情：用途、获取方式。
 - `search_items(pattern)` — 正则搜索。
 
-### 1.7.0 — 剧情角色追踪 + 干员深度
+### 1.7.0 — 剧情角色追踪（LTS）
 
 **剧情角色追踪（无新数据源——基于现有剧情 JSON 索引化）**
-- `find_character_appearances(name, scope?)` — 该角色出现的章节 / 活动。
-- `find_speakers_in(event_id)` — 该活动中所有发言角色。
+- `find_character_appearances(name, scope?, max_events?)` — 该角色出现的章节 /
+  活动（说话：对话角色名精确匹配；被提及：名字作为子串出现在台词/旁白中）。
+  已在 dev 上为 1.7.0 实现。
+- `find_speakers_in(event_id)` — 该活动中所有发言角色及其台词数。已在 dev 上
+  为 1.7.0 实现。
 
-**主：基建技能数据域**
-- `get_operator_building_skills(name)` — 基建技能、效率、槽位。
-- `search_building_skills(building_type, pattern)` — 跨干员搜索基建技能。
+1.7.0 是最后一个 1.x 功能版本。原计划中的干员深度能力不再继续作为 1.x 新工具加入，而是推迟到 2.0 工具面重设计中重新评估。
 
-**皮肤**
-- `get_operator_skins(name)` — 皮肤列表与描述。
+### 1.7 LTS 之后暂缓的功能
 
-### 1.8.0 — Wiki 增强 + 公招
+以下功能设想仍然有价值，但不再作为 1.x minor 版本排期；应在 2.0 工具模型下重新评估：
+
+**干员深度**
+- 基建技能与跨干员基建技能搜索。
+- 皮肤列表与皮肤描述。
+
+**Wiki 增强 + 公招**
 
 **主：PRTS Wiki 增强（B 类一次性集中交付）**
 - `get_prts_images(page_title)` — 通过 `prop=images` 获取图片列表。
@@ -86,22 +91,19 @@ Patch 版本（1.x.y）仅用于 bug 修复、文档以及不破坏兼容的体�
 
 ---
 
-## Patch 线（1.x.y）
+## 1.7 LTS 维护线
 
-Patch 版本滚动交付体验和基础设施改进，不引入新能力。每个 patch 携带 1-2 项改动；与具体 minor 版本的绑定仅作示意——实际工作流跟随 可用窗口推进。
+1.7.x 发布维护 LTS 基线，不扩展公共工具面。
 
-| 暂定版本 | 主题 | 范围 |
-|----------|------|------|
-| 1.5.1 | 搜索工具合并（阶段一） | 新增 `search(scope, pattern, ...)` 合并 `search_data` / `search_stories` / `search_enemies` / `list_search_scopes`。旧名作为 deprecated 别名保留。 |
-| 1.5.2 | 分页格式统一 | 所有列表工具采用 `{total, offset, limit, items}` 标准结构。 |
-| 1.6.1 | 结构化错误 | 新增 `{error_code, message}`，旧字符串作为 fallback 保留。 |
-| 1.6.2 | PRTS 页面工具合并（阶段一） | 新增 `prts_page(page_title, action="read\|sections\|categories\|links\|template", ...)` 合并 5 个 `*_prts_*`/`*_prts_page` 工具。旧名 deprecated 保留。 |
-| 1.6.3 | 工具描述优化 | 给所有工具的 description 加关键词和典型用例。提升客户端 ToolSearch / RAG 的召回率（Claude Code、Cursor）。服务端改动，零协议风险。 |
-| 1.7.1 | 共享 fixture | 双实现的 fixture / golden 测试基础设施。 |
-| 1.7.2 | Golden 测试 | Python 和 TS 在共享输入上的 byte-equal 输出测试。 |
-| 1.7.3 | 开发者文档 | 数据架构图 + 新数据域接入指南。 |
+| 1.7.x 允许范围 | 示例 |
+|----------------|------|
+| 兼容性修复 | 上游 schema 漂移、客户端握手兼容、打包元数据 |
+| 安全性修复 | 依赖 CVE、不安全解析行为、传输层加固 |
+| 数据同步修复 | GitHub Release 查询、zip 校验、重试/兜底行为 |
+| 关键缺陷修复 | 错误结果、崩溃、资源泄漏、双实现 parity 回归 |
+| 文档修复 | LTS 支持说明、部署修正、迁移说明澄清 |
 
-这些改动均为增量、向后兼容。它们不阻塞对应的 minor 发布，只是 跟随自然的交付窗口推进。
+1.7.x 不规划新能力。原 patch 线中的搜索合并、PRTS 页面合并、JSON 输出默认值和 golden test 基础设施，除非用于修复 1.7 LTS 回归，否则 都归入 2.0 规划。
 
 ---
 
@@ -111,22 +113,22 @@ Patch 版本滚动交付体验和基础设施改进，不引入新能力。每�
 
 ### 工具面合并（上下文预算）
 
-1.x 工具面持续增长（1.6.0 已 29 个，预计 1.8.0 后达 30+）。旗舰长上下文模型不在乎；但对 128K 级别模型，每个工具 schema 都吃 prompt 预算并降低工具选择准确率。
+1.x 工具面在 1.7.0 LTS 时已达到 32 个。旗舰长上下文模型不在乎；但对 128K 级别模型，每个工具 schema 都吃 prompt 预算并降低工具选择准确率。
 
 **背景**：MCP 协议层目前无原生 deferred tool loading 支持。已关闭 提案：lazy hydration（#1978）、lazyRegistration（#2376）。开放草案： tool-search query（#1821）、token-bloat 缓解（#1576）。Claude Code 的 ToolSearch 是 Anthropic API 层特性（`tool_reference` blocks）， 不能移植到 Cursor / Cline / Chatbox。
 
 **方法**：服务端按 *schema 形态* 合并，而非按数据域合并。合并参数 结构和输出形态相似的工具，保留语义真正不同的工具。预估缩减： 24 → ~16 个工具（约 1/3），不损失能力。
 
-**阶段一（1.x 内引入 deprecated 别名）**：
+**阶段一（2.0 迁移设计）**：
 
 - `search(scope, pattern, ...)` 合并 `search_data` / `search_stories` /
   `search_enemies` / `list_search_scopes`。四者参数形态完全相同，
-  仅 `scope` 不同。（1.5.1）
+  仅 `scope` 不同。
 - `prts_page(page_title, action, ...)` 合并 `read_prts_page` /
   `list_prts_sections` / `get_prts_categories` / `get_prts_links` /
-  `get_prts_template`。共享主键 `page_title`，`action` 选择子操作。（1.6.2）
+  `get_prts_template`。共享主键 `page_title`，`action` 选择子操作。
 
-**阶段二（2.0）**：移除 deprecated 别名。旧名在整个 1.x 期间保留， 留足迁移空间。
+**阶段二（2.0）**：按最终 2.0 迁移方案移除或隐藏 deprecated 旧别名。 1.7 LTS 线保留现有 32 工具面。
 
 **明确不合并的部分**：
 
@@ -147,7 +149,7 @@ Patch 版本滚动交付体验和基础设施改进，不引入新能力。每�
 - 2.0 翻转**默认值**为 `json`，这才是 break point。
 - markdown 在 2.0 仍可显式选择，不删除。
 
-这种分阶段迁移让用户在 1.x 期间提前切到 JSON，2.0 翻转默认值前 有充足缓冲期。
+原计划希望 1.x 期间先提供 opt-in。现在 1.7 已成为 LTS 线，具体迁移 路径归入 2.0 设计阶段，并必须在首个 2.0 预发布前写清楚。
 
 ### 双实现等价化（Python ↔ TypeScript）
 
@@ -161,8 +163,7 @@ Patch 版本滚动交付体验和基础设施改进，不引入新能力。每�
 ### 清理
 
 - 移除晚期 1.x 仍残留的 0.x 兼容 shim（如果有）。
-- 移除 1.5.1 / 1.6.2 引入的 deprecated 工具别名（见上方"工具面
-  合并"部分）。
+- 移除 2.0 迁移方案引入的 deprecated 工具别名（见上方"工具面合并"部分）。
 
 ### 2.0 Non-Goals
 
@@ -176,14 +177,14 @@ Patch 版本滚动交付体验和基础设施改进，不引入新能力。每�
 
 ## 决策原则
 
-1. **每个 minor 版本一个数据域**——便于宣传、便于迁移、便于回滚。
-2. **Patch 不增加新能力**——只修 bug、改进体验，可以引入合并别名
-   （语义已被现有工具覆盖），但绝不引入真正新的能力。
-3. **重大改动提前一年铺路**——2.0 的 `output_format` 翻转和别名
-   移除全程在 1.x 期间准备，不会临时宣布。
-4. **跨源融合工具绑定其数据依赖**——`get_stage_enemies` 在关卡数据域
+1. **1.7 LTS 不再新增能力**——让稳定线保持小而可维护。
+2. **每个功能版本一个数据域**——便于宣传、便于迁移、便于回滚。
+3. **Patch 不增加新能力**——只修 bug、改善兼容性，并保持 1.7 合约。
+4. **重大改动必须有明确迁移文档**——2.0 的工具面和输出格式变化需在
+   预发布前写清楚。
+5. **跨源融合工具绑定其数据依赖**——`get_stage_enemies` 在关卡数据域
    之后发布，不会提前。
-5. **按 schema 形态合并，而非按数据域合并**——合并参数结构相似
+6. **按 schema 形态合并，而非按数据域合并**——合并参数结构相似
    的工具能保持选择准确率；按"所有干员相关的"合并则不行。
 
 ---

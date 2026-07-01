@@ -189,7 +189,7 @@ docker run -i --rm -v prts-mcp-data:/data/gamedata -v prts-mcp-levels:/data/game
 npx @modelcontextprotocol/inspector docker run -i --rm -v prts-mcp-data:/data/gamedata -v prts-mcp-levels:/data/gamedata-levels -v prts-mcp-storyjson:/data/storyjson prts-mcp
 ```
 
-预期能看到 29 个 Tool，以下是按数据域挑选的 smoke 参数：
+预期能看到 32 个 Tool，以下是按数据域挑选的 smoke 参数：
 
 | Tool | 测试参数 | 依赖 |
 |------|---------|------|
@@ -214,6 +214,9 @@ npx @modelcontextprotocol/inspector docker run -i --rm -v prts-mcp-data:/data/ga
 | `list_items` | `category`: `MATERIAL` | 干员数据 |
 | `get_item_info` | `name`: `固源岩` | 干员数据 |
 | `search_items` | `pattern`: `源岩|装置` | 干员数据 |
+| `get_operator_memoirs` | `operator_name`: `阿米娅` | 剧情数据 |
+| `find_character_appearances` | `name`: `阿米娅`, `max_events`: `5` | 剧情数据 |
+| `find_speakers_in` | `event_id`: `act31side` | 剧情数据 |
 | `list_story_events` | `category`: `activities` | 剧情数据 |
 | `list_stories` | `event_id`: `act31side` | 剧情数据 |
 | `get_event_summary` | `event_id`: `act31side` | 剧情数据 |

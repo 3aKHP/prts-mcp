@@ -23,19 +23,20 @@ This repository contains two independent implementations for different deploymen
 | [`python/`](python/) | Python 3.10+ | stdio | Local Claude Desktop / Claude Code, Docker |
 | [`ts/`](ts/) | TypeScript / Node.js | Streamable HTTP | Self-hosted server, remote HTTP access |
 
-### 1.0 Compatibility Matrix
+### 1.x Compatibility Matrix
 
-| Area | Python | TypeScript | 1.0 policy |
+1.7.0 is the last 1.x feature release and the LTS baseline. Future 1.7.x updates are limited to compatibility, security, data-sync, and critical bug fixes while 2.0 development focuses on tool-surface consolidation, structured output defaults, and Python/TypeScript transport parity.
+
+| Area | Python | TypeScript | 1.x policy |
 |------|--------|------------|------------|
-| Current line | `1.6.0` | `1.6.0` | Stable releases are cut from the same commit when possible |
-| MCP tools | Same 29 public tool names and required parameters | Same 29 public tool names and required parameters | Tool names and required parameters stay stable through 1.x |
+| Current line | `1.7.0` LTS | `1.7.0` LTS | 1.7.x is the final 1.x maintenance line |
+| MCP tools | Same 32 public tool names and required parameters | Same 32 public tool names and required parameters | Tool names, required parameters, and default markdown output stay stable through 1.7.x |
 | GameData | `GAMEDATA_PATH` or auto-synced `zh_CN-excel.zip` | `GAMEDATA_PATH` or auto-synced `zh_CN-excel.zip` | Custom paths disable auto-sync |
 | Level data | Auto-synced `zh_CN-levels.zip` beside GameData | Auto-synced `zh_CN-levels.zip` beside GameData | Custom GameData roots may provide their own `zh_CN/gamedata/levels` |
 | Story data | `STORYJSON_PATH` or auto-synced `zh_CN.zip` | `STORYJSON_PATH` or auto-synced `zh_CN.zip` | Custom zip paths disable auto-sync |
 | Bundled fallback data | Docker image only | Docker image and published npm package | PyPI remains data-light |
 
-See [`docs/migration-0.x-to-1.0.md`](docs/migration-0.x-to-1.0.md) for the
-0.x to 1.0 migration notes.
+See [`docs/migration-0.x-to-1.0.md`](docs/migration-0.x-to-1.0.md) for the 0.x to 1.0 migration notes.
 
 ### Tools
 
@@ -105,12 +106,14 @@ Published Docker images and the npm package include bundled fallback game/level/
 | [`python/`](python/) | Python 3.10+ | stdio | Claude Desktop / Claude Code 本地接入、Docker |
 | [`ts/`](ts/) | TypeScript / Node.js | Streamable HTTP | 个人服务器部署，供他人通过 HTTP 调用 |
 
-### 1.0 兼容矩阵
+### 1.x 兼容矩阵
 
-| 范围 | Python | TypeScript | 1.0 策略 |
+1.7.0 是最后一个 1.x 功能版本和 LTS 基线。后续 1.7.x 仅接受兼容性、安全性、数据同步和关键缺陷修复；2.0 开发线将集中处理工具面合并、结构化输出默认值和 Python/TypeScript 传输对齐。
+
+| 范围 | Python | TypeScript | 1.x 策略 |
 |------|--------|------------|----------|
-| 当前版本线 | `1.6.0` | `1.6.0` | 稳定发布尽量从同一 commit 发布 |
-| MCP 工具 | 相同的 29 个工具名和必填参数 | 相同的 29 个工具名和必填参数 | 1.x 期间保持工具名和必填参数稳定 |
+| 当前版本线 | `1.7.0` LTS | `1.7.0` LTS | 1.7.x 是最后的 1.x 维护线 |
+| MCP 工具 | 相同的 32 个工具名和必填参数 | 相同的 32 个工具名和必填参数 | 1.7.x 期间保持工具名、必填参数和默认 markdown 输出稳定 |
 | 干员数据 | `GAMEDATA_PATH` 或自动同步 `zh_CN-excel.zip` | `GAMEDATA_PATH` 或自动同步 `zh_CN-excel.zip` | 自定义路径会禁用自动同步 |
 | 关卡战斗数据 | 自动同步与 GameData 并列的 `zh_CN-levels.zip` | 自动同步与 GameData 并列的 `zh_CN-levels.zip` | 自定义 GameData 根目录可直接提供 `zh_CN/gamedata/levels` |
 | 剧情数据 | `STORYJSON_PATH` 或自动同步 `zh_CN.zip` | `STORYJSON_PATH` 或自动同步 `zh_CN.zip` | 自定义 zip 会禁用自动同步 |

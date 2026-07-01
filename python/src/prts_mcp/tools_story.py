@@ -1,6 +1,6 @@
-"""Story tool registrations — events, chapters, dialogue, summaries, search, memoirs.
+"""Story tool registrations — events, chapters, dialogue, summaries, search, memoirs, characters.
 
-Split from server.py. Covers 8 tools that read story data from the
+Split from server.py. Covers 10 tools that read story data from the
 synced zh_CN.zip via the story submodules.
 """
 from __future__ import annotations
@@ -19,12 +19,14 @@ from prts_mcp.data.story import (
     get_event_summary as _get_event_summary,
     get_story_summary as _get_story_summary,
     get_operator_memoirs as _get_operator_memoirs,
+    find_character_appearances as _find_character_appearances,
+    find_speakers_in as _find_speakers_in,
 )
 from prts_mcp.startup_sync import _require_story_zip
 
 
 def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
-    """Register the 8 story-backed tools on the given FastMCP instance."""
+    """Register the 10 story-backed tools on the given FastMCP instance."""
 
     @mcp.tool()
     def list_story_events(
@@ -316,3 +318,84 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         for ch in result.chapters:
             lines.append(f"- {ch.story_code} {ch.story_name}（key: {ch.story_key}）")
         return "\n".join(lines)
+
+    @mcp.tool()
+    def find_character_appearances(
+        name: Annotated[str, Field(description="角色名（干员中文名或「博士」）。speaks 按对话角色名精确匹配，mentioned 按名字在台词/旁白文本中的子串匹配——请使用完整名字以免误报（如「阿」会命中「阿米娅」）。")],
+        scope: Annotated[str | None, Field(default=None, description="限定活动 ID，如「act31side」。不填则检索全部活动。")] = None,
+        max_events: Annotated[int, Field(default=50, ge=1, le=200, description="最多返回章节数，默认 50。")] = 50,
+    ) -> str:
+        """查找某个角色在剧情中的出场（说话或被提及）。
+
+        返回该角色「说话」（speaks，作为对话发言者）或「被提及」（mentioned，
+        名字出现在任意台词/旁白文本中）的所有章节，每章标注 speaks / mentioned /
+        两者皆有。适合快速定位一个角色的剧情登场分布。如需精确台词，可用返回的
+        story_key 调用 read_story。
+        """
+        from prts_mcp.config import Config
+        cfg = Config.load()
+        try:
+            zip_path = _require_story_zip(cfg)
+        except RuntimeError as e:
+            return str(e)
+
+        try:
+            result = _find_character_appearances(
+                zip_path, name, scope=scope, max_events=max_events,
+            )
+        except ValueError as e:
+            return str(e)
+        except KeyError as e:
+            return str(e)
+        except Exception as e:
+            return f"查询角色出场失败：{e}"
+
+        if not result.appearances:
+            scope_note = f"（限定活动：{scope!r}）" if scope else ""
+            return f"未找到「{name}」的出场记录。{scope_note}"
+
+        parts = [f"# 「{result.name}」的出场（共 {result.total_chapters} 章）"]
+        for ap in result.appearances:
+            tags = []
+            if ap.speaks:
+                tags.append("speaks")
+            if ap.mentioned:
+                tags.append("mentioned")
+            tag = "+".join(tags)
+            name_disp = f"{ap.story_code} {ap.story_name}".strip()
+            parts.append(
+                f"- [{tag}] {ap.event_id} / {name_disp}（key: {ap.story_key}）"
+            )
+        return "\n".join(parts)
+
+    @mcp.tool()
+    def find_speakers_in(
+        event_id: Annotated[str, Field(description="活动 ID，如 \"act31side\"（可从 list_story_events 获取）。")],
+    ) -> str:
+        """列出某活动中的所有发言角色及其台词数。
+
+        返回该活动所有章节中去重后的对话发言者，按台词句数降序排列。适合了解
+        一个活动的角色戏份分布。如需读取某角色说的具体内容，可结合
+        search_stories(character=...) 过滤。
+        """
+        from prts_mcp.config import Config
+        cfg = Config.load()
+        try:
+            zip_path = _require_story_zip(cfg)
+        except RuntimeError as e:
+            return str(e)
+
+        try:
+            speakers = _find_speakers_in(zip_path, event_id)
+        except KeyError as e:
+            return str(e)
+        except Exception as e:
+            return f"查询发言角色失败：{e}"
+
+        if not speakers:
+            return f"活动 {event_id!r} 暂无对话发言者数据。"
+
+        parts = [f"# {event_id} 的发言角色（共 {len(speakers)} 位）"]
+        for sp in speakers:
+            parts.append(f"- {sp.name}（{sp.line_count} 句）")
+        return "\n".join(parts)

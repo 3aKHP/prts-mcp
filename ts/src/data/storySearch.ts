@@ -24,9 +24,11 @@ import {
 // Internal types
 // ---------------------------------------------------------------------------
 
-interface StorySearchChapter {
+export interface StorySearchChapter {
   eventId: string;
+  storyKey: string;
   storyCode: string;
+  storyName: string;
   lines: StoryLine[];
 }
 
@@ -36,7 +38,7 @@ interface StorySearchRecord {
   line: StoryLine;
 }
 
-interface StorySearchIndex {
+export interface StorySearchIndex {
   eventIds: Set<string>;
   chapters: StorySearchChapter[];
   records: StorySearchRecord[];
@@ -197,7 +199,7 @@ export function searchStoriesFromStore(
 // Index building + caching
 // ---------------------------------------------------------------------------
 
-function storySearchIndex(store: JsonStore): StorySearchIndex {
+export function storySearchIndex(store: JsonStore): StorySearchIndex {
   const descriptor = storyStoreDescriptor(store);
   if (descriptor !== null && storySearchCache?.descriptor === descriptor) {
     return storySearchCache.index;
@@ -250,7 +252,9 @@ function buildStorySearchIndex(store: JsonStore): StorySearchIndex {
       const chapterIndex = chapters.length;
       chapters.push({
         eventId: evId,
+        storyKey: d.storyTxt ?? "",
         storyCode: d.storyCode ?? "",
+        storyName: d.storyName ?? "",
         lines: chapter.lines,
       });
       for (let i = 0; i < chapter.lines.length; i++) {

@@ -232,8 +232,9 @@ TS 文件头注释应注明对应的 Python 文件：`Mirrors python/src/prts_mc
 
 | 文件 | dev 分支 | main 分支（发布时） |
 |------|---------|-------------------|
-| `python/pyproject.toml` | `1.7.0.dev0` | `1.7.0` |
-| `ts/package.json` | `1.7.0-dev.0` | `1.7.0` |
+| `python/pyproject.toml` | `2.0.0.dev0` | `2.0.0` |
+| `ts/package.json` | `2.0.0-dev.0` | `2.0.0` |
+| `ts/package-lock.json` | `2.0.0-dev.0` | `2.0.0` |
 
 **版本号需要同步更新的地方**：
 
@@ -244,8 +245,10 @@ TS 文件头注释应注明对应的 Python 文件：`Mirrors python/src/prts_mc
 | `python/CHANGELOG.md` | 新版本条目 |
 | `ts/CHANGELOG.md` | 新版本条目 |
 | `ROADMAP.md` | 当前版本号 |
+| `STATUS.md` | 当前版本 / 分支状态 |
+| `README.md` | 用户可见版本、工具数、工具清单 |
 
-tag 名带 `v` 前缀：`v1.4.0`。含 `-` 后缀的 tag 会被 CD workflow 识别为 prerelease。Tag 必须打在 `main` 分支上。
+Tag 使用实现级前缀：`python/vX.Y.Z` 和 `ts/vX.Y.Z`。Tag 必须打在 `main` 分支的发布 merge commit 上；1.7.x LTS patch tag 打在 `lts/1.7` 的对应 merge commit 上。
 
 ---
 
@@ -267,8 +270,9 @@ tag 名带 `v` 前缀：`v1.4.0`。含 `-` 后缀的 tag 会被 CD workflow 识�
 ### 准备发版（dev → main 发布时）
 
 1. 将 `## [Unreleased]` 改为 `## [X.Y.Z] - YYYY-MM-DD`
-2. 在其上方插入新的空 `## [Unreleased]` 段
+2. release PR 到 `main` 时不保留空 `## [Unreleased]` 段
 3. 版本号去掉 `-dev` 后缀后合并到 `main`，打 tag
+4. 合并回 `dev` 并 bump 到下个开发版本后，再打开新的空 `## [Unreleased]` 段
 
 ---
 

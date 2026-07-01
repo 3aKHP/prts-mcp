@@ -130,6 +130,32 @@ class OperatorMemoirResult:
     chapters: list[MemoirChapter]
 
 
+@dataclass(frozen=True)
+class CharacterAppearance:
+    """A single chapter where a character speaks or is mentioned."""
+    event_id: str
+    story_key: str
+    story_code: str
+    story_name: str
+    speaks: bool
+    mentioned: bool
+
+
+@dataclass(frozen=True)
+class CharacterAppearanceResult:
+    """Aggregated appearance report for find_character_appearances."""
+    name: str
+    total_chapters: int
+    appearances: list[CharacterAppearance]
+
+
+@dataclass(frozen=True)
+class SpeakerCount:
+    """A speaker and how many dialog lines they have (within one event)."""
+    name: str
+    line_count: int
+
+
 # ---------------------------------------------------------------------------
 # Store helpers
 # ---------------------------------------------------------------------------

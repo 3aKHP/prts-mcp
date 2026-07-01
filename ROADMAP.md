@@ -1,37 +1,38 @@
 # PRTS-MCP Roadmap
 
-_Last updated: 2026-05-28_ · [中文版](ROADMAP.zh-CN.md)
+_Last updated: 2026-07-02_ · [中文版](ROADMAP.zh-CN.md)
 
-PRTS-MCP is past 1.0. The public tool surface and data architecture are under a 1.x compatibility contract. This document tracks **what comes next** — not what has shipped. For shipped features, see the Python and TypeScript CHANGELOGs.
+PRTS-MCP is past 1.0. Version 1.7.0 is the final 1.x feature release and the 1.7 LTS baseline. This document tracks **what comes next** — not what has shipped. For shipped features, see the Python and TypeScript CHANGELOGs.
 
 ## Current Release
 
-- Python: `1.6.1`
-- TypeScript: `1.6.1`
-- `dev` branch current target: `1.7.0-dev`
-- 30 public MCP tools, frozen in the 1.x line (CI-enforced).
+- Python: `1.7.0` LTS
+- TypeScript: `1.7.0` LTS
+- `dev` branch current target after the LTS release: `2.0.0-dev`
+- 32 public MCP tools, frozen in the 1.7 LTS line (CI-enforced).
 - See [migration guide](docs/migration-0.x-to-1.0.md) for the
   0.x → 1.0 transition.
 
 ## 1.x Compatibility Contract
 
-What stays stable through 1.x:
+What stays stable through 1.7.x:
 
 - Tool names and required parameters.
-- Response **format** (markdown shape), though wording/details may evolve.
+- Response **format** (markdown shape), though wording/details may evolve for
+  fixes.
 - `GAMEDATA_PATH` and `STORYJSON_PATH` semantics.
 - Auto-sync from GitHub Releases as the default data source.
 
-What may change in minor releases:
+What may change in 1.7.x maintenance releases:
 
-- New tools (additive).
-- New optional parameters with safe defaults.
-- New optional data sources / fallbacks.
-- Enhanced output content within the same format.
+- Compatibility and security fixes.
+- Data-sync resilience and upstream data compatibility fixes.
+- Critical bug fixes that preserve existing tool names, required parameters,
+  and default output format.
 
 ## 1.x Patch Policy
 
-Patch releases (1.x.y) are limited to bug fixes, documentation, and non-breaking experience improvements (see "Patch line" below). **No new tools, no new required parameters.**
+Patch releases on the 1.7 LTS line are limited to bug fixes, documentation, compatibility, security, and data-sync maintenance. **No new tools, no new required parameters, and no default output-format changes.**
 
 ## 1.x Non-Goals
 
@@ -48,8 +49,7 @@ Each minor version carries one main data domain. Cross-source fusion tools ship 
 
 ### 1.6.0 — Stage Cross-Source Fusion + Item/Material Domain
 
-Shipped 2026-05-28. See the Python and TypeScript CHANGELOGs for release
-details.
+Shipped 2026-05-28. See the Python and TypeScript CHANGELOGs for release details.
 
 **Stage cross-source fusion**
 - `get_stage_enemies(stage_id)` — enemies in that stage with **stage-specific**
@@ -64,21 +64,26 @@ details.
 - `get_item_info(name)` — item details: usage, obtain methods.
 - `search_items(pattern)` — regex search.
 
-### 1.7.0 — Story Character Tracking + Operator Depth
+### 1.7.0 — Story Character Tracking (LTS)
 
 **Story character tracking (no new data source — indexes existing story JSON)**
-- `find_character_appearances(name, scope?)` — chapters / events where the
-  character speaks or is mentioned.
-- `find_speakers_in(event_id)` — every speaker who appears in an event.
+- `find_character_appearances(name, scope?, max_events?)` — chapters / events
+  where the character speaks (dialog role exact match) or is mentioned (name
+  substring in any line text). Implemented on `dev` for 1.7.0.
+- `find_speakers_in(event_id)` — every speaker who appears in an event, with
+  dialog line counts. Implemented on `dev` for 1.7.0.
 
-**Main: building (base) skill data domain**
-- `get_operator_building_skills(name)` — base skills, efficiency, slotting.
-- `search_building_skills(building_type, pattern)` — cross-operator skill search.
+1.7.0 is the final 1.x feature release. The previously planned operator-depth items are deferred to the 2.0 tool-surface redesign instead of being added as more 1.x tools.
 
-**Skins**
-- `get_operator_skins(name)` — skin list with descriptions.
+### Deferred Beyond 1.7 LTS
 
-### 1.8.0 — Wiki Enhancements + Recruitment
+The following feature ideas remain useful but are no longer scheduled as 1.x minor releases. They should be reconsidered under the 2.0 tool model:
+
+**Operator depth**
+- Base skills and cross-operator building-skill search.
+- Skin list and skin descriptions.
+
+**Wiki enhancements + recruitment**
 
 **Main: PRTS Wiki enhancements (group B in one release)**
 - `get_prts_images(page_title)` — image list via `prop=images`.
@@ -91,22 +96,19 @@ details.
 
 ---
 
-## Patch Line (1.x.y)
+## 1.7 LTS Maintenance Line
 
-Patch releases roll out experience and infra improvements without introducing new tools. Each patch carries one or two changes; the binding to a specific minor version is illustrative — work flows through whichever patch window is open.
+1.7.x releases maintain the LTS baseline without expanding the public tool surface.
 
-| Tentative | Theme | Scope |
-|-----------|-------|-------|
-| 1.5.1 | Search unification (Phase 1) | New `search(scope, pattern, ...)` consolidating `search_data`/`search_stories`/`search_enemies`/`list_search_scopes`. Legacy names preserved as deprecated aliases. |
-| 1.5.2 | Pagination format | Standard `{total, offset, limit, items}` shape across list tools. |
-| 1.6.1 | Structured errors | `{error_code, message}` alongside the legacy string fallback. |
-| 1.6.2 | PRTS page unification (Phase 1) | New `prts_page(page_title, action="read\|sections\|categories\|links\|template", ...)` consolidating five `*_prts_*`/`*_prts_page` tools. Legacy names kept and deprecated. |
-| 1.6.3 | Tool description optimization | Add keyword-rich descriptions and typical-use examples to all tools. Improves recall for client-side tool search / RAG (Claude Code, Cursor). Server-side, zero protocol risk. |
-| 1.7.1 | Shared fixtures | Cross-implementation fixture/golden-test infra. |
-| 1.7.2 | Golden tests | Python/TS byte-equal output tests over shared inputs. |
-| 1.7.3 | Developer docs | Data architecture diagram + new-domain onboarding guide. |
+| Allowed in 1.7.x | Examples |
+|------------------|----------|
+| Compatibility fixes | Upstream schema drift, client handshake compatibility, packaging metadata |
+| Security fixes | Dependency CVEs, unsafe parsing behavior, transport hardening |
+| Data-sync fixes | GitHub Release lookup, zip validation, retry/fallback behavior |
+| Critical bug fixes | Incorrect results, crashes, resource leaks, parity regressions |
+| Documentation fixes | LTS support notes, deployment corrections, migration clarifications |
 
-These improvements are additive and back-compat. None of them are gating for the corresponding minor release; they just track natural delivery windows.
+No new capabilities are planned for 1.7.x. Former patch-line ideas such as search unification, PRTS page unification, JSON output defaults, and golden test infrastructure now belong to 2.0 planning unless they are required to fix a 1.7 LTS regression.
 
 ---
 
@@ -116,23 +118,23 @@ Three structural shifts that warrant a major bump.
 
 ### Tool surface consolidation (context budget)
 
-The 1.x tool surface keeps growing (29 tools at 1.6.0, projected 30+ by 1.8.0). For long-context flagship models this is fine; for 128K-class models, every additional tool schema eats into the prompt budget and hurts tool-selection accuracy.
+The 1.x tool surface reached 32 tools by the 1.7.0 LTS release. For long-context flagship models this is fine; for 128K-class models, every additional tool schema eats into the prompt budget and hurts tool-selection accuracy.
 
 **Background**: MCP currently has no protocol-level support for deferred tool loading. Closed proposals: lazy hydration (#1978), lazyRegistration (#2376). Open drafts: tool-search query (#1821), token-bloat mitigations (#1576). Claude Code's ToolSearch is an Anthropic-API-level feature (`tool_reference` blocks), not portable to Cursor/Cline/Chatbox.
 
 **Approach**: server-side consolidation by *schema shape*, not by data domain. Merge tools that share parameter structure and output shape; keep tools whose semantics genuinely differ. Estimated reduction: 24 → ~16 tools (about a third) without losing capability.
 
-**Phase 1 (within 1.x, deprecated aliases)**:
+**Phase 1 (2.0 migration design)**:
 
 - `search(scope, pattern, ...)` consolidates `search_data`,
   `search_stories`, `search_enemies`, `list_search_scopes`. Same
-  parameter shape across all four; differs only in `scope`. (1.5.1)
+  parameter shape across all four; differs only in `scope`.
 - `prts_page(page_title, action, ...)` consolidates `read_prts_page`,
   `list_prts_sections`, `get_prts_categories`, `get_prts_links`,
   `get_prts_template`. Single primary key; action selects the
-  sub-operation. (1.6.2)
+  sub-operation.
 
-**Phase 2 (2.0)**: drop the deprecated aliases. The legacy names remain available throughout 1.x for migration headroom.
+**Phase 2 (2.0)**: drop or hide the deprecated legacy aliases according to the final 2.0 migration plan. The 1.7 LTS line keeps the existing 32-tool surface.
 
 **What we explicitly will NOT consolidate**:
 
@@ -155,7 +157,7 @@ The bar for consolidation: same parameter shape, similar output length and struc
 - 2.0 flips the **default** to `json`, making this the breaking change.
 - Markdown remains supported under explicit opt-in.
 
-This staged migration lets users opt into JSON during 1.x and gives ample lead time before the default flips.
+The original staged plan expected 1.x opt-in. With 1.7 now serving as the LTS line, the exact migration path belongs to the 2.0 design phase and must be documented before the first 2.0 prerelease.
 
 ### Implementation parity (Python ↔ TypeScript)
 
@@ -170,7 +172,7 @@ Today the implementations have de-facto roles: Python is recommended for Docker 
 ### Cleanup
 
 - Drop any 0.x-compat shims that survive into late 1.x.
-- Drop the deprecated tool aliases introduced in 1.5.1 / 1.6.2 (see
+- Drop the deprecated tool aliases introduced by the 2.0 migration plan (see
   consolidation section above).
 
 ### 2.0 Non-Goals
@@ -186,18 +188,17 @@ Today the implementations have de-facto roles: Python is recommended for Docker 
 
 ## Decision Principles
 
-1. **One data domain per minor release** — easier to communicate, easier
+1. **1.7 LTS is closed to new capabilities** — keep the stable line small,
+   predictable, and supportable.
+2. **One data domain per feature release** — easier to communicate, easier
    to migrate, easier to roll back.
-2. **Patches don't add new capability surface** — they fix bugs, improve
-   experience, and may introduce *consolidation aliases* whose semantics
-   are already covered by existing tools. They never add a genuinely new
-   capability.
-3. **Lead the breaking change by a year** — 2.0's `output_format` flip
-   and tool-alias removal are prepared throughout 1.x, not announced at
-   the last minute.
-4. **Bind cross-source fusion to its data dependency** — `get_stage_enemies`
+3. **Patches don't add new capability surface** — they fix bugs, improve
+   compatibility, and preserve the 1.7 contract.
+4. **Lead breaking changes with explicit migration docs** — 2.0's tool-surface
+   and output-format changes must be documented before prerelease.
+5. **Bind cross-source fusion to its data dependency** — `get_stage_enemies`
    ships after the stage data domain, not before it.
-5. **Consolidate by schema shape, not by domain** — merging tools that
+6. **Consolidate by schema shape, not by domain** — merging tools that
    share parameter structure preserves selection accuracy; merging by
    "everything operator-related" doesn't.
 

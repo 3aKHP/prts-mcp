@@ -35,6 +35,8 @@ EXPECTED_TOOL_SURFACE = {
     "search_data": ("pattern", "scope", "max_results"),
     "search_stories": ("pattern", "character", "line_type", "context_lines", "max_results", "event_id"),
     "get_operator_memoirs": ("operator_name",),
+    "find_character_appearances": ("name", "scope", "max_events"),
+    "find_speakers_in": ("event_id",),
 }
 
 
