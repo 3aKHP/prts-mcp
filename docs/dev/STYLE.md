@@ -54,6 +54,28 @@ config.py/ts          ←  路径解析、环境变量
 - 不写"废话注释"（`# increment i by 1`）；非显而易见的约束必须注释
 - 错误消息用中文，面向最终用户（MCP 客户端会直接展示给用户）
 
+### 工具描述规范
+
+MCP 工具描述（Python `@mcp.tool()` 的 docstring / TS `server.tool()` 的描述串）
+是 LLM 选择工具的**主要信号**，也是 128K 级模型的 schema 预算大头。所有工具描述
+遵循统一模板：
+
+1. **第一行**：一句话用途，动词开头，说清"做什么 + 面向哪类数据"
+2. **返回什么 / 输出格式**：结构与大致长度提示（如"每行 `- 编号 名称`"）
+3. **何时用 / 何时别用**：必要时给简洁指向（"如需 X 用 Y"），但不堆砌
+4. **参数语义**写在参数的 `Field` / `.describe()`，正文不重复
+
+硬约束：
+
+- 中文，面向最终用户；只说 what + why，不说 how（不描述实现）
+- 去废话、去过期交叉引用——工具合并/删除后同步清理 `如需…请用…`
+- 正文控制在 ~3 短句内；更长的说明拆到参数描述
+- 两套实现的同名工具描述保持语义一致
+
+参数命名约定（新工具照此长）：实体解析用 `name`；正则搜索用 `pattern` +
+`max_results`；可浏览列表分页用 `limit` + `offset`；PRTS 维基关键词搜索用 `query`
+（语义 ≠ 正则 `pattern`）。
+
 ### 错误处理
 
 - 缺失数据：返回人类可读的中文错误消息，不要抛裸异常
@@ -128,10 +150,10 @@ from prts_mcp.data.operator import get_operator_archives as _get_archives
 
 @mcp.tool()
 async def get_operator_archives(
-    operator_name: Annotated[str, Field(description="干员中文名，如「阿米娅」。")],
+    name: Annotated[str, Field(description="干员中文名，如「阿米娅」。")],
 ) -> str:
     """获取干员的档案资料。"""
-    return _get_archives(operator_name)
+    return _get_archives(name)
 ```
 
 - 工具函数是薄包装：参数验证 + 委托给 data/api 模块
@@ -190,8 +212,8 @@ import { getOperatorArchives as _getArchives } from "./data/operator.js";
 server.tool(
   "get_operator_archives",
   "获取干员的档案资料。",
-  { operator_name: z.string().describe("干员中文名，如「阿米娅」。") },
-  async ({ operator_name }) => ({ content: [{ type: "text", text: _getArchives(operator_name) }] }),
+  { name: z.string().describe("干员中文名，如「阿米娅」。") },
+  async ({ name }) => ({ content: [{ type: "text", text: _getArchives(name) }] }),
 );
 ```
 

@@ -199,28 +199,28 @@ test("E2E", async (t) => {
 
   // --- operator tools (bundled fixture always available) ---
   await t.test("get_operator_basic_info — char_* filter (阿米娅 5★)", async () => {
-    const r = await mcpPost(origin, tc("get_operator_basic_info", { operator_name: "阿米娅" }, 3), sessionId);
+    const r = await mcpPost(origin, tc("get_operator_basic_info", { name: "阿米娅" }, 3), sessionId);
     assert.equal(r.status, 200);
     const text = toolResultText(r);
     assert.ok(text.includes("5★"), `阿米娅 should be 5★: ${text.split("\n").find((l) => l.includes("稀有度"))}`);
   });
 
   await t.test("get_operator_basic_info — char_* filter (森蚺 6★)", async () => {
-    const r = await mcpPost(origin, tc("get_operator_basic_info", { operator_name: "森蚺" }, 4), sessionId);
+    const r = await mcpPost(origin, tc("get_operator_basic_info", { name: "森蚺" }, 4), sessionId);
     assert.equal(r.status, 200);
     const text = toolResultText(r);
     assert.ok(text.includes("6★"), `森蚺 should be 6★: ${text.split("\n").find((l) => l.includes("稀有度"))}`);
   });
 
   await t.test("get_operator_archives", async () => {
-    const r = await mcpPost(origin, tc("get_operator_archives", { operator_name: "阿米娅" }, 5), sessionId);
+    const r = await mcpPost(origin, tc("get_operator_archives", { name: "阿米娅" }, 5), sessionId);
     assert.equal(r.status, 200);
     const text = toolResultText(r);
     assert.ok(text.includes("阿米娅") && text.includes("干员档案"), text.slice(0, 80));
   });
 
   await t.test("get_operator_voicelines", async () => {
-    const r = await mcpPost(origin, tc("get_operator_voicelines", { operator_name: "阿米娅" }, 6), sessionId);
+    const r = await mcpPost(origin, tc("get_operator_voicelines", { name: "阿米娅" }, 6), sessionId);
     assert.equal(r.status, 200);
     const text = toolResultText(r);
     assert.ok(text.includes("语音记录") && text.includes("阿米娅"), text.slice(0, 80));

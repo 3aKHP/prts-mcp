@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Changed
+
+- **Parameter naming normalization (2.0, breaking).** Operator tools
+  (`get_operator_archives`, `get_operator_voicelines`, `get_operator_basic_info`,
+  `get_operator_memoirs`) now take `name` instead of `operator_name`, matching
+  the `name` convention already used by the enemy/stage/item/character tools.
+
 ## [1.7.0] - 2026-07-02
 
 1.7.0 is the final 1.x feature release and the 1.7 LTS baseline. Future 1.7.x updates are limited to compatibility, security, data-sync, and critical bug fixes.
