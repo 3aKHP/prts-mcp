@@ -1,7 +1,7 @@
 /**
- * Story tool registrations — events, chapters, dialogue, summaries, search, memoirs.
+ * Story tool registrations — events, chapters, dialogue, summaries, search, memoirs, characters.
  *
- * Split from server.ts. Exports registerStoryTools which attaches the 8
+ * Split from server.ts. Exports registerStoryTools which attaches the 10
  * story-backed tools to a McpServer instance. Also exports the shared
  * requireStoryZip helper and line/chapter formatters.
  */
@@ -19,6 +19,8 @@ import {
   getEventSummary as _getEventSummary,
   getStorySummary as _getStorySummary,
   getOperatorMemoirs as _getOperatorMemoirs,
+  findCharacterAppearances as _findCharacterAppearances,
+  findSpeakersIn as _findSpeakersIn,
   type StoryChapter,
   type StoryLine,
 } from "../data/story.js";
@@ -396,6 +398,82 @@ export function registerStoryTools(server: McpServer): void {
           return { content: [{ type: "text", text: msg }] };
         }
         return { content: [{ type: "text", text: `查询干员密录失败：${msg}` }] };
+      }
+    }
+  );
+
+  server.tool(
+    "find_character_appearances",
+    [
+      "查找某个角色在剧情中的出场（说话或被提及）。",
+      "返回该角色「说话」（speaks，作为对话发言者）或「被提及」（mentioned，名字出现在任意台词/旁白文本中）的所有章节，",
+      "每章标注 speaks / mentioned / 两者皆有。如需精确台词，可用返回的 story_key 调用 read_story。",
+    ].join(" "),
+    {
+      name: z.string().describe("角色名（干员中文名或「博士」）。speaks 按对话角色名精确匹配，mentioned 按名字在台词/旁白文本中的子串匹配——请使用完整名字以免误报。"),
+      scope: z.string().optional().describe("限定活动 ID，如「act31side」。不填则检索全部活动。"),
+      max_events: z.number().int().min(1).max(200).default(50).describe("最多返回章节数，默认 50。"),
+    },
+    ({ name, scope, max_events }) => {
+      let zipPath: string;
+      try {
+        zipPath = requireStoryZip();
+      } catch (e) {
+        return { content: [{ type: "text", text: e instanceof Error ? e.message : String(e) }] };
+      }
+      try {
+        const result = _findCharacterAppearances(zipPath, name, scope, max_events);
+        if (result.appearances.length === 0) {
+          const scopeNote = scope ? `（限定活动：${JSON.stringify(scope)}）` : "";
+          return { content: [{ type: "text", text: `未找到「${name}」的出场记录。${scopeNote}` }] };
+        }
+        const parts: string[] = [`# 「${result.name}」的出场（共 ${result.totalChapters} 章）`];
+        for (const ap of result.appearances) {
+          const tags: string[] = [];
+          if (ap.speaks) tags.push("speaks");
+          if (ap.mentioned) tags.push("mentioned");
+          const tag = tags.join("+");
+          const nameDisp = `${ap.storyCode} ${ap.storyName}`.trim();
+          parts.push(`- [${tag}] ${ap.eventId} / ${nameDisp}（key: ${ap.storyKey}）`);
+        }
+        return { content: [{ type: "text", text: parts.join("\n") }] };
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        return { content: [{ type: "text", text: msg.includes("未找到") ? msg : `查询角色出场失败：${msg}` }] };
+      }
+    }
+  );
+
+  server.tool(
+    "find_speakers_in",
+    [
+      "列出某活动中的所有发言角色及其台词数。",
+      "返回该活动所有章节中去重后的对话发言者，按台词句数降序排列。",
+      "如需读取某角色说的具体内容，可结合 search_stories(character=...) 过滤。",
+    ].join(" "),
+    {
+      event_id: z.string().describe("活动 ID，如 \"act31side\"（可从 list_story_events 获取）。"),
+    },
+    ({ event_id }) => {
+      let zipPath: string;
+      try {
+        zipPath = requireStoryZip();
+      } catch (e) {
+        return { content: [{ type: "text", text: e instanceof Error ? e.message : String(e) }] };
+      }
+      try {
+        const speakers = _findSpeakersIn(zipPath, event_id);
+        if (speakers.length === 0) {
+          return { content: [{ type: "text", text: `活动 "${event_id}" 暂无对话发言者数据。` }] };
+        }
+        const parts: string[] = [`# ${event_id} 的发言角色（共 ${speakers.length} 位）`];
+        for (const sp of speakers) {
+          parts.push(`- ${sp.name}（${sp.lineCount} 句）`);
+        }
+        return { content: [{ type: "text", text: parts.join("\n") }] };
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        return { content: [{ type: "text", text: msg.includes("未找到") ? msg : `查询发言角色失败：${msg}` }] };
       }
     }
   );
