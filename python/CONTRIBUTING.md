@@ -2,17 +2,25 @@
 
 感谢你愿意参与 `prts-mcp`。
 
-当前项目正处于早期演进阶段。为了避免把本地开发习惯、私有数据和临时发布方式带进公开仓库，请在提交前先阅读下面这些约束。
+当前项目有 1.7 LTS 维护线和 2.0 开发线。为了避免把本地开发习惯、私有数据和临时发布方式带进公开仓库，请在提交前先阅读下面这些约束。
 
 ## Branch Strategy
 
-两条长期分支：`main`（生产）和 `dev`（开发集成）。
+长期分支：
 
-- 默认分支是 `main`。
-- **功能开发、重构、性能优化、文档更新**：从 `dev` 拉出新分支，PR 目标为 `dev`。
-- **紧急修复**：从 `main` 拉出新分支，PR 目标为 `main`，合并后 forward merge 到 `dev`。
-- 分支命名：`<type>/v<version>-<topic>`，如 `feat/v1.7.0-character-tracking`。
+- `main`：最新稳定发布。2.0 发布前指向 1.7.0 LTS。
+- `lts/1.7`：1.7.x 长期维护线，只接受兼容性、安全性、数据同步、关键缺陷和文档修复。
+- `dev`：2.0 开发集成。
+
+分支规则：
+
+- **2.0 功能开发、重构、性能优化、文档更新**：从 `dev` 拉出新分支，PR 目标为 `dev`。
+- **1.7 LTS 修复**：从 `lts/1.7` 拉出新分支，PR 目标为 `lts/1.7`，必要时同步到 `dev`。
+- **最新稳定紧急修复**：从 `main` 拉出新分支，PR 目标为 `main`，合并后 forward merge 或 cherry-pick 到 `dev`。
+- 分支命名：`<type>/v<version>-<topic>`，如 `feat/v2.0.0-tool-surface`、`fix/v1.7.1-sync-schema`。
 - 未经过整理的实验分支、临时部署分支和本地备份分支不要推到公开远程。
+
+1.7 LTS 维护范围见 [`../docs/dev/LTS.md`](../docs/dev/LTS.md)。
 
 ## Commit Convention
 
