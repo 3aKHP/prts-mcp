@@ -22,7 +22,7 @@ from prts_mcp.data.story_reader import (
     SpeakerCount,
     story_store,
 )
-from prts_mcp.data.story_search import _story_search_index
+from prts_mcp.data.story_search import story_search_index, StorySearchChapter
 
 
 # ---------------------------------------------------------------------------
@@ -30,11 +30,11 @@ from prts_mcp.data.story_search import _story_search_index
 # ---------------------------------------------------------------------------
 
 
-def _classify_chapter(chapter, name_lower: str) -> tuple[bool, bool]:
+def _classify_chapter(chapter: StorySearchChapter, name_lower: str) -> tuple[bool, bool]:
     """Return (speaks, mentioned) flags for one indexed chapter.
 
     Args:
-        chapter: a ``_StorySearchChapter`` from the search index.
+        chapter: a ``StorySearchChapter`` from the search index.
         name_lower: the lowercased character name to look for.
 
     ``speaks`` is True when any dialog line's ``role`` equals *name_lower*
@@ -49,6 +49,8 @@ def _classify_chapter(chapter, name_lower: str) -> tuple[bool, bool]:
             speaks = True
         if name_lower in line.text.lower():
             mentioned = True
+        if speaks and mentioned:
+            break
     return speaks, mentioned
 
 
@@ -115,7 +117,7 @@ def find_character_appearances_from_store(
     if max_events > 200:
         raise ValueError("max_events 必须 <= 200。")
 
-    index = _story_search_index(store)
+    index = story_search_index(store)
 
     if scope is not None and scope not in index.event_ids:
         raise KeyError(f"未找到匹配的活动：{scope!r}。")
@@ -165,7 +167,7 @@ def find_speakers_in_from_store(
     Returns:
         Speakers with their dialog line counts, most prolific first.
     """
-    index = _story_search_index(store)
+    index = story_search_index(store)
 
     if event_id not in index.event_ids:
         raise KeyError(f"未找到匹配的活动：{event_id!r}。")
