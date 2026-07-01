@@ -55,7 +55,7 @@ def register_prts_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         page_title: Annotated[str, Field(description="词条标题，需与维基页面标题完全一致，如「阿米娅」。建议先用 search_prts 获取准确标题。")],
         action: Annotated[Literal["read", "sections", "categories", "links", "template"], Field(description="操作（必填）：read=读取正文 / sections=章节目录 / categories=分类标签 / links=相关链接 / template=结构化模板数据。")],
         section_index: Annotated[int | None, Field(default=None, description="仅 action=read 生效：章节编号（从 action=sections 获取）。不填返回整页。")] = None,
-        direction: Annotated[str, Field(default="outbound", description="仅 action=links 生效：outbound（出链，默认）或 inbound（入链）。")] = "outbound",
+        direction: Annotated[Literal["outbound", "inbound"], Field(default="outbound", description="仅 action=links 生效：outbound（出链，默认）或 inbound（入链）。")] = "outbound",
         limit: Annotated[int, Field(default=30, description="仅 action=links 生效：返回链接数量上限，默认 30。")] = 30,
     ) -> str:
         """读取 PRTS 维基页面的内容或元数据（按 action 分派）。
