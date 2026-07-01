@@ -34,6 +34,8 @@ const EXPECTED_TOOLS = [
   "search_data",
   "search_stories",
   "get_operator_memoirs",
+  "find_character_appearances",
+  "find_speakers_in",
 ];
 
 test("TypeScript MCP tool names are frozen", () => {
