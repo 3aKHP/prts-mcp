@@ -16,7 +16,6 @@ from prts_mcp.data.story import (
     read_story as _read_story,
     read_activity as _read_activity,
     search_stories as _search_stories,
-    get_event_summary as _get_event_summary,
     get_story_summary as _get_story_summary,
     get_operator_memoirs as _get_operator_memoirs,
     find_character_appearances as _find_character_appearances,
@@ -61,13 +60,13 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
     @mcp.tool()
     def list_stories(
         event_id: Annotated[str, Field(description="活动 ID，如 \"act31side\"（可从 list_story_events 获取）。")],
-        include_summaries: Annotated[bool, Field(default=False, description="是否附带每章梗概，默认 False。")] = False,
+        include_summaries: Annotated[bool, Field(default=False, description="是否附带梗概，默认 False。设为 True 时顶部附活动级长摘要（若有）、每章下方附一句话梗概。")] = False,
     ) -> str:
         """列出指定活动的所有剧情章节（按官方顺序排列）。
 
         返回格式：每行 `- 章节编号 [标签] 章节名（key: story_key）`，其中 story_key
-        可直接传入 read_story 读取该章台词。设置 include_summaries=True 时每章下方会
-        附带梗概。如需一次性了解活动整体剧情脉络，可使用 get_event_summary。
+        可直接传入 read_story 读取该章台词。设 include_summaries=True 时，顶部附活动级
+        长摘要（若有），每章下方附一句话梗概——可一次性了解活动整体剧情脉络。
         """
         from prts_mcp.config import Config
         cfg = Config.load()
@@ -87,6 +86,7 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
             return f"活动 {event_id!r} 暂无剧情章节。"
 
         summaries: dict[str, str] = {}
+        event_summary_text = ""
         if include_summaries:
             try:
                 with ZipStore(zip_path) as store:
@@ -94,10 +94,17 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
                         raw = store.read_json("zh_CN/storyinfo.json")
                         if isinstance(raw, dict):
                             summaries = {str(k): str(v) for k, v in raw.items() if v}
+                    if store.exists("zh_CN/event_summaries.json"):
+                        raw_ev = store.read_json("zh_CN/event_summaries.json")
+                        if isinstance(raw_ev, dict):
+                            event_summary_text = str(raw_ev.get(event_id) or "").strip()
             except Exception:
                 pass
 
         lines = []
+        if event_summary_text:
+            lines.append(event_summary_text)
+            lines.append("")
         for ch in chapters:
             tag = f"[{ch.avg_tag}] " if ch.avg_tag else ""
             lines.append(f"- {ch.story_code} {tag}{ch.story_name}（key: {ch.story_key}）")
@@ -106,28 +113,6 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
                 if summary:
                     lines.append(f"  {summary}")
         return "\n".join(lines)
-
-    @mcp.tool()
-    def get_event_summary(
-        event_id: Annotated[str, Field(description="活动 ID，如 \"act31side\"（可从 list_story_events 获取）。")],
-    ) -> str:
-        """获取指定活动的章节梗概概览。
-
-        返回活动的所有章节编号、标题和每章故事简介，按官方顺序排列，
-        适合快速了解一个活动的整体剧情脉络。如需读取完整台词，请使用
-        read_story 或 read_activity。
-        """
-        from prts_mcp.config import Config
-        cfg = Config.load()
-        try:
-            zip_path = _require_story_zip(cfg)
-        except RuntimeError as e:
-            return str(e)
-
-        try:
-            return _get_event_summary(zip_path, event_id)
-        except Exception as e:
-            return f"读取活动梗概失败：{e}"
 
     @mcp.tool()
     def get_story_summary(
@@ -139,7 +124,7 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         未就绪时回退到官方一句话梗概（zh_CN/storyinfo.json），最后回退到章节
         JSON 中的 storyInfo 字段。
 
-        如需获取整个活动的章节概览，请使用 get_event_summary。
+        如需获取整个活动的章节概览，请使用 list_stories(include_summaries=True)。
         """
         from prts_mcp.config import Config
         cfg = Config.load()

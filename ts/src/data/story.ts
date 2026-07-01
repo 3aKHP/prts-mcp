@@ -55,8 +55,6 @@ export {
 
 // Summary
 export {
-  getEventSummary,
-  getEventSummaryFromStore,
   getStorySummary,
   getStorySummaryFromStore,
 } from "./storySummary.js";

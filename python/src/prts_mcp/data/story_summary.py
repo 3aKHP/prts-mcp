@@ -1,8 +1,7 @@
-"""Story chapter and event summary readers.
+"""Story chapter summary reader.
 
-Split from story.py. Provides event-level overview (get_event_summary)
-and per-chapter summary with a three-tier fallback chain:
-LLM long summary → official one-liner → chapter storyInfo field.
+Split from story.py. Provides per-chapter summary with a three-tier fallback
+chain: LLM long summary → official one-liner → chapter storyInfo field.
 """
 from __future__ import annotations
 
@@ -10,96 +9,12 @@ from pathlib import Path
 
 from prts_mcp.data.stores import JsonStore
 from prts_mcp.data.story_reader import (
-    EVENT_SUMMARIES,
-    STORY_REVIEW_TABLE,
     STORYINFO,
     SUMMARIES,
     load_json,
     story_store,
     story_zip_path,
 )
-
-
-# ---------------------------------------------------------------------------
-# Event summary (all chapters of an event)
-# ---------------------------------------------------------------------------
-
-
-def get_event_summary(zip_path: Path, event_id: str) -> str:
-    """Return a chapter-by-chapter summary overview of an event.
-
-    Convenience wrapper around get_event_summary_from_store.
-    """
-    with story_store(zip_path) as store:
-        return get_event_summary_from_store(store, event_id)
-
-
-def get_event_summary_from_store(store: JsonStore, event_id: str) -> str:
-    """Return a chapter-by-chapter summary overview of an event.
-
-    Reads story_review_table for chapter ordering and storyinfo.json
-    for per-chapter summaries, producing a narrative table of contents
-    suitable for getting the big picture of an event at a glance.
-    """
-    # --- event metadata ---
-    try:
-        table: dict = load_json(store, STORY_REVIEW_TABLE)
-    except Exception as exc:
-        return f"读取剧情数据索引失败：{exc}"
-
-    entry = table.get(event_id)
-    if entry is None:
-        return f"未找到活动：{event_id!r}。请先调用 list_story_events 确认活动 ID。"
-
-    event_name = entry.get("name") or event_id
-    datas = sorted(
-        entry.get("infoUnlockDatas") or [],
-        key=lambda x: x.get("storySort", 0),
-    )
-
-    if not datas:
-        return f"活动 {event_id!r}（{event_name}）暂无剧情章节。"
-
-    # --- load summary index ---
-    summaries: dict[str, str] = {}
-    if store.exists(STORYINFO):
-        try:
-            raw = load_json(store, STORYINFO)
-            if isinstance(raw, dict):
-                summaries = {str(k): str(v) for k, v in raw.items() if v}
-        except Exception:
-            pass  # storyinfo.json is optional for this tool
-
-    # --- tier 1: LLM event summary ---
-    event_summary_text = ""
-    if store.exists(EVENT_SUMMARIES):
-        try:
-            raw = load_json(store, EVENT_SUMMARIES)
-            if isinstance(raw, dict):
-                event_summary_text = str(raw.get(event_id) or "").strip()
-        except Exception:
-            pass
-
-    # --- build output ---
-    total = len(datas)
-    lines = [f"# {event_name} — 共 {total} 章"]
-    if event_summary_text:
-        lines.append(f"\n{event_summary_text}")
-    for d in datas:
-        story_key = d.get("storyTxt")
-        if not story_key:
-            continue
-        code = d.get("storyCode", "")
-        name = d.get("storyName", "")
-        tag = f"[{d['avgTag']}] " if d.get("avgTag") else ""
-
-        summary = summaries.get(story_key, "")
-        if summary:
-            lines.append(f"\n{code} {tag}{name}\n  {summary}")
-        else:
-            lines.append(f"\n{code} {tag}{name}")
-
-    return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------

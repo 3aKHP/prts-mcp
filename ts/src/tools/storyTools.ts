@@ -16,7 +16,6 @@ import {
   readStory as _readStory,
   readActivity as _readActivity,
   searchStories as _searchStories,
-  getEventSummary as _getEventSummary,
   getStorySummary as _getStorySummary,
   getOperatorMemoirs as _getOperatorMemoirs,
   findCharacterAppearances as _findCharacterAppearances,
@@ -102,11 +101,11 @@ export function registerStoryTools(server: McpServer): void {
     [
       "列出指定活动的所有剧情章节（按官方顺序排列）。",
       "返回格式：每行 `- 章节编号 [标签] 章节名（key: story_key）`，其中 story_key 可直接传入 read_story 读取该章台词。",
-      "设置 include_summaries=true 时每章下方会附带梗概。如需一次性了解活动整体剧情脉络，可使用 get_event_summary。",
+      "设 include_summaries=true 时顶部附活动级长摘要（若有）、每章下方附一句话梗概，可一次性了解活动整体剧情脉络。",
     ].join(" "),
     {
       event_id: z.string().describe("活动 ID，如 \"act31side\"（可从 list_story_events 获取）。"),
-      include_summaries: z.boolean().default(false).describe("是否附带每章梗概，默认 false。"),
+      include_summaries: z.boolean().default(false).describe("是否附带梗概，默认 false。设为 true 时顶部附活动级长摘要（若有）、每章下方附一句话梗概。"),
     },
     ({ event_id, include_summaries }) => {
       let zipPath: string;
@@ -123,6 +122,7 @@ export function registerStoryTools(server: McpServer): void {
 
         // Load summaries if requested
         let summaries: Record<string, string> = {};
+        let eventSummaryText = "";
         if (include_summaries) {
           const store = new ZipStore(zipPath);
           try {
@@ -132,14 +132,22 @@ export function registerStoryTools(server: McpServer): void {
                 if (v) summaries[k] = String(v);
               }
             }
+            if (store.exists("zh_CN/event_summaries.json")) {
+              const rawEv = store.readJson<Record<string, unknown>>("zh_CN/event_summaries.json");
+              const text = rawEv[event_id];
+              if (typeof text === "string") eventSummaryText = text.trim();
+            }
           } catch {
-            // storyinfo.json missing is non-fatal
+            // summary indexes are optional
           } finally {
             store.close();
           }
         }
 
         const lines: string[] = [];
+        if (eventSummaryText) {
+          lines.push(eventSummaryText, "");
+        }
         for (const ch of chapters) {
           const tag = ch.avgTag ? `[${ch.avgTag}] ` : "";
           lines.push(`- ${ch.storyCode} ${tag}${ch.storyName}（key: ${ch.storyKey}）`);
@@ -162,30 +170,6 @@ export function registerStoryTools(server: McpServer): void {
           };
         }
         return { content: [{ type: "text", text: `读取章节列表失败：${msg}` }] };
-      }
-    }
-  );
-
-  server.tool(
-    "get_event_summary",
-    [
-      "获取指定活动的章节梗概概览。",
-      "返回活动的所有章节编号、标题和每章故事简介，按官方顺序排列，",
-      "适合快速了解一个活动的整体剧情脉络。",
-    ].join(" "),
-    { event_id: z.string().describe("活动 ID，如 \"act31side\"（可从 list_story_events 获取）。") },
-    ({ event_id }) => {
-      let zipPath: string;
-      try {
-        zipPath = requireStoryZip();
-      } catch (e) {
-        return { content: [{ type: "text", text: e instanceof Error ? e.message : String(e) }] };
-      }
-      try {
-        const text = _getEventSummary(zipPath, event_id);
-        return { content: [{ type: "text", text }] };
-      } catch (e) {
-        return { content: [{ type: "text", text: `读取活动梗概失败：${e instanceof Error ? e.message : String(e)}` }] };
       }
     }
   );

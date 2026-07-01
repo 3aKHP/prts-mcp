@@ -23,6 +23,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
   action, ...)` tool with a required `action` enum (`read` / `sections` /
   `categories` / `links` / `template`). Wiki keyword search remains a separate
   `search_prts`. Tool surface drops 28 → 24.
+- **`list_stories` absorbs the event-level summary (2.0, breaking).**
+  `list_stories(event_id, include_summaries=true)` now prepends the event's LLM
+  overview (from `event_summaries.json`) when present, on top of the per-chapter
+  one-liners it already returned — making it a superset of the former
+  `get_event_summary`. Tool surface drops 24 → 23.
 
 ### Removed
 
@@ -33,6 +38,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - **`read_prts_page`, `list_prts_sections`, `get_prts_categories`,
   `get_prts_links`, `get_prts_template` (2.0, breaking).** Replaced by unified
   `prts_page(page_title, action, ...)`.
+- **`get_event_summary` (2.0, breaking).** Folded into
+  `list_stories(include_summaries=true)`; `get_story_summary` (single-chapter
+  deep summary) is unchanged.
 
 ## [1.7.0] - 2026-07-02
 

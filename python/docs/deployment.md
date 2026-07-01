@@ -142,7 +142,6 @@ docker run -i --rm `
         "get_item_info",
         "list_story_events",
         "list_stories",
-        "get_event_summary",
         "get_story_summary",
         "read_story",
         "read_activity",
@@ -204,8 +203,7 @@ npx @modelcontextprotocol/inspector docker run -i --rm -v prts-mcp-data:/data/ga
 | `find_character_appearances` | `name`: `阿米娅`, `max_events`: `5` | 剧情数据 |
 | `find_speakers_in` | `event_id`: `act31side` | 剧情数据 |
 | `list_story_events` | `category`: `activities` | 剧情数据 |
-| `list_stories` | `event_id`: `act31side` | 剧情数据 |
-| `get_event_summary` | `event_id`: `act31side` | 剧情数据 |
+| `list_stories` | `event_id`: `act31side`, `include_summaries`: `true` | 剧情数据 |
 | `get_story_summary` | `story_key`: `activities/act31side/level_act31side_01_beg` | 剧情数据 |
 | `read_story` | `story_key`: `activities/act31side/level_act31side_01_beg` | 剧情数据 |
 | `read_activity` | `event_id`: `act31side`, `page`: `1` | 剧情数据 |

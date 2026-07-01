@@ -45,8 +45,6 @@ from prts_mcp.data.story_memoir import (
     get_operator_memoirs_from_store,
 )
 from prts_mcp.data.story_summary import (
-    get_event_summary,
-    get_event_summary_from_store,
     get_story_summary,
     get_story_summary_from_store,
 )
@@ -94,8 +92,6 @@ __all__ = [
     "get_operator_memoirs",
     "get_operator_memoirs_from_store",
     # Summary
-    "get_event_summary",
-    "get_event_summary_from_store",
     "get_story_summary",
     "get_story_summary_from_store",
     # Character tracking
