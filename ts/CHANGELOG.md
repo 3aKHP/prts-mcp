@@ -17,6 +17,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
   `search(scope, pattern, max_results)` tool with a required `scope` enum
   (`operators` / `enemies` / `stages` / `items`). Story dialogue search remains a
   separate `search_stories` (its filters differ). Tool surface drops 32 → 28.
+- **Unified PRTS page tool (2.0, breaking).** `read_prts_page`,
+  `list_prts_sections`, `get_prts_categories`, `get_prts_links`, and
+  `get_prts_template` are consolidated into a single `prts_page(page_title,
+  action, ...)` tool with a required `action` enum (`read` / `sections` /
+  `categories` / `links` / `template`). Wiki keyword search remains a separate
+  `search_prts`. Tool surface drops 28 → 24.
 
 ### Removed
 
@@ -24,6 +30,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
   `list_search_scopes` (2.0, breaking).** Replaced by unified `search(scope, ...)`;
   the scope catalogue previously returned by `list_search_scopes` is folded into
   the `search` tool description.
+- **`read_prts_page`, `list_prts_sections`, `get_prts_categories`,
+  `get_prts_links`, `get_prts_template` (2.0, breaking).** Replaced by unified
+  `prts_page(page_title, action, ...)`.
 
 ## [1.7.0] - 2026-07-02
 

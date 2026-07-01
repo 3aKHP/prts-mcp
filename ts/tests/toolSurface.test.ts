@@ -5,11 +5,7 @@ import { join } from "node:path";
 
 const EXPECTED_TOOLS = [
   "search_prts",
-  "read_prts_page",
-  "list_prts_sections",
-  "get_prts_categories",
-  "get_prts_links",
-  "get_prts_template",
+  "prts_page",
   "get_operator_archives",
   "get_operator_voicelines",
   "get_operator_basic_info",

@@ -165,7 +165,7 @@ test("E2E", async (t) => {
   });
 
   // --- tools/list ---
-  await t.test("tools/list returns all 28 tools", async () => {
+  await t.test("tools/list returns all 24 tools", async () => {
     const tl = await mcpPost(
       origin,
       { jsonrpc: "2.0", method: "tools/list", id: 2 },
@@ -175,11 +175,10 @@ test("E2E", async (t) => {
     assert.equal(tl.status, 200);
     const tools = (tl.body?.result as Record<string, unknown>)?.tools as Array<{ name: string }> | undefined;
     assert.ok(tools, "tools/list should return tools");
-    assert.equal(tools!.length, 28, `got ${tools!.length} tools`);
+    assert.equal(tools!.length, 24, `got ${tools!.length} tools`);
 
     const expected = new Set([
-      "search_prts", "read_prts_page", "list_prts_sections",
-      "get_prts_categories", "get_prts_links", "get_prts_template",
+      "search_prts", "prts_page",
       "get_operator_archives", "get_operator_voicelines", "get_operator_basic_info",
       "list_enemies", "get_enemy_info",
       "get_stage_enemies", "get_enemy_appearances",
@@ -268,8 +267,8 @@ test("E2E", async (t) => {
     assert.ok(text.includes("阿米娅") && text.includes("匹配"), text.slice(0, 80));
   });
 
-  await t.test("list_prts_sections", { skip: !RUN_PRTS_API }, async () => {
-    const r = await mcpPost(origin, tc("list_prts_sections", { page_title: "阿米娅" }, 21), sessionId);
+  await t.test("prts_page sections", { skip: !RUN_PRTS_API }, async () => {
+    const r = await mcpPost(origin, tc("prts_page", { page_title: "阿米娅", action: "sections" }, 21), sessionId);
     assert.equal(r.status, 200);
     const text = toolResultText(r);
     assert.ok(text.includes("[") && text.includes("] L"), text.slice(0, 80));

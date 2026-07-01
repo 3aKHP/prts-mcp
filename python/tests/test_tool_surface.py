@@ -6,11 +6,7 @@ from pathlib import Path
 
 EXPECTED_TOOL_SURFACE = {
     "search_prts": ("query", "limit", "search_mode", "filter_technical"),
-    "read_prts_page": ("page_title", "section_index"),
-    "list_prts_sections": ("page_title",),
-    "get_prts_categories": ("page_title",),
-    "get_prts_links": ("page_title", "direction", "limit"),
-    "get_prts_template": ("page_title",),
+    "prts_page": ("page_title", "action", "section_index", "direction", "limit"),
     "get_operator_archives": ("name",),
     "get_operator_voicelines": ("name",),
     "get_operator_basic_info": ("name",),

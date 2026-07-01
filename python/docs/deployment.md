@@ -128,11 +128,7 @@ docker run -i --rm `
     "args": ["run", "-i", "--rm", "-v", "prts-mcp-data:/data/gamedata", "-v", "prts-mcp-levels:/data/gamedata-levels", "-v", "prts-mcp-storyjson:/data/storyjson", "prts-mcp"],
     "alwaysAllow": [
         "search_prts",
-        "read_prts_page",
-        "list_prts_sections",
-        "get_prts_categories",
-        "get_prts_links",
-        "get_prts_template",
+        "prts_page",
         "get_operator_archives",
         "get_operator_voicelines",
         "get_operator_basic_info",
@@ -190,11 +186,8 @@ npx @modelcontextprotocol/inspector docker run -i --rm -v prts-mcp-data:/data/ga
 | Tool | 测试参数 | 依赖 |
 |------|---------|------|
 | `search_prts` | `query`: `莱茵生命` | 网络 |
-| `read_prts_page` | `page_title`: `阿米娅` | 网络 |
-| `list_prts_sections` | `page_title`: `阿米娅` | 网络 |
-| `get_prts_categories` | `page_title`: `阿米娅` | 网络 |
-| `get_prts_links` | `page_title`: `阿米娅`, `direction`: `outbound` | 网络 |
-| `get_prts_template` | `page_title`: `阿米娅` | 网络 |
+| `prts_page` | `page_title`: `阿米娅`, `action`: `sections` | 网络 |
+| `prts_page` | `page_title`: `阿米娅`, `action`: `read`, `section_index`: `1` | 网络 |
 | `get_operator_archives` | `name`: `阿米娅` | 干员数据 |
 | `get_operator_voicelines` | `name`: `阿米娅` | 干员数据 |
 | `get_operator_basic_info` | `name`: `阿米娅` | 干员数据 |
