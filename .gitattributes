@@ -1,0 +1,34 @@
+# Normalize text files to LF line endings in the repo.
+# Working-tree checkout is also LF (no CRLF conversion), so `git diff --check`
+# no longer flags trailing-\r noise on freshly edited lines.
+#
+# Binary types are marked explicitly to avoid any heuristic mis-detection.
+
+# Text — source
+*.py     text eol=lf
+*.ts     text eol=lf
+*.js     text eol=lf
+*.json   text eol=lf
+*.toml   text eol=lf
+*.yml    text eol=lf
+*.yaml   text eol=lf
+*.md     text eol=lf
+*.sh     text eol=lf
+*.ps1    text eol=lf
+*.dockerignore text eol=lf
+*.gitignore   text eol=lf
+*.gitattributes text eol=lf
+
+# Text — dotfiles without extensions
+Dockerfile   text eol=lf
+LICENSE      text eol=lf
+
+# Binary
+*.zip   binary
+*.tar   binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.lock  binary
