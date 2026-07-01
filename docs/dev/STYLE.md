@@ -270,8 +270,9 @@ Tag 使用实现级前缀：`python/vX.Y.Z` 和 `ts/vX.Y.Z`。Tag 必须打在 `
 ### 准备发版（dev → main 发布时）
 
 1. 将 `## [Unreleased]` 改为 `## [X.Y.Z] - YYYY-MM-DD`
-2. 在其上方插入新的空 `## [Unreleased]` 段
+2. release PR 到 `main` 时不保留空 `## [Unreleased]` 段
 3. 版本号去掉 `-dev` 后缀后合并到 `main`，打 tag
+4. 合并回 `dev` 并 bump 到下个开发版本后，再打开新的空 `## [Unreleased]` 段
 
 ---
 

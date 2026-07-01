@@ -138,7 +138,7 @@ dev 上改动累积到发布时机时：
 
 1. 确认 dev 上 `[Unreleased]` 段内容齐全
 2. 去掉版本号 `-dev` 后缀（`pyproject.toml` + `package.json`）
-3. CHANGELOG：`[Unreleased]` → `[X.Y.Z] - YYYY-MM-DD`，上方插入新的空 `[Unreleased]`
+3. CHANGELOG：`[Unreleased]` → `[X.Y.Z] - YYYY-MM-DD`，release PR 到 `main` 时不保留空 `[Unreleased]`
 4. PR：`dev` → `main`（纯合并 PR）
 5. **独立 CR** → **应对 CR** → **人类 merge**
 6. 打 tag：`git tag python/vX.Y.Z && git tag ts/vX.Y.Z && git push origin --tags`
@@ -158,7 +158,7 @@ dev 上改动累积到发布时机时：
 7. **独立 CR** → **应对 CR** → **人类 merge**
 8. 在 `main` merge commit 上打 tag：`python/v1.7.0` 和 `ts/v1.7.0`
 9. 从同一个 merge commit 创建并推送 `lts/1.7`
-10. `git checkout dev && git merge main`，然后 bump 到 `2.0.0.dev0`
+10. `git checkout dev && git merge main`，然后 bump 到 `2.0.0.dev0` 并重新打开空 `[Unreleased]`
 
 ## Commit 规范
 
