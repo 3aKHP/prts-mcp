@@ -1,6 +1,6 @@
 """Story tool registrations — events, chapters, dialogue, summaries, search, memoirs, characters.
 
-Split from server.py. Covers 10 tools that read story data from the
+Split from server.py. Covers 9 tools that read story data from the
 synced zh_CN.zip via the story submodules.
 """
 from __future__ import annotations
@@ -25,7 +25,7 @@ from prts_mcp.startup_sync import _require_story_zip
 
 
 def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
-    """Register the 10 story-backed tools on the given FastMCP instance."""
+    """Register the 9 story-backed tools on the given FastMCP instance."""
 
     @mcp.tool()
     def list_story_events(

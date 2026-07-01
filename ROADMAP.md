@@ -143,7 +143,7 @@ The 1.x tool surface reached 32 tools by the 1.7.0 LTS release. For long-context
   LLM selection accuracy more than it saves context.
 - Enemy triplet (`list_enemies` / `get_enemy_info` / `search_enemies`):
   same reason.
-- Story tools (`read_story` / `read_activity` / `get_event_summary`):
+- Story tools (`read_story` / `read_activity` / `get_story_summary`):
   genuinely distinct actions on related-but-different data.
 
 The bar for consolidation: same parameter shape, similar output length and structure, an LLM choosing between them today is choosing between near-synonyms.

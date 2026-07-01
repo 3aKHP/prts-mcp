@@ -1,7 +1,7 @@
 /**
  * Story tool registrations — events, chapters, dialogue, summaries, search, memoirs, characters.
  *
- * Split from server.ts. Exports registerStoryTools which attaches the 10
+ * Split from server.ts. Exports registerStoryTools which attaches the 9
  * story-backed tools to a McpServer instance. Also exports the shared
  * requireStoryZip helper and line/chapter formatters.
  */

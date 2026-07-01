@@ -21,7 +21,6 @@ from prts_mcp.data.stores import JsonStore, ZipStore
 STORY_REVIEW_TABLE = "zh_CN/gamedata/excel/story_review_table.json"
 STORYINFO = "zh_CN/storyinfo.json"
 SUMMARIES = "zh_CN/summaries.json"
-EVENT_SUMMARIES = "zh_CN/event_summaries.json"
 CHARDICT = "zh_CN/chardict.json"
 
 # entryType values → user-facing category strings
