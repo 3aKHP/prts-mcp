@@ -21,7 +21,7 @@ export function registerPrtsTools(server: McpServer): void {
     "search_prts",
     [
       "搜索 PRTS 明日方舟中文维基词条。",
-      "返回匹配词条的标题和简短摘要列表，含匹配总数。这是探索维基的第一步：当需要查找不确定的专有名词、干员、关卡或世界观设定时，先用此工具搜索获取准确标题，再将标题传入 prts_page 获取完整内容。",
+      "返回匹配词条的标题、简短摘要列表及匹配总数。查询专有名词、干员、关卡或世界观设定时先用此工具拿到准确标题，再传入 prts_page 获取完整内容。",
     ].join(" "),
     {
       query: z.string().describe("搜索关键词，支持中文，如「罗德岛」、「整合运动」。"),
@@ -45,9 +45,9 @@ export function registerPrtsTools(server: McpServer): void {
   server.tool(
     "prts_page",
     [
-      "读取 PRTS 维基页面的内容或元数据（按 action 分派）。",
-      "推荐流程：先用 action=\"sections\" 看目录（返回 [编号] L层级 标题，T- 前缀表示模板嵌入的节），再用 action=\"read\" + section_index 读特定章节，避免整页过载。",
-      "其余 action：categories=分类标签；links=相关链接（outbound 出链 / inbound 反向链接，探索维基知识图谱）；template=结构化模板数据（如干员 CharinfoV2、敌人 敌人信息/common2、物品 道具信息）。先用 search_prts 获取准确标题。",
+      "读取 PRTS 维基页面的正文或元数据，按 action 分派。",
+      "推荐流程：先用 action=\"sections\" 看目录（每行 `[编号] L层级 标题`，T- 前缀表示模板嵌入的节），再用 action=\"read\" + section_index 读特定章节，避免整页过载。",
+      "其余 action：categories 返回分类标签；links 返回相关链接（outbound 出链 / inbound 反向链接）；template 返回结构化模板数据（如干员 CharinfoV2、敌人 敌人信息/common2、物品 道具信息）。",
     ].join(" "),
     {
       page_title: z.string().describe("词条标题，需与维基页面标题完全一致，如「阿米娅」。建议先用 search_prts 获取准确标题。"),

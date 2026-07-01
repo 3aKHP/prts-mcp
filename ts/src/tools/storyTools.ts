@@ -70,8 +70,7 @@ export function registerStoryTools(server: McpServer): void {
     [
       "列出明日方舟剧情活动列表。",
       "返回格式：每行 `- [类型] 活动ID：名称（N 章）`，类型为 MAINLINE / ACTIVITY / MINI_ACTIVITY / NONE 之一。",
-      "获取活动 ID 后，可调用 list_stories 查看该活动的章节列表。",
-      "category=\"memoirs\" 可列出所有干员密录。",
+      "获取活动 ID 后可调用 list_stories 查看该活动的章节列表。",
     ].join(" "),
     { category: z.string().optional().describe("可选过滤分类。\"main\" = 主线章节，\"activities\" = 活动剧情（含联动），\"memoirs\" = 干员密录。不填则返回全部活动。") },
     ({ category }) => {
@@ -101,7 +100,7 @@ export function registerStoryTools(server: McpServer): void {
     [
       "列出指定活动的所有剧情章节（按官方顺序排列）。",
       "返回格式：每行 `- 章节编号 [标签] 章节名（key: story_key）`，其中 story_key 可直接传入 read_story 读取该章台词。",
-      "设 include_summaries=true 时顶部附活动级长摘要（若有）、每章下方附一句话梗概，可一次性了解活动整体剧情脉络。",
+      "设 include_summaries=true 可一次性了解活动整体剧情脉络。",
     ].join(" "),
     {
       event_id: z.string().describe("活动 ID，如 \"act31side\"（可从 list_story_events 获取）。"),
@@ -178,8 +177,8 @@ export function registerStoryTools(server: McpServer): void {
     "get_story_summary",
     [
       "获取单章剧情的梗概。",
-      "返回指定章节的故事摘要。优先使用 LLM 生成的长摘要，",
-      "未就绪时回退到官方一句话梗概，最后回退到章节自带的 storyInfo。",
+      "返回指定章节的故事摘要，优先长摘要，未就绪时回退到官方一句话梗概。",
+      "整个活动的章节概览见 list_stories(include_summaries=true)。",
     ].join(" "),
     { story_key: z.string().describe("章节 key，如 \"activities/act31side/level_act31side_01_beg\"（可从 list_stories 获取）。") },
     ({ story_key }) => {
@@ -207,7 +206,6 @@ export function registerStoryTools(server: McpServer): void {
     [
       "读取单章剧情的完整台词。",
       "返回格式：首行为【活动名】章节名，随后按顺序输出对话（`角色：台词`）、旁白（`*旁白文本*`）和选项（`【选项】文本`）。",
-      "story_key 可从 list_stories 的返回结果中获取。",
     ].join(" "),
     {
       story_key: z.string().describe("章节 key，如 \"activities/act31side/level_act31side_01_beg\"（可从 list_stories 获取）。"),
@@ -244,8 +242,8 @@ export function registerStoryTools(server: McpServer): void {
     "read_activity",
     [
       "读取整个活动的完整剧情台词（按官方章节顺序合并）。",
-      "适合需要了解完整活动故事的场景。返回各章节台词的合并文本，格式与 read_story 一致，章节间以分隔标题区分。",
-      "单次活动文本量可能较大，建议使用 page 参数分批获取；返回结果会提示是否还有更多页。",
+      "返回各章节台词的合并文本，格式与 read_story 一致，章节间以分隔标题区分。",
+      "单次文本量可能较大，建议用 page 分批获取，返回末尾会提示是否还有后续内容。",
     ].join(" "),
     {
       event_id: z.string().describe("活动 ID，如 \"act31side\"（可从 list_story_events 获取）。"),
@@ -313,8 +311,7 @@ export function registerStoryTools(server: McpServer): void {
     "search_stories",
     [
       "在剧情台词中执行全文正则搜索，支持角色和台词类型过滤。",
-      "返回格式：以 [stories/活动ID/章节编号 L行号] 标注位置，",
-      "命中行前缀 >>> 标记，上下文行以 4 空格缩进显示。",
+      "返回格式：以 `[stories/活动ID/章节编号 L行号]` 标注位置，命中行前缀 `>>> ` 标记，上下文行以 4 空格缩进显示。",
     ].join(" "),
     {
       pattern: z.string().describe("正则表达式搜索模式，大小写不敏感。"),
@@ -352,9 +349,8 @@ export function registerStoryTools(server: McpServer): void {
     "get_operator_memoirs",
     [
       "根据干员名称查询干员密录剧情。",
-      "返回干员的密录章节列表，包含章节 key（story_key）和元数据。",
+      "返回干员的密录章节列表，含章节 key（story_key）和元数据。",
       "获取 story_key 后可传入 read_story 读取密录台词。",
-      "若需先查找正确的干员名称，可用 search（scope=operators）搜索干员数据。",
     ].join(" "),
     {
       name: z.string().describe("干员的游戏内中文名，如「阿米娅」、「能天使」。"),
@@ -390,8 +386,8 @@ export function registerStoryTools(server: McpServer): void {
     "find_character_appearances",
     [
       "查找某个角色在剧情中的出场（说话或被提及）。",
-      "返回该角色「说话」（speaks，作为对话发言者）或「被提及」（mentioned，名字出现在任意台词/旁白文本中）的所有章节，",
-      "每章标注 speaks / mentioned / 两者皆有。如需精确台词，可用返回的 story_key 调用 read_story。",
+      "返回该角色作为对话发言者（speaks）或名字出现在台词/旁白文本中（mentioned）的所有章节，每章标注 speaks / mentioned / 两者皆有，适合快速定位角色的登场分布。",
+      "如需精确台词，可用返回的 story_key 调用 read_story。",
     ].join(" "),
     {
       name: z.string().describe("角色名（干员中文名或「博士」）。speaks 按对话角色名精确匹配，mentioned 按名字在台词/旁白文本中的子串匹配——请使用完整名字以免误报（如「阿」会命中「阿米娅」）。"),
@@ -435,8 +431,8 @@ export function registerStoryTools(server: McpServer): void {
     "find_speakers_in",
     [
       "列出某活动中的所有发言角色及其台词数。",
-      "返回该活动所有章节中去重后的对话发言者，按台词句数降序排列。",
-      "如需读取某角色说的具体内容，可结合 search_stories(character=...) 过滤。",
+      "返回该活动去重后的对话发言者，按台词句数降序排列，适合了解角色戏份分布。",
+      "读取某角色说的具体内容可用 search_stories(character=...) 过滤。",
     ].join(" "),
     {
       event_id: z.string().describe("活动 ID，如 \"act31side\"（可从 list_story_events 获取）。"),

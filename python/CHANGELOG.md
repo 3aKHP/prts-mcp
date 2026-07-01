@@ -28,6 +28,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
   overview (from `event_summaries.json`) when present, on top of the per-chapter
   one-liners it already returned — making it a superset of the former
   `get_event_summary`. Tool surface drops 24 → 23.
+- **Tool descriptions standardized (2.0).** All tool descriptions were rewritten
+  to a consistent house style (verb-first purpose, output-shape note, at most one
+  cross-reference, parameter semantics kept in the parameter schema) and trimmed
+  ~20% to reduce context budget on smaller-context models. No change to tool
+  names, parameters, or output format.
 
 ### Removed
 
