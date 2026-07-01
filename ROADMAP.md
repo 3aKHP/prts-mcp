@@ -67,9 +67,11 @@ details.
 ### 1.7.0 — Story Character Tracking + Operator Depth
 
 **Story character tracking (no new data source — indexes existing story JSON)**
-- `find_character_appearances(name, scope?)` — chapters / events where the
-  character speaks or is mentioned.
-- `find_speakers_in(event_id)` — every speaker who appears in an event.
+- `find_character_appearances(name, scope?, max_events?)` — chapters / events
+  where the character speaks (dialog role exact match) or is mentioned (name
+  substring in any line text). Implemented on `dev` for 1.7.0.
+- `find_speakers_in(event_id)` — every speaker who appears in an event, with
+  dialog line counts. Implemented on `dev` for 1.7.0.
 
 **Main: building (base) skill data domain**
 - `get_operator_building_skills(name)` — base skills, efficiency, slotting.

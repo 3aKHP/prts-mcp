@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Added
+
+- **Story character tracking.** Two new tools reuse the existing story search
+  index (no new data source): `find_character_appearances(name, scope?,
+  max_events?)` returns chapters where a character **speaks** (dialog role
+  exact match) or is **mentioned** (name substring in any line text);
+  `find_speakers_in(event_id)` lists every speaker in an event with dialog
+  line counts. Brings the tool surface to 32.
+
 ### Changed
 
 - **Module split: story and server god files.** `data/story.py` (916 lines) and
