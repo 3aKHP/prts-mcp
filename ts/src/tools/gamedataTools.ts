@@ -22,9 +22,9 @@ export function registerGamedataTools(server: McpServer): void {
       "返回干员的客观履历、个人档案（基础档案及解锁档案）等背景故事文本。",
       "若需查询干员的职业、稀有度等数值信息，请使用 get_operator_basic_info；若需查询语音台词，请使用 get_operator_voicelines。",
     ].join(" "),
-    { operator_name: z.string().describe("干员的游戏内中文名，如「阿米娅」、「能天使」。") },
-    ({ operator_name }) => {
-      const text = getOperatorArchives(operator_name);
+    { name: z.string().describe("干员的游戏内中文名，如「阿米娅」、「能天使」。") },
+    ({ name }) => {
+      const text = getOperatorArchives(name);
       return { content: [{ type: "text", text }] };
     }
   );
@@ -36,9 +36,9 @@ export function registerGamedataTools(server: McpServer): void {
       "返回包含触发条件（如「交谈1」、「晋升后交谈」、「信赖提升后交谈」）及对应台词文本的完整列表。",
       "此工具仅返回语音文本；若需查询干员背景故事或客观履历，请使用 get_operator_archives。",
     ].join(" "),
-    { operator_name: z.string().describe("干员的游戏内中文名，如「阿米娅」、「能天使」。") },
-    ({ operator_name }) => {
-      const text = getOperatorVoicelines(operator_name);
+    { name: z.string().describe("干员的游戏内中文名，如「阿米娅」、「能天使」。") },
+    ({ name }) => {
+      const text = getOperatorVoicelines(name);
       return { content: [{ type: "text", text }] };
     }
   );
@@ -50,9 +50,9 @@ export function registerGamedataTools(server: McpServer): void {
       "返回干员的职业、子职业、稀有度（星级）、所属阵营、招募标签、天赋名称及描述等结构化信息。",
       "适合快速了解干员定位；若需完整背景故事请使用 get_operator_archives，若需语音台词请使用 get_operator_voicelines。",
     ].join(" "),
-    { operator_name: z.string().describe("干员的游戏内中文名，如「阿米娅」、「能天使」。") },
-    ({ operator_name }) => {
-      const text = getOperatorBasicInfo(operator_name);
+    { name: z.string().describe("干员的游戏内中文名，如「阿米娅」、「能天使」。") },
+    ({ name }) => {
+      const text = getOperatorBasicInfo(name);
       return { content: [{ type: "text", text }] };
     }
   );

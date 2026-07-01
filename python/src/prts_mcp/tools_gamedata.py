@@ -42,7 +42,7 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
 
     @mcp.tool()
     async def get_operator_archives(
-        operator_name: Annotated[str, Field(description="干员的游戏内中文名，如「阿米娅」、「能天使」。")],
+        name: Annotated[str, Field(description="干员的游戏内中文名，如「阿米娅」、「能天使」。")],
     ) -> str:
         """获取指定干员的档案资料。
 
@@ -50,11 +50,11 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         若需查询干员的职业、稀有度等数值信息，请使用 get_operator_basic_info；
         若需查询语音台词，请使用 get_operator_voicelines。
         """
-        return _get_archives(operator_name)
+        return _get_archives(name)
 
     @mcp.tool()
     async def get_operator_voicelines(
-        operator_name: Annotated[str, Field(description="干员的游戏内中文名，如「阿米娅」、「能天使」。")],
+        name: Annotated[str, Field(description="干员的游戏内中文名，如「阿米娅」、「能天使」。")],
     ) -> str:
         """获取指定干员的所有语音台词记录。
 
@@ -62,11 +62,11 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         台词文本的完整列表。此工具仅返回语音文本；若需查询干员背景故事或客观
         履历，请使用 get_operator_archives。
         """
-        return _get_voicelines(operator_name)
+        return _get_voicelines(name)
 
     @mcp.tool()
     async def get_operator_basic_info(
-        operator_name: Annotated[str, Field(description="干员的游戏内中文名，如「阿米娅」、「能天使」。")],
+        name: Annotated[str, Field(description="干员的游戏内中文名，如「阿米娅」、「能天使」。")],
     ) -> str:
         """获取指定干员的基本数值信息。
 
@@ -74,7 +74,7 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         及描述等结构化信息。适合快速了解干员定位；若需完整背景故事请使用
         get_operator_archives，若需语音台词请使用 get_operator_voicelines。
         """
-        return _get_basic_info(operator_name)
+        return _get_basic_info(name)
 
     @mcp.tool()
     def list_enemies(

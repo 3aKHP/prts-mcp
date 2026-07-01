@@ -199,9 +199,9 @@ npx @modelcontextprotocol/inspector docker run -i --rm -v prts-mcp-data:/data/ga
 | `get_prts_categories` | `page_title`: `阿米娅` | 网络 |
 | `get_prts_links` | `page_title`: `阿米娅`, `direction`: `outbound` | 网络 |
 | `get_prts_template` | `page_title`: `阿米娅` | 网络 |
-| `get_operator_archives` | `operator_name`: `阿米娅` | 干员数据 |
-| `get_operator_voicelines` | `operator_name`: `阿米娅` | 干员数据 |
-| `get_operator_basic_info` | `operator_name`: `阿米娅` | 干员数据 |
+| `get_operator_archives` | `name`: `阿米娅` | 干员数据 |
+| `get_operator_voicelines` | `name`: `阿米娅` | 干员数据 |
+| `get_operator_basic_info` | `name`: `阿米娅` | 干员数据 |
 | `list_enemies` | `threat_level`: `boss` | 干员数据 |
 | `get_enemy_info` | `name`: `源石虫` | 干员数据 |
 | `get_enemy_info` | `name`: `源石虫`, `stage_id`: `main_00-01` | 关卡战斗数据 |
@@ -214,7 +214,7 @@ npx @modelcontextprotocol/inspector docker run -i --rm -v prts-mcp-data:/data/ga
 | `list_items` | `category`: `MATERIAL` | 干员数据 |
 | `get_item_info` | `name`: `固源岩` | 干员数据 |
 | `search_items` | `pattern`: `源岩|装置` | 干员数据 |
-| `get_operator_memoirs` | `operator_name`: `阿米娅` | 剧情数据 |
+| `get_operator_memoirs` | `name`: `阿米娅` | 剧情数据 |
 | `find_character_appearances` | `name`: `阿米娅`, `max_events`: `5` | 剧情数据 |
 | `find_speakers_in` | `event_id`: `act31side` | 剧情数据 |
 | `list_story_events` | `category`: `activities` | 剧情数据 |

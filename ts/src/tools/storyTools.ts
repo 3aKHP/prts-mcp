@@ -373,9 +373,9 @@ export function registerStoryTools(server: McpServer): void {
       "若需先查找正确的干员名称，可使用 search_data 搜索干员数据。",
     ].join(" "),
     {
-      operator_name: z.string().describe("干员的游戏内中文名，如「阿米娅」、「能天使」。"),
+      name: z.string().describe("干员的游戏内中文名，如「阿米娅」、「能天使」。"),
     },
-    ({ operator_name }) => {
+    ({ name }) => {
       let zipPath: string;
       try {
         zipPath = requireStoryZip();
@@ -383,7 +383,7 @@ export function registerStoryTools(server: McpServer): void {
         return { content: [{ type: "text", text: e instanceof Error ? e.message : String(e) }] };
       }
       try {
-        const result = _getOperatorMemoirs(zipPath, operator_name);
+        const result = _getOperatorMemoirs(zipPath, name);
         const lines: string[] = [
           `# ${result.operatorName}（code: ${result.internalCode}，id: ${result.operatorId}）`,
           `共 ${result.totalChapters} 章密录\n`,

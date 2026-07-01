@@ -46,9 +46,9 @@ Both implementations expose the same tool set:
 |------|-------------|
 | `search_prts(query, limit)` | Search PRTS Wiki by keyword, returns matching article titles |
 | `read_prts_page(page_title)` | Fetch the plain-text content of a PRTS Wiki article |
-| `get_operator_archives(operator_name)` | Retrieve operator archive records (Chinese name) |
-| `get_operator_voicelines(operator_name)` | Retrieve operator voice lines (Chinese name) |
-| `get_operator_basic_info(operator_name)` | Retrieve basic operator profile: class, rarity, faction, recruit tags, talents (Chinese name) |
+| `get_operator_archives(name)` | Retrieve operator archive records (Chinese name) |
+| `get_operator_voicelines(name)` | Retrieve operator voice lines (Chinese name) |
+| `get_operator_basic_info(name)` | Retrieve basic operator profile: class, rarity, faction, recruit tags, talents (Chinese name) |
 | `list_story_events(category?)` | List story events; optional filter: `main` (main story) or `activities` |
 | `list_stories(event_id, include_summaries?)` | List chapters of an event in official order, with optional summaries |
 | `get_event_summary(event_id)` | Narrative overview of all chapters in an event with summaries |
@@ -129,9 +129,9 @@ Published Docker images and the npm package include bundled fallback game/level/
 |------|------|
 | `search_prts(query, limit)` | 关键词搜索 PRTS 维基词条，返回匹配标题列表 |
 | `read_prts_page(page_title)` | 读取指定词条的纯文本内容 |
-| `get_operator_archives(operator_name)` | 获取干员档案资料（中文名） |
-| `get_operator_voicelines(operator_name)` | 获取干员语音记录（中文名） |
-| `get_operator_basic_info(operator_name)` | 获取干员基本信息：职业、稀有度、所属、招募标签、天赋（中文名） |
+| `get_operator_archives(name)` | 获取干员档案资料（中文名） |
+| `get_operator_voicelines(name)` | 获取干员语音记录（中文名） |
+| `get_operator_basic_info(name)` | 获取干员基本信息：职业、稀有度、所属、招募标签、天赋（中文名） |
 | `list_story_events(category?)` | 列出剧情活动，可选过滤：`main`（主线）或 `activities`（活动） |
 | `list_stories(event_id, include_summaries?)` | 列出指定活动的章节（按官方顺序），可选附带梗概 |
 | `get_event_summary(event_id)` | 获取活动的章节梗概概览，含 LLM 长摘要 |

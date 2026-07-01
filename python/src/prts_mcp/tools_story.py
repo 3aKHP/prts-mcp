@@ -289,7 +289,7 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
 
     @mcp.tool()
     def get_operator_memoirs(
-        operator_name: Annotated[str, Field(description="干员的游戏内中文名，如「阿米娅」、「能天使」。")],
+        name: Annotated[str, Field(description="干员的游戏内中文名，如「阿米娅」、「能天使」。")],
     ) -> str:
         """根据干员名称查询干员密录剧情。
 
@@ -305,14 +305,14 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
             return str(e)
 
         try:
-            result = _get_operator_memoirs(zip_path, operator_name)
+            result = _get_operator_memoirs(zip_path, name)
         except KeyError as e:
             return str(e)
         except Exception as e:
             return f"查询干员密录失败：{e}"
 
         lines = [
-            f"# {result.operator_name}（code: {result.internal_code}，id: {result.operator_id}）",
+            f"# {result.name}（code: {result.internal_code}，id: {result.operator_id}）",
             f"共 {result.total_chapters} 章密录\n",
         ]
         for ch in result.chapters:

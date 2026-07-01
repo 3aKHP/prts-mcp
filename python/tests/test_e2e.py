@@ -188,25 +188,25 @@ def test_tools_list(server: subprocess.Popen) -> None:
 
 @pytest.mark.skipif(not _has_operator_data, reason="No bundled operator data")
 def test_operator_basic_info_amiya(server: subprocess.Popen) -> None:
-    text = _call_result_text(server, "get_operator_basic_info", {"operator_name": "阿米娅"}, 3)
+    text = _call_result_text(server, "get_operator_basic_info", {"name": "阿米娅"}, 3)
     assert "5★" in text, f"阿米娅 should be 5★: {text.split(chr(10))}"
 
 
 @pytest.mark.skipif(not _has_operator_data, reason="No bundled operator data")
 def test_operator_basic_info_senye(server: subprocess.Popen) -> None:
-    text = _call_result_text(server, "get_operator_basic_info", {"operator_name": "森蚺"}, 4)
+    text = _call_result_text(server, "get_operator_basic_info", {"name": "森蚺"}, 4)
     assert "6★" in text, f"森蚺 should be 6★: {text.split(chr(10))}"
 
 
 @pytest.mark.skipif(not _has_operator_data, reason="No bundled operator data")
 def test_operator_archives(server: subprocess.Popen) -> None:
-    text = _call_result_text(server, "get_operator_archives", {"operator_name": "阿米娅"}, 5)
+    text = _call_result_text(server, "get_operator_archives", {"name": "阿米娅"}, 5)
     assert "阿米娅" in text and "干员档案" in text
 
 
 @pytest.mark.skipif(not _has_operator_data, reason="No bundled operator data")
 def test_operator_voicelines(server: subprocess.Popen) -> None:
-    text = _call_result_text(server, "get_operator_voicelines", {"operator_name": "阿米娅"}, 6)
+    text = _call_result_text(server, "get_operator_voicelines", {"name": "阿米娅"}, 6)
     assert "语音记录" in text and "阿米娅" in text
 
 
