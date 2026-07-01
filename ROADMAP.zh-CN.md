@@ -64,8 +64,11 @@ Patch 版本（1.x.y）仅用于 bug 修复、文档以及不破坏兼容的体�
 ### 1.7.0 — 剧情角色追踪 + 干员深度
 
 **剧情角色追踪（无新数据源——基于现有剧情 JSON 索引化）**
-- `find_character_appearances(name, scope?)` — 该角色出现的章节 / 活动。
-- `find_speakers_in(event_id)` — 该活动中所有发言角色。
+- `find_character_appearances(name, scope?, max_events?)` — 该角色出现的章节 /
+  活动（说话：对话角色名精确匹配；被提及：名字作为子串出现在台词/旁白中）。
+  已在 dev 上为 1.7.0 实现。
+- `find_speakers_in(event_id)` — 该活动中所有发言角色及其台词数。已在 dev 上
+  为 1.7.0 实现。
 
 **主：基建技能数据域**
 - `get_operator_building_skills(name)` — 基建技能、效率、槽位。

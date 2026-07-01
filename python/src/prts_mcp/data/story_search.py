@@ -28,9 +28,11 @@ from prts_mcp.data.story_reader import (
 
 
 @dataclass(frozen=True)
-class _StorySearchChapter:
+class StorySearchChapter:
     event_id: str
+    story_key: str
     story_code: str
+    story_name: str
     lines: tuple[StoryLine, ...]
 
 
@@ -44,7 +46,7 @@ class _StorySearchRecord:
 @dataclass(frozen=True)
 class _StorySearchIndex:
     event_ids: frozenset[str]
-    chapters: tuple[_StorySearchChapter, ...]
+    chapters: tuple[StorySearchChapter, ...]
     records: tuple[_StorySearchRecord, ...]
 
 
@@ -143,7 +145,7 @@ def search_stories_from_store(
         return f"无效的 line_type：{line_type!r}，可选值：{', '.join(sorted(_VALID_LINE_TYPES))}"
 
     try:
-        index = _story_search_index(store)
+        index = story_search_index(store)
     except Exception as exc:
         return f"读取剧情数据索引失败：{exc}"
 
@@ -209,7 +211,12 @@ def search_stories_from_store(
 # ---------------------------------------------------------------------------
 
 
-def _story_search_index(store: JsonStore) -> _StorySearchIndex:
+def story_search_index(store: JsonStore) -> _StorySearchIndex:
+    """Return the cached story search index, building it on first access.
+
+    Public so sibling story modules (e.g. story_character) can reuse the same
+    lazily-cached index without re-walking the store.
+    """
     descriptor = _story_store_descriptor(store)
     if descriptor is None:
         return _build_story_search_index(store)
@@ -252,7 +259,7 @@ def _cached_story_search_index(
 def _build_story_search_index(store: JsonStore) -> _StorySearchIndex:
     table: dict = load_json(store, STORY_REVIEW_TABLE)  # type: ignore[assignment]
     event_ids: set[str] = set()
-    chapters: list[_StorySearchChapter] = []
+    chapters: list[StorySearchChapter] = []
     records: list[_StorySearchRecord] = []
 
     for ev_id, entry in table.items():
@@ -275,9 +282,11 @@ def _build_story_search_index(store: JsonStore) -> _StorySearchIndex:
             except (KeyError, FileNotFoundError, json.JSONDecodeError):
                 continue
             chapter_index = len(chapters)
-            indexed_chapter = _StorySearchChapter(
+            indexed_chapter = StorySearchChapter(
                 event_id=ev_id,
+                story_key=d.get("storyTxt", ""),
                 story_code=d.get("storyCode", ""),
+                story_name=d.get("storyName", ""),
                 lines=tuple(chapter.lines),
             )
             chapters.append(indexed_chapter)

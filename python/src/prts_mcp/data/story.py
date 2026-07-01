@@ -17,9 +17,12 @@ from __future__ import annotations
 from prts_mcp.data.story_reader import (
     ActivityResult,
     ChapterSummary,
+    CharacterAppearance,
+    CharacterAppearanceResult,
     EventInfo,
     MemoirChapter,
     OperatorMemoirResult,
+    SpeakerCount,
     StoryChapter,
     StoryLine,
     _clean_text,
@@ -47,6 +50,12 @@ from prts_mcp.data.story_summary import (
     get_story_summary,
     get_story_summary_from_store,
 )
+from prts_mcp.data.story_character import (
+    find_character_appearances,
+    find_character_appearances_from_store,
+    find_speakers_in,
+    find_speakers_in_from_store,
+)
 from prts_mcp.data.story_search import clear_search_cache as _clear_search_cache
 from prts_mcp.data.story_memoir import clear_chardict_cache as _clear_chardict_cache
 
@@ -66,6 +75,9 @@ __all__ = [
     "ActivityResult",
     "MemoirChapter",
     "OperatorMemoirResult",
+    "CharacterAppearance",
+    "CharacterAppearanceResult",
+    "SpeakerCount",
     # Reader
     "list_story_events",
     "list_story_events_from_store",
@@ -86,6 +98,11 @@ __all__ = [
     "get_event_summary_from_store",
     "get_story_summary",
     "get_story_summary_from_store",
+    # Character tracking
+    "find_character_appearances",
+    "find_character_appearances_from_store",
+    "find_speakers_in",
+    "find_speakers_in_from_store",
     # Cache management
     "clear_story_caches",
 ]

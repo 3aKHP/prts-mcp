@@ -1,6 +1,6 @@
 # PRTS-MCP 项目状态
 
-_Last updated: 2026-06-15_
+_Last updated: 2026-07-01_
 
 ## 当前版本
 
@@ -9,8 +9,8 @@ _Last updated: 2026-06-15_
 | Python | 1.6.1 | release candidate |
 | TypeScript | 1.6.1 | release candidate |
 
-- 当前发版候选：30 个 MCP 工具（1.6.1，新增干员密录发现与搜索缓存优化）
-- 当前稳定发布：29 个 MCP 工具（1.6.0）
+- 当前发版候选：32 个 MCP 工具（1.7.0 开发中，新增剧情角色追踪）
+- 当前稳定发布：30 个 MCP 工具（1.6.1）
 - 兼容性合约：1.x 期间既有工具名和必填参数不变；minor 版本允许新增工具和可选参数
 
 ## 当前分支
@@ -18,7 +18,7 @@ _Last updated: 2026-06-15_
 - `main`：1.6.1（已发布）
 - `dev`：1.7.0-dev（开发中）
 
-将 server.py/server.ts 和 story.py/story.ts 单体文件拆分为聚焦子模块，为 1.7.0 功能开发做准备。原有公开 API 通过向后兼容垫片（shim）保持不变。
+将 server.py/server.ts 和 story.py/story.ts 单体文件拆分为聚焦子模块，为 1.7.0 功能开发做准备。原有公开 API 通过向后兼容垫片（shim）保持不变。1.7.0 首个功能（剧情角色追踪：`find_character_appearances`、`find_speakers_in`）已在 dev 上落地。
 
 ## 仓库结构
 
@@ -91,7 +91,7 @@ PRTS-MCP/
 | [ArknightsStoryJson](https://github.com/3aKHP/ArknightsStoryJson) | 剧情台词 | GitHub Release `zh_CN.zip` |
 | [PRTS Wiki API](https://prts.wiki/api.php) | 世界观词条/阵营设定 | 实时 HTTP 请求 |
 
-## 工具清单 (30, current branch)
+## 工具清单 (32, current branch)
 
 | # | 工具 | 数据源 | 版本 |
 |---|------|--------|------|
@@ -125,6 +125,8 @@ PRTS-MCP/
 | 28 | `get_item_info` | GameData | 1.6.0 |
 | 29 | `search_items` | GameData | 1.6.0 |
 | 30 | `get_operator_memoirs` | StoryJson | 1.6.1 |
+| 31 | `find_character_appearances` | StoryJson | 1.7.0 |
+| 32 | `find_speakers_in` | StoryJson | 1.7.0 |
 
 ## 遗留 TODO
 

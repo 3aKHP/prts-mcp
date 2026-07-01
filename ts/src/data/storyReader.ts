@@ -138,6 +138,29 @@ export interface OperatorMemoirResult {
   chapters: MemoirChapter[];
 }
 
+export interface CharacterAppearance {
+  /** A single chapter where a character speaks or is mentioned. */
+  eventId: string;
+  storyKey: string;
+  storyCode: string;
+  storyName: string;
+  speaks: boolean;
+  mentioned: boolean;
+}
+
+export interface CharacterAppearanceResult {
+  /** Aggregated appearance report for findCharacterAppearances. */
+  name: string;
+  totalChapters: number;
+  appearances: CharacterAppearance[];
+}
+
+export interface SpeakerCount {
+  /** A speaker and how many dialog lines they have (within one event). */
+  name: string;
+  lineCount: number;
+}
+
 // ---------------------------------------------------------------------------
 // Store helpers
 // ---------------------------------------------------------------------------
