@@ -312,7 +312,7 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
             return f"查询干员密录失败：{e}"
 
         lines = [
-            f"# {result.name}（code: {result.internal_code}，id: {result.operator_id}）",
+            f"# {result.operator_name}（code: {result.internal_code}，id: {result.operator_id}）",
             f"共 {result.total_chapters} 章密录\n",
         ]
         for ch in result.chapters:
