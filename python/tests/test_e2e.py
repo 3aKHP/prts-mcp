@@ -139,8 +139,7 @@ def server():
 # ---------------------------------------------------------------------------
 
 EXPECTED_TOOLS = {
-    "search_prts", "read_prts_page", "list_prts_sections",
-    "get_prts_categories", "get_prts_links", "get_prts_template",
+    "search_prts", "prts_page",
     "get_operator_archives", "get_operator_voicelines", "get_operator_basic_info",
     "list_enemies", "get_enemy_info",
     "get_stage_enemies", "get_enemy_appearances",
@@ -181,7 +180,7 @@ def test_tools_list(server: subprocess.Popen) -> None:
     tools = resp["result"]["tools"]
     names = {t["name"] for t in tools}
 
-    assert len(names) == 28, f"Expected 28 tools, got {len(names)}: {sorted(names)}"
+    assert len(names) == 24, f"Expected 24 tools, got {len(names)}: {sorted(names)}"
     for name in EXPECTED_TOOLS:
         assert name in names, f"Missing tool: {name}"
 
@@ -234,6 +233,6 @@ def test_search_prts(server: subprocess.Popen) -> None:
 
 
 @pytest.mark.skipif(not _run_prts_api, reason="E2E_PRTS_API not set")
-def test_list_prts_sections(server: subprocess.Popen) -> None:
-    text = _call_result_text(server, "list_prts_sections", {"page_title": "阿米娅"}, 21)
+def test_prts_page_sections(server: subprocess.Popen) -> None:
+    text = _call_result_text(server, "prts_page", {"page_title": "阿米娅", "action": "sections"}, 21)
     assert "[" in text and "] L" in text

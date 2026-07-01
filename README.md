@@ -45,7 +45,7 @@ Both implementations expose the same tool set:
 | Tool | Description |
 |------|-------------|
 | `search_prts(query, limit)` | Search PRTS Wiki by keyword, returns matching article titles |
-| `read_prts_page(page_title)` | Fetch the plain-text content of a PRTS Wiki article |
+| `prts_page(page_title, action, ...)` | Read a wiki page or its metadata; `action` ∈ read / sections / categories / links / template |
 | `get_operator_archives(name)` | Retrieve operator archive records (Chinese name) |
 | `get_operator_voicelines(name)` | Retrieve operator voice lines (Chinese name) |
 | `get_operator_basic_info(name)` | Retrieve basic operator profile: class, rarity, faction, recruit tags, talents (Chinese name) |
@@ -57,10 +57,6 @@ Both implementations expose the same tool set:
 | `read_activity(event_id, include_narration, page, page_size)` | Read a complete activity's transcript, with pagination |
 | `search(scope, pattern, max_results)` | Full-text regex search within a data domain: `scope` ∈ operators / enemies / stages / items |
 | `search_stories(pattern, character?, line_type?, context_lines?, max_results?, event_id?)` | Full-text regex search across story dialogue, narration, and choice lines with filtering |
-| `list_prts_sections(page_title)` | Section table of contents for a wiki page |
-| `get_prts_categories(page_title)` | Category tags for a wiki page |
-| `get_prts_links(page_title, direction, limit)` | Outbound links or inbound backlinks with pagination |
-| `get_prts_template(page_title)` | Extract structured template data (key-value pairs) from a wiki page |
 | `list_enemies()` | List all enemies in the handbook with threat level and description |
 | `get_enemy_info(name, stage_id?)` | Retrieve full enemy handbook entry by name, or stage-specific stats when `stage_id` is provided |
 | `get_stage_enemies(stage_id)` | List enemies actually spawned in a stage, with stage-specific levels and combat stats |
@@ -124,7 +120,7 @@ Published Docker images and the npm package include bundled fallback game/level/
 | 工具 | 说明 |
 |------|------|
 | `search_prts(query, limit)` | 关键词搜索 PRTS 维基词条，返回匹配标题列表 |
-| `read_prts_page(page_title)` | 读取指定词条的纯文本内容 |
+| `prts_page(page_title, action, ...)` | 读取词条正文或元数据；`action` ∈ read / sections / categories / links / template |
 | `get_operator_archives(name)` | 获取干员档案资料（中文名） |
 | `get_operator_voicelines(name)` | 获取干员语音记录（中文名） |
 | `get_operator_basic_info(name)` | 获取干员基本信息：职业、稀有度、所属、招募标签、天赋（中文名） |
@@ -136,10 +132,6 @@ Published Docker images and the npm package include bundled fallback game/level/
 | `read_activity(event_id, include_narration, page, page_size)` | 读取整个活动的完整剧情，支持分页 |
 | `search(scope, pattern, max_results)` | 在指定数据域执行全文正则搜索：`scope` ∈ operators / enemies / stages / items |
 | `search_stories(pattern, character?, line_type?, context_lines?, max_results?, event_id?)` | 在剧情台词中执行全文正则搜索，支持按角色和台词类型过滤 |
-| `list_prts_sections(page_title)` | 获取词条的章节目录 |
-| `get_prts_categories(page_title)` | 获取词条的分类标签 |
-| `get_prts_links(page_title, direction, limit)` | 获取词条的出链或入链，支持分页 |
-| `get_prts_template(page_title)` | 提取词条中的结构化模板键值对数据 |
 | `list_enemies()` | 列出敌方图鉴中所有敌人及其威胁等级和描述 |
 | `get_enemy_info(name, stage_id?)` | 获取指定敌人的详细图鉴资料；传入 `stage_id` 时返回关卡级数值 |
 | `get_stage_enemies(stage_id)` | 获取指定关卡实际出场敌人及关卡级等级/战斗属性 |
