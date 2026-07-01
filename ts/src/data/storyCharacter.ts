@@ -49,6 +49,9 @@ function classifyChapter(
     if (line.text.toLowerCase().includes(nameLower)) {
       mentioned = true;
     }
+    if (speaks && mentioned) {
+      break;
+    }
   }
   return [speaks, mentioned];
 }
