@@ -20,7 +20,7 @@ export function registerGamedataTools(server: McpServer): void {
     [
       "获取指定干员的档案资料。",
       "返回干员的客观履历、个人档案（基础档案及解锁档案）等背景故事文本。",
-      "若需查询干员的职业、稀有度等数值信息，请使用 get_operator_basic_info；若需查询语音台词，请使用 get_operator_voicelines。",
+      "数值信息见 get_operator_basic_info，语音台词见 get_operator_voicelines。",
     ].join(" "),
     { name: z.string().describe("干员的游戏内中文名，如「阿米娅」、「能天使」。") },
     ({ name }) => {
@@ -33,8 +33,8 @@ export function registerGamedataTools(server: McpServer): void {
     "get_operator_voicelines",
     [
       "获取指定干员的所有语音台词记录。",
-      "返回包含触发条件（如「交谈1」、「晋升后交谈」、「信赖提升后交谈」）及对应台词文本的完整列表。",
-      "此工具仅返回语音文本；若需查询干员背景故事或客观履历，请使用 get_operator_archives。",
+      "返回触发条件（如「交谈1」、「晋升后交谈」、「信赖提升后交谈」）及对应台词文本的完整列表。",
+      "背景故事与客观履历见 get_operator_archives。",
     ].join(" "),
     { name: z.string().describe("干员的游戏内中文名，如「阿米娅」、「能天使」。") },
     ({ name }) => {
@@ -47,8 +47,8 @@ export function registerGamedataTools(server: McpServer): void {
     "get_operator_basic_info",
     [
       "获取指定干员的基本数值信息。",
-      "返回干员的职业、子职业、稀有度（星级）、所属阵营、招募标签、天赋名称及描述等结构化信息。",
-      "适合快速了解干员定位；若需完整背景故事请使用 get_operator_archives，若需语音台词请使用 get_operator_voicelines。",
+      "返回干员的职业、子职业、稀有度（星级）、所属阵营、招募标签、天赋名称及描述等结构化信息，适合快速了解干员定位。",
+      "完整背景故事见 get_operator_archives。",
     ].join(" "),
     { name: z.string().describe("干员的游戏内中文名，如「阿米娅」、「能天使」。") },
     ({ name }) => {
@@ -63,9 +63,8 @@ export function registerGamedataTools(server: McpServer): void {
     "list_enemies",
     [
       "列出敌方图鉴，支持按威胁等级过滤和分页。",
-      "默认返回前 50 条。若需翻页，增大 offset 即可。",
-      "若只想看领袖/BOSS 级敌人，设置 threat_level=\"boss\"。",
-      "不推荐使用 full=true，图鉴共有 1500+ 条目，密集输出极易污染上下文。",
+      "默认返回前 50 条；翻页增大 offset，只看领袖/BOSS 设 threat_level=\"boss\"。",
+      "图鉴共 1500+ 条目，不推荐 full=true。",
     ].join(" "),
     {
       threat_level: z.string().optional().describe("按威胁等级过滤：boss（领袖）、elite（精英）、normal（普通）。不填则返回全部。"),
@@ -82,7 +81,8 @@ export function registerGamedataTools(server: McpServer): void {
     "get_enemy_info",
     [
       "获取指定敌人的详细图鉴资料。",
-      "默认返回图鉴信息；若提供 stage_id，则返回该敌人在指定关卡内的等级与关卡覆盖后的战斗属性。",
+      "默认返回威胁等级、描述、攻击方式、伤害类型和特殊能力等图鉴信息。",
+      "提供 stage_id 时改为返回该敌人在指定关卡内的等级与关卡覆盖后的战斗属性。",
     ].join(" "),
     {
       name: z.string().describe("敌人的游戏内中文名，如「源石虫」、「霜星」。"),
@@ -97,7 +97,8 @@ export function registerGamedataTools(server: McpServer): void {
     "get_stage_enemies",
     [
       "获取指定关卡实际出场的敌人列表。",
-      "基于关卡 level JSON 的 SPAWN 动作统计实际出怪，并合并 enemy_database 中对应该关卡敌人等级的战斗属性。",
+      "只统计关卡内真正刷出的敌人，并附上其在该关卡等级下的战斗属性。",
+      "反向查询某敌人出现在哪些关卡见 get_enemy_appearances。",
     ].join(" "),
     {
       stage_id: z.string().describe("关卡 ID，如 'main_00-01'（可从 list_stages 获取）。"),
@@ -109,7 +110,7 @@ export function registerGamedataTools(server: McpServer): void {
     "get_enemy_appearances",
     [
       "反向查询指定敌人实际出现在哪些关卡。",
-      "只统计关卡 level JSON 中 SPAWN 动作真正刷出的敌人，不把 enemyDbRefs 中未实际出场的引用计入结果。",
+      "只统计该敌人真正刷出的关卡，不计入引用但未实际出场的关卡。",
     ].join(" "),
     {
       name: z.string().describe("敌人的游戏内中文名或 enemyId，如「源石虫」或 enemy_1007_slime。"),
@@ -143,7 +144,7 @@ export function registerGamedataTools(server: McpServer): void {
 
   server.tool(
     "get_stage_info",
-    "获取指定关卡的详细信息。返回关卡的编号、类型、难度、所属区域、理智消耗、掉落奖励、解锁条件等。",
+    "获取指定关卡的详细信息。返回关卡的编号、类型、难度、所属区域、理智消耗、掉落奖励、解锁条件等。关卡实际出场的敌人见 get_stage_enemies。",
     { stage_id: z.string().describe("关卡 ID，如 'main_00-01'（可从 list_stages 获取）。") },
     ({ stage_id }) => ({ content: [{ type: "text", text: getStageInfo(stage_id) }] })
   );
@@ -154,8 +155,7 @@ export function registerGamedataTools(server: McpServer): void {
     "list_items",
     [
       "列出物品/材料列表，支持按分类过滤和分页。",
-      "返回物品名称、分类、类型、稀有度、ID 和简短用途。",
-      "适合查找材料、货币、凭证等 item_table 物品。",
+      "返回每个物品的名称、分类、类型、稀有度、ID 和简短用途，适合查找材料、货币、凭证等。",
     ].join(" "),
     {
       category: z.string().optional().describe("按物品分类过滤，如 MATERIAL（材料）、NORMAL（普通）、CONSUME（消耗品）。不填则返回全部可见物品。"),
@@ -185,8 +185,8 @@ export function registerGamedataTools(server: McpServer): void {
     "search",
     [
       "在指定数据域中执行全文正则搜索。",
-      "scope 选择搜索域：operators（干员：名称/属性/档案/语音）、enemies（敌人图鉴）、stages（关卡）、items（物品/材料）。",
-      "返回带域标签的匹配结果。剧情台词搜索请用 search_stories（参数不同）。",
+      "scope 选择搜索域：operators（名称/属性/档案/语音）、enemies（图鉴）、stages（关卡）、items（物品/材料）。",
+      "返回带域标签的匹配结果。剧情台词搜索见 search_stories。",
     ].join(" "),
     {
       scope: z.enum(["operators", "enemies", "stages", "items"]).describe("搜索域（必填）：operators / enemies / stages / items。"),
