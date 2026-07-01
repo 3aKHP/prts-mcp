@@ -56,53 +56,44 @@ def register_prts_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         action: Annotated[Literal["read", "sections", "categories", "links", "template"], Field(description="操作（必填）：read=读取正文 / sections=章节目录 / categories=分类标签 / links=相关链接 / template=结构化模板数据。")],
         section_index: Annotated[int | None, Field(default=None, description="仅 action=read 生效：章节编号（从 action=sections 获取）。不填返回整页。")] = None,
         direction: Annotated[Literal["outbound", "inbound"], Field(default="outbound", description="仅 action=links 生效：outbound（出链，默认）或 inbound（入链）。")] = "outbound",
-        limit: Annotated[int, Field(default=30, description="仅 action=links 生效：返回链接数量上限，默认 30。")] = 30,
+        limit: Annotated[int, Field(default=30, ge=1, le=100, description="仅 action=links 生效：返回链接数量上限，默认 30。")] = 30,
     ) -> str:
         """读取 PRTS 维基页面的内容或元数据（按 action 分派）。
 
-        推荐流程：先用 action="sections" 看目录，再用 action="read" + section_index
-        读特定章节，避免整页过载。其余 action：categories=分类标签，links=相关链接，
-        template=结构化模板数据。先用 search_prts 获取准确标题。
+        推荐流程：先用 action="sections" 看目录（返回 [编号] L层级 标题，T- 前缀表示
+        模板嵌入的节），再用 action="read" + section_index 读特定章节，避免整页过载。
+        其余 action：categories=分类标签；links=相关链接（outbound 出链 / inbound 反向
+        链接，探索维基知识图谱）；template=结构化模板数据（如干员 CharinfoV2、敌人
+        敌人信息/common2、物品 道具信息）。先用 search_prts 获取准确标题。
         """
-        if action == "read":
-            return await _read_page(page_title, section_index=section_index)
-        if action == "sections":
-            try:
-                sections = await _list_sections(page_title)
-            except RuntimeError as e:
-                return str(e)
-            if not sections:
-                return f"页面 '{page_title}' 没有章节目录。"
-            return "\n".join(f"[{s['index']}] L{s['level']} {s['line']}" for s in sections)
-        if action == "categories":
-            try:
-                cats = await _get_categories(page_title)
-            except RuntimeError as e:
-                return str(e)
-            if not cats:
-                return f"页面 '{page_title}' 没有分类标签。"
-            return "\n".join(f"- {c}" for c in cats)
-        if action == "links":
-            if direction not in ("outbound", "inbound"):
-                return "无效的 direction 参数，可选值：outbound、inbound。"
-            try:
-                result = await _get_links(page_title, direction=direction, limit=limit)
-            except RuntimeError as e:
-                return str(e)
-            links = result["links"]
-            if not links:
-                return f"页面 '{page_title}' 没有{'出站' if direction == 'outbound' else '入站'}链接。"
-            total = result["total"]
-            has_more = result["has_more"]
-            suffix = f"\n（共 {total} 条，还有更多）" if has_more else f"\n（共 {total} 条）"
-            return "\n".join(f"- {ln}" for ln in links) + suffix
-        # action == "template"
         try:
+            if action == "read":
+                return await _read_page(page_title, section_index=section_index)
+            if action == "sections":
+                sections = await _list_sections(page_title)
+                if not sections:
+                    return f"页面 '{page_title}' 没有章节目录。"
+                return "\n".join(f"[{s['index']}] L{s['level']} {s['line']}" for s in sections)
+            if action == "categories":
+                cats = await _get_categories(page_title)
+                if not cats:
+                    return f"页面 '{page_title}' 没有分类标签。"
+                return "\n".join(f"- {c}" for c in cats)
+            if action == "links":
+                result = await _get_links(page_title, direction=direction, limit=limit)
+                links = result["links"]
+                if not links:
+                    return f"页面 '{page_title}' 没有{'出站' if direction == 'outbound' else '入站'}链接。"
+                total = result["total"]
+                has_more = result["has_more"]
+                suffix = f"\n（共 {total} 条，还有更多）" if has_more else f"\n（共 {total} 条）"
+                return "\n".join(f"- {ln}" for ln in links) + suffix
+            # action == "template"
             templates = await _get_template_data(page_title)
+            if not templates:
+                return f"页面 '{page_title}' 未找到可提取的模板数据。"
+            return json.dumps(templates, ensure_ascii=False, indent=2)
         except RuntimeError as e:
             return str(e)
         except Exception as e:
-            return f"获取页面 '{page_title}' 的模板数据失败：{e}"
-        if not templates:
-            return f"页面 '{page_title}' 未找到可提取的模板数据。"
-        return json.dumps(templates, ensure_ascii=False, indent=2)
+            return f"访问 PRTS 页面失败：{e}"

@@ -46,8 +46,8 @@ export function registerPrtsTools(server: McpServer): void {
     "prts_page",
     [
       "读取 PRTS 维基页面的内容或元数据（按 action 分派）。",
-      "推荐流程：先用 action=\"sections\" 看目录，再用 action=\"read\" + section_index 读特定章节，避免整页过载。",
-      "其余 action：categories=分类标签，links=相关链接，template=结构化模板数据。先用 search_prts 获取准确标题。",
+      "推荐流程：先用 action=\"sections\" 看目录（返回 [编号] L层级 标题，T- 前缀表示模板嵌入的节），再用 action=\"read\" + section_index 读特定章节，避免整页过载。",
+      "其余 action：categories=分类标签；links=相关链接（outbound 出链 / inbound 反向链接，探索维基知识图谱）；template=结构化模板数据（如干员 CharinfoV2、敌人 敌人信息/common2、物品 道具信息）。先用 search_prts 获取准确标题。",
     ].join(" "),
     {
       page_title: z.string().describe("词条标题，需与维基页面标题完全一致，如「阿米娅」。建议先用 search_prts 获取准确标题。"),
