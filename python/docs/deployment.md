@@ -138,23 +138,19 @@ docker run -i --rm `
         "get_operator_basic_info",
         "list_enemies",
         "get_enemy_info",
-        "search_enemies",
         "get_stage_enemies",
         "get_enemy_appearances",
         "list_stages",
         "get_stage_info",
-        "search_stages",
         "list_items",
         "get_item_info",
-        "search_items",
         "list_story_events",
         "list_stories",
         "get_event_summary",
         "get_story_summary",
         "read_story",
         "read_activity",
-        "list_search_scopes",
-        "search_data",
+        "search",
         "search_stories"
     ]
 }
@@ -205,15 +201,12 @@ npx @modelcontextprotocol/inspector docker run -i --rm -v prts-mcp-data:/data/ga
 | `list_enemies` | `threat_level`: `boss` | 干员数据 |
 | `get_enemy_info` | `name`: `源石虫` | 干员数据 |
 | `get_enemy_info` | `name`: `源石虫`, `stage_id`: `main_00-01` | 关卡战斗数据 |
-| `search_enemies` | `pattern`: `萨卡兹` | 干员数据 |
 | `get_stage_enemies` | `stage_id`: `main_00-01` | 关卡战斗数据 |
 | `get_enemy_appearances` | `name`: `源石虫` | 关卡战斗数据 |
 | `list_stages` | `type`: `MAIN` | 干员数据 |
 | `get_stage_info` | `stage_id`: `main_00-01` | 干员数据 |
-| `search_stages` | `pattern`: `切尔诺伯格` | 干员数据 |
 | `list_items` | `category`: `MATERIAL` | 干员数据 |
 | `get_item_info` | `name`: `固源岩` | 干员数据 |
-| `search_items` | `pattern`: `源岩|装置` | 干员数据 |
 | `get_operator_memoirs` | `name`: `阿米娅` | 剧情数据 |
 | `find_character_appearances` | `name`: `阿米娅`, `max_events`: `5` | 剧情数据 |
 | `find_speakers_in` | `event_id`: `act31side` | 剧情数据 |
@@ -223,8 +216,7 @@ npx @modelcontextprotocol/inspector docker run -i --rm -v prts-mcp-data:/data/ga
 | `get_story_summary` | `story_key`: `activities/act31side/level_act31side_01_beg` | 剧情数据 |
 | `read_story` | `story_key`: `activities/act31side/level_act31side_01_beg` | 剧情数据 |
 | `read_activity` | `event_id`: `act31side`, `page`: `1` | 剧情数据 |
-| `list_search_scopes` | 无参数 | 混合 |
-| `search_data` | `pattern`: `阿米娅` | 干员数据 |
+| `search` | `scope`: `operators`, `pattern`: `阿米娅` | 干员数据 |
 | `search_stories` | `pattern`: `博士`, `event_id`: `act31side` | 剧情数据 |
 
 ---

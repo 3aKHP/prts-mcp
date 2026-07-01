@@ -165,7 +165,7 @@ test("E2E", async (t) => {
   });
 
   // --- tools/list ---
-  await t.test("tools/list returns all 32 tools", async () => {
+  await t.test("tools/list returns all 28 tools", async () => {
     const tl = await mcpPost(
       origin,
       { jsonrpc: "2.0", method: "tools/list", id: 2 },
@@ -175,18 +175,18 @@ test("E2E", async (t) => {
     assert.equal(tl.status, 200);
     const tools = (tl.body?.result as Record<string, unknown>)?.tools as Array<{ name: string }> | undefined;
     assert.ok(tools, "tools/list should return tools");
-    assert.equal(tools!.length, 32, `got ${tools!.length} tools`);
+    assert.equal(tools!.length, 28, `got ${tools!.length} tools`);
 
     const expected = new Set([
       "search_prts", "read_prts_page", "list_prts_sections",
       "get_prts_categories", "get_prts_links", "get_prts_template",
       "get_operator_archives", "get_operator_voicelines", "get_operator_basic_info",
-      "list_enemies", "get_enemy_info", "search_enemies",
+      "list_enemies", "get_enemy_info",
       "get_stage_enemies", "get_enemy_appearances",
-      "list_stages", "get_stage_info", "search_stages",
-      "list_items", "get_item_info", "search_items",
+      "list_stages", "get_stage_info",
+      "list_items", "get_item_info",
       "list_story_events", "list_stories", "read_story", "read_activity",
-      "list_search_scopes", "search_data", "search_stories",
+      "search", "search_stories",
       "get_event_summary", "get_story_summary",
       "get_operator_memoirs",
       "find_character_appearances", "find_speakers_in",
@@ -226,8 +226,8 @@ test("E2E", async (t) => {
     assert.ok(text.includes("语音记录") && text.includes("阿米娅"), text.slice(0, 80));
   });
 
-  await t.test("search_data", async () => {
-    const r = await mcpPost(origin, tc("search_data", { pattern: "法术伤害", scope: "operators", max_results: 3 }, 7), sessionId);
+  await t.test("search", async () => {
+    const r = await mcpPost(origin, tc("search", { scope: "operators", pattern: "法术伤害", max_results: 3 }, 7), sessionId);
     assert.equal(r.status, 200);
     const text = toolResultText(r);
     assert.ok(text.includes("法术伤害"), text.slice(0, 80));

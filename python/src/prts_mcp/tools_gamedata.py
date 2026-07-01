@@ -1,6 +1,6 @@
 """GameData tool registrations — operators, enemies, stages, items, search.
 
-Split from server.py. Covers 16 tools that read local gamedata tables
+Split from server.py. Covers 12 tools that read local gamedata tables
 (via the store abstraction) and format results as markdown text.
 """
 from __future__ import annotations
@@ -38,7 +38,7 @@ from prts_mcp.data.search import search_operator_data as _search_operator_data
 
 
 def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
-    """Register the 16 GameData-backed tools on the given FastMCP instance."""
+    """Register the 12 GameData-backed tools on the given FastMCP instance."""
 
     @mcp.tool()
     async def get_operator_archives(
@@ -106,18 +106,6 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         return _get_enemy_info(name)
 
     @mcp.tool()
-    def search_enemies(
-        pattern: Annotated[str, Field(description="正则表达式模式，如 '萨卡兹|骑士'。")],
-        max_results: Annotated[int, Field(default=30, ge=1, le=100, description="返回结果数量上限，默认 30。")] = 30,
-    ) -> str:
-        """在敌人图鉴中进行全文正则搜索。
-
-        搜索范围包含敌人名称、描述和特殊能力文本。可用于探索特定种族、
-        阵营或关键词相关的敌人信息。
-        """
-        return _search_enemies(pattern, max_results=max_results)
-
-    @mcp.tool()
     def get_stage_enemies(
         stage_id: Annotated[str, Field(description="关卡 ID，如 'main_00-01'（可从 list_stages 获取）。")],
     ) -> str:
@@ -166,17 +154,6 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         return _get_stage_info(stage_id)
 
     @mcp.tool()
-    def search_stages(
-        pattern: Annotated[str, Field(description="正则表达式搜索模式，大小写不敏感。例如 'H10'、'切尔诺伯格'。")],
-        max_results: Annotated[int, Field(default=30, ge=1, le=100, description="最多返回条数，默认 30。")] = 30,
-    ) -> str:
-        """在关卡数据库中执行全文正则搜索。
-
-        搜索范围覆盖关卡名称、编号、描述。返回匹配关卡的基本信息块。
-        """
-        return _search_stages(pattern, max_results=max_results)
-
-    @mcp.tool()
     def list_items(
         category: Annotated[str | None, Field(default=None, description="按物品分类过滤，如 MATERIAL（材料）、NORMAL（普通）、CONSUME（消耗品）。不填则返回全部可见物品。")] = None,
         limit: Annotated[int, Field(default=50, description="返回数量上限，默认 50。")] = 50,
@@ -200,53 +177,24 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         return _get_item_info(name)
 
     @mcp.tool()
-    def search_items(
-        pattern: Annotated[str, Field(description="正则表达式搜索模式，如「源岩|装置」。")],
+    def search(
+        scope: Annotated[str, Field(description="搜索域（必填）：operators（干员）/ enemies（敌人）/ stages（关卡）/ items（物品）。")],
+        pattern: Annotated[str, Field(description="正则表达式搜索模式，大小写不敏感。")],
         max_results: Annotated[int, Field(default=30, ge=1, le=100, description="返回结果数量上限，默认 30。")] = 30,
     ) -> str:
-        """在物品/材料数据中进行全文正则搜索。
+        """在指定数据域中执行全文正则搜索。
 
-        搜索范围包含物品名称、描述、用途、获取方式和类型。
+        scope 选择搜索域：operators（名称/属性/档案/语音）、enemies（图鉴）、
+        stages（关卡）、items（物品/材料）。返回带域标签的匹配结果。
+        剧情台词搜索请用 search_stories（参数不同）。
         """
-        return _search_items(pattern, max_results=max_results)
-
-    @mcp.tool()
-    def list_search_scopes() -> str:
-        """列出所有可搜索的数据域及其内容类型。
-
-        返回可用搜索域的名称和简介，帮助 Agent 选择合适的搜索工具和 scope 参数。
-        无需参数，始终返回当前服务器支持的所有搜索域。
-        """
-        return (
-            "可用搜索域：\n"
-            "- operators：干员数据（名称、基本信息描述、档案文本、语音台词）\n"
-            "  使用 search_data(scope=\"operators\") 搜索。\n"
-            "- stories：剧情台词（对话、旁白、选项），按活动/章节组织，支持按角色和台词类型过滤。\n"
-            "  使用 search_stories 搜索。\n"
-            "- stages：关卡数据（名称、编号、描述、类型、掉落、解锁条件）。\n"
-            "  使用 list_stages / get_stage_info / search_stages 查询。\n"
-            "- enemies：敌人图鉴（名称、威胁等级、描述、属性）。\n"
-            "  使用 list_enemies / get_enemy_info / search_enemies 查询。\n"
-            "- items：物品/材料（名称、描述、用途、掉落、商店关联）。\n"
-            "  使用 list_items / get_item_info / search_items 查询。\n"
-            "- memoirs：干员密录剧情，可通过 get_operator_memoirs 按干员名查找。\n"
-            "  获取 story_key 后使用 read_story 读取完整台词。"
-        )
-
-    @mcp.tool()
-    def search_data(
-        pattern: Annotated[str, Field(description="正则表达式搜索模式，大小写不敏感。例如「博士」、「法术伤害」。")],
-        scope: Annotated[str, Field(default="operators", description="搜索域，目前支持 \"operators\"。")] = "operators",
-        max_results: Annotated[int, Field(default=30, ge=1, le=100, description="最多返回条数，默认 30。")] = 30,
-    ) -> str:
-        """在干员数据中执行全文正则搜索。
-
-        搜索范围覆盖干员名称、攻击属性描述、档案文本和语音台词。
-        返回带领域标签（operators/basic、operators/archives、operators/voicelines）的
-        匹配结果，包含匹配字段名和完整文本。
-
-        如需搜索剧情台词，请使用 search_stories。
-        """
-        if scope != "operators":
-            return f"不支持的搜索域：{scope!r}。当前仅支持 scope=\"operators\"。"
-        return _search_operator_data(pattern, max_results=max_results)
+        searchers = {
+            "operators": _search_operator_data,
+            "enemies": _search_enemies,
+            "stages": _search_stages,
+            "items": _search_items,
+        }
+        fn = searchers.get(scope)
+        if fn is None:
+            return f"不支持的搜索域：{scope!r}。可选：operators、enemies、stages、items。"
+        return fn(pattern, max_results=max_results)
