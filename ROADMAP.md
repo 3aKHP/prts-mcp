@@ -201,6 +201,13 @@ Today the implementations have de-facto roles: Python is recommended for Docker 
 6. **Consolidate by schema shape, not by domain** — merging tools that
    share parameter structure preserves selection accuracy; merging by
    "everything operator-related" doesn't.
+7. **Prefer extending a `scope` enum over adding a list/get/search triplet
+   per new data domain** — when onboarding a new data domain (e.g. base
+   skills, skins, furniture), first check whether it fits an existing unified
+   entry point's enum (e.g. `search(scope)`); only add a new tool when the
+   output shape is genuinely heterogeneous and cannot be carried by an
+   existing tool. This targets the "+3 tools per data domain" growth that
+   drove the surface from 24 to 32 across 1.x.
 
 ---
 
