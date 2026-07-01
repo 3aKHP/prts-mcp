@@ -30,7 +30,9 @@ from prts_mcp.data.story_reader import (
 @dataclass(frozen=True)
 class _StorySearchChapter:
     event_id: str
+    story_key: str
     story_code: str
+    story_name: str
     lines: tuple[StoryLine, ...]
 
 
@@ -277,7 +279,9 @@ def _build_story_search_index(store: JsonStore) -> _StorySearchIndex:
             chapter_index = len(chapters)
             indexed_chapter = _StorySearchChapter(
                 event_id=ev_id,
+                story_key=d.get("storyTxt", ""),
                 story_code=d.get("storyCode", ""),
+                story_name=d.get("storyName", ""),
                 lines=tuple(chapter.lines),
             )
             chapters.append(indexed_chapter)

@@ -24,6 +24,9 @@ export type {
   ActivityResult,
   MemoirChapter,
   OperatorMemoirResult,
+  CharacterAppearance,
+  CharacterAppearanceResult,
+  SpeakerCount,
 } from "./storyReader.js";
 
 // Public reader functions from storyReader
@@ -57,6 +60,14 @@ export {
   getStorySummary,
   getStorySummaryFromStore,
 } from "./storySummary.js";
+
+// Character tracking
+export {
+  findCharacterAppearances,
+  findCharacterAppearancesFromStore,
+  findSpeakersIn,
+  findSpeakersInFromStore,
+} from "./storyCharacter.js";
 
 // Cache management
 import { clearSearchCache } from "./storySearch.js";
