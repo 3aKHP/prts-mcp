@@ -1,0 +1,28 @@
+{
+  "total": 2,
+  "offset": 0,
+  "limit": 50,
+  "full": false,
+  "filters": {
+    "threat_level": null,
+    "threat_level_filter": null
+  },
+  "enemies": [
+    {
+      "enemy_id": "enemy_1004_mslime",
+      "name": "源石虫",
+      "enemy_index": "B1",
+      "level_raw": "NORMAL",
+      "level_label": "普通",
+      "description_excerpt": "野生的被感染生物。"
+    },
+    {
+      "enemy_id": "enemy_1505_frstar",
+      "name": "霜星",
+      "enemy_index": "FN",
+      "level_raw": "BOSS",
+      "level_label": "领袖",
+      "description_excerpt": "整合运动法术部队干部。"
+    }
+  ]
+}

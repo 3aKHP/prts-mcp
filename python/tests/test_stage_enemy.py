@@ -8,11 +8,20 @@ from unittest.mock import patch
 import pytest
 
 from prts_mcp.data.stage_enemy import (
+    build_enemy_appearances,
+    build_stage_enemies,
     clear_stage_enemy_caches,
     get_enemy_appearances,
     get_enemy_stage_info,
     get_stage_enemies,
+    render_enemy_appearances,
+    render_stage_enemies,
 )
+
+
+def _load_parity_fixture(name: str) -> dict:
+    path = Path(__file__).parents[2] / "tests" / "parity-fixtures" / name
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def _write_fixture(root: Path) -> None:
@@ -196,6 +205,9 @@ def test_get_stage_enemies_golden(gamedata: Path) -> None:
         "- **关卡覆盖**：是\n"
         "- **战斗属性**：HP 1,234；ATK 321；DEF 45；RES 10"
     )
+    data = build_stage_enemies("main_00-01")
+    assert data == _load_parity_fixture("stage_enemies.json")
+    assert render_stage_enemies(data) == get_stage_enemies("main_00-01")
 
 
 def test_get_enemy_appearances_golden(gamedata: Path) -> None:
@@ -206,6 +218,17 @@ def test_get_enemy_appearances_golden(gamedata: Path) -> None:
         "- **坍塌** 0-1（main_00-01）：6 个\n"
         "\n"
         "（显示第 1–1 条，共 1 条。使用 offset=50 查看下一页）"
+    )
+    data = build_enemy_appearances("源石虫")
+    assert data == _load_parity_fixture("enemy_appearances.json")
+    assert render_enemy_appearances(data) == get_enemy_appearances("源石虫")
+
+
+def test_get_enemy_appearances_empty_is_structured(gamedata: Path) -> None:
+    data = build_enemy_appearances("未出场敌人")
+    assert data == _load_parity_fixture("enemy_appearances_empty.json")
+    assert render_enemy_appearances(data) == (
+        "未找到 未出场敌人（enemy_unused）的实际出场关卡。"
     )
 
 

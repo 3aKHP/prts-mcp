@@ -1,0 +1,38 @@
+{
+  "name": "霜星",
+  "enemy_id": "enemy_1505_frstar",
+  "enemy_index": "FN",
+  "level_raw": "BOSS",
+  "level_label": "领袖",
+  "description": "整合运动法术部队干部。",
+  "attack_type": "",
+  "ability": "",
+  "damage_types_raw": [
+    "MAGIC"
+  ],
+  "damage_types_label": "法术",
+  "enemy_tags": [],
+  "stats": {
+    "max_hp": "25,000",
+    "atk": "420",
+    "def": "250",
+    "resistance": "50.0",
+    "move_speed": "0.5",
+    "attack_interval": "3.7s",
+    "attack_speed": null,
+    "mass_level": null,
+    "hp_recovery_per_sec": null,
+    "immunities": [
+      "眩晕",
+      "冻结"
+    ],
+    "life_point_reduce": null,
+    "skills": [
+      {
+        "prefab": "ArcticBlast",
+        "timing": "冷却 8.5s",
+        "blackboard": "duration=8.0，atk_scale=1.5"
+      }
+    ]
+  }
+}

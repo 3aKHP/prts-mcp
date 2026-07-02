@@ -1,0 +1,31 @@
+{
+  "stage_id": "main_00-01",
+  "stage_label": "坍塌 0-1（main_00-01）",
+  "total": 3,
+  "enemies": [
+    {
+      "enemy_id": "enemy_1007_slime",
+      "name": "源石虫",
+      "count": 6,
+      "level": 0,
+      "overwritten": false,
+      "stats_text": "HP 550；ATK 130；DEF 0；RES 0；移速 1.0；攻击间隔 1.7s"
+    },
+    {
+      "enemy_id": "enemy_1002_nsabr",
+      "name": "士兵",
+      "count": 1,
+      "level": 0,
+      "overwritten": true,
+      "stats_text": "HP 1,650；ATK 200；DEF 30；RES 0"
+    },
+    {
+      "enemy_id": "enemy_custom",
+      "name": "关卡特化敌人",
+      "count": 1,
+      "level": 0,
+      "overwritten": true,
+      "stats_text": "HP 1,234；ATK 321；DEF 45；RES 10"
+    }
+  ]
+}

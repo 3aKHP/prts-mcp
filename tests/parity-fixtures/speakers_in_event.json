@@ -1,0 +1,14 @@
+{
+  "event_id": "act_test",
+  "total": 2,
+  "speakers": [
+    {
+      "name": "博士",
+      "line_count": 2
+    },
+    {
+      "name": "阿米娅",
+      "line_count": 1
+    }
+  ]
+}

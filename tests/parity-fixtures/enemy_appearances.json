@@ -1,0 +1,15 @@
+{
+  "enemy_id": "enemy_1007_slime",
+  "enemy_name": "源石虫",
+  "total": 1,
+  "offset": 0,
+  "limit": 50,
+  "stages": [
+    {
+      "stage_id": "main_00-01",
+      "stage_name": "坍塌",
+      "code": "0-1",
+      "count": 6
+    }
+  ]
+}

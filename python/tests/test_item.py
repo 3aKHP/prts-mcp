@@ -8,16 +8,24 @@ from pathlib import Path
 import pytest
 
 from prts_mcp.data.item import (
+    build_item_info,
     build_item_search,
     build_items_listing,
     clear_item_caches,
     get_item_info,
     get_item_name_by_id,
     list_items,
+    render_item_info,
     render_item_search,
+    render_items_listing,
     search_items,
 )
 from prts_mcp.output import render_result
+
+
+def _load_parity_fixture(name: str) -> dict:
+    path = Path(__file__).parents[2] / "tests" / "parity-fixtures" / name
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def _write_sentinels(excel: Path) -> None:
@@ -125,6 +133,7 @@ def test_list_items_golden_default(gamedata: str) -> None:
         "\n"
         "（显示第 1–2 条，共 2 条。使用 offset=50 查看下一页）"
     )
+    assert build_items_listing() == _load_parity_fixture("list_items.json")
 
 
 def test_list_items_golden_category_filter(gamedata: str) -> None:
@@ -142,12 +151,10 @@ def test_list_items_empty_match_is_structured_not_error(gamedata: str) -> None:
     # NOT a content-only error — structured consumers can rely on it. The
     # content channel still emits the original "没有匹配" message verbatim.
     data = build_items_listing(category="NONEXISTENT")
-    assert isinstance(data, dict)
-    assert data["total"] == 0
-    assert data["items"] == []
-    assert data["empty_reason"] == "no_match"
+    assert data == _load_parity_fixture("list_items_empty.json")
     # content stays byte-for-byte (the original message)
     assert list_items(category="NONEXISTENT") == "没有匹配的物品（category=NONEXISTENT）。"
+    assert render_items_listing(data) == "没有匹配的物品（category=NONEXISTENT）。"
     # structured channel carries the empty payload
     r = render_result(data, list_items(category="NONEXISTENT"), channel="structured")
     assert r.structuredContent == data
@@ -176,6 +183,9 @@ def test_get_item_info_golden(gamedata: str) -> None:
         "- main_00-01（固定）\n"
         "- main_00-02（小概率）"
     )
+    data = build_item_info("源岩")
+    assert data == _load_parity_fixture("item_info.json")
+    assert render_item_info(data) == get_item_info("源岩")
 
 
 def test_get_item_info_by_id(gamedata: str) -> None:
@@ -183,6 +193,14 @@ def test_get_item_info_by_id(gamedata: str) -> None:
     assert "招聘许可" in out
     assert "采购中心、任务奖励" in out
     assert "shopId=credit" in out
+
+
+def test_get_item_info_missing_optional_lists_are_null(gamedata: str) -> None:
+    data = build_item_info("隐藏物品")
+    assert isinstance(data, dict)
+    assert data["building_product_list"] is None
+    assert data["shop_relate_list"] is None
+    assert data["voucher_relate_list"] is None
 
 
 def test_get_item_name_by_id(gamedata: str) -> None:

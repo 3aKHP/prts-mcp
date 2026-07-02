@@ -1,0 +1,33 @@
+{
+  "total": 4,
+  "filters": {
+    "category": "activities",
+    "category_normalized": "activities"
+  },
+  "events": [
+    {
+      "event_id": "act_test",
+      "name": "测试活动",
+      "entry_type": "ACTIVITY",
+      "story_count": 2
+    },
+    {
+      "event_id": "act_no_summary",
+      "name": "无长摘要活动",
+      "entry_type": "ACTIVITY",
+      "story_count": 2
+    },
+    {
+      "event_id": "act_narration",
+      "name": "纯旁白活动",
+      "entry_type": "ACTIVITY",
+      "story_count": 1
+    },
+    {
+      "event_id": "act_empty",
+      "name": "空活动",
+      "entry_type": "ACTIVITY",
+      "story_count": 0
+    }
+  ]
+}

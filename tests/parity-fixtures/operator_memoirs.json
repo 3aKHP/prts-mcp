@@ -1,0 +1,13 @@
+{
+  "operator_name": "阿米娅",
+  "internal_code": "amiya",
+  "operator_id": "char_002_amiya",
+  "total": 1,
+  "chapters": [
+    {
+      "story_code": "AM-1",
+      "story_name": "出发",
+      "story_key": "memory/amiya/level_amiya_01"
+    }
+  ]
+}

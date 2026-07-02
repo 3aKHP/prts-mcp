@@ -7,11 +7,40 @@
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { getOperatorArchives, getOperatorVoicelines, getOperatorBasicInfo } from "../data/operator.js";
-import { listEnemies, getEnemyInfo, searchEnemies } from "../data/enemy.js";
-import { buildStagesListing, getStageInfo, renderStagesListing, searchStages } from "../data/stage.js";
-import { listItems, getItemInfo, searchItems } from "../data/item.js";
-import { getStageEnemies, getEnemyAppearances, getEnemyStageInfo } from "../data/stageEnemy.js";
+import {
+  buildOperatorBasicInfo,
+  getOperatorArchives,
+  getOperatorVoicelines,
+  renderOperatorBasicInfo,
+} from "../data/operator.js";
+import {
+  buildEnemiesListing,
+  buildEnemyInfo,
+  renderEnemiesListing,
+  renderEnemyInfo,
+  searchEnemies,
+} from "../data/enemy.js";
+import {
+  buildStageInfo,
+  buildStagesListing,
+  renderStageInfo,
+  renderStagesListing,
+  searchStages,
+} from "../data/stage.js";
+import {
+  buildItemInfo,
+  buildItemsListing,
+  renderItemInfo,
+  renderItemsListing,
+  searchItems,
+} from "../data/item.js";
+import {
+  buildEnemyAppearances,
+  buildStageEnemies,
+  getEnemyStageInfo,
+  renderEnemyAppearances,
+  renderStageEnemies,
+} from "../data/stageEnemy.js";
 import { searchOperatorData } from "../data/search.js";
 import { renderResult, textResult, type OutputChannel } from "../output.js";
 
@@ -53,8 +82,14 @@ export function registerGamedataTools(server: McpServer, channel: OutputChannel 
     ].join(" "),
     { name: z.string().describe("干员的游戏内中文名，如「阿米娅」、「能天使」。") },
     ({ name }) => {
-      const text = getOperatorBasicInfo(name);
-      return { content: [{ type: "text", text }] };
+      const data = buildOperatorBasicInfo(name);
+      if (typeof data === "string") return textResult(data);
+      return renderResult(
+        data,
+        renderOperatorBasicInfo(data),
+        channel,
+        `干员『${data.name}』的基本信息`,
+      );
     }
   );
 
@@ -73,9 +108,11 @@ export function registerGamedataTools(server: McpServer, channel: OutputChannel 
       offset: z.number().int().min(0).default(0).describe("分页偏移量，默认 0。"),
       full: z.boolean().default(false).describe("返回全部敌人（忽略 limit/offset）。不推荐常规使用。"),
     },
-    ({ threat_level, limit, offset, full }) => ({
-      content: [{ type: "text", text: listEnemies(threat_level ?? null, limit, offset, full) }],
-    })
+    ({ threat_level, limit, offset, full }) => {
+      const data = buildEnemiesListing(threat_level ?? null, limit, offset, full);
+      if (typeof data === "string") return textResult(data);
+      return renderResult(data, renderEnemiesListing(data), channel);
+    }
   );
 
   server.tool(
@@ -89,9 +126,17 @@ export function registerGamedataTools(server: McpServer, channel: OutputChannel 
       name: z.string().describe("敌人的游戏内中文名，如「源石虫」、「霜星」。"),
       stage_id: z.string().optional().describe("可选关卡 ID；设置后返回该关卡内的敌人等级/覆盖后的战斗属性。"),
     },
-    ({ name, stage_id }) => ({
-      content: [{ type: "text", text: stage_id ? getEnemyStageInfo(name, stage_id) : getEnemyInfo(name) }],
-    })
+    ({ name, stage_id }) => {
+      if (stage_id) return textResult(getEnemyStageInfo(name, stage_id));
+      const data = buildEnemyInfo(name);
+      if (typeof data === "string") return textResult(data);
+      return renderResult(
+        data,
+        renderEnemyInfo(data),
+        channel,
+        `敌人『${data.name}』的图鉴`,
+      );
+    }
   );
 
   server.tool(
@@ -104,7 +149,16 @@ export function registerGamedataTools(server: McpServer, channel: OutputChannel 
     {
       stage_id: z.string().describe("关卡 ID，如 'main_00-01'（可从 list_stages 获取）。"),
     },
-    ({ stage_id }) => ({ content: [{ type: "text", text: getStageEnemies(stage_id) }] })
+    ({ stage_id }) => {
+      const data = buildStageEnemies(stage_id);
+      if (typeof data === "string") return textResult(data);
+      return renderResult(
+        data,
+        renderStageEnemies(data),
+        channel,
+        `${data.stage_label} 的敌人列表（共 ${data.total} 种）`,
+      );
+    }
   );
 
   server.tool(
@@ -118,9 +172,11 @@ export function registerGamedataTools(server: McpServer, channel: OutputChannel 
       limit: z.number().int().min(1).max(200).default(50).describe("返回数量上限，默认 50。"),
       offset: z.number().int().min(0).default(0).describe("分页偏移量，默认 0。"),
     },
-    ({ name, limit, offset }) => ({
-      content: [{ type: "text", text: getEnemyAppearances(name, limit, offset) }],
-    })
+    ({ name, limit, offset }) => {
+      const data = buildEnemyAppearances(name, limit, offset);
+      if (typeof data === "string") return textResult(data);
+      return renderResult(data, renderEnemyAppearances(data), channel);
+    }
   );
 
   // --- Stage tools ---
@@ -150,7 +206,16 @@ export function registerGamedataTools(server: McpServer, channel: OutputChannel 
     "get_stage_info",
     "获取指定关卡的详细信息。返回关卡的编号、类型、难度、所属区域、理智消耗、掉落奖励、解锁条件等。关卡实际出场的敌人见 get_stage_enemies。",
     { stage_id: z.string().describe("关卡 ID，如 'main_00-01'（可从 list_stages 获取）。") },
-    ({ stage_id }) => ({ content: [{ type: "text", text: getStageInfo(stage_id) }] })
+    ({ stage_id }) => {
+      const data = buildStageInfo(stage_id);
+      if (typeof data === "string") return textResult(data);
+      return renderResult(
+        data,
+        renderStageInfo(data),
+        channel,
+        `关卡『${data.name}』的详情`,
+      );
+    }
   );
 
   // --- Item tools ---
@@ -166,9 +231,11 @@ export function registerGamedataTools(server: McpServer, channel: OutputChannel 
       limit: z.number().int().min(1).max(200).default(50).describe("返回数量上限，默认 50。"),
       offset: z.number().int().min(0).default(0).describe("分页偏移量，默认 0。"),
     },
-    ({ category, limit, offset }) => ({
-      content: [{ type: "text", text: listItems(category ?? null, limit, offset) }],
-    })
+    ({ category, limit, offset }) => {
+      const data = buildItemsListing(category ?? null, limit, offset);
+      if (typeof data === "string") return textResult(data);
+      return renderResult(data, renderItemsListing(data), channel);
+    }
   );
 
   server.tool(
@@ -180,7 +247,16 @@ export function registerGamedataTools(server: McpServer, channel: OutputChannel 
     {
       name: z.string().describe("物品中文名或 itemId，如「固源岩」、「招聘许可」或 \"30012\"。"),
     },
-    ({ name }) => ({ content: [{ type: "text", text: getItemInfo(name) }] })
+    ({ name }) => {
+      const data = buildItemInfo(name);
+      if (typeof data === "string") return textResult(data);
+      return renderResult(
+        data,
+        renderItemInfo(data),
+        channel,
+        `物品『${data.name}』的详情`,
+      );
+    }
   );
 
   // --- Search tools ---

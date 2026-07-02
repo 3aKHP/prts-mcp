@@ -8,11 +8,13 @@ from pathlib import Path
 import pytest
 
 from prts_mcp.data.stage import (
+    build_stage_info,
     build_stage_search,
     build_stages_listing,
     clear_stage_caches,
     list_stages,
     get_stage_info,
+    render_stage_info,
     render_stages_listing,
     render_stage_search,
     search_stages,
@@ -90,7 +92,6 @@ def _make_fixture(root: Path) -> None:
             "apCost": 12,
             "dangerLevel": "NORMAL",
             "description": "",
-            "stageDropInfo": {"displayRewards": []},
             "unlockCondition": [
                 {"stageId": "act31side_02", "completeState": "PASS"},
             ],
@@ -356,6 +357,9 @@ class TestGetStageInfo:
             "## 关联关卡\n"
             "- 突袭模式：main_00-01#f#（坍塌·突袭）"
         )
+        data = build_stage_info("main_00-01")
+        assert data == _load_parity_fixture("stage_info.json")
+        assert render_stage_info(data) == get_stage_info("main_00-01")
 
     def test_four_star_variant(self, gamedata: str) -> None:
         out = get_stage_info("main_00-01#f#")
@@ -381,6 +385,9 @@ class TestGetStageInfo:
     def test_empty_drops(self, gamedata: str) -> None:
         out = get_stage_info("act31side_01")
         assert "（无）" in out
+        data = build_stage_info("act31side_01")
+        assert isinstance(data, dict)
+        assert data["drop_info"] is None
 
     def test_multi_drops(self, gamedata: str) -> None:
         out = get_stage_info("daily_01")

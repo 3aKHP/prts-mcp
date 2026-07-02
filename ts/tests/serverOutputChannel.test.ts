@@ -180,6 +180,22 @@ test("output_channel is resolved once per session by query/header/env priority",
       headers,
     );
 
+  const callTool = (
+    sessionId: string,
+    name: string,
+    args: Record<string, unknown> = {},
+  ) =>
+    mcpPost(
+      origin,
+      {
+        jsonrpc: "2.0",
+        method: "tools/call",
+        params: { name, arguments: args },
+        id: id++,
+      },
+      sessionId,
+    );
+
   const envInit = await initialize();
   assert.equal(envInit.status, 200);
   assert.ok(envInit.sessionId);
@@ -229,6 +245,19 @@ test("output_channel is resolved once per session by query/header/env priority",
 
   const content = toolResult.content as Array<{ text: string }>;
   assert.equal(content[0].text, "（结构化结果共 1 条，详见 structuredContent）");
+
+  const stageInfoResult = await callTool(queryInit.sessionId, "get_stage_info", {
+    stage_id: "main_00-01",
+  });
+  const stageInfoToolResult = stageInfoResult.body.result as Record<string, unknown>;
+  assert.equal(
+    ((stageInfoToolResult.content as Array<{ text: string }>)[0]).text,
+    "关卡『坍塌』的详情",
+  );
+  assert.equal(
+    (stageInfoToolResult.structuredContent as Record<string, unknown>).stage_id,
+    "main_00-01",
+  );
 
   const fixedResult = await callListStages(
     queryInit.sessionId,

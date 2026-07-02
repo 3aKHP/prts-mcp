@@ -9,15 +9,22 @@ from unittest.mock import patch
 import pytest
 
 from prts_mcp.data.enemy import (
+    build_enemy_info,
     build_enemy_search,
     build_enemies_listing,
     clear_enemy_caches,
     list_enemies,
     get_enemy_info,
+    render_enemy_info,
     render_enemy_search,
     search_enemies,
 )
 from prts_mcp.output import render_result
+
+
+def _load_parity_fixture(name: str) -> dict:
+    path = Path(__file__).parents[2] / "tests" / "parity-fixtures" / name
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def _write_handbook(excel: Path) -> None:
@@ -150,6 +157,7 @@ class TestListEnemies:
             "- **源石虫** [普通] (B1) — 野生的被感染生物。\n"
             "- **霜星** [领袖] (FN) — 整合运动法术部队干部。"
         )
+        assert build_enemies_listing() == _load_parity_fixture("list_enemies.json")
 
     def test_golden_boss_filter(self, gamedata):
         assert list_enemies(threat_level="boss") == (
@@ -162,7 +170,7 @@ class TestListEnemies:
         # legitimate-but-empty structured payload, not a content-only error.
         # Content stays byte-for-byte (the original header + out-of-range msg).
         data = build_enemies_listing(offset=999)
-        assert isinstance(data, dict)
+        assert data == _load_parity_fixture("list_enemies_offset_empty.json")
         assert data["enemies"] == []
         assert data["empty_reason"] == "offset_out_of_range"
         assert list_enemies(offset=999) == (
@@ -221,6 +229,9 @@ class TestGetEnemyInfo:
         # Skills
         assert "ArcticBlast" in out
         assert "duration=8.0" in out
+        data = build_enemy_info("霜星")
+        assert data == _load_parity_fixture("enemy_info_with_stats.json")
+        assert render_enemy_info(data) == out
 
     def test_reads_database_from_sibling_levels_path(self, split_levels_gamedata):
         out = get_enemy_info("霜星")
@@ -232,6 +243,9 @@ class TestGetEnemyInfo:
         out = get_enemy_info("源石虫")
         assert "源石虫" in out
         assert "**最大生命**" not in out
+        data = build_enemy_info("源石虫")
+        assert data == _load_parity_fixture("enemy_info.json")
+        assert render_enemy_info(data) == out
 
     def test_unknown_name(self, gamedata):
         assert "未找到敌人" in get_enemy_info("不存在的敌人")

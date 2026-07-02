@@ -62,6 +62,27 @@ export interface StagesListingPayload {
   stages: StageListingEntry[];
 }
 
+export interface StageInfoPayload {
+  stage_id: string;
+  name: string;
+  code: string;
+  type_raw: string;
+  type_label: string;
+  difficulty_raw: string;
+  difficulty_label: string;
+  zone_id: string;
+  zone_display: string;
+  ap_cost: number | string;
+  danger_level: string;
+  boss_mark: boolean;
+  description: string;
+  drop_info: Record<string, unknown> | null;
+  unlock_conditions: { stageId: string; completeState: string }[];
+  level_id: string | null;
+  hard_stage: { id: string | null; name: string | null };
+  six_star_stage: { id: string | null; name: string | null };
+}
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
@@ -316,6 +337,12 @@ export function renderStagesListing(data: StagesListingPayload): string {
 }
 
 export function getStageInfo(stageId: string): string {
+  const data = buildStageInfo(stageId);
+  if (typeof data === "string") return data;
+  return renderStageInfo(data);
+}
+
+export function buildStageInfo(stageId: string): StageInfoPayload | string {
   let stages: StageTable;
   try {
     stages = getStageTable();
@@ -340,35 +367,62 @@ export function getStageInfo(stageId: string): string {
   const unlocks = entry.unlockCondition ?? [];
   const hardId = entry.hardStagedId;
   const levelId = entry.levelId;
+  const sixStarId = entry.sixStarStageId;
+  const hardEntry = hardId ? stages[hardId] : undefined;
+  const sixStarEntry = sixStarId ? stages[sixStarId] : undefined;
 
-  const parts: string[] = [`# ${name} — 关卡详情`, "", "## 基本信息"];
-  parts.push(`- **ID**：${stageId}`);
-  parts.push(`- **编号**：${code}`);
-  parts.push(`- **类型**：${tLabel}`);
-  parts.push(`- **难度**：${dLabel}`);
-  parts.push(`- **所属区域**：${zd}`);
-  parts.push(`- **理智消耗**：${ap}`);
-  parts.push(`- **危险等级**：${danger}`);
-  if (boss) parts.push("- **BOSS标记**：是");
-  if (levelId) parts.push(`- **关卡数据**：${levelId}`);
+  return {
+    stage_id: stageId,
+    name,
+    code,
+    type_raw: entry.stageType ?? "",
+    type_label: tLabel,
+    difficulty_raw: entry.difficulty ?? "",
+    difficulty_label: dLabel,
+    zone_id: entry.zoneId ?? "",
+    zone_display: zd,
+    ap_cost: ap,
+    danger_level: danger,
+    boss_mark: boss,
+    description: desc,
+    drop_info: drops ?? null,
+    unlock_conditions: unlocks,
+    level_id: levelId ?? null,
+    hard_stage: { id: hardId ?? null, name: hardEntry?.name ?? null },
+    six_star_stage: { id: sixStarId ?? null, name: sixStarEntry?.name ?? null },
+  };
+}
 
-  parts.push("", "## 描述", desc);
-  parts.push("", "## 掉落信息", formatDrops(drops));
-  parts.push("", "## 解锁条件", formatUnlock(unlocks));
+export function renderStageInfo(data: StageInfoPayload): string {
+  const parts: string[] = [`# ${data.name} — 关卡详情`, "", "## 基本信息"];
+  parts.push(`- **ID**：${data.stage_id}`);
+  parts.push(`- **编号**：${data.code}`);
+  parts.push(`- **类型**：${data.type_label}`);
+  parts.push(`- **难度**：${data.difficulty_label}`);
+  parts.push(`- **所属区域**：${data.zone_display}`);
+  parts.push(`- **理智消耗**：${data.ap_cost}`);
+  parts.push(`- **危险等级**：${data.danger_level}`);
+  if (data.boss_mark) parts.push("- **BOSS标记**：是");
+  if (data.level_id) parts.push(`- **关卡数据**：${data.level_id}`);
+
+  parts.push("", "## 描述", data.description);
+  parts.push("", "## 掉落信息", formatDrops(data.drop_info));
+  parts.push("", "## 解锁条件", formatUnlock(data.unlock_conditions));
 
   parts.push("", "## 关联关卡");
-  if (hardId) {
-    const hEntry = stages[hardId];
-    const hName = hEntry?.name;
-    parts.push(`- 突袭模式：${hardId}` + (hName ? `（${hName}）` : ""));
+  if (data.hard_stage.id) {
+    parts.push(
+      `- 突袭模式：${data.hard_stage.id}` +
+      (data.hard_stage.name ? `（${data.hard_stage.name}）` : ""),
+    );
   } else {
     parts.push("- 突袭模式：无");
   }
-  const ssid = entry.sixStarStageId;
-  if (ssid) {
-    const sEntry = stages[ssid];
-    const sName = sEntry?.name;
-    parts.push(`- 六星模式：${ssid}` + (sName ? `（${sName}）` : ""));
+  if (data.six_star_stage.id) {
+    parts.push(
+      `- 六星模式：${data.six_star_stage.id}` +
+      (data.six_star_stage.name ? `（${data.six_star_stage.name}）` : ""),
+    );
   }
 
   return parts.join("\n");

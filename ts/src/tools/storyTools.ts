@@ -8,22 +8,26 @@
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { ZipStore } from "../data/stores.js";
 import { loadConfig, hasStoryData } from "../config.js";
 import {
-  listStoryEvents as _listStoryEvents,
-  listStories as _listStories,
+  buildCharacterAppearances as _buildCharacterAppearances,
+  buildOperatorMemoirs as _buildOperatorMemoirs,
+  buildSpeakersInEvent as _buildSpeakersInEvent,
+  buildStoriesListing as _buildStoriesListing,
+  buildStoryEventsListing as _buildStoryEventsListing,
+  renderCharacterAppearances,
+  renderOperatorMemoirs,
+  renderSpeakersInEvent,
+  renderStoriesListing,
+  renderStoryEventsListing,
   readStory as _readStory,
   readActivity as _readActivity,
   searchStories as _searchStories,
   getStorySummary as _getStorySummary,
-  getOperatorMemoirs as _getOperatorMemoirs,
-  findCharacterAppearances as _findCharacterAppearances,
-  findSpeakersIn as _findSpeakersIn,
   type StoryChapter,
   type StoryLine,
 } from "../data/story.js";
-import type { OutputChannel } from "../output.js";
+import { renderResult, textResult, type OutputChannel } from "../output.js";
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -65,7 +69,7 @@ function formatChapter(chapter: StoryChapter): string {
 // Tool registration
 // ---------------------------------------------------------------------------
 
-export function registerStoryTools(server: McpServer, _channel: OutputChannel = "content"): void {
+export function registerStoryTools(server: McpServer, channel: OutputChannel = "content"): void {
   server.tool(
     "list_story_events",
     [
@@ -79,19 +83,13 @@ export function registerStoryTools(server: McpServer, _channel: OutputChannel = 
       try {
         zipPath = requireStoryZip();
       } catch (e) {
-        return { content: [{ type: "text", text: e instanceof Error ? e.message : String(e) }] };
+        return textResult(e instanceof Error ? e.message : String(e));
       }
       try {
-        const events = _listStoryEvents(zipPath, category);
-        if (events.length === 0) {
-          return { content: [{ type: "text", text: "未找到匹配的活动。" }] };
-        }
-        const lines = events.map(
-          (ev) => `- [${ev.entryType}] ${ev.eventId}：${ev.name}（${ev.storyCount} 章）`
-        );
-        return { content: [{ type: "text", text: lines.join("\n") }] };
+        const data = _buildStoryEventsListing(zipPath, category);
+        return renderResult(data, renderStoryEventsListing(data), channel);
       } catch (e) {
-        return { content: [{ type: "text", text: `读取剧情数据失败：${e instanceof Error ? e.message : String(e)}` }] };
+        return textResult(`读取剧情数据失败：${e instanceof Error ? e.message : String(e)}`);
       }
     }
   );
@@ -112,64 +110,17 @@ export function registerStoryTools(server: McpServer, _channel: OutputChannel = 
       try {
         zipPath = requireStoryZip();
       } catch (e) {
-        return { content: [{ type: "text", text: e instanceof Error ? e.message : String(e) }] };
+        return textResult(e instanceof Error ? e.message : String(e));
       }
       try {
-        const chapters = _listStories(zipPath, event_id);
-        if (chapters.length === 0) {
-          return { content: [{ type: "text", text: `活动 "${event_id}" 没有章节数据。` }] };
-        }
-
-        // Load summaries if requested
-        let summaries: Record<string, string> = {};
-        let eventSummaryText = "";
-        if (include_summaries) {
-          const store = new ZipStore(zipPath);
-          try {
-            if (store.exists("zh_CN/storyinfo.json")) {
-              const raw = store.readJson<Record<string, unknown>>("zh_CN/storyinfo.json");
-              for (const [k, v] of Object.entries(raw)) {
-                if (v) summaries[k] = String(v);
-              }
-            }
-            if (store.exists("zh_CN/event_summaries.json")) {
-              const rawEv = store.readJson<Record<string, unknown>>("zh_CN/event_summaries.json");
-              const text = rawEv[event_id];
-              if (typeof text === "string") eventSummaryText = text.trim();
-            }
-          } catch {
-            // summary indexes are optional
-          } finally {
-            store.close();
-          }
-        }
-
-        const lines: string[] = [];
-        if (eventSummaryText) {
-          lines.push(eventSummaryText, "");
-        }
-        for (const ch of chapters) {
-          const tag = ch.avgTag ? `[${ch.avgTag}] ` : "";
-          lines.push(`- ${ch.storyCode} ${tag}${ch.storyName}（key: ${ch.storyKey}）`);
-          if (include_summaries) {
-            const summary = summaries[ch.storyKey] ?? "";
-            if (summary) lines.push(`  ${summary}`);
-          }
-        }
-        return { content: [{ type: "text", text: lines.join("\n") }] };
+        const data = _buildStoriesListing(zipPath, event_id, include_summaries);
+        return renderResult(data, renderStoriesListing(data), channel);
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         if (msg.includes("not found")) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: `未找到活动："${event_id}"。请先调用 list_story_events 确认活动 ID。`,
-              },
-            ],
-          };
+          return textResult(`未找到活动："${event_id}"。请先调用 list_story_events 确认活动 ID。`);
         }
-        return { content: [{ type: "text", text: `读取章节列表失败：${msg}` }] };
+        return textResult(`读取章节列表失败：${msg}`);
       }
     }
   );
@@ -187,17 +138,17 @@ export function registerStoryTools(server: McpServer, _channel: OutputChannel = 
       try {
         zipPath = requireStoryZip();
       } catch (e) {
-        return { content: [{ type: "text", text: e instanceof Error ? e.message : String(e) }] };
+        return textResult(e instanceof Error ? e.message : String(e));
       }
       try {
         const text = _getStorySummary(zipPath, story_key);
-        return { content: [{ type: "text", text }] };
+        return textResult(text);
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         if (msg.includes("not found")) {
-          return { content: [{ type: "text", text: `未找到剧情章节："${story_key}"。请通过 list_stories 确认章节 key。` }] };
+          return textResult(`未找到剧情章节："${story_key}"。请通过 list_stories 确认章节 key。`);
         }
-        return { content: [{ type: "text", text: `读取梗概失败：${msg}` }] };
+        return textResult(`读取梗概失败：${msg}`);
       }
     }
   );
@@ -361,24 +312,22 @@ export function registerStoryTools(server: McpServer, _channel: OutputChannel = 
       try {
         zipPath = requireStoryZip();
       } catch (e) {
-        return { content: [{ type: "text", text: e instanceof Error ? e.message : String(e) }] };
+        return textResult(e instanceof Error ? e.message : String(e));
       }
       try {
-        const result = _getOperatorMemoirs(zipPath, name);
-        const lines: string[] = [
-          `# ${result.operatorName}（code: ${result.internalCode}，id: ${result.operatorId}）`,
-          `共 ${result.totalChapters} 章密录\n`,
-        ];
-        for (const ch of result.chapters) {
-          lines.push(`- ${ch.storyCode} ${ch.storyName}（key: ${ch.storyKey}）`);
-        }
-        return { content: [{ type: "text", text: lines.join("\n") }] };
+        const data = _buildOperatorMemoirs(zipPath, name);
+        return renderResult(
+          data,
+          renderOperatorMemoirs(data),
+          channel,
+          `${data.operator_name} 的密录列表（共 ${data.total} 章）`,
+        );
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         if (msg.includes("未找到干员名称") || msg.includes("暂无密录数据")) {
-          return { content: [{ type: "text", text: msg }] };
+          return textResult(msg);
         }
-        return { content: [{ type: "text", text: `查询干员密录失败：${msg}` }] };
+        return textResult(`查询干员密录失败：${msg}`);
       }
     }
   );
@@ -400,30 +349,17 @@ export function registerStoryTools(server: McpServer, _channel: OutputChannel = 
       try {
         zipPath = requireStoryZip();
       } catch (e) {
-        return { content: [{ type: "text", text: e instanceof Error ? e.message : String(e) }] };
+        return textResult(e instanceof Error ? e.message : String(e));
       }
       try {
-        const result = _findCharacterAppearances(zipPath, name, scope, max_events);
-        if (result.appearances.length === 0) {
-          const scopeNote = scope ? `（限定活动：${JSON.stringify(scope)}）` : "";
-          return { content: [{ type: "text", text: `未找到「${name}」的出场记录。${scopeNote}` }] };
-        }
-        const parts: string[] = [`# 「${result.name}」的出场（共 ${result.totalChapters} 章）`];
-        for (const ap of result.appearances) {
-          const tags: string[] = [];
-          if (ap.speaks) tags.push("speaks");
-          if (ap.mentioned) tags.push("mentioned");
-          const tag = tags.join("+");
-          const nameDisp = `${ap.storyCode} ${ap.storyName}`.trim();
-          parts.push(`- [${tag}] ${ap.eventId} / ${nameDisp}（key: ${ap.storyKey}）`);
-        }
-        return { content: [{ type: "text", text: parts.join("\n") }] };
+        const data = _buildCharacterAppearances(zipPath, name, scope, max_events);
+        return renderResult(data, renderCharacterAppearances(data), channel);
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         // Validation errors (不能为空 / 必须) and not-found (未找到) are
         // user-facing messages returned bare; only unexpected errors get a prefix.
         const isUserFacing = msg.includes("未找到") || msg.includes("不能为空") || msg.includes("必须");
-        return { content: [{ type: "text", text: isUserFacing ? msg : `查询角色出场失败：${msg}` }] };
+        return textResult(isUserFacing ? msg : `查询角色出场失败：${msg}`);
       }
     }
   );
@@ -443,21 +379,14 @@ export function registerStoryTools(server: McpServer, _channel: OutputChannel = 
       try {
         zipPath = requireStoryZip();
       } catch (e) {
-        return { content: [{ type: "text", text: e instanceof Error ? e.message : String(e) }] };
+        return textResult(e instanceof Error ? e.message : String(e));
       }
       try {
-        const speakers = _findSpeakersIn(zipPath, event_id);
-        if (speakers.length === 0) {
-          return { content: [{ type: "text", text: `活动 "${event_id}" 暂无对话发言者数据。` }] };
-        }
-        const parts: string[] = [`# ${event_id} 的发言角色（共 ${speakers.length} 位）`];
-        for (const sp of speakers) {
-          parts.push(`- ${sp.name}（${sp.lineCount} 句）`);
-        }
-        return { content: [{ type: "text", text: parts.join("\n") }] };
+        const data = _buildSpeakersInEvent(zipPath, event_id);
+        return renderResult(data, renderSpeakersInEvent(data), channel);
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        return { content: [{ type: "text", text: msg.includes("未找到") ? msg : `查询发言角色失败：${msg}` }] };
+        return textResult(msg.includes("未找到") ? msg : `查询发言角色失败：${msg}`);
       }
     }
   );

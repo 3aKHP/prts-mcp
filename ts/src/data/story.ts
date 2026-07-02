@@ -31,6 +31,10 @@ export type {
 
 // Public reader functions from storyReader
 export {
+  buildStoriesListing,
+  buildStoriesListingFromStore,
+  buildStoryEventsListing,
+  buildStoryEventsListingFromStore,
   listStoryEvents,
   listStoryEventsFromStore,
   listStories,
@@ -39,6 +43,8 @@ export {
   readStoryFromStore,
   readActivity,
   readActivityFromStore,
+  renderStoriesListing,
+  renderStoryEventsListing,
 } from "./storyReader.js";
 
 // Search
@@ -49,8 +55,11 @@ export {
 
 // Memoir
 export {
+  buildOperatorMemoirs,
+  buildOperatorMemoirsFromStore,
   getOperatorMemoirs,
   getOperatorMemoirsFromStore,
+  renderOperatorMemoirs,
 } from "./storyMemoir.js";
 
 // Summary
@@ -61,10 +70,16 @@ export {
 
 // Character tracking
 export {
+  buildCharacterAppearances,
+  buildCharacterAppearancesFromStore,
+  buildSpeakersInEvent,
+  buildSpeakersInEventFromStore,
   findCharacterAppearances,
   findCharacterAppearancesFromStore,
   findSpeakersIn,
   findSpeakersInFromStore,
+  renderCharacterAppearances,
+  renderSpeakersInEvent,
 } from "./storyCharacter.js";
 
 // Cache management

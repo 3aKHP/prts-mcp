@@ -19,6 +19,18 @@ import {
   withStoryStore,
 } from "./storyReader.js";
 
+export interface OperatorMemoirsPayload {
+  operator_name: string;
+  internal_code: string;
+  operator_id: string;
+  total: number;
+  chapters: Array<{
+    story_code: string;
+    story_name: string;
+    story_key: string;
+  }>;
+}
+
 // ---------------------------------------------------------------------------
 // Chardict types + cache
 // ---------------------------------------------------------------------------
@@ -102,6 +114,24 @@ export function getOperatorMemoirs(
   return withStoryStore(zipPath, (store) => getOperatorMemoirsFromStore(store, operatorName));
 }
 
+export function buildOperatorMemoirs(
+  zipPath: string,
+  operatorName: string,
+): OperatorMemoirsPayload {
+  return withStoryStore(zipPath, (store) => buildOperatorMemoirsFromStore(store, operatorName));
+}
+
+export function renderOperatorMemoirs(data: OperatorMemoirsPayload): string {
+  const lines: string[] = [
+    `# ${data.operator_name}（code: ${data.internal_code}，id: ${data.operator_id}）`,
+    `共 ${data.total} 章密录\n`,
+  ];
+  for (const ch of data.chapters) {
+    lines.push(`- ${ch.story_code} ${ch.story_name}（key: ${ch.story_key}）`);
+  }
+  return lines.join("\n");
+}
+
 // ---------------------------------------------------------------------------
 // Public API — store-based
 // ---------------------------------------------------------------------------
@@ -161,5 +191,23 @@ export function getOperatorMemoirsFromStore(
     operatorId,
     totalChapters: chapters.length,
     chapters,
+  };
+}
+
+export function buildOperatorMemoirsFromStore(
+  store: JsonStore,
+  operatorName: string,
+): OperatorMemoirsPayload {
+  const result = getOperatorMemoirsFromStore(store, operatorName);
+  return {
+    operator_name: result.operatorName,
+    internal_code: result.internalCode,
+    operator_id: result.operatorId,
+    total: result.totalChapters,
+    chapters: result.chapters.map((ch) => ({
+      story_code: ch.storyCode,
+      story_name: ch.storyName,
+      story_key: ch.storyKey,
+    })),
   };
 }

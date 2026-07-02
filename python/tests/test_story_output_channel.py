@@ -45,6 +45,11 @@ def _story_path(story_key: str) -> str:
     return f"zh_CN/gamedata/story/{story_key}.json"
 
 
+def _load_parity_fixture(name: str) -> dict:
+    path = Path(__file__).parents[2] / "tests" / "parity-fixtures" / name
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
 def _story_files() -> dict[str, object]:
     return {
         STORY_REVIEW_PATH: {
@@ -198,6 +203,7 @@ def story_zip(tmp_path: Path) -> Path:
 def test_list_story_events_golden_and_empty(story_zip: Path) -> None:
     data = build_story_events_listing(story_zip, category="activities")
 
+    assert data == _load_parity_fixture("story_events_activities.json")
     assert data["total"] == 4
     assert data["filters"] == {
         "category": "activities",
@@ -211,6 +217,7 @@ def test_list_story_events_golden_and_empty(story_zip: Path) -> None:
     )
 
     empty = build_story_events_listing(story_zip, category="main")
+    assert empty == _load_parity_fixture("story_events_empty.json")
     assert empty["total"] == 0
     assert empty["events"] == []
     assert render_story_events_listing(empty) == "未找到符合条件的活动（category='main'）。"
@@ -219,6 +226,7 @@ def test_list_story_events_golden_and_empty(story_zip: Path) -> None:
 def test_list_stories_without_summaries_golden(story_zip: Path) -> None:
     data = build_stories_listing(story_zip, "act_test", include_summaries=False)
 
+    assert data == _load_parity_fixture("list_stories.json")
     assert data == {
         "event_id": "act_test",
         "total": 2,
@@ -247,6 +255,7 @@ def test_list_stories_without_summaries_golden(story_zip: Path) -> None:
 def test_list_stories_with_summaries_golden(story_zip: Path) -> None:
     data = build_stories_listing(story_zip, "act_test", include_summaries=True)
 
+    assert data == _load_parity_fixture("list_stories_with_summaries.json")
     assert data["event_summary"] == "活动总览"
     assert data["chapters"][0]["summary"] == "第一章梗概"
     assert render_stories_listing(data) == (
@@ -261,6 +270,7 @@ def test_list_stories_with_summaries_golden(story_zip: Path) -> None:
 def test_list_stories_with_summaries_but_no_event_summary(story_zip: Path) -> None:
     data = build_stories_listing(story_zip, "act_no_summary", include_summaries=True)
 
+    assert data == _load_parity_fixture("list_stories_no_summary.json")
     assert "event_summary" not in data
     assert data["chapters"][1]["summary"] == ""
     assert render_stories_listing(data) == (
@@ -273,6 +283,7 @@ def test_list_stories_with_summaries_but_no_event_summary(story_zip: Path) -> No
 def test_list_stories_empty_event_is_structured_empty(story_zip: Path) -> None:
     data = build_stories_listing(story_zip, "act_empty")
 
+    assert data == _load_parity_fixture("list_stories_empty_event.json")
     assert data["total"] == 0
     assert data["chapters"] == []
     assert render_stories_listing(data) == "活动 'act_empty' 暂无剧情章节。"
@@ -281,6 +292,7 @@ def test_list_stories_empty_event_is_structured_empty(story_zip: Path) -> None:
 def test_get_operator_memoirs_golden(story_zip: Path) -> None:
     data = build_operator_memoirs(story_zip, "阿米娅")
 
+    assert data == _load_parity_fixture("operator_memoirs.json")
     assert data == {
         "operator_name": "阿米娅",
         "internal_code": "amiya",
@@ -304,6 +316,7 @@ def test_get_operator_memoirs_golden(story_zip: Path) -> None:
 def test_find_character_appearances_golden_and_empty(story_zip: Path) -> None:
     data = build_character_appearances(story_zip, "博士")
 
+    assert data == _load_parity_fixture("character_appearances.json")
     assert data["total"] == 2
     assert data["appearances"][0]["speaks"] is True
     assert data["appearances"][0]["mentioned"] is True
@@ -314,6 +327,7 @@ def test_find_character_appearances_golden_and_empty(story_zip: Path) -> None:
     )
 
     empty = build_character_appearances(story_zip, "不存在", scope="act_test")
+    assert empty == _load_parity_fixture("character_appearances_empty.json")
     assert empty["total"] == 0
     assert empty["appearances"] == []
     assert render_character_appearances(empty) == (
@@ -324,6 +338,7 @@ def test_find_character_appearances_golden_and_empty(story_zip: Path) -> None:
 def test_find_speakers_in_golden_and_empty(story_zip: Path) -> None:
     data = build_speakers_in_event(story_zip, "act_test")
 
+    assert data == _load_parity_fixture("speakers_in_event.json")
     assert data == {
         "event_id": "act_test",
         "total": 2,
@@ -339,6 +354,7 @@ def test_find_speakers_in_golden_and_empty(story_zip: Path) -> None:
     )
 
     empty = build_speakers_in_event(story_zip, "act_narration")
+    assert empty == _load_parity_fixture("speakers_in_event_empty.json")
     assert empty["total"] == 0
     assert empty["speakers"] == []
     assert render_speakers_in_event(empty) == "活动 'act_narration' 暂无对话发言者数据。"
