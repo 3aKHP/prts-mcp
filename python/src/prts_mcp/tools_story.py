@@ -16,7 +16,8 @@ from prts_mcp.data.story import (
     render_stories_listing as _render_stories_listing,
     read_story as _read_story,
     read_activity as _read_activity,
-    search_stories as _search_stories,
+    build_story_search as _build_story_search,
+    render_story_search as _render_story_search,
     get_story_summary as _get_story_summary,
     build_operator_memoirs as _build_operator_memoirs,
     render_operator_memoirs as _render_operator_memoirs,
@@ -206,7 +207,7 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         context_lines: Annotated[int, Field(default=1, ge=0, le=5, description="匹配行前后的上下文行数，默认 1。设 0 则只返回匹配行本身。")] = 1,
         max_results: Annotated[int, Field(default=30, ge=1, le=100, description="最多返回条数，默认 30。")] = 30,
         event_id: Annotated[str | None, Field(default=None, description="限定活动 ID，如「act31side」。不填则搜索全部活动。")] = None,
-    ) -> str:
+    ) -> object:
         """在剧情台词中执行全文正则搜索，支持角色和台词类型过滤。
 
         返回格式：以 `[stories/活动ID/章节编号 L行号]` 标注位置，命中行前缀 `>>> ` 标记，
@@ -217,10 +218,10 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         try:
             zip_path = _require_story_zip(cfg)
         except RuntimeError as e:
-            return str(e)
+            return text_result(str(e))
 
         try:
-            return _search_stories(
+            data = _build_story_search(
                 zip_path,
                 pattern,
                 character=character,
@@ -230,7 +231,10 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
                 event_id=event_id,
             )
         except Exception as e:
-            return f"剧情搜索失败：{e}"
+            return text_result(f"剧情搜索失败：{e}")
+        if isinstance(data, str):
+            return text_result(data)
+        return render_result(data, _render_story_search(data))
 
     @mcp.tool()
     def get_operator_memoirs(

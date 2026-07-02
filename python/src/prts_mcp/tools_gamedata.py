@@ -20,21 +20,18 @@ from prts_mcp.data.enemy import (
     render_enemies_listing as _render_enemies_listing,
     build_enemy_info as _build_enemy_info,
     render_enemy_info as _render_enemy_info,
-    search_enemies as _search_enemies,
 )
 from prts_mcp.data.stage import (
     build_stages_listing as _build_stages_listing,
     render_stages_listing as _render_stages_listing,
     build_stage_info as _build_stage_info,
     render_stage_info as _render_stage_info,
-    search_stages as _search_stages,
 )
 from prts_mcp.data.item import (
     build_items_listing as _build_items_listing,
     render_items_listing as _render_items_listing,
     build_item_info as _build_item_info,
     render_item_info as _render_item_info,
-    search_items as _search_items,
 )
 from prts_mcp.data.stage_enemy import (
     build_stage_enemies as _build_stage_enemies,
@@ -43,7 +40,10 @@ from prts_mcp.data.stage_enemy import (
     render_enemy_appearances as _render_enemy_appearances,
     get_enemy_stage_info as _get_enemy_stage_info,
 )
-from prts_mcp.data.search import search_operator_data as _search_operator_data
+from prts_mcp.data.search import (
+    build_search as _build_search,
+    render_search as _render_search,
+)
 from prts_mcp.output import render_result, text_result
 
 
@@ -242,20 +242,14 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         scope: Annotated[Literal["operators", "enemies", "stages", "items"], Field(description="搜索域（必填）：operators（干员）/ enemies（敌人）/ stages（关卡）/ items（物品）。")],
         pattern: Annotated[str, Field(description="正则表达式搜索模式，大小写不敏感。")],
         max_results: Annotated[int, Field(default=30, ge=1, le=100, description="返回结果数量上限，默认 30。")] = 30,
-    ) -> str:
+    ) -> object:
         """在指定数据域中执行全文正则搜索。
 
         scope 选择搜索域：operators（名称/属性/档案/语音）、enemies（图鉴）、
         stages（关卡）、items（物品/材料）。返回带域标签的匹配结果。
         剧情台词搜索见 search_stories。
         """
-        searchers = {
-            "operators": _search_operator_data,
-            "enemies": _search_enemies,
-            "stages": _search_stages,
-            "items": _search_items,
-        }
-        fn = searchers.get(scope)
-        if fn is None:
-            return f"不支持的搜索域：{scope!r}。可选：operators、enemies、stages、items。"
-        return fn(pattern, max_results=max_results)
+        data = _build_search(scope, pattern, max_results=max_results)
+        if isinstance(data, str):
+            return text_result(data)
+        return render_result(data, _render_search(data))

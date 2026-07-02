@@ -70,6 +70,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
   page of results. Legitimate empty results carry `{total:0}` on the
   structured channel while preserving the existing markdown text; invalid
   parameters, missing story data, and PRTS network failures remain content-only.
+- **Search structuredContent (2.0, P3).** The remaining Python search tools
+  (`search` and `search_stories`) migrated to explicit `CallToolResult`
+  delivery with structured search envelopes. `search` now returns a stable
+  outer envelope (`scope`, `pattern`, `total`, `results`) while keeping
+  scope-specific entries for operators, enemies, stages, and items; each entry
+  carries chainable IDs and the fields needed to re-render the existing
+  markdown cards. `search_stories` now exposes raw filters and structured
+  context lines with `is_match` flags plus `story_key` for follow-up reads.
+  Legitimate no-match searches carry `{total:0, results:[]}` on the structured
+  channel; invalid regexes, invalid filters, and missing data remain
+  content-only. The all-tool outputSchema invariant is left to the dedicated
+  PR4 test-layer follow-up.
 
 ### Changed
 

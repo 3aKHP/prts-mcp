@@ -34,6 +34,14 @@ def search_operator_data(pattern: str, max_results: int = 30) -> str:
 
     Case-insensitive.  Returns a formatted multi-block string.
     """
+    data = build_operator_search(pattern, max_results=max_results)
+    if isinstance(data, str):
+        return data
+    return render_operator_search(data)
+
+
+def build_operator_search(pattern: str, max_results: int = 30) -> dict | str:
+    """Build the structured payload for operator-data search."""
     if max_results < 1:
         return "max_results 必须 >= 1。"
     if max_results > 100:
@@ -60,19 +68,77 @@ def search_operator_data(pattern: str, max_results: int = 30) -> str:
             if len(results) >= max_results:
                 break
 
+    return {
+        "scope": "operators",
+        "pattern": pattern,
+        "total": len(results),
+        "results": [
+            {
+                "operator": r.operator,
+                "category": r.category,
+                "field": r.field,
+                "text": r.text,
+            }
+            for r in results
+        ],
+    }
+
+
+def render_operator_search(data: dict) -> str:
+    """Render an operator search payload to markdown."""
+    pattern = data["pattern"]
+    results = data["results"]
     if not results:
         return f"未找到匹配 '{pattern}' 的干员数据。"
 
-    blocks = [f"# 搜索 \"{pattern}\" 的结果（共 {len(results)} 条）"]
+    blocks = [f"# 搜索 \"{pattern}\" 的结果（共 {data['total']} 条）"]
     for r in results:
         blocks.append(
             f"\n---\n\n"
-            f"[operators/{r.category}/{r.operator}]\n"
-            f"匹配：{r.field}\n"
-            f"{r.text}"
+            f"[operators/{r['category']}/{r['operator']}]\n"
+            f"匹配：{r['field']}\n"
+            f"{r['text']}"
         )
-
     return "".join(blocks)
+
+
+def build_search(scope: str, pattern: str, max_results: int = 30) -> dict | str:
+    """Build the structured payload for the unified gamedata search tool."""
+    if scope == "operators":
+        return build_operator_search(pattern, max_results=max_results)
+    if scope == "enemies":
+        from prts_mcp.data.enemy import build_enemy_search
+
+        return build_enemy_search(pattern, max_results=max_results)
+    if scope == "stages":
+        from prts_mcp.data.stage import build_stage_search
+
+        return build_stage_search(pattern, max_results=max_results)
+    if scope == "items":
+        from prts_mcp.data.item import build_item_search
+
+        return build_item_search(pattern, max_results=max_results)
+    return f"不支持的搜索域：{scope!r}。可选：operators、enemies、stages、items。"
+
+
+def render_search(data: dict) -> str:
+    """Render a unified gamedata search payload to markdown."""
+    scope = data["scope"]
+    if scope == "operators":
+        return render_operator_search(data)
+    if scope == "enemies":
+        from prts_mcp.data.enemy import render_enemy_search
+
+        return render_enemy_search(data)
+    if scope == "stages":
+        from prts_mcp.data.stage import render_stage_search
+
+        return render_stage_search(data)
+    if scope == "items":
+        from prts_mcp.data.item import render_item_search
+
+        return render_item_search(data)
+    raise ValueError(f"不支持的搜索域：{scope!r}。")
 
 
 @lru_cache(maxsize=1)

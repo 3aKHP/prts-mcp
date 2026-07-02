@@ -26,6 +26,7 @@ _DATABASE_FILE = "enemy_database.json"
 
 @dataclass(frozen=True)
 class _EnemySearchRecord:
+    enemy_id: str
     info: dict[str, Any]
     search_text: str
 
@@ -553,6 +554,14 @@ def get_enemy_info(name: str) -> str:
 
 def search_enemies(pattern: str, max_results: int = 30) -> str:
     """Regex search across enemy names and descriptions."""
+    data = build_enemy_search(pattern, max_results=max_results)
+    if isinstance(data, str):
+        return data
+    return render_enemy_search(data)
+
+
+def build_enemy_search(pattern: str, max_results: int = 30) -> dict | str:
+    """Build the structured payload for enemy handbook search."""
     if not _has_enemy_data():
         return _missing_data_message()
     if max_results < 1:
@@ -565,25 +574,95 @@ def search_enemies(pattern: str, max_results: int = 30) -> str:
     except re.error as exc:
         return f"正则表达式无效：{exc}"
 
-    matches: list[dict] = []
+    matches: list[_EnemySearchRecord] = []
     try:
         records = _enemy_search_records()
     except FileNotFoundError as exc:
         return str(exc)
     for record in records:
         if regex.search(record.search_text):
-            matches.append(record.info)
+            matches.append(record)
         if len(matches) >= max_results:
             break
 
-    if not matches:
+    return {
+        "scope": "enemies",
+        "pattern": pattern,
+        "total": len(matches),
+        "results": [_enemy_search_entry(record) for record in matches],
+    }
+
+
+def render_enemy_search(data: dict) -> str:
+    """Render an enemy search payload to markdown."""
+    pattern = data["pattern"]
+    results = data["results"]
+    if not results:
         return f"未找到匹配 '{pattern}' 的敌人。"
 
-    lines: list[str] = [f"# 搜索结果：{pattern}（共 {len(matches)} 个）\n"]
-    for info in matches:
-        lines.append(_fmt_enemy(info))
+    lines: list[str] = [f"# 搜索结果：{pattern}（共 {data['total']} 个）\n"]
+    for entry in results:
+        lines.append(_render_enemy_search_card(entry))
         lines.append("")
     return "\n".join(lines).strip()
+
+
+def _enemy_search_entry(record: _EnemySearchRecord) -> dict[str, Any]:
+    info = record.info
+    level_raw = info.get("enemyLevel", "")
+    damage_types_raw: list[str] = info.get("damageType") or []
+    return {
+        "enemy_id": record.enemy_id,
+        "name": info.get("name", ""),
+        "enemy_index": info.get("enemyIndex", ""),
+        "level_raw": level_raw,
+        "level_label": _ENEMY_LEVEL_ZH.get(level_raw, level_raw),
+        "description": info.get("description", ""),
+        "attack_type": info.get("attackType") or "",
+        "ability": info.get("ability") or "",
+        "damage_types_raw": damage_types_raw,
+        "damage_types_label": "、".join(
+            _DAMAGE_TYPE_ZH.get(dt, dt) for dt in damage_types_raw
+        ),
+        "enemy_tags": info.get("enemyTags") or [],
+    }
+
+
+def _render_enemy_search_card(entry: dict) -> str:
+    lines: list[str] = []
+    name = entry["name"]
+    if name:
+        lines.append(f"# {name} - 敌人图鉴\n")
+
+    enemy_index = entry["enemy_index"]
+    if enemy_index:
+        lines.append(f"- **编号**：{enemy_index}")
+
+    level_label = entry["level_label"]
+    if level_label:
+        lines.append(f"- **威胁等级**：{level_label}")
+
+    desc = entry["description"]
+    if desc:
+        lines.append(f"- **描述**：{desc}")
+
+    attack = entry["attack_type"]
+    if attack:
+        lines.append(f"- **攻击方式**：{attack}")
+
+    ability = entry["ability"]
+    if ability:
+        lines.append(f"- **特殊能力**：{ability}")
+
+    damage_label = entry["damage_types_label"]
+    if damage_label:
+        lines.append(f"- **伤害类型**：{damage_label}")
+
+    enemy_tags = entry["enemy_tags"]
+    if enemy_tags:
+        lines.append(f"- **标签**：{'、'.join(enemy_tags)}")
+
+    return "\n".join(lines)
 
 
 @lru_cache(maxsize=1)
@@ -600,5 +679,9 @@ def _enemy_search_records() -> tuple[_EnemySearchRecord, ...]:
             info.get("ability") or "",
             " ".join(info.get("enemyTags") or []),
         ])
-        records.append(_EnemySearchRecord(info=info, search_text=search_text))
+        records.append(_EnemySearchRecord(
+            enemy_id=_eid,
+            info=info,
+            search_text=search_text,
+        ))
     return tuple(records)
