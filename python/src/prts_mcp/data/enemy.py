@@ -202,19 +202,16 @@ def _fmt_enemy(info: dict, include_id: bool = False) -> str:
 # ---------------------------------------------------------------------------
 
 
-def list_enemies(
+def build_enemies_listing(
     threat_level: str | None = None,
     limit: int = 50,
     offset: int = 0,
     full: bool = False,
-) -> str:
-    """List enemies with optional filtering and pagination.
+) -> dict | str:
+    """Build the structured payload for an enemies listing.
 
-    Args:
-        threat_level: Filter by BOSS / ELITE / NORMAL.
-        limit: Max entries to return (ignored when full=True).
-        offset: Pagination offset.
-        full: Return ALL entries. Discouraged for normal use.
+    Returns the dict payload on success, or a markdown error string on a
+    validation / missing-data / empty-result path.
     """
     if not _has_enemy_data():
         return _missing_data_message()
@@ -239,6 +236,7 @@ def list_enemies(
         if not info.get("hideInHandbook") and info.get("name")
     ]
 
+    level_filter: str | None = None
     if threat_level:
         level_filter = threat_level.upper()
         if level_filter not in _ENEMY_LEVEL_ZH:
@@ -252,27 +250,73 @@ def list_enemies(
     if not full and offset >= total and total > 0:
         return f"# 敌人图鉴（共 {total} 个）\n\noffset={offset} 超出范围（总计 {total} 条）。"
 
-    if full:
-        displayed = entries
-    else:
-        displayed = entries[offset:offset + limit]
+    displayed = entries if full else entries[offset:offset + limit]
+
+    item_entries = []
+    for eid, info in displayed:
+        level_raw = info.get("enemyLevel", "")
+        desc = (info.get("description") or "").replace("\n", " ")[:60]
+        item_entries.append({
+            "enemy_id": eid,
+            "name": info.get("name", ""),
+            "enemy_index": info.get("enemyIndex", ""),
+            "level_raw": level_raw,
+            "level_label": _ENEMY_LEVEL_ZH.get(level_raw, level_raw),
+            "description_excerpt": desc,
+        })
+
+    return {
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+        "full": full,
+        "filters": {"threat_level": level_filter},
+        "enemies": item_entries,
+    }
+
+
+def render_enemies_listing(data: dict) -> str:
+    """Render an enemies-listing payload dict to markdown.
+
+    Pure renderer; the inverse of ``build_enemies_listing``'s success path.
+    """
+    total = data["total"]
+    offset = data["offset"]
+    limit = data["limit"]
+    full = data["full"]
+    enemies = data["enemies"]
 
     header = f"# 敌人图鉴（共 {total} 个）\n"
-    for _eid, info in displayed:
-        level = info.get("enemyLevel", "")
-        level_zh = _ENEMY_LEVEL_ZH.get(level, level)
-        index = info.get("enemyIndex", "")
-        name = info.get("name", "")
-        desc = (info.get("description") or "").replace("\n", " ")[:60]
-        line = f"- **{name}** [{level_zh}] ({index})"
-        if desc:
-            line += f" — {desc}"
+    for e in enemies:
+        line = f"- **{e['name']}** [{e['level_label']}] ({e['enemy_index']})"
+        if e["description_excerpt"]:
+            line += f" — {e['description_excerpt']}"
         header += line + "\n"
 
     if not full and total > offset + limit:
         header += f"\n（显示第 {offset+1}–{min(offset+limit, total)} 条，共 {total} 条。使用 offset={offset+limit} 查看下一页）"
 
     return header.strip()
+
+
+def list_enemies(
+    threat_level: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+    full: bool = False,
+) -> str:
+    """List enemies with optional filtering and pagination.
+
+    Args:
+        threat_level: Filter by BOSS / ELITE / NORMAL.
+        limit: Max entries to return (ignored when full=True).
+        offset: Pagination offset.
+        full: Return ALL entries. Discouraged for normal use.
+    """
+    data = build_enemies_listing(threat_level=threat_level, limit=limit, offset=offset, full=full)
+    if isinstance(data, str):
+        return data
+    return render_enemies_listing(data)
 
 
 def build_enemy_info(name: str) -> dict | str:

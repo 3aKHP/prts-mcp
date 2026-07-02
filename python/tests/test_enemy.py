@@ -144,6 +144,23 @@ class TestListEnemies:
         assert "源石虫" in out
         assert "隐藏敌人" not in out
 
+    def test_golden_default_listing(self, gamedata):
+        # Golden: exact full markdown for the default listing against the
+        # fixture. Stronger than substring asserts — catches build-layer
+        # field omissions, ordering, and label regressions. Not a tautology
+        # (the expected string is hardcoded, not derived from build/render).
+        assert list_enemies() == (
+            "# 敌人图鉴（共 2 个）\n"
+            "- **源石虫** [普通] (B1) — 野生的被感染生物。\n"
+            "- **霜星** [领袖] (FN) — 整合运动法术部队干部。"
+        )
+
+    def test_golden_boss_filter(self, gamedata):
+        assert list_enemies(threat_level="boss") == (
+            "# 敌人图鉴（共 1 个）\n"
+            "- **霜星** [领袖] (FN) — 整合运动法术部队干部。"
+        )
+
     def test_threat_level_filter(self, gamedata):
         out = list_enemies(threat_level="boss", limit=10)
         assert "霜星" in out

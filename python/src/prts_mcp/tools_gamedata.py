@@ -16,7 +16,8 @@ from prts_mcp.data.operator import (
     render_operator_basic_info as _render_basic_info,
 )
 from prts_mcp.data.enemy import (
-    list_enemies as _list_enemies,
+    build_enemies_listing as _build_enemies_listing,
+    render_enemies_listing as _render_enemies_listing,
     build_enemy_info as _build_enemy_info,
     render_enemy_info as _render_enemy_info,
     search_enemies as _search_enemies,
@@ -92,13 +93,16 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         limit: Annotated[int, Field(default=50, description="返回数量上限，默认 50。")] = 50,
         offset: Annotated[int, Field(default=0, description="分页偏移量，默认 0。")] = 0,
         full: Annotated[bool, Field(default=False, description="返回全部敌人（忽略 limit/offset）。不推荐常规使用，密集输出极易污染上下文。仅在需要完整扫描时使用。")] = False,
-    ) -> str:
+    ) -> object:
         """列出敌方图鉴，支持按威胁等级过滤和分页。
 
         默认返回前 50 条；翻页增大 offset，只看领袖/BOSS 设 threat_level="boss"。
         图鉴共 1500+ 条目，不推荐 full=true。
         """
-        return _list_enemies(threat_level=threat_level, limit=limit, offset=offset, full=full)
+        data = _build_enemies_listing(threat_level=threat_level, limit=limit, offset=offset, full=full)
+        if isinstance(data, str):
+            return text_result(data)
+        return render_result(data, _render_enemies_listing(data))
 
     @mcp.tool()
     def get_enemy_info(
