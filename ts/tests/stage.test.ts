@@ -291,14 +291,23 @@ test("buildStagesListing page payload matches shared parity fixture", async () =
   assert.deepStrictEqual(data, loadParityFixture("list_stages_page.json"));
 });
 
-test("renderStagesListing preserves listStages markdown", async () => {
+test("listStages preserves default markdown golden", async () => {
   const root = tempGamedataRoot();
   process.env["GAMEDATA_PATH"] = root;
   writeFixtures(root);
   const stage = await loadStageModule();
-  const data = stage.buildStagesListing();
-  if (typeof data === "string") assert.fail(`unexpected error: ${data}`);
-  assert.equal(stage.renderStagesListing(data), stage.listStages());
+  assert.equal(
+    stage.listStages(),
+    [
+      "# 关卡列表（共 4 个）",
+      "- **测试活动关** [活动] AS-1 — 普通 — 火山旅梦（id: act31side_01）",
+      "- **货物运送** [每日] CE-5 — 普通 — daily_zone1（id: daily_01）",
+      "- **坍塌** [主线] 0-1 — 普通 — 序章-黑暗时代·上（id: main_00-01）",
+      "- **坍塌·突袭** [主线] TR-1 — 突袭 — 序章-黑暗时代·上（id: main_00-01#f#）",
+      "",
+      "（显示第 1–4 条，共 4 条。使用 offset=50 查看下一页）",
+    ].join("\n"),
+  );
 });
 
 // ---------------------------------------------------------------------------

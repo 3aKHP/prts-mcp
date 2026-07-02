@@ -136,7 +136,7 @@ test("output_channel is resolved once per session by query/header/env priority",
       PRTS_OUTPUT_CHANNEL: "both",
       SESSION_IDLE_TIMEOUT_MS: "30000",
     },
-    stdio: ["ignore", "pipe", "pipe"],
+    stdio: ["ignore", "ignore", "ignore"],
   });
   t.after(() => { child.kill(); });
 
