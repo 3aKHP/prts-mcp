@@ -277,6 +277,16 @@ class TestStagesBuildRender:
     def test_matches_shared_parity_fixture(self, gamedata: str) -> None:
         assert build_stages_listing() == _load_parity_fixture("list_stages.json")
 
+    def test_filtered_payload_matches_shared_parity_fixture(self, gamedata: str) -> None:
+        assert build_stages_listing(type="daily") == _load_parity_fixture(
+            "list_stages_daily.json"
+        )
+
+    def test_page_payload_matches_shared_parity_fixture(self, gamedata: str) -> None:
+        assert build_stages_listing(limit=2) == _load_parity_fixture(
+            "list_stages_page.json"
+        )
+
     def test_build_error_paths_return_str(self, gamedata: str) -> None:
         assert isinstance(build_stages_listing(limit=0), str)
         assert isinstance(build_stages_listing(offset=-1), str)

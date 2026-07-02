@@ -8,14 +8,14 @@ function text(markdown: string): CallToolResult["content"][number] {
   return { type: "text", text: markdown };
 }
 
-export function parseChannel(raw: string | undefined): OutputChannel {
+export function parseChannel(raw: string | undefined, source: string = "PRTS_OUTPUT_CHANNEL"): OutputChannel {
   if (!raw) return "content";
   const value = raw.trim().toLowerCase();
   if (VALID_CHANNELS.has(value as OutputChannel)) {
     return value as OutputChannel;
   }
   console.warn(
-    `PRTS_OUTPUT_CHANNEL=${JSON.stringify(raw)} 不合法（可选 content/structured/both），回退到 content。`,
+    `${source}=${JSON.stringify(raw)} 不合法（可选 content/structured/both），回退到 content。`,
   );
   return "content";
 }

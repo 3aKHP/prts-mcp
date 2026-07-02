@@ -15,11 +15,12 @@ test("parseChannel falls back on invalid values", () => {
   const messages: unknown[] = [];
   console.warn = (message?: unknown) => { messages.push(message); };
   try {
-    assert.equal(parseChannel("json"), "content");
+    assert.equal(parseChannel("json", "output_channel"), "content");
   } finally {
     console.warn = warn;
   }
   assert.equal(messages.length, 1);
+  assert.match(String(messages[0]), /^output_channel="json" 不合法/);
 });
 
 test("renderResult emits content-only markdown by default", () => {

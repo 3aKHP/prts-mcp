@@ -273,6 +273,24 @@ test("buildStagesListing matches shared parity fixture", async () => {
   assert.deepStrictEqual(data, loadParityFixture("list_stages.json"));
 });
 
+test("buildStagesListing filtered payload matches shared parity fixture", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  writeFixtures(root);
+  const stage = await loadStageModule();
+  const data = stage.buildStagesListing(null, "daily");
+  assert.deepStrictEqual(data, loadParityFixture("list_stages_daily.json"));
+});
+
+test("buildStagesListing page payload matches shared parity fixture", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  writeFixtures(root);
+  const stage = await loadStageModule();
+  const data = stage.buildStagesListing(null, null, 2);
+  assert.deepStrictEqual(data, loadParityFixture("list_stages_page.json"));
+});
+
 test("renderStagesListing preserves listStages markdown", async () => {
   const root = tempGamedataRoot();
   process.env["GAMEDATA_PATH"] = root;

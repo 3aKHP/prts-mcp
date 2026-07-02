@@ -250,10 +250,10 @@ export function buildStagesListing(
   }
 
   const filtered: StageEntry[] = [];
-  for (const [sid, entry] of Object.entries(stages).sort(([a], [b]) => a.localeCompare(b))) {
+  for (const [, entry] of Object.entries(stages).sort(([a], [b]) => a.localeCompare(b))) {
     if (chapter != null && entry.zoneId !== chapter) continue;
     if (type != null && entry.stageType !== type.toUpperCase()) continue;
-    filtered.push({ ...entry, stageId: entry.stageId ?? sid });
+    filtered.push(entry);
   }
 
   const total = filtered.length;

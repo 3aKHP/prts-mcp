@@ -63,7 +63,9 @@ function firstString(value: unknown): string | undefined {
 function resolveOutputChannel(req: express.Request): OutputChannel {
   const queryValue = firstString(req.query["output_channel"]);
   const headerValue = firstString(req.headers["x-prts-output-channel"]);
-  return parseChannel(queryValue ?? headerValue ?? process.env["PRTS_OUTPUT_CHANNEL"]);
+  if (queryValue !== undefined) return parseChannel(queryValue, "output_channel");
+  if (headerValue !== undefined) return parseChannel(headerValue, "x-prts-output-channel");
+  return parseChannel(process.env["PRTS_OUTPUT_CHANNEL"], "PRTS_OUTPUT_CHANNEL");
 }
 
 // ---------------------------------------------------------------------------

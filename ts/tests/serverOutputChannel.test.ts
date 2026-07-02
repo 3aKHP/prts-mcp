@@ -45,10 +45,12 @@ async function mcpPost(
   body: unknown,
   sessionId?: string,
   query = "",
+  extraHeaders: Record<string, string> = {},
 ): Promise<McpResponse> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     Accept: "application/json, text/event-stream",
+    ...extraHeaders,
   };
   if (sessionId) headers["Mcp-Session-Id"] = sessionId;
 
@@ -112,7 +114,7 @@ function writeGamedata(root: string): void {
   );
 }
 
-test("output_channel query fixes structured mode for the session", async (t) => {
+test("output_channel is resolved once per session by query/header/env priority", async (t) => {
   const port = await getFreePort();
   const origin = `http://127.0.0.1:${port}`;
   const gamedata = mkdtempSync(join(tmpdir(), "prts-output-channel-"));
@@ -131,6 +133,7 @@ test("output_channel query fixes structured mode for the session", async (t) => 
       XDG_DATA_HOME: dataHome,
       LOCALAPPDATA: localAppData,
       GITHUB_MIRRORS: "",
+      PRTS_OUTPUT_CHANNEL: "both",
       SESSION_IDLE_TIMEOUT_MS: "30000",
     },
     stdio: ["ignore", "pipe", "pipe"],
@@ -139,38 +142,67 @@ test("output_channel query fixes structured mode for the session", async (t) => 
 
   await waitForHealth(origin);
 
-  const init = await mcpPost(
-    origin,
-    {
-      jsonrpc: "2.0",
-      method: "initialize",
-      params: {
-        protocolVersion: "2025-03-26",
-        capabilities: {},
-        clientInfo: { name: "output-channel-test", version: "1.0" },
+  let id = 1;
+  const initialize = (query = "", headers: Record<string, string> = {}) =>
+    mcpPost(
+      origin,
+      {
+        jsonrpc: "2.0",
+        method: "initialize",
+        params: {
+          protocolVersion: "2025-03-26",
+          capabilities: {},
+          clientInfo: { name: "output-channel-test", version: "1.0" },
+        },
+        id: id++,
       },
-      id: 1,
-    },
-    undefined,
-    "?output_channel=structured",
+      undefined,
+      query,
+      headers,
+    );
+
+  const callListStages = (sessionId: string, query = "", headers: Record<string, string> = {}) =>
+    mcpPost(
+      origin,
+      {
+        jsonrpc: "2.0",
+        method: "tools/call",
+        params: { name: "list_stages", arguments: {} },
+        id: id++,
+      },
+      sessionId,
+      query,
+      headers,
+    );
+
+  const envInit = await initialize();
+  assert.equal(envInit.status, 200);
+  assert.ok(envInit.sessionId);
+  const envResult = await callListStages(envInit.sessionId);
+  const envToolResult = envResult.body.result as Record<string, unknown>;
+  assert.ok(envToolResult.structuredContent);
+  assert.match(((envToolResult.content as Array<{ text: string }>)[0]).text, /^# 关卡列表/);
+
+  const headerInit = await initialize("", { "x-prts-output-channel": "structured" });
+  assert.equal(headerInit.status, 200);
+  assert.ok(headerInit.sessionId);
+  const headerResult = await callListStages(headerInit.sessionId);
+  const headerToolResult = headerResult.body.result as Record<string, unknown>;
+  assert.ok(headerToolResult.structuredContent);
+  assert.equal(
+    ((headerToolResult.content as Array<{ text: string }>)[0]).text,
+    "（结构化结果共 1 条，详见 structuredContent）",
   );
 
-  assert.equal(init.status, 200);
-  assert.ok(init.sessionId);
+  const queryInit = await initialize("?output_channel=structured", {
+    "x-prts-output-channel": "both",
+  });
+  assert.equal(queryInit.status, 200);
+  assert.ok(queryInit.sessionId);
 
-  const result = await mcpPost(
-    origin,
-    {
-      jsonrpc: "2.0",
-      method: "tools/call",
-      params: { name: "list_stages", arguments: {} },
-      id: 2,
-    },
-    init.sessionId!,
-  );
-
-  assert.equal(result.status, 200);
-  const toolResult = result.body.result as Record<string, unknown>;
+  const queryResult = await callListStages(queryInit.sessionId);
+  assert.equal(queryResult.status, 200);
+  const toolResult = queryResult.body.result as Record<string, unknown>;
   assert.deepStrictEqual(toolResult.structuredContent, {
     total: 1,
     offset: 0,
@@ -192,4 +224,24 @@ test("output_channel query fixes structured mode for the session", async (t) => 
 
   const content = toolResult.content as Array<{ text: string }>;
   assert.equal(content[0].text, "（结构化结果共 1 条，详见 structuredContent）");
+
+  const fixedResult = await callListStages(
+    queryInit.sessionId,
+    "?output_channel=content",
+    { "x-prts-output-channel": "content" },
+  );
+  const fixedToolResult = fixedResult.body.result as Record<string, unknown>;
+  assert.ok(fixedToolResult.structuredContent, "existing session should keep structured channel");
+  assert.equal(
+    ((fixedToolResult.content as Array<{ text: string }>)[0]).text,
+    "（结构化结果共 1 条，详见 structuredContent）",
+  );
+
+  const invalidInit = await initialize("?output_channel=nope");
+  assert.equal(invalidInit.status, 200);
+  assert.ok(invalidInit.sessionId);
+  const invalidResult = await callListStages(invalidInit.sessionId);
+  const invalidToolResult = invalidResult.body.result as Record<string, unknown>;
+  assert.equal(invalidToolResult.structuredContent, undefined);
+  assert.match(((invalidToolResult.content as Array<{ text: string }>)[0]).text, /^# 关卡列表/);
 });
