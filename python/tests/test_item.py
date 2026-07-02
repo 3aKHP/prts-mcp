@@ -115,15 +115,6 @@ def gamedata() -> str:
     os.environ.pop("GAMEDATA_PATH", None)
 
 
-def test_list_items_default(gamedata: str) -> None:
-    out = list_items()
-    assert "物品列表" in out
-    assert "源岩" in out
-    assert "招聘许可" in out
-    assert "隐藏物品" not in out
-    assert "共 2 个" in out
-
-
 def test_list_items_golden_default(gamedata: str) -> None:
     # Golden: exact full markdown. Hardcoded expectation (not a tautology),
     # catches build-layer field omissions, ordering, and label regressions.
@@ -145,14 +136,6 @@ def test_list_items_golden_category_filter(gamedata: str) -> None:
     )
 
 
-def test_list_items_both_channel(gamedata: str) -> None:
-    data = build_items_listing()
-    assert isinstance(data, dict)
-    r = render_result(data, list_items(), channel="both")
-    assert r.structuredContent == data
-    assert r.content[0].text == list_items()
-
-
 def test_list_items_empty_match_is_structured_not_error(gamedata: str) -> None:
     # Empty-result contract (P2b plan §3.4): a legitimate-but-empty result
     # (filter no-match) is a normal structured payload {total:0, items:[]},
@@ -168,23 +151,6 @@ def test_list_items_empty_match_is_structured_not_error(gamedata: str) -> None:
     # structured channel carries the empty payload
     r = render_result(data, list_items(category="NONEXISTENT"), channel="structured")
     assert r.structuredContent == data
-
-
-def test_list_items_category_filter(gamedata: str) -> None:
-    out = list_items(category="MATERIAL")
-    assert "源岩" in out
-    assert "招聘许可" not in out
-    assert "共 1 个" in out
-
-
-def test_get_item_info_by_name(gamedata: str) -> None:
-    out = get_item_info("源岩")
-    assert "# 源岩" in out
-    assert "ID**：30011" in out
-    assert "T1" in out
-    assert "可用于多种强化场合" in out
-    assert "main_00-01（固定）" in out
-    assert "main_00-02（小概率）" in out
 
 
 def test_get_item_info_golden(gamedata: str) -> None:
@@ -224,12 +190,6 @@ def test_get_item_name_by_id(gamedata: str) -> None:
     assert get_item_name_by_id("missing") is None
 
 
-def test_search_items(gamedata: str) -> None:
-    out = search_items("公开渠道")
-    assert "招聘许可" in out
-    assert "搜索结果" in out
-
-
 def test_search_items_structured_golden(gamedata: str) -> None:
     data = build_item_search("公开渠道")
     assert isinstance(data, dict)
@@ -256,6 +216,21 @@ def test_search_items_structured_golden(gamedata: str) -> None:
     assert render_item_search(data) == expected
     assert search_items("公开渠道") == expected
     r = render_result(data, expected, channel="both")
+    assert r.structuredContent == data
+
+
+def test_search_items_no_match_is_structured_empty(gamedata: str) -> None:
+    data = build_item_search("绝对不存在的物品")
+    assert data == {
+        "scope": "items",
+        "pattern": "绝对不存在的物品",
+        "total": 0,
+        "results": [],
+    }
+    expected = "未找到匹配 '绝对不存在的物品' 的物品。"
+    assert render_item_search(data) == expected
+    assert search_items("绝对不存在的物品") == expected
+    r = render_result(data, expected, channel="structured")
     assert r.structuredContent == data
 
 

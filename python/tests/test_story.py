@@ -7,10 +7,8 @@ from pathlib import Path
 import pytest
 
 from prts_mcp.data.story import (
-    ActivityResult,
     ChapterSummary,
     EventInfo,
-    StoryChapter,
     StoryLine,
     _clean_text,
     _parse_story_list,
@@ -56,8 +54,7 @@ class TestParseStoryList:
     def test_dialog_empty_speaker(self):
         items = [{"id": 1, "prop": "name", "attributes": {"name": "", "content": "旁白文字"}}]
         lines = _parse_story_list(items)
-        assert lines[0].role is None
-        assert lines[0].type == "dialog"
+        assert lines == [StoryLine(type="dialog", role=None, text="旁白文字")]
 
     def test_dialog_empty_content_skipped(self):
         items = [{"id": 1, "prop": "name", "attributes": {"name": "阿米娅", "content": ""}}]
@@ -72,12 +69,12 @@ class TestParseStoryList:
     def test_narration_subtitle(self):
         items = [{"id": 1, "prop": "subtitle", "attributes": {"content": "字幕文字"}}]
         lines = _parse_story_list(items)
-        assert lines[0].type == "narration"
+        assert lines == [StoryLine(type="narration", role=None, text="字幕文字")]
 
     def test_narration_animtext(self):
         items = [{"id": 1, "prop": "animtext", "attributes": {"content": "动画文字"}}]
         lines = _parse_story_list(items)
-        assert lines[0].type == "narration"
+        assert lines == [StoryLine(type="narration", role=None, text="动画文字")]
 
     def test_non_text_props_skipped(self):
         items = [
@@ -100,9 +97,10 @@ class TestParseStoryList:
             {"id": 4, "prop": "Dialog", "attributes": {}},
         ]
         lines = _parse_story_list(items)
-        assert len(lines) == 2
-        assert lines[0].type == "dialog"
-        assert lines[1].type == "narration"
+        assert lines == [
+            StoryLine(type="dialog", role="黍", text="你好"),
+            StoryLine(type="narration", role=None, text="某处"),
+        ]
 
 
 # ---------------------------------------------------------------------------
@@ -111,12 +109,6 @@ class TestParseStoryList:
 
 
 class TestListStoryEvents:
-    def test_returns_list(self, story_zip):
-        events = list_story_events(story_zip)
-        assert isinstance(events, list)
-        assert len(events) > 0
-        assert all(isinstance(e, EventInfo) for e in events)
-
     def test_category_main(self, story_zip):
         events = list_story_events(story_zip, category="main")
         assert all(e.entry_type == "MAINLINE" for e in events)
@@ -133,11 +125,11 @@ class TestListStoryEvents:
         assert len(all_events) > len(main_events)
 
     def test_event_fields(self, story_zip):
-        events = list_story_events(story_zip, category="main")
-        e = events[0]
-        assert e.event_id
-        assert e.name
-        assert e.story_count > 0
+        events = list_story_events(story_zip, category="activities")
+        act31side = next(e for e in events if e.event_id == "act31side")
+        assert isinstance(act31side, EventInfo)
+        assert act31side.entry_type == "ACTIVITY"
+        assert act31side.story_count == len(list_stories(story_zip, "act31side"))
 
     def test_act31side_present(self, story_zip):
         events = list_story_events(story_zip, category="activities")
@@ -148,20 +140,14 @@ class TestListStoryEvents:
 class TestListStories:
     def test_act31side_chapters(self, story_zip):
         chapters = list_stories(story_zip, "act31side")
-        assert len(chapters) > 0
+        assert chapters
         assert all(isinstance(c, ChapterSummary) for c in chapters)
+        assert all(c.story_key.startswith("activities/act31side/") for c in chapters)
 
     def test_sorted_by_sort_order(self, story_zip):
         chapters = list_stories(story_zip, "act31side")
         orders = [c.sort_order for c in chapters]
         assert orders == sorted(orders)
-
-    def test_chapter_fields(self, story_zip):
-        chapters = list_stories(story_zip, "act31side")
-        c = chapters[0]
-        assert c.story_key
-        assert c.story_code
-        assert c.story_name
 
     def test_story_key_format(self, story_zip):
         chapters = list_stories(story_zip, "act31side")
@@ -174,11 +160,6 @@ class TestListStories:
 
 
 class TestReadStory:
-    def test_returns_story_chapter(self, story_zip):
-        key = "activities/act31side/level_act31side_01_beg"
-        chapter = read_story(story_zip, key)
-        assert isinstance(chapter, StoryChapter)
-
     def test_metadata(self, story_zip):
         key = "activities/act31side/level_act31side_01_beg"
         chapter = read_story(story_zip, key)
@@ -191,6 +172,7 @@ class TestReadStory:
         chapter = read_story(story_zip, key)
         dialogs = [ln for ln in chapter.lines if ln.type == "dialog"]
         assert len(dialogs) > 10
+        assert all(ln.text for ln in dialogs[:5])
 
     def test_include_narration_true(self, story_zip):
         # 幕间章节有旁白行
@@ -218,15 +200,10 @@ class TestReadStory:
 
 
 class TestReadActivity:
-    def test_returns_activity_result(self, story_zip):
-        result = read_activity(story_zip, "act31side")
-        assert isinstance(result, ActivityResult)
-        assert hasattr(result, "chapters")
-        assert hasattr(result, "total_chapters")
-
     def test_total_chapters(self, story_zip):
         chapters = list_stories(story_zip, "act31side")
         result = read_activity(story_zip, "act31side")
+        assert result.event_id == "act31side"
         assert result.total_chapters == len(chapters)
 
     def test_no_page_returns_all(self, story_zip):
@@ -245,10 +222,10 @@ class TestReadActivity:
         result = read_activity(story_zip, "act31side", page=last_page, page_size=5)
         assert result.has_more is False
 
-    def test_chapters_are_story_chapters(self, story_zip):
+    def test_page_contains_expected_chapters(self, story_zip):
         result = read_activity(story_zip, "act31side", page=1, page_size=2)
-        for ch in result.chapters:
-            assert isinstance(ch, StoryChapter)
+        assert len(result.chapters) == 2
+        assert all(ch.story_key.startswith("activities/act31side/") for ch in result.chapters)
 
     def test_unknown_event_raises(self, story_zip):
         with pytest.raises(KeyError):

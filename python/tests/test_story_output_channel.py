@@ -21,7 +21,6 @@ from prts_mcp.data.story import (
     render_stories_listing,
     render_story_events_listing,
 )
-from prts_mcp.output import render_result
 from prts_mcp.tools_prts import (
     _build_prts_search,
     _render_prts_search,
@@ -345,32 +344,6 @@ def test_find_speakers_in_golden_and_empty(story_zip: Path) -> None:
     assert render_speakers_in_event(empty) == "活动 'act_narration' 暂无对话发言者数据。"
 
 
-@pytest.mark.parametrize(
-    ("builder", "renderer", "args"),
-    [
-        (build_story_events_listing, render_story_events_listing, ("activities",)),
-        (build_stories_listing, render_stories_listing, ("act_test",)),
-        (build_operator_memoirs, render_operator_memoirs, ("阿米娅",)),
-        (build_character_appearances, render_character_appearances, ("博士",)),
-        (build_speakers_in_event, render_speakers_in_event, ("act_test",)),
-    ],
-)
-def test_story_payloads_emit_structured_content_in_both_channel(
-    story_zip: Path,
-    builder,
-    renderer,
-    args,
-) -> None:
-    data = builder(story_zip, *args)
-    markdown = renderer(data)
-
-    result = render_result(data, markdown, channel="both")
-
-    assert result.structuredContent == data
-    assert len(result.content) == 1
-    assert result.content[0].text == markdown
-
-
 async def _fake_search_prts(
     query: str,
     limit: int = 5,
@@ -403,8 +376,35 @@ def test_search_prts_build_render_and_totalhits(monkeypatch: pytest.MonkeyPatch)
         "**阿米娅**\n"
         "罗德岛公开领袖。"
     )
-    result = render_result(data, _render_prts_search(data), channel="both")
-    assert result.structuredContent == data
+
+
+async def _fake_filtered_empty_search_prts(
+    query: str,
+    limit: int = 5,
+    search_mode: str = "text",
+    filter_technical: bool = True,
+) -> dict:
+    return {"totalhits": 9, "results": []}
+
+
+def test_search_prts_filtered_empty_keeps_totalhits(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("prts_mcp.tools_prts._search_prts", _fake_filtered_empty_search_prts)
+
+    data = asyncio.run(_build_prts_search("阿米娅", limit=1))
+
+    assert data == {
+        "query": "阿米娅",
+        "search_mode": "text",
+        "filters": {
+            "limit": 1,
+            "filter_technical": True,
+        },
+        "total": 9,
+        "results": [],
+    }
+    assert _render_prts_search(data) == "未找到与 '阿米娅' 相关的词条。"
 
 
 async def _fake_empty_search_prts(
@@ -480,21 +480,3 @@ def test_search_stories_missing_zip_is_content_only(
         "剧情数据未就绪。请设置 STORYJSON_PATH 环境变量指向 zh_CN.zip，"
         "或等待服务器自动从 GitHub Release 下载完成后重试。"
     )
-
-
-def test_p2b_manifest_output_schema_shape() -> None:
-    app = FastMCP("manifest-test")
-    register_story_tools(app)
-    register_prts_tools(app)
-
-    tools = {tool.name: tool for tool in asyncio.run(app.list_tools())}
-    for name in {
-        "list_story_events",
-        "list_stories",
-        "get_operator_memoirs",
-        "find_character_appearances",
-        "find_speakers_in",
-        "search_prts",
-        "search_stories",
-    }:
-        assert tools[name].outputSchema is None, f"{name} still has outputSchema"

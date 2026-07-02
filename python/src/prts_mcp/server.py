@@ -38,7 +38,7 @@ mcp = FastMCP("PRTS_Wiki_Assistant")
 
 
 def _register_tools() -> None:
-    """Register all 30 MCP tools via the focused tool modules."""
+    """Register MCP tools via the focused tool modules."""
     from prts_mcp.tools_prts import register_prts_tools
     from prts_mcp.tools_gamedata import register_gamedata_tools
     from prts_mcp.tools_story import register_story_tools

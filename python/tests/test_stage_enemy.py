@@ -8,14 +8,11 @@ from unittest.mock import patch
 import pytest
 
 from prts_mcp.data.stage_enemy import (
-    build_enemy_appearances,
-    build_stage_enemies,
     clear_stage_enemy_caches,
     get_enemy_appearances,
     get_enemy_stage_info,
     get_stage_enemies,
 )
-from prts_mcp.output import render_result
 
 
 def _write_fixture(root: Path) -> None:
@@ -175,20 +172,6 @@ def gamedata(tmp_path: Path):
     clear_stage_enemy_caches()
 
 
-def test_get_stage_enemies_uses_spawn_actions_and_overrides(gamedata: Path) -> None:
-    out = get_stage_enemies("main_00-01")
-    assert "坍塌 0-1" in out
-    assert "源石虫" in out
-    assert "出场数量**：6" in out
-    assert "士兵" in out
-    assert "出场数量**：1" in out
-    assert "DEF 30" in out
-    assert "关卡特化敌人" in out
-    assert "HP 1,234" in out
-    assert "ATK 321" in out
-    assert "未出场敌人" not in out
-
-
 def test_get_stage_enemies_golden(gamedata: Path) -> None:
     # Golden: exact full markdown for main_00-01 against the fixture.
     # Hardcoded (not tautology) — catches build-layer field omissions,
@@ -215,22 +198,6 @@ def test_get_stage_enemies_golden(gamedata: Path) -> None:
     )
 
 
-def test_get_stage_enemies_both_channel(gamedata: Path) -> None:
-    data = build_stage_enemies("main_00-01")
-    assert isinstance(data, dict)
-    r = render_result(data, get_stage_enemies("main_00-01"), channel="both")
-    assert r.structuredContent == data
-    assert r.content[0].text == get_stage_enemies("main_00-01")
-
-
-def test_get_enemy_appearances(gamedata: Path) -> None:
-    out = get_enemy_appearances("源石虫")
-    assert "源石虫" in out
-    assert "坍塌" in out
-    assert "main_00-01" in out
-    assert "6 个" in out
-
-
 def test_get_enemy_appearances_golden(gamedata: Path) -> None:
     # Golden: exact full markdown. Hardcoded (not tautology) — catches
     # build-layer field omissions and header/pagination regressions.
@@ -240,14 +207,6 @@ def test_get_enemy_appearances_golden(gamedata: Path) -> None:
         "\n"
         "（显示第 1–1 条，共 1 条。使用 offset=50 查看下一页）"
     )
-
-
-def test_get_enemy_appearances_both_channel(gamedata: Path) -> None:
-    data = build_enemy_appearances("源石虫")
-    assert isinstance(data, dict)
-    r = render_result(data, get_enemy_appearances("源石虫"), channel="both")
-    assert r.structuredContent == data
-    assert r.content[0].text == get_enemy_appearances("源石虫")
 
 
 def test_get_enemy_stage_info(gamedata: Path) -> None:

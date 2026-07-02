@@ -100,7 +100,8 @@ class TestSyncRelease:
             result = sync_release(spec)
 
         assert result.status == "updated"
-        mock_dl.assert_called_once()
+        assert result.commit_sha == "newsha1234"
+        mock_dl.assert_called_once_with(spec, tag, asset_url)
 
     def test_up_to_date_when_sha_matches(self, tmp_path):
         spec = _make_spec(tmp_path)

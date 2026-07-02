@@ -1,10 +1,12 @@
 """Tests for the output-channel renderer (2.0 structuredContent support)."""
 from __future__ import annotations
 
+import importlib
+
 from mcp.types import CallToolResult
 
+import prts_mcp.output as output_module
 from prts_mcp.output import (
-    OUTPUT_CHANNEL,
     _parse_channel,
     render_result,
     text_result,
@@ -33,12 +35,19 @@ def test_parse_channel_rejects_unknown_and_falls_back() -> None:
     assert _parse_channel("json") == "content"  # deliberately not a channel
 
 
-def test_module_constant_reads_env_at_import() -> None:
-    # OUTPUT_CHANNEL (the parsed-value constant) is resolved at import time
-    # from the PRTS_OUTPUT_CHANNEL env var. We can't re-import here cheaply,
-    # so just assert it is one of the valid values regardless of the ambient
-    # environment.
-    assert OUTPUT_CHANNEL in {"content", "structured", "both"}
+def test_module_constant_reads_env_at_import(monkeypatch) -> None:
+    # OUTPUT_CHANNEL is a connection-level constant resolved at import time.
+    monkeypatch.setenv("PRTS_OUTPUT_CHANNEL", "structured")
+    assert importlib.reload(output_module).OUTPUT_CHANNEL == "structured"
+
+    monkeypatch.setenv("PRTS_OUTPUT_CHANNEL", " Both ")
+    assert importlib.reload(output_module).OUTPUT_CHANNEL == "both"
+
+    monkeypatch.setenv("PRTS_OUTPUT_CHANNEL", "bad")
+    assert importlib.reload(output_module).OUTPUT_CHANNEL == "content"
+
+    monkeypatch.delenv("PRTS_OUTPUT_CHANNEL", raising=False)
+    importlib.reload(output_module)
 
 
 # ---------------------------------------------------------------------------
