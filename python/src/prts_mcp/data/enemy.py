@@ -247,8 +247,20 @@ def build_enemies_listing(
     entries.sort(key=lambda x: (x[1].get("sortId", 9999), x[0]))
     total = len(entries)
 
+    # Legitimate-but-empty: offset past end (total>0) is a normal structured
+    # payload, not an error (P2b plan §3.4). Filter-no-match (total==0) falls
+    # through to the standard empty-dict path below.
+    filters_payload = {"threat_level": threat_level, "threat_level_filter": level_filter}
     if not full and offset >= total and total > 0:
-        return f"# 敌人图鉴（共 {total} 个）\n\noffset={offset} 超出范围（总计 {total} 条）。"
+        return {
+            "total": total,
+            "offset": offset,
+            "limit": limit,
+            "full": full,
+            "filters": filters_payload,
+            "enemies": [],
+            "empty_reason": "offset_out_of_range",
+        }
 
     displayed = entries if full else entries[offset:offset + limit]
 
@@ -270,7 +282,7 @@ def build_enemies_listing(
         "offset": offset,
         "limit": limit,
         "full": full,
-        "filters": {"threat_level": level_filter},
+        "filters": filters_payload,
         "enemies": item_entries,
     }
 
@@ -280,6 +292,11 @@ def render_enemies_listing(data: dict) -> str:
 
     Pure renderer; the inverse of ``build_enemies_listing``'s success path.
     """
+    if data.get("empty_reason") == "offset_out_of_range":
+        total = data["total"]
+        offset = data["offset"]
+        return f"# 敌人图鉴（共 {total} 个）\n\noffset={offset} 超出范围（总计 {total} 条）。"
+
     total = data["total"]
     offset = data["offset"]
     limit = data["limit"]

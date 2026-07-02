@@ -236,7 +236,14 @@ def build_stage_enemies(stage_id: str) -> dict | str:
         return f"读取关卡敌人失败：{exc}"
 
     if not counts:
-        return f"关卡 {stage_id!r} 未解析到实际出怪。"
+        # Legitimate-but-empty: the stage exists but spawns nothing.
+        return {
+            "stage_id": stage_id,
+            "stage_label": _stage_label(stage, stage_id),
+            "total": 0,
+            "enemies": [],
+            "empty_reason": "no_match",
+        }
 
     enemy_entries = []
     for enemy_id, count in counts.most_common():
@@ -272,6 +279,9 @@ def render_stage_enemies(data: dict) -> str:
 
     Pure renderer; the inverse of ``build_stage_enemies``'s success path.
     """
+    if data.get("empty_reason") == "no_match":
+        return f"关卡 {data['stage_id']!r} 未解析到实际出怪。"
+
     lines = [f"# {data['stage_label']} — 敌人列表"]
     for e in data["enemies"]:
         lines.append(f"\n## {e['name']}（{e['enemy_id']}）")
@@ -341,10 +351,19 @@ def build_enemy_appearances(name: str, limit: int = 50, offset: int = 0) -> dict
     total = len(appearances)
     page = appearances[offset : offset + limit]
     enemy_name = _handbook_name(enemy_id)
+    # Legitimate-but-empty (no appearances / offset past end) is a normal
+    # structured payload, not an error (P2b plan §3.4).
     if not page:
-        if total == 0:
-            return f"未找到 {enemy_name}（{enemy_id}）的实际出场关卡。"
-        return f"offset {offset} 超出范围（共 {total} 条）。"
+        empty_reason = "no_match" if total == 0 else "offset_out_of_range"
+        return {
+            "enemy_id": enemy_id,
+            "enemy_name": enemy_name,
+            "total": total,
+            "offset": offset,
+            "limit": limit,
+            "stages": [],
+            "empty_reason": empty_reason,
+        }
 
     stage_entries = []
     for stage_id, count in page:
@@ -371,6 +390,12 @@ def render_enemy_appearances(data: dict) -> str:
 
     Pure renderer; the inverse of ``build_enemy_appearances``'s success path.
     """
+    empty_reason = data.get("empty_reason")
+    if empty_reason == "no_match":
+        return f"未找到 {data['enemy_name']}（{data['enemy_id']}）的实际出场关卡。"
+    if empty_reason == "offset_out_of_range":
+        return f"offset {data['offset']} 超出范围（共 {data['total']} 条）。"
+
     enemy_name = data["enemy_name"]
     enemy_id = data["enemy_id"]
     total = data["total"]

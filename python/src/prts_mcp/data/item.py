@@ -207,10 +207,20 @@ def build_items_listing(
     total = len(entries)
     page = entries[offset : offset + limit]
 
+    # Legitimate-but-empty results (no match / offset past end) are a normal
+    # structured payload, NOT an error — structured consumers can rely on
+    # "empty ⇒ {total:0, items:[]}" (P2b plan §3.4). The renderer still emits
+    # the original human-readable message, so content is byte-for-byte stable.
     if not page:
-        if total == 0:
-            return f"没有匹配的物品（category={category or 'none'}）。"
-        return f"offset {offset} 超出范围（共 {total} 条）。"
+        empty_reason = "no_match" if total == 0 else "offset_out_of_range"
+        return {
+            "total": total,
+            "offset": offset,
+            "limit": limit,
+            "filters": {"category": category, "category_filter": category_filter},
+            "items": [],
+            "empty_reason": empty_reason,
+        }
 
     item_entries = []
     for item_id, info in page:
@@ -242,6 +252,15 @@ def render_items_listing(data: dict) -> str:
 
     Pure renderer; the inverse of ``build_items_listing``'s success path.
     """
+    # Legitimate-but-empty results render as the original human message
+    # (byte-for-byte stable content) while the structured payload carries
+    # {total:0, items:[]} for capable clients.
+    empty_reason = data.get("empty_reason")
+    if empty_reason == "no_match":
+        return f"没有匹配的物品（category={data['filters']['category'] or 'none'}）。"
+    if empty_reason == "offset_out_of_range":
+        return f"offset {data['offset']} 超出范围（共 {data['total']} 条）。"
+
     total = data["total"]
     offset = data["offset"]
     limit = data["limit"]

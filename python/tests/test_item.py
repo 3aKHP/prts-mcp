@@ -151,6 +151,23 @@ def test_list_items_both_channel(gamedata: str) -> None:
     assert r.content[0].text == list_items()
 
 
+def test_list_items_empty_match_is_structured_not_error(gamedata: str) -> None:
+    # Empty-result contract (P2b plan §3.4): a legitimate-but-empty result
+    # (filter no-match) is a normal structured payload {total:0, items:[]},
+    # NOT a content-only error — structured consumers can rely on it. The
+    # content channel still emits the original "没有匹配" message verbatim.
+    data = build_items_listing(category="NONEXISTENT")
+    assert isinstance(data, dict)
+    assert data["total"] == 0
+    assert data["items"] == []
+    assert data["empty_reason"] == "no_match"
+    # content stays byte-for-byte (the original message)
+    assert list_items(category="NONEXISTENT") == "没有匹配的物品（category=NONEXISTENT）。"
+    # structured channel carries the empty payload
+    r = render_result(data, list_items(category="NONEXISTENT"), channel="structured")
+    assert r.structuredContent == data
+
+
 def test_list_items_category_filter(gamedata: str) -> None:
     out = list_items(category="MATERIAL")
     assert "源岩" in out

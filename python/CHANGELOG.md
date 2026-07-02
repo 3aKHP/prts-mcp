@@ -49,10 +49,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
   gamedata list/fusion tools (`list_enemies`, `list_items`,
   `get_stage_enemies`, `get_enemy_appearances`) migrated to the build/render
   split with real structuredContent. Listing payloads carry pagination
-  metadata + filters + entries with chainable IDs and raw/label field
-  pairs; the fusion tool (`get_stage_enemies`) carries per-enemy spawn
-  counts, level, overwrite flag, and stats text. The story-list/wiki-search
-  tools and the heterogeneous `search` follow in P2b PR2b/PR3.
+  metadata + filters (raw user input + normalized filter) + entries with
+  chainable IDs and raw/label field pairs; the fusion tool
+  (`get_stage_enemies`) carries per-enemy spawn counts, level, overwrite
+  flag, and stats text. **Empty-result contract**: legitimate-but-empty
+  results (filter no-match, offset past end) now return a structured
+  payload `{total:0, entries:[]}` that the structured channel carries,
+  while the content channel still emits the original human message
+  verbatim — so structured consumers can uniformly rely on
+  "empty ⇒ {total:0}". True errors (invalid params, missing data) stay
+  content-only. The story-list/wiki-search tools and the heterogeneous
+  `search` follow in P2b PR2b/PR3.
 
 ### Changed
 

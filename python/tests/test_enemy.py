@@ -163,6 +163,21 @@ class TestListEnemies:
             "- **霜星** [领袖] (FN) — 整合运动法术部队干部。"
         )
 
+    def test_offset_out_of_range_is_structured_not_error(self, gamedata):
+        # Empty-result contract (P2b plan §3.4): offset past the end is a
+        # legitimate-but-empty structured payload, not a content-only error.
+        # Content stays byte-for-byte (the original header + out-of-range msg).
+        data = build_enemies_listing(offset=999)
+        assert isinstance(data, dict)
+        assert data["enemies"] == []
+        assert data["empty_reason"] == "offset_out_of_range"
+        assert list_enemies(offset=999) == (
+            f"# 敌人图鉴（共 {data['total']} 个）\n\n"
+            f"offset=999 超出范围（总计 {data['total']} 条）。"
+        )
+        r = render_result(data, list_enemies(offset=999), channel="structured")
+        assert r.structuredContent == data
+
     def test_both_channel_attaches_structured_content(self, gamedata):
         # Verify the tool wiring actually populates structuredContent in the
         # both channel (the build dict rides the structured axis).
