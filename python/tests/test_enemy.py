@@ -9,12 +9,14 @@ from unittest.mock import patch
 import pytest
 
 from prts_mcp.data.enemy import (
+    build_enemy_search,
     build_enemy_info,
     build_enemies_listing,
     clear_enemy_caches,
     list_enemies,
     get_enemy_info,
     render_enemy_info,
+    render_enemy_search,
     search_enemies,
 )
 from prts_mcp.output import render_result
@@ -319,6 +321,38 @@ class TestSearchEnemies:
     def test_match_by_description(self, gamedata):
         out = search_enemies("整合运动")
         assert "霜星" in out
+
+    def test_structured_golden(self, gamedata):
+        data = build_enemy_search("整合运动")
+        assert isinstance(data, dict)
+        assert data["scope"] == "enemies"
+        assert data["pattern"] == "整合运动"
+        assert data["total"] == 1
+        assert data["results"][0] == {
+            "enemy_id": "enemy_1505_frstar",
+            "name": "霜星",
+            "enemy_index": "FN",
+            "level_raw": "BOSS",
+            "level_label": "领袖",
+            "description": "整合运动法术部队干部。",
+            "attack_type": "",
+            "ability": "",
+            "damage_types_raw": ["MAGIC"],
+            "damage_types_label": "法术",
+            "enemy_tags": [],
+        }
+        expected = (
+            "# 搜索结果：整合运动（共 1 个）\n\n"
+            "# 霜星 - 敌人图鉴\n\n"
+            "- **编号**：FN\n"
+            "- **威胁等级**：领袖\n"
+            "- **描述**：整合运动法术部队干部。\n"
+            "- **伤害类型**：法术"
+        )
+        assert render_enemy_search(data) == expected
+        assert search_enemies("整合运动") == expected
+        r = render_result(data, expected, channel="both")
+        assert r.structuredContent == data
 
     def test_no_match(self, gamedata):
         out = search_enemies("绝对不存在的关键词")

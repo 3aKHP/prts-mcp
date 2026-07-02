@@ -8,10 +8,12 @@ from pathlib import Path
 import pytest
 
 from prts_mcp.data.stage import (
+    build_stage_search,
     build_stages_listing,
     clear_stage_caches,
     list_stages,
     get_stage_info,
+    render_stage_search,
     render_stages_listing,
     search_stages,
 )
@@ -429,6 +431,38 @@ class TestSearchStages:
         assert "坍塌" in out
         assert "坍塌·突袭" in out
         assert "搜索结果" in out
+
+    def test_structured_golden(self, gamedata: str) -> None:
+        data = build_stage_search("先锋")
+        assert isinstance(data, dict)
+        assert data["scope"] == "stages"
+        assert data["pattern"] == "先锋"
+        assert data["total"] == 1
+        assert data["results"][0] == {
+            "stage_id": "main_00-01",
+            "name": "坍塌",
+            "code": "0-1",
+            "type": "MAIN",
+            "type_label": "主线",
+            "difficulty": "NORMAL",
+            "difficulty_label": "普通",
+            "zone_id": "main_0",
+            "zone_display": "序章-黑暗时代·上",
+            "ap": 6,
+            "description": "三点方向出现了敌人的先锋部队。",
+        }
+        expected = (
+            "# 搜索结果：先锋（共 1 个）\n\n"
+            "## 坍塌 [主线] 0-1（id: main_00-01）\n"
+            "- **区域**：序章-黑暗时代·上\n"
+            "- **难度**：普通\n"
+            "- **理智**：6\n"
+            "- **描述**：三点方向出现了敌人的先锋部队。"
+        )
+        assert render_stage_search(data) == expected
+        assert search_stages("先锋") == expected
+        r = render_result(data, expected, channel="both")
+        assert r.structuredContent == data
 
     def test_by_code(self, gamedata: str) -> None:
         out = search_stages("AS-1")
