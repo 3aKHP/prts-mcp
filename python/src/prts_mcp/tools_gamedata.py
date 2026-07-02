@@ -38,7 +38,8 @@ from prts_mcp.data.item import (
 )
 from prts_mcp.data.stage_enemy import (
     get_stage_enemies as _get_stage_enemies,
-    get_enemy_appearances as _get_enemy_appearances,
+    build_enemy_appearances as _build_enemy_appearances,
+    render_enemy_appearances as _render_enemy_appearances,
     get_enemy_stage_info as _get_enemy_stage_info,
 )
 from prts_mcp.data.search import search_operator_data as _search_operator_data
@@ -144,12 +145,15 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         name: Annotated[str, Field(description="敌人的游戏内中文名或 enemyId，如「源石虫」或 enemy_1007_slime。")],
         limit: Annotated[int, Field(default=50, description="返回数量上限，默认 50。")] = 50,
         offset: Annotated[int, Field(default=0, description="分页偏移量，默认 0。")] = 0,
-    ) -> str:
+    ) -> object:
         """反向查询指定敌人实际出现在哪些关卡。
 
         只统计该敌人真正刷出的关卡，不计入引用但未实际出场的关卡。
         """
-        return _get_enemy_appearances(name, limit=limit, offset=offset)
+        data = _build_enemy_appearances(name, limit=limit, offset=offset)
+        if isinstance(data, str):
+            return text_result(data)
+        return render_result(data, _render_enemy_appearances(data))
 
     @mcp.tool()
     def list_stages(

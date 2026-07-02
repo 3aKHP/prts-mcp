@@ -276,8 +276,12 @@ def _enemy_appearance_index() -> dict[str, list[tuple[str, int]]]:
     return appearances
 
 
-def get_enemy_appearances(name: str, limit: int = 50, offset: int = 0) -> str:
-    """Return stages where an enemy actually spawns."""
+def build_enemy_appearances(name: str, limit: int = 50, offset: int = 0) -> dict | str:
+    """Build the structured payload for where an enemy actually spawns.
+
+    Returns the dict payload on success, or a markdown error string on a
+    validation / missing-data / not-found / empty path.
+    """
     if limit < 1:
         return "limit 必须 >= 1。"
     if limit > 200:
@@ -304,16 +308,53 @@ def get_enemy_appearances(name: str, limit: int = 50, offset: int = 0) -> str:
             return f"未找到 {enemy_name}（{enemy_id}）的实际出场关卡。"
         return f"offset {offset} 超出范围（共 {total} 条）。"
 
-    lines = [f"# {enemy_name}（{enemy_id}）— 出场关卡（共 {total} 个）"]
+    stage_entries = []
     for stage_id, count in page:
         stage = stages.get(stage_id, {})
-        code = stage.get("code") or stage_id
-        stage_name = stage.get("name") or "（无名）"
-        lines.append(f"- **{stage_name}** {code}（{stage_id}）：{count} 个")
+        stage_entries.append({
+            "stage_id": stage_id,
+            "stage_name": stage.get("name") or "（无名）",
+            "code": stage.get("code") or stage_id,
+            "count": count,
+        })
+
+    return {
+        "enemy_id": enemy_id,
+        "enemy_name": enemy_name,
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+        "stages": stage_entries,
+    }
+
+
+def render_enemy_appearances(data: dict) -> str:
+    """Render an enemy-appearances payload dict to markdown.
+
+    Pure renderer; the inverse of ``build_enemy_appearances``'s success path.
+    """
+    enemy_name = data["enemy_name"]
+    enemy_id = data["enemy_id"]
+    total = data["total"]
+    offset = data["offset"]
+    limit = data["limit"]
+    stages = data["stages"]
+
+    lines = [f"# {enemy_name}（{enemy_id}）— 出场关卡（共 {total} 个）"]
+    for s in stages:
+        lines.append(f"- **{s['stage_name']}** {s['code']}（{s['stage_id']}）：{s['count']} 个")
     start = offset + 1
     end = min(offset + limit, total)
     lines.append(f"\n（显示第 {start}–{end} 条，共 {total} 条。使用 offset={offset + limit} 查看下一页）")
     return "\n".join(lines)
+
+
+def get_enemy_appearances(name: str, limit: int = 50, offset: int = 0) -> str:
+    """Return stages where an enemy actually spawns."""
+    data = build_enemy_appearances(name, limit=limit, offset=offset)
+    if isinstance(data, str):
+        return data
+    return render_enemy_appearances(data)
 
 
 def get_enemy_stage_info(name: str, stage_id: str) -> str:

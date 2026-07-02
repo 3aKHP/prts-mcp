@@ -194,6 +194,17 @@ def test_get_enemy_appearances(gamedata: Path) -> None:
     assert "6 个" in out
 
 
+def test_get_enemy_appearances_golden(gamedata: Path) -> None:
+    # Golden: exact full markdown. Hardcoded (not tautology) — catches
+    # build-layer field omissions and header/pagination regressions.
+    assert get_enemy_appearances("源石虫") == (
+        "# 源石虫（enemy_1007_slime）— 出场关卡（共 1 个）\n"
+        "- **坍塌** 0-1（main_00-01）：6 个\n"
+        "\n"
+        "（显示第 1–1 条，共 1 条。使用 offset=50 查看下一页）"
+    )
+
+
 def test_get_enemy_stage_info(gamedata: Path) -> None:
     out = get_enemy_stage_info("士兵", "main_00-01")
     assert "士兵" in out
