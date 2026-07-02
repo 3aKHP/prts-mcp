@@ -3,6 +3,7 @@ from __future__ import annotations
 import re as _re
 from dataclasses import dataclass as _dataclass
 from functools import lru_cache as _lru_cache
+from typing import Any
 
 from prts_mcp.config import Config as _Config
 from prts_mcp.data.item import get_item_name_by_id as _get_item_name_by_id
@@ -468,7 +469,7 @@ def render_stage_search(data: dict) -> str:
     return "\n".join(lines)
 
 
-def _stage_search_entry(record: _StageSearchRecord) -> dict:
+def _stage_search_entry(record: _StageSearchRecord) -> dict[str, Any]:
     e = record.entry
     type_raw = e.get("stageType", "")
     difficulty_raw = e.get("difficulty", "")
