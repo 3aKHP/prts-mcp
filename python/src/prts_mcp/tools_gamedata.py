@@ -20,7 +20,8 @@ from prts_mcp.data.enemy import (
     search_enemies as _search_enemies,
 )
 from prts_mcp.data.stage import (
-    list_stages as _list_stages,
+    build_stages_listing as _build_stages_listing,
+    render_stages_listing as _render_stages_listing,
     get_stage_info as _get_stage_info,
     search_stages as _search_stages,
 )
@@ -35,6 +36,7 @@ from prts_mcp.data.stage_enemy import (
     get_enemy_stage_info as _get_enemy_stage_info,
 )
 from prts_mcp.data.search import search_operator_data as _search_operator_data
+from prts_mcp.output import OUTPUT_CHANNEL, render_result
 
 
 def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
@@ -130,13 +132,19 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         type: Annotated[str | None, Field(default=None, description="按关卡类型过滤：MAIN（主线）/ ACTIVITY（活动）/ SUB（支线）/ DAILY（每日）/ CAMPAIGN（剿灭）/ CLIMB_TOWER（爬塔）/ SPECIAL_STORY（特殊故事）/ GUIDE（教程）。不填则返回全部。")] = None,
         limit: Annotated[int, Field(default=50, description="返回数量上限，默认 50。")] = 50,
         offset: Annotated[int, Field(default=0, description="分页偏移量，默认 0。")] = 0,
-    ) -> str:
+    ) -> object:
         """列出关卡列表，支持按章节和类型过滤。
 
         返回格式：每行 `- **关卡名** [类型] 编号 — 难度 — 区域`。
         获取 stage_id 后可传入 get_stage_info 查看详情。
         """
-        return _list_stages(chapter=chapter, type=type, limit=limit, offset=offset)
+        data = _build_stages_listing(chapter=chapter, type=type, limit=limit, offset=offset)
+        if isinstance(data, str):
+            # Error / missing-data path: text only, no structuredContent.
+            return render_result(None, data, channel=OUTPUT_CHANNEL)
+        return render_result(
+            data, _render_stages_listing(data), channel=OUTPUT_CHANNEL
+        )
 
     @mcp.tool()
     def get_stage_info(
