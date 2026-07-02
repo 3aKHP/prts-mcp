@@ -26,13 +26,13 @@ def test_parse_channel_accepts_known_values_case_insensitively() -> None:
     assert _parse_channel(" Both ") == "both"
 
 
-def test_parse_channel_rejects_unknown_and_falls_back(monkeypatch) -> None:
+def test_parse_channel_rejects_unknown_and_falls_back() -> None:
     # Should not raise; unknown values fall back to content.
     assert _parse_channel("yaml") == "content"
     assert _parse_channel("json") == "content"  # deliberately not a channel
 
 
-def test_module_constant_reads_env_at_import(monkeypatch) -> None:
+def test_module_constant_reads_env_at_import() -> None:
     # OUTPUT_CHANNEL (the parsed-value constant) is resolved at import time
     # from the PRTS_OUTPUT_CHANNEL env var. We can't re-import here cheaply,
     # so just assert it is one of the valid values regardless of the ambient
