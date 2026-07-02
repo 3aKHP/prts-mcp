@@ -297,8 +297,13 @@ def list_stages(
     return render_stages_listing(data)
 
 
-def get_stage_info(stage_id: str) -> str:
-    """Return detailed information for a single stage."""
+def build_stage_info(stage_id: str) -> dict | str:
+    """Build the structured payload for a single stage's detail.
+
+    Returns the dict payload on success, or a markdown error string on a
+    missing-data / not-found path. The dict is the single source of truth
+    that ``render_stage_info`` consumes.
+    """
     try:
         stages = _load_stage_table()
     except (FileNotFoundError, TypeError) as e:
@@ -308,63 +313,95 @@ def get_stage_info(stage_id: str) -> str:
     if entry is None:
         return f"未找到关卡：{stage_id!r}。"
 
-    name = entry.get("name") or "（无名）"
-    code = entry.get("code") or "?"
-    t_label = _stage_type_label(entry.get("stageType", ""))
-    d_label = _difficulty_label(entry.get("difficulty", ""))
-    zone_id = entry.get("zoneId", "")
-    zd = _zone_display(zone_id)
     _ap = entry.get("apCost")
-    ap = _ap if _ap is not None else "?"
-    danger = entry.get("dangerLevel") or "?"
-    boss = entry.get("bossMark", False)
     raw_desc = entry.get("description") or ""
-    desc = _clean_description(raw_desc) or "（无描述）"
-    drop_info = entry.get("stageDropInfo")
-    unlocks = entry.get("unlockCondition") or []
-    hard_id = entry.get("hardStagedId")
-    level_id = entry.get("levelId")
 
-    parts = [f"# {name} — 关卡详情", "", "## 基本信息"]
-    parts.append(f"- **ID**：{stage_id}")
-    parts.append(f"- **编号**：{code}")
-    parts.append(f"- **类型**：{t_label}")
-    parts.append(f"- **难度**：{d_label}")
-    parts.append(f"- **所属区域**：{zd}")
-    parts.append(f"- **理智消耗**：{ap}")
-    parts.append(f"- **危险等级**：{danger}")
-    if boss:
+    # Related stages — resolve names up front so render stays pure.
+    hard_id = entry.get("hardStagedId")
+    hard_name = None
+    if hard_id:
+        h_entry = stages.get(hard_id)
+        hard_name = h_entry.get("name") if h_entry else None
+    six_star_id = entry.get("sixStarStageId")
+    six_star_name = None
+    if six_star_id:
+        s_entry = stages.get(six_star_id)
+        six_star_name = s_entry.get("name") if s_entry else None
+
+    return {
+        "stage_id": stage_id,
+        "name": entry.get("name") or "（无名）",
+        "code": entry.get("code") or "?",
+        "type_label": _stage_type_label(entry.get("stageType", "")),
+        "difficulty_label": _difficulty_label(entry.get("difficulty", "")),
+        "zone_id": entry.get("zoneId", ""),
+        "zone_display": _zone_display(entry.get("zoneId", "")),
+        "ap_cost": _ap if _ap is not None else "?",
+        "danger_level": entry.get("dangerLevel") or "?",
+        "boss_mark": entry.get("bossMark", False),
+        "description": _clean_description(raw_desc) or "（无描述）",
+        "drop_info": entry.get("stageDropInfo"),
+        "unlock_conditions": entry.get("unlockCondition") or [],
+        "level_id": entry.get("levelId"),
+        "hard_stage": {"id": hard_id, "name": hard_name},
+        "six_star_stage": {"id": six_star_id, "name": six_star_name},
+    }
+
+
+def render_stage_info(data: dict) -> str:
+    """Render a stage-detail payload dict to markdown.
+
+    Pure renderer; the inverse of ``build_stage_info``'s success path.
+    Reuses ``_format_drops`` / ``_format_unlock`` for the drop/unlock
+    sections so the output stays byte-for-byte equivalent.
+    """
+    parts = [f"# {data['name']} — 关卡详情", "", "## 基本信息"]
+    parts.append(f"- **ID**：{data['stage_id']}")
+    parts.append(f"- **编号**：{data['code']}")
+    parts.append(f"- **类型**：{data['type_label']}")
+    parts.append(f"- **难度**：{data['difficulty_label']}")
+    parts.append(f"- **所属区域**：{data['zone_display']}")
+    parts.append(f"- **理智消耗**：{data['ap_cost']}")
+    parts.append(f"- **危险等级**：{data['danger_level']}")
+    if data["boss_mark"]:
         parts.append("- **BOSS标记**：是")
-    if level_id:
-        parts.append(f"- **关卡数据**：{level_id}")
+    if data["level_id"]:
+        parts.append(f"- **关卡数据**：{data['level_id']}")
 
     parts.append("")
     parts.append("## 描述")
-    parts.append(desc)
+    parts.append(data["description"])
 
     parts.append("")
     parts.append("## 掉落信息")
-    parts.append(_format_drops(drop_info))
+    parts.append(_format_drops(data["drop_info"]))
 
     parts.append("")
     parts.append("## 解锁条件")
-    parts.append(_format_unlock(unlocks))
+    parts.append(_format_unlock(data["unlock_conditions"]))
 
     parts.append("")
     parts.append("## 关联关卡")
-    if hard_id:
-        h_entry = stages.get(hard_id)
-        h_name = h_entry.get("name") if h_entry else None
-        parts.append(f"- 突袭模式：{hard_id}" + (f"（{h_name}）" if h_name else ""))
+    hard = data["hard_stage"]
+    if hard["id"]:
+        parts.append(f"- 突袭模式：{hard['id']}" + (f"（{hard['name']}）" if hard["name"] else ""))
     else:
         parts.append("- 突袭模式：无")
-    ssid = entry.get("sixStarStageId")
-    if ssid:
-        s_entry = stages.get(ssid)
-        s_name = s_entry.get("name") if s_entry else None
-        parts.append(f"- 六星模式：{ssid}" + (f"（{s_name}）" if s_name else ""))
+    six_star = data["six_star_stage"]
+    if six_star["id"]:
+        parts.append(
+            f"- 六星模式：{six_star['id']}" + (f"（{six_star['name']}）" if six_star["name"] else "")
+        )
 
     return "\n".join(parts)
+
+
+def get_stage_info(stage_id: str) -> str:
+    """Return detailed information for a single stage."""
+    data = build_stage_info(stage_id)
+    if isinstance(data, str):
+        return data
+    return render_stage_info(data)
 
 
 def search_stages(pattern: str, max_results: int = 30) -> str:

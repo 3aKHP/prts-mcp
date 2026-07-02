@@ -354,8 +354,13 @@ def list_enemies(
     return header.strip()
 
 
-def get_enemy_info(name: str) -> str:
-    """Return full info for a single enemy, with combat stats from database."""
+def build_enemy_info(name: str) -> dict | str:
+    """Build the structured payload for a single enemy's handbook + combat stats.
+
+    Returns the dict payload on success, or a markdown error string on a
+    missing-data / not-found path. The dict is the single source of truth
+    that ``render_enemy_info`` consumes.
+    """
     if not _has_enemy_data():
         return _missing_data_message()
 
@@ -376,15 +381,189 @@ def get_enemy_info(name: str) -> str:
     if info is None:
         return f"敌人 '{name}' 暂无详细信息。"
 
-    result = _fmt_enemy(info, include_id=True)
+    # Handbook fields (with localization where applicable)
+    level_raw = info.get("enemyLevel", "")
+    damage_types_raw: list[str] = info.get("damageType") or []
 
-    # Merge combat stats from enemy_database.json
+    payload: dict[str, Any] = {
+        "name": info.get("name", ""),
+        "enemy_id": info.get("enemyId", ""),
+        "enemy_index": info.get("enemyIndex", ""),
+        "level_raw": level_raw,
+        "level_label": _ENEMY_LEVEL_ZH.get(level_raw, level_raw),
+        "description": info.get("description", ""),
+        "attack_type": info.get("attackType") or "",
+        "ability": info.get("ability") or "",
+        "damage_types_raw": damage_types_raw,
+        "damage_types_label": "、".join(
+            _DAMAGE_TYPE_ZH.get(dt, dt) for dt in damage_types_raw
+        ),
+        "enemy_tags": info.get("enemyTags") or [],
+        "stats": None,
+    }
+
+    # Combat stats from enemy_database.json
     db = _load_enemy_database()
     db_entry = db["_index"].get(eid) if db else None
     if db_entry:
-        result += _fmt_stats(db_entry)
+        payload["stats"] = _extract_enemy_stats(db_entry)
 
-    return result
+    return payload
+
+
+def _extract_enemy_stats(db_entry: dict) -> dict:
+    """Extract combat stats from an enemy_database entry into a structured dict.
+
+    Mirrors the rendering decisions of ``_fmt_stats`` so render_enemy_info
+    can reproduce its output exactly: numeric values are formatted the same
+    way (e.g. HP with thousands separator), and only non-default fields are
+    included.
+    """
+    attrs: dict = db_entry.get("attributes", {})
+    hp = _m_value(attrs.get("maxHp"), 0)
+    atk = _m_value(attrs.get("atk"), 0)
+    defense = _m_value(attrs.get("def"), 0)
+    res = _m_value(attrs.get("magicResistance"))
+    speed = _m_value(attrs.get("moveSpeed"), 0.0)
+    atk_time = _m_value(attrs.get("baseAttackTime"), 0.0)
+    atk_speed = _m_value(attrs.get("attackSpeed"), 100.0)
+    mass = _m_value(attrs.get("massLevel"), 0)
+    hp_recovery = _m_value(attrs.get("hpRecoveryPerSec"), 0.0)
+
+    immunities = []
+    for key, label in _IMMUNITY_LABELS.items():
+        if _m_value(attrs.get(key), False):
+            immunities.append(label)
+    lpr = _m_value(attrs.get("lifePointReduce"), 0)
+
+    stats: dict[str, Any] = {
+        "max_hp": f"{hp:,}" if hp else None,
+        "atk": str(atk) if atk else None,
+        "def": str(defense) if defense else None,
+        "resistance": str(res) if res is not None else None,
+        "move_speed": str(speed) if speed else None,
+        "attack_interval": f"{atk_time}s" if atk_time else None,
+        "attack_speed": str(atk_speed) if atk_speed != 100.0 else None,
+        "mass_level": str(mass) if mass else None,
+        "hp_recovery_per_sec": str(hp_recovery) if hp_recovery else None,
+        "immunities": immunities,
+        "life_point_reduce": str(lpr) if lpr else None,
+    }
+
+    skills: list[dict] = []
+    for s in db_entry.get("skills") or []:
+        prefab = s.get("prefabKey", "未知")
+        cooldown = s.get("cooldown", "")
+        sp_cost = _m_value(s.get("spData", {}).get("spCost") if s.get("spData") else None, None)
+        init_cd = s.get("initCooldown", "")
+
+        cd_parts = []
+        if cooldown:
+            cd_parts.append(f"冷却 {cooldown}s")
+        if init_cd and init_cd != cooldown:
+            cd_parts.append(f"初始 {init_cd}s")
+        if sp_cost:
+            cd_parts.append(f"SP {sp_cost}")
+        timing = "，".join(cd_parts) if cd_parts else ""
+
+        blackboard: list[dict] = s.get("blackboard", [])
+        bb_strs = []
+        for b in blackboard[:6]:
+            key = b.get("key", "")
+            val = b.get("value", "")
+            if val is not None:
+                bb_strs.append(f"{key}={val}")
+        bb = "，".join(bb_strs)
+
+        skills.append({"prefab": prefab, "timing": timing, "blackboard": bb})
+
+    stats["skills"] = skills
+    return stats
+
+
+def render_enemy_info(data: dict) -> str:
+    """Render an enemy-info payload dict to markdown.
+
+    Pure renderer; the inverse of ``build_enemy_info``'s success path.
+    """
+    lines: list[str] = []
+    name = data["name"]
+    if name:
+        lines.append(f"# {name} - 敌人图鉴\n")
+        lines.append(f"- **ID**：{data['enemy_id']}")
+
+    enemy_index = data["enemy_index"]
+    if enemy_index:
+        lines.append(f"- **编号**：{enemy_index}")
+
+    level_label = data["level_label"]
+    if level_label:
+        lines.append(f"- **威胁等级**：{level_label}")
+
+    desc = data["description"]
+    if desc:
+        lines.append(f"- **描述**：{desc}")
+
+    attack = data["attack_type"]
+    if attack:
+        lines.append(f"- **攻击方式**：{attack}")
+
+    ability = data["ability"]
+    if ability:
+        lines.append(f"- **特殊能力**：{ability}")
+
+    dt_label = data["damage_types_label"]
+    if dt_label:
+        lines.append(f"- **伤害类型**：{dt_label}")
+
+    enemy_tags = data["enemy_tags"]
+    if enemy_tags:
+        lines.append(f"- **标签**：{'、'.join(enemy_tags)}")
+
+    stats = data["stats"]
+    if stats:
+        lines.append("\n## 战斗属性")
+        for field, label in (
+            ("max_hp", "最大生命"),
+            ("atk", "攻击力"),
+            ("def", "防御力"),
+            ("resistance", "法术抗性"),
+            ("move_speed", "移动速度"),
+            ("attack_interval", "攻击间隔"),
+            ("attack_speed", "攻击速度"),
+            ("mass_level", "重量等级"),
+            ("hp_recovery_per_sec", "每秒生命回复"),
+        ):
+            val = stats.get(field)
+            if val:
+                lines.append(f"- **{label}**：{val}")
+        immunities = stats["immunities"]
+        if immunities:
+            lines.append(f"- **免疫**：{'、'.join(immunities)}")
+        lpr = stats["life_point_reduce"]
+        if lpr:
+            lines.append(f"- **生命值扣除**：{lpr}")
+
+        skills = stats["skills"]
+        if skills:
+            lines.append("\n## 技能")
+            for s in skills:
+                parts = [f"- **{s['prefab']}**"]
+                if s["timing"]:
+                    parts.append(f"（{s['timing']}）")
+                if s["blackboard"]:
+                    parts.append(": " + s["blackboard"])
+                lines.append("".join(parts))
+
+    return "\n".join(lines)
+
+
+def get_enemy_info(name: str) -> str:
+    """Return full info for a single enemy, with combat stats from database."""
+    data = build_enemy_info(name)
+    if isinstance(data, str):
+        return data
+    return render_enemy_info(data)
 
 
 def search_enemies(pattern: str, max_results: int = 30) -> str:
