@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Added
+
+- **Output channel pilot (2.0).** Streamable HTTP sessions can opt into
+  `output_channel=structured` or `output_channel=both` via query string,
+  `x-prts-output-channel` header, or `PRTS_OUTPUT_CHANNEL`. This first TS
+  migration slice enables structuredContent for `list_stages` while preserving
+  the default content-only markdown output.
+
 ### Changed
 
 - **Parameter naming normalization (2.0, breaking).** Operator tools

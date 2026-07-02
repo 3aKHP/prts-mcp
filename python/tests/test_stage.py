@@ -164,6 +164,11 @@ def _make_fixture(root: Path) -> None:
     )
 
 
+def _load_parity_fixture(name: str) -> dict:
+    path = Path(__file__).parents[2] / "tests" / "parity-fixtures" / name
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
 @pytest.fixture(autouse=True)
 def _reset_caches() -> None:
     clear_stage_caches()
@@ -268,6 +273,9 @@ class TestStagesBuildRender:
         assert first["type"] == "ACTIVITY"
         assert first["type_label"] == "活动"
         assert first["difficulty_label"] == "普通"
+
+    def test_matches_shared_parity_fixture(self, gamedata: str) -> None:
+        assert build_stages_listing() == _load_parity_fixture("list_stages.json")
 
     def test_build_error_paths_return_str(self, gamedata: str) -> None:
         assert isinstance(build_stages_listing(limit=0), str)

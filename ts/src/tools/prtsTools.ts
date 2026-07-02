@@ -15,8 +15,9 @@ import {
   getLinks,
   getTemplateData,
 } from "../api/prtsWiki.js";
+import type { OutputChannel } from "../output.js";
 
-export function registerPrtsTools(server: McpServer): void {
+export function registerPrtsTools(server: McpServer, _channel: OutputChannel = "content"): void {
   server.tool(
     "search_prts",
     [

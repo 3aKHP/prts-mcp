@@ -40,6 +40,28 @@ interface StageSearchRecord {
   searchText: string;
 }
 
+export interface StageListingEntry {
+  stage_id: string;
+  name: string;
+  code: string;
+  type: string;
+  type_label: string;
+  difficulty_label: string;
+  zone_id: string;
+  zone_display: string;
+}
+
+export interface StagesListingPayload extends Record<string, unknown> {
+  total: number;
+  offset: number;
+  limit: number;
+  filters: {
+    chapter: string | null;
+    type: string | null;
+  };
+  stages: StageListingEntry[];
+}
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
@@ -201,7 +223,19 @@ export function listStages(
   limit: number = 50,
   offset: number = 0,
 ): string {
+  const data = buildStagesListing(chapter, type, limit, offset);
+  if (typeof data === "string") return data;
+  return renderStagesListing(data);
+}
+
+export function buildStagesListing(
+  chapter?: string | null,
+  type?: string | null,
+  limit: number = 50,
+  offset: number = 0,
+): StagesListingPayload | string {
   if (limit < 1) return "limit 必须 >= 1。";
+  if (limit > 200) return "limit 必须 <= 200。";
   if (offset < 0) return "offset 必须 >= 0。";
   if (type != null && !(type.toUpperCase() in STAGE_TYPE_LABELS)) {
     const allowed = Object.keys(STAGE_TYPE_LABELS).join("、");
@@ -219,7 +253,7 @@ export function listStages(
   for (const [sid, entry] of Object.entries(stages).sort(([a], [b]) => a.localeCompare(b))) {
     if (chapter != null && entry.zoneId !== chapter) continue;
     if (type != null && entry.stageType !== type.toUpperCase()) continue;
-    filtered.push(entry);
+    filtered.push({ ...entry, stageId: entry.stageId ?? sid });
   }
 
   const total = filtered.length;
@@ -235,17 +269,43 @@ export function listStages(
     return `offset ${offset} 超出范围（共 ${total} 条）。`;
   }
 
-  const lines = [`# 关卡列表（共 ${total} 个）`];
-  for (const e of page) {
-    const tLabel = stageTypeLabel(e.stageType ?? "");
-    const dLabel = difficultyLabel(e.difficulty ?? "");
-    const zd = zoneDisplay(e.zoneId ?? "");
-    const name = e.name || "（无名）";
-    const code = e.code || "?";
-    const sid = e.stageId ?? "";
-    lines.push(`- **${name}** [${tLabel}] ${code} — ${dLabel} — ${zd}（id: ${sid}）`);
+  const entries: StageListingEntry[] = page.map((e) => {
+    const typeRaw = e.stageType ?? "";
+    const zoneId = e.zoneId ?? "";
+    return {
+      stage_id: e.stageId ?? "",
+      name: e.name || "（无名）",
+      code: e.code || "?",
+      type: typeRaw,
+      type_label: stageTypeLabel(typeRaw),
+      difficulty_label: difficultyLabel(e.difficulty ?? ""),
+      zone_id: zoneId,
+      zone_display: zoneDisplay(zoneId),
+    };
+  });
+
+  return {
+    total,
+    offset,
+    limit,
+    filters: {
+      chapter: chapter ?? null,
+      type: type ? type.toUpperCase() : null,
+    },
+    stages: entries,
+  };
+}
+
+export function renderStagesListing(data: StagesListingPayload): string {
+  const lines = [`# 关卡列表（共 ${data.total} 个）`];
+  for (const s of data.stages) {
+    lines.push(
+      `- **${s.name}** [${s.type_label}] ${s.code} — ` +
+      `${s.difficulty_label} — ${s.zone_display}（id: ${s.stage_id}）`,
+    );
   }
 
+  const { offset, limit, total } = data;
   const start = offset + 1;
   const end = Math.min(offset + limit, total);
   lines.push(

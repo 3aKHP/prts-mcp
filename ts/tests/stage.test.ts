@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -142,6 +142,12 @@ function writeFixtures(root: string): void {
   );
 }
 
+function loadParityFixture(name: string): unknown {
+  return JSON.parse(
+    readFileSync(join(import.meta.dirname, "..", "..", "tests", "parity-fixtures", name), "utf-8"),
+  );
+}
+
 // ---------------------------------------------------------------------------
 // listStages
 // ---------------------------------------------------------------------------
@@ -247,6 +253,34 @@ test("listStages invalid limit", async () => {
   const stage = await loadStageModule();
   const out = stage.listStages(null, null, 0);
   assert.match(out, /limit 必须 >= 1/);
+});
+
+test("listStages max limit", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  writeFixtures(root);
+  const stage = await loadStageModule();
+  const out = stage.listStages(null, null, 201);
+  assert.match(out, /limit 必须 <= 200/);
+});
+
+test("buildStagesListing matches shared parity fixture", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  writeFixtures(root);
+  const stage = await loadStageModule();
+  const data = stage.buildStagesListing();
+  assert.deepStrictEqual(data, loadParityFixture("list_stages.json"));
+});
+
+test("renderStagesListing preserves listStages markdown", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  writeFixtures(root);
+  const stage = await loadStageModule();
+  const data = stage.buildStagesListing();
+  if (typeof data === "string") assert.fail(`unexpected error: ${data}`);
+  assert.equal(stage.renderStagesListing(data), stage.listStages());
 });
 
 // ---------------------------------------------------------------------------
