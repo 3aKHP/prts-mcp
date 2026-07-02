@@ -83,7 +83,7 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         return render_result(
             data,
             _render_basic_info(data),
-            summary=f"干员『{name}』的基本信息",
+            summary=f"干员『{data['name']}』的基本信息",
         )
 
     @mcp.tool()
@@ -120,7 +120,7 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         return render_result(
             data,
             _render_enemy_info(data),
-            summary=f"敌人『{name}』的图鉴",
+            summary=f"敌人『{data['name']}』的图鉴",
         )
 
     @mcp.tool()
@@ -182,7 +182,7 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         return render_result(
             data,
             _render_stage_info(data),
-            summary=f"关卡『{stage_id}』的详情",
+            summary=f"关卡『{data['name']}』的详情",
         )
 
     @mcp.tool()
@@ -211,7 +211,7 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         return render_result(
             data,
             _render_item_info(data),
-            summary=f"物品『{name}』的详情",
+            summary=f"物品『{data['name']}』的详情",
         )
 
     @mcp.tool()

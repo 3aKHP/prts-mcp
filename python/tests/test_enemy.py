@@ -226,6 +226,31 @@ class TestGetEnemyInfo:
         # Two damage types — must use 、 not ", "
         assert "**伤害类型**：物理、法术" in out
 
+    def test_golden_full_output(self, gamedata):
+        # Golden: the exact full markdown for 霜星 against the test fixture.
+        # Stronger than a round-trip — catches build-layer field omissions
+        # (round-trip only proves render(build()) self-consistency). This is
+        # the pattern the remaining P2b detail tools copy.
+        assert get_enemy_info("霜星") == (
+            "# 霜星 - 敌人图鉴\n\n"
+            "- **ID**：enemy_1505_frstar\n"
+            "- **编号**：FN\n"
+            "- **威胁等级**：领袖\n"
+            "- **描述**：整合运动法术部队干部。\n"
+            "- **伤害类型**：法术\n"
+            "## 战斗属性\n"
+            "- **最大生命**：25,000\n"
+            "- **攻击力**：420\n"
+            "- **防御力**：250\n"
+            "- **法术抗性**：50.0\n"
+            "- **移动速度**：0.5\n"
+            "- **攻击间隔**：3.7s\n"
+            "- **免疫**：眩晕、冻结\n"
+            "\n"
+            "## 技能\n"
+            "- **ArcticBlast**（冷却 8.5s）: duration=8.0，atk_scale=1.5"
+        )
+
     def test_build_render_round_trip_is_exact(self, gamedata):
         # The build/render split must be byte-for-byte equivalent to the
         # public get_enemy_info — including the single-newline boundary

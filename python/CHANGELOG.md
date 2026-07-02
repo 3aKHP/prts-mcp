@@ -39,8 +39,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
   `structuredContent` payloads. `render_result` gains an optional `summary`
   override so detail tools (single-record, no `total`) can provide a
   meaningful one-liner in `structured` mode instead of the generic fallback.
-  Their `structuredContent` carries both raw enums/values and rendered
-  labels (e.g. `profession=CASTER` + `profession_zh`-equivalent label).
+  Their `structuredContent` carries both raw enums and rendered labels
+  (e.g. `profession_raw=CASTER` + `profession=术师`), so downstream
+  automation can filter on raw values while Chinese consumers get
+  localized text.
   The list/fusion tools (`list_enemies`, `search`, …) and the `search`
   consolidation follow in P2b PR2/PR3.
 

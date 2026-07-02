@@ -189,91 +189,12 @@ def _fmt_enemy(info: dict, include_id: bool = False) -> str:
     return "\n".join(lines)
 
 
-def _fmt_stats(db_entry: dict | None) -> str:
-    """Format combat stats from enemy_database.json."""
-    if db_entry is None:
-        return ""
-
-    attrs: dict = db_entry.get("attributes", {})
-    hp = _m_value(attrs.get("maxHp"), 0)
-    atk = _m_value(attrs.get("atk"), 0)
-    defense = _m_value(attrs.get("def"), 0)
-    res = _m_value(attrs.get("magicResistance"))
-    speed = _m_value(attrs.get("moveSpeed"), 0.0)
-    atk_time = _m_value(attrs.get("baseAttackTime"), 0.0)
-    atk_speed = _m_value(attrs.get("attackSpeed"), 100.0)
-    mass = _m_value(attrs.get("massLevel"), 0)
-    hp_recovery = _m_value(attrs.get("hpRecoveryPerSec"), 0.0)
-
-    lines: list[str] = []
-    lines.append("\n## 战斗属性")
-    if hp:
-        lines.append(f"- **最大生命**：{hp:,}")
-    if atk:
-        lines.append(f"- **攻击力**：{atk}")
-    if defense:
-        lines.append(f"- **防御力**：{defense}")
-    if res is not None:
-        lines.append(f"- **法术抗性**：{res}")
-    if speed:
-        lines.append(f"- **移动速度**：{speed}")
-    if atk_time:
-        lines.append(f"- **攻击间隔**：{atk_time}s")
-    if atk_speed != 100.0:
-        lines.append(f"- **攻击速度**：{atk_speed}")
-    if mass:
-        lines.append(f"- **重量等级**：{mass}")
-    if hp_recovery:
-        lines.append(f"- **每秒生命回复**：{hp_recovery}")
-
-    # Immunities
-    immunities = []
-    for key, label in _IMMUNITY_LABELS.items():
-        if _m_value(attrs.get(key), False):
-            immunities.append(label)
-    if immunities:
-        lines.append(f"- **免疫**：{'、'.join(immunities)}")
-
-    # Life point reduction
-    lpr = _m_value(attrs.get("lifePointReduce"), 0)
-    if lpr:
-        lines.append(f"- **生命值扣除**：{lpr}")
-
-    # Skills
-    skills: list[dict] = db_entry.get("skills") or []
-    if skills:
-        lines.append("\n## 技能")
-        for s in skills:
-            prefab = s.get("prefabKey", "未知")
-            cooldown = s.get("cooldown", "")
-            sp_cost = _m_value(s.get("spData", {}).get("spCost") if s.get("spData") else None, None)
-            init_cd = s.get("initCooldown", "")
-
-            parts = [f"- **{prefab}**"]
-            cd_parts = []
-            if cooldown:
-                cd_parts.append(f"冷却 {cooldown}s")
-            if init_cd and init_cd != cooldown:
-                cd_parts.append(f"初始 {init_cd}s")
-            if sp_cost:
-                cd_parts.append(f"SP {sp_cost}")
-            if cd_parts:
-                parts.append(f"（{'，'.join(cd_parts)}）")
-
-            # Blackboard params
-            blackboard: list[dict] = s.get("blackboard", [])
-            if blackboard:
-                bb_strs = []
-                for b in blackboard[:6]:
-                    key = b.get("key", "")
-                    val = b.get("value", "")
-                    if val is not None:
-                        bb_strs.append(f"{key}={val}")
-                if bb_strs:
-                    parts.append(": " + "，".join(bb_strs))
-            lines.append("".join(parts))
-
-    return "\n".join(lines)
+# NOTE: a _fmt_stats helper previously lived here, formatting combat stats
+# from enemy_database.json into markdown. It became dead code when
+# get_enemy_info migrated to _extract_enemy_stats (structured dict) +
+# render_enemy_info (markdown). Removed; if P2b PR2's list/search tools
+# need stat rendering, they should share _extract_enemy_stats rather than
+# resurrect this (see git history).
 
 
 # ---------------------------------------------------------------------------
@@ -414,9 +335,8 @@ def build_enemy_info(name: str) -> dict | str:
 def _extract_enemy_stats(db_entry: dict) -> dict:
     """Extract combat stats from an enemy_database entry into a structured dict.
 
-    Mirrors the rendering decisions of ``_fmt_stats`` so render_enemy_info
-    can reproduce its output exactly: numeric values are formatted the same
-    way (e.g. HP with thousands separator), and only non-default fields are
+    Numeric values are pre-formatted as render_enemy_info will emit them
+    (e.g. HP with thousands separator), and only non-default fields are
     included.
     """
     attrs: dict = db_entry.get("attributes", {})
