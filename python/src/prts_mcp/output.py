@@ -140,3 +140,24 @@ def _summarize(data: dict[str, Any]) -> str:
     if isinstance(total, int):
         return f"（结构化结果共 {total} 条，详见 structuredContent）"
     return "（结构化结果详见 structuredContent）"
+
+
+def text_result(markdown: str) -> CallToolResult:
+    """Build a content-only ``CallToolResult`` carrying markdown text.
+
+    For narrative tools (§5) — whose output is prose with no useful
+    structured form — and for error/missing-data paths across all tools.
+    The structured payload axis simply does not apply: ``structuredContent``
+    is always ``None`` regardless of ``OUTPUT_CHANNEL``, and the markdown is
+    the whole result.
+
+    Use this instead of ``render_result(None, …)`` for narrative tools:
+    "narrative tool has no structure" is the *normal* success case here, not
+    a "data missing" condition, so the dedicated helper keeps the semantics
+    honest (design doc §11).
+    """
+    return CallToolResult(
+        content=[TextContent(type="text", text=markdown)],
+        structuredContent=None,
+        isError=False,
+    )

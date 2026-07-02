@@ -7,6 +7,7 @@ from prts_mcp.output import (
     OUTPUT_CHANNEL,
     _parse_channel,
     render_result,
+    text_result,
 )
 
 
@@ -94,3 +95,24 @@ def test_structured_channel_without_total_falls_back_to_generic_summary() -> Non
     r = render_result(data, _MD, channel="structured")
     assert r.structuredContent == data
     assert "structuredContent" in r.content[0].text
+
+
+# ---------------------------------------------------------------------------
+# text_result — narrative / error-path content-only helper
+# ---------------------------------------------------------------------------
+
+
+def test_text_result_is_content_only() -> None:
+    r = text_result(_MD)
+    assert isinstance(r, CallToolResult)
+    assert [c.text for c in r.content] == [_MD]
+    assert r.structuredContent is None
+    assert r.isError is False
+
+
+def test_text_result_carries_error_messages_verbatim() -> None:
+    err = "未找到剧情章节：'nope'。请通过 list_stories 确认章节 key。"
+    r = text_result(err)
+    assert [c.text for c in r.content] == [err]
+    assert r.structuredContent is None
+    assert r.isError is False
