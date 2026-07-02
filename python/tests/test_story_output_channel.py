@@ -37,6 +37,7 @@ EVENT_SUMMARIES_PATH = "zh_CN/event_summaries.json"
 FIRST_STORY_KEY = "activities/act_test/level_act_test_01_beg"
 SECOND_STORY_KEY = "activities/act_test/level_act_test_02_end"
 NO_SUMMARY_STORY_KEY = "activities/act_no_summary/level_act_no_summary_01"
+NO_SUMMARY_SECOND_STORY_KEY = "activities/act_no_summary/level_act_no_summary_02"
 NARRATION_STORY_KEY = "activities/act_narration/level_act_narration_01"
 MEMOIR_STORY_KEY = "memory/amiya/level_amiya_01"
 
@@ -78,6 +79,13 @@ def _story_files() -> dict[str, object]:
                         "storyName": "短章",
                         "avgTag": None,
                         "storySort": 1,
+                    },
+                    {
+                        "storyTxt": NO_SUMMARY_SECOND_STORY_KEY,
+                        "storyCode": "NS-2",
+                        "storyName": "无摘要章",
+                        "avgTag": None,
+                        "storySort": 2,
                     }
                 ],
             },
@@ -156,6 +164,16 @@ def _story_files() -> dict[str, object]:
                 {"prop": "name", "attributes": {"name": "阿米娅", "content": "短章台词。"}},
             ],
         },
+        _story_path(NO_SUMMARY_SECOND_STORY_KEY): {
+            "storyCode": "NS-2",
+            "storyName": "无摘要章",
+            "avgTag": None,
+            "eventName": "无长摘要活动",
+            "storyInfo": "",
+            "storyList": [
+                {"prop": "name", "attributes": {"name": "阿米娅", "content": "没有一句话梗概。"}},
+            ],
+        },
         _story_path(NARRATION_STORY_KEY): {
             "storyCode": "NAR-1",
             "storyName": "旁白章",
@@ -188,7 +206,7 @@ def test_list_story_events_golden_and_empty(story_zip: Path) -> None:
     }
     assert render_story_events_listing(data) == (
         "- [ACTIVITY] act_test：测试活动（2 章）\n"
-        "- [ACTIVITY] act_no_summary：无长摘要活动（1 章）\n"
+        "- [ACTIVITY] act_no_summary：无长摘要活动（2 章）\n"
         "- [ACTIVITY] act_narration：纯旁白活动（1 章）\n"
         "- [ACTIVITY] act_empty：空活动（0 章）"
     )
@@ -245,9 +263,11 @@ def test_list_stories_with_summaries_but_no_event_summary(story_zip: Path) -> No
     data = build_stories_listing(story_zip, "act_no_summary", include_summaries=True)
 
     assert "event_summary" not in data
+    assert data["chapters"][1]["summary"] == ""
     assert render_stories_listing(data) == (
         f"- NS-1 短章（key: {NO_SUMMARY_STORY_KEY}）\n"
-        "  无长摘要的一句话梗概"
+        "  无长摘要的一句话梗概\n"
+        f"- NS-2 无摘要章（key: {NO_SUMMARY_SECOND_STORY_KEY}）"
     )
 
 

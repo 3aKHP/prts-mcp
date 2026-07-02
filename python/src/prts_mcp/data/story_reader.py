@@ -7,6 +7,7 @@ search, summary, and memoir logic live in their own modules.
 from __future__ import annotations
 
 import json
+import logging
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -30,6 +31,8 @@ CATEGORY_MAP: dict[str, list[str]] = {
     "activities": ["ACTIVITY", "MINI_ACTIVITY"],
     "memoirs": ["NONE"],
 }
+
+_logger = logging.getLogger("prts_mcp.story")
 
 
 def story_zip_path(story_key: str) -> str:
@@ -417,7 +420,8 @@ def build_stories_listing_from_store(
                 raw_events = store.read_json(EVENT_SUMMARIES)
                 if isinstance(raw_events, dict):
                     event_summary_text = str(raw_events.get(event_id) or "").strip()
-        except Exception:
+        except Exception as exc:
+            _logger.debug("读取剧情摘要失败，跳过摘要：%s", exc)
             chapter_summaries = {}
             event_summary_text = ""
 
