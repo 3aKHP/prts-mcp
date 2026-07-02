@@ -62,6 +62,36 @@ interface LevelJson {
   }>;
 }
 
+export interface StageEnemiesPayload {
+  stage_id: string;
+  stage_label: string;
+  total: number;
+  enemies: Array<{
+    enemy_id: string;
+    name: string;
+    count: number;
+    level: number;
+    overwritten: boolean;
+    stats_text: string;
+  }>;
+  empty_reason?: "no_match";
+}
+
+export interface EnemyAppearancesPayload {
+  enemy_id: string;
+  enemy_name: string;
+  total: number;
+  offset: number;
+  limit: number;
+  stages: Array<{
+    stage_id: string;
+    stage_name: string;
+    code: string;
+    count: number;
+  }>;
+  empty_reason?: "no_match" | "offset_out_of_range";
+}
+
 let stageTable: Record<string, StageEntry> | null = null;
 let enemyHandbook: Record<string, EnemyHandbookEntry> | null = null;
 let enemyDatabase: Record<string, Record<number, EnemyData>> | null = null;
@@ -249,6 +279,11 @@ function formatNumber(value: unknown): string {
   return String(value ?? 0);
 }
 
+function formatFloatLike(value: unknown): string {
+  if (typeof value === "number" && Number.isInteger(value)) return `${value}.0`;
+  return String(value ?? 0);
+}
+
 function formatStats(enemyData: EnemyData | null): string {
   if (!enemyData) return "战斗属性：无数据库记录";
   const attrs = enemyData.attributes ?? {};
@@ -259,8 +294,8 @@ function formatStats(enemyData: EnemyData | null): string {
   const speed = mValue(attrs.moveSpeed, 0);
   const atkTime = mValue(attrs.baseAttackTime, 0);
   const parts = [`HP ${formatNumber(hp)}`, `ATK ${atk}`, `DEF ${defense}`, `RES ${res}`];
-  if (speed) parts.push(`移速 ${speed}`);
-  if (atkTime) parts.push(`攻击间隔 ${atkTime}s`);
+  if (speed) parts.push(`移速 ${formatFloatLike(speed)}`);
+  if (atkTime) parts.push(`攻击间隔 ${formatFloatLike(atkTime)}s`);
   return parts.join("；");
 }
 
@@ -269,6 +304,12 @@ function sortedCounts(counts: Map<string, number>): Array<[string, number]> {
 }
 
 export function getStageEnemies(stageId: string): string {
+  const data = buildStageEnemies(stageId);
+  if (typeof data === "string") return data;
+  return renderStageEnemies(data);
+}
+
+export function buildStageEnemies(stageId: string): StageEnemiesPayload | string {
   if (!hasLevelsData(loadConfig())) return missingLevelsMessage();
   let stage: StageEntry | undefined;
   let level: LevelJson | string;
@@ -285,19 +326,51 @@ export function getStageEnemies(stageId: string): string {
     return `读取关卡敌人失败：${err instanceof Error ? err.message : String(err)}`;
   }
 
-  if (counts.size === 0) return `关卡 ${JSON.stringify(stageId)} 未解析到实际出怪。`;
+  if (counts.size === 0) {
+    return {
+      stage_id: stageId,
+      stage_label: stageLabel(stage, stageId),
+      total: 0,
+      enemies: [],
+      empty_reason: "no_match",
+    };
+  }
 
-  const lines = [`# ${stageLabel(stage, stageId)} — 敌人列表`];
-  for (const [enemyId, count] of sortedCounts(counts)) {
+  const enemies = sortedCounts(counts).map(([enemyId, count]) => {
     const ref = refs.get(enemyId);
     const levelNo = parseLevel(ref?.level);
     const data = stageSpecificEnemyData(enemyId, levelNo, ref?.overwrittenData);
     const name = overwrittenEnemyName(ref?.overwrittenData) ?? handbookName(enemyId);
-    lines.push(`\n## ${name}（${enemyId}）`);
-    lines.push(`- **出场数量**：${count}`);
-    lines.push(`- **敌人等级**：${levelNo}`);
-    if (ref?.overwrittenData) lines.push("- **关卡覆盖**：是");
-    lines.push(`- **战斗属性**：${formatStats(data)}`);
+    return {
+      enemy_id: enemyId,
+      name,
+      count,
+      level: levelNo,
+      overwritten: Boolean(ref?.overwrittenData),
+      stats_text: formatStats(data),
+    };
+  });
+
+  return {
+    stage_id: stageId,
+    stage_label: stageLabel(stage, stageId),
+    total: enemies.length,
+    enemies,
+  };
+}
+
+export function renderStageEnemies(data: StageEnemiesPayload): string {
+  if (data.empty_reason === "no_match") {
+    return `关卡 ${JSON.stringify(data.stage_id)} 未解析到实际出怪。`;
+  }
+
+  const lines = [`# ${data.stage_label} — 敌人列表`];
+  for (const enemy of data.enemies) {
+    lines.push(`\n## ${enemy.name}（${enemy.enemy_id}）`);
+    lines.push(`- **出场数量**：${enemy.count}`);
+    lines.push(`- **敌人等级**：${enemy.level}`);
+    if (enemy.overwritten) lines.push("- **关卡覆盖**：是");
+    lines.push(`- **战斗属性**：${enemy.stats_text}`);
   }
   return lines.join("\n");
 }
@@ -332,6 +405,12 @@ function resolveEnemyId(name: string): string | null {
 }
 
 export function getEnemyAppearances(name: string, limit = 50, offset = 0): string {
+  const data = buildEnemyAppearances(name, limit, offset);
+  if (typeof data === "string") return data;
+  return renderEnemyAppearances(data);
+}
+
+export function buildEnemyAppearances(name: string, limit = 50, offset = 0): EnemyAppearancesPayload | string {
   if (limit < 1) return "limit 必须 >= 1。";
   if (limit > 200) return "limit 必须 <= 200。";
   if (offset < 0) return "offset 必须 >= 0。";
@@ -353,17 +432,50 @@ export function getEnemyAppearances(name: string, limit = 50, offset = 0): strin
   const page = appearances.slice(offset, offset + limit);
   const enemyName = handbookName(enemyId);
   if (page.length === 0) {
-    if (total === 0) return `未找到 ${enemyName}（${enemyId}）的实际出场关卡。`;
-    return `offset ${offset} 超出范围（共 ${total} 条）。`;
+    return {
+      enemy_id: enemyId,
+      enemy_name: enemyName,
+      total,
+      offset,
+      limit,
+      stages: [],
+      empty_reason: total === 0 ? "no_match" : "offset_out_of_range",
+    };
   }
 
-  const lines = [`# ${enemyName}（${enemyId}）— 出场关卡（共 ${total} 个）`];
-  for (const [stageId, count] of page) {
+  const stageEntries = page.map(([stageId, count]) => {
     const stage = stages[stageId] ?? {};
-    const code = stage.code || stageId;
-    const stageName = stage.name || "（无名）";
-    lines.push(`- **${stageName}** ${code}（${stageId}）：${count} 个`);
+    return {
+      stage_id: stageId,
+      stage_name: stage.name || "（无名）",
+      code: stage.code || stageId,
+      count,
+    };
+  });
+
+  return {
+    enemy_id: enemyId,
+    enemy_name: enemyName,
+    total,
+    offset,
+    limit,
+    stages: stageEntries,
+  };
+}
+
+export function renderEnemyAppearances(data: EnemyAppearancesPayload): string {
+  if (data.empty_reason === "no_match") {
+    return `未找到 ${data.enemy_name}（${data.enemy_id}）的实际出场关卡。`;
   }
+  if (data.empty_reason === "offset_out_of_range") {
+    return `offset ${data.offset} 超出范围（共 ${data.total} 条）。`;
+  }
+
+  const lines = [`# ${data.enemy_name}（${data.enemy_id}）— 出场关卡（共 ${data.total} 个）`];
+  for (const stage of data.stages) {
+    lines.push(`- **${stage.stage_name}** ${stage.code}（${stage.stage_id}）：${stage.count} 个`);
+  }
+  const { offset, limit, total } = data;
   const start = offset + 1;
   const end = Math.min(offset + limit, total);
   lines.push(`\n（显示第 ${start}–${end} 条，共 ${total} 条。使用 offset=${offset + limit} 查看下一页）`);

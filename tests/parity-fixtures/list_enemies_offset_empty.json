@@ -1,0 +1,12 @@
+{
+  "total": 2,
+  "offset": 999,
+  "limit": 50,
+  "full": false,
+  "filters": {
+    "threat_level": null,
+    "threat_level_filter": null
+  },
+  "enemies": [],
+  "empty_reason": "offset_out_of_range"
+}

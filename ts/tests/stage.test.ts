@@ -356,6 +356,10 @@ test("getStageInfo full info", async () => {
   assert.match(out, /招聘许可（7001）/);
   assert.match(out, /无条件/);
   assert.match(out, /main_00-01#f#/);
+  const data = stage.buildStageInfo("main_00-01");
+  assert.deepStrictEqual(data, loadParityFixture("stage_info.json"));
+  if (typeof data === "string") assert.fail(`unexpected error: ${data}`);
+  assert.equal(stage.renderStageInfo(data), out);
 });
 
 test("getStageInfo four star variant strips markup", async () => {

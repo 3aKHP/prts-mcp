@@ -1,0 +1,34 @@
+{
+  "stage_id": "main_00-01",
+  "name": "坍塌",
+  "code": "0-1",
+  "type_raw": "MAIN",
+  "type_label": "主线",
+  "difficulty_raw": "NORMAL",
+  "difficulty_label": "普通",
+  "zone_id": "main_0",
+  "zone_display": "序章-黑暗时代·上",
+  "ap_cost": 6,
+  "danger_level": "LV.1",
+  "boss_mark": false,
+  "description": "三点方向出现了敌人的先锋部队。",
+  "drop_info": {
+    "displayRewards": [
+      {
+        "type": "TKT_RECRUIT",
+        "id": "7001",
+        "dropType": "ONCE"
+      }
+    ]
+  },
+  "unlock_conditions": [],
+  "level_id": "Obt/Main/level_main_00-01",
+  "hard_stage": {
+    "id": "main_00-01#f#",
+    "name": "坍塌·突袭"
+  },
+  "six_star_stage": {
+    "id": null,
+    "name": null
+  }
+}

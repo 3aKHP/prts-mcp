@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -15,6 +15,12 @@ async function loadModule(): Promise<typeof import("../src/data/stageEnemy.js")>
 function writeJson(path: string, data: unknown): void {
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, JSON.stringify(data), "utf-8");
+}
+
+function loadParityFixture(name: string): unknown {
+  return JSON.parse(
+    readFileSync(join(import.meta.dirname, "..", "..", "tests", "parity-fixtures", name), "utf-8"),
+  );
 }
 
 function writeFixture(root: string): string {
@@ -161,6 +167,10 @@ test("getStageEnemies uses spawn actions and overrides", async () => {
   assert.match(out, /ATK 321/);
   assert.doesNotMatch(out, /NaN/);
   assert.doesNotMatch(out, /未出场敌人/);
+  const data = mod.buildStageEnemies("main_00-01");
+  assert.deepStrictEqual(data, loadParityFixture("stage_enemies.json"));
+  if (typeof data === "string") assert.fail(`unexpected error: ${data}`);
+  assert.equal(mod.renderStageEnemies(data), out);
 });
 
 test("getEnemyAppearances", async () => {
@@ -172,6 +182,20 @@ test("getEnemyAppearances", async () => {
   assert.match(out, /坍塌/);
   assert.match(out, /main_00-01/);
   assert.match(out, /6 个/);
+  const data = mod.buildEnemyAppearances("源石虫");
+  assert.deepStrictEqual(data, loadParityFixture("enemy_appearances.json"));
+  if (typeof data === "string") assert.fail(`unexpected error: ${data}`);
+  assert.equal(mod.renderEnemyAppearances(data), out);
+});
+
+test("getEnemyAppearances empty payload matches shared parity fixture", async () => {
+  const root = tempRoot();
+  process.env["GAMEDATA_PATH"] = writeFixture(root);
+  const mod = await loadModule();
+  const data = mod.buildEnemyAppearances("未出场敌人");
+  assert.deepStrictEqual(data, loadParityFixture("enemy_appearances_empty.json"));
+  if (typeof data === "string") assert.fail(`unexpected error: ${data}`);
+  assert.equal(mod.renderEnemyAppearances(data), "未找到 未出场敌人（enemy_unused）的实际出场关卡。");
 });
 
 test("getEnemyStageInfo", async () => {

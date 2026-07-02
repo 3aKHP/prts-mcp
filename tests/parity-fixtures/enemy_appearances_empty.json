@@ -1,0 +1,9 @@
+{
+  "enemy_id": "enemy_unused",
+  "enemy_name": "未出场敌人",
+  "total": 0,
+  "offset": 0,
+  "limit": 50,
+  "stages": [],
+  "empty_reason": "no_match"
+}

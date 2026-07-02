@@ -1,0 +1,27 @@
+{
+  "name": "阿米娅",
+  "display_number": "R001",
+  "appellation": "Amiya",
+  "rarity": "5★",
+  "rarity_raw": "TIER_5",
+  "profession": "术师",
+  "profession_raw": "CASTER",
+  "sub_profession_id": "corecaster",
+  "position": "远程",
+  "position_raw": "RANGED",
+  "affiliation": "rhodes",
+  "tag_list": [
+    "输出",
+    "支援"
+  ],
+  "attack_attribute": "法术伤害",
+  "item_usage": "罗德岛的公开领袖。",
+  "item_desc": "阿米娅的信物。",
+  "item_obtain": "主线获得",
+  "talents": [
+    {
+      "name": "情绪吸收",
+      "description": "攻击回复技力"
+    }
+  ]
+}

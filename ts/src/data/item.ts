@@ -70,6 +70,45 @@ interface ItemSearchRecord {
   searchText: string;
 }
 
+export interface ItemsListingPayload {
+  total: number;
+  offset: number;
+  limit: number;
+  filters: {
+    category: string | null;
+    category_filter: string | null;
+  };
+  items: Array<{
+    item_id: string;
+    name: string;
+    rarity_raw: string;
+    rarity_label: string;
+    classify_raw: string;
+    classify_label: string;
+    item_type: string;
+    usage_excerpt: string;
+  }>;
+  empty_reason?: "no_match" | "offset_out_of_range";
+}
+
+export interface ItemInfoPayload {
+  name: string;
+  item_id: string;
+  rarity_raw: string;
+  rarity_label: string;
+  classify_raw: string;
+  classify_label: string;
+  item_type: string;
+  icon_id: string | null;
+  obtain_approach: string | null;
+  description: string | null;
+  usage: string | null;
+  stage_drop_list: StageDrop[];
+  building_product_list?: Record<string, unknown>[] | null;
+  shop_relate_list?: Record<string, unknown>[] | null;
+  voucher_relate_list?: Record<string, unknown>[] | null;
+}
+
 let itemTable: Record<string, ItemEntry> | null = null;
 let itemLookup: Map<string, string> | null = null;
 let itemSearchRecords: ItemSearchRecord[] | null = null;
@@ -192,6 +231,16 @@ export function listItems(
   limit = 50,
   offset = 0,
 ): string {
+  const data = buildItemsListing(category, limit, offset);
+  if (typeof data === "string") return data;
+  return renderItemsListing(data);
+}
+
+export function buildItemsListing(
+  category?: string | null,
+  limit = 50,
+  offset = 0,
+): ItemsListingPayload | string {
   if (limit < 1) return "limit 必须 >= 1。";
   if (limit > 200) return "limit 必须 <= 200。";
   if (offset < 0) return "offset 必须 >= 0。";
@@ -220,22 +269,51 @@ export function listItems(
   const page = entries.slice(offset, offset + limit);
 
   if (page.length === 0) {
-    if (total === 0) return `没有匹配的物品（category=${category ?? "none"}）。`;
-    return `offset ${offset} 超出范围（共 ${total} 条）。`;
+    return {
+      total,
+      offset,
+      limit,
+      filters: { category: category ?? null, category_filter: categoryFilter },
+      items: [],
+      empty_reason: total === 0 ? "no_match" : "offset_out_of_range",
+    };
   }
 
-  const title = category
-    ? `# 物品列表：${category}（共 ${total} 个）`
-    : `# 物品列表（共 ${total} 个）`;
+  const items = page.map(([itemId, info]) => ({
+    item_id: itemId,
+    name: info.name || "（无名）",
+    rarity_raw: String(info.rarity ?? ""),
+    rarity_label: rarityLabel(info.rarity ?? ""),
+    classify_raw: String(info.classifyType ?? ""),
+    classify_label: classifyLabel(info.classifyType ?? ""),
+    item_type: info.itemType ?? "-",
+    usage_excerpt: shortText(info.usage ?? info.description ?? ""),
+  }));
+
+  return {
+    total,
+    offset,
+    limit,
+    filters: { category: category ?? null, category_filter: categoryFilter },
+    items,
+  };
+}
+
+export function renderItemsListing(data: ItemsListingPayload): string {
+  if (data.empty_reason === "no_match") {
+    return `没有匹配的物品（category=${data.filters.category ?? "none"}）。`;
+  }
+  if (data.empty_reason === "offset_out_of_range") {
+    return `offset ${data.offset} 超出范围（共 ${data.total} 条）。`;
+  }
+
+  const { total, offset, limit } = data;
+  const category = data.filters.category;
+  const title = category ? `# 物品列表：${category}（共 ${total} 个）` : `# 物品列表（共 ${total} 个）`;
   const lines = [title];
-  for (const [itemId, info] of page) {
-    const name = info.name || "（无名）";
-    const rarity = rarityLabel(info.rarity ?? "");
-    const classify = classifyLabel(info.classifyType ?? "");
-    const itemType = info.itemType ?? "-";
-    const usage = shortText(info.usage ?? info.description ?? "");
-    let line = `- **${name}** [${classify}/${itemType}] ${rarity}（id: ${itemId}）`;
-    if (usage) line += ` — ${usage}`;
+  for (const item of data.items) {
+    let line = `- **${item.name}** [${item.classify_label}/${item.item_type}] ${item.rarity_label}（id: ${item.item_id}）`;
+    if (item.usage_excerpt) line += ` — ${item.usage_excerpt}`;
     lines.push(line);
   }
 
@@ -249,6 +327,12 @@ export function listItems(
 }
 
 export function getItemInfo(name: string): string {
+  const data = buildItemInfo(name);
+  if (typeof data === "string") return data;
+  return renderItemInfo(data);
+}
+
+export function buildItemInfo(name: string): ItemInfoPayload | string {
   let itemId: string | null;
   try {
     itemId = resolveItemId(name);
@@ -260,22 +344,41 @@ export function getItemInfo(name: string): string {
   const info = loadItems()[itemId];
   if (!info) return `物品 ${JSON.stringify(name)} 暂无详细信息。`;
 
-  const itemName = info.name || name;
-  const parts: string[] = [`# ${itemName} — 物品信息`, "", "## 基本信息"];
-  parts.push(`- **ID**：${itemId}`);
-  parts.push(`- **稀有度**：${rarityLabel(info.rarity ?? "")}`);
-  parts.push(`- **分类**：${classifyLabel(info.classifyType ?? "")}`);
-  parts.push(`- **类型**：${info.itemType ?? "-"}`);
-  if (info.iconId) parts.push(`- **图标**：${info.iconId}`);
-  if (info.obtainApproach) parts.push(`- **获取方式**：${info.obtainApproach}`);
+  return {
+    name: info.name || name,
+    item_id: itemId,
+    rarity_raw: String(info.rarity ?? ""),
+    rarity_label: rarityLabel(info.rarity ?? ""),
+    classify_raw: String(info.classifyType ?? ""),
+    classify_label: classifyLabel(info.classifyType ?? ""),
+    item_type: info.itemType ?? "-",
+    icon_id: info.iconId || null,
+    obtain_approach: info.obtainApproach || null,
+    description: info.description || null,
+    usage: info.usage || null,
+    stage_drop_list: info.stageDropList ?? [],
+    building_product_list: info.buildingProductList,
+    shop_relate_list: info.shopRelateInfoList,
+    voucher_relate_list: info.voucherRelateList,
+  };
+}
 
-  if (info.description) parts.push("", "## 描述", info.description);
-  if (info.usage) parts.push("", "## 用途", info.usage);
+export function renderItemInfo(data: ItemInfoPayload): string {
+  const parts: string[] = [`# ${data.name} — 物品信息`, "", "## 基本信息"];
+  parts.push(`- **ID**：${data.item_id}`);
+  parts.push(`- **稀有度**：${data.rarity_label}`);
+  parts.push(`- **分类**：${data.classify_label}`);
+  parts.push(`- **类型**：${data.item_type}`);
+  if (data.icon_id) parts.push(`- **图标**：${data.icon_id}`);
+  if (data.obtain_approach) parts.push(`- **获取方式**：${data.obtain_approach}`);
 
-  parts.push("", "## 掉落关卡", formatStageDrops(info.stageDropList));
-  parts.push(...formatRelated("基建产出", info.buildingProductList));
-  parts.push(...formatRelated("商店关联", info.shopRelateInfoList));
-  parts.push(...formatRelated("凭证关联", info.voucherRelateList));
+  if (data.description) parts.push("", "## 描述", data.description);
+  if (data.usage) parts.push("", "## 用途", data.usage);
+
+  parts.push("", "## 掉落关卡", formatStageDrops(data.stage_drop_list));
+  parts.push(...formatRelated("基建产出", data.building_product_list));
+  parts.push(...formatRelated("商店关联", data.shop_relate_list));
+  parts.push(...formatRelated("凭证关联", data.voucher_relate_list));
   return parts.join("\n");
 }
 

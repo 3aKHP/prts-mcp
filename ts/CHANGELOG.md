@@ -14,6 +14,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
   migration slice enables structuredContent for `list_stages` while preserving
   the default content-only markdown output, including legitimate empty pages
   (filter no-match / offset past end) as structured empty payloads.
+- **Output channel coverage for structured data tools (2.0).** The remaining
+  game-data and story navigation tools now support structuredContent in TS:
+  operator/item/enemy/stage details and listings, stage-enemy fusion,
+  story event/chapter listings, operator memoirs, character appearances, and
+  event speaker counts. Search-family tools remain content-only until the final
+  output-channel migration slice.
 
 ### Changed
 

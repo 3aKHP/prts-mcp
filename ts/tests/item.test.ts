@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -10,6 +10,12 @@ function tempGamedataRoot(): string {
 
 async function loadItemModule(): Promise<typeof import("../src/data/item.js")> {
   return import(`../src/data/item.ts?cacheBust=${Date.now()}-${Math.random()}`);
+}
+
+function loadParityFixture(name: string): unknown {
+  return JSON.parse(
+    readFileSync(join(import.meta.dirname, "..", "..", "tests", "parity-fixtures", name), "utf-8"),
+  );
 }
 
 const SENTINEL_FILES = [
@@ -100,6 +106,7 @@ test("listItems default", async () => {
   assert.match(out, /招聘许可/);
   assert.doesNotMatch(out, /隐藏物品/);
   assert.match(out, /共 2 个/);
+  assert.deepStrictEqual(item.buildItemsListing(), loadParityFixture("list_items.json"));
 });
 
 test("listItems category filter", async () => {
@@ -125,6 +132,19 @@ test("getItemInfo by name", async () => {
   assert.match(out, /可用于多种强化场合/);
   assert.match(out, /main_00-01（固定）/);
   assert.match(out, /main_00-02（小概率）/);
+  assert.deepStrictEqual(item.buildItemInfo("源岩"), loadParityFixture("item_info.json"));
+});
+
+test("listItems empty payload matches shared parity fixture", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  writeFixtures(root);
+  const item = await loadItemModule();
+  const data = item.buildItemsListing("NONEXISTENT");
+  assert.deepStrictEqual(data, loadParityFixture("list_items_empty.json"));
+  if (typeof data === "string") assert.fail(`unexpected error: ${data}`);
+  assert.equal(item.renderItemsListing(data), "没有匹配的物品（category=NONEXISTENT）。");
+  assert.equal(item.listItems("NONEXISTENT"), "没有匹配的物品（category=NONEXISTENT）。");
 });
 
 test("getItemInfo by id", async () => {

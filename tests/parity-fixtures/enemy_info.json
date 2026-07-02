@@ -1,0 +1,17 @@
+{
+  "name": "源石虫",
+  "enemy_id": "enemy_1004_mslime",
+  "enemy_index": "B1",
+  "level_raw": "NORMAL",
+  "level_label": "普通",
+  "description": "野生的被感染生物。",
+  "attack_type": "",
+  "ability": "",
+  "damage_types_raw": [
+    "PHYSIC",
+    "MAGIC"
+  ],
+  "damage_types_label": "物理、法术",
+  "enemy_tags": [],
+  "stats": null
+}

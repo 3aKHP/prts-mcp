@@ -91,6 +91,31 @@ interface CharwordTable {
   charWords?: Record<string, CharwordEntry>;
 }
 
+export interface OperatorTalentPayload {
+  name: string;
+  description: string;
+}
+
+export interface OperatorBasicInfoPayload {
+  name: string;
+  display_number: string;
+  appellation: string;
+  rarity: string;
+  rarity_raw: string;
+  profession: string;
+  profession_raw: string;
+  sub_profession_id: string;
+  position: string;
+  position_raw: string;
+  affiliation: string;
+  tag_list: string[];
+  attack_attribute: string | null;
+  item_usage: string | null;
+  item_desc: string | null;
+  item_obtain: string | null;
+  talents: OperatorTalentPayload[];
+}
+
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
@@ -264,6 +289,12 @@ const POSITION_ZH: Record<string, string> = {
 
 /** Return basic profile info for an operator by Chinese name. */
 export function getOperatorBasicInfo(name: string): string {
+  const data = buildOperatorBasicInfo(name);
+  if (typeof data === "string") return data;
+  return renderOperatorBasicInfo(data);
+}
+
+export function buildOperatorBasicInfo(name: string): OperatorBasicInfoPayload | string {
   const cfg = loadConfig();
   if (!hasOperatorData(cfg)) return missingDataMessage();
 
@@ -297,47 +328,74 @@ export function getOperatorBasicInfo(name: string): string {
   const affiliationParts = [info.nationId, info.groupId, info.teamId].filter(Boolean) as string[];
   const affiliation = affiliationParts.length > 0 ? affiliationParts.join(" / ") : "-";
 
-  const lines: string[] = [`# ${name} - 干员基本信息\n`];
-  lines.push(`- **编号**：${info.displayNumber ?? ""}`);
-  lines.push(`- **英文名**：${info.appellation ?? ""}`);
-  lines.push(`- **稀有度**：${rarity}`);
-  lines.push(`- **职业**：${profession}（${info.subProfessionId ?? ""}）`);
-  lines.push(`- **站位**：${position}`);
-  lines.push(`- **所属**：${affiliation}`);
-  if (info.tagList && info.tagList.length > 0) {
-    lines.push(`- **招募标签**：${info.tagList.join("、")}`);
-  }
-  if (info.description) {
-    lines.push(`- **攻击属性**：${stripWikitext(info.description)}`);
-  }
-  if (info.itemUsage) {
-    lines.push(`\n**图鉴**：${info.itemUsage}`);
-  }
-  if (info.itemDesc) {
-    lines.push(`\n> ${info.itemDesc}`);
-  }
-  if (info.itemObtainApproach) {
-    lines.push(`\n**获取方式**：${info.itemObtainApproach}`);
-  }
-
-  const talents = info.talents ?? [];
-  if (talents.length > 0) {
-    lines.push("\n## 天赋");
-    for (const slot of talents) {
-      const candidates = slot.candidates ?? [];
-      let chosen: TalentCandidate | undefined;
-      for (let i = candidates.length - 1; i >= 0; i--) {
-        const c = candidates[i];
-        if (c.name && c.name !== "？？？") {
-          chosen = c;
-          break;
-        }
+  const talents: OperatorTalentPayload[] = [];
+  for (const slot of info.talents ?? []) {
+    const candidates = slot.candidates ?? [];
+    let chosen: TalentCandidate | undefined;
+    for (let i = candidates.length - 1; i >= 0; i--) {
+      const c = candidates[i];
+      if (c.name && c.name !== "？？？") {
+        chosen = c;
+        break;
       }
-      if (chosen) {
-        lines.push(`- **${chosen.name ?? ""}**：${stripWikitext(chosen.description ?? "")}`);
-      }
+    }
+    if (chosen) {
+      talents.push({
+        name: chosen.name ?? "",
+        description: stripWikitext(chosen.description ?? ""),
+      });
     }
   }
 
+  return {
+    name,
+    display_number: info.displayNumber ?? "",
+    appellation: info.appellation ?? "",
+    rarity,
+    rarity_raw: rarityRaw,
+    profession,
+    profession_raw: info.profession ?? "",
+    sub_profession_id: info.subProfessionId ?? "",
+    position,
+    position_raw: info.position ?? "",
+    affiliation,
+    tag_list: info.tagList ?? [],
+    attack_attribute: info.description ? stripWikitext(info.description) : null,
+    item_usage: info.itemUsage || null,
+    item_desc: info.itemDesc || null,
+    item_obtain: info.itemObtainApproach || null,
+    talents,
+  };
+}
+
+export function renderOperatorBasicInfo(data: OperatorBasicInfoPayload): string {
+  const lines: string[] = [`# ${data.name} - 干员基本信息\n`];
+  lines.push(`- **编号**：${data.display_number}`);
+  lines.push(`- **英文名**：${data.appellation}`);
+  lines.push(`- **稀有度**：${data.rarity}`);
+  lines.push(`- **职业**：${data.profession}（${data.sub_profession_id}）`);
+  lines.push(`- **站位**：${data.position}`);
+  lines.push(`- **所属**：${data.affiliation}`);
+  if (data.tag_list.length > 0) {
+    lines.push(`- **招募标签**：${data.tag_list.join("、")}`);
+  }
+  if (data.attack_attribute !== null) {
+    lines.push(`- **攻击属性**：${data.attack_attribute}`);
+  }
+  if (data.item_usage) {
+    lines.push(`\n**图鉴**：${data.item_usage}`);
+  }
+  if (data.item_desc) {
+    lines.push(`\n> ${data.item_desc}`);
+  }
+  if (data.item_obtain) {
+    lines.push(`\n**获取方式**：${data.item_obtain}`);
+  }
+  if (data.talents.length > 0) {
+    lines.push("\n## 天赋");
+    for (const talent of data.talents) {
+      lines.push(`- **${talent.name}**：${talent.description}`);
+    }
+  }
   return lines.join("\n");
 }

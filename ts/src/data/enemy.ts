@@ -108,6 +108,60 @@ interface EnemySearchRecord {
   searchText: string;
 }
 
+export interface EnemiesListingPayload {
+  total: number;
+  offset: number;
+  limit: number;
+  full: boolean;
+  filters: {
+    threat_level: string | null;
+    threat_level_filter: string | null;
+  };
+  enemies: Array<{
+    enemy_id: string;
+    name: string;
+    enemy_index: string;
+    level_raw: string;
+    level_label: string;
+    description_excerpt: string;
+  }>;
+  empty_reason?: "offset_out_of_range";
+}
+
+export interface EnemyStatsPayload {
+  max_hp: string | null;
+  atk: string | null;
+  def: string | null;
+  resistance: string | null;
+  move_speed: string | null;
+  attack_interval: string | null;
+  attack_speed: string | null;
+  mass_level: string | null;
+  hp_recovery_per_sec: string | null;
+  immunities: string[];
+  life_point_reduce: string | null;
+  skills: Array<{
+    prefab: string;
+    timing: string;
+    blackboard: string;
+  }>;
+}
+
+export interface EnemyInfoPayload {
+  name: string;
+  enemy_id: string;
+  enemy_index: string;
+  level_raw: string;
+  level_label: string;
+  description: string;
+  attack_type: string;
+  ability: string;
+  damage_types_raw: string[];
+  damage_types_label: string;
+  enemy_tags: string[];
+  stats: EnemyStatsPayload | null;
+}
+
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
@@ -201,6 +255,12 @@ const ENEMY_LEVEL_ZH: Record<string, string> = {
   BOSS: "领袖",
   ELITE: "精英",
   NORMAL: "普通",
+};
+
+const DAMAGE_TYPE_ZH: Record<string, string> = {
+  PHYSIC: "物理",
+  MAGIC: "法术",
+  HEAL: "治疗",
 };
 
 const IMMUNITY_LABELS: Record<string, string> = {
@@ -326,6 +386,17 @@ export function listEnemies(
   offset = 0,
   full = false,
 ): string {
+  const data = buildEnemiesListing(threatLevel, limit, offset, full);
+  if (typeof data === "string") return data;
+  return renderEnemiesListing(data);
+}
+
+export function buildEnemiesListing(
+  threatLevel?: string | null,
+  limit = 50,
+  offset = 0,
+  full = false,
+): EnemiesListingPayload | string {
   if (!hasEnemyData()) return missingDataMessage();
 
   if (limit < 1) return `无效的 limit 参数：${limit}，需 ≥ 1。`;
@@ -356,22 +427,55 @@ export function listEnemies(
   });
 
   const total = entries.length;
+  const filters = { threat_level: threatLevel ?? null, threat_level_filter: threatLevel ? threatLevel.toUpperCase() : null };
 
   if (!full && offset >= total && total > 0) {
-    return `# 敌人图鉴（共 ${total} 个）\n\noffset=${offset} 超出范围（总计 ${total} 条）。`;
+    return {
+      total,
+      offset,
+      limit,
+      full,
+      filters,
+      enemies: [],
+      empty_reason: "offset_out_of_range",
+    };
   }
 
   const displayed = full ? entries : entries.slice(offset, offset + limit);
 
-  let out = `# 敌人图鉴（共 ${total} 个）\n`;
-  for (const [, info] of displayed) {
-    const level = info.enemyLevel ?? "";
-    const levelZh = ENEMY_LEVEL_ZH[level] ?? level;
-    const index = info.enemyIndex ?? "";
-    const name = info.name ?? "";
+  const enemies = displayed.map(([enemyId, info]) => {
+    const levelRaw = info.enemyLevel ?? "";
     const desc = (info.description ?? "").replace(/\n/g, " ").slice(0, 60);
-    let line = `- **${name}** [${levelZh}] (${index})`;
-    if (desc) line += ` — ${desc}`;
+    return {
+      enemy_id: enemyId,
+      name: info.name ?? "",
+      enemy_index: info.enemyIndex ?? "",
+      level_raw: levelRaw,
+      level_label: ENEMY_LEVEL_ZH[levelRaw] ?? levelRaw,
+      description_excerpt: desc,
+    };
+  });
+
+  return {
+    total,
+    offset,
+    limit,
+    full,
+    filters,
+    enemies,
+  };
+}
+
+export function renderEnemiesListing(data: EnemiesListingPayload): string {
+  if (data.empty_reason === "offset_out_of_range") {
+    return `# 敌人图鉴（共 ${data.total} 个）\n\noffset=${data.offset} 超出范围（总计 ${data.total} 条）。`;
+  }
+
+  const { total, offset, limit, full } = data;
+  let out = `# 敌人图鉴（共 ${total} 个）\n`;
+  for (const enemy of data.enemies) {
+    let line = `- **${enemy.name}** [${enemy.level_label}] (${enemy.enemy_index})`;
+    if (enemy.description_excerpt) line += ` — ${enemy.description_excerpt}`;
     out += line + "\n";
   }
 
@@ -383,6 +487,12 @@ export function listEnemies(
 }
 
 export function getEnemyInfo(name: string): string {
+  const data = buildEnemyInfo(name);
+  if (typeof data === "string") return data;
+  return renderEnemyInfo(data);
+}
+
+export function buildEnemyInfo(name: string): EnemyInfoPayload | string {
   if (!hasEnemyData()) return missingDataMessage();
 
   let eid: string | null;
@@ -399,14 +509,137 @@ export function getEnemyInfo(name: string): string {
   const info = raw.enemyData?.[eid];
   if (!info) return `敌人 '${name}' 暂无详细信息。`;
 
-  let result = fmtEnemy(info, true);
+  const levelRaw = info.enemyLevel ?? "";
+  const damageTypesRaw = info.damageType ?? [];
+  const payload: EnemyInfoPayload = {
+    name: info.name ?? "",
+    enemy_id: info.enemyId ?? "",
+    enemy_index: info.enemyIndex ?? "",
+    level_raw: levelRaw,
+    level_label: ENEMY_LEVEL_ZH[levelRaw] ?? levelRaw,
+    description: info.description ?? "",
+    attack_type: info.attackType ?? "",
+    ability: info.ability ?? "",
+    damage_types_raw: damageTypesRaw,
+    damage_types_label: damageTypesRaw.map((dt) => DAMAGE_TYPE_ZH[dt] ?? dt).join("、"),
+    enemy_tags: info.enemyTags ?? [],
+    stats: null,
+  };
 
-  // Merge combat stats
   const dbIndex = getDbIndex();
   const dbEntry = dbIndex[eid];
-  if (dbEntry) result += fmtStats(dbEntry);
+  if (dbEntry) payload.stats = extractEnemyStats(dbEntry);
 
-  return result;
+  return payload;
+}
+
+function pythonFloatString(n: number): string {
+  return Number.isInteger(n) ? `${n}.0` : String(n);
+}
+
+function extractEnemyStats(dbEntry: EnemyDbEntry): EnemyStatsPayload {
+  const attrs = dbEntry.attributes ?? {};
+  const hp = mValue<number>(attrs.maxHp, 0) ?? 0;
+  const atk = mValue<number>(attrs.atk, 0) ?? 0;
+  const def = mValue<number>(attrs.def, 0) ?? 0;
+  const res = mValue<number>(attrs.magicResistance);
+  const speed = mValue<number>(attrs.moveSpeed, 0) ?? 0;
+  const atkTime = mValue<number>(attrs.baseAttackTime, 0) ?? 0;
+  const atkSpeed = mValue<number>(attrs.attackSpeed, 100) ?? 100;
+  const mass = mValue<number>(attrs.massLevel, 0) ?? 0;
+  const hpRec = mValue<number>(attrs.hpRecoveryPerSec, 0) ?? 0;
+  const lpr = mValue<number>(attrs.lifePointReduce, 0) ?? 0;
+
+  const immunities: string[] = [];
+  for (const [key, label] of Object.entries(IMMUNITY_LABELS)) {
+    if (mValue<boolean>(attrs[key], false)) immunities.push(label);
+  }
+
+  const skills = (dbEntry.skills ?? []).map((s) => {
+    const prefab = s.prefabKey ?? "未知";
+    const cd = s.cooldown;
+    const initCd = s.initCooldown;
+    const spCost = mValue<number>(s.spData?.spCost);
+    const cdParts: string[] = [];
+    if (cd) cdParts.push(`冷却 ${cd}s`);
+    if (initCd && initCd !== cd) cdParts.push(`初始 ${initCd}s`);
+    if (spCost) cdParts.push(`SP ${spCost}`);
+    const bbStrs = (s.blackboard ?? [])
+      .slice(0, 6)
+      .filter((b) => b.value != null)
+      .map((b) => {
+        const value = typeof b.value === "number" ? pythonFloatString(b.value) : b.value;
+        return `${b.key ?? ""}=${value}`;
+      });
+    return {
+      prefab,
+      timing: cdParts.join("，"),
+      blackboard: bbStrs.join("，"),
+    };
+  });
+
+  return {
+    max_hp: hp ? formatNumber(hp) : null,
+    atk: atk ? String(atk) : null,
+    def: def ? String(def) : null,
+    resistance: res !== undefined && res !== null ? pythonFloatString(res) : null,
+    move_speed: speed ? pythonFloatString(speed) : null,
+    attack_interval: atkTime ? `${pythonFloatString(atkTime)}s` : null,
+    attack_speed: atkSpeed !== 100 ? pythonFloatString(atkSpeed) : null,
+    mass_level: mass ? String(mass) : null,
+    hp_recovery_per_sec: hpRec ? pythonFloatString(hpRec) : null,
+    immunities,
+    life_point_reduce: lpr ? String(lpr) : null,
+    skills,
+  };
+}
+
+export function renderEnemyInfo(data: EnemyInfoPayload): string {
+  const lines: string[] = [];
+  if (data.name) {
+    lines.push(`# ${data.name} - 敌人图鉴\n`);
+    lines.push(`- **ID**：${data.enemy_id}`);
+  }
+
+  if (data.enemy_index) lines.push(`- **编号**：${data.enemy_index}`);
+  if (data.level_label) lines.push(`- **威胁等级**：${data.level_label}`);
+  if (data.description) lines.push(`- **描述**：${data.description}`);
+  if (data.attack_type) lines.push(`- **攻击方式**：${data.attack_type}`);
+  if (data.ability) lines.push(`- **特殊能力**：${data.ability}`);
+  if (data.damage_types_label) lines.push(`- **伤害类型**：${data.damage_types_label}`);
+  if (data.enemy_tags.length > 0) lines.push(`- **标签**：${data.enemy_tags.join("、")}`);
+
+  const stats = data.stats;
+  if (stats) {
+    lines.push("## 战斗属性");
+    for (const [field, label] of [
+      ["max_hp", "最大生命"],
+      ["atk", "攻击力"],
+      ["def", "防御力"],
+      ["resistance", "法术抗性"],
+      ["move_speed", "移动速度"],
+      ["attack_interval", "攻击间隔"],
+      ["attack_speed", "攻击速度"],
+      ["mass_level", "重量等级"],
+      ["hp_recovery_per_sec", "每秒生命回复"],
+    ] as const) {
+      const val = stats[field];
+      if (val) lines.push(`- **${label}**：${val}`);
+    }
+    if (stats.immunities.length > 0) lines.push(`- **免疫**：${stats.immunities.join("、")}`);
+    if (stats.life_point_reduce) lines.push(`- **生命值扣除**：${stats.life_point_reduce}`);
+    if (stats.skills.length > 0) {
+      lines.push("\n## 技能");
+      for (const skill of stats.skills) {
+        const parts = [`- **${skill.prefab}**`];
+        if (skill.timing) parts.push(`（${skill.timing}）`);
+        if (skill.blackboard) parts.push(": " + skill.blackboard);
+        lines.push(parts.join(""));
+      }
+    }
+  }
+
+  return lines.join("\n");
 }
 
 export function searchEnemies(pattern: string, maxResults = 30): string {

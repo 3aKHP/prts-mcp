@@ -8,11 +8,13 @@ from pathlib import Path
 import pytest
 
 from prts_mcp.data.stage import (
+    build_stage_info,
     build_stage_search,
     build_stages_listing,
     clear_stage_caches,
     list_stages,
     get_stage_info,
+    render_stage_info,
     render_stages_listing,
     render_stage_search,
     search_stages,
@@ -356,6 +358,9 @@ class TestGetStageInfo:
             "## 关联关卡\n"
             "- 突袭模式：main_00-01#f#（坍塌·突袭）"
         )
+        data = build_stage_info("main_00-01")
+        assert data == _load_parity_fixture("stage_info.json")
+        assert render_stage_info(data) == get_stage_info("main_00-01")
 
     def test_four_star_variant(self, gamedata: str) -> None:
         out = get_stage_info("main_00-01#f#")
