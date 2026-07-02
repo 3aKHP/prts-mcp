@@ -186,6 +186,32 @@ def test_get_stage_enemies_uses_spawn_actions_and_overrides(gamedata: Path) -> N
     assert "未出场敌人" not in out
 
 
+def test_get_stage_enemies_golden(gamedata: Path) -> None:
+    # Golden: exact full markdown for main_00-01 against the fixture.
+    # Hardcoded (not tautology) — catches build-layer field omissions,
+    # enemy ordering (most_common), and the overwritten-flag/section logic.
+    assert get_stage_enemies("main_00-01") == (
+        "# 坍塌 0-1（main_00-01） — 敌人列表\n"
+        "\n"
+        "## 源石虫（enemy_1007_slime）\n"
+        "- **出场数量**：6\n"
+        "- **敌人等级**：0\n"
+        "- **战斗属性**：HP 550；ATK 130；DEF 0；RES 0；移速 1.0；攻击间隔 1.7s\n"
+        "\n"
+        "## 士兵（enemy_1002_nsabr）\n"
+        "- **出场数量**：1\n"
+        "- **敌人等级**：0\n"
+        "- **关卡覆盖**：是\n"
+        "- **战斗属性**：HP 1,650；ATK 200；DEF 30；RES 0\n"
+        "\n"
+        "## 关卡特化敌人（enemy_custom）\n"
+        "- **出场数量**：1\n"
+        "- **敌人等级**：0\n"
+        "- **关卡覆盖**：是\n"
+        "- **战斗属性**：HP 1,234；ATK 321；DEF 45；RES 10"
+    )
+
+
 def test_get_enemy_appearances(gamedata: Path) -> None:
     out = get_enemy_appearances("源石虫")
     assert "源石虫" in out

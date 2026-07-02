@@ -37,7 +37,8 @@ from prts_mcp.data.item import (
     search_items as _search_items,
 )
 from prts_mcp.data.stage_enemy import (
-    get_stage_enemies as _get_stage_enemies,
+    build_stage_enemies as _build_stage_enemies,
+    render_stage_enemies as _render_stage_enemies,
     build_enemy_appearances as _build_enemy_appearances,
     render_enemy_appearances as _render_enemy_appearances,
     get_enemy_stage_info as _get_enemy_stage_info,
@@ -132,13 +133,16 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
     @mcp.tool()
     def get_stage_enemies(
         stage_id: Annotated[str, Field(description="关卡 ID，如 'main_00-01'（可从 list_stages 获取）。")],
-    ) -> str:
+    ) -> object:
         """获取指定关卡实际出场的敌人列表。
 
         只统计关卡内真正刷出的敌人，并附上其在该关卡等级下的战斗属性。
         反向查询某敌人出现在哪些关卡见 get_enemy_appearances。
         """
-        return _get_stage_enemies(stage_id)
+        data = _build_stage_enemies(stage_id)
+        if isinstance(data, str):
+            return text_result(data)
+        return render_result(data, _render_stage_enemies(data))
 
     @mcp.tool()
     def get_enemy_appearances(

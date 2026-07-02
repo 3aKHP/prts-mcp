@@ -214,8 +214,12 @@ def _format_stats(enemy_data: dict[str, Any] | None) -> str:
     return "；".join(parts)
 
 
-def get_stage_enemies(stage_id: str) -> str:
-    """Return enemies actually spawned by a stage, using stage-specific levels."""
+def build_stage_enemies(stage_id: str) -> dict | str:
+    """Build the structured payload for enemies actually spawned by a stage.
+
+    Returns the dict payload on success, or a markdown error string on a
+    missing-data / not-found / empty path.
+    """
     if not _get_config().has_levels_data:
         return _missing_levels_message()
     try:
@@ -234,7 +238,7 @@ def get_stage_enemies(stage_id: str) -> str:
     if not counts:
         return f"关卡 {stage_id!r} 未解析到实际出怪。"
 
-    lines = [f"# {_stage_label(stage, stage_id)} — 敌人列表"]
+    enemy_entries = []
     for enemy_id, count in counts.most_common():
         ref = refs.get(enemy_id, {})
         try:
@@ -244,13 +248,47 @@ def get_stage_enemies(stage_id: str) -> str:
         overwritten = ref.get("overwrittenData")
         data = _stage_specific_enemy_data(enemy_id, level_no, overwritten)
         name = _overwritten_enemy_name(overwritten) or _handbook_name(enemy_id)
-        lines.append(f"\n## {name}（{enemy_id}）")
-        lines.append(f"- **出场数量**：{count}")
-        lines.append(f"- **敌人等级**：{level_no}")
-        if overwritten:
+        enemy_entries.append({
+            "enemy_id": enemy_id,
+            "name": name,
+            "count": count,
+            "level": level_no,
+            "overwritten": bool(overwritten),
+            # Stats kept as the compact rendered text (the same string the
+            # markdown emits); structured per-stat extraction is deferred.
+            "stats_text": _format_stats(data),
+        })
+
+    return {
+        "stage_id": stage_id,
+        "stage_label": _stage_label(stage, stage_id),
+        "total": len(enemy_entries),
+        "enemies": enemy_entries,
+    }
+
+
+def render_stage_enemies(data: dict) -> str:
+    """Render a stage-enemies payload dict to markdown.
+
+    Pure renderer; the inverse of ``build_stage_enemies``'s success path.
+    """
+    lines = [f"# {data['stage_label']} — 敌人列表"]
+    for e in data["enemies"]:
+        lines.append(f"\n## {e['name']}（{e['enemy_id']}）")
+        lines.append(f"- **出场数量**：{e['count']}")
+        lines.append(f"- **敌人等级**：{e['level']}")
+        if e["overwritten"]:
             lines.append("- **关卡覆盖**：是")
-        lines.append(f"- **战斗属性**：{_format_stats(data)}")
+        lines.append(f"- **战斗属性**：{e['stats_text']}")
     return "\n".join(lines)
+
+
+def get_stage_enemies(stage_id: str) -> str:
+    """Return enemies actually spawned by a stage, using stage-specific levels."""
+    data = build_stage_enemies(stage_id)
+    if isinstance(data, str):
+        return data
+    return render_stage_enemies(data)
 
 
 def _find_enemy_appearances(enemy_id: str) -> list[tuple[str, int]]:
