@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 - **Output channel (2.0).** Optional structured-content delivery via MCP's
   native `structuredContent` channel, controlled by a connection-level
-  `OUTPUT_CHANNEL` env var (`content` (default) / `structured` / `both`).
+  `PRTS_OUTPUT_CHANNEL` env var (`content` (default) / `structured` / `both`).
   Capable clients (Claude Code, Codex) receive a structured payload; the
   default `content` channel reproduces today's markdown-only behaviour
   byte-for-byte, so this is non-breaking. `list_stages` is the pilot tool;

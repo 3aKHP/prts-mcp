@@ -33,9 +33,10 @@ def test_parse_channel_rejects_unknown_and_falls_back(monkeypatch) -> None:
 
 
 def test_module_constant_reads_env_at_import(monkeypatch) -> None:
-    # OUTPUT_CHANNEL is resolved at import time from the env var. We can't
-    # re-import here cheaply, so just assert it is one of the valid values
-    # regardless of the ambient environment.
+    # OUTPUT_CHANNEL (the parsed-value constant) is resolved at import time
+    # from the PRTS_OUTPUT_CHANNEL env var. We can't re-import here cheaply,
+    # so just assert it is one of the valid values regardless of the ambient
+    # environment.
     assert OUTPUT_CHANNEL in {"content", "structured", "both"}
 
 

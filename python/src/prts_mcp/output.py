@@ -10,7 +10,7 @@ know.
 
 This module hosts:
 
-- ``OutputChannel`` — the enum and env-var parser (``OUTPUT_CHANNEL``).
+- ``OutputChannel`` — the enum and env-var parser (``PRTS_OUTPUT_CHANNEL``).
 - ``render_result`` — the cross-cutting helper that turns a
   ``(data, markdown)`` pair into a ``CallToolResult`` shaped by the channel.
 
@@ -46,7 +46,8 @@ def _parse_channel(raw: str | None) -> OutputChannel:
     value = raw.strip().lower()
     if value not in _VALID_CHANNELS:
         _logger.warning(
-            "OUTPUT_CHANNEL=%r 不合法（可选 content/structured/both），回退到 content。", raw
+            "PRTS_OUTPUT_CHANNEL=%r 不合法（可选 content/structured/both），回退到 content。",
+            raw,
         )
         return "content"
     return value  # type: ignore[return-value]
@@ -54,7 +55,12 @@ def _parse_channel(raw: str | None) -> OutputChannel:
 
 #: Connection-level channel, read once at import time. On stdio a connection
 #: maps to one process, so a module-level constant is the right scope.
-OUTPUT_CHANNEL: OutputChannel = _parse_channel(os.environ.get("OUTPUT_CHANNEL"))
+#:
+#: The module-level identifier ``OUTPUT_CHANNEL`` is the parsed value's name;
+#: the *environment variable* that populates it is ``PRTS_OUTPUT_CHANNEL``
+#: (``PRTS_`` prefix to avoid collisions in shared Docker/CI environments).
+#: The HTTP query/header name stays the unprefixed ``output_channel``.
+OUTPUT_CHANNEL: OutputChannel = _parse_channel(os.environ.get("PRTS_OUTPUT_CHANNEL"))
 
 
 def render_result(
