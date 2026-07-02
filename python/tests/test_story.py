@@ -126,7 +126,8 @@ class TestListStoryEvents:
 
     def test_event_fields(self, story_zip):
         events = list_story_events(story_zip, category="activities")
-        act31side = next(e for e in events if e.event_id == "act31side")
+        act31side = next((e for e in events if e.event_id == "act31side"), None)
+        assert act31side is not None
         assert isinstance(act31side, EventInfo)
         assert act31side.entry_type == "ACTIVITY"
         assert act31side.story_count == len(list_stories(story_zip, "act31side"))

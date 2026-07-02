@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import importlib
+import os
 
 from mcp.types import CallToolResult
 
@@ -37,17 +38,25 @@ def test_parse_channel_rejects_unknown_and_falls_back() -> None:
 
 def test_module_constant_reads_env_at_import(monkeypatch) -> None:
     # OUTPUT_CHANNEL is a connection-level constant resolved at import time.
-    monkeypatch.setenv("PRTS_OUTPUT_CHANNEL", "structured")
-    assert importlib.reload(output_module).OUTPUT_CHANNEL == "structured"
+    original_raw = os.environ.get("PRTS_OUTPUT_CHANNEL")
+    try:
+        monkeypatch.setenv("PRTS_OUTPUT_CHANNEL", "structured")
+        assert importlib.reload(output_module).OUTPUT_CHANNEL == "structured"
 
-    monkeypatch.setenv("PRTS_OUTPUT_CHANNEL", " Both ")
-    assert importlib.reload(output_module).OUTPUT_CHANNEL == "both"
+        monkeypatch.setenv("PRTS_OUTPUT_CHANNEL", " Both ")
+        assert importlib.reload(output_module).OUTPUT_CHANNEL == "both"
 
-    monkeypatch.setenv("PRTS_OUTPUT_CHANNEL", "bad")
-    assert importlib.reload(output_module).OUTPUT_CHANNEL == "content"
+        monkeypatch.setenv("PRTS_OUTPUT_CHANNEL", "bad")
+        assert importlib.reload(output_module).OUTPUT_CHANNEL == "content"
 
-    monkeypatch.delenv("PRTS_OUTPUT_CHANNEL", raising=False)
-    importlib.reload(output_module)
+        monkeypatch.delenv("PRTS_OUTPUT_CHANNEL", raising=False)
+        assert importlib.reload(output_module).OUTPUT_CHANNEL == "content"
+    finally:
+        if original_raw is None:
+            monkeypatch.delenv("PRTS_OUTPUT_CHANNEL", raising=False)
+        else:
+            monkeypatch.setenv("PRTS_OUTPUT_CHANNEL", original_raw)
+        importlib.reload(output_module)
 
 
 # ---------------------------------------------------------------------------
