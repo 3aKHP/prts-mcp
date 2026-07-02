@@ -10,6 +10,9 @@ import {
   getHandbookTable,
   getCharwordTable,
 } from "./operator.js";
+import { buildEnemySearch, renderEnemySearch, type EnemySearchPayload } from "./enemy.js";
+import { buildStageSearch, renderStageSearch, type StageSearchPayload } from "./stage.js";
+import { buildItemSearch, renderItemSearch, type ItemSearchPayload } from "./item.js";
 
 // Reuse types from operator.ts
 interface StoryEntry {
@@ -35,20 +38,39 @@ interface CharwordTable {
   charWords?: Record<string, CharwordEntry>;
 }
 
-interface SearchResult {
+interface OperatorSearchEntry {
   operator: string;
   category: string;
   field: string;
   text: string;
 }
 
-let operatorSearchRecords: SearchResult[] | null = null;
+export interface OperatorSearchPayload {
+  scope: "operators";
+  pattern: string;
+  total: number;
+  results: OperatorSearchEntry[];
+}
+
+type SearchPayload =
+  | OperatorSearchPayload
+  | EnemySearchPayload
+  | StageSearchPayload
+  | ItemSearchPayload;
+
+let operatorSearchRecords: OperatorSearchEntry[] | null = null;
 
 export function clearSearchCaches(): void {
   operatorSearchRecords = null;
 }
 
 export function searchOperatorData(pattern: string, maxResults = 30): string {
+  const data = buildOperatorSearch(pattern, maxResults);
+  if (typeof data === "string") return data;
+  return renderOperatorSearch(data);
+}
+
+export function buildOperatorSearch(pattern: string, maxResults = 30): OperatorSearchPayload | string {
   if (maxResults < 1) return "max_results 必须 >= 1。";
   if (maxResults > 100) return "max_results 必须 <= 100。";
 
@@ -69,8 +91,8 @@ export function searchOperatorData(pattern: string, maxResults = 30): string {
     return `正则表达式无效：${exc instanceof Error ? exc.message : String(exc)}`;
   }
 
-  const results: SearchResult[] = [];
-  let records: SearchResult[];
+  const results: OperatorSearchEntry[] = [];
+  let records: OperatorSearchEntry[];
   try {
     records = getOperatorSearchRecords();
   } catch (err) {
@@ -83,12 +105,20 @@ export function searchOperatorData(pattern: string, maxResults = 30): string {
     }
   }
 
-  if (results.length === 0) {
-    return `未找到匹配 '${pattern}' 的干员数据。`;
-  }
+  return {
+    scope: "operators",
+    pattern,
+    total: results.length,
+    results,
+  };
+}
 
-  const blocks: string[] = [`# 搜索 "${pattern}" 的结果（共 ${results.length} 条）`];
-  for (const r of results) {
+export function renderOperatorSearch(data: OperatorSearchPayload): string {
+  const { pattern, results } = data;
+  if (results.length === 0) return `未找到匹配 '${pattern}' 的干员数据。`;
+
+  const blocks: string[] = [`# 搜索 "${pattern}" 的结果（共 ${data.total} 条）`];
+  for (const r of data.results) {
     blocks.push(
       `\n---\n\n[operators/${r.category}/${r.operator}]\n匹配：${r.field}\n${r.text}`
     );
@@ -97,7 +127,23 @@ export function searchOperatorData(pattern: string, maxResults = 30): string {
   return blocks.join("");
 }
 
-function getOperatorSearchRecords(): SearchResult[] {
+export function buildSearch(scope: string, pattern: string, maxResults = 30): SearchPayload | string {
+  if (scope === "operators") return buildOperatorSearch(pattern, maxResults);
+  if (scope === "enemies") return buildEnemySearch(pattern, maxResults);
+  if (scope === "stages") return buildStageSearch(pattern, maxResults);
+  if (scope === "items") return buildItemSearch(pattern, maxResults);
+  return `不支持的搜索域：'${scope}'。可选：operators、enemies、stages、items。`;
+}
+
+export function renderSearch(data: SearchPayload): string {
+  if (data.scope === "operators") return renderOperatorSearch(data);
+  if (data.scope === "enemies") return renderEnemySearch(data);
+  if (data.scope === "stages") return renderStageSearch(data);
+  if (data.scope === "items") return renderItemSearch(data);
+  throw new Error(`不支持的搜索域：${JSON.stringify((data as { scope?: unknown }).scope)}。`);
+}
+
+function getOperatorSearchRecords(): OperatorSearchEntry[] {
   if (operatorSearchRecords !== null) return operatorSearchRecords;
 
   const ct = getCharacterTable();
@@ -118,7 +164,7 @@ function getOperatorSearchRecords(): SearchResult[] {
     }
   }
 
-  const records: SearchResult[] = [];
+  const records: OperatorSearchEntry[] = [];
   for (const [name, charId] of nameToId) {
     const info = ct[charId];
     if (!info) continue;

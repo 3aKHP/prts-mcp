@@ -456,6 +456,7 @@ test("searchStages by description", async () => {
   const stage = await loadStageModule();
   const out = stage.searchStages("先锋");
   assert.match(out, /坍塌/);
+  assert.deepStrictEqual(stage.buildStageSearch("先锋"), loadParityFixture("search_stages.json"));
 });
 
 test("searchStages multiple matches", async () => {
@@ -474,6 +475,7 @@ test("searchStages no match", async () => {
   const stage = await loadStageModule();
   const out = stage.searchStages("ZZZZNOMATCH");
   assert.match(out, /未找到匹配/);
+  assert.deepStrictEqual(stage.buildStageSearch("ZZZZNOMATCH"), loadParityFixture("search_stages_empty.json"));
 });
 
 test("searchStages invalid regex", async () => {

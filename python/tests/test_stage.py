@@ -414,22 +414,7 @@ class TestSearchStages:
     def test_structured_golden(self, gamedata: str) -> None:
         data = build_stage_search("先锋")
         assert isinstance(data, dict)
-        assert data["scope"] == "stages"
-        assert data["pattern"] == "先锋"
-        assert data["total"] == 1
-        assert data["results"][0] == {
-            "stage_id": "main_00-01",
-            "name": "坍塌",
-            "code": "0-1",
-            "type": "MAIN",
-            "type_label": "主线",
-            "difficulty": "NORMAL",
-            "difficulty_label": "普通",
-            "zone_id": "main_0",
-            "zone_display": "序章-黑暗时代·上",
-            "ap": 6,
-            "description": "三点方向出现了敌人的先锋部队。",
-        }
+        assert data == _load_parity_fixture("search_stages.json")
         expected = (
             "# 搜索结果：先锋（共 1 个）\n\n"
             "## 坍塌 [主线] 0-1（id: main_00-01）\n"
@@ -464,12 +449,7 @@ class TestSearchStages:
 
     def test_no_match(self, gamedata: str) -> None:
         data = build_stage_search("ZZZZNOMATCH")
-        assert data == {
-            "scope": "stages",
-            "pattern": "ZZZZNOMATCH",
-            "total": 0,
-            "results": [],
-        }
+        assert data == _load_parity_fixture("search_stages_empty.json")
         expected = "未找到匹配 'ZZZZNOMATCH' 的关卡。"
         assert render_stage_search(data) == expected
         assert search_stages("ZZZZNOMATCH") == expected

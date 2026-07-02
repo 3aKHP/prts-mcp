@@ -187,6 +187,18 @@ test("searchItems", async () => {
   const out = item.searchItems("公开渠道");
   assert.match(out, /招聘许可/);
   assert.match(out, /搜索结果/);
+  assert.deepStrictEqual(item.buildItemSearch("公开渠道"), loadParityFixture("search_items.json"));
+});
+
+test("searchItems empty payload matches shared parity fixture", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  writeFixtures(root);
+  const item = await loadItemModule();
+  const data = item.buildItemSearch("ZZZZNOMATCH");
+  assert.deepStrictEqual(data, loadParityFixture("search_items_empty.json"));
+  if (typeof data === "string") assert.fail(`unexpected error: ${data}`);
+  assert.equal(item.renderItemSearch(data), "未找到匹配 'ZZZZNOMATCH' 的物品。");
 });
 
 test("searchItems invalid regex", async () => {

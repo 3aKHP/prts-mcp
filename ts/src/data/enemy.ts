@@ -104,6 +104,7 @@ interface EnemyDatabase {
 }
 
 interface EnemySearchRecord {
+  enemyId: string;
   info: EnemyHandbookEntry;
   searchText: string;
 }
@@ -160,6 +161,25 @@ export interface EnemyInfoPayload {
   damage_types_label: string;
   enemy_tags: string[];
   stats: EnemyStatsPayload | null;
+}
+
+export interface EnemySearchPayload {
+  scope: "enemies";
+  pattern: string;
+  total: number;
+  results: Array<{
+    enemy_id: string;
+    name: string;
+    enemy_index: string;
+    level_raw: string;
+    level_label: string;
+    description: string;
+    attack_type: string;
+    ability: string;
+    damage_types_raw: string[];
+    damage_types_label: string;
+    enemy_tags: string[];
+  }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -597,6 +617,12 @@ export function renderEnemyInfo(data: EnemyInfoPayload): string {
 }
 
 export function searchEnemies(pattern: string, maxResults = 30): string {
+  const data = buildEnemySearch(pattern, maxResults);
+  if (typeof data === "string") return data;
+  return renderEnemySearch(data);
+}
+
+export function buildEnemySearch(pattern: string, maxResults = 30): EnemySearchPayload | string {
   if (!hasEnemyData()) return missingDataMessage();
   if (maxResults < 1) return "max_results 必须 >= 1。";
   if (maxResults > 100) return "max_results 必须 <= 100。";
@@ -611,27 +637,70 @@ export function searchEnemies(pattern: string, maxResults = 30): string {
     return err instanceof Error ? err.message : String(err);
   }
 
-  const matches: EnemyHandbookEntry[] = [];
+  const matches: EnemySearchRecord[] = [];
   for (const record of records) {
     if (regex.test(record.searchText)) {
-      matches.push(record.info);
+      matches.push(record);
       if (matches.length >= maxResults) break;
     }
   }
 
-  if (matches.length === 0) return `未找到匹配 '${pattern}' 的敌人。`;
+  return {
+    scope: "enemies",
+    pattern,
+    total: matches.length,
+    results: matches.map(enemySearchEntry),
+  };
+}
 
-  const lines: string[] = [`# 搜索结果：${pattern}（共 ${matches.length} 个）\n`];
-  for (const info of matches) { lines.push(fmtEnemy(info)); lines.push(""); }
+export function renderEnemySearch(data: EnemySearchPayload): string {
+  const { pattern, results } = data;
+  if (results.length === 0) return `未找到匹配 '${pattern}' 的敌人。`;
+
+  const lines: string[] = [`# 搜索结果：${pattern}（共 ${data.total} 个）\n`];
+  for (const entry of results) { lines.push(renderEnemySearchCard(entry)); lines.push(""); }
   return lines.join("\n").trim();
+}
+
+function enemySearchEntry(record: EnemySearchRecord): EnemySearchPayload["results"][number] {
+  const info = record.info;
+  const levelRaw = info.enemyLevel ?? "";
+  const damageTypesRaw = info.damageType ?? [];
+  return {
+    enemy_id: record.enemyId,
+    name: info.name ?? "",
+    enemy_index: info.enemyIndex ?? "",
+    level_raw: levelRaw,
+    level_label: ENEMY_LEVEL_ZH[levelRaw] ?? levelRaw,
+    description: info.description ?? "",
+    attack_type: info.attackType ?? "",
+    ability: info.ability ?? "",
+    damage_types_raw: damageTypesRaw,
+    damage_types_label: damageTypesRaw.map((dt) => DAMAGE_TYPE_ZH[dt] ?? dt).join("、"),
+    enemy_tags: info.enemyTags ?? [],
+  };
+}
+
+function renderEnemySearchCard(entry: EnemySearchPayload["results"][number]): string {
+  const lines: string[] = [];
+  if (entry.name) lines.push(`# ${entry.name} - 敌人图鉴\n`);
+  if (entry.enemy_index) lines.push(`- **编号**：${entry.enemy_index}`);
+  if (entry.level_label) lines.push(`- **威胁等级**：${entry.level_label}`);
+  if (entry.description) lines.push(`- **描述**：${entry.description}`);
+  if (entry.attack_type) lines.push(`- **攻击方式**：${entry.attack_type}`);
+  if (entry.ability) lines.push(`- **特殊能力**：${entry.ability}`);
+  if (entry.damage_types_label) lines.push(`- **伤害类型**：${entry.damage_types_label}`);
+  if (entry.enemy_tags.length > 0) lines.push(`- **标签**：${entry.enemy_tags.join("、")}`);
+  return lines.join("\n");
 }
 
 function getEnemySearchRecords(): EnemySearchRecord[] {
   if (_enemySearchRecords !== null) return _enemySearchRecords;
   const ed = getHandbook().enemyData ?? {};
-  _enemySearchRecords = Object.values(ed)
-    .filter((info) => !info.hideInHandbook)
-    .map((info) => ({
+  _enemySearchRecords = Object.entries(ed)
+    .filter(([, info]) => !info.hideInHandbook)
+    .map(([enemyId, info]) => ({
+      enemyId,
       info,
       searchText: [
         info.name ?? "",

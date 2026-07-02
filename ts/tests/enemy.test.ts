@@ -276,6 +276,7 @@ test("search_enemies matches by description", async () => {
   const enemy = await loadEnemyModule();
   const out = enemy.searchEnemies("整合运动");
   assert.match(out, /霜星/);
+  assert.deepStrictEqual(enemy.buildEnemySearch("整合运动"), loadParityFixture("search_enemies.json"));
 });
 
 test("search_enemies no match", async () => {
@@ -285,6 +286,7 @@ test("search_enemies no match", async () => {
   const enemy = await loadEnemyModule();
   const out = enemy.searchEnemies("绝对不存在的关键词");
   assert.match(out, /未找到匹配/);
+  assert.deepStrictEqual(enemy.buildEnemySearch("ZZZZZZZ"), loadParityFixture("search_enemies_empty.json"));
 });
 
 test("search_enemies invalid regex", async () => {

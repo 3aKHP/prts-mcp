@@ -22,7 +22,8 @@ import {
   renderStoryEventsListing,
   readStory as _readStory,
   readActivity as _readActivity,
-  searchStories as _searchStories,
+  buildStorySearch as _buildStorySearch,
+  renderStorySearch,
   getStorySummary as _getStorySummary,
   type StoryChapter,
   type StoryLine,
@@ -281,7 +282,7 @@ export function registerStoryTools(server: McpServer, channel: OutputChannel = "
         return { content: [{ type: "text", text: e instanceof Error ? e.message : String(e) }] };
       }
       try {
-        const text = _searchStories(
+        const data = _buildStorySearch(
           zipPath,
           pattern,
           character,
@@ -290,9 +291,10 @@ export function registerStoryTools(server: McpServer, channel: OutputChannel = "
           max_results,
           event_id,
         );
-        return { content: [{ type: "text", text }] };
+        if (typeof data === "string") return textResult(data);
+        return renderResult(data, renderStorySearch(data), channel);
       } catch (e) {
-        return { content: [{ type: "text", text: `剧情搜索失败：${e instanceof Error ? e.message : String(e)}` }] };
+        return textResult(`剧情搜索失败：${e instanceof Error ? e.message : String(e)}`);
       }
     }
   );

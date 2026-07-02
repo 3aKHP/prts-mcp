@@ -1,0 +1,20 @@
+{
+  "scope": "stages",
+  "pattern": "先锋",
+  "total": 1,
+  "results": [
+    {
+      "stage_id": "main_00-01",
+      "name": "坍塌",
+      "code": "0-1",
+      "type": "MAIN",
+      "type_label": "主线",
+      "difficulty": "NORMAL",
+      "difficulty_label": "普通",
+      "zone_id": "main_0",
+      "zone_display": "序章-黑暗时代·上",
+      "ap": 6,
+      "description": "三点方向出现了敌人的先锋部队。"
+    }
+  ]
+}

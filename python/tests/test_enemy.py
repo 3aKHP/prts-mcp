@@ -295,22 +295,7 @@ class TestSearchEnemies:
     def test_structured_golden(self, gamedata):
         data = build_enemy_search("整合运动")
         assert isinstance(data, dict)
-        assert data["scope"] == "enemies"
-        assert data["pattern"] == "整合运动"
-        assert data["total"] == 1
-        assert data["results"][0] == {
-            "enemy_id": "enemy_1505_frstar",
-            "name": "霜星",
-            "enemy_index": "FN",
-            "level_raw": "BOSS",
-            "level_label": "领袖",
-            "description": "整合运动法术部队干部。",
-            "attack_type": "",
-            "ability": "",
-            "damage_types_raw": ["MAGIC"],
-            "damage_types_label": "法术",
-            "enemy_tags": [],
-        }
+        assert data == _load_parity_fixture("search_enemies.json")
         expected = (
             "# 搜索结果：整合运动（共 1 个）\n\n"
             "# 霜星 - 敌人图鉴\n\n"
@@ -326,12 +311,11 @@ class TestSearchEnemies:
 
     def test_no_match(self, gamedata):
         data = build_enemy_search("绝对不存在的关键词")
-        assert data == {
-            "scope": "enemies",
-            "pattern": "绝对不存在的关键词",
-            "total": 0,
-            "results": [],
-        }
+        assert data["total"] == 0
+        assert data["results"] == []
+        assert build_enemy_search("ZZZZZZZ") == _load_parity_fixture(
+            "search_enemies_empty.json"
+        )
         expected = "未找到匹配 '绝对不存在的关键词' 的敌人。"
         assert render_enemy_search(data) == expected
         assert search_enemies("绝对不存在的关键词") == expected

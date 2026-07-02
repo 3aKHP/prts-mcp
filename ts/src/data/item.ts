@@ -109,6 +109,23 @@ export interface ItemInfoPayload {
   voucher_relate_list: Record<string, unknown>[] | null;
 }
 
+export interface ItemSearchPayload {
+  scope: "items";
+  pattern: string;
+  total: number;
+  results: Array<{
+    item_id: string;
+    name: string;
+    classify_raw: string;
+    classify_label: string;
+    item_type: string;
+    rarity_raw: string;
+    rarity_label: string;
+    usage: string;
+    obtain_approach: string;
+  }>;
+}
+
 let itemTable: Record<string, ItemEntry> | null = null;
 let itemLookup: Map<string, string> | null = null;
 let itemSearchRecords: ItemSearchRecord[] | null = null;
@@ -383,6 +400,12 @@ export function renderItemInfo(data: ItemInfoPayload): string {
 }
 
 export function searchItems(pattern: string, maxResults = 30): string {
+  const data = buildItemSearch(pattern, maxResults);
+  if (typeof data === "string") return data;
+  return renderItemSearch(data);
+}
+
+export function buildItemSearch(pattern: string, maxResults = 30): ItemSearchPayload | string {
   if (maxResults < 1) return "max_results 必须 >= 1。";
   if (maxResults > 100) return "max_results 必须 <= 100。";
 
@@ -408,22 +431,42 @@ export function searchItems(pattern: string, maxResults = 30): string {
     }
   }
 
+  return {
+    scope: "items",
+    pattern,
+    total: results.length,
+    results: results.map(itemSearchEntry),
+  };
+}
+
+export function renderItemSearch(data: ItemSearchPayload): string {
+  const { pattern, results } = data;
   if (results.length === 0) return `未找到匹配 '${pattern}' 的物品。`;
 
-  const lines = [`# 搜索结果：${pattern}（共 ${results.length} 个）`];
-  for (const record of results) {
-    const itemId = record.itemId;
-    const info = record.info;
-    const itemName = info.name || "（无名）";
-    const classify = classifyLabel(info.classifyType ?? "");
-    const itemType = info.itemType ?? "-";
-    const rarity = rarityLabel(info.rarity ?? "");
-    const usage = shortText(info.usage ?? info.description ?? "", 120);
-    lines.push(`\n## ${itemName} [${classify}/${itemType}] ${rarity}（id: ${itemId}）`);
-    if (usage) lines.push(`- **用途**：${usage}`);
-    if (info.obtainApproach) lines.push(`- **获取方式**：${info.obtainApproach}`);
+  const lines = [`# 搜索结果：${pattern}（共 ${data.total} 个）`];
+  for (const item of results) {
+    lines.push(
+      `\n## ${item.name} [${item.classify_label}/${item.item_type}] ${item.rarity_label}（id: ${item.item_id}）`,
+    );
+    if (item.usage) lines.push(`- **用途**：${item.usage}`);
+    if (item.obtain_approach) lines.push(`- **获取方式**：${item.obtain_approach}`);
   }
   return lines.join("\n");
+}
+
+function itemSearchEntry(record: ItemSearchRecord): ItemSearchPayload["results"][number] {
+  const info = record.info;
+  return {
+    item_id: record.itemId,
+    name: info.name || "（无名）",
+    classify_raw: String(info.classifyType ?? ""),
+    classify_label: classifyLabel(info.classifyType ?? ""),
+    item_type: info.itemType ?? "-",
+    rarity_raw: String(info.rarity ?? ""),
+    rarity_label: rarityLabel(info.rarity ?? ""),
+    usage: shortText(info.usage ?? info.description ?? "", 120),
+    obtain_approach: info.obtainApproach ?? "",
+  };
 }
 
 function getItemSearchRecords(): ItemSearchRecord[] {
