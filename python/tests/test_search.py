@@ -1,14 +1,11 @@
 """Tests for search tools — operator search and story search."""
 from __future__ import annotations
 
-import asyncio
 import json
 import zipfile
 from pathlib import Path
 
 import pytest
-
-from mcp.server.fastmcp import FastMCP
 
 from prts_mcp.data.search import (
     build_operator_search,
@@ -24,8 +21,6 @@ from prts_mcp.data.story import (
     search_stories_from_store,
 )
 from prts_mcp.output import render_result
-from prts_mcp.tools_gamedata import register_gamedata_tools
-from prts_mcp.tools_story import register_story_tools
 
 
 # ---------------------------------------------------------------------------
@@ -153,8 +148,18 @@ class TestSearchOperatorData:
         assert "匹配：任命助理" in result
 
     def test_no_match(self) -> None:
-        result = search_operator_data("ZZZZZZZ")
-        assert "未找到匹配" in result
+        data = build_operator_search("ZZZZZZZ")
+        assert data == {
+            "scope": "operators",
+            "pattern": "ZZZZZZZ",
+            "total": 0,
+            "results": [],
+        }
+        expected = "未找到匹配 'ZZZZZZZ' 的干员数据。"
+        assert render_operator_search(data) == expected
+        assert search_operator_data("ZZZZZZZ") == expected
+        result = render_result(data, expected, channel="structured")
+        assert result.structuredContent == data
 
     def test_invalid_regex(self) -> None:
         result = search_operator_data("[")
@@ -264,8 +269,23 @@ class TestSearchStories:
     @pytest.mark.parametrize("store_kind", ["directory", "zip"])
     def test_no_match(self, tmp_path: Path, store_kind: str) -> None:
         store = _story_store(store_kind, tmp_path)
-        result = search_stories_from_store(store, "ZZZZZZ")
-        assert "未找到匹配" in result
+        data = build_story_search_from_store(store, "ZZZZZZ")
+        assert data == {
+            "pattern": "ZZZZZZ",
+            "filters": {
+                "character": None,
+                "line_type": None,
+                "context_lines": 1,
+                "event_id": None,
+            },
+            "total": 0,
+            "results": [],
+        }
+        expected = "未找到匹配 'ZZZZZZ' 的剧情台词。"
+        assert render_story_search(data) == expected
+        assert search_stories_from_store(store, "ZZZZZZ") == expected
+        result = render_result(data, expected, channel="structured")
+        assert result.structuredContent == data
 
     @pytest.mark.parametrize("store_kind", ["directory", "zip"])
     def test_invalid_regex(self, tmp_path: Path, store_kind: str) -> None:
@@ -340,14 +360,3 @@ class TestSearchStories:
         assert search_stories_from_store(store, "你好") == expected
         result = render_result(data, expected, channel="both")
         assert result.structuredContent == data
-
-
-def test_p3_search_tool_manifest_output_schema_none() -> None:
-    app = FastMCP("search-manifest")
-    register_gamedata_tools(app)
-    register_story_tools(app)
-
-    tools = {tool.name: tool for tool in asyncio.run(app.list_tools())}
-
-    assert tools["search"].outputSchema is None
-    assert tools["search_stories"].outputSchema is None

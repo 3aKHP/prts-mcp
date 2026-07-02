@@ -1,7 +1,14 @@
 from __future__ import annotations
 
+import asyncio
 import ast
 from pathlib import Path
+
+from mcp.server.fastmcp import FastMCP
+
+from prts_mcp.tools_gamedata import register_gamedata_tools
+from prts_mcp.tools_prts import register_prts_tools
+from prts_mcp.tools_story import register_story_tools
 
 
 EXPECTED_TOOL_SURFACE = {
@@ -31,6 +38,14 @@ EXPECTED_TOOL_SURFACE = {
 }
 
 
+def _build_registered_app() -> FastMCP:
+    app = FastMCP("tool-surface-test")
+    register_prts_tools(app)
+    register_gamedata_tools(app)
+    register_story_tools(app)
+    return app
+
+
 def _collect_tool_functions() -> dict[str, ast.FunctionDef | ast.AsyncFunctionDef]:
     """Parse all tools_*.py modules under src/prts_mcp/ for tool function definitions.
 
@@ -48,6 +63,12 @@ def _collect_tool_functions() -> dict[str, ast.FunctionDef | ast.AsyncFunctionDe
     return functions
 
 
+def _return_annotation(fn: ast.FunctionDef | ast.AsyncFunctionDef) -> str | None:
+    if fn.returns is None:
+        return None
+    return ast.unparse(fn.returns)
+
+
 def test_python_tool_function_signatures_are_frozen() -> None:
     # Alpha hardening intentionally freezes required and optional parameters.
     # Relax this before 1.0 final if additive optional parameters become policy.
@@ -58,3 +79,24 @@ def test_python_tool_function_signatures_are_frozen() -> None:
         fn = functions[name]
         params = [arg.arg for arg in fn.args.args]
         assert tuple(params) == expected_params, f"Signature mismatch for {name!r}"
+
+
+def test_python_tool_functions_return_explicit_call_tool_results() -> None:
+    functions = _collect_tool_functions()
+
+    for name in EXPECTED_TOOL_SURFACE:
+        assert name in functions, f"Tool {name!r} not found in any tools_*.py module"
+        assert _return_annotation(functions[name]) == "object", (
+            f"Tool {name!r} must stay annotated as -> object so FastMCP does "
+            "not derive an outputSchema that breaks explicit CallToolResult."
+        )
+
+
+def test_registered_tool_manifest_has_no_output_schema() -> None:
+    app = _build_registered_app()
+
+    tools = {tool.name: tool for tool in asyncio.run(app.list_tools())}
+    assert set(tools) == set(EXPECTED_TOOL_SURFACE)
+
+    for name, tool in tools.items():
+        assert tool.outputSchema is None, f"{name} still has outputSchema"

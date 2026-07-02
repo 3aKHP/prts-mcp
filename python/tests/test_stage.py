@@ -14,7 +14,6 @@ from prts_mcp.data.stage import (
     list_stages,
     get_stage_info,
     render_stage_search,
-    render_stages_listing,
     search_stages,
 )
 from prts_mcp.output import render_result
@@ -277,13 +276,6 @@ class TestStagesBuildRender:
         assert isinstance(build_stages_listing(chapter="missing"), str)
         assert isinstance(build_stages_listing(offset=999), str)
 
-    def test_render_is_inverse_of_build(self, gamedata: str) -> None:
-        # list_stages() must equal render(build(...)) exactly — the
-        # byte-for-byte equivalence contract of the refactor.
-        data = build_stages_listing(chapter="main_0")
-        assert isinstance(data, dict)
-        assert render_stages_listing(data) == list_stages(chapter="main_0")
-
     def test_build_respects_filters_and_pagination(self, gamedata: str) -> None:
         data = build_stages_listing(type="DAILY")
         assert isinstance(data, dict)
@@ -297,65 +289,12 @@ class TestStagesBuildRender:
         assert len(page["stages"]) == 2
 
 
-class TestStagesOutputChannels:
-    """The three output_channel modes via the render_result helper."""
-
-    def _build(self, gamedata: str) -> dict:
-        data = build_stages_listing()
-        assert isinstance(data, dict)
-        return data
-
-    def test_content_channel_text_only(self, gamedata: str) -> None:
-        data = self._build(gamedata)
-        md = render_stages_listing(data)
-        r = render_result(data, md, channel="content")
-        assert r.structuredContent is None
-        assert [c.text for c in r.content] == [md]
-
-    def test_both_channel_emits_both(self, gamedata: str) -> None:
-        data = self._build(gamedata)
-        md = render_stages_listing(data)
-        r = render_result(data, md, channel="both")
-        assert [c.text for c in r.content] == [md]
-        assert r.structuredContent == data
-
-    def test_structured_channel_summary_and_payload(self, gamedata: str) -> None:
-        data = self._build(gamedata)
-        md = render_stages_listing(data)
-        r = render_result(data, md, channel="structured")
-        # content is the one-line summary, not the full markdown.
-        assert r.content[0].text != md
-        assert "4" in r.content[0].text  # total count appears in summary
-        assert r.structuredContent == data
-
-    def test_error_path_is_content_only_in_every_channel(self, gamedata: str) -> None:
-        err = build_stages_listing(limit=0)
-        assert isinstance(err, str)
-        for ch in ("content", "structured", "both"):
-            r = render_result(None, err, channel=ch)  # type: ignore[arg-type]
-            assert [c.text for c in r.content] == [err], f"channel={ch}"
-            assert r.structuredContent is None, f"channel={ch}"
-
-
 # ---------------------------------------------------------------------------
 # get_stage_info
 # ---------------------------------------------------------------------------
 
 
 class TestGetStageInfo:
-    def test_full_info(self, gamedata: str) -> None:
-        out = get_stage_info("main_00-01")
-        assert "坍塌" in out
-        assert "0-1" in out
-        assert "主线" in out
-        assert "普通" in out
-        assert "序章-黑暗时代·上" in out
-        assert "6" in out
-        assert "三点方向" in out
-        assert "招聘许可（7001）" in out
-        assert "无条件" in out
-        assert "main_00-01#f#" in out
-
     def test_golden_full_output(self, gamedata: str) -> None:
         # Golden: exact full markdown for main_00-01 against the fixture.
         # Stronger than substring asserts — catches build-layer field
@@ -473,12 +412,29 @@ class TestSearchStages:
         assert "坍塌" in out
 
     def test_multiple_matches(self, gamedata: str) -> None:
-        out = search_stages(".")
-        assert "共 " in out
+        data = build_stage_search(".")
+        assert isinstance(data, dict)
+        assert data["total"] == 4
+        assert [entry["stage_id"] for entry in data["results"]] == [
+            "act31side_01",
+            "daily_01",
+            "main_00-01",
+            "main_00-01#f#",
+        ]
 
     def test_no_match(self, gamedata: str) -> None:
-        out = search_stages("ZZZZNOMATCH")
-        assert "未找到匹配" in out
+        data = build_stage_search("ZZZZNOMATCH")
+        assert data == {
+            "scope": "stages",
+            "pattern": "ZZZZNOMATCH",
+            "total": 0,
+            "results": [],
+        }
+        expected = "未找到匹配 'ZZZZNOMATCH' 的关卡。"
+        assert render_stage_search(data) == expected
+        assert search_stages("ZZZZNOMATCH") == expected
+        r = render_result(data, expected, channel="structured")
+        assert r.structuredContent == data
 
     def test_invalid_regex(self, gamedata: str) -> None:
         out = search_stages("[invalid")

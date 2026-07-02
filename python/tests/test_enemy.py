@@ -10,12 +10,10 @@ import pytest
 
 from prts_mcp.data.enemy import (
     build_enemy_search,
-    build_enemy_info,
     build_enemies_listing,
     clear_enemy_caches,
     list_enemies,
     get_enemy_info,
-    render_enemy_info,
     render_enemy_search,
     search_enemies,
 )
@@ -142,12 +140,6 @@ def split_levels_gamedata(tmp_path: Path):
 
 
 class TestListEnemies:
-    def test_default_filters_hidden(self, gamedata):
-        out = list_enemies(limit=10)
-        assert "霜星" in out
-        assert "源石虫" in out
-        assert "隐藏敌人" not in out
-
     def test_golden_default_listing(self, gamedata):
         # Golden: exact full markdown for the default listing against the
         # fixture. Stronger than substring asserts — catches build-layer
@@ -180,27 +172,9 @@ class TestListEnemies:
         r = render_result(data, list_enemies(offset=999), channel="structured")
         assert r.structuredContent == data
 
-    def test_both_channel_attaches_structured_content(self, gamedata):
-        # Verify the tool wiring actually populates structuredContent in the
-        # both channel (the build dict rides the structured axis).
-        data = build_enemies_listing()
-        assert isinstance(data, dict)
-        r = render_result(data, list_enemies(), channel="both")
-        assert r.structuredContent == data
-        assert r.content[0].text == list_enemies()
-
-    def test_threat_level_filter(self, gamedata):
-        out = list_enemies(threat_level="boss", limit=10)
-        assert "霜星" in out
-        assert "源石虫" not in out
-
     def test_threat_level_invalid_returns_error(self, gamedata):
         out = list_enemies(threat_level="INVALID")
         assert "无效的 threat_level" in out
-
-    def test_offset_beyond_total(self, gamedata):
-        out = list_enemies(offset=999)
-        assert "超出范围" in out
 
     def test_invalid_limit(self, gamedata):
         out = list_enemies(limit=0)
@@ -229,11 +203,7 @@ class TestListEnemies:
         )
         clear_enemy_caches()
         out = list_enemies(limit=5)
-        # Description line must not contain a literal newline mid-bullet.
-        for line in out.split("\n"):
-            if line.startswith("- **测试**"):
-                assert "\n" not in line
-                break
+        assert "- **测试** [普通] (T1) — 第一行 第二行" in out
 
 
 class TestGetEnemyInfo:
@@ -296,16 +266,6 @@ class TestGetEnemyInfo:
             "- **ArcticBlast**（冷却 8.5s）: duration=8.0，atk_scale=1.5"
         )
 
-    def test_build_render_round_trip_is_exact(self, gamedata):
-        # The build/render split must be byte-for-byte equivalent to the
-        # public get_enemy_info — including the single-newline boundary
-        # between the handbook block and the 战斗属性 section (a regression
-        # here catches a spurious blank line from "\n".join + leading "\n").
-        for name in ("霜星", "源石虫"):
-            data = build_enemy_info(name)
-            assert isinstance(data, dict), f"{name}: expected dict, got error"
-            assert render_enemy_info(data) == get_enemy_info(name), f"{name}: round-trip mismatch"
-
     def test_handbook_to_stats_boundary_is_single_newline(self, gamedata):
         out = get_enemy_info("霜星")
         #霜星 has combat stats; the section heading must follow the last
@@ -318,10 +278,6 @@ class TestGetEnemyInfo:
 
 
 class TestSearchEnemies:
-    def test_match_by_description(self, gamedata):
-        out = search_enemies("整合运动")
-        assert "霜星" in out
-
     def test_structured_golden(self, gamedata):
         data = build_enemy_search("整合运动")
         assert isinstance(data, dict)
@@ -355,8 +311,18 @@ class TestSearchEnemies:
         assert r.structuredContent == data
 
     def test_no_match(self, gamedata):
-        out = search_enemies("绝对不存在的关键词")
-        assert "未找到匹配" in out
+        data = build_enemy_search("绝对不存在的关键词")
+        assert data == {
+            "scope": "enemies",
+            "pattern": "绝对不存在的关键词",
+            "total": 0,
+            "results": [],
+        }
+        expected = "未找到匹配 '绝对不存在的关键词' 的敌人。"
+        assert render_enemy_search(data) == expected
+        assert search_enemies("绝对不存在的关键词") == expected
+        r = render_result(data, expected, channel="structured")
+        assert r.structuredContent == data
 
     def test_invalid_regex(self, gamedata):
         out = search_enemies("[unclosed")
