@@ -116,3 +116,30 @@ def test_text_result_carries_error_messages_verbatim() -> None:
     assert [c.text for c in r.content] == [err]
     assert r.structuredContent is None
     assert r.isError is False
+
+
+# ---------------------------------------------------------------------------
+# render_result — explicit summary override (detail tools)
+# ---------------------------------------------------------------------------
+
+
+def test_explicit_summary_used_in_structured_mode() -> None:
+    # Detail payloads have no "total"; an explicit summary must win.
+    data = {"name": "霜星", "id": "enemy_1505_frstar"}
+    r = render_result(data, _MD, channel="structured", summary="敌人『霜星』的图鉴")
+    assert r.content[0].text == "敌人『霜星』的图鉴"
+    assert r.structuredContent == data
+
+
+def test_explicit_summary_ignored_in_content_and_both() -> None:
+    data = {"name": "霜星", "id": "enemy_1505_frstar"}
+    for ch in ("content", "both"):
+        r = render_result(data, _MD, channel=ch, summary="ignored")  # type: ignore[arg-type]
+        assert r.content[0].text == _MD, f"channel={ch}"
+
+
+def test_explicit_summary_overrides_total_when_both_present() -> None:
+    # Explicit summary takes precedence even if a total happens to exist.
+    data = {"total": 5, "items": []}
+    r = render_result(data, _MD, channel="structured", summary="定制摘要")
+    assert r.content[0].text == "定制摘要"

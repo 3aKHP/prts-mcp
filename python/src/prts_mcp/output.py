@@ -70,6 +70,7 @@ def render_result(
     data: dict[str, Any] | None,
     markdown: str,
     channel: OutputChannel = OUTPUT_CHANNEL,
+    summary: str | None = None,
 ) -> CallToolResult:
     """Build a ``CallToolResult`` carrying markdown text and/or structured data.
 
@@ -83,13 +84,18 @@ def render_result(
                       Preserves the text seen by content-only clients while
                       suppressing FastMCP's automatic duplicate structured
                       wrapper for migrated tools. The default.
-    - ``structured`` → content = a one-line summary derived from ``data``;
+    - ``structured`` → content = a one-line summary (see ``summary`` below);
                       structuredContent = ``data``. ``markdown`` is unused
                       in this mode (the summary is the only text an incapable
                       client sees). Avoids emitting both the full markdown and
                       the JSON for capable clients.
     - ``both``      → content = ``markdown``; structuredContent = ``data``.
                       Debug / dual-channel compatibility, accepts the token cost.
+
+    ``summary`` overrides the one-line content shown in ``structured`` mode.
+    Detail tools (single-record payloads with no ``total``) should pass an
+    explicit one-liner like ``"敌人『霜星』的图鉴"``; list tools can omit it
+    and let the total-based fallback apply. Ignored for ``content``/``both``.
 
     When ``data is None`` (error / missing data), every channel falls back to
     a content-only result carrying ``markdown`` — per the design doc, errors
@@ -118,24 +124,27 @@ def render_result(
         )
 
     # channel == "structured": minimal content summary + structured payload.
-    summary = _summarize(data)
     return CallToolResult(
-        content=[TextContent(type="text", text=summary)],
+        content=[TextContent(type="text", text=_summarize(data, summary))],
         structuredContent=data,
         isError=False,
     )
 
 
-def _summarize(data: dict[str, Any]) -> str:
+def _summarize(data: dict[str, Any], summary: str | None = None) -> str:
     """Derive a one-line content summary for ``structured`` mode.
 
+    Precedence: an explicit ``summary`` (detail tools) wins; otherwise a
+    list payload's ``total`` is used; otherwise a generic pointer.
+
     The floor per the design doc (§4/§10) is "don't degrade to
-    'incapable clients see nothing'": a short header naming the payload
-    size. This summary is the only content a non-capable client sees when
-    the channel is misconfigured to ``structured``, so the ``markdown``
-    argument to ``render_result`` is intentionally ignored in this mode
-    (it carries the full rendering for ``content``/``both`` only).
+    'incapable clients see nothing'": this summary is the only content a
+    non-capable client sees when the channel is misconfigured to
+    ``structured``, so the ``markdown`` argument to ``render_result`` is
+    intentionally ignored in this mode.
     """
+    if summary:
+        return summary
     total = data.get("total")
     if isinstance(total, int):
         return f"（结构化结果共 {total} 条，详见 structuredContent）"
