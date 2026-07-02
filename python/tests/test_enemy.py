@@ -9,9 +9,11 @@ from unittest.mock import patch
 import pytest
 
 from prts_mcp.data.enemy import (
+    build_enemy_info,
     clear_enemy_caches,
     list_enemies,
     get_enemy_info,
+    render_enemy_info,
     search_enemies,
 )
 
@@ -223,6 +225,26 @@ class TestGetEnemyInfo:
         out = get_enemy_info("源石虫")
         # Two damage types — must use 、 not ", "
         assert "**伤害类型**：物理、法术" in out
+
+    def test_build_render_round_trip_is_exact(self, gamedata):
+        # The build/render split must be byte-for-byte equivalent to the
+        # public get_enemy_info — including the single-newline boundary
+        # between the handbook block and the 战斗属性 section (a regression
+        # here catches a spurious blank line from "\n".join + leading "\n").
+        for name in ("霜星", "源石虫"):
+            data = build_enemy_info(name)
+            assert isinstance(data, dict), f"{name}: expected dict, got error"
+            assert render_enemy_info(data) == get_enemy_info(name), f"{name}: round-trip mismatch"
+
+    def test_handbook_to_stats_boundary_is_single_newline(self, gamedata):
+        out = get_enemy_info("霜星")
+        #霜星 has combat stats; the section heading must follow the last
+        # handbook line with exactly one newline (no blank line).
+        assert "## 战斗属性" in out
+        idx = out.index("## 战斗属性")
+        # The character immediately before the heading is a single newline.
+        assert out[idx - 1] == "\n"
+        assert out[idx - 2] != "\n", "spurious blank line before 战斗属性"
 
 
 class TestSearchEnemies:

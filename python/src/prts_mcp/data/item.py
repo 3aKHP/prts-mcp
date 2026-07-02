@@ -253,7 +253,9 @@ def build_item_info(name: str) -> dict | str:
     return {
         "name": info.get("name") or name,
         "item_id": item_id,
+        "rarity_raw": str(info.get("rarity") or ""),
         "rarity_label": _rarity_label(str(info.get("rarity") or "")),
+        "classify_raw": str(info.get("classifyType") or ""),
         "classify_label": _classify_label(str(info.get("classifyType") or "")),
         "item_type": info.get("itemType") or "-",
         "icon_id": info.get("iconId") or None,

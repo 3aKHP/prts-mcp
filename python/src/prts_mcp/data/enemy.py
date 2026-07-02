@@ -522,7 +522,11 @@ def render_enemy_info(data: dict) -> str:
 
     stats = data["stats"]
     if stats:
-        lines.append("\n## 战斗属性")
+        # No leading \n here: "\n".join supplies the separator between the
+        # handbook block and this section (single newline, matching the old
+        # `result += _fmt_stats()` concatenation). The "## 技能" heading below
+        # keeps its leading \n to reproduce the original blank line there.
+        lines.append("## 战斗属性")
         for field, label in (
             ("max_hp", "最大生命"),
             ("atk", "攻击力"),

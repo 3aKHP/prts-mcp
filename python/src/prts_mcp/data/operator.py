@@ -240,7 +240,15 @@ def build_operator_basic_info(name: str) -> dict | str:
         "position_raw": position_raw,
         "affiliation": affiliation,
         "tag_list": info.get("tagList") or [],
-        "attack_attribute": strip_wikitext(info.get("description", "")) or None,
+        # Guard on the RAW description's presence (not the stripped value):
+        # the original code emitted "- **攻击属性**：<stripped>" whenever the
+        # raw field was truthy, even if stripping yielded "". Keep that
+        # behaviour by carrying None only when raw is empty.
+        "attack_attribute": (
+            strip_wikitext(info["description"])
+            if info.get("description")
+            else None
+        ),
         "item_usage": info.get("itemUsage", "") or None,
         "item_desc": info.get("itemDesc", "") or None,
         "item_obtain": info.get("itemObtainApproach", "") or None,
@@ -266,7 +274,7 @@ def render_operator_basic_info(data: dict) -> str:
     if tag_list:
         lines.append(f"- **招募标签**：{'、'.join(tag_list)}")
     attack = data["attack_attribute"]
-    if attack:
+    if attack is not None:
         lines.append(f"- **攻击属性**：{attack}")
     if data["item_usage"]:
         lines.append(f"\n**图鉴**：{data['item_usage']}")
