@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Added
+
+- **Output channel (2.0).** Optional structured-content delivery via MCP's
+  native `structuredContent` channel, controlled by a connection-level
+  `OUTPUT_CHANNEL` env var (`content` (default) / `structured` / `both`).
+  Capable clients (Claude Code, Codex) receive a structured payload; the
+  default `content` channel reproduces today's markdown-only behaviour
+  byte-for-byte, so this is non-breaking. `list_stages` is the pilot tool;
+  its `structuredContent` carries both raw enums (e.g. `type=ACTIVITY`) and
+  rendered labels (`type_label=活动`). The remaining structural tools and the
+  TypeScript implementation follow in subsequent commits.
+
 ### Changed
 
 - **Parameter naming normalization (2.0, breaking).** Operator tools

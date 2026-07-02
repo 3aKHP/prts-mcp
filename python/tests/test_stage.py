@@ -8,11 +8,14 @@ from pathlib import Path
 import pytest
 
 from prts_mcp.data.stage import (
+    build_stages_listing,
     clear_stage_caches,
     list_stages,
     get_stage_info,
+    render_stages_listing,
     search_stages,
 )
+from prts_mcp.output import render_result
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -232,6 +235,104 @@ class TestListStages:
     def test_invalid_offset(self, gamedata: str) -> None:
         out = list_stages(offset=-1)
         assert "offset 必须 >= 0" in out
+
+
+# ---------------------------------------------------------------------------
+# list_stages: build / render / structuredContent channels
+# ---------------------------------------------------------------------------
+
+
+class TestStagesBuildRender:
+    """Golden + round-trip tests for the build/render split.
+
+    The structured dict is the single source of truth; render must be its
+    exact inverse and list_stages must stay byte-for-byte equivalent to
+    render(build(...)).
+    """
+
+    def test_build_payload_shape(self, gamedata: str) -> None:
+        data = build_stages_listing()
+        assert isinstance(data, dict)
+        # Pagination + filter metadata.
+        assert set(data.keys()) == {"total", "offset", "limit", "filters", "stages"}
+        assert data["total"] == 4
+        assert data["offset"] == 0
+        assert data["limit"] == 50
+        assert data["filters"] == {"chapter": None, "type": None}
+        # Each entry carries both raw enum and rendered label, so the
+        # payload serves automation and Chinese consumers alike.
+        # Entries are sorted by stage_id (act31side_01 < daily_01 < main_*).
+        first = data["stages"][0]
+        assert first["stage_id"] == "act31side_01"
+        assert first["type"] == "ACTIVITY"
+        assert first["type_label"] == "活动"
+        assert first["difficulty_label"] == "普通"
+
+    def test_build_error_paths_return_str(self, gamedata: str) -> None:
+        assert isinstance(build_stages_listing(limit=0), str)
+        assert isinstance(build_stages_listing(offset=-1), str)
+        assert isinstance(build_stages_listing(type="NOPE"), str)
+        assert isinstance(build_stages_listing(chapter="missing"), str)
+        assert isinstance(build_stages_listing(offset=999), str)
+
+    def test_render_is_inverse_of_build(self, gamedata: str) -> None:
+        # list_stages() must equal render(build(...)) exactly — the
+        # byte-for-byte equivalence contract of the refactor.
+        data = build_stages_listing(chapter="main_0")
+        assert isinstance(data, dict)
+        assert render_stages_listing(data) == list_stages(chapter="main_0")
+
+    def test_build_respects_filters_and_pagination(self, gamedata: str) -> None:
+        data = build_stages_listing(type="DAILY")
+        assert isinstance(data, dict)
+        assert data["total"] == 1
+        assert data["stages"][0]["stage_id"] == "daily_01"
+        assert data["filters"]["type"] == "DAILY"
+
+        page = build_stages_listing(limit=2, offset=0)
+        assert isinstance(page, dict)
+        assert page["total"] == 4
+        assert len(page["stages"]) == 2
+
+
+class TestStagesOutputChannels:
+    """The three output_channel modes via the render_result helper."""
+
+    def _build(self, gamedata: str) -> dict:
+        data = build_stages_listing()
+        assert isinstance(data, dict)
+        return data
+
+    def test_content_channel_text_only(self, gamedata: str) -> None:
+        data = self._build(gamedata)
+        md = render_stages_listing(data)
+        r = render_result(data, md, channel="content")
+        assert r.structuredContent is None
+        assert [c.text for c in r.content] == [md]
+
+    def test_both_channel_emits_both(self, gamedata: str) -> None:
+        data = self._build(gamedata)
+        md = render_stages_listing(data)
+        r = render_result(data, md, channel="both")
+        assert [c.text for c in r.content] == [md]
+        assert r.structuredContent == data
+
+    def test_structured_channel_summary_and_payload(self, gamedata: str) -> None:
+        data = self._build(gamedata)
+        md = render_stages_listing(data)
+        r = render_result(data, md, channel="structured")
+        # content is the one-line summary, not the full markdown.
+        assert r.content[0].text != md
+        assert "4" in r.content[0].text  # total count appears in summary
+        assert r.structuredContent == data
+
+    def test_error_path_is_content_only_in_every_channel(self, gamedata: str) -> None:
+        err = build_stages_listing(limit=0)
+        assert isinstance(err, str)
+        for ch in ("content", "structured", "both"):
+            r = render_result(None, err, channel=ch)  # type: ignore[arg-type]
+            assert [c.text for c in r.content] == [err], f"channel={ch}"
+            assert r.structuredContent is None, f"channel={ch}"
 
 
 # ---------------------------------------------------------------------------
