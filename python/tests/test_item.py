@@ -8,12 +8,14 @@ from pathlib import Path
 import pytest
 
 from prts_mcp.data.item import (
+    build_items_listing,
     clear_item_caches,
     get_item_info,
     get_item_name_by_id,
     list_items,
     search_items,
 )
+from prts_mcp.output import render_result
 
 
 def _write_sentinels(excel: Path) -> None:
@@ -139,6 +141,14 @@ def test_list_items_golden_category_filter(gamedata: str) -> None:
         "\n"
         "（显示第 1–1 条，共 1 条。使用 offset=50 查看下一页）"
     )
+
+
+def test_list_items_both_channel(gamedata: str) -> None:
+    data = build_items_listing()
+    assert isinstance(data, dict)
+    r = render_result(data, list_items(), channel="both")
+    assert r.structuredContent == data
+    assert r.content[0].text == list_items()
 
 
 def test_list_items_category_filter(gamedata: str) -> None:

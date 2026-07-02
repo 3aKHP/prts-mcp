@@ -10,12 +10,14 @@ import pytest
 
 from prts_mcp.data.enemy import (
     build_enemy_info,
+    build_enemies_listing,
     clear_enemy_caches,
     list_enemies,
     get_enemy_info,
     render_enemy_info,
     search_enemies,
 )
+from prts_mcp.output import render_result
 
 
 def _write_handbook(excel: Path) -> None:
@@ -160,6 +162,15 @@ class TestListEnemies:
             "# 敌人图鉴（共 1 个）\n"
             "- **霜星** [领袖] (FN) — 整合运动法术部队干部。"
         )
+
+    def test_both_channel_attaches_structured_content(self, gamedata):
+        # Verify the tool wiring actually populates structuredContent in the
+        # both channel (the build dict rides the structured axis).
+        data = build_enemies_listing()
+        assert isinstance(data, dict)
+        r = render_result(data, list_enemies(), channel="both")
+        assert r.structuredContent == data
+        assert r.content[0].text == list_enemies()
 
     def test_threat_level_filter(self, gamedata):
         out = list_enemies(threat_level="boss", limit=10)

@@ -8,11 +8,14 @@ from unittest.mock import patch
 import pytest
 
 from prts_mcp.data.stage_enemy import (
+    build_enemy_appearances,
+    build_stage_enemies,
     clear_stage_enemy_caches,
     get_enemy_appearances,
     get_enemy_stage_info,
     get_stage_enemies,
 )
+from prts_mcp.output import render_result
 
 
 def _write_fixture(root: Path) -> None:
@@ -212,6 +215,14 @@ def test_get_stage_enemies_golden(gamedata: Path) -> None:
     )
 
 
+def test_get_stage_enemies_both_channel(gamedata: Path) -> None:
+    data = build_stage_enemies("main_00-01")
+    assert isinstance(data, dict)
+    r = render_result(data, get_stage_enemies("main_00-01"), channel="both")
+    assert r.structuredContent == data
+    assert r.content[0].text == get_stage_enemies("main_00-01")
+
+
 def test_get_enemy_appearances(gamedata: Path) -> None:
     out = get_enemy_appearances("源石虫")
     assert "源石虫" in out
@@ -229,6 +240,14 @@ def test_get_enemy_appearances_golden(gamedata: Path) -> None:
         "\n"
         "（显示第 1–1 条，共 1 条。使用 offset=50 查看下一页）"
     )
+
+
+def test_get_enemy_appearances_both_channel(gamedata: Path) -> None:
+    data = build_enemy_appearances("源石虫")
+    assert isinstance(data, dict)
+    r = render_result(data, get_enemy_appearances("源石虫"), channel="both")
+    assert r.structuredContent == data
+    assert r.content[0].text == get_enemy_appearances("源石虫")
 
 
 def test_get_enemy_stage_info(gamedata: Path) -> None:

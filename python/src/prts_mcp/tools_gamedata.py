@@ -142,7 +142,14 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         data = _build_stage_enemies(stage_id)
         if isinstance(data, str):
             return text_result(data)
-        return render_result(data, _render_stage_enemies(data))
+        # total here is distinct enemy *types* in one stage, not a pagination
+        # total — pass an explicit summary so the structured channel doesn't
+        # misread it as "N result pages".
+        return render_result(
+            data,
+            _render_stage_enemies(data),
+            summary=f"{data['stage_label']} 的敌人列表（共 {data['total']} 种）",
+        )
 
     @mcp.tool()
     def get_enemy_appearances(
