@@ -371,6 +371,10 @@ def test_search_prts_build_render_and_totalhits(monkeypatch: pytest.MonkeyPatch)
     assert data == {
         "query": "阿米娅",
         "search_mode": "text",
+        "filters": {
+            "limit": 1,
+            "filter_technical": True,
+        },
         "total": 9,
         "results": [{"title": "阿米娅", "snippet": "罗德岛公开领袖。"}],
     }
@@ -400,6 +404,10 @@ def test_search_prts_empty_is_structured_empty(monkeypatch: pytest.MonkeyPatch) 
     assert data == {
         "query": "不存在",
         "search_mode": "text",
+        "filters": {
+            "limit": 5,
+            "filter_technical": True,
+        },
         "total": 0,
         "results": [],
     }
@@ -431,6 +439,30 @@ def test_search_prts_network_failure_is_content_only(
 
     assert result.structuredContent is None
     assert result.content[0].text == "搜索 PRTS 失败：network down"
+
+
+def test_unmigrated_search_stories_missing_zip_stays_str(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("STORYJSON_PATH", str(tmp_path / "missing.zip"))
+    app = FastMCP("story-test")
+    register_story_tools(app)
+
+    result = asyncio.run(
+        app._tool_manager.call_tool(
+            "search_stories", {"pattern": "博士"}, convert_result=True,
+        )
+    )
+
+    content, structured = result
+    assert structured == {
+        "result": (
+            "剧情数据未就绪。请设置 STORYJSON_PATH 环境变量指向 zh_CN.zip，"
+            "或等待服务器自动从 GitHub Release 下载完成后重试。"
+        )
+    }
+    assert content[0].text == structured["result"]
 
 
 def test_p2b_manifest_output_schema_shape() -> None:

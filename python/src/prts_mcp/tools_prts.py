@@ -37,6 +37,10 @@ async def _build_prts_search(
     return {
         "query": query,
         "search_mode": search_mode,
+        "filters": {
+            "limit": limit,
+            "filter_technical": filter_technical,
+        },
         "total": result["totalhits"],
         "results": [
             {

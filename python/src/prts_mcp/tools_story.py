@@ -46,7 +46,7 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         try:
             zip_path = _require_story_zip(cfg)
         except RuntimeError as e:
-            return text_result(str(e))
+            return str(e)
 
         try:
             data = _build_story_events_listing(zip_path, category=category)
@@ -217,7 +217,7 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         try:
             zip_path = _require_story_zip(cfg)
         except RuntimeError as e:
-            return text_result(str(e))
+            return str(e)
 
         try:
             return _search_stories(
