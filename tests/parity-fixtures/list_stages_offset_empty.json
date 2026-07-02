@@ -1,0 +1,10 @@
+{
+  "total": 4,
+  "offset": 100,
+  "limit": 50,
+  "filters": {
+    "chapter": null,
+    "type": null
+  },
+  "stages": []
+}

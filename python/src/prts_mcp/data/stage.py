@@ -189,9 +189,9 @@ def build_stages_listing(
 ) -> dict | str:
     """Build the structured payload for a stages listing.
 
-    Returns the dict payload on success, or a markdown error string on a
-    user-input / missing-data / empty-result path. The dict is the single
-    source of truth that ``render_stages_listing`` consumes.
+    Returns the dict payload on success, including legitimate empty results,
+    or a markdown error string on user-input / missing-data paths. The dict is
+    the single source of truth that ``render_stages_listing`` consumes.
     """
     if limit < 1:
         return "limit 必须 >= 1。"
@@ -218,16 +218,6 @@ def build_stages_listing(
 
     total = len(filtered)
     page = filtered[offset : offset + limit]
-
-    if not page:
-        if total == 0:
-            filters: list[str] = []
-            if chapter:
-                filters.append(f"zoneId={chapter}")
-            if type:
-                filters.append(f"stageType={type.upper()}")
-            return f"没有匹配的关卡（filter: {', '.join(filters) or 'none'}）。"
-        return f"offset {offset} 超出范围（共 {total} 条）。"
 
     entries = []
     for e in page:
@@ -267,6 +257,17 @@ def render_stages_listing(data: dict) -> str:
     offset = data["offset"]
     limit = data["limit"]
     stages = data["stages"]
+
+    if not stages:
+        if total == 0:
+            filters: list[str] = []
+            f = data["filters"]
+            if f["chapter"]:
+                filters.append(f"zoneId={f['chapter']}")
+            if f["type"]:
+                filters.append(f"stageType={f['type']}")
+            return f"没有匹配的关卡（filter: {', '.join(filters) or 'none'}）。"
+        return f"offset {offset} 超出范围（共 {total} 条）。"
 
     lines = [f"# 关卡列表（共 {total} 个）"]
     for s in stages:

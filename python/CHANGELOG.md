@@ -18,9 +18,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
   wrapper with explicit `CallToolResult` delivery, so capable clients no
   longer receive duplicate markdown unless `both` is selected. `list_stages`
   is the pilot tool; its `structuredContent` carries both raw enums (e.g.
-  `type=ACTIVITY`) and rendered labels (`type_label=活动`). The remaining
-  structural tools and the TypeScript implementation follow in subsequent
-  commits. Note: `structured` mode is intended for deployments known to use a
+  `type=ACTIVITY`) and rendered labels (`type_label=活动`), and legitimate empty
+  pages (filter no-match / offset past end) return structured empty payloads
+  while preserving the original markdown text. The remaining structural tools
+  and the TypeScript implementation follow in subsequent commits. Note:
+  `structured` mode is intended for deployments known to use a
   structuredContent-capable client — an incapable client (e.g. Chatbox)
   receives only a one-line summary, so leave the default `content` unless the
   client is confirmed capable.

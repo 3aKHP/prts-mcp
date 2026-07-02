@@ -13,6 +13,7 @@ from prts_mcp.data.stage import (
     clear_stage_caches,
     list_stages,
     get_stage_info,
+    render_stages_listing,
     render_stage_search,
     search_stages,
 )
@@ -164,6 +165,11 @@ def _make_fixture(root: Path) -> None:
     )
 
 
+def _load_parity_fixture(name: str) -> dict:
+    path = Path(__file__).parents[2] / "tests" / "parity-fixtures" / name
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
 @pytest.fixture(autouse=True)
 def _reset_caches() -> None:
     clear_stage_caches()
@@ -269,12 +275,39 @@ class TestStagesBuildRender:
         assert first["type_label"] == "活动"
         assert first["difficulty_label"] == "普通"
 
+    def test_matches_shared_parity_fixture(self, gamedata: str) -> None:
+        assert build_stages_listing() == _load_parity_fixture("list_stages.json")
+
+    def test_filtered_payload_matches_shared_parity_fixture(self, gamedata: str) -> None:
+        assert build_stages_listing(type="daily") == _load_parity_fixture(
+            "list_stages_daily.json"
+        )
+
+    def test_page_payload_matches_shared_parity_fixture(self, gamedata: str) -> None:
+        assert build_stages_listing(limit=2) == _load_parity_fixture(
+            "list_stages_page.json"
+        )
+
+    def test_empty_payload_matches_shared_parity_fixture(self, gamedata: str) -> None:
+        data = build_stages_listing(chapter="nonexistent")
+        assert data == _load_parity_fixture("list_stages_empty.json")
+        expected = "没有匹配的关卡（filter: zoneId=nonexistent）。"
+        assert render_stages_listing(data) == expected
+        assert list_stages(chapter="nonexistent") == expected
+
+    def test_offset_empty_payload_matches_shared_parity_fixture(
+        self, gamedata: str
+    ) -> None:
+        data = build_stages_listing(offset=100)
+        assert data == _load_parity_fixture("list_stages_offset_empty.json")
+        expected = "offset 100 超出范围（共 4 条）。"
+        assert render_stages_listing(data) == expected
+        assert list_stages(offset=100) == expected
+
     def test_build_error_paths_return_str(self, gamedata: str) -> None:
         assert isinstance(build_stages_listing(limit=0), str)
         assert isinstance(build_stages_listing(offset=-1), str)
         assert isinstance(build_stages_listing(type="NOPE"), str)
-        assert isinstance(build_stages_listing(chapter="missing"), str)
-        assert isinstance(build_stages_listing(offset=999), str)
 
     def test_build_respects_filters_and_pagination(self, gamedata: str) -> None:
         data = build_stages_listing(type="DAILY")

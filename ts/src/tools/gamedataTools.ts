@@ -9,12 +9,13 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getOperatorArchives, getOperatorVoicelines, getOperatorBasicInfo } from "../data/operator.js";
 import { listEnemies, getEnemyInfo, searchEnemies } from "../data/enemy.js";
-import { listStages, getStageInfo, searchStages } from "../data/stage.js";
+import { buildStagesListing, getStageInfo, renderStagesListing, searchStages } from "../data/stage.js";
 import { listItems, getItemInfo, searchItems } from "../data/item.js";
 import { getStageEnemies, getEnemyAppearances, getEnemyStageInfo } from "../data/stageEnemy.js";
 import { searchOperatorData } from "../data/search.js";
+import { renderResult, textResult, type OutputChannel } from "../output.js";
 
-export function registerGamedataTools(server: McpServer): void {
+export function registerGamedataTools(server: McpServer, channel: OutputChannel = "content"): void {
   server.tool(
     "get_operator_archives",
     [
@@ -137,9 +138,12 @@ export function registerGamedataTools(server: McpServer): void {
       limit: z.number().int().min(1).max(200).default(50).describe("返回数量上限，默认 50。"),
       offset: z.number().int().min(0).default(0).describe("分页偏移量，默认 0。"),
     },
-    ({ chapter, type, limit, offset }) => ({
-      content: [{ type: "text", text: listStages(chapter ?? null, type ?? null, limit, offset) }],
-    })
+    ({ chapter, type, limit, offset }) => {
+      const data = buildStagesListing(chapter ?? null, type ?? null, limit, offset);
+      if (typeof data === "string") return textResult(data);
+      const markdown = renderStagesListing(data);
+      return renderResult(data, markdown, channel);
+    }
   );
 
   server.tool(

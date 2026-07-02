@@ -23,6 +23,7 @@ import {
   type StoryChapter,
   type StoryLine,
 } from "../data/story.js";
+import type { OutputChannel } from "../output.js";
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -64,7 +65,7 @@ function formatChapter(chapter: StoryChapter): string {
 // Tool registration
 // ---------------------------------------------------------------------------
 
-export function registerStoryTools(server: McpServer): void {
+export function registerStoryTools(server: McpServer, _channel: OutputChannel = "content"): void {
   server.tool(
     "list_story_events",
     [

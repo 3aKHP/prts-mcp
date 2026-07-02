@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -142,6 +142,12 @@ function writeFixtures(root: string): void {
   );
 }
 
+function loadParityFixture(name: string): unknown {
+  return JSON.parse(
+    readFileSync(join(import.meta.dirname, "..", "..", "tests", "parity-fixtures", name), "utf-8"),
+  );
+}
+
 // ---------------------------------------------------------------------------
 // listStages
 // ---------------------------------------------------------------------------
@@ -247,6 +253,87 @@ test("listStages invalid limit", async () => {
   const stage = await loadStageModule();
   const out = stage.listStages(null, null, 0);
   assert.match(out, /limit 必须 >= 1/);
+});
+
+test("listStages max limit", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  writeFixtures(root);
+  const stage = await loadStageModule();
+  const out = stage.listStages(null, null, 201);
+  assert.match(out, /limit 必须 <= 200/);
+});
+
+test("buildStagesListing matches shared parity fixture", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  writeFixtures(root);
+  const stage = await loadStageModule();
+  const data = stage.buildStagesListing();
+  assert.deepStrictEqual(data, loadParityFixture("list_stages.json"));
+});
+
+test("buildStagesListing filtered payload matches shared parity fixture", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  writeFixtures(root);
+  const stage = await loadStageModule();
+  const data = stage.buildStagesListing(null, "daily");
+  assert.deepStrictEqual(data, loadParityFixture("list_stages_daily.json"));
+});
+
+test("buildStagesListing page payload matches shared parity fixture", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  writeFixtures(root);
+  const stage = await loadStageModule();
+  const data = stage.buildStagesListing(null, null, 2);
+  assert.deepStrictEqual(data, loadParityFixture("list_stages_page.json"));
+});
+
+test("buildStagesListing empty payload matches shared parity fixture", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  writeFixtures(root);
+  const stage = await loadStageModule();
+  const data = stage.buildStagesListing("nonexistent");
+  assert.deepStrictEqual(data, loadParityFixture("list_stages_empty.json"));
+  if (typeof data === "string") assert.fail(`unexpected error: ${data}`);
+  const expected = "没有匹配的关卡（filter: zoneId=nonexistent）。";
+  assert.equal(stage.renderStagesListing(data), expected);
+  assert.equal(stage.listStages("nonexistent"), expected);
+});
+
+test("buildStagesListing offset empty payload matches shared parity fixture", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  writeFixtures(root);
+  const stage = await loadStageModule();
+  const data = stage.buildStagesListing(null, null, 50, 100);
+  assert.deepStrictEqual(data, loadParityFixture("list_stages_offset_empty.json"));
+  if (typeof data === "string") assert.fail(`unexpected error: ${data}`);
+  const expected = "offset 100 超出范围（共 4 条）。";
+  assert.equal(stage.renderStagesListing(data), expected);
+  assert.equal(stage.listStages(null, null, 50, 100), expected);
+});
+
+test("listStages preserves default markdown golden", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  writeFixtures(root);
+  const stage = await loadStageModule();
+  assert.equal(
+    stage.listStages(),
+    [
+      "# 关卡列表（共 4 个）",
+      "- **测试活动关** [活动] AS-1 — 普通 — 火山旅梦（id: act31side_01）",
+      "- **货物运送** [每日] CE-5 — 普通 — daily_zone1（id: daily_01）",
+      "- **坍塌** [主线] 0-1 — 普通 — 序章-黑暗时代·上（id: main_00-01）",
+      "- **坍塌·突袭** [主线] TR-1 — 突袭 — 序章-黑暗时代·上（id: main_00-01#f#）",
+      "",
+      "（显示第 1–4 条，共 4 条。使用 offset=50 查看下一页）",
+    ].join("\n"),
+  );
 });
 
 // ---------------------------------------------------------------------------
