@@ -19,7 +19,50 @@ from prts_mcp.api.prts_wiki import (
     get_links as _get_links,
     get_template_data as _get_template_data,
 )
-from prts_mcp.output import text_result
+from prts_mcp.output import render_result, text_result
+
+
+async def _build_prts_search(
+    query: str,
+    limit: int = 5,
+    search_mode: str = "text",
+    filter_technical: bool = True,
+) -> dict | str:
+    """Build the structured payload for PRTS keyword search."""
+    if search_mode not in ("text", "title"):
+        return "无效的 search_mode 参数，可选值：text、title。"
+    result = await _search_prts(
+        query, limit, search_mode=search_mode, filter_technical=filter_technical,
+    )
+    return {
+        "query": query,
+        "search_mode": search_mode,
+        "filters": {
+            "limit": limit,
+            "filter_technical": filter_technical,
+        },
+        "total": result["totalhits"],
+        "results": [
+            {
+                "title": r["title"],
+                "snippet": r["snippet"],
+            }
+            for r in result["results"]
+        ],
+    }
+
+
+def _render_prts_search(data: dict) -> str:
+    """Render a PRTS search payload to markdown."""
+    query = data["query"]
+    results = data["results"]
+    if not results:
+        return f"未找到与 '{query}' 相关的词条。"
+    header = f"# 搜索 \"{query}\"（共 {data['total']} 条匹配）\n"
+    parts = []
+    for r in results:
+        parts.append(f"**{r['title']}**\n{r['snippet']}")
+    return header + "\n\n---\n\n".join(parts)
 
 
 def register_prts_tools(mcp) -> None:  # type: ignore[no-untyped-def]
@@ -31,24 +74,24 @@ def register_prts_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         limit: Annotated[int, Field(default=5, description="返回结果数量上限，默认 5，最大建议不超过 10。")] = 5,
         search_mode: Annotated[str, Field(default="text", description="搜索模式：text（全文搜索，默认）或 title（仅搜索标题）。")] = "text",
         filter_technical: Annotated[bool, Field(default=True, description="是否过滤 /spine、/data 等技术页面，默认 True。")] = True,
-    ) -> str:
+    ) -> object:
         """搜索 PRTS 明日方舟中文维基词条。
 
         返回匹配词条的标题、简短摘要列表及匹配总数。查询专有名词、干员、关卡或世界观设定
         时先用此工具拿到准确标题，再传入 prts_page 获取完整内容。
         """
-        if search_mode not in ("text", "title"):
-            return "无效的 search_mode 参数，可选值：text、title。"
-        result = await _search_prts(query, limit, search_mode=search_mode, filter_technical=filter_technical)
-        results = result["results"]
-        totalhits = result["totalhits"]
-        if not results:
-            return f"未找到与 '{query}' 相关的词条。"
-        header = f"# 搜索 \"{query}\"（共 {totalhits} 条匹配）\n"
-        parts = []
-        for r in results:
-            parts.append(f"**{r['title']}**\n{r['snippet']}")
-        return header + "\n\n---\n\n".join(parts)
+        try:
+            data = await _build_prts_search(
+                query,
+                limit,
+                search_mode=search_mode,
+                filter_technical=filter_technical,
+            )
+        except Exception as e:
+            return text_result(f"搜索 PRTS 失败：{e}")
+        if isinstance(data, str):
+            return text_result(data)
+        return render_result(data, _render_prts_search(data))
 
     @mcp.tool()
     async def prts_page(

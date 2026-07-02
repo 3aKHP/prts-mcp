@@ -60,6 +60,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
   "empty ⇒ {total:0}". True errors (invalid params, missing data) stay
   content-only. The story-list/wiki-search tools and the heterogeneous
   `search` follow in P2b PR2b/PR3.
+- **Story navigation and wiki-search structuredContent (2.0, P2b PR2b).**
+  The six story/wiki navigation tools (`list_story_events`, `list_stories`,
+  `get_operator_memoirs`, `find_character_appearances`, `find_speakers_in`,
+  `search_prts`) migrated to explicit `CallToolResult` delivery with
+  build/render payloads. Story payloads carry chainable event/story IDs,
+  raw story entry tags, and boolean speaks/mentioned flags; `search_prts`
+  now exposes `total` as MediaWiki `totalhits`, which can exceed the returned
+  page of results. Legitimate empty results carry `{total:0}` on the
+  structured channel while preserving the existing markdown text; invalid
+  parameters, missing story data, and PRTS network failures remain content-only.
 
 ### Changed
 

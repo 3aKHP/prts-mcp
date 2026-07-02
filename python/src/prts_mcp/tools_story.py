@@ -9,20 +9,24 @@ from typing import Annotated
 
 from pydantic import Field
 
-from prts_mcp.data.stores import ZipStore
 from prts_mcp.data.story import (
-    list_story_events as _list_story_events,
-    list_stories as _list_stories,
+    build_story_events_listing as _build_story_events_listing,
+    render_story_events_listing as _render_story_events_listing,
+    build_stories_listing as _build_stories_listing,
+    render_stories_listing as _render_stories_listing,
     read_story as _read_story,
     read_activity as _read_activity,
     search_stories as _search_stories,
     get_story_summary as _get_story_summary,
-    get_operator_memoirs as _get_operator_memoirs,
-    find_character_appearances as _find_character_appearances,
-    find_speakers_in as _find_speakers_in,
+    build_operator_memoirs as _build_operator_memoirs,
+    render_operator_memoirs as _render_operator_memoirs,
+    build_character_appearances as _build_character_appearances,
+    render_character_appearances as _render_character_appearances,
+    build_speakers_in_event as _build_speakers_in_event,
+    render_speakers_in_event as _render_speakers_in_event,
 )
 from prts_mcp.startup_sync import _require_story_zip
-from prts_mcp.output import text_result
+from prts_mcp.output import render_result, text_result
 
 
 def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
@@ -31,7 +35,7 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
     @mcp.tool()
     def list_story_events(
         category: Annotated[str | None, Field(default=None, description="可选过滤分类。\"main\" = 主线章节，\"activities\" = 活动剧情（含联动），\"memoirs\" = 干员密录。不填则返回全部活动。")] = None,
-    ) -> str:
+    ) -> object:
         """列出明日方舟剧情活动列表。
 
         返回格式：每行 `- [类型] 活动ID：名称（N 章）`，类型为 MAINLINE / ACTIVITY /
@@ -45,23 +49,16 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
             return str(e)
 
         try:
-            events = _list_story_events(zip_path, category=category)
+            data = _build_story_events_listing(zip_path, category=category)
         except Exception as e:
-            return f"读取活动列表失败：{e}"
-
-        if not events:
-            return f"未找到符合条件的活动（category={category!r}）。"
-
-        lines = []
-        for ev in events:
-            lines.append(f"- [{ev.entry_type}] {ev.event_id}：{ev.name}（{ev.story_count} 章）")
-        return "\n".join(lines)
+            return text_result(f"读取活动列表失败：{e}")
+        return render_result(data, _render_story_events_listing(data))
 
     @mcp.tool()
     def list_stories(
         event_id: Annotated[str, Field(description="活动 ID，如 \"act31side\"（可从 list_story_events 获取）。")],
         include_summaries: Annotated[bool, Field(default=False, description="是否附带梗概，默认 False。设为 True 时顶部附活动级长摘要（若有）、每章下方附一句话梗概。")] = False,
-    ) -> str:
+    ) -> object:
         """列出指定活动的所有剧情章节（按官方顺序排列）。
 
         返回格式：每行 `- 章节编号 [标签] 章节名（key: story_key）`，其中 story_key 可直接
@@ -72,46 +69,17 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         try:
             zip_path = _require_story_zip(cfg)
         except RuntimeError as e:
-            return str(e)
+            return text_result(str(e))
 
         try:
-            chapters = _list_stories(zip_path, event_id)
+            data = _build_stories_listing(
+                zip_path, event_id, include_summaries=include_summaries,
+            )
         except KeyError:
-            return f"未找到活动：{event_id!r}。请先调用 list_story_events 确认活动 ID。"
+            return text_result(f"未找到活动：{event_id!r}。请先调用 list_story_events 确认活动 ID。")
         except Exception as e:
-            return f"读取章节列表失败：{e}"
-
-        if not chapters:
-            return f"活动 {event_id!r} 暂无剧情章节。"
-
-        summaries: dict[str, str] = {}
-        event_summary_text = ""
-        if include_summaries:
-            try:
-                with ZipStore(zip_path) as store:
-                    if store.exists("zh_CN/storyinfo.json"):
-                        raw = store.read_json("zh_CN/storyinfo.json")
-                        if isinstance(raw, dict):
-                            summaries = {str(k): str(v) for k, v in raw.items() if v}
-                    if store.exists("zh_CN/event_summaries.json"):
-                        raw_ev = store.read_json("zh_CN/event_summaries.json")
-                        if isinstance(raw_ev, dict):
-                            event_summary_text = str(raw_ev.get(event_id) or "").strip()
-            except Exception:
-                pass
-
-        lines = []
-        if event_summary_text:
-            lines.append(event_summary_text)
-            lines.append("")
-        for ch in chapters:
-            tag = f"[{ch.avg_tag}] " if ch.avg_tag else ""
-            lines.append(f"- {ch.story_code} {tag}{ch.story_name}（key: {ch.story_key}）")
-            if include_summaries:
-                summary = summaries.get(ch.story_key, "")
-                if summary:
-                    lines.append(f"  {summary}")
-        return "\n".join(lines)
+            return text_result(f"读取章节列表失败：{e}")
+        return render_result(data, _render_stories_listing(data))
 
     @mcp.tool()
     def get_story_summary(
@@ -267,7 +235,7 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
     @mcp.tool()
     def get_operator_memoirs(
         name: Annotated[str, Field(description="干员的游戏内中文名，如「阿米娅」、「能天使」。")],
-    ) -> str:
+    ) -> object:
         """根据干员名称查询干员密录剧情。
 
         返回干员的密录章节列表，含章节 key（story_key）和元数据。
@@ -278,29 +246,26 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         try:
             zip_path = _require_story_zip(cfg)
         except RuntimeError as e:
-            return str(e)
+            return text_result(str(e))
 
         try:
-            result = _get_operator_memoirs(zip_path, name)
+            data = _build_operator_memoirs(zip_path, name)
         except KeyError as e:
-            return str(e)
+            return text_result(str(e))
         except Exception as e:
-            return f"查询干员密录失败：{e}"
-
-        lines = [
-            f"# {result.operator_name}（code: {result.internal_code}，id: {result.operator_id}）",
-            f"共 {result.total_chapters} 章密录\n",
-        ]
-        for ch in result.chapters:
-            lines.append(f"- {ch.story_code} {ch.story_name}（key: {ch.story_key}）")
-        return "\n".join(lines)
+            return text_result(f"查询干员密录失败：{e}")
+        return render_result(
+            data,
+            _render_operator_memoirs(data),
+            summary=f"{data['operator_name']} 的密录列表（共 {data['total']} 章）",
+        )
 
     @mcp.tool()
     def find_character_appearances(
         name: Annotated[str, Field(description="角色名（干员中文名或「博士」）。speaks 按对话角色名精确匹配，mentioned 按名字在台词/旁白文本中的子串匹配——请使用完整名字以免误报（如「阿」会命中「阿米娅」）。")],
         scope: Annotated[str | None, Field(default=None, description="限定活动 ID，如「act31side」。不填则检索全部活动。")] = None,
         max_events: Annotated[int, Field(default=50, ge=1, le=200, description="最多返回章节数，默认 50。")] = 50,
-    ) -> str:
+    ) -> object:
         """查找某个角色在剧情中的出场（说话或被提及）。
 
         返回该角色作为对话发言者（speaks）或名字出现在台词/旁白文本中（mentioned）的所有章节，
@@ -312,41 +277,24 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         try:
             zip_path = _require_story_zip(cfg)
         except RuntimeError as e:
-            return str(e)
+            return text_result(str(e))
 
         try:
-            result = _find_character_appearances(
+            data = _build_character_appearances(
                 zip_path, name, scope=scope, max_events=max_events,
             )
         except ValueError as e:
-            return str(e)
+            return text_result(str(e))
         except KeyError as e:
-            return str(e)
+            return text_result(str(e))
         except Exception as e:
-            return f"查询角色出场失败：{e}"
-
-        if not result.appearances:
-            scope_note = f"（限定活动：{scope!r}）" if scope else ""
-            return f"未找到「{name}」的出场记录。{scope_note}"
-
-        parts = [f"# 「{result.name}」的出场（共 {result.total_chapters} 章）"]
-        for ap in result.appearances:
-            tags = []
-            if ap.speaks:
-                tags.append("speaks")
-            if ap.mentioned:
-                tags.append("mentioned")
-            tag = "+".join(tags)
-            name_disp = f"{ap.story_code} {ap.story_name}".strip()
-            parts.append(
-                f"- [{tag}] {ap.event_id} / {name_disp}（key: {ap.story_key}）"
-            )
-        return "\n".join(parts)
+            return text_result(f"查询角色出场失败：{e}")
+        return render_result(data, _render_character_appearances(data))
 
     @mcp.tool()
     def find_speakers_in(
         event_id: Annotated[str, Field(description="活动 ID，如 \"act31side\"（可从 list_story_events 获取）。")],
-    ) -> str:
+    ) -> object:
         """列出某活动中的所有发言角色及其台词数。
 
         返回该活动去重后的对话发言者，按台词句数降序排列，适合了解角色戏份分布。
@@ -357,19 +305,12 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         try:
             zip_path = _require_story_zip(cfg)
         except RuntimeError as e:
-            return str(e)
+            return text_result(str(e))
 
         try:
-            speakers = _find_speakers_in(zip_path, event_id)
+            data = _build_speakers_in_event(zip_path, event_id)
         except KeyError as e:
-            return str(e)
+            return text_result(str(e))
         except Exception as e:
-            return f"查询发言角色失败：{e}"
-
-        if not speakers:
-            return f"活动 {event_id!r} 暂无对话发言者数据。"
-
-        parts = [f"# {event_id} 的发言角色（共 {len(speakers)} 位）"]
-        for sp in speakers:
-            parts.append(f"- {sp.name}（{sp.line_count} 句）")
-        return "\n".join(parts)
+            return text_result(f"查询发言角色失败：{e}")
+        return render_result(data, _render_speakers_in_event(data))

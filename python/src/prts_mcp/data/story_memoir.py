@@ -114,6 +114,26 @@ def get_operator_memoirs(
         return get_operator_memoirs_from_store(store, operator_name)
 
 
+def build_operator_memoirs(
+    zip_path: Path,
+    operator_name: str,
+) -> dict:
+    """Build the structured payload for an operator memoir listing."""
+    with story_store(zip_path) as store:
+        return build_operator_memoirs_from_store(store, operator_name)
+
+
+def render_operator_memoirs(data: dict) -> str:
+    """Render an operator memoir payload to markdown."""
+    lines = [
+        f"# {data['operator_name']}（code: {data['internal_code']}，id: {data['operator_id']}）",
+        f"共 {data['total']} 章密录\n",
+    ]
+    for ch in data["chapters"]:
+        lines.append(f"- {ch['story_code']} {ch['story_name']}（key: {ch['story_key']}）")
+    return "\n".join(lines)
+
+
 # ---------------------------------------------------------------------------
 # Public API — store-based
 # ---------------------------------------------------------------------------
@@ -172,3 +192,25 @@ def get_operator_memoirs_from_store(
         total_chapters=len(chapters),
         chapters=chapters,
     )
+
+
+def build_operator_memoirs_from_store(
+    store: JsonStore,
+    operator_name: str,
+) -> dict:
+    """Build an operator memoir payload using a JSON store."""
+    result = get_operator_memoirs_from_store(store, operator_name)
+    return {
+        "operator_name": result.operator_name,
+        "internal_code": result.internal_code,
+        "operator_id": result.operator_id,
+        "total": result.total_chapters,
+        "chapters": [
+            {
+                "story_code": ch.story_code,
+                "story_name": ch.story_name,
+                "story_key": ch.story_key,
+            }
+            for ch in result.chapters
+        ],
+    }
