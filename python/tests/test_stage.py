@@ -354,6 +354,35 @@ class TestGetStageInfo:
         assert "无条件" in out
         assert "main_00-01#f#" in out
 
+    def test_golden_full_output(self, gamedata: str) -> None:
+        # Golden: exact full markdown for main_00-01 against the fixture.
+        # Stronger than substring asserts — catches build-layer field
+        # omissions and section-ordering regressions.
+        assert get_stage_info("main_00-01") == (
+            "# 坍塌 — 关卡详情\n\n"
+            "## 基本信息\n"
+            "- **ID**：main_00-01\n"
+            "- **编号**：0-1\n"
+            "- **类型**：主线\n"
+            "- **难度**：普通\n"
+            "- **所属区域**：序章-黑暗时代·上\n"
+            "- **理智消耗**：6\n"
+            "- **危险等级**：LV.1\n"
+            "- **关卡数据**：Obt/Main/level_main_00-01\n"
+            "\n"
+            "## 描述\n"
+            "三点方向出现了敌人的先锋部队。\n"
+            "\n"
+            "## 掉落信息\n"
+            "- 招聘许可（7001） ×1 [ONCE]\n"
+            "\n"
+            "## 解锁条件\n"
+            "（无条件）\n"
+            "\n"
+            "## 关联关卡\n"
+            "- 突袭模式：main_00-01#f#（坍塌·突袭）"
+        )
+
     def test_four_star_variant(self, gamedata: str) -> None:
         out = get_stage_info("main_00-01#f#")
         assert "突袭" in out

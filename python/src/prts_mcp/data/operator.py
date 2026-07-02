@@ -168,8 +168,13 @@ _POSITION_ZH: dict[str, str] = {
 }
 
 
-def get_operator_basic_info(name: str) -> str:
-    """Return basic profile info for an operator by Chinese name."""
+def build_operator_basic_info(name: str) -> dict | str:
+    """Build the structured payload for an operator's basic profile.
+
+    Returns the dict payload on success, or a markdown error string on a
+    missing-data / not-found path. The dict is the single source of truth
+    that ``render_operator_basic_info`` consumes.
+    """
     if not _get_config().has_operator_data:
         return _missing_operator_data_message()
 
@@ -197,53 +202,99 @@ def get_operator_basic_info(name: str) -> str:
     position_raw: str = info.get("position", "")
     position = _POSITION_ZH.get(position_raw, position_raw)
 
-    appellation: str = info.get("appellation", "")
-    display_number: str = info.get("displayNumber", "")
-    description: str = info.get("description", "")
-    item_usage: str = info.get("itemUsage", "")
-    item_desc: str = info.get("itemDesc", "")
-    item_obtain: str = info.get("itemObtainApproach", "")
-    tag_list: list[str] = info.get("tagList") or []
-
     nation_id: str = info.get("nationId") or ""
     group_id: str = info.get("groupId") or ""
     team_id: str = info.get("teamId") or ""
     affiliation_parts = [x for x in [nation_id, group_id, team_id] if x]
     affiliation = " / ".join(affiliation_parts) if affiliation_parts else "-"
 
+    # Talents — show the highest-unlock candidate for each talent slot
+    chosen_talents: list[dict[str, str]] = []
+    talents: list[Any] = info.get("talents") or []
+    for talent in talents:
+        candidates: list[Any] = talent.get("candidates") or []
+        # Pick last candidate with a real name
+        chosen = None
+        for c in reversed(candidates):
+            if c.get("name") and c["name"] not in ("？？？",):
+                chosen = c
+                break
+        if chosen:
+            chosen_talents.append(
+                {
+                    "name": chosen.get("name", ""),
+                    "description": strip_wikitext(chosen.get("description", "")),
+                }
+            )
+
+    return {
+        "name": name,
+        "display_number": info.get("displayNumber", ""),
+        "appellation": info.get("appellation", ""),
+        "rarity": rarity,
+        "rarity_raw": rarity_raw,
+        "profession": profession,
+        "profession_raw": profession_raw,
+        "sub_profession_id": info.get("subProfessionId", ""),
+        "position": position,
+        "position_raw": position_raw,
+        "affiliation": affiliation,
+        "tag_list": info.get("tagList") or [],
+        # Guard on the RAW description's presence (not the stripped value):
+        # the original code emitted "- **攻击属性**：<stripped>" whenever the
+        # raw field was truthy, even if stripping yielded "". Keep that
+        # behaviour by carrying None only when raw is empty.
+        "attack_attribute": (
+            strip_wikitext(info["description"])
+            if info.get("description")
+            else None
+        ),
+        "item_usage": info.get("itemUsage", "") or None,
+        "item_desc": info.get("itemDesc", "") or None,
+        "item_obtain": info.get("itemObtainApproach", "") or None,
+        "talents": chosen_talents,
+    }
+
+
+def render_operator_basic_info(data: dict) -> str:
+    """Render an operator basic-info payload dict to markdown.
+
+    Pure renderer; the inverse of ``build_operator_basic_info``'s success
+    path.
+    """
+    name = data["name"]
     lines: list[str] = [f"# {name} - 干员基本信息\n"]
-    lines.append(f"- **编号**：{display_number}")
-    lines.append(f"- **英文名**：{appellation}")
-    lines.append(f"- **稀有度**：{rarity}")
-    lines.append(f"- **职业**：{profession}（{info.get('subProfessionId', '')}）")
-    lines.append(f"- **站位**：{position}")
-    lines.append(f"- **所属**：{affiliation}")
+    lines.append(f"- **编号**：{data['display_number']}")
+    lines.append(f"- **英文名**：{data['appellation']}")
+    lines.append(f"- **稀有度**：{data['rarity']}")
+    lines.append(f"- **职业**：{data['profession']}（{data['sub_profession_id']}）")
+    lines.append(f"- **站位**：{data['position']}")
+    lines.append(f"- **所属**：{data['affiliation']}")
+    tag_list = data["tag_list"]
     if tag_list:
         lines.append(f"- **招募标签**：{'、'.join(tag_list)}")
-    if description:
-        lines.append(f"- **攻击属性**：{strip_wikitext(description)}")
-    if item_usage:
-        lines.append(f"\n**图鉴**：{item_usage}")
-    if item_desc:
-        lines.append(f"\n> {item_desc}")
-    if item_obtain:
-        lines.append(f"\n**获取方式**：{item_obtain}")
+    attack = data["attack_attribute"]
+    if attack is not None:
+        lines.append(f"- **攻击属性**：{attack}")
+    if data["item_usage"]:
+        lines.append(f"\n**图鉴**：{data['item_usage']}")
+    if data["item_desc"]:
+        lines.append(f"\n> {data['item_desc']}")
+    if data["item_obtain"]:
+        lines.append(f"\n**获取方式**：{data['item_obtain']}")
 
-    # Talents — show the highest-unlock candidate for each talent slot
-    talents: list[Any] = info.get("talents") or []
+    talents = data["talents"]
     if talents:
         lines.append("\n## 天赋")
-        for talent in talents:
-            candidates: list[Any] = talent.get("candidates") or []
-            # Pick last candidate with a real name
-            chosen = None
-            for c in reversed(candidates):
-                if c.get("name") and c["name"] not in ("？？？",):
-                    chosen = c
-                    break
-            if chosen:
-                t_name: str = chosen.get("name", "")
-                t_desc: str = strip_wikitext(chosen.get("description", ""))
-                lines.append(f"- **{t_name}**：{t_desc}")
+        for t in talents:
+            lines.append(f"- **{t['name']}**：{t['description']}")
 
     return "\n".join(lines)
+
+
+def get_operator_basic_info(name: str) -> str:
+    """Return basic profile info for an operator by Chinese name."""
+    data = build_operator_basic_info(name)
+    if isinstance(data, str):
+        return data
+    return render_operator_basic_info(data)

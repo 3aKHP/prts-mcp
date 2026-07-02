@@ -137,6 +137,31 @@ def test_get_item_info_by_name(gamedata: str) -> None:
     assert "main_00-02（小概率）" in out
 
 
+def test_get_item_info_golden(gamedata: str) -> None:
+    # Golden: exact full markdown for 源岩 against the fixture. Stronger than
+    # substring asserts — catches build-layer field omissions and
+    # section-ordering regressions. Pattern copied from operator/enemy/stage.
+    assert get_item_info("源岩") == (
+        "# 源岩 — 物品信息\n\n"
+        "## 基本信息\n"
+        "- **ID**：30011\n"
+        "- **稀有度**：T1\n"
+        "- **分类**：材料\n"
+        "- **类型**：MATERIAL\n"
+        "- **图标**：MTL_SL_G1\n"
+        "\n"
+        "## 描述\n"
+        "常见于源石挥发殆尽后的地区。\n"
+        "\n"
+        "## 用途\n"
+        "可用于多种强化场合。\n"
+        "\n"
+        "## 掉落关卡\n"
+        "- main_00-01（固定）\n"
+        "- main_00-02（小概率）"
+    )
+
+
 def test_get_item_info_by_id(gamedata: str) -> None:
     out = get_item_info("7001")
     assert "招聘许可" in out

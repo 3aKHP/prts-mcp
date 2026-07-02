@@ -12,22 +12,26 @@ from pydantic import Field
 from prts_mcp.data.operator import (
     get_operator_archives as _get_archives,
     get_operator_voicelines as _get_voicelines,
-    get_operator_basic_info as _get_basic_info,
+    build_operator_basic_info as _build_basic_info,
+    render_operator_basic_info as _render_basic_info,
 )
 from prts_mcp.data.enemy import (
     list_enemies as _list_enemies,
-    get_enemy_info as _get_enemy_info,
+    build_enemy_info as _build_enemy_info,
+    render_enemy_info as _render_enemy_info,
     search_enemies as _search_enemies,
 )
 from prts_mcp.data.stage import (
     build_stages_listing as _build_stages_listing,
     render_stages_listing as _render_stages_listing,
-    get_stage_info as _get_stage_info,
+    build_stage_info as _build_stage_info,
+    render_stage_info as _render_stage_info,
     search_stages as _search_stages,
 )
 from prts_mcp.data.item import (
     list_items as _list_items,
-    get_item_info as _get_item_info,
+    build_item_info as _build_item_info,
+    render_item_info as _render_item_info,
     search_items as _search_items,
 )
 from prts_mcp.data.stage_enemy import (
@@ -67,13 +71,20 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
     @mcp.tool()
     async def get_operator_basic_info(
         name: Annotated[str, Field(description="干员的游戏内中文名，如「阿米娅」、「能天使」。")],
-    ) -> str:
+    ) -> object:
         """获取指定干员的基本数值信息。
 
         返回干员的职业、子职业、稀有度（星级）、所属阵营、招募标签、天赋名称及描述等
         结构化信息，适合快速了解干员定位。完整背景故事见 get_operator_archives。
         """
-        return _get_basic_info(name)
+        data = _build_basic_info(name)
+        if isinstance(data, str):
+            return text_result(data)
+        return render_result(
+            data,
+            _render_basic_info(data),
+            summary=f"干员『{data['name']}』的基本信息",
+        )
 
     @mcp.tool()
     def list_enemies(
@@ -93,15 +104,24 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
     def get_enemy_info(
         name: Annotated[str, Field(description="敌人的游戏内中文名，如「源石虫」、「霜星」。")],
         stage_id: Annotated[str | None, Field(default=None, description="可选关卡 ID；设置后返回该关卡内的敌人等级/覆盖后的战斗属性。")] = None,
-    ) -> str:
+    ) -> object:
         """获取指定敌人的详细图鉴资料。
 
         默认返回威胁等级、描述、攻击方式、伤害类型和特殊能力等图鉴信息。
         提供 stage_id 时改为返回该敌人在指定关卡内的等级与关卡覆盖后的战斗属性。
         """
         if stage_id:
-            return _get_enemy_stage_info(name, stage_id)
-        return _get_enemy_info(name)
+            # Stage-specific variant is a list/fusion tool (P2b PR2 target);
+            # content-only for now.
+            return text_result(_get_enemy_stage_info(name, stage_id))
+        data = _build_enemy_info(name)
+        if isinstance(data, str):
+            return text_result(data)
+        return render_result(
+            data,
+            _render_enemy_info(data),
+            summary=f"敌人『{data['name']}』的图鉴",
+        )
 
     @mcp.tool()
     def get_stage_enemies(
@@ -150,13 +170,20 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
     @mcp.tool()
     def get_stage_info(
         stage_id: Annotated[str, Field(description="关卡 ID，如 'main_00-01'（可从 list_stages 获取）。")],
-    ) -> str:
+    ) -> object:
         """获取指定关卡的详细信息。
 
         返回关卡的编号、类型、难度、所属区域、理智消耗、掉落奖励、解锁条件等。
         关卡实际出场的敌人见 get_stage_enemies。
         """
-        return _get_stage_info(stage_id)
+        data = _build_stage_info(stage_id)
+        if isinstance(data, str):
+            return text_result(data)
+        return render_result(
+            data,
+            _render_stage_info(data),
+            summary=f"关卡『{data['name']}』的详情",
+        )
 
     @mcp.tool()
     def list_items(
@@ -173,12 +200,19 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
     @mcp.tool()
     def get_item_info(
         name: Annotated[str, Field(description="物品中文名或 itemId，如「固源岩」、「招聘许可」或 \"30012\"。")],
-    ) -> str:
+    ) -> object:
         """获取指定物品/材料的详细信息。
 
         返回物品的描述、用途、获取方式、掉落关卡、基建产出和商店/凭证关联等。
         """
-        return _get_item_info(name)
+        data = _build_item_info(name)
+        if isinstance(data, str):
+            return text_result(data)
+        return render_result(
+            data,
+            _render_item_info(data),
+            summary=f"物品『{data['name']}』的详情",
+        )
 
     @mcp.tool()
     def search(
