@@ -97,11 +97,8 @@ async def search_prts(
     }
     if srwhat:
         params["srwhat"] = srwhat
-    try:
-        resp = await _get_client().get(PRTS_API_ENDPOINT, params=params)
-        resp.raise_for_status()
-    except httpx.HTTPError:
-        return {"totalhits": 0, "results": []}
+    resp = await _get_client().get(PRTS_API_ENDPOINT, params=params)
+    resp.raise_for_status()
     data = resp.json()
     totalhits = data.get("query", {}).get("searchinfo", {}).get("totalhits", 0)
     results: list[dict] = []

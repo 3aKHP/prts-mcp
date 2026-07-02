@@ -20,6 +20,7 @@ from prts_mcp.data.stores import JsonStore, ZipStore
 
 STORY_REVIEW_TABLE = "zh_CN/gamedata/excel/story_review_table.json"
 STORYINFO = "zh_CN/storyinfo.json"
+EVENT_SUMMARIES = "zh_CN/event_summaries.json"
 SUMMARIES = "zh_CN/summaries.json"
 CHARDICT = "zh_CN/chardict.json"
 
@@ -221,10 +222,69 @@ def list_story_events(
         return list_story_events_from_store(store, category=category)
 
 
+def build_story_events_listing(
+    zip_path: Path,
+    category: str | None = None,
+) -> dict:
+    """Build the structured payload for story event navigation."""
+    with story_store(zip_path) as store:
+        return build_story_events_listing_from_store(store, category=category)
+
+
+def render_story_events_listing(data: dict) -> str:
+    """Render a story-event listing payload to markdown."""
+    events = data["events"]
+    if not events:
+        category = data.get("filters", {}).get("category")
+        return f"未找到符合条件的活动（category={category!r}）。"
+
+    lines = []
+    for ev in events:
+        lines.append(
+            f"- [{ev['entry_type']}] {ev['event_id']}：{ev['name']}（{ev['story_count']} 章）"
+        )
+    return "\n".join(lines)
+
+
 def list_stories(zip_path: Path, event_id: str) -> list[ChapterSummary]:
     """Return ordered chapter list for an event."""
     with story_store(zip_path) as store:
         return list_stories_from_store(store, event_id)
+
+
+def build_stories_listing(
+    zip_path: Path,
+    event_id: str,
+    include_summaries: bool = False,
+) -> dict:
+    """Build the structured payload for an event's chapter listing."""
+    with story_store(zip_path) as store:
+        return build_stories_listing_from_store(
+            store, event_id, include_summaries=include_summaries,
+        )
+
+
+def render_stories_listing(data: dict) -> str:
+    """Render an event chapter-listing payload to markdown."""
+    event_id = data["event_id"]
+    chapters = data["chapters"]
+    if not chapters:
+        return f"活动 {event_id!r} 暂无剧情章节。"
+
+    lines = []
+    event_summary = data.get("event_summary")
+    if event_summary:
+        lines.append(event_summary)
+        lines.append("")
+    include_summaries = data["include_summaries"]
+    for ch in chapters:
+        tag = f"[{ch['avg_tag']}] " if ch["avg_tag"] else ""
+        lines.append(
+            f"- {ch['story_code']} {tag}{ch['story_name']}（key: {ch['story_key']}）"
+        )
+        if include_summaries and ch.get("summary"):
+            lines.append(f"  {ch['summary']}")
+    return "\n".join(lines)
 
 
 def read_story(
@@ -289,6 +349,31 @@ def list_story_events_from_store(
     return events
 
 
+def build_story_events_listing_from_store(
+    store: JsonStore,
+    category: str | None = None,
+) -> dict:
+    """Build a story-event listing payload using a JSON store."""
+    events = list_story_events_from_store(store, category=category)
+    category_normalized = category if category in CATEGORY_MAP else None
+    return {
+        "total": len(events),
+        "filters": {
+            "category": category,
+            "category_normalized": category_normalized,
+        },
+        "events": [
+            {
+                "event_id": ev.event_id,
+                "name": ev.name,
+                "entry_type": ev.entry_type,
+                "story_count": ev.story_count,
+            }
+            for ev in events
+        ],
+    }
+
+
 def list_stories_from_store(store: JsonStore, event_id: str) -> list[ChapterSummary]:
     """Return ordered chapter list for an event using a JSON store."""
     table: dict = load_json(store, STORY_REVIEW_TABLE)  # type: ignore[assignment]
@@ -311,6 +396,53 @@ def list_stories_from_store(store: JsonStore, event_id: str) -> list[ChapterSumm
         ))
 
     return chapters
+
+
+def build_stories_listing_from_store(
+    store: JsonStore,
+    event_id: str,
+    include_summaries: bool = False,
+) -> dict:
+    """Build an event chapter-listing payload using a JSON store."""
+    chapters = list_stories_from_store(store, event_id)
+    chapter_summaries: dict[str, str] = {}
+    event_summary_text = ""
+    if include_summaries:
+        try:
+            if store.exists(STORYINFO):
+                raw = store.read_json(STORYINFO)
+                if isinstance(raw, dict):
+                    chapter_summaries = {str(k): str(v) for k, v in raw.items() if v}
+            if store.exists(EVENT_SUMMARIES):
+                raw_events = store.read_json(EVENT_SUMMARIES)
+                if isinstance(raw_events, dict):
+                    event_summary_text = str(raw_events.get(event_id) or "").strip()
+        except Exception:
+            chapter_summaries = {}
+            event_summary_text = ""
+
+    data = {
+        "event_id": event_id,
+        "total": len(chapters),
+        "include_summaries": include_summaries,
+        "chapters": [
+            {
+                "story_code": ch.story_code,
+                "story_name": ch.story_name,
+                "story_key": ch.story_key,
+                "avg_tag": ch.avg_tag,
+                **(
+                    {"summary": chapter_summaries.get(ch.story_key, "")}
+                    if include_summaries
+                    else {}
+                ),
+            }
+            for ch in chapters
+        ],
+    }
+    if event_summary_text:
+        data["event_summary"] = event_summary_text
+    return data
 
 
 def read_story_from_store(
