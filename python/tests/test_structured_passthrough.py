@@ -24,6 +24,7 @@ from __future__ import annotations
 import asyncio
 
 import pytest
+from mcp.server.fastmcp.exceptions import ToolError
 from mcp.server.fastmcp import FastMCP
 from mcp.types import CallToolResult
 
@@ -92,3 +93,27 @@ def test_no_output_schema_pollutes_the_manifest() -> None:
         "Returning a CallToolResult derived an outputSchema; this would eat the "
         "context budget the consolidation work is trying to save."
     )
+
+
+def test_str_annotation_rejects_explicit_call_tool_result() -> None:
+    """Guard against forgetting -> object when migrating tools in P2.
+
+    FastMCP derives outputSchema from the return annotation. If a tool keeps
+    ``-> str`` but starts returning our explicit ``CallToolResult``, FastMCP
+    validates that object against ``{result: string}`` and the tool call fails.
+    """
+
+    app = FastMCP("bad-probe")
+
+    @app.tool()
+    async def bad_probe() -> str:
+        return render_result(  # type: ignore[return-value]
+            _PROBE_DATA, _PROBE_MD, channel="content"
+        )
+
+    with pytest.raises(ToolError) as excinfo:
+        asyncio.run(app._tool_manager.call_tool("bad_probe", {}, convert_result=True))
+
+    message = str(excinfo.value)
+    assert "validation error" in message
+    assert "bad_probeOutput" in message

@@ -11,16 +11,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - **Output channel (2.0).** Optional structured-content delivery via MCP's
   native `structuredContent` channel, controlled by a connection-level
   `PRTS_OUTPUT_CHANNEL` env var (`content` (default) / `structured` / `both`).
-  Capable clients (Claude Code, Codex) receive a structured payload; the
-  default `content` channel reproduces today's markdown-only behaviour
-  byte-for-byte, so this is non-breaking. `list_stages` is the pilot tool;
-  its `structuredContent` carries both raw enums (e.g. `type=ACTIVITY`) and
-  rendered labels (`type_label=活动`). The remaining structural tools and the
-  TypeScript implementation follow in subsequent commits. Note: `structured`
-  mode is intended for deployments known to use a structuredContent-capable
-  client — an incapable client (e.g. Chatbox) receives only a one-line
-  summary, so leave the default `content` unless the client is confirmed
-  capable.
+  The default `content` channel preserves the human-readable markdown content
+  for clients that only consume MCP `content`. Migrated tools intentionally
+  change the MCP manifest/wire shape by replacing FastMCP's automatic
+  `outputSchema={result:string}` plus `structuredContent={"result": markdown}`
+  wrapper with explicit `CallToolResult` delivery, so capable clients no
+  longer receive duplicate markdown unless `both` is selected. `list_stages`
+  is the pilot tool; its `structuredContent` carries both raw enums (e.g.
+  `type=ACTIVITY`) and rendered labels (`type_label=活动`). The remaining
+  structural tools and the TypeScript implementation follow in subsequent
+  commits. Note: `structured` mode is intended for deployments known to use a
+  structuredContent-capable client — an incapable client (e.g. Chatbox)
+  receives only a one-line summary, so leave the default `content` unless the
+  client is confirmed capable.
 
 ### Changed
 

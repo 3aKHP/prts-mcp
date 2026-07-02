@@ -27,8 +27,10 @@ from mcp.types import CallToolResult, TextContent
 
 _logger = logging.getLogger("prts_mcp.output")
 
-#: Accepted channel values. ``content`` is the default and reproduces the
-#: pre-2.0 behaviour byte-for-byte (markdown text only, no structuredContent).
+#: Accepted channel values. ``content`` is the default and preserves the
+#: human-readable markdown text while avoiding FastMCP's automatic
+#: ``outputSchema`` / ``structuredContent={"result": markdown}`` wrapper for
+#: tools that opt in to explicit ``CallToolResult`` delivery.
 OutputChannel = Literal["content", "structured", "both"]
 
 _VALID_CHANNELS: frozenset[str] = frozenset({"content", "structured", "both"})
@@ -59,7 +61,8 @@ def _parse_channel(raw: str | None) -> OutputChannel:
 #: The module-level identifier ``OUTPUT_CHANNEL`` is the parsed value's name;
 #: the *environment variable* that populates it is ``PRTS_OUTPUT_CHANNEL``
 #: (``PRTS_`` prefix to avoid collisions in shared Docker/CI environments).
-#: The HTTP query/header name stays the unprefixed ``output_channel``.
+#: Other transports can map their own connection-level control names to the
+#: same parsed value.
 OUTPUT_CHANNEL: OutputChannel = _parse_channel(os.environ.get("PRTS_OUTPUT_CHANNEL"))
 
 
@@ -77,7 +80,9 @@ def render_result(
     Channel behaviour:
 
     - ``content``   → content = ``markdown``; no structuredContent.
-                      (Today's behaviour, byte-for-byte. The default.)
+                      Preserves the text seen by content-only clients while
+                      suppressing FastMCP's automatic duplicate structured
+                      wrapper for migrated tools. The default.
     - ``structured`` → content = a one-line summary derived from ``data``;
                       structuredContent = ``data``. ``markdown`` is unused
                       in this mode (the summary is the only text an incapable
