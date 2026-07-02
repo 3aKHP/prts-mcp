@@ -180,13 +180,18 @@ def clear_stage_caches() -> None:
 # ---------------------------------------------------------------------------
 
 
-def list_stages(
+def build_stages_listing(
     chapter: str | None = None,
     type: str | None = None,
     limit: int = 50,
     offset: int = 0,
-) -> str:
-    """List stages, optionally filtered by zone ID and/or stage type."""
+) -> dict | str:
+    """Build the structured payload for a stages listing.
+
+    Returns the dict payload on success, or a markdown error string on a
+    user-input / missing-data / empty-result path. The dict is the single
+    source of truth that ``render_stages_listing`` consumes.
+    """
     if limit < 1:
         return "limit 必须 >= 1。"
     if limit > 200:
@@ -223,16 +228,49 @@ def list_stages(
             return f"没有匹配的关卡（filter: {', '.join(filters) or 'none'}）。"
         return f"offset {offset} 超出范围（共 {total} 条）。"
 
-    lines = [f"# 关卡列表（共 {total} 个）"]
+    entries = []
     for e in page:
-        t_label = _stage_type_label(e.get("stageType", ""))
-        d_label = _difficulty_label(e.get("difficulty", ""))
-        zd = _zone_display(e.get("zoneId", ""))
-        name = e.get("name") or "（无名）"
-        code = e.get("code") or "?"
-        sid = e.get("stageId", "")
+        entries.append(
+            {
+                "stage_id": e.get("stageId", ""),
+                "name": e.get("name") or "（无名）",
+                "code": e.get("code") or "?",
+                "type": e.get("stageType", ""),
+                "type_label": _stage_type_label(e.get("stageType", "")),
+                "difficulty_label": _difficulty_label(e.get("difficulty", "")),
+                "zone_id": e.get("zoneId", ""),
+                "zone_display": _zone_display(e.get("zoneId", "")),
+            }
+        )
+
+    return {
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+        "filters": {
+            "chapter": chapter,
+            "type": type.upper() if type else None,
+        },
+        "stages": entries,
+    }
+
+
+def render_stages_listing(data: dict) -> str:
+    """Render a stages-listing payload dict to markdown.
+
+    Pure renderer; the inverse of ``build_stages_listing``'s success path.
+    """
+    total = data["total"]
+    offset = data["offset"]
+    limit = data["limit"]
+    stages = data["stages"]
+
+    lines = [f"# 关卡列表（共 {total} 个）"]
+    for s in stages:
         lines.append(
-            f"- **{name}** [{t_label}] {code} — {d_label} — {zd}（id: {sid}）"
+            f"- **{s['name']}** [{s['type_label']}] {s['code']} — "
+            f"{s['difficulty_label']} — {s['zone_display']}"
+            f"（id: {s['stage_id']}）"
         )
 
     start = offset + 1
@@ -242,6 +280,19 @@ def list_stages(
         f"使用 offset={offset + limit} 查看下一页）"
     )
     return "\n".join(lines)
+
+
+def list_stages(
+    chapter: str | None = None,
+    type: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> str:
+    """List stages, optionally filtered by zone ID and/or stage type."""
+    data = build_stages_listing(chapter=chapter, type=type, limit=limit, offset=offset)
+    if isinstance(data, str):
+        return data
+    return render_stages_listing(data)
 
 
 def get_stage_info(stage_id: str) -> str:
