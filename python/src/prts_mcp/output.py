@@ -73,8 +73,10 @@ def render_result(
     - ``content``   → content = ``markdown``; no structuredContent.
                       (Today's behaviour, byte-for-byte. The default.)
     - ``structured`` → content = a one-line summary derived from ``data``;
-                      structuredContent = ``data``. Avoids emitting both the
-                      full markdown and the JSON for capable clients.
+                      structuredContent = ``data``. ``markdown`` is unused
+                      in this mode (the summary is the only text an incapable
+                      client sees). Avoids emitting both the full markdown and
+                      the JSON for capable clients.
     - ``both``      → content = ``markdown``; structuredContent = ``data``.
                       Debug / dual-channel compatibility, accepts the token cost.
 
@@ -117,9 +119,11 @@ def _summarize(data: dict[str, Any]) -> str:
     """Derive a one-line content summary for ``structured`` mode.
 
     The floor per the design doc (§4/§10) is "don't degrade to
-    'incapable clients see nothing'". A short header naming the payload and
-    its size is the generic template; tools with richer summary needs may
-    build their own string and pass it as ``markdown`` instead.
+    'incapable clients see nothing'": a short header naming the payload
+    size. This summary is the only content a non-capable client sees when
+    the channel is misconfigured to ``structured``, so the ``markdown``
+    argument to ``render_result`` is intentionally ignored in this mode
+    (it carries the full rendering for ``content``/``both`` only).
     """
     total = data.get("total")
     if isinstance(total, int):

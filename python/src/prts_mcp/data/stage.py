@@ -247,6 +247,8 @@ def build_stages_listing(
         "total": total,
         "offset": offset,
         "limit": limit,
+        # chapter is echoed verbatim (it is an exact zoneId match, no
+        # normalization); type is upper-cased to match stageType values.
         "filters": {
             "chapter": chapter,
             "type": type.upper() if type else None,
