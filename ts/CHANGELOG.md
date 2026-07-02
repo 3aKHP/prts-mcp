@@ -12,7 +12,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
   `output_channel=structured` or `output_channel=both` via query string,
   `x-prts-output-channel` header, or `PRTS_OUTPUT_CHANNEL`. This first TS
   migration slice enables structuredContent for `list_stages` while preserving
-  the default content-only markdown output.
+  the default content-only markdown output, including legitimate empty pages
+  (filter no-match / offset past end) as structured empty payloads.
 
 ### Changed
 

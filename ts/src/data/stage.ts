@@ -51,7 +51,7 @@ export interface StageListingEntry {
   zone_display: string;
 }
 
-export interface StagesListingPayload extends Record<string, unknown> {
+export interface StagesListingPayload {
   total: number;
   offset: number;
   limit: number;
@@ -259,16 +259,6 @@ export function buildStagesListing(
   const total = filtered.length;
   const page = filtered.slice(offset, offset + limit);
 
-  if (page.length === 0) {
-    if (total === 0) {
-      const filters: string[] = [];
-      if (chapter) filters.push(`zoneId=${chapter}`);
-      if (type) filters.push(`stageType=${type.toUpperCase()}`);
-      return `没有匹配的关卡（filter: ${filters.join(", ") || "none"}）。`;
-    }
-    return `offset ${offset} 超出范围（共 ${total} 条）。`;
-  }
-
   const entries: StageListingEntry[] = page.map((e) => {
     const typeRaw = e.stageType ?? "";
     const zoneId = e.zoneId ?? "";
@@ -297,6 +287,16 @@ export function buildStagesListing(
 }
 
 export function renderStagesListing(data: StagesListingPayload): string {
+  if (data.stages.length === 0) {
+    if (data.total === 0) {
+      const filters: string[] = [];
+      if (data.filters.chapter) filters.push(`zoneId=${data.filters.chapter}`);
+      if (data.filters.type) filters.push(`stageType=${data.filters.type}`);
+      return `没有匹配的关卡（filter: ${filters.join(", ") || "none"}）。`;
+    }
+    return `offset ${data.offset} 超出范围（共 ${data.total} 条）。`;
+  }
+
   const lines = [`# 关卡列表（共 ${data.total} 个）`];
   for (const s of data.stages) {
     lines.push(

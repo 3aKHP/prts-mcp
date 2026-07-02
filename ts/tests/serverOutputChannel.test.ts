@@ -161,13 +161,18 @@ test("output_channel is resolved once per session by query/header/env priority",
       headers,
     );
 
-  const callListStages = (sessionId: string, query = "", headers: Record<string, string> = {}) =>
+  const callListStages = (
+    sessionId: string,
+    args: Record<string, unknown> = {},
+    query = "",
+    headers: Record<string, string> = {},
+  ) =>
     mcpPost(
       origin,
       {
         jsonrpc: "2.0",
         method: "tools/call",
-        params: { name: "list_stages", arguments: {} },
+        params: { name: "list_stages", arguments: args },
         id: id++,
       },
       sessionId,
@@ -227,6 +232,7 @@ test("output_channel is resolved once per session by query/header/env priority",
 
   const fixedResult = await callListStages(
     queryInit.sessionId,
+    {},
     "?output_channel=content",
     { "x-prts-output-channel": "content" },
   );
@@ -235,6 +241,20 @@ test("output_channel is resolved once per session by query/header/env priority",
   assert.equal(
     ((fixedToolResult.content as Array<{ text: string }>)[0]).text,
     "（结构化结果共 1 条，详见 structuredContent）",
+  );
+
+  const emptyResult = await callListStages(queryInit.sessionId, { chapter: "nonexistent" });
+  const emptyToolResult = emptyResult.body.result as Record<string, unknown>;
+  assert.deepStrictEqual(emptyToolResult.structuredContent, {
+    total: 0,
+    offset: 0,
+    limit: 50,
+    filters: { chapter: "nonexistent", type: null },
+    stages: [],
+  });
+  assert.equal(
+    ((emptyToolResult.content as Array<{ text: string }>)[0]).text,
+    "（结构化结果共 0 条，详见 structuredContent）",
   );
 
   const invalidInit = await initialize("?output_channel=nope");

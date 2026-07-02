@@ -291,6 +291,32 @@ test("buildStagesListing page payload matches shared parity fixture", async () =
   assert.deepStrictEqual(data, loadParityFixture("list_stages_page.json"));
 });
 
+test("buildStagesListing empty payload matches shared parity fixture", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  writeFixtures(root);
+  const stage = await loadStageModule();
+  const data = stage.buildStagesListing("nonexistent");
+  assert.deepStrictEqual(data, loadParityFixture("list_stages_empty.json"));
+  if (typeof data === "string") assert.fail(`unexpected error: ${data}`);
+  const expected = "没有匹配的关卡（filter: zoneId=nonexistent）。";
+  assert.equal(stage.renderStagesListing(data), expected);
+  assert.equal(stage.listStages("nonexistent"), expected);
+});
+
+test("buildStagesListing offset empty payload matches shared parity fixture", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  writeFixtures(root);
+  const stage = await loadStageModule();
+  const data = stage.buildStagesListing(null, null, 50, 100);
+  assert.deepStrictEqual(data, loadParityFixture("list_stages_offset_empty.json"));
+  if (typeof data === "string") assert.fail(`unexpected error: ${data}`);
+  const expected = "offset 100 超出范围（共 4 条）。";
+  assert.equal(stage.renderStagesListing(data), expected);
+  assert.equal(stage.listStages(null, null, 50, 100), expected);
+});
+
 test("listStages preserves default markdown golden", async () => {
   const root = tempGamedataRoot();
   process.env["GAMEDATA_PATH"] = root;
