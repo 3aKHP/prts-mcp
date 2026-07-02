@@ -74,7 +74,6 @@ function writeFixtures(root: string): void {
         apCost: 12,
         dangerLevel: "NORMAL",
         description: "",
-        stageDropInfo: { displayRewards: [] },
         unlockCondition: [{ stageId: "act31side_02", completeState: "PASS" }],
         hardStagedId: null,
         bossMark: false,
@@ -402,6 +401,9 @@ test("getStageInfo empty drops", async () => {
   const stage = await loadStageModule();
   const out = stage.getStageInfo("act31side_01");
   assert.match(out, /（无）/);
+  const data = stage.buildStageInfo("act31side_01");
+  if (typeof data === "string") assert.fail(`unexpected error: ${data}`);
+  assert.equal(data.drop_info, null);
 });
 
 test("getStageInfo multi drops", async () => {

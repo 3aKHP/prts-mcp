@@ -272,7 +272,7 @@ export function buildStoryEventsListing(
   return withStoryStore(zipPath, (store) => buildStoryEventsListingFromStore(store, category));
 }
 
-function pyRepr(value: string | null | undefined): string {
+export function pyRepr(value: string | null | undefined): string {
   if (value === null || value === undefined) return "None";
   return `'${value}'`;
 }

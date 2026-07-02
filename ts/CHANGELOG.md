@@ -48,6 +48,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
   cross-reference, parameter semantics kept in the parameter schema) and trimmed
   ~20% to reduce context budget on smaller-context models. No change to tool
   names, parameters, or output format.
+- **Story empty-result wording aligned with Python (2.0).** TS story navigation
+  tools now use the Python-compatible empty messages for event/chapter listings,
+  character appearances, and speaker counts (including Python-style quoted
+  filter values). This is an intentional TS-dev text change in otherwise
+  content-compatible output-channel migration paths.
 
 ### Removed
 

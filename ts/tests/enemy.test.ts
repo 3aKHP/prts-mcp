@@ -225,7 +225,8 @@ test("get_enemy_info merges handbook and database", async () => {
   assert.match(out, /\*\*法术抗性\*\*：50/);
   assert.match(out, /\*\*免疫\*\*：眩晕、冻结/);
   assert.match(out, /ArcticBlast/);
-  assert.match(out, /duration=8/);
+  assert.match(out, /duration=8\.0/);
+  assert.deepStrictEqual(enemy.buildEnemyInfo("霜星"), loadParityFixture("enemy_info_with_stats.json"));
 });
 
 test("get_enemy_info reads database from sibling levels path", async () => {

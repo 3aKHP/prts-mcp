@@ -88,7 +88,7 @@ export function registerGamedataTools(server: McpServer, channel: OutputChannel 
         data,
         renderOperatorBasicInfo(data),
         channel,
-        `（结构化结果：${data.name} 干员基本信息，详见 structuredContent）`,
+        `干员『${data.name}』的基本信息`,
       );
     }
   );
@@ -134,7 +134,7 @@ export function registerGamedataTools(server: McpServer, channel: OutputChannel 
         data,
         renderEnemyInfo(data),
         channel,
-        `（结构化结果：${data.name} 敌人信息，详见 structuredContent）`,
+        `敌人『${data.name}』的图鉴`,
       );
     }
   );
@@ -152,7 +152,12 @@ export function registerGamedataTools(server: McpServer, channel: OutputChannel 
     ({ stage_id }) => {
       const data = buildStageEnemies(stage_id);
       if (typeof data === "string") return textResult(data);
-      return renderResult(data, renderStageEnemies(data), channel);
+      return renderResult(
+        data,
+        renderStageEnemies(data),
+        channel,
+        `${data.stage_label} 的敌人列表（共 ${data.total} 种）`,
+      );
     }
   );
 
@@ -208,7 +213,7 @@ export function registerGamedataTools(server: McpServer, channel: OutputChannel 
         data,
         renderStageInfo(data),
         channel,
-        `（结构化结果：${data.name} 关卡信息，详见 structuredContent）`,
+        `关卡『${data.name}』的详情`,
       );
     }
   );
@@ -249,7 +254,7 @@ export function registerGamedataTools(server: McpServer, channel: OutputChannel 
         data,
         renderItemInfo(data),
         channel,
-        `（结构化结果：${data.name} 物品信息，详见 structuredContent）`,
+        `物品『${data.name}』的详情`,
       );
     }
   );

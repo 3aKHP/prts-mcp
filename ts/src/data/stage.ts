@@ -76,7 +76,7 @@ export interface StageInfoPayload {
   danger_level: string;
   boss_mark: boolean;
   description: string;
-  drop_info: Record<string, unknown> | null | undefined;
+  drop_info: Record<string, unknown> | null;
   unlock_conditions: { stageId: string; completeState: string }[];
   level_id: string | null;
   hard_stage: { id: string | null; name: string | null };
@@ -385,7 +385,7 @@ export function buildStageInfo(stageId: string): StageInfoPayload | string {
     danger_level: danger,
     boss_mark: boss,
     description: desc,
-    drop_info: drops,
+    drop_info: drops ?? null,
     unlock_conditions: unlocks,
     level_id: levelId ?? null,
     hard_stage: { id: hardId ?? null, name: hardEntry?.name ?? null },

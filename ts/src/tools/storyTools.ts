@@ -320,7 +320,7 @@ export function registerStoryTools(server: McpServer, channel: OutputChannel = "
           data,
           renderOperatorMemoirs(data),
           channel,
-          `（结构化结果：${data.operator_name} 干员密录，详见 structuredContent）`,
+          `${data.operator_name} 的密录列表（共 ${data.total} 章）`,
         );
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);

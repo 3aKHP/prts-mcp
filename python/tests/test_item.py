@@ -195,6 +195,14 @@ def test_get_item_info_by_id(gamedata: str) -> None:
     assert "shopId=credit" in out
 
 
+def test_get_item_info_missing_optional_lists_are_null(gamedata: str) -> None:
+    data = build_item_info("隐藏物品")
+    assert isinstance(data, dict)
+    assert data["building_product_list"] is None
+    assert data["shop_relate_list"] is None
+    assert data["voucher_relate_list"] is None
+
+
 def test_get_item_name_by_id(gamedata: str) -> None:
     assert get_item_name_by_id("30011") == "源岩"
     assert get_item_name_by_id("missing") is None

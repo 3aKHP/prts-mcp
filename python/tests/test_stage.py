@@ -92,7 +92,6 @@ def _make_fixture(root: Path) -> None:
             "apCost": 12,
             "dangerLevel": "NORMAL",
             "description": "",
-            "stageDropInfo": {"displayRewards": []},
             "unlockCondition": [
                 {"stageId": "act31side_02", "completeState": "PASS"},
             ],
@@ -386,6 +385,9 @@ class TestGetStageInfo:
     def test_empty_drops(self, gamedata: str) -> None:
         out = get_stage_info("act31side_01")
         assert "（无）" in out
+        data = build_stage_info("act31side_01")
+        assert isinstance(data, dict)
+        assert data["drop_info"] is None
 
     def test_multi_drops(self, gamedata: str) -> None:
         out = get_stage_info("daily_01")

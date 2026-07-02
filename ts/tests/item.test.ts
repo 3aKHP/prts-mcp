@@ -158,6 +158,18 @@ test("getItemInfo by id", async () => {
   assert.match(out, /shopId=credit/);
 });
 
+test("getItemInfo keeps missing optional lists as null", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  writeFixtures(root);
+  const item = await loadItemModule();
+  const data = item.buildItemInfo("隐藏物品");
+  if (typeof data === "string") assert.fail(`unexpected error: ${data}`);
+  assert.equal(data.building_product_list, null);
+  assert.equal(data.shop_relate_list, null);
+  assert.equal(data.voucher_relate_list, null);
+});
+
 test("getItemNameById", async () => {
   const root = tempGamedataRoot();
   process.env["GAMEDATA_PATH"] = root;

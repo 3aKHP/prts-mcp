@@ -20,6 +20,7 @@ import { type JsonStore } from "./stores.js";
 import {
   type CharacterAppearance,
   type CharacterAppearanceResult,
+  pyRepr,
   type SpeakerCount,
   withStoryStore,
 } from "./storyReader.js";
@@ -48,11 +49,6 @@ export interface SpeakersInEventPayload {
     name: string;
     line_count: number;
   }>;
-}
-
-function pyRepr(value: string | null | undefined): string {
-  if (value === null || value === undefined) return "None";
-  return `'${value}'`;
 }
 
 // ---------------------------------------------------------------------------

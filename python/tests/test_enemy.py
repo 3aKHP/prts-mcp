@@ -229,6 +229,9 @@ class TestGetEnemyInfo:
         # Skills
         assert "ArcticBlast" in out
         assert "duration=8.0" in out
+        data = build_enemy_info("霜星")
+        assert data == _load_parity_fixture("enemy_info_with_stats.json")
+        assert render_enemy_info(data) == out
 
     def test_reads_database_from_sibling_levels_path(self, split_levels_gamedata):
         out = get_enemy_info("霜星")

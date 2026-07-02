@@ -312,70 +312,6 @@ function formatNumber(n: number): string {
   return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
-function fmtStats(dbEntry: EnemyDbEntry): string {
-  const attrs = dbEntry.attributes ?? {};
-  const hp = mValue<number>(attrs.maxHp, 0) ?? 0;
-  const atk = mValue<number>(attrs.atk, 0) ?? 0;
-  const def = mValue<number>(attrs.def, 0) ?? 0;
-  const res = mValue<number>(attrs.magicResistance);
-  const speed = mValue<number>(attrs.moveSpeed, 0) ?? 0;
-  const atkTime = mValue<number>(attrs.baseAttackTime, 0) ?? 0;
-  const atkSpeed = mValue<number>(attrs.attackSpeed, 100) ?? 100;
-  const mass = mValue<number>(attrs.massLevel, 0) ?? 0;
-  const hpRec = mValue<number>(attrs.hpRecoveryPerSec, 0) ?? 0;
-  const lpr = mValue<number>(attrs.lifePointReduce, 0) ?? 0;
-
-  const lines: string[] = [];
-  lines.push("\n## 战斗属性");
-  if (hp) lines.push(`- **最大生命**：${formatNumber(hp)}`);
-  if (atk) lines.push(`- **攻击力**：${atk}`);
-  if (def) lines.push(`- **防御力**：${def}`);
-  if (res !== undefined && res !== null) lines.push(`- **法术抗性**：${res}`);
-  if (speed) lines.push(`- **移动速度**：${speed}`);
-  if (atkTime) lines.push(`- **攻击间隔**：${atkTime}s`);
-  if (atkSpeed !== 100) lines.push(`- **攻击速度**：${atkSpeed}`);
-  if (mass) lines.push(`- **重量等级**：${mass}`);
-  if (hpRec) lines.push(`- **每秒生命回复**：${hpRec}`);
-
-  const immunities: string[] = [];
-  for (const [key, label] of Object.entries(IMMUNITY_LABELS)) {
-    if (mValue<boolean>(attrs[key], false)) immunities.push(label);
-  }
-  if (immunities.length > 0) lines.push(`- **免疫**：${immunities.join("、")}`);
-
-  if (lpr) lines.push(`- **生命值扣除**：${lpr}`);
-
-  const skills = dbEntry.skills ?? [];
-  if (skills.length > 0) {
-    lines.push("\n## 技能");
-    for (const s of skills) {
-      const prefab = s.prefabKey ?? "未知";
-      const cd = s.cooldown;
-      const initCd = s.initCooldown;
-      const spCost = mValue<number>(s.spData?.spCost);
-
-      const parts: string[] = [`- **${prefab}**`];
-      const cdParts: string[] = [];
-      if (cd) cdParts.push(`冷却 ${cd}s`);
-      if (initCd && initCd !== cd) cdParts.push(`初始 ${initCd}s`);
-      if (spCost) cdParts.push(`SP ${spCost}`);
-      if (cdParts.length > 0) parts.push(`（${cdParts.join("，")}）`);
-
-      const bb = s.blackboard ?? [];
-      if (bb.length > 0) {
-        const bbStrs = bb
-          .slice(0, 6)
-          .filter((b) => b.value != null)
-          .map((b) => `${b.key}=${b.value}`);
-        if (bbStrs.length > 0) parts.push(": " + bbStrs.join("，"));
-      }
-      lines.push(parts.join(""));
-    }
-  }
-
-  return lines.join("\n");
-}
-
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -594,6 +530,24 @@ function extractEnemyStats(dbEntry: EnemyDbEntry): EnemyStatsPayload {
   };
 }
 
+function hasEnemyStatsContent(stats: EnemyStatsPayload): boolean {
+  const scalarFields = [
+    "max_hp",
+    "atk",
+    "def",
+    "resistance",
+    "move_speed",
+    "attack_interval",
+    "attack_speed",
+    "mass_level",
+    "hp_recovery_per_sec",
+    "life_point_reduce",
+  ] as const;
+  return scalarFields.some((field) => Boolean(stats[field])) ||
+    stats.immunities.length > 0 ||
+    stats.skills.length > 0;
+}
+
 export function renderEnemyInfo(data: EnemyInfoPayload): string {
   const lines: string[] = [];
   if (data.name) {
@@ -610,7 +564,7 @@ export function renderEnemyInfo(data: EnemyInfoPayload): string {
   if (data.enemy_tags.length > 0) lines.push(`- **标签**：${data.enemy_tags.join("、")}`);
 
   const stats = data.stats;
-  if (stats) {
+  if (stats && hasEnemyStatsContent(stats)) {
     lines.push("## 战斗属性");
     for (const [field, label] of [
       ["max_hp", "最大生命"],

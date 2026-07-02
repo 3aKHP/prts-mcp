@@ -104,9 +104,9 @@ export interface ItemInfoPayload {
   description: string | null;
   usage: string | null;
   stage_drop_list: StageDrop[];
-  building_product_list?: Record<string, unknown>[] | null;
-  shop_relate_list?: Record<string, unknown>[] | null;
-  voucher_relate_list?: Record<string, unknown>[] | null;
+  building_product_list: Record<string, unknown>[] | null;
+  shop_relate_list: Record<string, unknown>[] | null;
+  voucher_relate_list: Record<string, unknown>[] | null;
 }
 
 let itemTable: Record<string, ItemEntry> | null = null;
@@ -357,9 +357,9 @@ export function buildItemInfo(name: string): ItemInfoPayload | string {
     description: info.description || null,
     usage: info.usage || null,
     stage_drop_list: info.stageDropList ?? [],
-    building_product_list: info.buildingProductList,
-    shop_relate_list: info.shopRelateInfoList,
-    voucher_relate_list: info.voucherRelateList,
+    building_product_list: info.buildingProductList ?? null,
+    shop_relate_list: info.shopRelateInfoList ?? null,
+    voucher_relate_list: info.voucherRelateList ?? null,
   };
 }
 
