@@ -36,7 +36,7 @@ from prts_mcp.data.stage_enemy import (
     get_enemy_stage_info as _get_enemy_stage_info,
 )
 from prts_mcp.data.search import search_operator_data as _search_operator_data
-from prts_mcp.output import OUTPUT_CHANNEL, render_result
+from prts_mcp.output import OUTPUT_CHANNEL, render_result, text_result
 
 
 def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
@@ -45,24 +45,24 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
     @mcp.tool()
     async def get_operator_archives(
         name: Annotated[str, Field(description="干员的游戏内中文名，如「阿米娅」、「能天使」。")],
-    ) -> str:
+    ) -> object:
         """获取指定干员的档案资料。
 
         返回干员的客观履历、个人档案（基础档案及解锁档案）等背景故事文本。
         数值信息见 get_operator_basic_info，语音台词见 get_operator_voicelines。
         """
-        return _get_archives(name)
+        return text_result(_get_archives(name))
 
     @mcp.tool()
     async def get_operator_voicelines(
         name: Annotated[str, Field(description="干员的游戏内中文名，如「阿米娅」、「能天使」。")],
-    ) -> str:
+    ) -> object:
         """获取指定干员的所有语音台词记录。
 
         返回触发条件（如「交谈1」、「晋升后交谈」、「信赖提升后交谈」）及对应台词文本的
         完整列表。背景故事与客观履历见 get_operator_archives。
         """
-        return _get_voicelines(name)
+        return text_result(_get_voicelines(name))
 
     @mcp.tool()
     async def get_operator_basic_info(

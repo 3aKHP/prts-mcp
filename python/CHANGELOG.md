@@ -24,6 +24,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
   structuredContent-capable client — an incapable client (e.g. Chatbox)
   receives only a one-line summary, so leave the default `content` unless the
   client is confirmed capable.
+- **Narrative-tool wire slimming (2.0).** The six narrative/prose tools
+  (`get_operator_archives`, `get_operator_voicelines`, `read_story`,
+  `read_activity`, `get_story_summary`, `prts_page`) migrated from `-> str`
+  to explicit `CallToolResult` delivery via the new `text_result(markdown)`
+  helper. Their content text is unchanged, but they no longer derive
+  FastMCP's automatic `outputSchema` nor emit a duplicate
+  `structuredContent={"result": markdown}` — narrative output has no useful
+  structured form. The remaining structural tools keep their structured
+  payloads behind `output_channel`.
 
 ### Changed
 

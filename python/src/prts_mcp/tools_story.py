@@ -22,6 +22,7 @@ from prts_mcp.data.story import (
     find_speakers_in as _find_speakers_in,
 )
 from prts_mcp.startup_sync import _require_story_zip
+from prts_mcp.output import text_result
 
 
 def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
@@ -115,7 +116,7 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
     @mcp.tool()
     def get_story_summary(
         story_key: Annotated[str, Field(description="章节 key，如 \"activities/act31side/level_act31side_01_beg\"（可从 list_stories 获取）。")],
-    ) -> str:
+    ) -> object:
         """获取单章剧情的梗概。
 
         返回指定章节的故事摘要，优先长摘要，未就绪时回退到官方一句话梗概。
@@ -126,20 +127,20 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         try:
             zip_path = _require_story_zip(cfg)
         except RuntimeError as e:
-            return str(e)
+            return text_result(str(e))
 
         try:
-            return _get_story_summary(zip_path, story_key)
+            return text_result(_get_story_summary(zip_path, story_key))
         except KeyError:
-            return f"未找到剧情章节：{story_key!r}。请通过 list_stories 确认章节 key。"
+            return text_result(f"未找到剧情章节：{story_key!r}。请通过 list_stories 确认章节 key。")
         except Exception as e:
-            return f"读取梗概失败：{e}"
+            return text_result(f"读取梗概失败：{e}")
 
     @mcp.tool()
     def read_story(
         story_key: Annotated[str, Field(description="章节 key，如 \"activities/act31side/level_act31side_01_beg\"（可从 list_stories 获取）。")],
         include_narration: Annotated[bool, Field(default=True, description="是否包含旁白和场景描述，默认 True。设为 False 可只保留对话台词。")] = True,
-    ) -> str:
+    ) -> object:
         """读取单章剧情的完整台词。
 
         返回格式：首行为【活动名】章节名，随后按顺序输出对话（`角色：台词`）、
@@ -150,14 +151,14 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         try:
             zip_path = _require_story_zip(cfg)
         except RuntimeError as e:
-            return str(e)
+            return text_result(str(e))
 
         try:
             chapter = _read_story(zip_path, story_key, include_narration=include_narration)
         except KeyError:
-            return f"未找到剧情：{story_key!r}。"
+            return text_result(f"未找到剧情：{story_key!r}。")
         except Exception as e:
-            return f"读取剧情失败：{e}"
+            return text_result(f"读取剧情失败：{e}")
 
         parts = [f"【{chapter.event_name}】{chapter.story_name}"]
         if chapter.story_info:
@@ -170,7 +171,7 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
                 parts.append(f"*{ln.text}*")
             elif ln.type == "choice":
                 parts.append(f"【选项】{ln.text}")
-        return "\n".join(parts)
+        return text_result("\n".join(parts))
 
     @mcp.tool()
     def read_activity(
@@ -178,7 +179,7 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         include_narration: Annotated[bool, Field(default=True, description="是否包含旁白，默认 True。")] = True,
         page: Annotated[int | None, Field(default=None, description="分页页码（从 1 开始）。不填则返回全部章节。")] = None,
         page_size: Annotated[int, Field(default=5, description="每页章节数，默认 5。")] = 5,
-    ) -> str:
+    ) -> object:
         """读取整个活动的完整剧情台词（按官方章节顺序合并）。
 
         返回各章节台词的合并文本，格式与 read_story 一致，章节间以分隔标题区分。
@@ -189,7 +190,7 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         try:
             zip_path = _require_story_zip(cfg)
         except RuntimeError as e:
-            return str(e)
+            return text_result(str(e))
 
         try:
             result = _read_activity(
@@ -199,9 +200,9 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
                 page_size=page_size,
             )
         except KeyError:
-            return f"未找到活动：{event_id!r}。请先调用 list_story_events 确认活动 ID。"
+            return text_result(f"未找到活动：{event_id!r}。请先调用 list_story_events 确认活动 ID。")
         except Exception as e:
-            return f"读取活动剧情失败：{e}"
+            return text_result(f"读取活动剧情失败：{e}")
 
         chapters = result.chapters
         total = result.total_chapters
@@ -227,7 +228,7 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
                     parts.append(f"【选项】{ln.text}")
             parts.append("")
 
-        return "\n".join(parts)
+        return text_result("\n".join(parts))
 
     @mcp.tool()
     def search_stories(
