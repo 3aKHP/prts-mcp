@@ -173,12 +173,16 @@ def _format_related(label: str, entries: Any) -> list[str]:
     return lines
 
 
-def list_items(
+def build_items_listing(
     category: str | None = None,
     limit: int = 50,
     offset: int = 0,
-) -> str:
-    """List visible items with optional classifyType/itemType filtering."""
+) -> dict | str:
+    """Build the structured payload for an items listing.
+
+    Returns the dict payload on success, or a markdown error string on a
+    validation / missing-data / empty-result path.
+    """
     if limit < 1:
         return "limit 必须 >= 1。"
     if limit > 200:
@@ -203,24 +207,75 @@ def list_items(
     total = len(entries)
     page = entries[offset : offset + limit]
 
+    # Legitimate-but-empty results (no match / offset past end) are a normal
+    # structured payload, NOT an error — structured consumers can rely on
+    # "empty ⇒ {total:0, items:[]}" (P2b plan §3.4). The renderer still emits
+    # the original human-readable message, so content is byte-for-byte stable.
     if not page:
-        if total == 0:
-            return f"没有匹配的物品（category={category or 'none'}）。"
-        return f"offset {offset} 超出范围（共 {total} 条）。"
+        empty_reason = "no_match" if total == 0 else "offset_out_of_range"
+        return {
+            "total": total,
+            "offset": offset,
+            "limit": limit,
+            "filters": {"category": category, "category_filter": category_filter},
+            "items": [],
+            "empty_reason": empty_reason,
+        }
 
-    title = f"# 物品列表（共 {total} 个）"
-    if category:
-        title = f"# 物品列表：{category}（共 {total} 个）"
-    lines = [title]
+    item_entries = []
     for item_id, info in page:
-        name = info.get("name") or "（无名）"
-        rarity = _rarity_label(str(info.get("rarity") or ""))
-        classify = _classify_label(str(info.get("classifyType") or ""))
-        item_type = info.get("itemType") or "-"
-        usage = _short_text(str(info.get("usage") or info.get("description") or ""))
-        line = f"- **{name}** [{classify}/{item_type}] {rarity}（id: {item_id}）"
-        if usage:
-            line += f" — {usage}"
+        item_entries.append({
+            "item_id": item_id,
+            "name": info.get("name") or "（无名）",
+            "rarity_raw": str(info.get("rarity") or ""),
+            "rarity_label": _rarity_label(str(info.get("rarity") or "")),
+            "classify_raw": str(info.get("classifyType") or ""),
+            "classify_label": _classify_label(str(info.get("classifyType") or "")),
+            "item_type": info.get("itemType") or "-",
+            "usage_excerpt": _short_text(str(info.get("usage") or info.get("description") or "")),
+        })
+
+    return {
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+        # `category` is the raw user input (echoed in the title verbatim,
+        # matching the pre-refactor behaviour); `category_filter` is the
+        # normalized value actually used for filtering.
+        "filters": {"category": category, "category_filter": category_filter},
+        "items": item_entries,
+    }
+
+
+def render_items_listing(data: dict) -> str:
+    """Render an items-listing payload dict to markdown.
+
+    Pure renderer; the inverse of ``build_items_listing``'s success path.
+    """
+    # Legitimate-but-empty results render as the original human message
+    # (byte-for-byte stable content) while the structured payload carries
+    # {total:0, items:[]} for capable clients.
+    empty_reason = data.get("empty_reason")
+    if empty_reason == "no_match":
+        return f"没有匹配的物品（category={data['filters']['category'] or 'none'}）。"
+    if empty_reason == "offset_out_of_range":
+        return f"offset {data['offset']} 超出范围（共 {data['total']} 条）。"
+
+    total = data["total"]
+    offset = data["offset"]
+    limit = data["limit"]
+    category = data["filters"]["category"]
+    items = data["items"]
+
+    title = f"# 物品列表：{category}（共 {total} 个）" if category else f"# 物品列表（共 {total} 个）"
+    lines = [title]
+    for it in items:
+        line = (
+            f"- **{it['name']}** [{it['classify_label']}/{it['item_type']}] "
+            f"{it['rarity_label']}（id: {it['item_id']}）"
+        )
+        if it["usage_excerpt"]:
+            line += f" — {it['usage_excerpt']}"
         lines.append(line)
 
     start = offset + 1
@@ -230,6 +285,18 @@ def list_items(
         f"使用 offset={offset + limit} 查看下一页）"
     )
     return "\n".join(lines)
+
+
+def list_items(
+    category: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> str:
+    """List visible items with optional classifyType/itemType filtering."""
+    data = build_items_listing(category=category, limit=limit, offset=offset)
+    if isinstance(data, str):
+        return data
+    return render_items_listing(data)
 
 
 def build_item_info(name: str) -> dict | str:

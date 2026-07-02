@@ -214,8 +214,12 @@ def _format_stats(enemy_data: dict[str, Any] | None) -> str:
     return "；".join(parts)
 
 
-def get_stage_enemies(stage_id: str) -> str:
-    """Return enemies actually spawned by a stage, using stage-specific levels."""
+def build_stage_enemies(stage_id: str) -> dict | str:
+    """Build the structured payload for enemies actually spawned by a stage.
+
+    Returns the dict payload on success, or a markdown error string on a
+    missing-data / not-found / empty path.
+    """
     if not _get_config().has_levels_data:
         return _missing_levels_message()
     try:
@@ -232,9 +236,16 @@ def get_stage_enemies(stage_id: str) -> str:
         return f"读取关卡敌人失败：{exc}"
 
     if not counts:
-        return f"关卡 {stage_id!r} 未解析到实际出怪。"
+        # Legitimate-but-empty: the stage exists but spawns nothing.
+        return {
+            "stage_id": stage_id,
+            "stage_label": _stage_label(stage, stage_id),
+            "total": 0,
+            "enemies": [],
+            "empty_reason": "no_match",
+        }
 
-    lines = [f"# {_stage_label(stage, stage_id)} — 敌人列表"]
+    enemy_entries = []
     for enemy_id, count in counts.most_common():
         ref = refs.get(enemy_id, {})
         try:
@@ -244,13 +255,50 @@ def get_stage_enemies(stage_id: str) -> str:
         overwritten = ref.get("overwrittenData")
         data = _stage_specific_enemy_data(enemy_id, level_no, overwritten)
         name = _overwritten_enemy_name(overwritten) or _handbook_name(enemy_id)
-        lines.append(f"\n## {name}（{enemy_id}）")
-        lines.append(f"- **出场数量**：{count}")
-        lines.append(f"- **敌人等级**：{level_no}")
-        if overwritten:
+        enemy_entries.append({
+            "enemy_id": enemy_id,
+            "name": name,
+            "count": count,
+            "level": level_no,
+            "overwritten": bool(overwritten),
+            # Stats kept as the compact rendered text (the same string the
+            # markdown emits); structured per-stat extraction is deferred.
+            "stats_text": _format_stats(data),
+        })
+
+    return {
+        "stage_id": stage_id,
+        "stage_label": _stage_label(stage, stage_id),
+        "total": len(enemy_entries),
+        "enemies": enemy_entries,
+    }
+
+
+def render_stage_enemies(data: dict) -> str:
+    """Render a stage-enemies payload dict to markdown.
+
+    Pure renderer; the inverse of ``build_stage_enemies``'s success path.
+    """
+    if data.get("empty_reason") == "no_match":
+        return f"关卡 {data['stage_id']!r} 未解析到实际出怪。"
+
+    lines = [f"# {data['stage_label']} — 敌人列表"]
+    for e in data["enemies"]:
+        lines.append(f"\n## {e['name']}（{e['enemy_id']}）")
+        lines.append(f"- **出场数量**：{e['count']}")
+        lines.append(f"- **敌人等级**：{e['level']}")
+        if e["overwritten"]:
             lines.append("- **关卡覆盖**：是")
-        lines.append(f"- **战斗属性**：{_format_stats(data)}")
+        lines.append(f"- **战斗属性**：{e['stats_text']}")
     return "\n".join(lines)
+
+
+def get_stage_enemies(stage_id: str) -> str:
+    """Return enemies actually spawned by a stage, using stage-specific levels."""
+    data = build_stage_enemies(stage_id)
+    if isinstance(data, str):
+        return data
+    return render_stage_enemies(data)
 
 
 def _find_enemy_appearances(enemy_id: str) -> list[tuple[str, int]]:
@@ -276,8 +324,12 @@ def _enemy_appearance_index() -> dict[str, list[tuple[str, int]]]:
     return appearances
 
 
-def get_enemy_appearances(name: str, limit: int = 50, offset: int = 0) -> str:
-    """Return stages where an enemy actually spawns."""
+def build_enemy_appearances(name: str, limit: int = 50, offset: int = 0) -> dict | str:
+    """Build the structured payload for where an enemy actually spawns.
+
+    Returns the dict payload on success, or a markdown error string on a
+    validation / missing-data / not-found / empty path.
+    """
     if limit < 1:
         return "limit 必须 >= 1。"
     if limit > 200:
@@ -299,21 +351,73 @@ def get_enemy_appearances(name: str, limit: int = 50, offset: int = 0) -> str:
     total = len(appearances)
     page = appearances[offset : offset + limit]
     enemy_name = _handbook_name(enemy_id)
+    # Legitimate-but-empty (no appearances / offset past end) is a normal
+    # structured payload, not an error (P2b plan §3.4).
     if not page:
-        if total == 0:
-            return f"未找到 {enemy_name}（{enemy_id}）的实际出场关卡。"
-        return f"offset {offset} 超出范围（共 {total} 条）。"
+        empty_reason = "no_match" if total == 0 else "offset_out_of_range"
+        return {
+            "enemy_id": enemy_id,
+            "enemy_name": enemy_name,
+            "total": total,
+            "offset": offset,
+            "limit": limit,
+            "stages": [],
+            "empty_reason": empty_reason,
+        }
 
-    lines = [f"# {enemy_name}（{enemy_id}）— 出场关卡（共 {total} 个）"]
+    stage_entries = []
     for stage_id, count in page:
         stage = stages.get(stage_id, {})
-        code = stage.get("code") or stage_id
-        stage_name = stage.get("name") or "（无名）"
-        lines.append(f"- **{stage_name}** {code}（{stage_id}）：{count} 个")
+        stage_entries.append({
+            "stage_id": stage_id,
+            "stage_name": stage.get("name") or "（无名）",
+            "code": stage.get("code") or stage_id,
+            "count": count,
+        })
+
+    return {
+        "enemy_id": enemy_id,
+        "enemy_name": enemy_name,
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+        "stages": stage_entries,
+    }
+
+
+def render_enemy_appearances(data: dict) -> str:
+    """Render an enemy-appearances payload dict to markdown.
+
+    Pure renderer; the inverse of ``build_enemy_appearances``'s success path.
+    """
+    empty_reason = data.get("empty_reason")
+    if empty_reason == "no_match":
+        return f"未找到 {data['enemy_name']}（{data['enemy_id']}）的实际出场关卡。"
+    if empty_reason == "offset_out_of_range":
+        return f"offset {data['offset']} 超出范围（共 {data['total']} 条）。"
+
+    enemy_name = data["enemy_name"]
+    enemy_id = data["enemy_id"]
+    total = data["total"]
+    offset = data["offset"]
+    limit = data["limit"]
+    stages = data["stages"]
+
+    lines = [f"# {enemy_name}（{enemy_id}）— 出场关卡（共 {total} 个）"]
+    for s in stages:
+        lines.append(f"- **{s['stage_name']}** {s['code']}（{s['stage_id']}）：{s['count']} 个")
     start = offset + 1
     end = min(offset + limit, total)
     lines.append(f"\n（显示第 {start}–{end} 条，共 {total} 条。使用 offset={offset + limit} 查看下一页）")
     return "\n".join(lines)
+
+
+def get_enemy_appearances(name: str, limit: int = 50, offset: int = 0) -> str:
+    """Return stages where an enemy actually spawns."""
+    data = build_enemy_appearances(name, limit=limit, offset=offset)
+    if isinstance(data, str):
+        return data
+    return render_enemy_appearances(data)
 
 
 def get_enemy_stage_info(name: str, stage_id: str) -> str:

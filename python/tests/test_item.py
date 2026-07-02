@@ -8,12 +8,14 @@ from pathlib import Path
 import pytest
 
 from prts_mcp.data.item import (
+    build_items_listing,
     clear_item_caches,
     get_item_info,
     get_item_name_by_id,
     list_items,
     search_items,
 )
+from prts_mcp.output import render_result
 
 
 def _write_sentinels(excel: Path) -> None:
@@ -118,6 +120,52 @@ def test_list_items_default(gamedata: str) -> None:
     assert "招聘许可" in out
     assert "隐藏物品" not in out
     assert "共 2 个" in out
+
+
+def test_list_items_golden_default(gamedata: str) -> None:
+    # Golden: exact full markdown. Hardcoded expectation (not a tautology),
+    # catches build-layer field omissions, ordering, and label regressions.
+    assert list_items() == (
+        "# 物品列表（共 2 个）\n"
+        "- **招聘许可** [普通/TKT_RECRUIT] T4（id: 7001） — 可从公开渠道招聘一位干员。\n"
+        "- **源岩** [材料/MATERIAL] T1（id: 30011） — 可用于多种强化场合。\n"
+        "\n"
+        "（显示第 1–2 条，共 2 条。使用 offset=50 查看下一页）"
+    )
+
+
+def test_list_items_golden_category_filter(gamedata: str) -> None:
+    assert list_items(category="MATERIAL") == (
+        "# 物品列表：MATERIAL（共 1 个）\n"
+        "- **源岩** [材料/MATERIAL] T1（id: 30011） — 可用于多种强化场合。\n"
+        "\n"
+        "（显示第 1–1 条，共 1 条。使用 offset=50 查看下一页）"
+    )
+
+
+def test_list_items_both_channel(gamedata: str) -> None:
+    data = build_items_listing()
+    assert isinstance(data, dict)
+    r = render_result(data, list_items(), channel="both")
+    assert r.structuredContent == data
+    assert r.content[0].text == list_items()
+
+
+def test_list_items_empty_match_is_structured_not_error(gamedata: str) -> None:
+    # Empty-result contract (P2b plan §3.4): a legitimate-but-empty result
+    # (filter no-match) is a normal structured payload {total:0, items:[]},
+    # NOT a content-only error — structured consumers can rely on it. The
+    # content channel still emits the original "没有匹配" message verbatim.
+    data = build_items_listing(category="NONEXISTENT")
+    assert isinstance(data, dict)
+    assert data["total"] == 0
+    assert data["items"] == []
+    assert data["empty_reason"] == "no_match"
+    # content stays byte-for-byte (the original message)
+    assert list_items(category="NONEXISTENT") == "没有匹配的物品（category=NONEXISTENT）。"
+    # structured channel carries the empty payload
+    r = render_result(data, list_items(category="NONEXISTENT"), channel="structured")
+    assert r.structuredContent == data
 
 
 def test_list_items_category_filter(gamedata: str) -> None:

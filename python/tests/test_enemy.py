@@ -10,12 +10,14 @@ import pytest
 
 from prts_mcp.data.enemy import (
     build_enemy_info,
+    build_enemies_listing,
     clear_enemy_caches,
     list_enemies,
     get_enemy_info,
     render_enemy_info,
     search_enemies,
 )
+from prts_mcp.output import render_result
 
 
 def _write_handbook(excel: Path) -> None:
@@ -143,6 +145,47 @@ class TestListEnemies:
         assert "霜星" in out
         assert "源石虫" in out
         assert "隐藏敌人" not in out
+
+    def test_golden_default_listing(self, gamedata):
+        # Golden: exact full markdown for the default listing against the
+        # fixture. Stronger than substring asserts — catches build-layer
+        # field omissions, ordering, and label regressions. Not a tautology
+        # (the expected string is hardcoded, not derived from build/render).
+        assert list_enemies() == (
+            "# 敌人图鉴（共 2 个）\n"
+            "- **源石虫** [普通] (B1) — 野生的被感染生物。\n"
+            "- **霜星** [领袖] (FN) — 整合运动法术部队干部。"
+        )
+
+    def test_golden_boss_filter(self, gamedata):
+        assert list_enemies(threat_level="boss") == (
+            "# 敌人图鉴（共 1 个）\n"
+            "- **霜星** [领袖] (FN) — 整合运动法术部队干部。"
+        )
+
+    def test_offset_out_of_range_is_structured_not_error(self, gamedata):
+        # Empty-result contract (P2b plan §3.4): offset past the end is a
+        # legitimate-but-empty structured payload, not a content-only error.
+        # Content stays byte-for-byte (the original header + out-of-range msg).
+        data = build_enemies_listing(offset=999)
+        assert isinstance(data, dict)
+        assert data["enemies"] == []
+        assert data["empty_reason"] == "offset_out_of_range"
+        assert list_enemies(offset=999) == (
+            f"# 敌人图鉴（共 {data['total']} 个）\n\n"
+            f"offset=999 超出范围（总计 {data['total']} 条）。"
+        )
+        r = render_result(data, list_enemies(offset=999), channel="structured")
+        assert r.structuredContent == data
+
+    def test_both_channel_attaches_structured_content(self, gamedata):
+        # Verify the tool wiring actually populates structuredContent in the
+        # both channel (the build dict rides the structured axis).
+        data = build_enemies_listing()
+        assert isinstance(data, dict)
+        r = render_result(data, list_enemies(), channel="both")
+        assert r.structuredContent == data
+        assert r.content[0].text == list_enemies()
 
     def test_threat_level_filter(self, gamedata):
         out = list_enemies(threat_level="boss", limit=10)

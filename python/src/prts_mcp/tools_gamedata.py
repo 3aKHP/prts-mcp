@@ -16,7 +16,8 @@ from prts_mcp.data.operator import (
     render_operator_basic_info as _render_basic_info,
 )
 from prts_mcp.data.enemy import (
-    list_enemies as _list_enemies,
+    build_enemies_listing as _build_enemies_listing,
+    render_enemies_listing as _render_enemies_listing,
     build_enemy_info as _build_enemy_info,
     render_enemy_info as _render_enemy_info,
     search_enemies as _search_enemies,
@@ -29,14 +30,17 @@ from prts_mcp.data.stage import (
     search_stages as _search_stages,
 )
 from prts_mcp.data.item import (
-    list_items as _list_items,
+    build_items_listing as _build_items_listing,
+    render_items_listing as _render_items_listing,
     build_item_info as _build_item_info,
     render_item_info as _render_item_info,
     search_items as _search_items,
 )
 from prts_mcp.data.stage_enemy import (
-    get_stage_enemies as _get_stage_enemies,
-    get_enemy_appearances as _get_enemy_appearances,
+    build_stage_enemies as _build_stage_enemies,
+    render_stage_enemies as _render_stage_enemies,
+    build_enemy_appearances as _build_enemy_appearances,
+    render_enemy_appearances as _render_enemy_appearances,
     get_enemy_stage_info as _get_enemy_stage_info,
 )
 from prts_mcp.data.search import search_operator_data as _search_operator_data
@@ -92,13 +96,16 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         limit: Annotated[int, Field(default=50, description="返回数量上限，默认 50。")] = 50,
         offset: Annotated[int, Field(default=0, description="分页偏移量，默认 0。")] = 0,
         full: Annotated[bool, Field(default=False, description="返回全部敌人（忽略 limit/offset）。不推荐常规使用，密集输出极易污染上下文。仅在需要完整扫描时使用。")] = False,
-    ) -> str:
+    ) -> object:
         """列出敌方图鉴，支持按威胁等级过滤和分页。
 
         默认返回前 50 条；翻页增大 offset，只看领袖/BOSS 设 threat_level="boss"。
         图鉴共 1500+ 条目，不推荐 full=true。
         """
-        return _list_enemies(threat_level=threat_level, limit=limit, offset=offset, full=full)
+        data = _build_enemies_listing(threat_level=threat_level, limit=limit, offset=offset, full=full)
+        if isinstance(data, str):
+            return text_result(data)
+        return render_result(data, _render_enemies_listing(data))
 
     @mcp.tool()
     def get_enemy_info(
@@ -126,25 +133,38 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
     @mcp.tool()
     def get_stage_enemies(
         stage_id: Annotated[str, Field(description="关卡 ID，如 'main_00-01'（可从 list_stages 获取）。")],
-    ) -> str:
+    ) -> object:
         """获取指定关卡实际出场的敌人列表。
 
         只统计关卡内真正刷出的敌人，并附上其在该关卡等级下的战斗属性。
         反向查询某敌人出现在哪些关卡见 get_enemy_appearances。
         """
-        return _get_stage_enemies(stage_id)
+        data = _build_stage_enemies(stage_id)
+        if isinstance(data, str):
+            return text_result(data)
+        # total here is distinct enemy *types* in one stage, not a pagination
+        # total — pass an explicit summary so the structured channel doesn't
+        # misread it as "N result pages".
+        return render_result(
+            data,
+            _render_stage_enemies(data),
+            summary=f"{data['stage_label']} 的敌人列表（共 {data['total']} 种）",
+        )
 
     @mcp.tool()
     def get_enemy_appearances(
         name: Annotated[str, Field(description="敌人的游戏内中文名或 enemyId，如「源石虫」或 enemy_1007_slime。")],
         limit: Annotated[int, Field(default=50, description="返回数量上限，默认 50。")] = 50,
         offset: Annotated[int, Field(default=0, description="分页偏移量，默认 0。")] = 0,
-    ) -> str:
+    ) -> object:
         """反向查询指定敌人实际出现在哪些关卡。
 
         只统计该敌人真正刷出的关卡，不计入引用但未实际出场的关卡。
         """
-        return _get_enemy_appearances(name, limit=limit, offset=offset)
+        data = _build_enemy_appearances(name, limit=limit, offset=offset)
+        if isinstance(data, str):
+            return text_result(data)
+        return render_result(data, _render_enemy_appearances(data))
 
     @mcp.tool()
     def list_stages(
@@ -190,12 +210,15 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         category: Annotated[str | None, Field(default=None, description="按物品分类过滤，如 MATERIAL（材料）、NORMAL（普通）、CONSUME（消耗品）。不填则返回全部可见物品。")] = None,
         limit: Annotated[int, Field(default=50, description="返回数量上限，默认 50。")] = 50,
         offset: Annotated[int, Field(default=0, description="分页偏移量，默认 0。")] = 0,
-    ) -> str:
+    ) -> object:
         """列出物品/材料列表，支持按分类过滤和分页。
 
         返回每个物品的名称、分类、类型、稀有度、ID 和简短用途，适合查找材料、货币、凭证等。
         """
-        return _list_items(category=category, limit=limit, offset=offset)
+        data = _build_items_listing(category=category, limit=limit, offset=offset)
+        if isinstance(data, str):
+            return text_result(data)
+        return render_result(data, _render_items_listing(data))
 
     @mcp.tool()
     def get_item_info(
