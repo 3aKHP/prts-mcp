@@ -36,7 +36,7 @@ from prts_mcp.data.stage_enemy import (
     get_enemy_stage_info as _get_enemy_stage_info,
 )
 from prts_mcp.data.search import search_operator_data as _search_operator_data
-from prts_mcp.output import OUTPUT_CHANNEL, render_result, text_result
+from prts_mcp.output import render_result, text_result
 
 
 def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
@@ -144,10 +144,8 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         data = _build_stages_listing(chapter=chapter, type=type, limit=limit, offset=offset)
         if isinstance(data, str):
             # Error / missing-data path: text only, no structuredContent.
-            return render_result(None, data, channel=OUTPUT_CHANNEL)
-        return render_result(
-            data, _render_stages_listing(data), channel=OUTPUT_CHANNEL
-        )
+            return render_result(None, data)
+        return render_result(data, _render_stages_listing(data))
 
     @mcp.tool()
     def get_stage_info(
