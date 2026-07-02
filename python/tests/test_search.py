@@ -1,15 +1,31 @@
 """Tests for search tools — operator search and story search."""
 from __future__ import annotations
 
+import asyncio
 import json
 import zipfile
 from pathlib import Path
 
 import pytest
 
-from prts_mcp.data.search import search_operator_data
+from mcp.server.fastmcp import FastMCP
+
+from prts_mcp.data.search import (
+    build_operator_search,
+    build_search,
+    render_operator_search,
+    render_search,
+    search_operator_data,
+)
 from prts_mcp.data.stores import DirectoryStore, ZipStore
-from prts_mcp.data.story import search_stories_from_store
+from prts_mcp.data.story import (
+    build_story_search_from_store,
+    render_story_search,
+    search_stories_from_store,
+)
+from prts_mcp.output import render_result
+from prts_mcp.tools_gamedata import register_gamedata_tools
+from prts_mcp.tools_story import register_story_tools
 
 
 # ---------------------------------------------------------------------------
@@ -159,6 +175,37 @@ class TestSearchOperatorData:
         result = search_operator_data(".", max_results=101)
         assert "max_results 必须 <= 100" in result
 
+    def test_structured_golden(self) -> None:
+        data = build_operator_search("阿米娅", max_results=1)
+        assert data == {
+            "scope": "operators",
+            "pattern": "阿米娅",
+            "total": 1,
+            "results": [
+                {
+                    "operator": "阿米娅",
+                    "category": "basic",
+                    "field": "干员名称",
+                    "text": "阿米娅",
+                }
+            ],
+        }
+        assert render_operator_search(data) == (
+            "# 搜索 \"阿米娅\" 的结果（共 1 条）"
+            "\n---\n\n"
+            "[operators/basic/阿米娅]\n"
+            "匹配：干员名称\n"
+            "阿米娅"
+        )
+        result = render_result(data, render_operator_search(data), channel="both")
+        assert result.structuredContent == data
+
+    def test_unified_search_dispatch(self) -> None:
+        data = build_search("operators", "阿米娅", max_results=1)
+        assert isinstance(data, dict)
+        assert data["scope"] == "operators"
+        assert render_search(data) == render_operator_search(data)
+
 
 # ---------------------------------------------------------------------------
 # Story search tests
@@ -255,3 +302,52 @@ class TestSearchStories:
         store = _story_store(store_kind, tmp_path)
         result = search_stories_from_store(store, ".", context_lines=-1)
         assert "context_lines 必须 >= 0" in result
+
+    def test_structured_context_golden(self, tmp_path: Path) -> None:
+        store = _story_store("directory", tmp_path)
+        data = build_story_search_from_store(store, "你好")
+
+        assert data == {
+            "pattern": "你好",
+            "filters": {
+                "character": None,
+                "line_type": None,
+                "context_lines": 1,
+                "event_id": None,
+            },
+            "total": 1,
+            "results": [
+                {
+                    "event_id": "act_test",
+                    "story_key": FIRST_STORY_KEY,
+                    "story_code": "TEST-1",
+                    "line_number": 1,
+                    "context": [
+                        {"text": "阿米娅：你好，博士。", "is_match": True},
+                        {"text": "*罗德岛走廊*", "is_match": False},
+                    ],
+                }
+            ],
+        }
+        expected = (
+            "# 搜索 \"你好\" 的结果（共 1 条）\n\n"
+            "---\n\n"
+            "[stories/act_test/TEST-1 L1]\n"
+            ">>> 阿米娅：你好，博士。\n"
+            "    *罗德岛走廊*"
+        )
+        assert render_story_search(data) == expected
+        assert search_stories_from_store(store, "你好") == expected
+        result = render_result(data, expected, channel="both")
+        assert result.structuredContent == data
+
+
+def test_p3_search_tool_manifest_output_schema_none() -> None:
+    app = FastMCP("search-manifest")
+    register_gamedata_tools(app)
+    register_story_tools(app)
+
+    tools = {tool.name: tool for tool in asyncio.run(app.list_tools())}
+
+    assert tools["search"].outputSchema is None
+    assert tools["search_stories"].outputSchema is None

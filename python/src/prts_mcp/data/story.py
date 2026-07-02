@@ -43,6 +43,9 @@ from prts_mcp.data.story_reader import (
     render_story_events_listing,
 )
 from prts_mcp.data.story_search import (
+    build_story_search,
+    build_story_search_from_store,
+    render_story_search,
     search_stories,
     search_stories_from_store,
 )
@@ -107,6 +110,9 @@ __all__ = [
     "read_activity",
     "read_activity_from_store",
     # Search
+    "build_story_search",
+    "build_story_search_from_store",
+    "render_story_search",
     "search_stories",
     "search_stories_from_store",
     # Memoir

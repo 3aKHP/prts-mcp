@@ -8,11 +8,13 @@ from pathlib import Path
 import pytest
 
 from prts_mcp.data.item import (
+    build_item_search,
     build_items_listing,
     clear_item_caches,
     get_item_info,
     get_item_name_by_id,
     list_items,
+    render_item_search,
     search_items,
 )
 from prts_mcp.output import render_result
@@ -226,6 +228,35 @@ def test_search_items(gamedata: str) -> None:
     out = search_items("公开渠道")
     assert "招聘许可" in out
     assert "搜索结果" in out
+
+
+def test_search_items_structured_golden(gamedata: str) -> None:
+    data = build_item_search("公开渠道")
+    assert isinstance(data, dict)
+    assert data["scope"] == "items"
+    assert data["pattern"] == "公开渠道"
+    assert data["total"] == 1
+    assert data["results"][0] == {
+        "item_id": "7001",
+        "name": "招聘许可",
+        "classify_raw": "NORMAL",
+        "classify_label": "普通",
+        "item_type": "TKT_RECRUIT",
+        "rarity_raw": "TIER_4",
+        "rarity_label": "T4",
+        "usage": "可从公开渠道招聘一位干员。",
+        "obtain_approach": "采购中心、任务奖励",
+    }
+    expected = (
+        "# 搜索结果：公开渠道（共 1 个）\n\n"
+        "## 招聘许可 [普通/TKT_RECRUIT] T4（id: 7001）\n"
+        "- **用途**：可从公开渠道招聘一位干员。\n"
+        "- **获取方式**：采购中心、任务奖励"
+    )
+    assert render_item_search(data) == expected
+    assert search_items("公开渠道") == expected
+    r = render_result(data, expected, channel="both")
+    assert r.structuredContent == data
 
 
 def test_search_items_invalid_regex(gamedata: str) -> None:

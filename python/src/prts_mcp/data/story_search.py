@@ -87,8 +87,32 @@ def search_stories(
     Convenience wrapper around search_stories_from_store that auto-creates
     a ZipStore from *zip_path*.
     """
+    data = build_story_search(
+        zip_path,
+        pattern,
+        character=character,
+        line_type=line_type,
+        context_lines=context_lines,
+        max_results=max_results,
+        event_id=event_id,
+    )
+    if isinstance(data, str):
+        return data
+    return render_story_search(data)
+
+
+def build_story_search(
+    zip_path: Path,
+    pattern: str,
+    character: str | None = None,
+    line_type: str | None = None,
+    context_lines: int = 1,
+    max_results: int = 30,
+    event_id: str | None = None,
+) -> dict | str:
+    """Build the structured payload for story text search."""
     with story_store(zip_path) as store:
-        return search_stories_from_store(
+        return build_story_search_from_store(
             store,
             pattern,
             character=character,
@@ -127,6 +151,30 @@ def search_stories_from_store(
     Returns:
         Formatted multi-block search result string.
     """
+    data = build_story_search_from_store(
+        store,
+        pattern,
+        character=character,
+        line_type=line_type,
+        context_lines=context_lines,
+        max_results=max_results,
+        event_id=event_id,
+    )
+    if isinstance(data, str):
+        return data
+    return render_story_search(data)
+
+
+def build_story_search_from_store(
+    store: JsonStore,
+    pattern: str,
+    character: str | None = None,
+    line_type: str | None = None,
+    context_lines: int = 1,
+    max_results: int = 30,
+    event_id: str | None = None,
+) -> dict | str:
+    """Build a story-search payload using a JSON store."""
     if max_results < 1:
         return "max_results 必须 >= 1。"
     if max_results > 100:
@@ -172,35 +220,60 @@ def search_stories_from_store(
 
         start = max(0, record.line_index - context_lines)
         end = min(len(chapter.lines), record.line_index + context_lines + 1)
-        ctx_parts: list[str] = []
+        ctx_parts: list[dict[str, object]] = []
         for j in range(start, end):
-            prefix = ">>> " if j == record.line_index else "    "
-            ctx_parts.append(prefix + _format_story_line(chapter.lines[j]))
+            ctx_parts.append({
+                "text": _format_story_line(chapter.lines[j]),
+                "is_match": j == record.line_index,
+            })
 
         results.append({
             "event_id": chapter.event_id,
+            "story_key": chapter.story_key,
             "story_code": chapter.story_code,
             "line_number": record.line_index + 1,
-            "context": "\n".join(ctx_parts),
+            "context": ctx_parts,
         })
 
+    return {
+        "pattern": pattern,
+        "filters": {
+            "character": character,
+            "line_type": line_type,
+            "context_lines": context_lines,
+            "event_id": event_id,
+        },
+        "total": len(results),
+        "results": results,
+    }
+
+
+def render_story_search(data: dict) -> str:
+    """Render a story-search payload to markdown."""
+    pattern = data["pattern"]
+    results = data["results"]
     if not results:
+        filters = data["filters"]
         filter_desc = "。".join(
             f for f in [
-                f"event_id={event_id!r}" if event_id else "",
-                f"character={character!r}" if character else "",
-                f"line_type={line_type!r}" if line_type else "",
+                f"event_id={filters['event_id']!r}" if filters["event_id"] else "",
+                f"character={filters['character']!r}" if filters["character"] else "",
+                f"line_type={filters['line_type']!r}" if filters["line_type"] else "",
             ] if f
         )
         filter_suffix = f"（过滤条件：{filter_desc}）" if filter_desc else ""
         return f"未找到匹配 '{pattern}' 的剧情台词。{filter_suffix}"
 
-    parts = [f"# 搜索 \"{pattern}\" 的结果（共 {len(results)} 条）"]
+    parts = [f"# 搜索 \"{pattern}\" 的结果（共 {data['total']} 条）"]
     for r in results:
+        context = "\n".join(
+            (">>> " if item["is_match"] else "    ") + str(item["text"])
+            for item in r["context"]
+        )
         parts.append(
             f"\n---\n\n"
             f"[stories/{r['event_id']}/{r['story_code']} L{r['line_number']}]\n"
-            f"{r['context']}"
+            f"{context}"
         )
 
     return "\n".join(parts)

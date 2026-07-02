@@ -3,6 +3,7 @@ from __future__ import annotations
 import re as _re
 from dataclasses import dataclass as _dataclass
 from functools import lru_cache as _lru_cache
+from typing import Any
 
 from prts_mcp.config import Config as _Config
 from prts_mcp.data.item import get_item_name_by_id as _get_item_name_by_id
@@ -408,6 +409,14 @@ def get_stage_info(stage_id: str) -> str:
 
 def search_stages(pattern: str, max_results: int = 30) -> str:
     """Regex search across stage names, codes, and descriptions."""
+    data = build_stage_search(pattern, max_results=max_results)
+    if isinstance(data, str):
+        return data
+    return render_stage_search(data)
+
+
+def build_stage_search(pattern: str, max_results: int = 30) -> dict | str:
+    """Build the structured payload for stage search."""
     if max_results < 1:
         return "max_results 必须 >= 1。"
     if max_results > 100:
@@ -429,31 +438,56 @@ def search_stages(pattern: str, max_results: int = 30) -> str:
             if len(matched) >= max_results:
                 break
 
-    if not matched:
+    return {
+        "scope": "stages",
+        "pattern": pattern,
+        "total": len(matched),
+        "results": [_stage_search_entry(record) for record in matched],
+    }
+
+
+def render_stage_search(data: dict) -> str:
+    """Render a stage search payload to markdown."""
+    pattern = data["pattern"]
+    results = data["results"]
+    if not results:
         return f"未找到匹配 '{pattern}' 的关卡。"
 
-    lines = [f"# 搜索结果：{pattern}（共 {len(matched)} 个）"]
-    for record in matched:
-        e = record.entry
-        name = e.get("name") or "（无名）"
-        code = e.get("code") or "?"
-        t_label = _stage_type_label(e.get("stageType", ""))
-        d_label = _difficulty_label(e.get("difficulty", ""))
-        zd = _zone_display(e.get("zoneId", ""))
-        _ap = e.get("apCost")
-        ap = _ap if _ap is not None else "?"
-        raw_desc = e.get("description") or ""
-        cdesc = _clean_description(raw_desc)
-
-        sid = record.stage_id
-        lines.append(f"\n## {name} [{t_label}] {code}（id: {sid}）")
-        lines.append(f"- **区域**：{zd}")
-        lines.append(f"- **难度**：{d_label}")
-        lines.append(f"- **理智**：{ap}")
-        if cdesc:
-            lines.append(f"- **描述**：{cdesc[:120]}{'...' if len(cdesc) > 120 else ''}")
+    lines = [f"# 搜索结果：{pattern}（共 {data['total']} 个）"]
+    for entry in results:
+        lines.append(
+            f"\n## {entry['name']} [{entry['type_label']}] "
+            f"{entry['code']}（id: {entry['stage_id']}）"
+        )
+        lines.append(f"- **区域**：{entry['zone_display']}")
+        lines.append(f"- **难度**：{entry['difficulty_label']}")
+        lines.append(f"- **理智**：{entry['ap']}")
+        desc = entry["description"]
+        if desc:
+            lines.append(f"- **描述**：{desc[:120]}{'...' if len(desc) > 120 else ''}")
 
     return "\n".join(lines)
+
+
+def _stage_search_entry(record: _StageSearchRecord) -> dict[str, Any]:
+    e = record.entry
+    type_raw = e.get("stageType", "")
+    difficulty_raw = e.get("difficulty", "")
+    zone_id = e.get("zoneId", "")
+    ap = e.get("apCost")
+    return {
+        "stage_id": record.stage_id,
+        "name": e.get("name") or "（无名）",
+        "code": e.get("code") or "?",
+        "type": type_raw,
+        "type_label": _stage_type_label(type_raw),
+        "difficulty": difficulty_raw,
+        "difficulty_label": _difficulty_label(difficulty_raw),
+        "zone_id": zone_id,
+        "zone_display": _zone_display(zone_id),
+        "ap": ap if ap is not None else "?",
+        "description": _clean_description(e.get("description") or ""),
+    }
 
 
 @_lru_cache(maxsize=1)

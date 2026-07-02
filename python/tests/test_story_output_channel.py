@@ -461,7 +461,7 @@ def test_search_prts_network_failure_is_content_only(
     assert result.content[0].text == "搜索 PRTS 失败：network down"
 
 
-def test_unmigrated_search_stories_missing_zip_stays_str(
+def test_search_stories_missing_zip_is_content_only(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
@@ -475,14 +475,11 @@ def test_unmigrated_search_stories_missing_zip_stays_str(
         )
     )
 
-    content, structured = result
-    assert structured == {
-        "result": (
-            "剧情数据未就绪。请设置 STORYJSON_PATH 环境变量指向 zh_CN.zip，"
-            "或等待服务器自动从 GitHub Release 下载完成后重试。"
-        )
-    }
-    assert content[0].text == structured["result"]
+    assert result.structuredContent is None
+    assert result.content[0].text == (
+        "剧情数据未就绪。请设置 STORYJSON_PATH 环境变量指向 zh_CN.zip，"
+        "或等待服务器自动从 GitHub Release 下载完成后重试。"
+    )
 
 
 def test_p2b_manifest_output_schema_shape() -> None:
@@ -498,7 +495,6 @@ def test_p2b_manifest_output_schema_shape() -> None:
         "find_character_appearances",
         "find_speakers_in",
         "search_prts",
+        "search_stories",
     }:
         assert tools[name].outputSchema is None, f"{name} still has outputSchema"
-
-    assert tools["search_stories"].outputSchema is not None

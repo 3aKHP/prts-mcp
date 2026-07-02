@@ -375,6 +375,14 @@ def get_item_info(name: str) -> str:
 
 def search_items(pattern: str, max_results: int = 30) -> str:
     """Regex search across item names, descriptions, usage, obtain sources, and types."""
+    data = build_item_search(pattern, max_results=max_results)
+    if isinstance(data, str):
+        return data
+    return render_item_search(data)
+
+
+def build_item_search(pattern: str, max_results: int = 30) -> dict | str:
+    """Build the structured payload for item search."""
     if max_results < 1:
         return "max_results 必须 >= 1。"
     if max_results > 100:
@@ -396,25 +404,49 @@ def search_items(pattern: str, max_results: int = 30) -> str:
             if len(results) >= max_results:
                 break
 
+    return {
+        "scope": "items",
+        "pattern": pattern,
+        "total": len(results),
+        "results": [_item_search_entry(record) for record in results],
+    }
+
+
+def render_item_search(data: dict) -> str:
+    """Render an item search payload to markdown."""
+    pattern = data["pattern"]
+    results = data["results"]
     if not results:
         return f"未找到匹配 '{pattern}' 的物品。"
 
-    lines = [f"# 搜索结果：{pattern}（共 {len(results)} 个）"]
-    for record in results:
-        item_id = record.item_id
-        info = record.info
-        item_name = info.get("name") or "（无名）"
-        classify = _classify_label(str(info.get("classifyType") or ""))
-        item_type = info.get("itemType") or "-"
-        rarity = _rarity_label(str(info.get("rarity") or ""))
-        usage = _short_text(str(info.get("usage") or info.get("description") or ""), 120)
-        lines.append(f"\n## {item_name} [{classify}/{item_type}] {rarity}（id: {item_id}）")
+    lines = [f"# 搜索结果：{pattern}（共 {data['total']} 个）"]
+    for item in results:
+        lines.append(
+            f"\n## {item['name']} [{item['classify_label']}/{item['item_type']}] "
+            f"{item['rarity_label']}（id: {item['item_id']}）"
+        )
+        usage = item["usage"]
         if usage:
             lines.append(f"- **用途**：{usage}")
-        obtain = info.get("obtainApproach")
+        obtain = item["obtain_approach"]
         if obtain:
             lines.append(f"- **获取方式**：{obtain}")
     return "\n".join(lines)
+
+
+def _item_search_entry(record: _ItemSearchRecord) -> dict[str, Any]:
+    info = record.info
+    return {
+        "item_id": record.item_id,
+        "name": info.get("name") or "（无名）",
+        "classify_raw": str(info.get("classifyType") or ""),
+        "classify_label": _classify_label(str(info.get("classifyType") or "")),
+        "item_type": info.get("itemType") or "-",
+        "rarity_raw": str(info.get("rarity") or ""),
+        "rarity_label": _rarity_label(str(info.get("rarity") or "")),
+        "usage": _short_text(str(info.get("usage") or info.get("description") or ""), 120),
+        "obtain_approach": info.get("obtainApproach") or "",
+    }
 
 
 @lru_cache(maxsize=1)
