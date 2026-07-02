@@ -120,6 +120,27 @@ def test_list_items_default(gamedata: str) -> None:
     assert "共 2 个" in out
 
 
+def test_list_items_golden_default(gamedata: str) -> None:
+    # Golden: exact full markdown. Hardcoded expectation (not a tautology),
+    # catches build-layer field omissions, ordering, and label regressions.
+    assert list_items() == (
+        "# 物品列表（共 2 个）\n"
+        "- **招聘许可** [普通/TKT_RECRUIT] T4（id: 7001） — 可从公开渠道招聘一位干员。\n"
+        "- **源岩** [材料/MATERIAL] T1（id: 30011） — 可用于多种强化场合。\n"
+        "\n"
+        "（显示第 1–2 条，共 2 条。使用 offset=50 查看下一页）"
+    )
+
+
+def test_list_items_golden_category_filter(gamedata: str) -> None:
+    assert list_items(category="MATERIAL") == (
+        "# 物品列表：MATERIAL（共 1 个）\n"
+        "- **源岩** [材料/MATERIAL] T1（id: 30011） — 可用于多种强化场合。\n"
+        "\n"
+        "（显示第 1–1 条，共 1 条。使用 offset=50 查看下一页）"
+    )
+
+
 def test_list_items_category_filter(gamedata: str) -> None:
     out = list_items(category="MATERIAL")
     assert "源岩" in out

@@ -30,7 +30,8 @@ from prts_mcp.data.stage import (
     search_stages as _search_stages,
 )
 from prts_mcp.data.item import (
-    list_items as _list_items,
+    build_items_listing as _build_items_listing,
+    render_items_listing as _render_items_listing,
     build_item_info as _build_item_info,
     render_item_info as _render_item_info,
     search_items as _search_items,
@@ -194,12 +195,15 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         category: Annotated[str | None, Field(default=None, description="按物品分类过滤，如 MATERIAL（材料）、NORMAL（普通）、CONSUME（消耗品）。不填则返回全部可见物品。")] = None,
         limit: Annotated[int, Field(default=50, description="返回数量上限，默认 50。")] = 50,
         offset: Annotated[int, Field(default=0, description="分页偏移量，默认 0。")] = 0,
-    ) -> str:
+    ) -> object:
         """列出物品/材料列表，支持按分类过滤和分页。
 
         返回每个物品的名称、分类、类型、稀有度、ID 和简短用途，适合查找材料、货币、凭证等。
         """
-        return _list_items(category=category, limit=limit, offset=offset)
+        data = _build_items_listing(category=category, limit=limit, offset=offset)
+        if isinstance(data, str):
+            return text_result(data)
+        return render_result(data, _render_items_listing(data))
 
     @mcp.tool()
     def get_item_info(
