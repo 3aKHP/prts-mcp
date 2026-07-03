@@ -8,16 +8,16 @@ Long-lived branches after the 1.7.0 LTS release:
 
 | Branch | Purpose | Version suffix |
 |--------|---------|---------------|
-| `main` | Latest stable release. `1.7.0` until 2.0 ships. | (none) |
+| `main` | Latest stable release. Currently `2.0.1`. | (none) |
 | `lts/1.7` | 1.7.x long-term maintenance. Created from the 1.7.0 release commit. | (none) |
-| `dev` | Development integration for 2.0. All non-LTS changes land here. | `.dev0` (next target, e.g. `2.0.0.dev0`) |
+| `develop` | Development integration. All non-LTS changes land here. | `.dev0` (next target, e.g. `2.0.2.dev0`) |
 
-- Feature / refactor / perf / non-urgent fix / docs / chore → branch from `dev`, PR to `dev`.
-- 1.7.x LTS fix → branch from `lts/1.7`, PR to `lts/1.7`, then cherry-pick or reimplement on `dev` if applicable.
-- Hotfix for the latest stable line → branch from `main`, PR to `main`, then forward-merge/cherry-pick to `dev`.
-- Release → merge the release branch to `main`, tag on `main`, then merge or cherry-pick back to `dev`.
+- Feature / refactor / perf / non-urgent fix / docs / chore -> branch from `develop`, PR to `develop`.
+- 1.7.x LTS fix -> branch from `lts/1.7`, PR to `lts/1.7`, then cherry-pick or reimplement on `develop` if applicable.
+- Hotfix for the latest stable line -> branch from `main`, PR to `main`, then forward-merge/cherry-pick to `develop`.
+- Release -> branch from `develop` as `release/vX.Y.Z`, merge the release branch to `main` by PR, tag on `main`, then merge the same release branch back to `develop` by PR.
 
-Never push directly to `main`, `dev`, or `lts/1.7`. Always create a feature/fix branch and open a PR. See `CLAUDE.md` and `docs/dev/LTS.md` for the detailed iteration cycles.
+Never push directly to `main`, `develop`, or `lts/1.7`. Always create a feature/fix branch and open a PR. See `CLAUDE.md` and `docs/dev/LTS.md` for the detailed iteration cycles.
 
 ## Startup Reads
 
