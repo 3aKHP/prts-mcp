@@ -275,8 +275,21 @@ test("search_enemies matches by description", async () => {
   writeFixtures(root);
   const enemy = await loadEnemyModule();
   const out = enemy.searchEnemies("整合运动");
-  assert.match(out, /霜星/);
-  assert.deepStrictEqual(enemy.buildEnemySearch("整合运动"), loadParityFixture("search_enemies.json"));
+  const data = enemy.buildEnemySearch("整合运动");
+  assert.deepStrictEqual(data, loadParityFixture("search_enemies.json"));
+  if (typeof data === "string") assert.fail(`unexpected error: ${data}`);
+  const expected = [
+    "# 搜索结果：整合运动（共 1 个）",
+    "",
+    "# 霜星 - 敌人图鉴",
+    "",
+    "- **编号**：FN",
+    "- **威胁等级**：领袖",
+    "- **描述**：整合运动法术部队干部。",
+    "- **伤害类型**：法术",
+  ].join("\n");
+  assert.equal(enemy.renderEnemySearch(data), expected);
+  assert.equal(out, expected);
 });
 
 test("search_enemies no match", async () => {
@@ -285,8 +298,12 @@ test("search_enemies no match", async () => {
   writeFixtures(root);
   const enemy = await loadEnemyModule();
   const out = enemy.searchEnemies("绝对不存在的关键词");
-  assert.match(out, /未找到匹配/);
+  const data = enemy.buildEnemySearch("绝对不存在的关键词");
   assert.deepStrictEqual(enemy.buildEnemySearch("ZZZZZZZ"), loadParityFixture("search_enemies_empty.json"));
+  if (typeof data === "string") assert.fail(`unexpected error: ${data}`);
+  const expected = "未找到匹配 '绝对不存在的关键词' 的敌人。";
+  assert.equal(enemy.renderEnemySearch(data), expected);
+  assert.equal(out, expected);
 });
 
 test("search_enemies invalid regex", async () => {

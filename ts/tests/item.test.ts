@@ -185,9 +185,18 @@ test("searchItems", async () => {
   writeFixtures(root);
   const item = await loadItemModule();
   const out = item.searchItems("公开渠道");
-  assert.match(out, /招聘许可/);
-  assert.match(out, /搜索结果/);
-  assert.deepStrictEqual(item.buildItemSearch("公开渠道"), loadParityFixture("search_items.json"));
+  const data = item.buildItemSearch("公开渠道");
+  assert.deepStrictEqual(data, loadParityFixture("search_items.json"));
+  if (typeof data === "string") assert.fail(`unexpected error: ${data}`);
+  const expected = [
+    "# 搜索结果：公开渠道（共 1 个）",
+    "",
+    "## 招聘许可 [普通/TKT_RECRUIT] T4（id: 7001）",
+    "- **用途**：可从公开渠道招聘一位干员。",
+    "- **获取方式**：采购中心、任务奖励",
+  ].join("\n");
+  assert.equal(item.renderItemSearch(data), expected);
+  assert.equal(out, expected);
 });
 
 test("searchItems empty payload matches shared parity fixture", async () => {

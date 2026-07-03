@@ -455,8 +455,20 @@ test("searchStages by description", async () => {
   writeFixtures(root);
   const stage = await loadStageModule();
   const out = stage.searchStages("先锋");
-  assert.match(out, /坍塌/);
-  assert.deepStrictEqual(stage.buildStageSearch("先锋"), loadParityFixture("search_stages.json"));
+  const data = stage.buildStageSearch("先锋");
+  assert.deepStrictEqual(data, loadParityFixture("search_stages.json"));
+  if (typeof data === "string") assert.fail(`unexpected error: ${data}`);
+  const expected = [
+    "# 搜索结果：先锋（共 1 个）",
+    "",
+    "## 坍塌 [主线] 0-1（id: main_00-01）",
+    "- **区域**：序章-黑暗时代·上",
+    "- **难度**：普通",
+    "- **理智**：6",
+    "- **描述**：三点方向出现了敌人的先锋部队。",
+  ].join("\n");
+  assert.equal(stage.renderStageSearch(data), expected);
+  assert.equal(out, expected);
 });
 
 test("searchStages multiple matches", async () => {
@@ -474,8 +486,12 @@ test("searchStages no match", async () => {
   writeFixtures(root);
   const stage = await loadStageModule();
   const out = stage.searchStages("ZZZZNOMATCH");
-  assert.match(out, /未找到匹配/);
-  assert.deepStrictEqual(stage.buildStageSearch("ZZZZNOMATCH"), loadParityFixture("search_stages_empty.json"));
+  const data = stage.buildStageSearch("ZZZZNOMATCH");
+  assert.deepStrictEqual(data, loadParityFixture("search_stages_empty.json"));
+  if (typeof data === "string") assert.fail(`unexpected error: ${data}`);
+  const expected = "未找到匹配 'ZZZZNOMATCH' 的关卡。";
+  assert.equal(stage.renderStageSearch(data), expected);
+  assert.equal(out, expected);
 });
 
 test("searchStages invalid regex", async () => {

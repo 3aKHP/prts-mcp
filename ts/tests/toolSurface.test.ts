@@ -308,6 +308,13 @@ async function callTool(
 }
 
 test("output-channel semantic invariant for structured and narrative tools", async () => {
+  const invariantTools = [
+    ...Object.keys(STRUCTURED_TOOL_ARGS),
+    ...Object.keys(NARRATIVE_TOOL_ARGS),
+  ];
+  assert.deepEqual([...new Set(invariantTools)].sort(), [...EXPECTED_TOOLS].sort());
+  assert.equal(new Set(invariantTools).size, invariantTools.length, "tool invariant args contain duplicates");
+
   const root = mkdtempSync(join(tmpdir(), "prts-tool-invariant-"));
   const storyZip = join(mkdtempSync(join(tmpdir(), "prts-tool-story-")), "zh_CN.zip");
   const oldGamedata = process.env["GAMEDATA_PATH"];
