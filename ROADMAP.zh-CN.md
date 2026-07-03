@@ -134,8 +134,8 @@ PRTS-MCP 已进入 1.x 稳定期。1.7.0 是最后一个 1.x 功能版本和 1.7
 
 - 干员三件套（`get_operator_archives` / `voicelines` / `basic_info`）：
   输出形态和长度差异大，合并反而降低 LLM 选择准确率，得不偿失。
-- 敌人三件套（`list_enemies` / `get_enemy_info` / `search_enemies`）：
-  同上。
+- 敌人成对工具（`list_enemies` / `get_enemy_info`）：同上。（敌人搜索工具
+  `search_enemies` 已并入跨域 `search(scope="enemies")`，见上方说明。）
 - 剧情工具（`read_story` / `read_activity` / `get_story_summary`）：
   在相关但不同的数据上做真正不同的动作。
 

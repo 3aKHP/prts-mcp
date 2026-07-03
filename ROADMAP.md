@@ -143,8 +143,9 @@ The 1.x tool surface reached 32 tools by the 1.7.0 LTS release. For long-context
 - Operator triplet (`get_operator_archives` / `voicelines` /
   `basic_info`): outputs differ in shape and length; merging hurts
   LLM selection accuracy more than it saves context.
-- Enemy triplet (`list_enemies` / `get_enemy_info` / `search_enemies`):
-  same reason.
+- Enemy pair (`list_enemies` / `get_enemy_info`): same reason. (The enemy
+  search tool `search_enemies` was folded into the cross-domain
+  `search(scope="enemies")` as described above.)
 - Story tools (`read_story` / `read_activity` / `get_story_summary`):
   genuinely distinct actions on related-but-different data.
 
