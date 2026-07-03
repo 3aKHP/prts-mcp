@@ -170,8 +170,8 @@ def build_enemies_listing(
 ) -> dict | str:
     """Build the structured payload for an enemies listing.
 
-    Returns the dict payload on success, or a markdown error string on a
-    validation / missing-data / empty-result path.
+    Returns the dict payload on success, including legitimate empty listings,
+    or a markdown error string on a validation / missing-data path.
     """
     if not _has_enemy_data():
         return _missing_data_message()
