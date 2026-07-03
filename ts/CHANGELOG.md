@@ -4,7 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [2.0.1] - 2026-07-03
+
+### Changed
+
+- Content-only tool handlers now consistently route through the shared
+  `textResult(...)` helper, keeping text-result construction centralized
+  without changing the returned MCP payload shape.
 
 ## [2.0.0] - 2026-07-03
 
