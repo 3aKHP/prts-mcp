@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Fixed
+
+- `list_story_events` now preserves explicit content-only `CallToolResult`
+  delivery when story data is missing, avoiding FastMCP's automatic string
+  result wrapper on that error path.
+
 ## [2.0.0] - 2026-07-03
 
 ### Added
