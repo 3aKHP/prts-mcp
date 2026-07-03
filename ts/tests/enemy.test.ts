@@ -135,6 +135,26 @@ test("list_enemies threat_level filters", async () => {
   assert.doesNotMatch(out, /源石虫/);
 });
 
+test("list_enemies filter no-match is structured without empty_reason", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  writeFixtures(root);
+  const enemy = await loadEnemyModule();
+  const data = enemy.buildEnemiesListing("elite");
+  assert.equal(typeof data, "object");
+  assert.deepEqual(data, {
+    total: 0,
+    offset: 0,
+    limit: 50,
+    full: false,
+    filters: { threat_level: "elite", threat_level_filter: "ELITE" },
+    enemies: [],
+  });
+  assert.equal("empty_reason" in data, false);
+  assert.equal(enemy.renderEnemiesListing(data), "# 敌人图鉴（共 0 个）");
+}
+);
+
 test("list_enemies invalid threat_level returns error", async () => {
   const root = tempGamedataRoot();
   process.env["GAMEDATA_PATH"] = root;
