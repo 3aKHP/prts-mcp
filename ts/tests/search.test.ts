@@ -305,6 +305,13 @@ for (const kind of ["directory", "zip"] as const) {
     assert.match(result, /未找到匹配的活动/);
   });
 
+  test(`search_stories missing event_id uses Python repr (${kind})`, () => {
+    const root = tempRoot();
+    const store = storyStore(kind, root);
+    const result = searchStoriesFromStore(store, ".", undefined, undefined, 1, 30, "a\nb");
+    assert.equal(result, "未找到匹配的活动：'a\\nb'。");
+  });
+
   test(`search_stories context zero (${kind})`, () => {
     const root = tempRoot();
     const store = storyStore(kind, root);
@@ -333,8 +340,8 @@ for (const kind of ["directory", "zip"] as const) {
   test(`search_stories invalid line_type (${kind})`, () => {
     const root = tempRoot();
     const store = storyStore(kind, root);
-    const result = searchStoriesFromStore(store, ".", undefined, "invalid");
-    assert.match(result, /无效的 line_type/);
+    const result = searchStoriesFromStore(store, ".", undefined, "bad'value");
+    assert.equal(result, "无效的 line_type：\"bad'value\"，可选值：choice, dialog, narration");
   });
 
   test(`search_stories max_results cap (${kind})`, () => {

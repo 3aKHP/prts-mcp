@@ -251,6 +251,12 @@ class TestSearchStories:
         assert "未找到匹配的活动" in result
 
     @pytest.mark.parametrize("store_kind", ["directory", "zip"])
+    def test_missing_event_id_repr(self, tmp_path: Path, store_kind: str) -> None:
+        store = _story_store(store_kind, tmp_path)
+        result = search_stories_from_store(store, ".", event_id="a\nb")
+        assert result == "未找到匹配的活动：'a\\nb'。"
+
+    @pytest.mark.parametrize("store_kind", ["directory", "zip"])
     def test_context_zero(self, tmp_path: Path, store_kind: str) -> None:
         store = _story_store(store_kind, tmp_path)
         result = search_stories_from_store(store, "你好", context_lines=0)
@@ -278,8 +284,8 @@ class TestSearchStories:
     @pytest.mark.parametrize("store_kind", ["directory", "zip"])
     def test_invalid_line_type(self, tmp_path: Path, store_kind: str) -> None:
         store = _story_store(store_kind, tmp_path)
-        result = search_stories_from_store(store, ".", line_type="invalid")
-        assert "无效的 line_type" in result
+        result = search_stories_from_store(store, ".", line_type="bad'value")
+        assert result == "无效的 line_type：\"bad'value\"，可选值：choice, dialog, narration"
 
     @pytest.mark.parametrize("store_kind", ["directory", "zip"])
     def test_max_results_cap(self, tmp_path: Path, store_kind: str) -> None:
