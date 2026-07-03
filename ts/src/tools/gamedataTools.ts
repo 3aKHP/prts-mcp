@@ -52,7 +52,7 @@ export function registerGamedataTools(server: McpServer, channel: OutputChannel 
     { name: z.string().describe("干员的游戏内中文名，如「阿米娅」、「能天使」。") },
     ({ name }) => {
       const text = getOperatorArchives(name);
-      return { content: [{ type: "text", text }] };
+      return textResult(text);
     }
   );
 
@@ -66,7 +66,7 @@ export function registerGamedataTools(server: McpServer, channel: OutputChannel 
     { name: z.string().describe("干员的游戏内中文名，如「阿米娅」、「能天使」。") },
     ({ name }) => {
       const text = getOperatorVoicelines(name);
-      return { content: [{ type: "text", text }] };
+      return textResult(text);
     }
   );
 

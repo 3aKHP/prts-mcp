@@ -169,24 +169,17 @@ export function registerStoryTools(server: McpServer, channel: OutputChannel = "
       try {
         zipPath = requireStoryZip();
       } catch (e) {
-        return { content: [{ type: "text", text: e instanceof Error ? e.message : String(e) }] };
+        return textResult(e instanceof Error ? e.message : String(e));
       }
       try {
         const chapter = _readStory(zipPath, story_key, include_narration);
-        return { content: [{ type: "text", text: formatChapter(chapter) }] };
+        return textResult(formatChapter(chapter));
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         if (msg.includes("not found") || msg.includes("Entry not found")) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: `未找到剧情："${story_key}"。请通过 list_stories 确认章节 key。`,
-              },
-            ],
-          };
+          return textResult(`未找到剧情："${story_key}"。请通过 list_stories 确认章节 key。`);
         }
-        return { content: [{ type: "text", text: `读取剧情失败：${msg}` }] };
+        return textResult(`读取剧情失败：${msg}`);
       }
     }
   );
@@ -209,7 +202,7 @@ export function registerStoryTools(server: McpServer, channel: OutputChannel = "
       try {
         zipPath = requireStoryZip();
       } catch (e) {
-        return { content: [{ type: "text", text: e instanceof Error ? e.message : String(e) }] };
+        return textResult(e instanceof Error ? e.message : String(e));
       }
       try {
         const result = _readActivity(
@@ -242,20 +235,13 @@ export function registerStoryTools(server: McpServer, channel: OutputChannel = "
             `\n[还有更多章节，请调用 read_activity(event_id="${event_id}", page=${nextPage})]`
           );
         }
-        return { content: [{ type: "text", text: parts.join("\n") }] };
+        return textResult(parts.join("\n"));
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         if (msg.includes("not found")) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: `未找到活动："${event_id}"。请先调用 list_story_events 确认活动 ID。`,
-              },
-            ],
-          };
+          return textResult(`未找到活动："${event_id}"。请先调用 list_story_events 确认活动 ID。`);
         }
-        return { content: [{ type: "text", text: `读取活动剧情失败：${msg}` }] };
+        return textResult(`读取活动剧情失败：${msg}`);
       }
     }
   );
@@ -279,7 +265,7 @@ export function registerStoryTools(server: McpServer, channel: OutputChannel = "
       try {
         zipPath = requireStoryZip();
       } catch (e) {
-        return { content: [{ type: "text", text: e instanceof Error ? e.message : String(e) }] };
+        return textResult(e instanceof Error ? e.message : String(e));
       }
       try {
         const data = _buildStorySearch(
