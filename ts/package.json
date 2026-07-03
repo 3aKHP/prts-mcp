@@ -1,6 +1,6 @@
 {
   "name": "prts-mcp-ts",
-  "version": "2.0.1-dev.0",
+  "version": "2.0.1",
   "description": "MCP Server for Arknights PRTS Wiki & game data (TypeScript / Streamable HTTP)",
   "type": "module",
   "main": "dist/server.js",
