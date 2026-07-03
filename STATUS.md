@@ -6,11 +6,12 @@ _Last updated: 2026-07-03_
 
 | 实现 | 版本 | 状态 |
 |------|------|------|
-| Python | 2.0.0 | Stable（最新发布） |
-| TypeScript | 2.0.0 | Stable（最新发布） |
+| Python | 2.0.1.dev0 | Development |
+| TypeScript | 2.0.1-dev.0 | Development |
 
 - 当前稳定发布：2.0.0（23 个 MCP 工具）
 - 当前 LTS 发布：1.7.0（32 个 MCP 工具，剧情角色追踪）
+- 当前开发目标：2.0.1（2.0.x 补丁线）
 - 2.0 交付内容：工具面合并（32 → 23）+ output channel（structuredContent）；**双端协议同步（Python 上 HTTP / TS 上 stdio）已后置到 2.0 之后**。
 - 兼容性合约：1.7.x LTS 线既有 32 个工具名、必填参数、默认输出格式不变；仅接受兼容性、安全性、数据同步和关键缺陷修复
 
