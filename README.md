@@ -29,12 +29,12 @@ Two release lines ship in parallel:
 
 | Line | Version | Tools | Status |
 |------|---------|-------|--------|
-| **2.0** (`dev`) | `2.0.0` (in development) | 23 | Tool-surface consolidation + output channel (structuredContent). Cross-transport parity deferred beyond 2.0. |
-| **1.7 LTS** (`main`) | `1.7.0` | 32 | Stable line. 1.7.x accepts only compatibility, security, data-sync, and critical bug fixes. |
+| **2.0** (`main`) | `2.0.0` | 23 | Tool-surface consolidation + output channel (structuredContent). Cross-transport parity deferred beyond 2.0. |
+| **1.7 LTS** (`lts/1.7`) | `1.7.0` | 32 | Stable maintenance line. 1.7.x accepts only compatibility, security, data-sync, and critical bug fixes. |
 
 | Area | Python | TypeScript |
 |------|--------|------------|
-| MCP tools | Same 23 public tool names and required parameters (2.0 `dev`) / 32 on 1.7 LTS | Same 23 (2.0 `dev`) / 32 on 1.7 LTS |
+| MCP tools | Same 23 public tool names and required parameters (2.0) / 32 on 1.7 LTS | Same 23 (2.0) / 32 on 1.7 LTS |
 | GameData | `GAMEDATA_PATH` or auto-synced `zh_CN-excel.zip` | `GAMEDATA_PATH` or auto-synced `zh_CN-excel.zip` |
 | Level data | Auto-synced `zh_CN-levels.zip` beside GameData | Auto-synced `zh_CN-levels.zip` beside GameData |
 | Story data | `STORYJSON_PATH` or auto-synced `zh_CN.zip` | `STORYJSON_PATH` or auto-synced `zh_CN.zip` |
@@ -128,12 +128,12 @@ Published Docker images and the npm package include bundled fallback game/level/
 
 | 版本线 | 版本 | 工具数 | 状态 |
 |--------|------|--------|------|
-| **2.0**（`dev`） | `2.0.0`（开发中） | 23 | 工具面合并 + output channel（structuredContent）。双端协议同步后置到 2.0 之后。 |
-| **1.7 LTS**（`main`） | `1.7.0` | 32 | 稳定线。1.7.x 仅接受兼容性、安全性、数据同步和关键缺陷修复。 |
+| **2.0**（`main`） | `2.0.0` | 23 | 工具面合并 + output channel（structuredContent）。双端协议同步后置到 2.0 之后。 |
+| **1.7 LTS**（`lts/1.7`） | `1.7.0` | 32 | 稳定维护线。1.7.x 仅接受兼容性、安全性、数据同步和关键缺陷修复。 |
 
 | 范围 | Python | TypeScript |
 |------|--------|------------|
-| MCP 工具 | 相同的 23 个工具名和必填参数（2.0 `dev`）/ 1.7 LTS 为 32 个 | 相同的 23 个（2.0 `dev`）/ 1.7 LTS 为 32 个 |
+| MCP 工具 | 相同的 23 个工具名和必填参数（2.0）/ 1.7 LTS 为 32 个 | 相同的 23 个（2.0）/ 1.7 LTS 为 32 个 |
 | 干员数据 | `GAMEDATA_PATH` 或自动同步 `zh_CN-excel.zip` | `GAMEDATA_PATH` 或自动同步 `zh_CN-excel.zip` |
 | 关卡战斗数据 | 自动同步与 GameData 并列的 `zh_CN-levels.zip` | 自动同步与 GameData 并列的 `zh_CN-levels.zip` |
 | 剧情数据 | `STORYJSON_PATH` 或自动同步 `zh_CN.zip` | `STORYJSON_PATH` 或自动同步 `zh_CN.zip` |
