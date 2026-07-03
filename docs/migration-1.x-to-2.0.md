@@ -1,6 +1,6 @@
 # Migration Guide: 1.x to 2.0
 
-_Status: 2.0.0 (development)_
+_Status: 2.0.0 (stable)_
 
 PRTS-MCP 2.0 consolidates the 1.x tool surface (32 tools in 1.7.0 LTS) down to
 **23 tools**, normalizes a parameter name, and adds an optional structured-output
