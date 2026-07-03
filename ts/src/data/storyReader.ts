@@ -274,7 +274,22 @@ export function buildStoryEventsListing(
 
 export function pyRepr(value: string | null | undefined): string {
   if (value === null || value === undefined) return "None";
-  return `'${value}'`;
+  const quote = value.includes("'") && !value.includes('"') ? '"' : "'";
+  let out = quote;
+  for (const ch of value) {
+    if (ch === "\\") out += "\\\\";
+    else if (ch === "\n") out += "\\n";
+    else if (ch === "\r") out += "\\r";
+    else if (ch === "\t") out += "\\t";
+    else if (ch === quote) out += `\\${quote}`;
+    else {
+      const code = ch.codePointAt(0) ?? 0;
+      out += code < 32 || code === 127
+        ? `\\x${code.toString(16).padStart(2, "0")}`
+        : ch;
+    }
+  }
+  return out + quote;
 }
 
 export function renderStoryEventsListing(data: StoryEventsListingPayload): string {

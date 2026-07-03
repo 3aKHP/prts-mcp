@@ -83,6 +83,25 @@ export interface StageInfoPayload {
   six_star_stage: { id: string | null; name: string | null };
 }
 
+export interface StageSearchPayload {
+  scope: "stages";
+  pattern: string;
+  total: number;
+  results: Array<{
+    stage_id: string;
+    name: string;
+    code: string;
+    type: string;
+    type_label: string;
+    difficulty: string;
+    difficulty_label: string;
+    zone_id: string;
+    zone_display: string;
+    ap: number | string;
+    description: string;
+  }>;
+}
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
@@ -429,6 +448,12 @@ export function renderStageInfo(data: StageInfoPayload): string {
 }
 
 export function searchStages(pattern: string, maxResults: number = 30): string {
+  const data = buildStageSearch(pattern, maxResults);
+  if (typeof data === "string") return data;
+  return renderStageSearch(data);
+}
+
+export function buildStageSearch(pattern: string, maxResults: number = 30): StageSearchPayload | string {
   if (maxResults < 1) return "max_results 必须 >= 1。";
   if (maxResults > 100) return "max_results 必须 <= 100。";
 
@@ -454,28 +479,53 @@ export function searchStages(pattern: string, maxResults: number = 30): string {
     }
   }
 
-  if (matched.length === 0) return `未找到匹配 '${pattern}' 的关卡。`;
+  return {
+    scope: "stages",
+    pattern,
+    total: matched.length,
+    results: matched.map(stageSearchEntry),
+  };
+}
 
-  const lines = [`# 搜索结果：${pattern}（共 ${matched.length} 个）`];
-  for (const record of matched) {
-    const e = record.entry;
-    const name = e.name || "（无名）";
-    const code = e.code || "?";
-    const tLabel = stageTypeLabel(e.stageType ?? "");
-    const dLabel = difficultyLabel(e.difficulty ?? "");
-    const zd = zoneDisplay(e.zoneId ?? "");
-    const ap = e.apCost ?? "?";
-    const cdesc = cleanDescription(e.description ?? "");
+export function renderStageSearch(data: StageSearchPayload): string {
+  const { pattern, results } = data;
+  if (results.length === 0) return `未找到匹配 '${pattern}' 的关卡。`;
 
-    const sid = record.stageId;
-    lines.push(`\n## ${name} [${tLabel}] ${code}（id: ${sid}）`);
-    lines.push(`- **区域**：${zd}`);
-    lines.push(`- **难度**：${dLabel}`);
-    lines.push(`- **理智**：${ap}`);
-    if (cdesc) lines.push(`- **描述**：${cdesc.slice(0, 120)}${cdesc.length > 120 ? "..." : ""}`);
+  const lines = [`# 搜索结果：${pattern}（共 ${data.total} 个）`];
+  for (const entry of results) {
+    lines.push(`\n## ${entry.name} [${entry.type_label}] ${entry.code}（id: ${entry.stage_id}）`);
+    lines.push(`- **区域**：${entry.zone_display}`);
+    lines.push(`- **难度**：${entry.difficulty_label}`);
+    lines.push(`- **理智**：${entry.ap}`);
+    if (entry.description) {
+      lines.push(
+        `- **描述**：${entry.description.slice(0, 120)}${entry.description.length > 120 ? "..." : ""}`,
+      );
+    }
   }
 
   return lines.join("\n");
+}
+
+function stageSearchEntry(record: StageSearchRecord): StageSearchPayload["results"][number] {
+  const e = record.entry;
+  const typeRaw = e.stageType ?? "";
+  const difficultyRaw = e.difficulty ?? "";
+  const zoneId = e.zoneId ?? "";
+  const ap = e.apCost;
+  return {
+    stage_id: record.stageId,
+    name: e.name || "（无名）",
+    code: e.code || "?",
+    type: typeRaw,
+    type_label: stageTypeLabel(typeRaw),
+    difficulty: difficultyRaw,
+    difficulty_label: difficultyLabel(difficultyRaw),
+    zone_id: zoneId,
+    zone_display: zoneDisplay(zoneId),
+    ap: ap ?? "?",
+    description: cleanDescription(e.description ?? ""),
+  };
 }
 
 function getStageSearchRecords(): StageSearchRecord[] {

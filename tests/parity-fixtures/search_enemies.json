@@ -1,0 +1,22 @@
+{
+  "scope": "enemies",
+  "pattern": "整合运动",
+  "total": 1,
+  "results": [
+    {
+      "enemy_id": "enemy_1505_frstar",
+      "name": "霜星",
+      "enemy_index": "FN",
+      "level_raw": "BOSS",
+      "level_label": "领袖",
+      "description": "整合运动法术部队干部。",
+      "attack_type": "",
+      "ability": "",
+      "damage_types_raw": [
+        "MAGIC"
+      ],
+      "damage_types_label": "法术",
+      "enemy_tags": []
+    }
+  ]
+}

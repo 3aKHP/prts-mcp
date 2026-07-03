@@ -4,14 +4,14 @@
  */
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import AdmZip from "adm-zip";
 
 import { DirectoryStore, ZipStore, type JsonStore } from "../src/data/stores.ts";
-import { searchOperatorData } from "../src/data/search.ts";
-import { searchStoriesFromStore } from "../src/data/story.ts";
+import { buildOperatorSearch, renderOperatorSearch, searchOperatorData } from "../src/data/search.ts";
+import { buildStorySearchFromStore, renderStorySearch, searchStoriesFromStore } from "../src/data/story.ts";
 import { writeMinimalGamedata } from "./fixtures/operatorData.ts";
 
 // ---------------------------------------------------------------------------
@@ -115,6 +115,12 @@ function tempRoot(): string {
   return mkdtempSync(join(tmpdir(), "prts-search-test-"));
 }
 
+function loadParityFixture(name: string): unknown {
+  return JSON.parse(
+    readFileSync(join(import.meta.dirname, "..", "..", "tests", "parity-fixtures", name), "utf-8"),
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Operator search tests
 // ---------------------------------------------------------------------------
@@ -174,8 +180,10 @@ test("search_operator_data no match", async () => {
   writeMinimalGamedata(root);
 
   const search = await loadSearchModule();
-  const result = search.searchOperatorData("ZZZZZZZ");
-  assert.match(result, /未找到匹配/);
+  const data = search.buildOperatorSearch("ZZZZZZZ");
+  assert.deepStrictEqual(data, loadParityFixture("search_operators_empty.json"));
+  assert.equal(search.renderOperatorSearch(data), "未找到匹配 'ZZZZZZZ' 的干员数据。");
+  assert.equal(search.searchOperatorData("ZZZZZZZ"), "未找到匹配 'ZZZZZZZ' 的干员数据。");
 });
 
 test("search_operator_data invalid regex", async () => {
@@ -219,6 +227,30 @@ test("search_operator_data max_results cap", async () => {
   const search = await loadSearchModule();
   const result = search.searchOperatorData(".", 101);
   assert.match(result, /max_results 必须 <= 100/);
+});
+
+test("search_operator_data payload matches shared parity fixture", async () => {
+  const root = tempRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  delete process.env["STORYJSON_PATH"];
+  writeMinimalGamedata(root);
+
+  const search = await loadSearchModule();
+  const data = search.buildOperatorSearch("阿米娅");
+  assert.deepStrictEqual(data, loadParityFixture("search_operators.json"));
+  if (typeof data === "string") assert.fail(`unexpected error: ${data}`);
+  assert.equal(
+    search.renderOperatorSearch(data),
+    "# 搜索 \"阿米娅\" 的结果（共 2 条）\n" +
+      "---\n\n" +
+      "[operators/basic/阿米娅]\n" +
+      "匹配：干员名称\n" +
+      "阿米娅\n" +
+      "---\n\n" +
+      "[operators/archives/阿米娅]\n" +
+      "匹配：档案资料一\n" +
+      "阿米娅的档案文本。",
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -273,6 +305,13 @@ for (const kind of ["directory", "zip"] as const) {
     assert.match(result, /未找到匹配的活动/);
   });
 
+  test(`search_stories missing event_id uses Python repr (${kind})`, () => {
+    const root = tempRoot();
+    const store = storyStore(kind, root);
+    const result = searchStoriesFromStore(store, ".", undefined, undefined, 1, 30, "a\nb");
+    assert.equal(result, "未找到匹配的活动：'a\\nb'。");
+  });
+
   test(`search_stories context zero (${kind})`, () => {
     const root = tempRoot();
     const store = storyStore(kind, root);
@@ -284,8 +323,11 @@ for (const kind of ["directory", "zip"] as const) {
   test(`search_stories no match (${kind})`, () => {
     const root = tempRoot();
     const store = storyStore(kind, root);
-    const result = searchStoriesFromStore(store, "ZZZZZZ");
-    assert.match(result, /未找到匹配/);
+    const data = buildStorySearchFromStore(store, "ZZZZZZ");
+    assert.deepStrictEqual(data, loadParityFixture("search_stories_empty.json"));
+    if (typeof data === "string") assert.fail(`unexpected error: ${data}`);
+    assert.equal(renderStorySearch(data), "未找到匹配 'ZZZZZZ' 的剧情台词。");
+    assert.equal(searchStoriesFromStore(store, "ZZZZZZ"), "未找到匹配 'ZZZZZZ' 的剧情台词。");
   });
 
   test(`search_stories invalid regex (${kind})`, () => {
@@ -298,8 +340,8 @@ for (const kind of ["directory", "zip"] as const) {
   test(`search_stories invalid line_type (${kind})`, () => {
     const root = tempRoot();
     const store = storyStore(kind, root);
-    const result = searchStoriesFromStore(store, ".", undefined, "invalid");
-    assert.match(result, /无效的 line_type/);
+    const result = searchStoriesFromStore(store, ".", undefined, "bad'value");
+    assert.equal(result, "无效的 line_type：\"bad'value\"，可选值：choice, dialog, narration");
   });
 
   test(`search_stories max_results cap (${kind})`, () => {
@@ -331,6 +373,22 @@ for (const kind of ["directory", "zip"] as const) {
   });
 }
 
+test("search_stories payload matches shared parity fixture", () => {
+  const root = tempRoot();
+  const store = storyStore("directory", root);
+  const data = buildStorySearchFromStore(store, "你好");
+  assert.deepStrictEqual(data, loadParityFixture("search_stories.json"));
+  if (typeof data === "string") assert.fail(`unexpected error: ${data}`);
+  assert.equal(
+    renderStorySearch(data),
+    "# 搜索 \"你好\" 的结果（共 1 条）\n\n" +
+      "---\n\n" +
+      "[stories/act_test/TEST-1 L1]\n" +
+      ">>> 阿米娅：你好，博士。\n" +
+      "    *罗德岛走廊*",
+  );
+});
+
 // ---------------------------------------------------------------------------
 // search module export sanity check
 // ---------------------------------------------------------------------------
@@ -339,5 +397,9 @@ test("search modules export the expected functions", () => {
   // Tool surface test already validates server.tool() calls, so here we
   // just verify the search modules export the expected functions.
   assert.equal(typeof searchOperatorData, "function");
+  assert.equal(typeof buildOperatorSearch, "function");
+  assert.equal(typeof renderOperatorSearch, "function");
   assert.equal(typeof searchStoriesFromStore, "function");
+  assert.equal(typeof buildStorySearchFromStore, "function");
+  assert.equal(typeof renderStorySearch, "function");
 });

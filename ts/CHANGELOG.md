@@ -18,8 +18,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
   game-data and story navigation tools now support structuredContent in TS:
   operator/item/enemy/stage details and listings, stage-enemy fusion,
   story event/chapter listings, operator memoirs, character appearances, and
-  event speaker counts. Search-family tools remain content-only until the final
-  output-channel migration slice.
+  event speaker counts.
+- **Output channel coverage for search tools (2.0).** The TS `search`,
+  `search_stories`, and `search_prts` tools now emit structuredContent in
+  `structured`/`both` channels, including structured-empty payloads for legal
+  no-match results and parity fixtures shared with the Python implementation.
 
 ### Changed
 

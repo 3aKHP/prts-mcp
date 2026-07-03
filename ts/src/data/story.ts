@@ -49,6 +49,9 @@ export {
 
 // Search
 export {
+  buildStorySearch,
+  buildStorySearchFromStore,
+  renderStorySearch,
   searchStories,
   searchStoriesFromStore,
 } from "./storySearch.js";

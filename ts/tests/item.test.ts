@@ -185,8 +185,29 @@ test("searchItems", async () => {
   writeFixtures(root);
   const item = await loadItemModule();
   const out = item.searchItems("公开渠道");
-  assert.match(out, /招聘许可/);
-  assert.match(out, /搜索结果/);
+  const data = item.buildItemSearch("公开渠道");
+  assert.deepStrictEqual(data, loadParityFixture("search_items.json"));
+  if (typeof data === "string") assert.fail(`unexpected error: ${data}`);
+  const expected = [
+    "# 搜索结果：公开渠道（共 1 个）",
+    "",
+    "## 招聘许可 [普通/TKT_RECRUIT] T4（id: 7001）",
+    "- **用途**：可从公开渠道招聘一位干员。",
+    "- **获取方式**：采购中心、任务奖励",
+  ].join("\n");
+  assert.equal(item.renderItemSearch(data), expected);
+  assert.equal(out, expected);
+});
+
+test("searchItems empty payload matches shared parity fixture", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  writeFixtures(root);
+  const item = await loadItemModule();
+  const data = item.buildItemSearch("ZZZZNOMATCH");
+  assert.deepStrictEqual(data, loadParityFixture("search_items_empty.json"));
+  if (typeof data === "string") assert.fail(`unexpected error: ${data}`);
+  assert.equal(item.renderItemSearch(data), "未找到匹配 'ZZZZNOMATCH' 的物品。");
 });
 
 test("searchItems invalid regex", async () => {

@@ -1,0 +1,19 @@
+{
+  "scope": "operators",
+  "pattern": "阿米娅",
+  "total": 2,
+  "results": [
+    {
+      "operator": "阿米娅",
+      "category": "basic",
+      "field": "干员名称",
+      "text": "阿米娅"
+    },
+    {
+      "operator": "阿米娅",
+      "category": "archives",
+      "field": "档案资料一",
+      "text": "阿米娅的档案文本。"
+    }
+  ]
+}

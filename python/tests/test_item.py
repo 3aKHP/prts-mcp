@@ -211,20 +211,7 @@ def test_get_item_name_by_id(gamedata: str) -> None:
 def test_search_items_structured_golden(gamedata: str) -> None:
     data = build_item_search("公开渠道")
     assert isinstance(data, dict)
-    assert data["scope"] == "items"
-    assert data["pattern"] == "公开渠道"
-    assert data["total"] == 1
-    assert data["results"][0] == {
-        "item_id": "7001",
-        "name": "招聘许可",
-        "classify_raw": "NORMAL",
-        "classify_label": "普通",
-        "item_type": "TKT_RECRUIT",
-        "rarity_raw": "TIER_4",
-        "rarity_label": "T4",
-        "usage": "可从公开渠道招聘一位干员。",
-        "obtain_approach": "采购中心、任务奖励",
-    }
+    assert data == _load_parity_fixture("search_items.json")
     expected = (
         "# 搜索结果：公开渠道（共 1 个）\n\n"
         "## 招聘许可 [普通/TKT_RECRUIT] T4（id: 7001）\n"
@@ -250,6 +237,9 @@ def test_search_items_no_match_is_structured_empty(gamedata: str) -> None:
     assert search_items("绝对不存在的物品") == expected
     r = render_result(data, expected, channel="structured")
     assert r.structuredContent == data
+    assert build_item_search("ZZZZNOMATCH") == _load_parity_fixture(
+        "search_items_empty.json"
+    )
 
 
 def test_search_items_invalid_regex(gamedata: str) -> None:

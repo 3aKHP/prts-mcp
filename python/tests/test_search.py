@@ -32,6 +32,11 @@ FIRST_STORY_KEY = "activities/act_test/level_act_test_01_beg"
 SECOND_STORY_KEY = "activities/act_test/level_act_test_02_end"
 
 
+def _load_parity_fixture(name: str) -> dict:
+    path = Path(__file__).parents[2] / "tests" / "parity-fixtures" / name
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
 def _story_path(story_key: str) -> str:
     return f"zh_CN/gamedata/story/{story_key}.json"
 
@@ -149,12 +154,7 @@ class TestSearchOperatorData:
 
     def test_no_match(self) -> None:
         data = build_operator_search("ZZZZZZZ")
-        assert data == {
-            "scope": "operators",
-            "pattern": "ZZZZZZZ",
-            "total": 0,
-            "results": [],
-        }
+        assert data == _load_parity_fixture("search_operators_empty.json")
         expected = "未找到匹配 'ZZZZZZZ' 的干员数据。"
         assert render_operator_search(data) == expected
         assert search_operator_data("ZZZZZZZ") == expected
@@ -181,26 +181,18 @@ class TestSearchOperatorData:
         assert "max_results 必须 <= 100" in result
 
     def test_structured_golden(self) -> None:
-        data = build_operator_search("阿米娅", max_results=1)
-        assert data == {
-            "scope": "operators",
-            "pattern": "阿米娅",
-            "total": 1,
-            "results": [
-                {
-                    "operator": "阿米娅",
-                    "category": "basic",
-                    "field": "干员名称",
-                    "text": "阿米娅",
-                }
-            ],
-        }
+        data = build_operator_search("阿米娅")
+        assert data == _load_parity_fixture("search_operators.json")
         assert render_operator_search(data) == (
-            "# 搜索 \"阿米娅\" 的结果（共 1 条）"
+            "# 搜索 \"阿米娅\" 的结果（共 2 条）"
             "\n---\n\n"
             "[operators/basic/阿米娅]\n"
             "匹配：干员名称\n"
             "阿米娅"
+            "\n---\n\n"
+            "[operators/archives/阿米娅]\n"
+            "匹配：档案资料一\n"
+            "阿米娅的档案文本。"
         )
         result = render_result(data, render_operator_search(data), channel="both")
         assert result.structuredContent == data
@@ -259,6 +251,12 @@ class TestSearchStories:
         assert "未找到匹配的活动" in result
 
     @pytest.mark.parametrize("store_kind", ["directory", "zip"])
+    def test_missing_event_id_repr(self, tmp_path: Path, store_kind: str) -> None:
+        store = _story_store(store_kind, tmp_path)
+        result = search_stories_from_store(store, ".", event_id="a\nb")
+        assert result == "未找到匹配的活动：'a\\nb'。"
+
+    @pytest.mark.parametrize("store_kind", ["directory", "zip"])
     def test_context_zero(self, tmp_path: Path, store_kind: str) -> None:
         store = _story_store(store_kind, tmp_path)
         result = search_stories_from_store(store, "你好", context_lines=0)
@@ -270,17 +268,7 @@ class TestSearchStories:
     def test_no_match(self, tmp_path: Path, store_kind: str) -> None:
         store = _story_store(store_kind, tmp_path)
         data = build_story_search_from_store(store, "ZZZZZZ")
-        assert data == {
-            "pattern": "ZZZZZZ",
-            "filters": {
-                "character": None,
-                "line_type": None,
-                "context_lines": 1,
-                "event_id": None,
-            },
-            "total": 0,
-            "results": [],
-        }
+        assert data == _load_parity_fixture("search_stories_empty.json")
         expected = "未找到匹配 'ZZZZZZ' 的剧情台词。"
         assert render_story_search(data) == expected
         assert search_stories_from_store(store, "ZZZZZZ") == expected
@@ -296,8 +284,8 @@ class TestSearchStories:
     @pytest.mark.parametrize("store_kind", ["directory", "zip"])
     def test_invalid_line_type(self, tmp_path: Path, store_kind: str) -> None:
         store = _story_store(store_kind, tmp_path)
-        result = search_stories_from_store(store, ".", line_type="invalid")
-        assert "无效的 line_type" in result
+        result = search_stories_from_store(store, ".", line_type="bad'value")
+        assert result == "无效的 line_type：\"bad'value\"，可选值：choice, dialog, narration"
 
     @pytest.mark.parametrize("store_kind", ["directory", "zip"])
     def test_max_results_cap(self, tmp_path: Path, store_kind: str) -> None:
@@ -327,28 +315,7 @@ class TestSearchStories:
         store = _story_store("directory", tmp_path)
         data = build_story_search_from_store(store, "你好")
 
-        assert data == {
-            "pattern": "你好",
-            "filters": {
-                "character": None,
-                "line_type": None,
-                "context_lines": 1,
-                "event_id": None,
-            },
-            "total": 1,
-            "results": [
-                {
-                    "event_id": "act_test",
-                    "story_key": FIRST_STORY_KEY,
-                    "story_code": "TEST-1",
-                    "line_number": 1,
-                    "context": [
-                        {"text": "阿米娅：你好，博士。", "is_match": True},
-                        {"text": "*罗德岛走廊*", "is_match": False},
-                    ],
-                }
-            ],
-        }
+        assert data == _load_parity_fixture("search_stories.json")
         expected = (
             "# 搜索 \"你好\" 的结果（共 1 条）\n\n"
             "---\n\n"

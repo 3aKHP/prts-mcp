@@ -14,6 +14,7 @@ import {
   type StoryLine,
   STORY_REVIEW_TABLE,
   isMemoirEvent,
+  pyRepr,
   readStoryFromStore,
   storyStore,
   withStoryStore,
@@ -42,6 +43,27 @@ export interface StorySearchIndex {
   eventIds: Set<string>;
   chapters: StorySearchChapter[];
   records: StorySearchRecord[];
+}
+
+export interface StorySearchPayload {
+  pattern: string;
+  filters: {
+    character: string | null;
+    line_type: string | null;
+    context_lines: number;
+    event_id: string | null;
+  };
+  total: number;
+  results: Array<{
+    event_id: string;
+    story_key: string;
+    story_code: string;
+    line_number: number;
+    context: Array<{
+      text: string;
+      is_match: boolean;
+    }>;
+  }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -85,7 +107,21 @@ export function searchStories(
   maxResults = 30,
   eventId?: string,
 ): string {
-  return withStoryStore(zipPath, (store) => searchStoriesFromStore(
+  const data = buildStorySearch(zipPath, pattern, character, lineType, contextLines, maxResults, eventId);
+  if (typeof data === "string") return data;
+  return renderStorySearch(data);
+}
+
+export function buildStorySearch(
+  zipPath: string,
+  pattern: string,
+  character?: string,
+  lineType?: string,
+  contextLines = 1,
+  maxResults = 30,
+  eventId?: string,
+): StorySearchPayload | string {
+  return withStoryStore(zipPath, (store) => buildStorySearchFromStore(
     store,
     pattern,
     character,
@@ -94,13 +130,6 @@ export function searchStories(
     maxResults,
     eventId,
   ));
-}
-
-interface SearchResult {
-  eventId: string;
-  storyCode: string;
-  lineNumber: number;
-  context: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -116,6 +145,28 @@ export function searchStoriesFromStore(
   maxResults = 30,
   eventId?: string,
 ): string {
+  const data = buildStorySearchFromStore(
+    store,
+    pattern,
+    character,
+    lineType,
+    contextLines,
+    maxResults,
+    eventId,
+  );
+  if (typeof data === "string") return data;
+  return renderStorySearch(data);
+}
+
+export function buildStorySearchFromStore(
+  store: JsonStore,
+  pattern: string,
+  character?: string,
+  lineType?: string,
+  contextLines = 1,
+  maxResults = 30,
+  eventId?: string,
+): StorySearchPayload | string {
   if (maxResults < 1) return "max_results 必须 >= 1。";
   if (maxResults > 100) return "max_results 必须 <= 100。";
   if (contextLines < 0) return "context_lines 必须 >= 0。";
@@ -130,7 +181,7 @@ export function searchStoriesFromStore(
 
   if (lineType !== undefined && !VALID_LINE_TYPES.has(lineType)) {
     const valid = Array.from(VALID_LINE_TYPES).sort().join(", ");
-    return `无效的 line_type：${JSON.stringify(lineType)}，可选值：${valid}`;
+    return `无效的 line_type：${pyRepr(lineType)}，可选值：${valid}`;
   }
 
   let index: StorySearchIndex;
@@ -141,10 +192,10 @@ export function searchStoriesFromStore(
   }
 
   if (eventId !== undefined && !index.eventIds.has(eventId)) {
-    return `未找到匹配的活动：${JSON.stringify(eventId)}。`;
+    return `未找到匹配的活动：${pyRepr(eventId)}。`;
   }
 
-  const results: SearchResult[] = [];
+  const results: StorySearchPayload["results"] = [];
 
   for (const record of index.records) {
     if (results.length >= maxResults) break;
@@ -162,33 +213,56 @@ export function searchStoriesFromStore(
 
     const start = Math.max(0, record.lineIndex - contextLines);
     const end = Math.min(chapter.lines.length, record.lineIndex + contextLines + 1);
-    const ctxParts: string[] = [];
+    const context: StorySearchPayload["results"][number]["context"] = [];
     for (let j = start; j < end; j++) {
-      const prefix = j === record.lineIndex ? ">>> " : "    ";
-      ctxParts.push(prefix + formatStoryLine(chapter.lines[j]));
+      context.push({
+        text: formatStoryLine(chapter.lines[j]),
+        is_match: j === record.lineIndex,
+      });
     }
 
     results.push({
-      eventId: chapter.eventId,
-      storyCode: chapter.storyCode,
-      lineNumber: record.lineIndex + 1,
-      context: ctxParts.join("\n"),
+      event_id: chapter.eventId,
+      story_key: chapter.storyKey,
+      story_code: chapter.storyCode,
+      line_number: record.lineIndex + 1,
+      context,
     });
   }
 
+  return {
+    pattern,
+    filters: {
+      character: character ?? null,
+      line_type: lineType ?? null,
+      context_lines: contextLines,
+      event_id: eventId ?? null,
+    },
+    total: results.length,
+    results,
+  };
+}
+
+export function renderStorySearch(data: StorySearchPayload): string {
+  const { pattern, results } = data;
   if (results.length === 0) {
-    const filters: string[] = [];
-    if (eventId) filters.push(`event_id=${JSON.stringify(eventId)}`);
-    if (character) filters.push(`character=${JSON.stringify(character)}`);
-    if (lineType) filters.push(`line_type=${JSON.stringify(lineType)}`);
-    const filterSuffix = filters.length > 0 ? `（过滤条件：${filters.join("。")}）` : "";
+    const filters = data.filters;
+    const filterDesc = [
+      filters.event_id ? `event_id=${pyRepr(filters.event_id)}` : "",
+      filters.character ? `character=${pyRepr(filters.character)}` : "",
+      filters.line_type ? `line_type=${pyRepr(filters.line_type)}` : "",
+    ].filter(Boolean).join("。");
+    const filterSuffix = filterDesc ? `（过滤条件：${filterDesc}）` : "";
     return `未找到匹配 '${pattern}' 的剧情台词。${filterSuffix}`;
   }
 
-  const parts: string[] = [`# 搜索 "${pattern}" 的结果（共 ${results.length} 条）`];
+  const parts: string[] = [`# 搜索 "${pattern}" 的结果（共 ${data.total} 条）`];
   for (const r of results) {
+    const context = r.context
+      .map((item) => `${item.is_match ? ">>> " : "    "}${item.text}`)
+      .join("\n");
     parts.push(
-      `\n---\n\n[stories/${r.eventId}/${r.storyCode} L${r.lineNumber}]\n${r.context}`
+      `\n---\n\n[stories/${r.event_id}/${r.story_code} L${r.line_number}]\n${context}`
     );
   }
 

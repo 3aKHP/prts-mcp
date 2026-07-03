@@ -1,0 +1,10 @@
+{
+  "query": "不存在",
+  "search_mode": "text",
+  "filters": {
+    "limit": 5,
+    "filter_technical": true
+  },
+  "total": 0,
+  "results": []
+}

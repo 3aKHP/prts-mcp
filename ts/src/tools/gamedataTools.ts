@@ -18,21 +18,18 @@ import {
   buildEnemyInfo,
   renderEnemiesListing,
   renderEnemyInfo,
-  searchEnemies,
 } from "../data/enemy.js";
 import {
   buildStageInfo,
   buildStagesListing,
   renderStageInfo,
   renderStagesListing,
-  searchStages,
 } from "../data/stage.js";
 import {
   buildItemInfo,
   buildItemsListing,
   renderItemInfo,
   renderItemsListing,
-  searchItems,
 } from "../data/item.js";
 import {
   buildEnemyAppearances,
@@ -41,7 +38,7 @@ import {
   renderEnemyAppearances,
   renderStageEnemies,
 } from "../data/stageEnemy.js";
-import { searchOperatorData } from "../data/search.js";
+import { buildSearch, renderSearch } from "../data/search.js";
 import { renderResult, textResult, type OutputChannel } from "../output.js";
 
 export function registerGamedataTools(server: McpServer, channel: OutputChannel = "content"): void {
@@ -274,17 +271,9 @@ export function registerGamedataTools(server: McpServer, channel: OutputChannel 
       max_results: z.number().int().min(1).max(100).default(30).describe("返回结果数量上限，默认 30。"),
     },
     ({ scope, pattern, max_results }) => {
-      const searchers: Record<string, (p: string, n: number) => string> = {
-        operators: searchOperatorData,
-        enemies: searchEnemies,
-        stages: searchStages,
-        items: searchItems,
-      };
-      const fn = searchers[scope];
-      if (!fn) {
-        return { content: [{ type: "text", text: `不支持的搜索域：${JSON.stringify(scope)}。可选：operators、enemies、stages、items。` }] };
-      }
-      return { content: [{ type: "text", text: fn(pattern, max_results) }] };
+      const data = buildSearch(scope, pattern, max_results);
+      if (typeof data === "string") return textResult(data);
+      return renderResult(data, renderSearch(data), channel);
     }
   );
 }

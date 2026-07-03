@@ -1,0 +1,15 @@
+{
+  "query": "阿米娅",
+  "search_mode": "text",
+  "filters": {
+    "limit": 1,
+    "filter_technical": true
+  },
+  "total": 9,
+  "results": [
+    {
+      "title": "阿米娅",
+      "snippet": "罗德岛公开领袖。"
+    }
+  ]
+}

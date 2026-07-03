@@ -377,16 +377,7 @@ def test_search_prts_build_render_and_totalhits(monkeypatch: pytest.MonkeyPatch)
 
     data = asyncio.run(_build_prts_search("阿米娅", limit=1))
 
-    assert data == {
-        "query": "阿米娅",
-        "search_mode": "text",
-        "filters": {
-            "limit": 1,
-            "filter_technical": True,
-        },
-        "total": 9,
-        "results": [{"title": "阿米娅", "snippet": "罗德岛公开领袖。"}],
-    }
+    assert data == _load_parity_fixture("search_prts.json")
     assert _render_prts_search(data) == (
         "# 搜索 \"阿米娅\"（共 9 条匹配）\n"
         "**阿米娅**\n"
@@ -437,16 +428,7 @@ def test_search_prts_empty_is_structured_empty(monkeypatch: pytest.MonkeyPatch) 
 
     data = asyncio.run(_build_prts_search("不存在"))
 
-    assert data == {
-        "query": "不存在",
-        "search_mode": "text",
-        "filters": {
-            "limit": 5,
-            "filter_technical": True,
-        },
-        "total": 0,
-        "results": [],
-    }
+    assert data == _load_parity_fixture("search_prts_empty.json")
     assert _render_prts_search(data) == "未找到与 '不存在' 相关的词条。"
 
 

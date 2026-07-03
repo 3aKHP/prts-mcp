@@ -15,9 +15,58 @@ import {
   getLinks,
   getTemplateData,
 } from "../api/prtsWiki.js";
-import type { OutputChannel } from "../output.js";
+import { renderResult, textResult, type OutputChannel } from "../output.js";
 
-export function registerPrtsTools(server: McpServer, _channel: OutputChannel = "content"): void {
+export interface PrtsSearchPayload {
+  query: string;
+  search_mode: "text" | "title";
+  filters: {
+    limit: number;
+    filter_technical: boolean;
+  };
+  total: number;
+  results: Array<{
+    title: string;
+    snippet: string;
+  }>;
+}
+
+export async function buildPrtsSearch(
+  query: string,
+  limit = 5,
+  searchMode: "text" | "title" | string = "text",
+  filterTechnical = true,
+): Promise<PrtsSearchPayload | string> {
+  if (searchMode !== "text" && searchMode !== "title") {
+    return "无效的 search_mode 参数，可选值：text、title。";
+  }
+  const result = await searchPrts(query, limit, searchMode, filterTechnical);
+  return {
+    query,
+    search_mode: searchMode,
+    filters: {
+      limit,
+      filter_technical: filterTechnical,
+    },
+    total: result.totalHits,
+    results: result.results.map((r) => ({
+      title: r.title,
+      snippet: r.snippet,
+    })),
+  };
+}
+
+export function renderPrtsSearch(data: PrtsSearchPayload): string {
+  const { query, results } = data;
+  if (results.length === 0) return `未找到与 '${query}' 相关的词条。`;
+  const header = `# 搜索 "${query}"（共 ${data.total} 条匹配）\n`;
+  const body = results
+    .map((r) => `**${r.title}**\n${r.snippet}`)
+    .join("\n\n---\n\n");
+  return header + body;
+}
+
+export function registerPrtsTools(server: McpServer, channel: OutputChannel = "content"): void {
   server.tool(
     "search_prts",
     [
@@ -31,15 +80,13 @@ export function registerPrtsTools(server: McpServer, _channel: OutputChannel = "
       filter_technical: z.boolean().default(true).describe("是否过滤 /spine、/data 等技术页面，默认 true。"),
     },
     async ({ query, limit, search_mode, filter_technical }) => {
-      const result = await searchPrts(query, limit, search_mode, filter_technical);
-      if (result.results.length === 0) {
-        return { content: [{ type: "text", text: `未找到与 '${query}' 相关的词条。` }] };
+      try {
+        const data = await buildPrtsSearch(query, limit, search_mode, filter_technical);
+        if (typeof data === "string") return textResult(data);
+        return renderResult(data, renderPrtsSearch(data), channel);
+      } catch (e) {
+        return textResult(`搜索 PRTS 失败：${e instanceof Error ? e.message : String(e)}`);
       }
-      const header = `# 搜索 "${query}"（共 ${result.totalHits} 条匹配）\n`;
-      const body = result.results
-        .map((r) => `**${r.title}**\n${r.snippet}`)
-        .join("\n\n---\n\n");
-      return { content: [{ type: "text", text: header + body }] };
     }
   );
 
@@ -61,41 +108,41 @@ export function registerPrtsTools(server: McpServer, _channel: OutputChannel = "
       try {
         if (action === "read") {
           const text = await readPage(page_title, section_index);
-          return { content: [{ type: "text", text }] };
+          return textResult(text);
         }
         if (action === "sections") {
           const sections = await listSections(page_title);
           if (sections.length === 0) {
-            return { content: [{ type: "text", text: `页面 '${page_title}' 没有章节目录。` }] };
+            return textResult(`页面 '${page_title}' 没有章节目录。`);
           }
-          return { content: [{ type: "text", text: sections.map((s) => `[${s.index}] L${s.level} ${s.line}`).join("\n") }] };
+          return textResult(sections.map((s) => `[${s.index}] L${s.level} ${s.line}`).join("\n"));
         }
         if (action === "categories") {
           const cats = await getCategories(page_title);
           if (cats.length === 0) {
-            return { content: [{ type: "text", text: `页面 '${page_title}' 没有分类标签。` }] };
+            return textResult(`页面 '${page_title}' 没有分类标签。`);
           }
-          return { content: [{ type: "text", text: cats.map((c) => `- ${c}`).join("\n") }] };
+          return textResult(cats.map((c) => `- ${c}`).join("\n"));
         }
         if (action === "links") {
           const result = await getLinks(page_title, direction, limit);
           if (result.links.length === 0) {
             const dirLabel = direction === "outbound" ? "出站" : "入站";
-            return { content: [{ type: "text", text: `页面 '${page_title}' 没有${dirLabel}链接。` }] };
+            return textResult(`页面 '${page_title}' 没有${dirLabel}链接。`);
           }
           const suffix = result.hasMore
             ? `\n（共 ${result.total} 条，还有更多）`
             : `\n（共 ${result.total} 条）`;
-          return { content: [{ type: "text", text: result.links.map((ln) => `- ${ln}`).join("\n") + suffix }] };
+          return textResult(result.links.map((ln) => `- ${ln}`).join("\n") + suffix);
         }
         // action === "template"
         const templates = await getTemplateData(page_title);
         if (Object.keys(templates).length === 0) {
-          return { content: [{ type: "text", text: `页面 '${page_title}' 未找到可提取的模板数据。` }] };
+          return textResult(`页面 '${page_title}' 未找到可提取的模板数据。`);
         }
-        return { content: [{ type: "text", text: JSON.stringify(templates, null, 2) }] };
+        return textResult(JSON.stringify(templates, null, 2));
       } catch (e) {
-        return { content: [{ type: "text", text: e instanceof Error ? e.message : String(e) }] };
+        return textResult(e instanceof Error ? e.message : String(e));
       }
     }
   );
