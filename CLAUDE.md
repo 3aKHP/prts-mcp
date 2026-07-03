@@ -56,33 +56,34 @@ PRTS-MCP 是面向明日方舟同人创作的 MCP Server，包含 Python（stdio
 
 | 分支 | 用途 | 版本号后缀 |
 |------|------|-----------|
-| `main` | 最新稳定发布。2.0 发布前指向 1.7.0 LTS | （无） |
+| `main` | 最新稳定发布。当前为 2.0.1 | （无） |
 | `lts/1.7` | 1.7.x 长期维护线，从 1.7.0 发布提交创建 | （无） |
-| `dev` | 2.0 开发集成。所有非 LTS 改动 PR 到这里 | `.dev0`（下个目标版本如 `2.0.0.dev0`） |
+| `develop` | 开发集成线。所有非 LTS 改动 PR 到这里 | `.dev0`（下个目标版本如 `2.0.2.dev0`） |
 
 合并方向：
 
 ```
-feat/refactor/perf/docs/* ───────→ dev ──→ main（2.0 发布时）
-fix/docs/*（1.7 LTS）────────────→ lts/1.7 ──→ dev（适用时 cherry-pick）
-fix/*（最新稳定 hotfix）────────→ main ──→ dev（forward merge / cherry-pick）
+feat/refactor/perf/docs/* ───────→ develop
+release/* ───────────────────────→ main + develop
+fix/docs/*（1.7 LTS）────────────→ lts/1.7 ──→ develop（适用时 cherry-pick）
+fix/*（最新稳定 hotfix）────────→ main ──→ develop（forward merge / cherry-pick）
 ```
 
-不允许反向合并（`dev → feature`、`main → dev`、`lts/1.7 → dev` 以外的方向）。
+不允许反向合并。允许的同步方向只有：`release/* → main`、`release/* → develop`、`main → develop`（hotfix forward merge）和 `lts/1.7 → develop`（适用时 cherry-pick / reimplement）。
 
 ## 启动准则
 
 三条硬规则：
 
 - **需明确指令才 Commit**。对话里讨论到"要提交"不算指令，必须出现"请提交 / 请 commit / 请开 PR"这类明确祈使句
-- **不在长期分支直接工作**。所有 2.0 feat / refactor / perf / 非紧急 fix / docs / chore 都 PR 到 `dev`；1.7.x 兼容性、安全性、数据同步和关键缺陷修复 PR 到 `lts/1.7`；最新稳定 hotfix 才 PR 到 `main`
+- **不在长期分支直接工作**。所有 2.0 feat / refactor / perf / 非紧急 fix / docs / chore 都 PR 到 `develop`；1.7.x 兼容性、安全性、数据同步和关键缺陷修复 PR 到 `lts/1.7`；最新稳定 hotfix 才 PR 到 `main`
 - **不主动 push**。即使刚 commit 完，也等用户说"请推"
 
 ## 分支命名
 
 `<type>/v<version>-<topic>`，type 用 Conventional Commits 的类型。
 
-- PR 到 `dev`：version = 下个目标版本（如 `feat/v2.0.0-tool-surface`）
+- PR 到 `develop`：version = 下个目标版本（如 `feat/v2.0.2-output-channel-fix`）
 - PR 到 `lts/1.7`：version = 即将发布的 1.7 patch（如 `fix/v1.7.1-sync-schema`）
 - PR 到 `main`（最新稳定 hotfix）：version = 即将发布的 patch（如 `fix/v2.0.1-critical-bug`）
 
@@ -93,23 +94,23 @@ fix/*（最新稳定 hotfix）────────→ main ──→ dev（f
 
 ## 单次迭代循环
 
-### 路径 A：普通改动（→ dev）
+### 路径 A：普通改动（→ develop）
 
 用于 feat / refactor / perf / 非紧急 fix / docs / chore。
 
 1. **对齐计划**：动手前用 1-2 段话描述打算做什么、拆成几个 commit、可能的风险。等用户点头
-2. **拉分支**：从 `dev` 拉，按上面的命名约定
+2. **拉分支**：从 `develop` 拉，按上面的命名约定
 3. **动手**：按 commit 主题分批提交，每个中间 commit 都能独立编译（bisect-friendly）
 4. **本地验证**：
    - Windows 本机一键验证：`.\scripts\check-runtime.ps1 -Full`
    - Python: `cd python && E:\Anaconda3\envs\python311\python.exe -m pytest tests -q`
    - TypeScript: `cd ts && npm.cmd test && npm.cmd run typecheck`
    - 双实现同步改动时两边都要跑
-5. **推分支 + 开 PR**：PR 目标为 `dev`，PR body 包含 Summary / Test plan / 未尽事宜三段
+5. **推分支 + 开 PR**：PR 目标为 `develop`，PR body 包含 Summary / Test plan / 未尽事宜三段
 6. **独立 CR**：spawn 子代理做独立 review（见下文）
 7. **应对 CR**：blocking 和 should-fix 处理掉，推到同分支；nits 酌情
-8. **人类 merge**：Claude 不做 merge，等用户确认合并到 `dev`
-9. **本地清扫**：`git checkout dev && git pull && git branch -d <branch> && git remote prune origin`
+8. **人类 merge**：Claude 不做 merge，等用户确认合并到 `develop`
+9. **本地清扫**：`git checkout develop && git pull && git branch -d <branch> && git remote prune origin`
 
 ### 路径 B：1.7 LTS 修复（→ lts/1.7）
 
@@ -120,7 +121,7 @@ fix/*（最新稳定 hotfix）────────→ main ──→ dev（f
 3. **推分支 + 开 PR**：PR 目标为 `lts/1.7`
 4. **独立 CR** → **应对 CR** → **人类 merge** 到 `lts/1.7`
 5. **打 tag**：`git tag python/v1.7.x && git tag ts/v1.7.x && git push origin python/v1.7.x ts/v1.7.x`
-6. **同步到 2.0**：如果修复也适用于 2.0，cherry-pick 或重做到 `dev`
+6. **同步到 2.0**：如果修复也适用于 2.0，cherry-pick 或重做到 `develop`
 7. **本地清扫**：`git checkout lts/1.7 && git pull && git branch -d <branch> && git remote prune origin`
 
 ### 路径 C：最新稳定紧急修复（→ main，hotfix）
@@ -130,27 +131,30 @@ fix/*（最新稳定 hotfix）────────→ main ──→ dev（f
 3. **推分支 + 开 PR**：PR 目标为 `main`
 4. **独立 CR** → **应对 CR** → **人类 merge** 到 `main`
 5. **打 tag**：`git tag python/vX.Y.Z && git tag ts/vX.Y.Z && git push origin --tags`
-6. **forward merge**：`git checkout dev && git merge main`（把 fix 同步回 dev）
-7. **本地清扫**：`git checkout dev && git pull && git branch -d <branch> && git remote prune origin`
+6. **同步回开发线**：开 back-merge PR（`main` → `develop`，或从 `develop` 拉临时分支 merge `main` 后 PR 到 `develop`）
+7. **本地清扫**：`git checkout develop && git pull && git branch -d <branch> && git remote prune origin`
 
-### 路径 D：dev 发布（dev → main）
+### 路径 D：标准 GitFlow 发布（release/* → main + develop）
 
-dev 上改动累积到发布时机时：
+`develop` 上改动累积到发布时机时：
 
-1. 确认 dev 上 `[Unreleased]` 段内容齐全
-2. 去掉版本号 `-dev` 后缀（`pyproject.toml` + `package.json`）
-3. CHANGELOG：`[Unreleased]` → `[X.Y.Z] - YYYY-MM-DD`，release PR 到 `main` 时不保留空 `[Unreleased]`
-4. PR：`dev` → `main`（纯合并 PR）
-5. **独立 CR** → **应对 CR** → **人类 merge**
-6. 打 tag：`git tag python/vX.Y.Z && git tag ts/vX.Y.Z && git push origin --tags`
-7. `git checkout dev && git merge main`
-8. 在 dev 上 bump 版本到下一目标 + 加回 `-dev` 后缀，commit
-9. `git push origin dev main --tags`
-10. **本地清扫**：`git checkout dev && git pull`
+1. 从 `develop` 拉 `release/vX.Y.Z`
+2. 在 release 分支确认 `[Unreleased]` 段内容齐全
+3. 去掉版本号 `-dev` 后缀（`python/pyproject.toml` + `ts/package.json` + `ts/package-lock.json`）
+4. CHANGELOG：`[Unreleased]` → `[X.Y.Z] - YYYY-MM-DD`，release PR 到 `main` 时不保留空 `[Unreleased]`
+5. 同步 `STATUS.md` / `ROADMAP.md` / `ROADMAP.zh-CN.md` / `README.md` 的当前稳定版本口径
+6. 跑 `.\scripts\check-runtime.ps1 -Full`
+7. PR：`release/vX.Y.Z` → `main`
+8. **独立 CR** → **应对 CR** → **人类 merge** 到 `main`
+9. 在 `main` 的 merge commit 上打 tag：`git tag python/vX.Y.Z && git tag ts/vX.Y.Z && git push origin python/vX.Y.Z ts/vX.Y.Z`
+10. PR：同一个 `release/vX.Y.Z` → `develop`（不要 squash，保留 release merge 语义）
+11. 从更新后的 `develop` 拉 `chore/vNext-open-development`，bump 到下一目标版本 + 加回 `-dev` / `.dev0` 后缀，并重新打开空 `[Unreleased]` 段
+12. PR：`chore/vNext-open-development` → `develop`
+13. **本地清扫**：`git checkout develop && git pull && git branch -d release/vX.Y.Z chore/vNext-open-development && git remote prune origin`
 
 ### 路径 E：1.7.0 LTS 发布
 
-1. 从 `dev` 拉 `release/v1.7.0-lts`
+1. 从 `develop` 拉 `release/v1.7.0-lts`
 2. 去掉版本号 `-dev` 后缀（`pyproject.toml` + `package.json` + `package-lock.json`）
 3. CHANGELOG：`[Unreleased]` → `[1.7.0] - YYYY-MM-DD`，声明 1.7 LTS 基线
 4. 同步 `STATUS.md` / `ROADMAP.md` / `ROADMAP.zh-CN.md` / `README.md` / `docs/dev/LTS.md`
@@ -159,7 +163,7 @@ dev 上改动累积到发布时机时：
 7. **独立 CR** → **应对 CR** → **人类 merge**
 8. 在 `main` merge commit 上打 tag：`python/v1.7.0` 和 `ts/v1.7.0`
 9. 从同一个 merge commit 创建并推送 `lts/1.7`
-10. `git checkout dev && git merge main`，然后 bump 到 `2.0.0.dev0` 并重新打开空 `[Unreleased]`
+10. 将同一个 release 分支 merge 回 `develop`，然后 bump 到 `2.0.0.dev0` 并重新打开空 `[Unreleased]`
 
 ## Commit 规范
 
@@ -214,8 +218,8 @@ EOF
 
 | 文件 | 内容 |
 |------|------|
-| `python/pyproject.toml` | `version` 字段（dev 分支带 `.dev0` 后缀） |
-| `ts/package.json` | `version` 字段（dev 分支带 `-dev.0` 后缀） |
+| `python/pyproject.toml` | `version` 字段（develop 分支带 `.dev0` 后缀） |
+| `ts/package.json` | `version` 字段（develop 分支带 `-dev.0` 后缀） |
 | `python/CHANGELOG.md` | 新版本条目 |
 | `ts/CHANGELOG.md` | 新版本条目 |
 | `ts/package-lock.json` | npm lockfile 顶层版本 |
@@ -224,7 +228,7 @@ EOF
 
 涉及用户可见行为变化时，顺手更新 `README.md`。
 
-**打 tag 时使用实现级前缀**，CI 的 CD workflow 按前缀分发。Tag 必须打在 `main` 分支的 merge commit 上（不在 `dev` 打 tag）：
+**打 tag 时使用实现级前缀**，CI 的 CD workflow 按前缀分发。Tag 必须打在 `main` 分支的 merge commit 上（不在 `develop` 打 tag）：
 
 ```bash
 git tag python/v1.3.1 && git tag ts/v1.3.1
