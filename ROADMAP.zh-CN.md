@@ -1,16 +1,16 @@
 # PRTS-MCP 路线图
 
-_最近更新：2026-07-02_ · [English](ROADMAP.md)
+_最近更新：2026-07-03_ · [English](ROADMAP.md)
 
 PRTS-MCP 已进入 1.x 稳定期。1.7.0 是最后一个 1.x 功能版本和 1.7 LTS 基线。本文档记录**接下来要做什么**——已发布的内容请查看 Python 和 TypeScript 各自的 CHANGELOG。
 
 ## 当前发布
 
-- Python：`1.7.0` LTS
-- TypeScript：`1.7.0` LTS
-- LTS 发布后 `dev` 分支当前目标版本：`2.0.0-dev`
-- 1.7 LTS 线冻结 32 个公共 MCP 工具（CI 强制检查）。
-- 0.x → 1.0 迁移说明见 [迁移指南](docs/migration-0.x-to-1.0.md)。
+- Python：`1.7.0` LTS _（稳定线）_
+- TypeScript：`1.7.0` LTS _（稳定线）_
+- `dev` 分支：**2.0 开发**——工具面合并（32 → 23）与 output channel（structuredContent）已在 `dev` 落地；双端协议同步后置到 2.0 之后。
+- 1.7 LTS 线冻结 32 个公共 MCP 工具（CI 强制检查）；2.0 `dev` 线为 23 个公共 MCP 工具。
+- 迁移说明：[0.x → 1.0](docs/migration-0.x-to-1.0.md)、[1.x → 2.0](docs/migration-1.x-to-2.0.md)。
 
 ## 1.x 兼容合约
 
@@ -113,22 +113,22 @@ PRTS-MCP 已进入 1.x 稳定期。1.7.0 是最后一个 1.x 功能版本和 1.7
 
 ### 工具面合并（上下文预算）
 
-1.x 工具面在 1.7.0 LTS 时已达到 32 个。旗舰长上下文模型不在乎；但对 128K 级别模型，每个工具 schema 都吃 prompt 预算并降低工具选择准确率。
+1.x 工具面在 1.7.0 LTS 时已达到 32 个。旗舰长上下文模型不在乎；但对 128K 级别模型，每个工具 schema 都吃 prompt 预算并降低工具选择准确率。2.0 按 *schema 形态* 在服务端合并——合并参数结构和输出形态相似的工具，保留语义真正不同的工具——把工具面降到 **23 个**，不损失能力。
 
-**背景**：MCP 协议层目前无原生 deferred tool loading 支持。已关闭 提案：lazy hydration（#1978）、lazyRegistration（#2376）。开放草案： tool-search query（#1821）、token-bloat 缓解（#1576）。Claude Code 的 ToolSearch 是 Anthropic API 层特性（`tool_reference` blocks）， 不能移植到 Cursor / Cline / Chatbox。
+**背景**：MCP 协议层目前无原生 deferred tool loading 支持。已关闭提案：lazy hydration（#1978）、lazyRegistration（#2376）。开放草案：tool-search query（#1821）、token-bloat 缓解（#1576）。Claude Code 的 ToolSearch 是 Anthropic API 层特性（`tool_reference` blocks），不能移植到 Cursor / Cline / Chatbox。
 
-**方法**：服务端按 *schema 形态* 合并，而非按数据域合并。合并参数 结构和输出形态相似的工具，保留语义真正不同的工具。预估缩减： 24 → ~16 个工具（约 1/3），不损失能力。
+**已在 2.0 交付**：
 
-**阶段一（2.0 迁移设计）**：
-
-- `search(scope, pattern, ...)` 合并 `search_data` / `search_stories` /
-  `search_enemies` / `list_search_scopes`。四者参数形态完全相同，
-  仅 `scope` 不同。
-- `prts_page(page_title, action, ...)` 合并 `read_prts_page` /
-  `list_prts_sections` / `get_prts_categories` / `get_prts_links` /
-  `get_prts_template`。共享主键 `page_title`，`action` 选择子操作。
-
-**阶段二（2.0）**：按最终 2.0 迁移方案移除或隐藏 deprecated 旧别名。 1.7 LTS 线保留现有 32 工具面。
+- `search(scope, pattern, max_results)` 把 `search_data` / `search_enemies` /
+  `search_stages` / `search_items` / `list_search_scopes` 合并为一个以 `scope`
+  enum（`operators` / `enemies` / `stages` / `items`）为键的工具。剧情台词搜索仍为
+  独立的 `search_stories`，因其过滤器（角色、台词类型、上下文行）形态不同。
+- `prts_page(page_title, action, ...)` 把 `read_prts_page` / `list_prts_sections` /
+  `get_prts_categories` / `get_prts_links` / `get_prts_template` 合并为一个以
+  `action` enum 为键的工具。
+- `list_stories(event_id, include_summaries=true)` 现前置活动级 LLM 概览，吸收了
+  原 `get_event_summary`。单章深摘要工具 `get_story_summary` 不变。
+- 这三次合并背后的 deprecated 旧别名从 2.0 工具面移除。1.7 LTS 线保留现有 32 工具面。
 
 **明确不合并的部分**：
 
@@ -139,26 +139,38 @@ PRTS-MCP 已进入 1.x 稳定期。1.7.0 是最后一个 1.x 功能版本和 1.7
 - 剧情工具（`read_story` / `read_activity` / `get_story_summary`）：
   在相关但不同的数据上做真正不同的动作。
 
-合并的门槛：参数形态相同、输出长度和结构相似、LLM 在它们之间 做选择本质上是在选近义词。
+合并的门槛：参数形态相同、输出长度和结构相似、LLM 在它们之间做选择本质上是在选近义词。
 
-### 输出格式可选
+### Output channel（structuredContent）
 
-- 新增可选 `output_format=markdown|json` 参数，1.x 默认
-  `markdown`（增量、不破坏）。
-- JSON 模式返回结构化对象，便于下游自动化。
-- 2.0 翻转**默认值**为 `json`，这才是 break point。
-- markdown 在 2.0 仍可显式选择，不删除。
+2.0 经 MCP 原生 `structuredContent` 字段新增结构化输出。控制面是单个**连接级**
+`output_channel` 开关（`content`（默认）/ `structured` / `both`），Python 经
+`PRTS_OUTPUT_CHANNEL` 环境变量设置，TypeScript 经查询字符串 / 请求头 / 环境变量设置。
+结构化工具（17 个）携带真实结构化载荷，含可链式调用的 ID 与 raw/label 字段对；
+叙事工具（6 个）仅 content。默认 `content` 通道保留 1.x 人类可读的 markdown 输出，
+故不支持的客户端（如 Chatbox）无需配置即不受影响。
 
-原计划希望 1.x 期间先提供 opt-in。现在 1.7 已成为 LTS 线，具体迁移 路径归入 2.0 设计阶段，并必须在首个 2.0 预发布前写清楚。
+**设计选择——用通道，而非 per-call 格式参数。** 原路线图提出 per-call 的
+`output_format=markdown|json` 参数，并在 2.0 把默认翻转为 `json`。**该形态在设计阶段被
+否决。** 主要消费者是 LLM agent，JSON 会令 prompt token 膨胀 ~15–30%——这将抵消工具面
+合并带来的上下文预算收益。因此 markdown 始终作为 `content` 文本，结构化数据走独立通道，
+两轴正交。**默认不**翻转为 JSON。
+
+各工具的通道映射与客户端配置见 [2.0 迁移指南](docs/migration-1.x-to-2.0.md)。
 
 ### 双实现等价化（Python ↔ TypeScript）
 
-目前两套实现存在事实上的角色分工：Python 主要面向 Docker / stdio， TypeScript 主要面向 `npm install -g` / HTTP。2.0 取消这种不对称：
+2.0 收窄但未取消两套实现之间事实上的角色分工。**已在 2.0 交付**：
 
-- 两套实现都同时支持 stdio **和** Streamable HTTP。
-- npm 包和 PyPI 包能力对等。
-- 环境变量名称和默认值统一。
-- 部署推荐折叠为"用你 stack 里顺手的那个 runtime 即可"。
+- npm 包和 PyPI 包的**能力面对等**——相同的 23 个工具名、参数、structuredContent 载荷，
+  以及跨实现共享的 parity fixture。
+- 环境变量名称和默认值统一（`PRTS_OUTPUT_CHANNEL`、`GAMEDATA_PATH`、`STORYJSON_PATH`、
+  `GITHUB_TOKEN`、`GITHUB_MIRRORS`）。
+
+**后置到 2.0 之后——跨传输协议同步。** 原目标「两套实现都同时支持 stdio **和**
+Streamable HTTP」（Python 上 HTTP、TypeScript 上 stdio）推迟到后续版本。2.0 仍按 1.x 的
+传输分工发布：Python = stdio（FastMCP），TypeScript = Streamable HTTP（Express）。因此
+部署推荐维持「Python 用于 Docker / 本地 stdio，TypeScript 用于 `npm install -g` / HTTP」。
 
 ### 清理
 

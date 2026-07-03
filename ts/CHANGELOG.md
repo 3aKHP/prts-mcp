@@ -8,6 +8,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Added
 
+- **Output channel design replaces the per-call `output_format` parameter
+  (2.0 design decision).** The original roadmap proposed an optional
+  `output_format=markdown|json` parameter with 2.0 flipping the default to
+  `json`. **That shape was rejected during design.** The primary consumer is an
+  LLM agent, and JSON inflates prompt tokens ~15–30% versus markdown — which
+  would negate the context-budget savings the tool-surface consolidation
+  delivers. 2.0 instead keeps markdown as the always-on `content` text and
+  carries structured data on MCP's native `structuredContent` field, selected
+  by a **connection-level** `output_channel` knob (`content` (default) /
+  `structured` / `both`) via query string / `x-prts-output-channel` header /
+  `PRTS_OUTPUT_CHANNEL` env. The default is **not** flipped to JSON. See
+  [`docs/migration-1.x-to-2.0.md`](../docs/migration-1.x-to-2.0.md) for the
+  per-tool channel mapping and client configuration. _(The Python implementation
+  additionally documents a "narrative-tool wire slimming" entry for dropping
+  FastMCP's automatic `outputSchema={result:string}` wrapper; the TS transport
+  has no equivalent auto-wrapper, so narrative tools are simply part of the
+  content-only delivery path here.)_
 - **Output channel pilot (2.0).** Streamable HTTP sessions can opt into
   `output_channel=structured` or `output_channel=both` via query string,
   `x-prts-output-channel` header, or `PRTS_OUTPUT_CHANNEL`. This first TS
