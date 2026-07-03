@@ -478,3 +478,28 @@ def test_search_stories_missing_zip_is_content_only(
         "剧情数据未就绪。请设置 STORYJSON_PATH 环境变量指向 zh_CN.zip，"
         "或等待服务器自动从 GitHub Release 下载完成后重试。"
     )
+
+
+def test_list_story_events_missing_zip_is_content_only(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    # Regression for #42: list_story_events returned a bare str on the
+    # missing-zip path, which FastMCP then wrapped into an automatic
+    # structuredContent={"result": ...}. The fix routes it through
+    # text_result(...) so the missing-data message stays content-only.
+    monkeypatch.setenv("STORYJSON_PATH", str(tmp_path / "missing.zip"))
+    app = FastMCP("story-test")
+    register_story_tools(app)
+
+    result = asyncio.run(
+        app._tool_manager.call_tool(
+            "list_story_events", {}, convert_result=True,
+        )
+    )
+
+    assert result.structuredContent is None
+    assert result.content[0].text == (
+        "剧情数据未就绪。请设置 STORYJSON_PATH 环境变量指向 zh_CN.zip，"
+        "或等待服务器自动从 GitHub Release 下载完成后重试。"
+    )

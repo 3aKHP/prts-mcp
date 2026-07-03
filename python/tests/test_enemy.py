@@ -180,6 +180,23 @@ class TestListEnemies:
         r = render_result(data, list_enemies(offset=999), channel="structured")
         assert r.structuredContent == data
 
+    def test_filter_no_match_is_structured_no_empty_reason(self, gamedata):
+        # Locks the current filter-no-match payload shape. Distinct from the
+        # offset_out_of_range case: a filter that matches nothing has total=0,
+        # so there is no "page vs dataset" ambiguity to disambiguate and the
+        # payload carries NO empty_reason marker (just the normal empty
+        # listing). Documented, not changed — adding empty_reason="no_match"
+        # would be a wider contract change (renderer + parity + TS).
+        # Fixture exposes BOSS (霜星) + NORMAL (源石虫); "elite" matches none.
+        data = build_enemies_listing(threat_level="elite")
+        assert isinstance(data, dict)
+        assert data["total"] == 0
+        assert data["enemies"] == []
+        assert "empty_reason" not in data
+        assert list_enemies(threat_level="elite") == "# 敌人图鉴（共 0 个）"
+        r = render_result(data, list_enemies(threat_level="elite"), channel="structured")
+        assert r.structuredContent == data
+
     def test_threat_level_invalid_returns_error(self, gamedata):
         out = list_enemies(threat_level="INVALID")
         assert "无效的 threat_level" in out

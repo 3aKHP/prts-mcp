@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Fixed
+
+- `list_story_events` no longer emits a spurious `structuredContent` wrapper
+  when story data is not yet available, matching the other eight story tools
+  (which already delivered the missing-data message as content-only text).
+
 ## [2.0.0] - 2026-07-03
 
 ### Added

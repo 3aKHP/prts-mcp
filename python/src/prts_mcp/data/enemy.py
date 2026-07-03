@@ -149,47 +149,6 @@ _IMMUNITY_LABELS: dict[str, str] = {
 }
 
 
-def _fmt_enemy(info: dict, include_id: bool = False) -> str:
-    lines: list[str] = []
-    name = info.get("name", "")
-    if name:
-        lines.append(f"# {name} - 敌人图鉴\n")
-        if include_id:
-            lines.append(f"- **ID**：{info.get('enemyId', '')}")
-
-    enemy_index = info.get("enemyIndex", "")
-    if enemy_index:
-        lines.append(f"- **编号**：{enemy_index}")
-
-    level = info.get("enemyLevel", "")
-    level_zh = _ENEMY_LEVEL_ZH.get(level, level)
-    if level_zh:
-        lines.append(f"- **威胁等级**：{level_zh}")
-
-    desc = info.get("description", "")
-    if desc:
-        lines.append(f"- **描述**：{desc}")
-
-    attack = info.get("attackType") or ""
-    if attack:
-        lines.append(f"- **攻击方式**：{attack}")
-
-    ability = info.get("ability") or ""
-    if ability:
-        lines.append(f"- **特殊能力**：{ability}")
-
-    damage_types: list[str] = info.get("damageType") or []
-    if damage_types:
-        dt_zh = "、".join(_DAMAGE_TYPE_ZH.get(dt, dt) for dt in damage_types)
-        lines.append(f"- **伤害类型**：{dt_zh}")
-
-    enemy_tags: list[str] = info.get("enemyTags") or []
-    if enemy_tags:
-        lines.append(f"- **标签**：{'、'.join(enemy_tags)}")
-
-    return "\n".join(lines)
-
-
 # NOTE: a _fmt_stats helper previously lived here, formatting combat stats
 # from enemy_database.json into markdown. It became dead code when
 # get_enemy_info migrated to _extract_enemy_stats (structured dict) +
@@ -211,8 +170,8 @@ def build_enemies_listing(
 ) -> dict | str:
     """Build the structured payload for an enemies listing.
 
-    Returns the dict payload on success, or a markdown error string on a
-    validation / missing-data / empty-result path.
+    Returns the dict payload on success, including legitimate empty listings,
+    or a markdown error string on a validation / missing-data path.
     """
     if not _has_enemy_data():
         return _missing_data_message()
@@ -248,9 +207,17 @@ def build_enemies_listing(
     entries.sort(key=lambda x: (x[1].get("sortId", 9999), x[0]))
     total = len(entries)
 
-    # Legitimate-but-empty: offset past end (total>0) is a normal structured
-    # payload, not an error (P2b plan §3.4). Filter-no-match (total==0) falls
-    # through to the standard empty-dict path below.
+    # Empty-result semantics (2.0 output-channel contract, intentional
+    # distinction — see test_filter_no_match_is_structured_no_empty_reason):
+    #   - offset_out_of_range: total > 0 but the requested page is past the
+    #     end, so we return a structured payload carrying empty_reason so a
+    #     paging client can tell "no more pages" from a genuine zero dataset.
+    #   - filter no-match: total is legitimately 0, so there is nothing to
+    #     distinguish — it falls through to the standard empty-listing payload
+    #     ({total:0, enemies:[]}) below without an empty_reason marker. Adding
+    #     empty_reason="no_match" here would touch the renderer, parity
+    #     fixtures, and the TS equivalent, and is out of scope for this
+    #     cleanup; raise it as a separate follow-up if a client ever needs it.
     filters_payload = {"threat_level": threat_level, "threat_level_filter": level_filter}
     if not full and offset >= total and total > 0:
         return {
