@@ -295,38 +295,6 @@ const IMMUNITY_LABELS: Record<string, string> = {
   attractImmune: "牵引",
 };
 
-function fmtEnemy(info: EnemyHandbookEntry, includeId = false): string {
-  const lines: string[] = [];
-  const name = info.name ?? "";
-  if (name) {
-    lines.push(`# ${name} - 敌人图鉴\n`);
-    if (includeId) lines.push(`- **ID**：${info.enemyId ?? ""}`);
-  }
-
-  if (info.enemyIndex) lines.push(`- **编号**：${info.enemyIndex}`);
-  const level = info.enemyLevel ?? "";
-  const levelZh = ENEMY_LEVEL_ZH[level] ?? level;
-  if (levelZh) lines.push(`- **威胁等级**：${levelZh}`);
-  if (info.description) lines.push(`- **描述**：${info.description}`);
-  if (info.attackType) lines.push(`- **攻击方式**：${info.attackType}`);
-  if (info.ability) lines.push(`- **特殊能力**：${info.ability}`);
-
-  const damageTypes = info.damageType ?? [];
-  if (damageTypes.length > 0) {
-    const dtZh = damageTypes.map((dt) =>
-      ({ PHYSIC: "物理", MAGIC: "法术", HEAL: "治疗" })[dt] ?? dt
-    ).join("、");
-    lines.push(`- **伤害类型**：${dtZh}`);
-  }
-
-  const tags = info.enemyTags ?? [];
-  if (tags && tags.length > 0) {
-    lines.push(`- **标签**：${tags.join("、")}`);
-  }
-
-  return lines.join("\n");
-}
-
 function formatNumber(n: number): string {
   // Locale-independent thousands separator (matches Python's f"{n:,}").
   return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
