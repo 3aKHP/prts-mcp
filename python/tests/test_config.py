@@ -2,11 +2,9 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
+import prts_mcp.config as config_module
 from prts_mcp.config import Config
 
 
@@ -32,25 +30,17 @@ class TestEffectiveStoryjsonZip:
 
     def test_has_story_data_false_by_default(self, tmp_path):
         # No env vars, no bundled zip at default paths
-        with patch.dict(os.environ, {"GAMEDATA_PATH": str(tmp_path)}, clear=False):
-            os.environ.pop("STORYJSON_PATH", None)
-            cfg = Config.load()
+        missing_default = tmp_path / "storyjson" / "zh_CN.zip"
+        missing_docker = tmp_path / "docker" / "zh_CN.zip"
+        missing_bundled = tmp_path / "bundled" / "zh_CN.zip"
+        with patch.dict(os.environ, {"GAMEDATA_PATH": str(tmp_path)}, clear=True):
+            with patch.object(config_module, "_DEFAULT_STORYJSON_ZIP", missing_default):
+                with patch.object(config_module, "_DOCKER_STORYJSON_ZIP", missing_docker):
+                    with patch.object(config_module, "_BUNDLED_STORYJSON_ZIP", missing_bundled):
+                        cfg = Config.load()
 
-        # On a dev machine without bundled docker paths, should be False
-        # (unless local zip happens to exist at default path)
-        assert isinstance(cfg.has_story_data, bool)
-
-    def test_local_zip_resolves(self):
-        """If the local dev zip exists, effective path should point to it."""
-        local_zip = Path(r"F:\2026-Spring\ArknightsStoryJson\zh_CN.zip")
-        if not local_zip.is_file():
-            pytest.skip("Local zip not available")
-
-        with patch.dict(os.environ, {"STORYJSON_PATH": str(local_zip)}):
-            cfg = Config.load()
-
-        assert cfg.effective_storyjson_zip == local_zip
-        assert cfg.has_story_data is True
+        assert cfg.effective_storyjson_zip is None
+        assert cfg.has_story_data is False
 
 
 class TestEffectiveLevelsPath:

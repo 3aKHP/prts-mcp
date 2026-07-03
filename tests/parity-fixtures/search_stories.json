@@ -1,0 +1,28 @@
+{
+  "pattern": "你好",
+  "filters": {
+    "character": null,
+    "line_type": null,
+    "context_lines": 1,
+    "event_id": null
+  },
+  "total": 1,
+  "results": [
+    {
+      "event_id": "act_test",
+      "story_key": "activities/act_test/level_act_test_01_beg",
+      "story_code": "TEST-1",
+      "line_number": 1,
+      "context": [
+        {
+          "text": "阿米娅：你好，博士。",
+          "is_match": true
+        },
+        {
+          "text": "*罗德岛走廊*",
+          "is_match": false
+        }
+      ]
+    }
+  ]
+}

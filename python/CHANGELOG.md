@@ -4,6 +4,140 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.0.0] - 2026-07-03
+
+### Added
+
+- **Output channel design replaces the per-call `output_format` parameter
+  (2.0 design decision).** The original roadmap proposed an optional
+  `output_format=markdown|json` parameter with 2.0 flipping the default to
+  `json`. **That shape was rejected during design.** The primary consumer is an
+  LLM agent, and JSON inflates prompt tokens ~15–30% versus markdown — which
+  would negate the context-budget savings the tool-surface consolidation
+  delivers. 2.0 instead keeps markdown as the always-on `content` text and
+  carries structured data on MCP's native `structuredContent` field, selected
+  by a **connection-level** `output_channel` knob (`content` (default) /
+  `structured` / `both`) via the `PRTS_OUTPUT_CHANNEL` env var. The default is
+  **not** flipped to JSON. See [`docs/migration-1.x-to-2.0.md`](../docs/migration-1.x-to-2.0.md)
+  for the per-tool channel mapping and client configuration.
+- **Output channel (2.0).** Optional structured-content delivery via MCP's
+  native `structuredContent` channel, controlled by a connection-level
+  `PRTS_OUTPUT_CHANNEL` env var (`content` (default) / `structured` / `both`).
+  The default `content` channel preserves the human-readable markdown content
+  for clients that only consume MCP `content`. Migrated tools intentionally
+  change the MCP manifest/wire shape by replacing FastMCP's automatic
+  `outputSchema={result:string}` plus `structuredContent={"result": markdown}`
+  wrapper with explicit `CallToolResult` delivery, so capable clients no
+  longer receive duplicate markdown unless `both` is selected. `list_stages`
+  is the pilot tool; its `structuredContent` carries both raw enums (e.g.
+  `type=ACTIVITY`) and rendered labels (`type_label=活动`), and legitimate empty
+  pages (filter no-match / offset past end) return structured empty payloads
+  while preserving the original markdown text. The remaining structural tools
+  and the TypeScript implementation follow in subsequent commits. Note:
+  `structured` mode is intended for deployments known to use a
+  structuredContent-capable client — an incapable client (e.g. Chatbox)
+  receives only a one-line summary, so leave the default `content` unless the
+  client is confirmed capable.
+- **Narrative-tool wire slimming (2.0).** The six narrative/prose tools
+  (`get_operator_archives`, `get_operator_voicelines`, `read_story`,
+  `read_activity`, `get_story_summary`, `prts_page`) migrated from `-> str`
+  to explicit `CallToolResult` delivery via the new `text_result(markdown)`
+  helper. Their content text is unchanged, but they no longer derive
+  FastMCP's automatic `outputSchema` nor emit a duplicate
+  `structuredContent={"result": markdown}` — narrative output has no useful
+  structured form. The remaining structural tools keep their structured
+  payloads behind `output_channel`.
+- **Detail-tool structuredContent (2.0, P2b PR1).** The four detail tools
+  (`get_operator_basic_info`, `get_enemy_info`, `get_stage_info`,
+  `get_item_info`) migrated to the build/render split with real
+  `structuredContent` payloads. `render_result` gains an optional `summary`
+  override so detail tools (single-record, no `total`) can provide a
+  meaningful one-liner in `structured` mode instead of the generic fallback.
+  Their `structuredContent` carries both raw enums and rendered labels
+  (e.g. `profession_raw=CASTER` + `profession=术师`), so downstream
+  automation can filter on raw values while Chinese consumers get
+  localized text.
+  The list/fusion tools (`list_enemies`, `search`, …) and the `search`
+  consolidation follow in P2b PR2/PR3.
+- **Gamedata list/fusion structuredContent (2.0, P2b PR2a).** The four
+  gamedata list/fusion tools (`list_enemies`, `list_items`,
+  `get_stage_enemies`, `get_enemy_appearances`) migrated to the build/render
+  split with real structuredContent. Listing payloads carry pagination
+  metadata + filters (raw user input + normalized filter) + entries with
+  chainable IDs and raw/label field pairs; the fusion tool
+  (`get_stage_enemies`) carries per-enemy spawn counts, level, overwrite
+  flag, and stats text. **Empty-result contract**: legitimate-but-empty
+  results (filter no-match, offset past end) now return a structured
+  payload `{total:0, entries:[]}` that the structured channel carries,
+  while the content channel still emits the original human message
+  verbatim — so structured consumers can uniformly rely on
+  "empty ⇒ {total:0}". True errors (invalid params, missing data) stay
+  content-only. The story-list/wiki-search tools and the heterogeneous
+  `search` follow in P2b PR2b/PR3.
+- **Story navigation and wiki-search structuredContent (2.0, P2b PR2b).**
+  The six story/wiki navigation tools (`list_story_events`, `list_stories`,
+  `get_operator_memoirs`, `find_character_appearances`, `find_speakers_in`,
+  `search_prts`) migrated to explicit `CallToolResult` delivery with
+  build/render payloads. Story payloads carry chainable event/story IDs,
+  raw story entry tags, and boolean speaks/mentioned flags; `search_prts`
+  now exposes `total` as MediaWiki `totalhits`, which can exceed the returned
+  page of results. Legitimate empty results carry `{total:0}` on the
+  structured channel while preserving the existing markdown text; invalid
+  parameters, missing story data, and PRTS network failures remain content-only.
+- **Search structuredContent (2.0, P3).** The remaining Python search tools
+  (`search` and `search_stories`) migrated to explicit `CallToolResult`
+  delivery with structured search envelopes. `search` now returns a stable
+  outer envelope (`scope`, `pattern`, `total`, `results`) while keeping
+  scope-specific entries for operators, enemies, stages, and items; each entry
+  carries chainable IDs and the fields needed to re-render the existing
+  markdown cards. `search_stories` now exposes raw filters and structured
+  context lines with `is_match` flags plus `story_key` for follow-up reads.
+  Legitimate no-match searches carry `{total:0, results:[]}` on the structured
+  channel; invalid regexes, invalid filters, and missing data remain
+  content-only. The all-tool outputSchema invariant is left to the dedicated
+  PR4 test-layer follow-up.
+
+### Changed
+
+- **Parameter naming normalization (2.0, breaking).** Operator tools
+  (`get_operator_archives`, `get_operator_voicelines`, `get_operator_basic_info`,
+  `get_operator_memoirs`) now take `name` instead of `operator_name`, matching
+  the `name` convention already used by the enemy/stage/item/character tools.
+- **Unified search (2.0, breaking).** `search_data`, `search_enemies`,
+  `search_stages`, and `search_items` are consolidated into a single
+  `search(scope, pattern, max_results)` tool with a required `scope` enum
+  (`operators` / `enemies` / `stages` / `items`). Story dialogue search remains a
+  separate `search_stories` (its filters differ). Tool surface drops 32 → 28.
+- **Unified PRTS page tool (2.0, breaking).** `read_prts_page`,
+  `list_prts_sections`, `get_prts_categories`, `get_prts_links`, and
+  `get_prts_template` are consolidated into a single `prts_page(page_title,
+  action, ...)` tool with a required `action` enum (`read` / `sections` /
+  `categories` / `links` / `template`). Wiki keyword search remains a separate
+  `search_prts`. Tool surface drops 28 → 24.
+- **`list_stories` absorbs the event-level summary (2.0, breaking).**
+  `list_stories(event_id, include_summaries=True)` now prepends the event's LLM
+  overview (from `event_summaries.json`) when present, on top of the per-chapter
+  one-liners it already returned — making it a superset of the former
+  `get_event_summary`. Tool surface drops 24 → 23.
+- **Tool descriptions standardized (2.0).** All tool descriptions were rewritten
+  to a consistent house style (verb-first purpose, output-shape note, at most one
+  cross-reference, parameter semantics kept in the parameter schema) and trimmed
+  ~20% to reduce context budget on smaller-context models. No change to tool
+  names, parameters, or output format.
+
+### Removed
+
+- **`search_data`, `search_enemies`, `search_stages`, `search_items`,
+  `list_search_scopes` (2.0, breaking).** Replaced by unified `search(scope, ...)`;
+  the scope catalogue previously returned by `list_search_scopes` is folded into
+  the `search` tool description.
+- **`read_prts_page`, `list_prts_sections`, `get_prts_categories`,
+  `get_prts_links`, `get_prts_template` (2.0, breaking).** Replaced by unified
+  `prts_page(page_title, action, ...)`.
+- **`get_event_summary` (2.0, breaking).** Folded into
+  `list_stories(include_summaries=True)`; `get_story_summary` (single-chapter
+  deep summary) is unchanged.
+
 ## [1.7.0] - 2026-07-02
 
 1.7.0 is the final 1.x feature release and the 1.7 LTS baseline. Future 1.7.x updates are limited to compatibility, security, data-sync, and critical bug fixes.

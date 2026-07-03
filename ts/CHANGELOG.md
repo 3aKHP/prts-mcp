@@ -4,6 +4,89 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.0.0] - 2026-07-03
+
+### Added
+
+- **Output channel design replaces the per-call `output_format` parameter
+  (2.0 design decision).** The original roadmap proposed an optional
+  `output_format=markdown|json` parameter with 2.0 flipping the default to
+  `json`. **That shape was rejected during design.** The primary consumer is an
+  LLM agent, and JSON inflates prompt tokens ~15–30% versus markdown — which
+  would negate the context-budget savings the tool-surface consolidation
+  delivers. 2.0 instead keeps markdown as the always-on `content` text and
+  carries structured data on MCP's native `structuredContent` field, selected
+  by a **connection-level** `output_channel` knob (`content` (default) /
+  `structured` / `both`) via query string / `x-prts-output-channel` header /
+  `PRTS_OUTPUT_CHANNEL` env. The default is **not** flipped to JSON. See
+  [`docs/migration-1.x-to-2.0.md`](../docs/migration-1.x-to-2.0.md) for the
+  per-tool channel mapping and client configuration. _(The Python implementation
+  additionally documents a "narrative-tool wire slimming" entry for dropping
+  FastMCP's automatic `outputSchema={result:string}` wrapper; the TS transport
+  has no equivalent auto-wrapper, so narrative tools are simply part of the
+  content-only delivery path here.)_
+- **Output channel pilot (2.0).** Streamable HTTP sessions can opt into
+  `output_channel=structured` or `output_channel=both` via query string,
+  `x-prts-output-channel` header, or `PRTS_OUTPUT_CHANNEL`. This first TS
+  migration slice enables structuredContent for `list_stages` while preserving
+  the default content-only markdown output, including legitimate empty pages
+  (filter no-match / offset past end) as structured empty payloads.
+- **Output channel coverage for structured data tools (2.0).** The remaining
+  game-data and story navigation tools now support structuredContent in TS:
+  operator/item/enemy/stage details and listings, stage-enemy fusion,
+  story event/chapter listings, operator memoirs, character appearances, and
+  event speaker counts.
+- **Output channel coverage for search tools (2.0).** The TS `search`,
+  `search_stories`, and `search_prts` tools now emit structuredContent in
+  `structured`/`both` channels, including structured-empty payloads for legal
+  no-match results and parity fixtures shared with the Python implementation.
+
+### Changed
+
+- **Parameter naming normalization (2.0, breaking).** Operator tools
+  (`get_operator_archives`, `get_operator_voicelines`, `get_operator_basic_info`,
+  `get_operator_memoirs`) now take `name` instead of `operator_name`, matching
+  the `name` convention already used by the enemy/stage/item/character tools.
+- **Unified search (2.0, breaking).** `search_data`, `search_enemies`,
+  `search_stages`, and `search_items` are consolidated into a single
+  `search(scope, pattern, max_results)` tool with a required `scope` enum
+  (`operators` / `enemies` / `stages` / `items`). Story dialogue search remains a
+  separate `search_stories` (its filters differ). Tool surface drops 32 → 28.
+- **Unified PRTS page tool (2.0, breaking).** `read_prts_page`,
+  `list_prts_sections`, `get_prts_categories`, `get_prts_links`, and
+  `get_prts_template` are consolidated into a single `prts_page(page_title,
+  action, ...)` tool with a required `action` enum (`read` / `sections` /
+  `categories` / `links` / `template`). Wiki keyword search remains a separate
+  `search_prts`. Tool surface drops 28 → 24.
+- **`list_stories` absorbs the event-level summary (2.0, breaking).**
+  `list_stories(event_id, include_summaries=true)` now prepends the event's LLM
+  overview (from `event_summaries.json`) when present, on top of the per-chapter
+  one-liners it already returned — making it a superset of the former
+  `get_event_summary`. Tool surface drops 24 → 23.
+- **Tool descriptions standardized (2.0).** All tool descriptions were rewritten
+  to a consistent house style (verb-first purpose, output-shape note, at most one
+  cross-reference, parameter semantics kept in the parameter schema) and trimmed
+  ~20% to reduce context budget on smaller-context models. No change to tool
+  names, parameters, or output format.
+- **Story empty-result wording aligned with Python (2.0).** TS story navigation
+  tools now use the Python-compatible empty messages for event/chapter listings,
+  character appearances, and speaker counts (including Python-style quoted
+  filter values). This is an intentional TS-dev text change in otherwise
+  content-compatible output-channel migration paths.
+
+### Removed
+
+- **`search_data`, `search_enemies`, `search_stages`, `search_items`,
+  `list_search_scopes` (2.0, breaking).** Replaced by unified `search(scope, ...)`;
+  the scope catalogue previously returned by `list_search_scopes` is folded into
+  the `search` tool description.
+- **`read_prts_page`, `list_prts_sections`, `get_prts_categories`,
+  `get_prts_links`, `get_prts_template` (2.0, breaking).** Replaced by unified
+  `prts_page(page_title, action, ...)`.
+- **`get_event_summary` (2.0, breaking).** Folded into
+  `list_stories(include_summaries=true)`; `get_story_summary` (single-chapter
+  deep summary) is unchanged.
+
 ## [1.7.0] - 2026-07-02
 
 1.7.0 is the final 1.x feature release and the 1.7 LTS baseline. Future 1.7.x updates are limited to compatibility, security, data-sync, and critical bug fixes.

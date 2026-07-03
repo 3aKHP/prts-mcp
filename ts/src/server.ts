@@ -19,6 +19,7 @@ import { registerPrtsTools } from "./tools/prtsTools.js";
 import { registerGamedataTools } from "./tools/gamedataTools.js";
 import { registerStoryTools } from "./tools/storyTools.js";
 import { runStartupSync } from "./startupSync.js";
+import { parseChannel, type OutputChannel } from "./output.js";
 
 // ---------------------------------------------------------------------------
 // Logging + version
@@ -37,17 +38,35 @@ function log(level: "INFO" | "WARN" | "ERROR", msg: string): void {
 // MCP Server factory — one instance per session
 // ---------------------------------------------------------------------------
 
-function createMcpServer(): McpServer {
+function createMcpServer(channel: OutputChannel): McpServer {
   const server = new McpServer({
     name: "PRTS_Wiki_Assistant",
     version: SERVER_VERSION,
   });
 
-  registerPrtsTools(server);
-  registerGamedataTools(server);
-  registerStoryTools(server);
+  registerPrtsTools(server, channel);
+  registerGamedataTools(server, channel);
+  registerStoryTools(server, channel);
 
   return server;
+}
+
+function firstString(value: unknown): string | undefined {
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) {
+    const first = value.find((item) => typeof item === "string");
+    return typeof first === "string" ? first : undefined;
+  }
+  return undefined;
+}
+
+function resolveOutputChannel(req: express.Request): OutputChannel {
+  const queryValue = firstString(req.query["output_channel"]);
+  const headerValue = firstString(req.headers["x-prts-output-channel"]);
+  const warn = (message: string) => log("WARN", message);
+  if (queryValue !== undefined) return parseChannel(queryValue, "output_channel", warn);
+  if (headerValue !== undefined) return parseChannel(headerValue, "x-prts-output-channel", warn);
+  return parseChannel(process.env["PRTS_OUTPUT_CHANNEL"], "PRTS_OUTPUT_CHANNEL", warn);
 }
 
 // ---------------------------------------------------------------------------
@@ -162,7 +181,8 @@ app.all("/mcp", async (req, res) => {
       }
     };
     try {
-      const server = createMcpServer();
+      const channel = resolveOutputChannel(req);
+      const server = createMcpServer(channel);
       await server.connect(newTransport);
     } catch (err) {
       log("ERROR", `Failed to connect MCP server to transport: ${err instanceof Error ? err.message : String(err)}`);

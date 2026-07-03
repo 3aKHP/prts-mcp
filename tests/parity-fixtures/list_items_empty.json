@@ -1,0 +1,11 @@
+{
+  "total": 0,
+  "offset": 0,
+  "limit": 50,
+  "filters": {
+    "category": "NONEXISTENT",
+    "category_filter": "NONEXISTENT"
+  },
+  "items": [],
+  "empty_reason": "no_match"
+}

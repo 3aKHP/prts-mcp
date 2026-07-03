@@ -26,6 +26,7 @@ _DATABASE_FILE = "enemy_database.json"
 
 @dataclass(frozen=True)
 class _EnemySearchRecord:
+    enemy_id: str
     info: dict[str, Any]
     search_text: str
 
@@ -189,91 +190,12 @@ def _fmt_enemy(info: dict, include_id: bool = False) -> str:
     return "\n".join(lines)
 
 
-def _fmt_stats(db_entry: dict | None) -> str:
-    """Format combat stats from enemy_database.json."""
-    if db_entry is None:
-        return ""
-
-    attrs: dict = db_entry.get("attributes", {})
-    hp = _m_value(attrs.get("maxHp"), 0)
-    atk = _m_value(attrs.get("atk"), 0)
-    defense = _m_value(attrs.get("def"), 0)
-    res = _m_value(attrs.get("magicResistance"))
-    speed = _m_value(attrs.get("moveSpeed"), 0.0)
-    atk_time = _m_value(attrs.get("baseAttackTime"), 0.0)
-    atk_speed = _m_value(attrs.get("attackSpeed"), 100.0)
-    mass = _m_value(attrs.get("massLevel"), 0)
-    hp_recovery = _m_value(attrs.get("hpRecoveryPerSec"), 0.0)
-
-    lines: list[str] = []
-    lines.append("\n## 战斗属性")
-    if hp:
-        lines.append(f"- **最大生命**：{hp:,}")
-    if atk:
-        lines.append(f"- **攻击力**：{atk}")
-    if defense:
-        lines.append(f"- **防御力**：{defense}")
-    if res is not None:
-        lines.append(f"- **法术抗性**：{res}")
-    if speed:
-        lines.append(f"- **移动速度**：{speed}")
-    if atk_time:
-        lines.append(f"- **攻击间隔**：{atk_time}s")
-    if atk_speed != 100.0:
-        lines.append(f"- **攻击速度**：{atk_speed}")
-    if mass:
-        lines.append(f"- **重量等级**：{mass}")
-    if hp_recovery:
-        lines.append(f"- **每秒生命回复**：{hp_recovery}")
-
-    # Immunities
-    immunities = []
-    for key, label in _IMMUNITY_LABELS.items():
-        if _m_value(attrs.get(key), False):
-            immunities.append(label)
-    if immunities:
-        lines.append(f"- **免疫**：{'、'.join(immunities)}")
-
-    # Life point reduction
-    lpr = _m_value(attrs.get("lifePointReduce"), 0)
-    if lpr:
-        lines.append(f"- **生命值扣除**：{lpr}")
-
-    # Skills
-    skills: list[dict] = db_entry.get("skills") or []
-    if skills:
-        lines.append("\n## 技能")
-        for s in skills:
-            prefab = s.get("prefabKey", "未知")
-            cooldown = s.get("cooldown", "")
-            sp_cost = _m_value(s.get("spData", {}).get("spCost") if s.get("spData") else None, None)
-            init_cd = s.get("initCooldown", "")
-
-            parts = [f"- **{prefab}**"]
-            cd_parts = []
-            if cooldown:
-                cd_parts.append(f"冷却 {cooldown}s")
-            if init_cd and init_cd != cooldown:
-                cd_parts.append(f"初始 {init_cd}s")
-            if sp_cost:
-                cd_parts.append(f"SP {sp_cost}")
-            if cd_parts:
-                parts.append(f"（{'，'.join(cd_parts)}）")
-
-            # Blackboard params
-            blackboard: list[dict] = s.get("blackboard", [])
-            if blackboard:
-                bb_strs = []
-                for b in blackboard[:6]:
-                    key = b.get("key", "")
-                    val = b.get("value", "")
-                    if val is not None:
-                        bb_strs.append(f"{key}={val}")
-                if bb_strs:
-                    parts.append(": " + "，".join(bb_strs))
-            lines.append("".join(parts))
-
-    return "\n".join(lines)
+# NOTE: a _fmt_stats helper previously lived here, formatting combat stats
+# from enemy_database.json into markdown. It became dead code when
+# get_enemy_info migrated to _extract_enemy_stats (structured dict) +
+# render_enemy_info (markdown). Removed; if P2b PR2's list/search tools
+# need stat rendering, they should share _extract_enemy_stats rather than
+# resurrect this (see git history).
 
 
 # ---------------------------------------------------------------------------
@@ -281,19 +203,16 @@ def _fmt_stats(db_entry: dict | None) -> str:
 # ---------------------------------------------------------------------------
 
 
-def list_enemies(
+def build_enemies_listing(
     threat_level: str | None = None,
     limit: int = 50,
     offset: int = 0,
     full: bool = False,
-) -> str:
-    """List enemies with optional filtering and pagination.
+) -> dict | str:
+    """Build the structured payload for an enemies listing.
 
-    Args:
-        threat_level: Filter by BOSS / ELITE / NORMAL.
-        limit: Max entries to return (ignored when full=True).
-        offset: Pagination offset.
-        full: Return ALL entries. Discouraged for normal use.
+    Returns the dict payload on success, or a markdown error string on a
+    validation / missing-data / empty-result path.
     """
     if not _has_enemy_data():
         return _missing_data_message()
@@ -318,6 +237,7 @@ def list_enemies(
         if not info.get("hideInHandbook") and info.get("name")
     ]
 
+    level_filter: str | None = None
     if threat_level:
         level_filter = threat_level.upper()
         if level_filter not in _ENEMY_LEVEL_ZH:
@@ -328,24 +248,67 @@ def list_enemies(
     entries.sort(key=lambda x: (x[1].get("sortId", 9999), x[0]))
     total = len(entries)
 
+    # Legitimate-but-empty: offset past end (total>0) is a normal structured
+    # payload, not an error (P2b plan §3.4). Filter-no-match (total==0) falls
+    # through to the standard empty-dict path below.
+    filters_payload = {"threat_level": threat_level, "threat_level_filter": level_filter}
     if not full and offset >= total and total > 0:
+        return {
+            "total": total,
+            "offset": offset,
+            "limit": limit,
+            "full": full,
+            "filters": filters_payload,
+            "enemies": [],
+            "empty_reason": "offset_out_of_range",
+        }
+
+    displayed = entries if full else entries[offset:offset + limit]
+
+    item_entries = []
+    for eid, info in displayed:
+        level_raw = info.get("enemyLevel", "")
+        desc = (info.get("description") or "").replace("\n", " ")[:60]
+        item_entries.append({
+            "enemy_id": eid,
+            "name": info.get("name", ""),
+            "enemy_index": info.get("enemyIndex", ""),
+            "level_raw": level_raw,
+            "level_label": _ENEMY_LEVEL_ZH.get(level_raw, level_raw),
+            "description_excerpt": desc,
+        })
+
+    return {
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+        "full": full,
+        "filters": filters_payload,
+        "enemies": item_entries,
+    }
+
+
+def render_enemies_listing(data: dict) -> str:
+    """Render an enemies-listing payload dict to markdown.
+
+    Pure renderer; the inverse of ``build_enemies_listing``'s success path.
+    """
+    if data.get("empty_reason") == "offset_out_of_range":
+        total = data["total"]
+        offset = data["offset"]
         return f"# 敌人图鉴（共 {total} 个）\n\noffset={offset} 超出范围（总计 {total} 条）。"
 
-    if full:
-        displayed = entries
-    else:
-        displayed = entries[offset:offset + limit]
+    total = data["total"]
+    offset = data["offset"]
+    limit = data["limit"]
+    full = data["full"]
+    enemies = data["enemies"]
 
     header = f"# 敌人图鉴（共 {total} 个）\n"
-    for _eid, info in displayed:
-        level = info.get("enemyLevel", "")
-        level_zh = _ENEMY_LEVEL_ZH.get(level, level)
-        index = info.get("enemyIndex", "")
-        name = info.get("name", "")
-        desc = (info.get("description") or "").replace("\n", " ")[:60]
-        line = f"- **{name}** [{level_zh}] ({index})"
-        if desc:
-            line += f" — {desc}"
+    for e in enemies:
+        line = f"- **{e['name']}** [{e['level_label']}] ({e['enemy_index']})"
+        if e["description_excerpt"]:
+            line += f" — {e['description_excerpt']}"
         header += line + "\n"
 
     if not full and total > offset + limit:
@@ -354,8 +317,33 @@ def list_enemies(
     return header.strip()
 
 
-def get_enemy_info(name: str) -> str:
-    """Return full info for a single enemy, with combat stats from database."""
+def list_enemies(
+    threat_level: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+    full: bool = False,
+) -> str:
+    """List enemies with optional filtering and pagination.
+
+    Args:
+        threat_level: Filter by BOSS / ELITE / NORMAL.
+        limit: Max entries to return (ignored when full=True).
+        offset: Pagination offset.
+        full: Return ALL entries. Discouraged for normal use.
+    """
+    data = build_enemies_listing(threat_level=threat_level, limit=limit, offset=offset, full=full)
+    if isinstance(data, str):
+        return data
+    return render_enemies_listing(data)
+
+
+def build_enemy_info(name: str) -> dict | str:
+    """Build the structured payload for a single enemy's handbook + combat stats.
+
+    Returns the dict payload on success, or a markdown error string on a
+    missing-data / not-found path. The dict is the single source of truth
+    that ``render_enemy_info`` consumes.
+    """
     if not _has_enemy_data():
         return _missing_data_message()
 
@@ -376,19 +364,204 @@ def get_enemy_info(name: str) -> str:
     if info is None:
         return f"敌人 '{name}' 暂无详细信息。"
 
-    result = _fmt_enemy(info, include_id=True)
+    # Handbook fields (with localization where applicable)
+    level_raw = info.get("enemyLevel", "")
+    damage_types_raw: list[str] = info.get("damageType") or []
 
-    # Merge combat stats from enemy_database.json
+    payload: dict[str, Any] = {
+        "name": info.get("name", ""),
+        "enemy_id": info.get("enemyId", ""),
+        "enemy_index": info.get("enemyIndex", ""),
+        "level_raw": level_raw,
+        "level_label": _ENEMY_LEVEL_ZH.get(level_raw, level_raw),
+        "description": info.get("description", ""),
+        "attack_type": info.get("attackType") or "",
+        "ability": info.get("ability") or "",
+        "damage_types_raw": damage_types_raw,
+        "damage_types_label": "、".join(
+            _DAMAGE_TYPE_ZH.get(dt, dt) for dt in damage_types_raw
+        ),
+        "enemy_tags": info.get("enemyTags") or [],
+        "stats": None,
+    }
+
+    # Combat stats from enemy_database.json
     db = _load_enemy_database()
     db_entry = db["_index"].get(eid) if db else None
     if db_entry:
-        result += _fmt_stats(db_entry)
+        payload["stats"] = _extract_enemy_stats(db_entry)
 
-    return result
+    return payload
+
+
+def _extract_enemy_stats(db_entry: dict) -> dict:
+    """Extract combat stats from an enemy_database entry into a structured dict.
+
+    Numeric values are pre-formatted as render_enemy_info will emit them
+    (e.g. HP with thousands separator), and only non-default fields are
+    included.
+    """
+    attrs: dict = db_entry.get("attributes", {})
+    hp = _m_value(attrs.get("maxHp"), 0)
+    atk = _m_value(attrs.get("atk"), 0)
+    defense = _m_value(attrs.get("def"), 0)
+    res = _m_value(attrs.get("magicResistance"))
+    speed = _m_value(attrs.get("moveSpeed"), 0.0)
+    atk_time = _m_value(attrs.get("baseAttackTime"), 0.0)
+    atk_speed = _m_value(attrs.get("attackSpeed"), 100.0)
+    mass = _m_value(attrs.get("massLevel"), 0)
+    hp_recovery = _m_value(attrs.get("hpRecoveryPerSec"), 0.0)
+
+    immunities = []
+    for key, label in _IMMUNITY_LABELS.items():
+        if _m_value(attrs.get(key), False):
+            immunities.append(label)
+    lpr = _m_value(attrs.get("lifePointReduce"), 0)
+
+    stats: dict[str, Any] = {
+        "max_hp": f"{hp:,}" if hp else None,
+        "atk": str(atk) if atk else None,
+        "def": str(defense) if defense else None,
+        "resistance": str(res) if res is not None else None,
+        "move_speed": str(speed) if speed else None,
+        "attack_interval": f"{atk_time}s" if atk_time else None,
+        "attack_speed": str(atk_speed) if atk_speed != 100.0 else None,
+        "mass_level": str(mass) if mass else None,
+        "hp_recovery_per_sec": str(hp_recovery) if hp_recovery else None,
+        "immunities": immunities,
+        "life_point_reduce": str(lpr) if lpr else None,
+    }
+
+    skills: list[dict] = []
+    for s in db_entry.get("skills") or []:
+        prefab = s.get("prefabKey", "未知")
+        cooldown = s.get("cooldown", "")
+        sp_cost = _m_value(s.get("spData", {}).get("spCost") if s.get("spData") else None, None)
+        init_cd = s.get("initCooldown", "")
+
+        cd_parts = []
+        if cooldown:
+            cd_parts.append(f"冷却 {cooldown}s")
+        if init_cd and init_cd != cooldown:
+            cd_parts.append(f"初始 {init_cd}s")
+        if sp_cost:
+            cd_parts.append(f"SP {sp_cost}")
+        timing = "，".join(cd_parts) if cd_parts else ""
+
+        blackboard: list[dict] = s.get("blackboard", [])
+        bb_strs = []
+        for b in blackboard[:6]:
+            key = b.get("key", "")
+            val = b.get("value", "")
+            if val is not None:
+                bb_strs.append(f"{key}={val}")
+        bb = "，".join(bb_strs)
+
+        skills.append({"prefab": prefab, "timing": timing, "blackboard": bb})
+
+    stats["skills"] = skills
+    return stats
+
+
+def render_enemy_info(data: dict) -> str:
+    """Render an enemy-info payload dict to markdown.
+
+    Pure renderer; the inverse of ``build_enemy_info``'s success path.
+    """
+    lines: list[str] = []
+    name = data["name"]
+    if name:
+        lines.append(f"# {name} - 敌人图鉴\n")
+        lines.append(f"- **ID**：{data['enemy_id']}")
+
+    enemy_index = data["enemy_index"]
+    if enemy_index:
+        lines.append(f"- **编号**：{enemy_index}")
+
+    level_label = data["level_label"]
+    if level_label:
+        lines.append(f"- **威胁等级**：{level_label}")
+
+    desc = data["description"]
+    if desc:
+        lines.append(f"- **描述**：{desc}")
+
+    attack = data["attack_type"]
+    if attack:
+        lines.append(f"- **攻击方式**：{attack}")
+
+    ability = data["ability"]
+    if ability:
+        lines.append(f"- **特殊能力**：{ability}")
+
+    dt_label = data["damage_types_label"]
+    if dt_label:
+        lines.append(f"- **伤害类型**：{dt_label}")
+
+    enemy_tags = data["enemy_tags"]
+    if enemy_tags:
+        lines.append(f"- **标签**：{'、'.join(enemy_tags)}")
+
+    stats = data["stats"]
+    if stats:
+        # No leading \n here: "\n".join supplies the separator between the
+        # handbook block and this section (single newline, matching the old
+        # `result += _fmt_stats()` concatenation). The "## 技能" heading below
+        # keeps its leading \n to reproduce the original blank line there.
+        lines.append("## 战斗属性")
+        for field, label in (
+            ("max_hp", "最大生命"),
+            ("atk", "攻击力"),
+            ("def", "防御力"),
+            ("resistance", "法术抗性"),
+            ("move_speed", "移动速度"),
+            ("attack_interval", "攻击间隔"),
+            ("attack_speed", "攻击速度"),
+            ("mass_level", "重量等级"),
+            ("hp_recovery_per_sec", "每秒生命回复"),
+        ):
+            val = stats.get(field)
+            if val:
+                lines.append(f"- **{label}**：{val}")
+        immunities = stats["immunities"]
+        if immunities:
+            lines.append(f"- **免疫**：{'、'.join(immunities)}")
+        lpr = stats["life_point_reduce"]
+        if lpr:
+            lines.append(f"- **生命值扣除**：{lpr}")
+
+        skills = stats["skills"]
+        if skills:
+            lines.append("\n## 技能")
+            for s in skills:
+                parts = [f"- **{s['prefab']}**"]
+                if s["timing"]:
+                    parts.append(f"（{s['timing']}）")
+                if s["blackboard"]:
+                    parts.append(": " + s["blackboard"])
+                lines.append("".join(parts))
+
+    return "\n".join(lines)
+
+
+def get_enemy_info(name: str) -> str:
+    """Return full info for a single enemy, with combat stats from database."""
+    data = build_enemy_info(name)
+    if isinstance(data, str):
+        return data
+    return render_enemy_info(data)
 
 
 def search_enemies(pattern: str, max_results: int = 30) -> str:
     """Regex search across enemy names and descriptions."""
+    data = build_enemy_search(pattern, max_results=max_results)
+    if isinstance(data, str):
+        return data
+    return render_enemy_search(data)
+
+
+def build_enemy_search(pattern: str, max_results: int = 30) -> dict | str:
+    """Build the structured payload for enemy handbook search."""
     if not _has_enemy_data():
         return _missing_data_message()
     if max_results < 1:
@@ -401,25 +574,95 @@ def search_enemies(pattern: str, max_results: int = 30) -> str:
     except re.error as exc:
         return f"正则表达式无效：{exc}"
 
-    matches: list[dict] = []
+    matches: list[_EnemySearchRecord] = []
     try:
         records = _enemy_search_records()
     except FileNotFoundError as exc:
         return str(exc)
     for record in records:
         if regex.search(record.search_text):
-            matches.append(record.info)
+            matches.append(record)
         if len(matches) >= max_results:
             break
 
-    if not matches:
+    return {
+        "scope": "enemies",
+        "pattern": pattern,
+        "total": len(matches),
+        "results": [_enemy_search_entry(record) for record in matches],
+    }
+
+
+def render_enemy_search(data: dict) -> str:
+    """Render an enemy search payload to markdown."""
+    pattern = data["pattern"]
+    results = data["results"]
+    if not results:
         return f"未找到匹配 '{pattern}' 的敌人。"
 
-    lines: list[str] = [f"# 搜索结果：{pattern}（共 {len(matches)} 个）\n"]
-    for info in matches:
-        lines.append(_fmt_enemy(info))
+    lines: list[str] = [f"# 搜索结果：{pattern}（共 {data['total']} 个）\n"]
+    for entry in results:
+        lines.append(_render_enemy_search_card(entry))
         lines.append("")
     return "\n".join(lines).strip()
+
+
+def _enemy_search_entry(record: _EnemySearchRecord) -> dict[str, Any]:
+    info = record.info
+    level_raw = info.get("enemyLevel", "")
+    damage_types_raw: list[str] = info.get("damageType") or []
+    return {
+        "enemy_id": record.enemy_id,
+        "name": info.get("name", ""),
+        "enemy_index": info.get("enemyIndex", ""),
+        "level_raw": level_raw,
+        "level_label": _ENEMY_LEVEL_ZH.get(level_raw, level_raw),
+        "description": info.get("description", ""),
+        "attack_type": info.get("attackType") or "",
+        "ability": info.get("ability") or "",
+        "damage_types_raw": damage_types_raw,
+        "damage_types_label": "、".join(
+            _DAMAGE_TYPE_ZH.get(dt, dt) for dt in damage_types_raw
+        ),
+        "enemy_tags": info.get("enemyTags") or [],
+    }
+
+
+def _render_enemy_search_card(entry: dict) -> str:
+    lines: list[str] = []
+    name = entry["name"]
+    if name:
+        lines.append(f"# {name} - 敌人图鉴\n")
+
+    enemy_index = entry["enemy_index"]
+    if enemy_index:
+        lines.append(f"- **编号**：{enemy_index}")
+
+    level_label = entry["level_label"]
+    if level_label:
+        lines.append(f"- **威胁等级**：{level_label}")
+
+    desc = entry["description"]
+    if desc:
+        lines.append(f"- **描述**：{desc}")
+
+    attack = entry["attack_type"]
+    if attack:
+        lines.append(f"- **攻击方式**：{attack}")
+
+    ability = entry["ability"]
+    if ability:
+        lines.append(f"- **特殊能力**：{ability}")
+
+    damage_label = entry["damage_types_label"]
+    if damage_label:
+        lines.append(f"- **伤害类型**：{damage_label}")
+
+    enemy_tags = entry["enemy_tags"]
+    if enemy_tags:
+        lines.append(f"- **标签**：{'、'.join(enemy_tags)}")
+
+    return "\n".join(lines)
 
 
 @lru_cache(maxsize=1)
@@ -436,5 +679,9 @@ def _enemy_search_records() -> tuple[_EnemySearchRecord, ...]:
             info.get("ability") or "",
             " ".join(info.get("enemyTags") or []),
         ])
-        records.append(_EnemySearchRecord(info=info, search_text=search_text))
+        records.append(_EnemySearchRecord(
+            enemy_id=_eid,
+            info=info,
+            search_text=search_text,
+        ))
     return tuple(records)

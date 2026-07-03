@@ -83,6 +83,10 @@ async def search_prts(
     Returns:
         {"totalhits": int, "results": list[dict]} where each result has
         "title" and "snippet" keys.
+
+    Raises:
+        httpx.HTTPError: If the MediaWiki request fails. Tool wrappers turn
+        this into a content-only error rather than misreporting it as no hits.
     """
     await _rate_limit()
     srwhat = "title" if search_mode == "title" else None
@@ -97,11 +101,8 @@ async def search_prts(
     }
     if srwhat:
         params["srwhat"] = srwhat
-    try:
-        resp = await _get_client().get(PRTS_API_ENDPOINT, params=params)
-        resp.raise_for_status()
-    except httpx.HTTPError:
-        return {"totalhits": 0, "results": []}
+    resp = await _get_client().get(PRTS_API_ENDPOINT, params=params)
+    resp.raise_for_status()
     data = resp.json()
     totalhits = data.get("query", {}).get("searchinfo", {}).get("totalhits", 0)
     results: list[dict] = []

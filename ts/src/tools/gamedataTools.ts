@@ -1,30 +1,57 @@
 /**
  * GameData tool registrations — operators, enemies, stages, items, search.
  *
- * Split from server.ts. Exports registerGamedataTools which attaches the 16
+ * Split from server.ts. Exports registerGamedataTools which attaches the 12
  * game-data-backed tools to a McpServer instance.
  */
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { getOperatorArchives, getOperatorVoicelines, getOperatorBasicInfo } from "../data/operator.js";
-import { listEnemies, getEnemyInfo, searchEnemies } from "../data/enemy.js";
-import { listStages, getStageInfo, searchStages } from "../data/stage.js";
-import { listItems, getItemInfo, searchItems } from "../data/item.js";
-import { getStageEnemies, getEnemyAppearances, getEnemyStageInfo } from "../data/stageEnemy.js";
-import { searchOperatorData } from "../data/search.js";
+import {
+  buildOperatorBasicInfo,
+  getOperatorArchives,
+  getOperatorVoicelines,
+  renderOperatorBasicInfo,
+} from "../data/operator.js";
+import {
+  buildEnemiesListing,
+  buildEnemyInfo,
+  renderEnemiesListing,
+  renderEnemyInfo,
+} from "../data/enemy.js";
+import {
+  buildStageInfo,
+  buildStagesListing,
+  renderStageInfo,
+  renderStagesListing,
+} from "../data/stage.js";
+import {
+  buildItemInfo,
+  buildItemsListing,
+  renderItemInfo,
+  renderItemsListing,
+} from "../data/item.js";
+import {
+  buildEnemyAppearances,
+  buildStageEnemies,
+  getEnemyStageInfo,
+  renderEnemyAppearances,
+  renderStageEnemies,
+} from "../data/stageEnemy.js";
+import { buildSearch, renderSearch } from "../data/search.js";
+import { renderResult, textResult, type OutputChannel } from "../output.js";
 
-export function registerGamedataTools(server: McpServer): void {
+export function registerGamedataTools(server: McpServer, channel: OutputChannel = "content"): void {
   server.tool(
     "get_operator_archives",
     [
       "获取指定干员的档案资料。",
       "返回干员的客观履历、个人档案（基础档案及解锁档案）等背景故事文本。",
-      "若需查询干员的职业、稀有度等数值信息，请使用 get_operator_basic_info；若需查询语音台词，请使用 get_operator_voicelines。",
+      "数值信息见 get_operator_basic_info，语音台词见 get_operator_voicelines。",
     ].join(" "),
-    { operator_name: z.string().describe("干员的游戏内中文名，如「阿米娅」、「能天使」。") },
-    ({ operator_name }) => {
-      const text = getOperatorArchives(operator_name);
+    { name: z.string().describe("干员的游戏内中文名，如「阿米娅」、「能天使」。") },
+    ({ name }) => {
+      const text = getOperatorArchives(name);
       return { content: [{ type: "text", text }] };
     }
   );
@@ -33,12 +60,12 @@ export function registerGamedataTools(server: McpServer): void {
     "get_operator_voicelines",
     [
       "获取指定干员的所有语音台词记录。",
-      "返回包含触发条件（如「交谈1」、「晋升后交谈」、「信赖提升后交谈」）及对应台词文本的完整列表。",
-      "此工具仅返回语音文本；若需查询干员背景故事或客观履历，请使用 get_operator_archives。",
+      "返回触发条件（如「交谈1」、「晋升后交谈」、「信赖提升后交谈」）及对应台词文本的完整列表。",
+      "背景故事与客观履历见 get_operator_archives。",
     ].join(" "),
-    { operator_name: z.string().describe("干员的游戏内中文名，如「阿米娅」、「能天使」。") },
-    ({ operator_name }) => {
-      const text = getOperatorVoicelines(operator_name);
+    { name: z.string().describe("干员的游戏内中文名，如「阿米娅」、「能天使」。") },
+    ({ name }) => {
+      const text = getOperatorVoicelines(name);
       return { content: [{ type: "text", text }] };
     }
   );
@@ -47,13 +74,19 @@ export function registerGamedataTools(server: McpServer): void {
     "get_operator_basic_info",
     [
       "获取指定干员的基本数值信息。",
-      "返回干员的职业、子职业、稀有度（星级）、所属阵营、招募标签、天赋名称及描述等结构化信息。",
-      "适合快速了解干员定位；若需完整背景故事请使用 get_operator_archives，若需语音台词请使用 get_operator_voicelines。",
+      "返回干员的职业、子职业、稀有度（星级）、所属阵营、招募标签、天赋名称及描述等结构化信息，适合快速了解干员定位。",
+      "完整背景故事见 get_operator_archives。",
     ].join(" "),
-    { operator_name: z.string().describe("干员的游戏内中文名，如「阿米娅」、「能天使」。") },
-    ({ operator_name }) => {
-      const text = getOperatorBasicInfo(operator_name);
-      return { content: [{ type: "text", text }] };
+    { name: z.string().describe("干员的游戏内中文名，如「阿米娅」、「能天使」。") },
+    ({ name }) => {
+      const data = buildOperatorBasicInfo(name);
+      if (typeof data === "string") return textResult(data);
+      return renderResult(
+        data,
+        renderOperatorBasicInfo(data),
+        channel,
+        `干员『${data.name}』的基本信息`,
+      );
     }
   );
 
@@ -63,9 +96,8 @@ export function registerGamedataTools(server: McpServer): void {
     "list_enemies",
     [
       "列出敌方图鉴，支持按威胁等级过滤和分页。",
-      "默认返回前 50 条。若需翻页，增大 offset 即可。",
-      "若只想看领袖/BOSS 级敌人，设置 threat_level=\"boss\"。",
-      "不推荐使用 full=true，图鉴共有 1500+ 条目，密集输出极易污染上下文。",
+      "默认返回前 50 条；翻页增大 offset，只看领袖/BOSS 设 threat_level=\"boss\"。",
+      "图鉴共 1500+ 条目，不推荐 full=true。",
     ].join(" "),
     {
       threat_level: z.string().optional().describe("按威胁等级过滤：boss（领袖）、elite（精英）、normal（普通）。不填则返回全部。"),
@@ -73,66 +105,75 @@ export function registerGamedataTools(server: McpServer): void {
       offset: z.number().int().min(0).default(0).describe("分页偏移量，默认 0。"),
       full: z.boolean().default(false).describe("返回全部敌人（忽略 limit/offset）。不推荐常规使用。"),
     },
-    ({ threat_level, limit, offset, full }) => ({
-      content: [{ type: "text", text: listEnemies(threat_level ?? null, limit, offset, full) }],
-    })
+    ({ threat_level, limit, offset, full }) => {
+      const data = buildEnemiesListing(threat_level ?? null, limit, offset, full);
+      if (typeof data === "string") return textResult(data);
+      return renderResult(data, renderEnemiesListing(data), channel);
+    }
   );
 
   server.tool(
     "get_enemy_info",
     [
       "获取指定敌人的详细图鉴资料。",
-      "默认返回图鉴信息；若提供 stage_id，则返回该敌人在指定关卡内的等级与关卡覆盖后的战斗属性。",
+      "默认返回威胁等级、描述、攻击方式、伤害类型和特殊能力等图鉴信息。",
+      "提供 stage_id 时改为返回该敌人在指定关卡内的等级与关卡覆盖后的战斗属性。",
     ].join(" "),
     {
       name: z.string().describe("敌人的游戏内中文名，如「源石虫」、「霜星」。"),
       stage_id: z.string().optional().describe("可选关卡 ID；设置后返回该关卡内的敌人等级/覆盖后的战斗属性。"),
     },
-    ({ name, stage_id }) => ({
-      content: [{ type: "text", text: stage_id ? getEnemyStageInfo(name, stage_id) : getEnemyInfo(name) }],
-    })
-  );
-
-  server.tool(
-    "search_enemies",
-    [
-      "在敌人图鉴中进行全文正则搜索。",
-      "搜索范围包含敌人名称、描述和特殊能力文本。",
-      "可用于探索特定种族、阵营或关键词相关的敌人信息。",
-    ].join(" "),
-    {
-      pattern: z.string().describe("正则表达式模式，如 '萨卡兹|骑士'。"),
-      max_results: z.number().int().min(1).max(100).default(30).describe("返回结果数量上限，默认 30。"),
-    },
-    ({ pattern, max_results }) => ({ content: [{ type: "text", text: searchEnemies(pattern, max_results) }] })
+    ({ name, stage_id }) => {
+      if (stage_id) return textResult(getEnemyStageInfo(name, stage_id));
+      const data = buildEnemyInfo(name);
+      if (typeof data === "string") return textResult(data);
+      return renderResult(
+        data,
+        renderEnemyInfo(data),
+        channel,
+        `敌人『${data.name}』的图鉴`,
+      );
+    }
   );
 
   server.tool(
     "get_stage_enemies",
     [
       "获取指定关卡实际出场的敌人列表。",
-      "基于关卡 level JSON 的 SPAWN 动作统计实际出怪，并合并 enemy_database 中对应该关卡敌人等级的战斗属性。",
+      "只统计关卡内真正刷出的敌人，并附上其在该关卡等级下的战斗属性。",
+      "反向查询某敌人出现在哪些关卡见 get_enemy_appearances。",
     ].join(" "),
     {
       stage_id: z.string().describe("关卡 ID，如 'main_00-01'（可从 list_stages 获取）。"),
     },
-    ({ stage_id }) => ({ content: [{ type: "text", text: getStageEnemies(stage_id) }] })
+    ({ stage_id }) => {
+      const data = buildStageEnemies(stage_id);
+      if (typeof data === "string") return textResult(data);
+      return renderResult(
+        data,
+        renderStageEnemies(data),
+        channel,
+        `${data.stage_label} 的敌人列表（共 ${data.total} 种）`,
+      );
+    }
   );
 
   server.tool(
     "get_enemy_appearances",
     [
       "反向查询指定敌人实际出现在哪些关卡。",
-      "只统计关卡 level JSON 中 SPAWN 动作真正刷出的敌人，不把 enemyDbRefs 中未实际出场的引用计入结果。",
+      "只统计该敌人真正刷出的关卡，不计入引用但未实际出场的关卡。",
     ].join(" "),
     {
       name: z.string().describe("敌人的游戏内中文名或 enemyId，如「源石虫」或 enemy_1007_slime。"),
       limit: z.number().int().min(1).max(200).default(50).describe("返回数量上限，默认 50。"),
       offset: z.number().int().min(0).default(0).describe("分页偏移量，默认 0。"),
     },
-    ({ name, limit, offset }) => ({
-      content: [{ type: "text", text: getEnemyAppearances(name, limit, offset) }],
-    })
+    ({ name, limit, offset }) => {
+      const data = buildEnemyAppearances(name, limit, offset);
+      if (typeof data === "string") return textResult(data);
+      return renderResult(data, renderEnemyAppearances(data), channel);
+    }
   );
 
   // --- Stage tools ---
@@ -150,31 +191,28 @@ export function registerGamedataTools(server: McpServer): void {
       limit: z.number().int().min(1).max(200).default(50).describe("返回数量上限，默认 50。"),
       offset: z.number().int().min(0).default(0).describe("分页偏移量，默认 0。"),
     },
-    ({ chapter, type, limit, offset }) => ({
-      content: [{ type: "text", text: listStages(chapter ?? null, type ?? null, limit, offset) }],
-    })
+    ({ chapter, type, limit, offset }) => {
+      const data = buildStagesListing(chapter ?? null, type ?? null, limit, offset);
+      if (typeof data === "string") return textResult(data);
+      const markdown = renderStagesListing(data);
+      return renderResult(data, markdown, channel);
+    }
   );
 
   server.tool(
     "get_stage_info",
-    "获取指定关卡的详细信息。返回关卡的编号、类型、难度、所属区域、理智消耗、掉落奖励、解锁条件等。",
+    "获取指定关卡的详细信息。返回关卡的编号、类型、难度、所属区域、理智消耗、掉落奖励、解锁条件等。关卡实际出场的敌人见 get_stage_enemies。",
     { stage_id: z.string().describe("关卡 ID，如 'main_00-01'（可从 list_stages 获取）。") },
-    ({ stage_id }) => ({ content: [{ type: "text", text: getStageInfo(stage_id) }] })
-  );
-
-  server.tool(
-    "search_stages",
-    [
-      "在关卡数据库中执行全文正则搜索。",
-      "搜索范围覆盖关卡名称、编号、描述。返回匹配关卡的基本信息块。",
-    ].join(" "),
-    {
-      pattern: z.string().describe("正则表达式搜索模式，大小写不敏感。例如 'H10'、'切尔诺伯格'。"),
-      max_results: z.number().int().min(1).max(100).default(30).describe("最多返回条数，默认 30。"),
-    },
-    ({ pattern, max_results }) => ({
-      content: [{ type: "text", text: searchStages(pattern, max_results) }],
-    })
+    ({ stage_id }) => {
+      const data = buildStageInfo(stage_id);
+      if (typeof data === "string") return textResult(data);
+      return renderResult(
+        data,
+        renderStageInfo(data),
+        channel,
+        `关卡『${data.name}』的详情`,
+      );
+    }
   );
 
   // --- Item tools ---
@@ -183,17 +221,18 @@ export function registerGamedataTools(server: McpServer): void {
     "list_items",
     [
       "列出物品/材料列表，支持按分类过滤和分页。",
-      "返回物品名称、分类、类型、稀有度、ID 和简短用途。",
-      "适合查找材料、货币、凭证等 item_table 物品。",
+      "返回每个物品的名称、分类、类型、稀有度、ID 和简短用途，适合查找材料、货币、凭证等。",
     ].join(" "),
     {
       category: z.string().optional().describe("按物品分类过滤，如 MATERIAL（材料）、NORMAL（普通）、CONSUME（消耗品）。不填则返回全部可见物品。"),
       limit: z.number().int().min(1).max(200).default(50).describe("返回数量上限，默认 50。"),
       offset: z.number().int().min(0).default(0).describe("分页偏移量，默认 0。"),
     },
-    ({ category, limit, offset }) => ({
-      content: [{ type: "text", text: listItems(category ?? null, limit, offset) }],
-    })
+    ({ category, limit, offset }) => {
+      const data = buildItemsListing(category ?? null, limit, offset);
+      if (typeof data === "string") return textResult(data);
+      return renderResult(data, renderItemsListing(data), channel);
+    }
   );
 
   server.tool(
@@ -205,73 +244,36 @@ export function registerGamedataTools(server: McpServer): void {
     {
       name: z.string().describe("物品中文名或 itemId，如「固源岩」、「招聘许可」或 \"30012\"。"),
     },
-    ({ name }) => ({ content: [{ type: "text", text: getItemInfo(name) }] })
-  );
-
-  server.tool(
-    "search_items",
-    [
-      "在物品/材料数据中进行全文正则搜索。",
-      "搜索范围包含物品名称、描述、用途、获取方式和类型。",
-    ].join(" "),
-    {
-      pattern: z.string().describe("正则表达式搜索模式，如「源岩|装置」。"),
-      max_results: z.number().int().min(1).max(100).default(30).describe("返回结果数量上限，默认 30。"),
-    },
-    ({ pattern, max_results }) => ({
-      content: [{ type: "text", text: searchItems(pattern, max_results) }],
-    })
+    ({ name }) => {
+      const data = buildItemInfo(name);
+      if (typeof data === "string") return textResult(data);
+      return renderResult(
+        data,
+        renderItemInfo(data),
+        channel,
+        `物品『${data.name}』的详情`,
+      );
+    }
   );
 
   // --- Search tools ---
 
   server.tool(
-    "list_search_scopes",
-    "列出所有可搜索的数据域及其内容类型。返回可用搜索域的名称和简介，帮助 Agent 选择合适的搜索工具和 scope 参数。",
-    {},
-    () => {
-      return {
-        content: [
-          {
-            type: "text",
-            text:
-              "可用搜索域：\n" +
-              "- operators：干员数据（名称、基本信息描述、档案文本、语音台词）\n" +
-              '  使用 search_data(scope="operators") 搜索。\n' +
-              "- stories：剧情台词（对话、旁白、选项），按活动/章节组织，支持按角色和台词类型过滤。\n" +
-              "  使用 search_stories 搜索。\n" +
-              "- stages：关卡数据（名称、编号、描述、类型、掉落、解锁条件）。\n" +
-              "  使用 list_stages / get_stage_info / search_stages 查询。\n" +
-              "- enemies：敌人图鉴（名称、威胁等级、描述、属性）。\n" +
-              "  使用 list_enemies / get_enemy_info / search_enemies 查询。\n" +
-              "- items：物品/材料（名称、描述、用途、掉落、商店关联）。\n" +
-              "  使用 list_items / get_item_info / search_items 查询。\n" +
-              "- memoirs：干员密录剧情，可通过 get_operator_memoirs 按干员名查找。\n" +
-              "  获取 story_key 后使用 read_story 读取完整台词。",
-          },
-        ],
-      };
-    }
-  );
-
-  server.tool(
-    "search_data",
+    "search",
     [
-      "在干员数据中执行全文正则搜索。",
-      "搜索范围覆盖干员名称、攻击属性描述、档案文本和语音台词。",
-      "返回带领域标签的匹配结果，包含匹配字段名和完整文本。",
+      "在指定数据域中执行全文正则搜索。",
+      "scope 选择搜索域：operators（名称/属性/档案/语音）、enemies（图鉴）、stages（关卡）、items（物品/材料）。",
+      "返回带域标签的匹配结果。剧情台词搜索见 search_stories。",
     ].join(" "),
     {
-      pattern: z.string().describe("正则表达式搜索模式，大小写不敏感。例如「博士」、「法术伤害」。"),
-      scope: z.string().default("operators").describe('搜索域，目前支持 "operators"。'),
-      max_results: z.number().int().min(1).max(100).default(30).describe("最多返回条数，默认 30。"),
+      scope: z.enum(["operators", "enemies", "stages", "items"]).describe("搜索域（必填）：operators / enemies / stages / items。"),
+      pattern: z.string().describe("正则表达式搜索模式，大小写不敏感。"),
+      max_results: z.number().int().min(1).max(100).default(30).describe("返回结果数量上限，默认 30。"),
     },
-    ({ pattern, scope, max_results }) => {
-      if (scope !== "operators") {
-        return { content: [{ type: "text", text: `不支持的搜索域：${JSON.stringify(scope)}。当前仅支持 scope="operators"。` }] };
-      }
-      const text = searchOperatorData(pattern, max_results);
-      return { content: [{ type: "text", text }] };
+    ({ scope, pattern, max_results }) => {
+      const data = buildSearch(scope, pattern, max_results);
+      if (typeof data === "string") return textResult(data);
+      return renderResult(data, renderSearch(data), channel);
     }
   );
 }

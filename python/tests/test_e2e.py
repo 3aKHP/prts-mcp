@@ -139,16 +139,15 @@ def server():
 # ---------------------------------------------------------------------------
 
 EXPECTED_TOOLS = {
-    "search_prts", "read_prts_page", "list_prts_sections",
-    "get_prts_categories", "get_prts_links", "get_prts_template",
+    "search_prts", "prts_page",
     "get_operator_archives", "get_operator_voicelines", "get_operator_basic_info",
-    "list_enemies", "get_enemy_info", "search_enemies",
+    "list_enemies", "get_enemy_info",
     "get_stage_enemies", "get_enemy_appearances",
-    "list_stages", "get_stage_info", "search_stages",
-    "list_items", "get_item_info", "search_items",
+    "list_stages", "get_stage_info",
+    "list_items", "get_item_info",
     "list_story_events", "list_stories", "read_story", "read_activity",
-    "list_search_scopes", "search_data", "search_stories",
-    "get_event_summary", "get_story_summary",
+    "search", "search_stories",
+    "get_story_summary",
     "get_operator_memoirs",
     "find_character_appearances", "find_speakers_in",
 }
@@ -181,38 +180,38 @@ def test_tools_list(server: subprocess.Popen) -> None:
     tools = resp["result"]["tools"]
     names = {t["name"] for t in tools}
 
-    assert len(names) == 32, f"Expected 32 tools, got {len(names)}: {sorted(names)}"
+    assert len(names) == 23, f"Expected 23 tools, got {len(names)}: {sorted(names)}"
     for name in EXPECTED_TOOLS:
         assert name in names, f"Missing tool: {name}"
 
 
 @pytest.mark.skipif(not _has_operator_data, reason="No bundled operator data")
 def test_operator_basic_info_amiya(server: subprocess.Popen) -> None:
-    text = _call_result_text(server, "get_operator_basic_info", {"operator_name": "阿米娅"}, 3)
+    text = _call_result_text(server, "get_operator_basic_info", {"name": "阿米娅"}, 3)
     assert "5★" in text, f"阿米娅 should be 5★: {text.split(chr(10))}"
 
 
 @pytest.mark.skipif(not _has_operator_data, reason="No bundled operator data")
 def test_operator_basic_info_senye(server: subprocess.Popen) -> None:
-    text = _call_result_text(server, "get_operator_basic_info", {"operator_name": "森蚺"}, 4)
+    text = _call_result_text(server, "get_operator_basic_info", {"name": "森蚺"}, 4)
     assert "6★" in text, f"森蚺 should be 6★: {text.split(chr(10))}"
 
 
 @pytest.mark.skipif(not _has_operator_data, reason="No bundled operator data")
 def test_operator_archives(server: subprocess.Popen) -> None:
-    text = _call_result_text(server, "get_operator_archives", {"operator_name": "阿米娅"}, 5)
+    text = _call_result_text(server, "get_operator_archives", {"name": "阿米娅"}, 5)
     assert "阿米娅" in text and "干员档案" in text
 
 
 @pytest.mark.skipif(not _has_operator_data, reason="No bundled operator data")
 def test_operator_voicelines(server: subprocess.Popen) -> None:
-    text = _call_result_text(server, "get_operator_voicelines", {"operator_name": "阿米娅"}, 6)
+    text = _call_result_text(server, "get_operator_voicelines", {"name": "阿米娅"}, 6)
     assert "语音记录" in text and "阿米娅" in text
 
 
 @pytest.mark.skipif(not _has_operator_data, reason="No bundled operator data")
-def test_search_data(server: subprocess.Popen) -> None:
-    text = _call_result_text(server, "search_data", {"pattern": "法术伤害", "scope": "operators", "max_results": 3}, 7)
+def test_search(server: subprocess.Popen) -> None:
+    text = _call_result_text(server, "search", {"scope": "operators", "pattern": "法术伤害", "max_results": 3}, 7)
     assert "法术伤害" in text
 
 
@@ -227,11 +226,6 @@ def test_list_story_events_graceful(server: subprocess.Popen) -> None:
         f"unexpected: {text[:120]}"
 
 
-def test_list_search_scopes(server: subprocess.Popen) -> None:
-    text = _call_result_text(server, "list_search_scopes", {}, 10)
-    assert "operators" in text and "stories" in text
-
-
 @pytest.mark.skipif(not _run_prts_api, reason="E2E_PRTS_API not set")
 def test_search_prts(server: subprocess.Popen) -> None:
     text = _call_result_text(server, "search_prts", {"query": "阿米娅", "limit": 3}, 20)
@@ -239,6 +233,6 @@ def test_search_prts(server: subprocess.Popen) -> None:
 
 
 @pytest.mark.skipif(not _run_prts_api, reason="E2E_PRTS_API not set")
-def test_list_prts_sections(server: subprocess.Popen) -> None:
-    text = _call_result_text(server, "list_prts_sections", {"page_title": "阿米娅"}, 21)
+def test_prts_page_sections(server: subprocess.Popen) -> None:
+    text = _call_result_text(server, "prts_page", {"page_title": "阿米娅", "action": "sections"}, 21)
     assert "[" in text and "] L" in text

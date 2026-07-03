@@ -20,10 +20,36 @@ import { type JsonStore } from "./stores.js";
 import {
   type CharacterAppearance,
   type CharacterAppearanceResult,
+  pyRepr,
   type SpeakerCount,
   withStoryStore,
 } from "./storyReader.js";
 import { storySearchIndex, type StorySearchChapter } from "./storySearch.js";
+
+export interface CharacterAppearancesPayload {
+  name: string;
+  total: number;
+  filters: {
+    scope: string | null;
+  };
+  appearances: Array<{
+    event_id: string;
+    story_code: string;
+    story_name: string;
+    story_key: string;
+    speaks: boolean;
+    mentioned: boolean;
+  }>;
+}
+
+export interface SpeakersInEventPayload {
+  event_id: string;
+  total: number;
+  speakers: Array<{
+    name: string;
+    line_count: number;
+  }>;
+}
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -71,6 +97,35 @@ export function findCharacterAppearances(
   );
 }
 
+export function buildCharacterAppearances(
+  zipPath: string,
+  name: string,
+  scope?: string,
+  maxEvents = 50,
+): CharacterAppearancesPayload {
+  return withStoryStore(zipPath, (store) =>
+    buildCharacterAppearancesFromStore(store, name, scope, maxEvents),
+  );
+}
+
+export function renderCharacterAppearances(data: CharacterAppearancesPayload): string {
+  if (data.appearances.length === 0) {
+    const scope = data.filters.scope;
+    const scopeNote = scope ? `（限定活动：${pyRepr(scope)}）` : "";
+    return `未找到「${data.name}」的出场记录。${scopeNote}`;
+  }
+
+  const parts = [`# 「${data.name}」的出场（共 ${data.total} 章）`];
+  for (const ap of data.appearances) {
+    const tags: string[] = [];
+    if (ap.speaks) tags.push("speaks");
+    if (ap.mentioned) tags.push("mentioned");
+    const nameDisp = `${ap.story_code} ${ap.story_name}`.trim();
+    parts.push(`- [${tags.join("+")}] ${ap.event_id} / ${nameDisp}（key: ${ap.story_key}）`);
+  }
+  return parts.join("\n");
+}
+
 export function findSpeakersIn(
   zipPath: string,
   eventId: string,
@@ -78,6 +133,25 @@ export function findSpeakersIn(
   return withStoryStore(zipPath, (store) =>
     findSpeakersInFromStore(store, eventId),
   );
+}
+
+export function buildSpeakersInEvent(
+  zipPath: string,
+  eventId: string,
+): SpeakersInEventPayload {
+  return withStoryStore(zipPath, (store) => buildSpeakersInEventFromStore(store, eventId));
+}
+
+export function renderSpeakersInEvent(data: SpeakersInEventPayload): string {
+  if (data.speakers.length === 0) {
+    return `活动 ${pyRepr(data.event_id)} 暂无对话发言者数据。`;
+  }
+
+  const parts = [`# ${data.event_id} 的发言角色（共 ${data.total} 位）`];
+  for (const sp of data.speakers) {
+    parts.push(`- ${sp.name}（${sp.line_count} 句）`);
+  }
+  return parts.join("\n");
 }
 
 // ---------------------------------------------------------------------------
@@ -125,6 +199,28 @@ export function findCharacterAppearancesFromStore(
   };
 }
 
+export function buildCharacterAppearancesFromStore(
+  store: JsonStore,
+  name: string,
+  scope?: string,
+  maxEvents = 50,
+): CharacterAppearancesPayload {
+  const result = findCharacterAppearancesFromStore(store, name, scope, maxEvents);
+  return {
+    name: result.name,
+    total: result.totalChapters,
+    filters: { scope: scope ?? null },
+    appearances: result.appearances.map((ap) => ({
+      event_id: ap.eventId,
+      story_code: ap.storyCode,
+      story_name: ap.storyName,
+      story_key: ap.storyKey,
+      speaks: ap.speaks,
+      mentioned: ap.mentioned,
+    })),
+  };
+}
+
 export function findSpeakersInFromStore(
   store: JsonStore,
   eventId: string,
@@ -153,4 +249,19 @@ export function findSpeakersInFromStore(
   // the Python implementation's `(-line_count, name)` tuple sort.
   speakers.sort((a, b) => b.lineCount - a.lineCount || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
   return speakers;
+}
+
+export function buildSpeakersInEventFromStore(
+  store: JsonStore,
+  eventId: string,
+): SpeakersInEventPayload {
+  const speakers = findSpeakersInFromStore(store, eventId);
+  return {
+    event_id: eventId,
+    total: speakers.length,
+    speakers: speakers.map((sp) => ({
+      name: sp.name,
+      line_count: sp.lineCount,
+    })),
+  };
 }

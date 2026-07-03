@@ -8,11 +8,18 @@ from pathlib import Path
 import pytest
 
 from prts_mcp.data.stage import (
+    build_stage_info,
+    build_stage_search,
+    build_stages_listing,
     clear_stage_caches,
     list_stages,
     get_stage_info,
+    render_stage_info,
+    render_stages_listing,
+    render_stage_search,
     search_stages,
 )
+from prts_mcp.output import render_result
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -85,7 +92,6 @@ def _make_fixture(root: Path) -> None:
             "apCost": 12,
             "dangerLevel": "NORMAL",
             "description": "",
-            "stageDropInfo": {"displayRewards": []},
             "unlockCondition": [
                 {"stageId": "act31side_02", "completeState": "PASS"},
             ],
@@ -158,6 +164,11 @@ def _make_fixture(root: Path) -> None:
         ),
         encoding="utf-8",
     )
+
+
+def _load_parity_fixture(name: str) -> dict:
+    path = Path(__file__).parents[2] / "tests" / "parity-fixtures" / name
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 @pytest.fixture(autouse=True)
@@ -235,23 +246,120 @@ class TestListStages:
 
 
 # ---------------------------------------------------------------------------
+# list_stages: build / render / structuredContent channels
+# ---------------------------------------------------------------------------
+
+
+class TestStagesBuildRender:
+    """Golden + round-trip tests for the build/render split.
+
+    The structured dict is the single source of truth; render must be its
+    exact inverse and list_stages must stay byte-for-byte equivalent to
+    render(build(...)).
+    """
+
+    def test_build_payload_shape(self, gamedata: str) -> None:
+        data = build_stages_listing()
+        assert isinstance(data, dict)
+        # Pagination + filter metadata.
+        assert set(data.keys()) == {"total", "offset", "limit", "filters", "stages"}
+        assert data["total"] == 4
+        assert data["offset"] == 0
+        assert data["limit"] == 50
+        assert data["filters"] == {"chapter": None, "type": None}
+        # Each entry carries both raw enum and rendered label, so the
+        # payload serves automation and Chinese consumers alike.
+        # Entries are sorted by stage_id (act31side_01 < daily_01 < main_*).
+        first = data["stages"][0]
+        assert first["stage_id"] == "act31side_01"
+        assert first["type"] == "ACTIVITY"
+        assert first["type_label"] == "活动"
+        assert first["difficulty_label"] == "普通"
+
+    def test_matches_shared_parity_fixture(self, gamedata: str) -> None:
+        assert build_stages_listing() == _load_parity_fixture("list_stages.json")
+
+    def test_filtered_payload_matches_shared_parity_fixture(self, gamedata: str) -> None:
+        assert build_stages_listing(type="daily") == _load_parity_fixture(
+            "list_stages_daily.json"
+        )
+
+    def test_page_payload_matches_shared_parity_fixture(self, gamedata: str) -> None:
+        assert build_stages_listing(limit=2) == _load_parity_fixture(
+            "list_stages_page.json"
+        )
+
+    def test_empty_payload_matches_shared_parity_fixture(self, gamedata: str) -> None:
+        data = build_stages_listing(chapter="nonexistent")
+        assert data == _load_parity_fixture("list_stages_empty.json")
+        expected = "没有匹配的关卡（filter: zoneId=nonexistent）。"
+        assert render_stages_listing(data) == expected
+        assert list_stages(chapter="nonexistent") == expected
+
+    def test_offset_empty_payload_matches_shared_parity_fixture(
+        self, gamedata: str
+    ) -> None:
+        data = build_stages_listing(offset=100)
+        assert data == _load_parity_fixture("list_stages_offset_empty.json")
+        expected = "offset 100 超出范围（共 4 条）。"
+        assert render_stages_listing(data) == expected
+        assert list_stages(offset=100) == expected
+
+    def test_build_error_paths_return_str(self, gamedata: str) -> None:
+        assert isinstance(build_stages_listing(limit=0), str)
+        assert isinstance(build_stages_listing(offset=-1), str)
+        assert isinstance(build_stages_listing(type="NOPE"), str)
+
+    def test_build_respects_filters_and_pagination(self, gamedata: str) -> None:
+        data = build_stages_listing(type="DAILY")
+        assert isinstance(data, dict)
+        assert data["total"] == 1
+        assert data["stages"][0]["stage_id"] == "daily_01"
+        assert data["filters"]["type"] == "DAILY"
+
+        page = build_stages_listing(limit=2, offset=0)
+        assert isinstance(page, dict)
+        assert page["total"] == 4
+        assert len(page["stages"]) == 2
+
+
+# ---------------------------------------------------------------------------
 # get_stage_info
 # ---------------------------------------------------------------------------
 
 
 class TestGetStageInfo:
-    def test_full_info(self, gamedata: str) -> None:
-        out = get_stage_info("main_00-01")
-        assert "坍塌" in out
-        assert "0-1" in out
-        assert "主线" in out
-        assert "普通" in out
-        assert "序章-黑暗时代·上" in out
-        assert "6" in out
-        assert "三点方向" in out
-        assert "招聘许可（7001）" in out
-        assert "无条件" in out
-        assert "main_00-01#f#" in out
+    def test_golden_full_output(self, gamedata: str) -> None:
+        # Golden: exact full markdown for main_00-01 against the fixture.
+        # Stronger than substring asserts — catches build-layer field
+        # omissions and section-ordering regressions.
+        assert get_stage_info("main_00-01") == (
+            "# 坍塌 — 关卡详情\n\n"
+            "## 基本信息\n"
+            "- **ID**：main_00-01\n"
+            "- **编号**：0-1\n"
+            "- **类型**：主线\n"
+            "- **难度**：普通\n"
+            "- **所属区域**：序章-黑暗时代·上\n"
+            "- **理智消耗**：6\n"
+            "- **危险等级**：LV.1\n"
+            "- **关卡数据**：Obt/Main/level_main_00-01\n"
+            "\n"
+            "## 描述\n"
+            "三点方向出现了敌人的先锋部队。\n"
+            "\n"
+            "## 掉落信息\n"
+            "- 招聘许可（7001） ×1 [ONCE]\n"
+            "\n"
+            "## 解锁条件\n"
+            "（无条件）\n"
+            "\n"
+            "## 关联关卡\n"
+            "- 突袭模式：main_00-01#f#（坍塌·突袭）"
+        )
+        data = build_stage_info("main_00-01")
+        assert data == _load_parity_fixture("stage_info.json")
+        assert render_stage_info(data) == get_stage_info("main_00-01")
 
     def test_four_star_variant(self, gamedata: str) -> None:
         out = get_stage_info("main_00-01#f#")
@@ -277,6 +385,9 @@ class TestGetStageInfo:
     def test_empty_drops(self, gamedata: str) -> None:
         out = get_stage_info("act31side_01")
         assert "（无）" in out
+        data = build_stage_info("act31side_01")
+        assert isinstance(data, dict)
+        assert data["drop_info"] is None
 
     def test_multi_drops(self, gamedata: str) -> None:
         out = get_stage_info("daily_01")
@@ -300,6 +411,23 @@ class TestSearchStages:
         assert "坍塌·突袭" in out
         assert "搜索结果" in out
 
+    def test_structured_golden(self, gamedata: str) -> None:
+        data = build_stage_search("先锋")
+        assert isinstance(data, dict)
+        assert data == _load_parity_fixture("search_stages.json")
+        expected = (
+            "# 搜索结果：先锋（共 1 个）\n\n"
+            "## 坍塌 [主线] 0-1（id: main_00-01）\n"
+            "- **区域**：序章-黑暗时代·上\n"
+            "- **难度**：普通\n"
+            "- **理智**：6\n"
+            "- **描述**：三点方向出现了敌人的先锋部队。"
+        )
+        assert render_stage_search(data) == expected
+        assert search_stages("先锋") == expected
+        r = render_result(data, expected, channel="both")
+        assert r.structuredContent == data
+
     def test_by_code(self, gamedata: str) -> None:
         out = search_stages("AS-1")
         assert "测试活动关" in out
@@ -309,12 +437,24 @@ class TestSearchStages:
         assert "坍塌" in out
 
     def test_multiple_matches(self, gamedata: str) -> None:
-        out = search_stages(".")
-        assert "共 " in out
+        data = build_stage_search(".")
+        assert isinstance(data, dict)
+        assert data["total"] == 4
+        assert [entry["stage_id"] for entry in data["results"]] == [
+            "act31side_01",
+            "daily_01",
+            "main_00-01",
+            "main_00-01#f#",
+        ]
 
     def test_no_match(self, gamedata: str) -> None:
-        out = search_stages("ZZZZNOMATCH")
-        assert "未找到匹配" in out
+        data = build_stage_search("ZZZZNOMATCH")
+        assert data == _load_parity_fixture("search_stages_empty.json")
+        expected = "未找到匹配 'ZZZZNOMATCH' 的关卡。"
+        assert render_stage_search(data) == expected
+        assert search_stages("ZZZZNOMATCH") == expected
+        r = render_result(data, expected, channel="structured")
+        assert r.structuredContent == data
 
     def test_invalid_regex(self, gamedata: str) -> None:
         out = search_stages("[invalid")

@@ -7,9 +7,20 @@ from pathlib import Path
 
 import pytest
 
-from prts_mcp.data.search import search_operator_data
+from prts_mcp.data.search import (
+    build_operator_search,
+    build_search,
+    render_operator_search,
+    render_search,
+    search_operator_data,
+)
 from prts_mcp.data.stores import DirectoryStore, ZipStore
-from prts_mcp.data.story import search_stories_from_store
+from prts_mcp.data.story import (
+    build_story_search_from_store,
+    render_story_search,
+    search_stories_from_store,
+)
+from prts_mcp.output import render_result
 
 
 # ---------------------------------------------------------------------------
@@ -19,6 +30,11 @@ from prts_mcp.data.story import search_stories_from_store
 STORY_REVIEW_PATH = "zh_CN/gamedata/excel/story_review_table.json"
 FIRST_STORY_KEY = "activities/act_test/level_act_test_01_beg"
 SECOND_STORY_KEY = "activities/act_test/level_act_test_02_end"
+
+
+def _load_parity_fixture(name: str) -> dict:
+    path = Path(__file__).parents[2] / "tests" / "parity-fixtures" / name
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def _story_path(story_key: str) -> str:
@@ -137,8 +153,13 @@ class TestSearchOperatorData:
         assert "匹配：任命助理" in result
 
     def test_no_match(self) -> None:
-        result = search_operator_data("ZZZZZZZ")
-        assert "未找到匹配" in result
+        data = build_operator_search("ZZZZZZZ")
+        assert data == _load_parity_fixture("search_operators_empty.json")
+        expected = "未找到匹配 'ZZZZZZZ' 的干员数据。"
+        assert render_operator_search(data) == expected
+        assert search_operator_data("ZZZZZZZ") == expected
+        result = render_result(data, expected, channel="structured")
+        assert result.structuredContent == data
 
     def test_invalid_regex(self) -> None:
         result = search_operator_data("[")
@@ -158,6 +179,29 @@ class TestSearchOperatorData:
     def test_max_results_cap(self) -> None:
         result = search_operator_data(".", max_results=101)
         assert "max_results 必须 <= 100" in result
+
+    def test_structured_golden(self) -> None:
+        data = build_operator_search("阿米娅")
+        assert data == _load_parity_fixture("search_operators.json")
+        assert render_operator_search(data) == (
+            "# 搜索 \"阿米娅\" 的结果（共 2 条）"
+            "\n---\n\n"
+            "[operators/basic/阿米娅]\n"
+            "匹配：干员名称\n"
+            "阿米娅"
+            "\n---\n\n"
+            "[operators/archives/阿米娅]\n"
+            "匹配：档案资料一\n"
+            "阿米娅的档案文本。"
+        )
+        result = render_result(data, render_operator_search(data), channel="both")
+        assert result.structuredContent == data
+
+    def test_unified_search_dispatch(self) -> None:
+        data = build_search("operators", "阿米娅", max_results=1)
+        assert isinstance(data, dict)
+        assert data["scope"] == "operators"
+        assert render_search(data) == render_operator_search(data)
 
 
 # ---------------------------------------------------------------------------
@@ -207,6 +251,12 @@ class TestSearchStories:
         assert "未找到匹配的活动" in result
 
     @pytest.mark.parametrize("store_kind", ["directory", "zip"])
+    def test_missing_event_id_repr(self, tmp_path: Path, store_kind: str) -> None:
+        store = _story_store(store_kind, tmp_path)
+        result = search_stories_from_store(store, ".", event_id="a\nb")
+        assert result == "未找到匹配的活动：'a\\nb'。"
+
+    @pytest.mark.parametrize("store_kind", ["directory", "zip"])
     def test_context_zero(self, tmp_path: Path, store_kind: str) -> None:
         store = _story_store(store_kind, tmp_path)
         result = search_stories_from_store(store, "你好", context_lines=0)
@@ -217,8 +267,13 @@ class TestSearchStories:
     @pytest.mark.parametrize("store_kind", ["directory", "zip"])
     def test_no_match(self, tmp_path: Path, store_kind: str) -> None:
         store = _story_store(store_kind, tmp_path)
-        result = search_stories_from_store(store, "ZZZZZZ")
-        assert "未找到匹配" in result
+        data = build_story_search_from_store(store, "ZZZZZZ")
+        assert data == _load_parity_fixture("search_stories_empty.json")
+        expected = "未找到匹配 'ZZZZZZ' 的剧情台词。"
+        assert render_story_search(data) == expected
+        assert search_stories_from_store(store, "ZZZZZZ") == expected
+        result = render_result(data, expected, channel="structured")
+        assert result.structuredContent == data
 
     @pytest.mark.parametrize("store_kind", ["directory", "zip"])
     def test_invalid_regex(self, tmp_path: Path, store_kind: str) -> None:
@@ -229,8 +284,8 @@ class TestSearchStories:
     @pytest.mark.parametrize("store_kind", ["directory", "zip"])
     def test_invalid_line_type(self, tmp_path: Path, store_kind: str) -> None:
         store = _story_store(store_kind, tmp_path)
-        result = search_stories_from_store(store, ".", line_type="invalid")
-        assert "无效的 line_type" in result
+        result = search_stories_from_store(store, ".", line_type="bad'value")
+        assert result == "无效的 line_type：\"bad'value\"，可选值：choice, dialog, narration"
 
     @pytest.mark.parametrize("store_kind", ["directory", "zip"])
     def test_max_results_cap(self, tmp_path: Path, store_kind: str) -> None:
@@ -255,3 +310,20 @@ class TestSearchStories:
         store = _story_store(store_kind, tmp_path)
         result = search_stories_from_store(store, ".", context_lines=-1)
         assert "context_lines 必须 >= 0" in result
+
+    def test_structured_context_golden(self, tmp_path: Path) -> None:
+        store = _story_store("directory", tmp_path)
+        data = build_story_search_from_store(store, "你好")
+
+        assert data == _load_parity_fixture("search_stories.json")
+        expected = (
+            "# 搜索 \"你好\" 的结果（共 1 条）\n\n"
+            "---\n\n"
+            "[stories/act_test/TEST-1 L1]\n"
+            ">>> 阿米娅：你好，博士。\n"
+            "    *罗德岛走廊*"
+        )
+        assert render_story_search(data) == expected
+        assert search_stories_from_store(store, "你好") == expected
+        result = render_result(data, expected, channel="both")
+        assert result.structuredContent == data

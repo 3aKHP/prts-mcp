@@ -1,43 +1,49 @@
 from __future__ import annotations
 
+import asyncio
 import ast
 from pathlib import Path
+
+from mcp.server.fastmcp import FastMCP
+
+from prts_mcp.tools_gamedata import register_gamedata_tools
+from prts_mcp.tools_prts import register_prts_tools
+from prts_mcp.tools_story import register_story_tools
 
 
 EXPECTED_TOOL_SURFACE = {
     "search_prts": ("query", "limit", "search_mode", "filter_technical"),
-    "read_prts_page": ("page_title", "section_index"),
-    "list_prts_sections": ("page_title",),
-    "get_prts_categories": ("page_title",),
-    "get_prts_links": ("page_title", "direction", "limit"),
-    "get_prts_template": ("page_title",),
-    "get_operator_archives": ("operator_name",),
-    "get_operator_voicelines": ("operator_name",),
-    "get_operator_basic_info": ("operator_name",),
+    "prts_page": ("page_title", "action", "section_index", "direction", "limit"),
+    "get_operator_archives": ("name",),
+    "get_operator_voicelines": ("name",),
+    "get_operator_basic_info": ("name",),
     "list_enemies": ("threat_level", "limit", "offset", "full"),
     "get_enemy_info": ("name", "stage_id"),
-    "search_enemies": ("pattern", "max_results"),
     "get_stage_enemies": ("stage_id",),
     "get_enemy_appearances": ("name", "limit", "offset"),
     "list_story_events": ("category",),
     "list_stories": ("event_id", "include_summaries"),
-    "get_event_summary": ("event_id",),
     "get_story_summary": ("story_key",),
     "read_story": ("story_key", "include_narration"),
     "read_activity": ("event_id", "include_narration", "page", "page_size"),
     "list_stages": ("chapter", "type", "limit", "offset"),
     "get_stage_info": ("stage_id",),
-    "search_stages": ("pattern", "max_results"),
     "list_items": ("category", "limit", "offset"),
     "get_item_info": ("name",),
-    "search_items": ("pattern", "max_results"),
-    "list_search_scopes": (),
-    "search_data": ("pattern", "scope", "max_results"),
+    "search": ("scope", "pattern", "max_results"),
     "search_stories": ("pattern", "character", "line_type", "context_lines", "max_results", "event_id"),
-    "get_operator_memoirs": ("operator_name",),
+    "get_operator_memoirs": ("name",),
     "find_character_appearances": ("name", "scope", "max_events"),
     "find_speakers_in": ("event_id",),
 }
+
+
+def _build_registered_app() -> FastMCP:
+    app = FastMCP("tool-surface-test")
+    register_prts_tools(app)
+    register_gamedata_tools(app)
+    register_story_tools(app)
+    return app
 
 
 def _collect_tool_functions() -> dict[str, ast.FunctionDef | ast.AsyncFunctionDef]:
@@ -57,6 +63,12 @@ def _collect_tool_functions() -> dict[str, ast.FunctionDef | ast.AsyncFunctionDe
     return functions
 
 
+def _return_annotation(fn: ast.FunctionDef | ast.AsyncFunctionDef) -> str | None:
+    if fn.returns is None:
+        return None
+    return ast.unparse(fn.returns)
+
+
 def test_python_tool_function_signatures_are_frozen() -> None:
     # Alpha hardening intentionally freezes required and optional parameters.
     # Relax this before 1.0 final if additive optional parameters become policy.
@@ -67,3 +79,24 @@ def test_python_tool_function_signatures_are_frozen() -> None:
         fn = functions[name]
         params = [arg.arg for arg in fn.args.args]
         assert tuple(params) == expected_params, f"Signature mismatch for {name!r}"
+
+
+def test_python_tool_functions_return_explicit_call_tool_results() -> None:
+    functions = _collect_tool_functions()
+
+    for name in EXPECTED_TOOL_SURFACE:
+        assert name in functions, f"Tool {name!r} not found in any tools_*.py module"
+        assert _return_annotation(functions[name]) == "object", (
+            f"Tool {name!r} must stay annotated as -> object so FastMCP does "
+            "not derive an outputSchema that breaks explicit CallToolResult."
+        )
+
+
+def test_registered_tool_manifest_has_no_output_schema() -> None:
+    app = _build_registered_app()
+
+    tools = {tool.name: tool for tool in asyncio.run(app.list_tools())}
+    assert set(tools) == set(EXPECTED_TOOL_SURFACE)
+
+    for name, tool in tools.items():
+        assert tool.outputSchema is None, f"{name} still has outputSchema"

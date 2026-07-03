@@ -8,11 +8,20 @@ from unittest.mock import patch
 import pytest
 
 from prts_mcp.data.stage_enemy import (
+    build_enemy_appearances,
+    build_stage_enemies,
     clear_stage_enemy_caches,
     get_enemy_appearances,
     get_enemy_stage_info,
     get_stage_enemies,
+    render_enemy_appearances,
+    render_stage_enemies,
 )
+
+
+def _load_parity_fixture(name: str) -> dict:
+    path = Path(__file__).parents[2] / "tests" / "parity-fixtures" / name
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def _write_fixture(root: Path) -> None:
@@ -172,26 +181,55 @@ def gamedata(tmp_path: Path):
     clear_stage_enemy_caches()
 
 
-def test_get_stage_enemies_uses_spawn_actions_and_overrides(gamedata: Path) -> None:
-    out = get_stage_enemies("main_00-01")
-    assert "坍塌 0-1" in out
-    assert "源石虫" in out
-    assert "出场数量**：6" in out
-    assert "士兵" in out
-    assert "出场数量**：1" in out
-    assert "DEF 30" in out
-    assert "关卡特化敌人" in out
-    assert "HP 1,234" in out
-    assert "ATK 321" in out
-    assert "未出场敌人" not in out
+def test_get_stage_enemies_golden(gamedata: Path) -> None:
+    # Golden: exact full markdown for main_00-01 against the fixture.
+    # Hardcoded (not tautology) — catches build-layer field omissions,
+    # enemy ordering (most_common), and the overwritten-flag/section logic.
+    assert get_stage_enemies("main_00-01") == (
+        "# 坍塌 0-1（main_00-01） — 敌人列表\n"
+        "\n"
+        "## 源石虫（enemy_1007_slime）\n"
+        "- **出场数量**：6\n"
+        "- **敌人等级**：0\n"
+        "- **战斗属性**：HP 550；ATK 130；DEF 0；RES 0；移速 1.0；攻击间隔 1.7s\n"
+        "\n"
+        "## 士兵（enemy_1002_nsabr）\n"
+        "- **出场数量**：1\n"
+        "- **敌人等级**：0\n"
+        "- **关卡覆盖**：是\n"
+        "- **战斗属性**：HP 1,650；ATK 200；DEF 30；RES 0\n"
+        "\n"
+        "## 关卡特化敌人（enemy_custom）\n"
+        "- **出场数量**：1\n"
+        "- **敌人等级**：0\n"
+        "- **关卡覆盖**：是\n"
+        "- **战斗属性**：HP 1,234；ATK 321；DEF 45；RES 10"
+    )
+    data = build_stage_enemies("main_00-01")
+    assert data == _load_parity_fixture("stage_enemies.json")
+    assert render_stage_enemies(data) == get_stage_enemies("main_00-01")
 
 
-def test_get_enemy_appearances(gamedata: Path) -> None:
-    out = get_enemy_appearances("源石虫")
-    assert "源石虫" in out
-    assert "坍塌" in out
-    assert "main_00-01" in out
-    assert "6 个" in out
+def test_get_enemy_appearances_golden(gamedata: Path) -> None:
+    # Golden: exact full markdown. Hardcoded (not tautology) — catches
+    # build-layer field omissions and header/pagination regressions.
+    assert get_enemy_appearances("源石虫") == (
+        "# 源石虫（enemy_1007_slime）— 出场关卡（共 1 个）\n"
+        "- **坍塌** 0-1（main_00-01）：6 个\n"
+        "\n"
+        "（显示第 1–1 条，共 1 条。使用 offset=50 查看下一页）"
+    )
+    data = build_enemy_appearances("源石虫")
+    assert data == _load_parity_fixture("enemy_appearances.json")
+    assert render_enemy_appearances(data) == get_enemy_appearances("源石虫")
+
+
+def test_get_enemy_appearances_empty_is_structured(gamedata: Path) -> None:
+    data = build_enemy_appearances("未出场敌人")
+    assert data == _load_parity_fixture("enemy_appearances_empty.json")
+    assert render_enemy_appearances(data) == (
+        "未找到 未出场敌人（enemy_unused）的实际出场关卡。"
+    )
 
 
 def test_get_enemy_stage_info(gamedata: Path) -> None:

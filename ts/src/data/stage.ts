@@ -40,6 +40,68 @@ interface StageSearchRecord {
   searchText: string;
 }
 
+export interface StageListingEntry {
+  stage_id: string;
+  name: string;
+  code: string;
+  type: string;
+  type_label: string;
+  difficulty_label: string;
+  zone_id: string;
+  zone_display: string;
+}
+
+export interface StagesListingPayload {
+  total: number;
+  offset: number;
+  limit: number;
+  filters: {
+    chapter: string | null;
+    type: string | null;
+  };
+  stages: StageListingEntry[];
+}
+
+export interface StageInfoPayload {
+  stage_id: string;
+  name: string;
+  code: string;
+  type_raw: string;
+  type_label: string;
+  difficulty_raw: string;
+  difficulty_label: string;
+  zone_id: string;
+  zone_display: string;
+  ap_cost: number | string;
+  danger_level: string;
+  boss_mark: boolean;
+  description: string;
+  drop_info: Record<string, unknown> | null;
+  unlock_conditions: { stageId: string; completeState: string }[];
+  level_id: string | null;
+  hard_stage: { id: string | null; name: string | null };
+  six_star_stage: { id: string | null; name: string | null };
+}
+
+export interface StageSearchPayload {
+  scope: "stages";
+  pattern: string;
+  total: number;
+  results: Array<{
+    stage_id: string;
+    name: string;
+    code: string;
+    type: string;
+    type_label: string;
+    difficulty: string;
+    difficulty_label: string;
+    zone_id: string;
+    zone_display: string;
+    ap: number | string;
+    description: string;
+  }>;
+}
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
@@ -201,7 +263,19 @@ export function listStages(
   limit: number = 50,
   offset: number = 0,
 ): string {
+  const data = buildStagesListing(chapter, type, limit, offset);
+  if (typeof data === "string") return data;
+  return renderStagesListing(data);
+}
+
+export function buildStagesListing(
+  chapter?: string | null,
+  type?: string | null,
+  limit: number = 50,
+  offset: number = 0,
+): StagesListingPayload | string {
   if (limit < 1) return "limit 必须 >= 1。";
+  if (limit > 200) return "limit 必须 <= 200。";
   if (offset < 0) return "offset 必须 >= 0。";
   if (type != null && !(type.toUpperCase() in STAGE_TYPE_LABELS)) {
     const allowed = Object.keys(STAGE_TYPE_LABELS).join("、");
@@ -216,7 +290,7 @@ export function listStages(
   }
 
   const filtered: StageEntry[] = [];
-  for (const [sid, entry] of Object.entries(stages).sort(([a], [b]) => a.localeCompare(b))) {
+  for (const [, entry] of Object.entries(stages).sort(([a], [b]) => a.localeCompare(b))) {
     if (chapter != null && entry.zoneId !== chapter) continue;
     if (type != null && entry.stageType !== type.toUpperCase()) continue;
     filtered.push(entry);
@@ -225,27 +299,53 @@ export function listStages(
   const total = filtered.length;
   const page = filtered.slice(offset, offset + limit);
 
-  if (page.length === 0) {
-    if (total === 0) {
+  const entries: StageListingEntry[] = page.map((e) => {
+    const typeRaw = e.stageType ?? "";
+    const zoneId = e.zoneId ?? "";
+    return {
+      stage_id: e.stageId ?? "",
+      name: e.name || "（无名）",
+      code: e.code || "?",
+      type: typeRaw,
+      type_label: stageTypeLabel(typeRaw),
+      difficulty_label: difficultyLabel(e.difficulty ?? ""),
+      zone_id: zoneId,
+      zone_display: zoneDisplay(zoneId),
+    };
+  });
+
+  return {
+    total,
+    offset,
+    limit,
+    filters: {
+      chapter: chapter ?? null,
+      type: type ? type.toUpperCase() : null,
+    },
+    stages: entries,
+  };
+}
+
+export function renderStagesListing(data: StagesListingPayload): string {
+  if (data.stages.length === 0) {
+    if (data.total === 0) {
       const filters: string[] = [];
-      if (chapter) filters.push(`zoneId=${chapter}`);
-      if (type) filters.push(`stageType=${type.toUpperCase()}`);
+      if (data.filters.chapter) filters.push(`zoneId=${data.filters.chapter}`);
+      if (data.filters.type) filters.push(`stageType=${data.filters.type}`);
       return `没有匹配的关卡（filter: ${filters.join(", ") || "none"}）。`;
     }
-    return `offset ${offset} 超出范围（共 ${total} 条）。`;
+    return `offset ${data.offset} 超出范围（共 ${data.total} 条）。`;
   }
 
-  const lines = [`# 关卡列表（共 ${total} 个）`];
-  for (const e of page) {
-    const tLabel = stageTypeLabel(e.stageType ?? "");
-    const dLabel = difficultyLabel(e.difficulty ?? "");
-    const zd = zoneDisplay(e.zoneId ?? "");
-    const name = e.name || "（无名）";
-    const code = e.code || "?";
-    const sid = e.stageId ?? "";
-    lines.push(`- **${name}** [${tLabel}] ${code} — ${dLabel} — ${zd}（id: ${sid}）`);
+  const lines = [`# 关卡列表（共 ${data.total} 个）`];
+  for (const s of data.stages) {
+    lines.push(
+      `- **${s.name}** [${s.type_label}] ${s.code} — ` +
+      `${s.difficulty_label} — ${s.zone_display}（id: ${s.stage_id}）`,
+    );
   }
 
+  const { offset, limit, total } = data;
   const start = offset + 1;
   const end = Math.min(offset + limit, total);
   lines.push(
@@ -256,6 +356,12 @@ export function listStages(
 }
 
 export function getStageInfo(stageId: string): string {
+  const data = buildStageInfo(stageId);
+  if (typeof data === "string") return data;
+  return renderStageInfo(data);
+}
+
+export function buildStageInfo(stageId: string): StageInfoPayload | string {
   let stages: StageTable;
   try {
     stages = getStageTable();
@@ -280,41 +386,74 @@ export function getStageInfo(stageId: string): string {
   const unlocks = entry.unlockCondition ?? [];
   const hardId = entry.hardStagedId;
   const levelId = entry.levelId;
+  const sixStarId = entry.sixStarStageId;
+  const hardEntry = hardId ? stages[hardId] : undefined;
+  const sixStarEntry = sixStarId ? stages[sixStarId] : undefined;
 
-  const parts: string[] = [`# ${name} — 关卡详情`, "", "## 基本信息"];
-  parts.push(`- **ID**：${stageId}`);
-  parts.push(`- **编号**：${code}`);
-  parts.push(`- **类型**：${tLabel}`);
-  parts.push(`- **难度**：${dLabel}`);
-  parts.push(`- **所属区域**：${zd}`);
-  parts.push(`- **理智消耗**：${ap}`);
-  parts.push(`- **危险等级**：${danger}`);
-  if (boss) parts.push("- **BOSS标记**：是");
-  if (levelId) parts.push(`- **关卡数据**：${levelId}`);
+  return {
+    stage_id: stageId,
+    name,
+    code,
+    type_raw: entry.stageType ?? "",
+    type_label: tLabel,
+    difficulty_raw: entry.difficulty ?? "",
+    difficulty_label: dLabel,
+    zone_id: entry.zoneId ?? "",
+    zone_display: zd,
+    ap_cost: ap,
+    danger_level: danger,
+    boss_mark: boss,
+    description: desc,
+    drop_info: drops ?? null,
+    unlock_conditions: unlocks,
+    level_id: levelId ?? null,
+    hard_stage: { id: hardId ?? null, name: hardEntry?.name ?? null },
+    six_star_stage: { id: sixStarId ?? null, name: sixStarEntry?.name ?? null },
+  };
+}
 
-  parts.push("", "## 描述", desc);
-  parts.push("", "## 掉落信息", formatDrops(drops));
-  parts.push("", "## 解锁条件", formatUnlock(unlocks));
+export function renderStageInfo(data: StageInfoPayload): string {
+  const parts: string[] = [`# ${data.name} — 关卡详情`, "", "## 基本信息"];
+  parts.push(`- **ID**：${data.stage_id}`);
+  parts.push(`- **编号**：${data.code}`);
+  parts.push(`- **类型**：${data.type_label}`);
+  parts.push(`- **难度**：${data.difficulty_label}`);
+  parts.push(`- **所属区域**：${data.zone_display}`);
+  parts.push(`- **理智消耗**：${data.ap_cost}`);
+  parts.push(`- **危险等级**：${data.danger_level}`);
+  if (data.boss_mark) parts.push("- **BOSS标记**：是");
+  if (data.level_id) parts.push(`- **关卡数据**：${data.level_id}`);
+
+  parts.push("", "## 描述", data.description);
+  parts.push("", "## 掉落信息", formatDrops(data.drop_info));
+  parts.push("", "## 解锁条件", formatUnlock(data.unlock_conditions));
 
   parts.push("", "## 关联关卡");
-  if (hardId) {
-    const hEntry = stages[hardId];
-    const hName = hEntry?.name;
-    parts.push(`- 突袭模式：${hardId}` + (hName ? `（${hName}）` : ""));
+  if (data.hard_stage.id) {
+    parts.push(
+      `- 突袭模式：${data.hard_stage.id}` +
+      (data.hard_stage.name ? `（${data.hard_stage.name}）` : ""),
+    );
   } else {
     parts.push("- 突袭模式：无");
   }
-  const ssid = entry.sixStarStageId;
-  if (ssid) {
-    const sEntry = stages[ssid];
-    const sName = sEntry?.name;
-    parts.push(`- 六星模式：${ssid}` + (sName ? `（${sName}）` : ""));
+  if (data.six_star_stage.id) {
+    parts.push(
+      `- 六星模式：${data.six_star_stage.id}` +
+      (data.six_star_stage.name ? `（${data.six_star_stage.name}）` : ""),
+    );
   }
 
   return parts.join("\n");
 }
 
 export function searchStages(pattern: string, maxResults: number = 30): string {
+  const data = buildStageSearch(pattern, maxResults);
+  if (typeof data === "string") return data;
+  return renderStageSearch(data);
+}
+
+export function buildStageSearch(pattern: string, maxResults: number = 30): StageSearchPayload | string {
   if (maxResults < 1) return "max_results 必须 >= 1。";
   if (maxResults > 100) return "max_results 必须 <= 100。";
 
@@ -340,28 +479,53 @@ export function searchStages(pattern: string, maxResults: number = 30): string {
     }
   }
 
-  if (matched.length === 0) return `未找到匹配 '${pattern}' 的关卡。`;
+  return {
+    scope: "stages",
+    pattern,
+    total: matched.length,
+    results: matched.map(stageSearchEntry),
+  };
+}
 
-  const lines = [`# 搜索结果：${pattern}（共 ${matched.length} 个）`];
-  for (const record of matched) {
-    const e = record.entry;
-    const name = e.name || "（无名）";
-    const code = e.code || "?";
-    const tLabel = stageTypeLabel(e.stageType ?? "");
-    const dLabel = difficultyLabel(e.difficulty ?? "");
-    const zd = zoneDisplay(e.zoneId ?? "");
-    const ap = e.apCost ?? "?";
-    const cdesc = cleanDescription(e.description ?? "");
+export function renderStageSearch(data: StageSearchPayload): string {
+  const { pattern, results } = data;
+  if (results.length === 0) return `未找到匹配 '${pattern}' 的关卡。`;
 
-    const sid = record.stageId;
-    lines.push(`\n## ${name} [${tLabel}] ${code}（id: ${sid}）`);
-    lines.push(`- **区域**：${zd}`);
-    lines.push(`- **难度**：${dLabel}`);
-    lines.push(`- **理智**：${ap}`);
-    if (cdesc) lines.push(`- **描述**：${cdesc.slice(0, 120)}${cdesc.length > 120 ? "..." : ""}`);
+  const lines = [`# 搜索结果：${pattern}（共 ${data.total} 个）`];
+  for (const entry of results) {
+    lines.push(`\n## ${entry.name} [${entry.type_label}] ${entry.code}（id: ${entry.stage_id}）`);
+    lines.push(`- **区域**：${entry.zone_display}`);
+    lines.push(`- **难度**：${entry.difficulty_label}`);
+    lines.push(`- **理智**：${entry.ap}`);
+    if (entry.description) {
+      lines.push(
+        `- **描述**：${entry.description.slice(0, 120)}${entry.description.length > 120 ? "..." : ""}`,
+      );
+    }
   }
 
   return lines.join("\n");
+}
+
+function stageSearchEntry(record: StageSearchRecord): StageSearchPayload["results"][number] {
+  const e = record.entry;
+  const typeRaw = e.stageType ?? "";
+  const difficultyRaw = e.difficulty ?? "";
+  const zoneId = e.zoneId ?? "";
+  const ap = e.apCost;
+  return {
+    stage_id: record.stageId,
+    name: e.name || "（无名）",
+    code: e.code || "?",
+    type: typeRaw,
+    type_label: stageTypeLabel(typeRaw),
+    difficulty: difficultyRaw,
+    difficulty_label: difficultyLabel(difficultyRaw),
+    zone_id: zoneId,
+    zone_display: zoneDisplay(zoneId),
+    ap: ap ?? "?",
+    description: cleanDescription(e.description ?? ""),
+  };
 }
 
 function getStageSearchRecords(): StageSearchRecord[] {

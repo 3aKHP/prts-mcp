@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -10,6 +10,12 @@ function tempGamedataRoot(): string {
 
 async function loadEnemyModule(): Promise<typeof import("../src/data/enemy.js")> {
   return import(`../src/data/enemy.ts?cacheBust=${Date.now()}-${Math.random()}`);
+}
+
+function loadParityFixture(name: string): unknown {
+  return JSON.parse(
+    readFileSync(join(import.meta.dirname, "..", "..", "tests", "parity-fixtures", name), "utf-8"),
+  );
 }
 
 function writeFixtures(root: string, levelsRoot?: string): void {
@@ -116,6 +122,7 @@ test("list_enemies default filters hidden entries", async () => {
   assert.match(out, /霜星/);
   assert.match(out, /源石虫/);
   assert.doesNotMatch(out, /隐藏敌人/);
+  assert.deepEqual(enemy.buildEnemiesListing(), loadParityFixture("list_enemies.json"));
 });
 
 test("list_enemies threat_level filters", async () => {
@@ -144,6 +151,7 @@ test("list_enemies offset beyond total returns range error", async () => {
   const enemy = await loadEnemyModule();
   const out = enemy.listEnemies(null, 50, 999);
   assert.match(out, /超出范围/);
+  assert.deepEqual(enemy.buildEnemiesListing(null, 50, 999), loadParityFixture("list_enemies_offset_empty.json"));
 });
 
 test("list_enemies invalid limit/offset", async () => {
@@ -217,7 +225,8 @@ test("get_enemy_info merges handbook and database", async () => {
   assert.match(out, /\*\*法术抗性\*\*：50/);
   assert.match(out, /\*\*免疫\*\*：眩晕、冻结/);
   assert.match(out, /ArcticBlast/);
-  assert.match(out, /duration=8/);
+  assert.match(out, /duration=8\.0/);
+  assert.deepStrictEqual(enemy.buildEnemyInfo("霜星"), loadParityFixture("enemy_info_with_stats.json"));
 });
 
 test("get_enemy_info reads database from sibling levels path", async () => {
@@ -240,6 +249,7 @@ test("get_enemy_info handbook-only when no database entry", async () => {
   const out = enemy.getEnemyInfo("源石虫");
   assert.match(out, /源石虫/);
   assert.doesNotMatch(out, /\*\*最大生命\*\*/);
+  assert.deepEqual(enemy.buildEnemyInfo("源石虫"), loadParityFixture("enemy_info.json"));
 });
 
 test("get_enemy_info uses ideographic separator for damage types", async () => {
@@ -265,7 +275,21 @@ test("search_enemies matches by description", async () => {
   writeFixtures(root);
   const enemy = await loadEnemyModule();
   const out = enemy.searchEnemies("整合运动");
-  assert.match(out, /霜星/);
+  const data = enemy.buildEnemySearch("整合运动");
+  assert.deepStrictEqual(data, loadParityFixture("search_enemies.json"));
+  if (typeof data === "string") assert.fail(`unexpected error: ${data}`);
+  const expected = [
+    "# 搜索结果：整合运动（共 1 个）",
+    "",
+    "# 霜星 - 敌人图鉴",
+    "",
+    "- **编号**：FN",
+    "- **威胁等级**：领袖",
+    "- **描述**：整合运动法术部队干部。",
+    "- **伤害类型**：法术",
+  ].join("\n");
+  assert.equal(enemy.renderEnemySearch(data), expected);
+  assert.equal(out, expected);
 });
 
 test("search_enemies no match", async () => {
@@ -274,7 +298,12 @@ test("search_enemies no match", async () => {
   writeFixtures(root);
   const enemy = await loadEnemyModule();
   const out = enemy.searchEnemies("绝对不存在的关键词");
-  assert.match(out, /未找到匹配/);
+  const data = enemy.buildEnemySearch("绝对不存在的关键词");
+  assert.deepStrictEqual(enemy.buildEnemySearch("ZZZZZZZ"), loadParityFixture("search_enemies_empty.json"));
+  if (typeof data === "string") assert.fail(`unexpected error: ${data}`);
+  const expected = "未找到匹配 '绝对不存在的关键词' 的敌人。";
+  assert.equal(enemy.renderEnemySearch(data), expected);
+  assert.equal(out, expected);
 });
 
 test("search_enemies invalid regex", async () => {

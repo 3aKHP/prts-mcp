@@ -165,7 +165,7 @@ test("E2E", async (t) => {
   });
 
   // --- tools/list ---
-  await t.test("tools/list returns all 32 tools", async () => {
+  await t.test("tools/list returns all 23 tools", async () => {
     const tl = await mcpPost(
       origin,
       { jsonrpc: "2.0", method: "tools/list", id: 2 },
@@ -175,19 +175,18 @@ test("E2E", async (t) => {
     assert.equal(tl.status, 200);
     const tools = (tl.body?.result as Record<string, unknown>)?.tools as Array<{ name: string }> | undefined;
     assert.ok(tools, "tools/list should return tools");
-    assert.equal(tools!.length, 32, `got ${tools!.length} tools`);
+    assert.equal(tools!.length, 23, `got ${tools!.length} tools`);
 
     const expected = new Set([
-      "search_prts", "read_prts_page", "list_prts_sections",
-      "get_prts_categories", "get_prts_links", "get_prts_template",
+      "search_prts", "prts_page",
       "get_operator_archives", "get_operator_voicelines", "get_operator_basic_info",
-      "list_enemies", "get_enemy_info", "search_enemies",
+      "list_enemies", "get_enemy_info",
       "get_stage_enemies", "get_enemy_appearances",
-      "list_stages", "get_stage_info", "search_stages",
-      "list_items", "get_item_info", "search_items",
+      "list_stages", "get_stage_info",
+      "list_items", "get_item_info",
       "list_story_events", "list_stories", "read_story", "read_activity",
-      "list_search_scopes", "search_data", "search_stories",
-      "get_event_summary", "get_story_summary",
+      "search", "search_stories",
+      "get_story_summary",
       "get_operator_memoirs",
       "find_character_appearances", "find_speakers_in",
     ]);
@@ -199,35 +198,35 @@ test("E2E", async (t) => {
 
   // --- operator tools (bundled fixture always available) ---
   await t.test("get_operator_basic_info — char_* filter (阿米娅 5★)", async () => {
-    const r = await mcpPost(origin, tc("get_operator_basic_info", { operator_name: "阿米娅" }, 3), sessionId);
+    const r = await mcpPost(origin, tc("get_operator_basic_info", { name: "阿米娅" }, 3), sessionId);
     assert.equal(r.status, 200);
     const text = toolResultText(r);
     assert.ok(text.includes("5★"), `阿米娅 should be 5★: ${text.split("\n").find((l) => l.includes("稀有度"))}`);
   });
 
   await t.test("get_operator_basic_info — char_* filter (森蚺 6★)", async () => {
-    const r = await mcpPost(origin, tc("get_operator_basic_info", { operator_name: "森蚺" }, 4), sessionId);
+    const r = await mcpPost(origin, tc("get_operator_basic_info", { name: "森蚺" }, 4), sessionId);
     assert.equal(r.status, 200);
     const text = toolResultText(r);
     assert.ok(text.includes("6★"), `森蚺 should be 6★: ${text.split("\n").find((l) => l.includes("稀有度"))}`);
   });
 
   await t.test("get_operator_archives", async () => {
-    const r = await mcpPost(origin, tc("get_operator_archives", { operator_name: "阿米娅" }, 5), sessionId);
+    const r = await mcpPost(origin, tc("get_operator_archives", { name: "阿米娅" }, 5), sessionId);
     assert.equal(r.status, 200);
     const text = toolResultText(r);
     assert.ok(text.includes("阿米娅") && text.includes("干员档案"), text.slice(0, 80));
   });
 
   await t.test("get_operator_voicelines", async () => {
-    const r = await mcpPost(origin, tc("get_operator_voicelines", { operator_name: "阿米娅" }, 6), sessionId);
+    const r = await mcpPost(origin, tc("get_operator_voicelines", { name: "阿米娅" }, 6), sessionId);
     assert.equal(r.status, 200);
     const text = toolResultText(r);
     assert.ok(text.includes("语音记录") && text.includes("阿米娅"), text.slice(0, 80));
   });
 
-  await t.test("search_data", async () => {
-    const r = await mcpPost(origin, tc("search_data", { pattern: "法术伤害", scope: "operators", max_results: 3 }, 7), sessionId);
+  await t.test("search", async () => {
+    const r = await mcpPost(origin, tc("search", { scope: "operators", pattern: "法术伤害", max_results: 3 }, 7), sessionId);
     assert.equal(r.status, 200);
     const text = toolResultText(r);
     assert.ok(text.includes("法术伤害"), text.slice(0, 80));
@@ -268,8 +267,8 @@ test("E2E", async (t) => {
     assert.ok(text.includes("阿米娅") && text.includes("匹配"), text.slice(0, 80));
   });
 
-  await t.test("list_prts_sections", { skip: !RUN_PRTS_API }, async () => {
-    const r = await mcpPost(origin, tc("list_prts_sections", { page_title: "阿米娅" }, 21), sessionId);
+  await t.test("prts_page sections", { skip: !RUN_PRTS_API }, async () => {
+    const r = await mcpPost(origin, tc("prts_page", { page_title: "阿米娅", action: "sections" }, 21), sessionId);
     assert.equal(r.status, 200);
     const text = toolResultText(r);
     assert.ok(text.includes("[") && text.includes("] L"), text.slice(0, 80));

@@ -1,0 +1,19 @@
+{
+  "event_id": "act_test",
+  "total": 2,
+  "include_summaries": false,
+  "chapters": [
+    {
+      "story_code": "TEST-1",
+      "story_name": "开端",
+      "story_key": "activities/act_test/level_act_test_01_beg",
+      "avg_tag": "BEG"
+    },
+    {
+      "story_code": "TEST-2",
+      "story_name": "终章",
+      "story_key": "activities/act_test/level_act_test_02_end",
+      "avg_tag": "END"
+    }
+  ]
+}

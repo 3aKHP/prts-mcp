@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -14,6 +14,12 @@ function tempGamedataRoot(): string {
 
 async function loadOperatorModule(): Promise<typeof import("../src/data/operator.js")> {
   return import(`../src/data/operator.ts?cacheBust=${Date.now()}-${Math.random()}`);
+}
+
+function loadParityFixture(name: string): unknown {
+  return JSON.parse(
+    readFileSync(join(import.meta.dirname, "..", "..", "tests", "parity-fixtures", name), "utf-8"),
+  );
 }
 
 test("same process sees data written after initial miss", async () => {
@@ -78,6 +84,10 @@ test("core operator tools read the shared minimal fixture", async () => {
       "## 天赋",
       "- **情绪吸收**：攻击回复技力",
     ].join("\n"),
+  );
+  assert.deepStrictEqual(
+    operator.buildOperatorBasicInfo("阿米娅"),
+    loadParityFixture("operator_basic_info.json"),
   );
 });
 

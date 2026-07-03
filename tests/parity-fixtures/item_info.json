@@ -1,0 +1,28 @@
+{
+  "name": "源岩",
+  "item_id": "30011",
+  "rarity_raw": "TIER_1",
+  "rarity_label": "T1",
+  "classify_raw": "MATERIAL",
+  "classify_label": "材料",
+  "item_type": "MATERIAL",
+  "icon_id": "MTL_SL_G1",
+  "obtain_approach": null,
+  "description": "常见于源石挥发殆尽后的地区。",
+  "usage": "可用于多种强化场合。",
+  "stage_drop_list": [
+    {
+      "stageId": "main_00-01",
+      "occPer": "ALWAYS",
+      "sortId": 0
+    },
+    {
+      "stageId": "main_00-02",
+      "occPer": "SOMETIMES",
+      "sortId": 1
+    }
+  ],
+  "building_product_list": [],
+  "shop_relate_list": null,
+  "voucher_relate_list": null
+}

@@ -1,11 +1,14 @@
 """Tests for operator data loading against changing local game data."""
 from __future__ import annotations
 
+import json
 import os
+from pathlib import Path
 from unittest.mock import patch
 
 from prts_mcp.data import operator
 from prts_mcp.data.operator import (
+    build_operator_basic_info,
     clear_operator_caches,
     get_operator_archives,
     get_operator_basic_info,
@@ -13,6 +16,11 @@ from prts_mcp.data.operator import (
 )
 
 from tests.fixtures import write_minimal_gamedata
+
+
+def _load_parity_fixture(name: str) -> dict:
+    path = Path(__file__).parents[2] / "tests" / "parity-fixtures" / name
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def setup_function() -> None:
@@ -71,6 +79,9 @@ class TestOperatorDataRefresh:
                 "\n"
                 "## 天赋\n"
                 "- **情绪吸收**：攻击回复技力"
+            )
+            assert build_operator_basic_info("阿米娅") == _load_parity_fixture(
+                "operator_basic_info.json"
             )
 
     def test_table_caches_can_be_cleared_explicitly(self, tmp_path):

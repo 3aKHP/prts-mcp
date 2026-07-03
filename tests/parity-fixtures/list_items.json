@@ -1,0 +1,31 @@
+{
+  "total": 2,
+  "offset": 0,
+  "limit": 50,
+  "filters": {
+    "category": null,
+    "category_filter": null
+  },
+  "items": [
+    {
+      "item_id": "7001",
+      "name": "招聘许可",
+      "rarity_raw": "TIER_4",
+      "rarity_label": "T4",
+      "classify_raw": "NORMAL",
+      "classify_label": "普通",
+      "item_type": "TKT_RECRUIT",
+      "usage_excerpt": "可从公开渠道招聘一位干员。"
+    },
+    {
+      "item_id": "30011",
+      "name": "源岩",
+      "rarity_raw": "TIER_1",
+      "rarity_label": "T1",
+      "classify_raw": "MATERIAL",
+      "classify_label": "材料",
+      "item_type": "MATERIAL",
+      "usage_excerpt": "可用于多种强化场合。"
+    }
+  ]
+}

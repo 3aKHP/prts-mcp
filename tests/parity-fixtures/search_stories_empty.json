@@ -1,0 +1,11 @@
+{
+  "pattern": "ZZZZZZ",
+  "filters": {
+    "character": null,
+    "line_type": null,
+    "context_lines": 1,
+    "event_id": null
+  },
+  "total": 0,
+  "results": []
+}

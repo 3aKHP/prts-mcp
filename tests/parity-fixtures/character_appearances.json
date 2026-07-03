@@ -1,0 +1,25 @@
+{
+  "name": "博士",
+  "total": 2,
+  "filters": {
+    "scope": null
+  },
+  "appearances": [
+    {
+      "event_id": "act_test",
+      "story_code": "TEST-1",
+      "story_name": "开端",
+      "story_key": "activities/act_test/level_act_test_01_beg",
+      "speaks": true,
+      "mentioned": true
+    },
+    {
+      "event_id": "act_test",
+      "story_code": "TEST-2",
+      "story_name": "终章",
+      "story_key": "activities/act_test/level_act_test_02_end",
+      "speaks": true,
+      "mentioned": false
+    }
+  ]
+}

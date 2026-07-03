@@ -3,6 +3,7 @@ from __future__ import annotations
 import re as _re
 from dataclasses import dataclass as _dataclass
 from functools import lru_cache as _lru_cache
+from typing import Any
 
 from prts_mcp.config import Config as _Config
 from prts_mcp.data.item import get_item_name_by_id as _get_item_name_by_id
@@ -180,13 +181,18 @@ def clear_stage_caches() -> None:
 # ---------------------------------------------------------------------------
 
 
-def list_stages(
+def build_stages_listing(
     chapter: str | None = None,
     type: str | None = None,
     limit: int = 50,
     offset: int = 0,
-) -> str:
-    """List stages, optionally filtered by zone ID and/or stage type."""
+) -> dict | str:
+    """Build the structured payload for a stages listing.
+
+    Returns the dict payload on success, including legitimate empty results,
+    or a markdown error string on user-input / missing-data paths. The dict is
+    the single source of truth that ``render_stages_listing`` consumes.
+    """
     if limit < 1:
         return "limit 必须 >= 1。"
     if limit > 200:
@@ -213,26 +219,62 @@ def list_stages(
     total = len(filtered)
     page = filtered[offset : offset + limit]
 
-    if not page:
+    entries = []
+    for e in page:
+        entries.append(
+            {
+                "stage_id": e.get("stageId", ""),
+                "name": e.get("name") or "（无名）",
+                "code": e.get("code") or "?",
+                "type": e.get("stageType", ""),
+                "type_label": _stage_type_label(e.get("stageType", "")),
+                "difficulty_label": _difficulty_label(e.get("difficulty", "")),
+                "zone_id": e.get("zoneId", ""),
+                "zone_display": _zone_display(e.get("zoneId", "")),
+            }
+        )
+
+    return {
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+        # chapter is echoed verbatim (it is an exact zoneId match, no
+        # normalization); type is upper-cased to match stageType values.
+        "filters": {
+            "chapter": chapter,
+            "type": type.upper() if type else None,
+        },
+        "stages": entries,
+    }
+
+
+def render_stages_listing(data: dict) -> str:
+    """Render a stages-listing payload dict to markdown.
+
+    Pure renderer; the inverse of ``build_stages_listing``'s success path.
+    """
+    total = data["total"]
+    offset = data["offset"]
+    limit = data["limit"]
+    stages = data["stages"]
+
+    if not stages:
         if total == 0:
             filters: list[str] = []
-            if chapter:
-                filters.append(f"zoneId={chapter}")
-            if type:
-                filters.append(f"stageType={type.upper()}")
+            f = data["filters"]
+            if f["chapter"]:
+                filters.append(f"zoneId={f['chapter']}")
+            if f["type"]:
+                filters.append(f"stageType={f['type']}")
             return f"没有匹配的关卡（filter: {', '.join(filters) or 'none'}）。"
         return f"offset {offset} 超出范围（共 {total} 条）。"
 
     lines = [f"# 关卡列表（共 {total} 个）"]
-    for e in page:
-        t_label = _stage_type_label(e.get("stageType", ""))
-        d_label = _difficulty_label(e.get("difficulty", ""))
-        zd = _zone_display(e.get("zoneId", ""))
-        name = e.get("name") or "（无名）"
-        code = e.get("code") or "?"
-        sid = e.get("stageId", "")
+    for s in stages:
         lines.append(
-            f"- **{name}** [{t_label}] {code} — {d_label} — {zd}（id: {sid}）"
+            f"- **{s['name']}** [{s['type_label']}] {s['code']} — "
+            f"{s['difficulty_label']} — {s['zone_display']}"
+            f"（id: {s['stage_id']}）"
         )
 
     start = offset + 1
@@ -244,8 +286,26 @@ def list_stages(
     return "\n".join(lines)
 
 
-def get_stage_info(stage_id: str) -> str:
-    """Return detailed information for a single stage."""
+def list_stages(
+    chapter: str | None = None,
+    type: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> str:
+    """List stages, optionally filtered by zone ID and/or stage type."""
+    data = build_stages_listing(chapter=chapter, type=type, limit=limit, offset=offset)
+    if isinstance(data, str):
+        return data
+    return render_stages_listing(data)
+
+
+def build_stage_info(stage_id: str) -> dict | str:
+    """Build the structured payload for a single stage's detail.
+
+    Returns the dict payload on success, or a markdown error string on a
+    missing-data / not-found path. The dict is the single source of truth
+    that ``render_stage_info`` consumes.
+    """
     try:
         stages = _load_stage_table()
     except (FileNotFoundError, TypeError) as e:
@@ -255,67 +315,109 @@ def get_stage_info(stage_id: str) -> str:
     if entry is None:
         return f"未找到关卡：{stage_id!r}。"
 
-    name = entry.get("name") or "（无名）"
-    code = entry.get("code") or "?"
-    t_label = _stage_type_label(entry.get("stageType", ""))
-    d_label = _difficulty_label(entry.get("difficulty", ""))
-    zone_id = entry.get("zoneId", "")
-    zd = _zone_display(zone_id)
     _ap = entry.get("apCost")
-    ap = _ap if _ap is not None else "?"
-    danger = entry.get("dangerLevel") or "?"
-    boss = entry.get("bossMark", False)
     raw_desc = entry.get("description") or ""
-    desc = _clean_description(raw_desc) or "（无描述）"
-    drop_info = entry.get("stageDropInfo")
-    unlocks = entry.get("unlockCondition") or []
-    hard_id = entry.get("hardStagedId")
-    level_id = entry.get("levelId")
 
-    parts = [f"# {name} — 关卡详情", "", "## 基本信息"]
-    parts.append(f"- **ID**：{stage_id}")
-    parts.append(f"- **编号**：{code}")
-    parts.append(f"- **类型**：{t_label}")
-    parts.append(f"- **难度**：{d_label}")
-    parts.append(f"- **所属区域**：{zd}")
-    parts.append(f"- **理智消耗**：{ap}")
-    parts.append(f"- **危险等级**：{danger}")
-    if boss:
+    # Related stages — resolve names up front so render stays pure.
+    hard_id = entry.get("hardStagedId")
+    hard_name = None
+    if hard_id:
+        h_entry = stages.get(hard_id)
+        hard_name = h_entry.get("name") if h_entry else None
+    six_star_id = entry.get("sixStarStageId")
+    six_star_name = None
+    if six_star_id:
+        s_entry = stages.get(six_star_id)
+        six_star_name = s_entry.get("name") if s_entry else None
+
+    return {
+        "stage_id": stage_id,
+        "name": entry.get("name") or "（无名）",
+        "code": entry.get("code") or "?",
+        "type_raw": entry.get("stageType", ""),
+        "type_label": _stage_type_label(entry.get("stageType", "")),
+        "difficulty_raw": entry.get("difficulty", ""),
+        "difficulty_label": _difficulty_label(entry.get("difficulty", "")),
+        "zone_id": entry.get("zoneId", ""),
+        "zone_display": _zone_display(entry.get("zoneId", "")),
+        "ap_cost": _ap if _ap is not None else "?",
+        "danger_level": entry.get("dangerLevel") or "?",
+        "boss_mark": entry.get("bossMark", False),
+        "description": _clean_description(raw_desc) or "（无描述）",
+        "drop_info": entry.get("stageDropInfo"),
+        "unlock_conditions": entry.get("unlockCondition") or [],
+        "level_id": entry.get("levelId"),
+        "hard_stage": {"id": hard_id, "name": hard_name},
+        "six_star_stage": {"id": six_star_id, "name": six_star_name},
+    }
+
+
+def render_stage_info(data: dict) -> str:
+    """Render a stage-detail payload dict to markdown.
+
+    Pure renderer; the inverse of ``build_stage_info``'s success path.
+    Reuses ``_format_drops`` / ``_format_unlock`` for the drop/unlock
+    sections so the output stays byte-for-byte equivalent.
+    """
+    parts = [f"# {data['name']} — 关卡详情", "", "## 基本信息"]
+    parts.append(f"- **ID**：{data['stage_id']}")
+    parts.append(f"- **编号**：{data['code']}")
+    parts.append(f"- **类型**：{data['type_label']}")
+    parts.append(f"- **难度**：{data['difficulty_label']}")
+    parts.append(f"- **所属区域**：{data['zone_display']}")
+    parts.append(f"- **理智消耗**：{data['ap_cost']}")
+    parts.append(f"- **危险等级**：{data['danger_level']}")
+    if data["boss_mark"]:
         parts.append("- **BOSS标记**：是")
-    if level_id:
-        parts.append(f"- **关卡数据**：{level_id}")
+    if data["level_id"]:
+        parts.append(f"- **关卡数据**：{data['level_id']}")
 
     parts.append("")
     parts.append("## 描述")
-    parts.append(desc)
+    parts.append(data["description"])
 
     parts.append("")
     parts.append("## 掉落信息")
-    parts.append(_format_drops(drop_info))
+    parts.append(_format_drops(data["drop_info"]))
 
     parts.append("")
     parts.append("## 解锁条件")
-    parts.append(_format_unlock(unlocks))
+    parts.append(_format_unlock(data["unlock_conditions"]))
 
     parts.append("")
     parts.append("## 关联关卡")
-    if hard_id:
-        h_entry = stages.get(hard_id)
-        h_name = h_entry.get("name") if h_entry else None
-        parts.append(f"- 突袭模式：{hard_id}" + (f"（{h_name}）" if h_name else ""))
+    hard = data["hard_stage"]
+    if hard["id"]:
+        parts.append(f"- 突袭模式：{hard['id']}" + (f"（{hard['name']}）" if hard["name"] else ""))
     else:
         parts.append("- 突袭模式：无")
-    ssid = entry.get("sixStarStageId")
-    if ssid:
-        s_entry = stages.get(ssid)
-        s_name = s_entry.get("name") if s_entry else None
-        parts.append(f"- 六星模式：{ssid}" + (f"（{s_name}）" if s_name else ""))
+    six_star = data["six_star_stage"]
+    if six_star["id"]:
+        parts.append(
+            f"- 六星模式：{six_star['id']}" + (f"（{six_star['name']}）" if six_star["name"] else "")
+        )
 
     return "\n".join(parts)
 
 
+def get_stage_info(stage_id: str) -> str:
+    """Return detailed information for a single stage."""
+    data = build_stage_info(stage_id)
+    if isinstance(data, str):
+        return data
+    return render_stage_info(data)
+
+
 def search_stages(pattern: str, max_results: int = 30) -> str:
     """Regex search across stage names, codes, and descriptions."""
+    data = build_stage_search(pattern, max_results=max_results)
+    if isinstance(data, str):
+        return data
+    return render_stage_search(data)
+
+
+def build_stage_search(pattern: str, max_results: int = 30) -> dict | str:
+    """Build the structured payload for stage search."""
     if max_results < 1:
         return "max_results 必须 >= 1。"
     if max_results > 100:
@@ -337,31 +439,56 @@ def search_stages(pattern: str, max_results: int = 30) -> str:
             if len(matched) >= max_results:
                 break
 
-    if not matched:
+    return {
+        "scope": "stages",
+        "pattern": pattern,
+        "total": len(matched),
+        "results": [_stage_search_entry(record) for record in matched],
+    }
+
+
+def render_stage_search(data: dict) -> str:
+    """Render a stage search payload to markdown."""
+    pattern = data["pattern"]
+    results = data["results"]
+    if not results:
         return f"未找到匹配 '{pattern}' 的关卡。"
 
-    lines = [f"# 搜索结果：{pattern}（共 {len(matched)} 个）"]
-    for record in matched:
-        e = record.entry
-        name = e.get("name") or "（无名）"
-        code = e.get("code") or "?"
-        t_label = _stage_type_label(e.get("stageType", ""))
-        d_label = _difficulty_label(e.get("difficulty", ""))
-        zd = _zone_display(e.get("zoneId", ""))
-        _ap = e.get("apCost")
-        ap = _ap if _ap is not None else "?"
-        raw_desc = e.get("description") or ""
-        cdesc = _clean_description(raw_desc)
-
-        sid = record.stage_id
-        lines.append(f"\n## {name} [{t_label}] {code}（id: {sid}）")
-        lines.append(f"- **区域**：{zd}")
-        lines.append(f"- **难度**：{d_label}")
-        lines.append(f"- **理智**：{ap}")
-        if cdesc:
-            lines.append(f"- **描述**：{cdesc[:120]}{'...' if len(cdesc) > 120 else ''}")
+    lines = [f"# 搜索结果：{pattern}（共 {data['total']} 个）"]
+    for entry in results:
+        lines.append(
+            f"\n## {entry['name']} [{entry['type_label']}] "
+            f"{entry['code']}（id: {entry['stage_id']}）"
+        )
+        lines.append(f"- **区域**：{entry['zone_display']}")
+        lines.append(f"- **难度**：{entry['difficulty_label']}")
+        lines.append(f"- **理智**：{entry['ap']}")
+        desc = entry["description"]
+        if desc:
+            lines.append(f"- **描述**：{desc[:120]}{'...' if len(desc) > 120 else ''}")
 
     return "\n".join(lines)
+
+
+def _stage_search_entry(record: _StageSearchRecord) -> dict[str, Any]:
+    e = record.entry
+    type_raw = e.get("stageType", "")
+    difficulty_raw = e.get("difficulty", "")
+    zone_id = e.get("zoneId", "")
+    ap = e.get("apCost")
+    return {
+        "stage_id": record.stage_id,
+        "name": e.get("name") or "（无名）",
+        "code": e.get("code") or "?",
+        "type": type_raw,
+        "type_label": _stage_type_label(type_raw),
+        "difficulty": difficulty_raw,
+        "difficulty_label": _difficulty_label(difficulty_raw),
+        "zone_id": zone_id,
+        "zone_display": _zone_display(zone_id),
+        "ap": ap if ap is not None else "?",
+        "description": _clean_description(e.get("description") or ""),
+    }
 
 
 @_lru_cache(maxsize=1)

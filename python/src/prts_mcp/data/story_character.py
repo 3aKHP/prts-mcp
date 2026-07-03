@@ -76,6 +76,42 @@ def find_character_appearances(
         )
 
 
+def build_character_appearances(
+    zip_path: Path,
+    name: str,
+    scope: str | None = None,
+    max_events: int = 50,
+) -> dict:
+    """Build the structured payload for character appearance lookup."""
+    with story_store(zip_path) as store:
+        return build_character_appearances_from_store(
+            store, name, scope=scope, max_events=max_events,
+        )
+
+
+def render_character_appearances(data: dict) -> str:
+    """Render a character appearance payload to markdown."""
+    appearances = data["appearances"]
+    if not appearances:
+        scope = data.get("filters", {}).get("scope")
+        scope_note = f"（限定活动：{scope!r}）" if scope else ""
+        return f"未找到「{data['name']}」的出场记录。{scope_note}"
+
+    parts = [f"# 「{data['name']}」的出场（共 {data['total']} 章）"]
+    for ap in appearances:
+        tags = []
+        if ap["speaks"]:
+            tags.append("speaks")
+        if ap["mentioned"]:
+            tags.append("mentioned")
+        tag = "+".join(tags)
+        name_disp = f"{ap['story_code']} {ap['story_name']}".strip()
+        parts.append(
+            f"- [{tag}] {ap['event_id']} / {name_disp}（key: {ap['story_key']}）"
+        )
+    return "\n".join(parts)
+
+
 def find_speakers_in(zip_path: Path, event_id: str) -> list[SpeakerCount]:
     """List every speaker in an event, with dialog line counts.
 
@@ -83,6 +119,24 @@ def find_speakers_in(zip_path: Path, event_id: str) -> list[SpeakerCount]:
     """
     with story_store(zip_path) as store:
         return find_speakers_in_from_store(store, event_id)
+
+
+def build_speakers_in_event(zip_path: Path, event_id: str) -> dict:
+    """Build the structured payload for speakers in one event."""
+    with story_store(zip_path) as store:
+        return build_speakers_in_event_from_store(store, event_id)
+
+
+def render_speakers_in_event(data: dict) -> str:
+    """Render an event speaker-count payload to markdown."""
+    speakers = data["speakers"]
+    if not speakers:
+        return f"活动 {data['event_id']!r} 暂无对话发言者数据。"
+
+    parts = [f"# {data['event_id']} 的发言角色（共 {data['total']} 位）"]
+    for sp in speakers:
+        parts.append(f"- {sp['name']}（{sp['line_count']} 句）")
+    return "\n".join(parts)
 
 
 # ---------------------------------------------------------------------------
@@ -149,6 +203,34 @@ def find_character_appearances_from_store(
     )
 
 
+def build_character_appearances_from_store(
+    store: JsonStore,
+    name: str,
+    scope: str | None = None,
+    max_events: int = 50,
+) -> dict:
+    """Build a character appearance payload using a JSON store."""
+    result = find_character_appearances_from_store(
+        store, name, scope=scope, max_events=max_events,
+    )
+    return {
+        "name": result.name,
+        "total": result.total_chapters,
+        "filters": {"scope": scope},
+        "appearances": [
+            {
+                "event_id": ap.event_id,
+                "story_code": ap.story_code,
+                "story_name": ap.story_name,
+                "story_key": ap.story_key,
+                "speaks": ap.speaks,
+                "mentioned": ap.mentioned,
+            }
+            for ap in result.appearances
+        ],
+    }
+
+
 def find_speakers_in_from_store(
     store: JsonStore,
     event_id: str,
@@ -186,3 +268,19 @@ def find_speakers_in_from_store(
     ]
     speakers.sort(key=lambda s: (-s.line_count, s.name))
     return speakers
+
+
+def build_speakers_in_event_from_store(store: JsonStore, event_id: str) -> dict:
+    """Build an event speaker-count payload using a JSON store."""
+    speakers = find_speakers_in_from_store(store, event_id)
+    return {
+        "event_id": event_id,
+        "total": len(speakers),
+        "speakers": [
+            {
+                "name": sp.name,
+                "line_count": sp.line_count,
+            }
+            for sp in speakers
+        ],
+    }

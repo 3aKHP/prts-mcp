@@ -1,0 +1,21 @@
+{
+  "event_id": "act_no_summary",
+  "total": 2,
+  "include_summaries": true,
+  "chapters": [
+    {
+      "story_code": "NS-1",
+      "story_name": "短章",
+      "story_key": "activities/act_no_summary/level_act_no_summary_01",
+      "avg_tag": null,
+      "summary": "无长摘要的一句话梗概"
+    },
+    {
+      "story_code": "NS-2",
+      "story_name": "无摘要章",
+      "story_key": "activities/act_no_summary/level_act_no_summary_02",
+      "avg_tag": null,
+      "summary": ""
+    }
+  ]
+}

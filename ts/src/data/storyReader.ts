@@ -161,6 +161,34 @@ export interface SpeakerCount {
   lineCount: number;
 }
 
+export interface StoryEventsListingPayload {
+  total: number;
+  filters: {
+    category: string | null;
+    category_normalized: string | null;
+  };
+  events: Array<{
+    event_id: string;
+    name: string;
+    entry_type: string;
+    story_count: number;
+  }>;
+}
+
+export interface StoriesListingPayload {
+  event_id: string;
+  total: number;
+  include_summaries: boolean;
+  chapters: Array<{
+    story_code: string;
+    story_name: string;
+    story_key: string;
+    avg_tag: string | null;
+    summary?: string;
+  }>;
+  event_summary?: string;
+}
+
 // ---------------------------------------------------------------------------
 // Store helpers
 // ---------------------------------------------------------------------------
@@ -237,11 +265,77 @@ export function listStoryEvents(
   return withStoryStore(zipPath, (store) => listStoryEventsFromStore(store, category));
 }
 
+export function buildStoryEventsListing(
+  zipPath: string,
+  category?: string,
+): StoryEventsListingPayload {
+  return withStoryStore(zipPath, (store) => buildStoryEventsListingFromStore(store, category));
+}
+
+export function pyRepr(value: string | null | undefined): string {
+  if (value === null || value === undefined) return "None";
+  const quote = value.includes("'") && !value.includes('"') ? '"' : "'";
+  let out = quote;
+  for (const ch of value) {
+    if (ch === "\\") out += "\\\\";
+    else if (ch === "\n") out += "\\n";
+    else if (ch === "\r") out += "\\r";
+    else if (ch === "\t") out += "\\t";
+    else if (ch === quote) out += `\\${quote}`;
+    else {
+      const code = ch.codePointAt(0) ?? 0;
+      out += code < 32 || code === 127
+        ? `\\x${code.toString(16).padStart(2, "0")}`
+        : ch;
+    }
+  }
+  return out + quote;
+}
+
+export function renderStoryEventsListing(data: StoryEventsListingPayload): string {
+  if (data.events.length === 0) {
+    return `未找到符合条件的活动（category=${pyRepr(data.filters.category)}）。`;
+  }
+
+  return data.events
+    .map((ev) => `- [${ev.entry_type}] ${ev.event_id}：${ev.name}（${ev.story_count} 章）`)
+    .join("\n");
+}
+
 export function listStories(
   zipPath: string,
   eventId: string
 ): ChapterSummary[] {
   return withStoryStore(zipPath, (store) => listStoriesFromStore(store, eventId));
+}
+
+export function buildStoriesListing(
+  zipPath: string,
+  eventId: string,
+  includeSummaries = false,
+): StoriesListingPayload {
+  return withStoryStore(zipPath, (store) =>
+    buildStoriesListingFromStore(store, eventId, includeSummaries),
+  );
+}
+
+export function renderStoriesListing(data: StoriesListingPayload): string {
+  if (data.chapters.length === 0) {
+    return `活动 ${pyRepr(data.event_id)} 暂无剧情章节。`;
+  }
+
+  const lines: string[] = [];
+  if (data.event_summary) {
+    lines.push(data.event_summary, "");
+  }
+  for (const ch of data.chapters) {
+    const tag = ch.avg_tag ? `[${ch.avg_tag}] ` : "";
+    lines.push(`- ${ch.story_code} ${tag}${ch.story_name}（key: ${ch.story_key}）`);
+    if (data.include_summaries && ch.summary) {
+      lines.push(`  ${ch.summary}`);
+    }
+  }
+  return lines.join("\n");
 }
 
 export function readStory(
@@ -300,6 +394,27 @@ export function listStoryEventsFromStore(
   return events;
 }
 
+export function buildStoryEventsListingFromStore(
+  store: JsonStore,
+  category?: string,
+): StoryEventsListingPayload {
+  const events = listStoryEventsFromStore(store, category);
+  const categoryNormalized = category && category in CATEGORY_MAP ? category : null;
+  return {
+    total: events.length,
+    filters: {
+      category: category ?? null,
+      category_normalized: categoryNormalized,
+    },
+    events: events.map((ev) => ({
+      event_id: ev.eventId,
+      name: ev.name,
+      entry_type: ev.entryType,
+      story_count: ev.storyCount,
+    })),
+  };
+}
+
 export function listStoriesFromStore(
   store: JsonStore,
   eventId: string
@@ -324,6 +439,52 @@ export function listStoriesFromStore(
     });
   }
   return chapters;
+}
+
+export function buildStoriesListingFromStore(
+  store: JsonStore,
+  eventId: string,
+  includeSummaries = false,
+): StoriesListingPayload {
+  const chapters = listStoriesFromStore(store, eventId);
+  let chapterSummaries: Record<string, string> = {};
+  let eventSummaryText = "";
+
+  if (includeSummaries) {
+    try {
+      if (store.exists(STORYINFO)) {
+        const raw = store.readJson<Record<string, unknown>>(STORYINFO);
+        chapterSummaries = Object.fromEntries(
+          Object.entries(raw)
+            .filter(([, value]) => Boolean(value))
+            .map(([key, value]) => [key, String(value)]),
+        );
+      }
+      if (store.exists(EVENT_SUMMARIES)) {
+        const rawEvents = store.readJson<Record<string, unknown>>(EVENT_SUMMARIES);
+        const text = rawEvents[eventId];
+        if (typeof text === "string") eventSummaryText = text.trim();
+      }
+    } catch {
+      chapterSummaries = {};
+      eventSummaryText = "";
+    }
+  }
+
+  const data: StoriesListingPayload = {
+    event_id: eventId,
+    total: chapters.length,
+    include_summaries: includeSummaries,
+    chapters: chapters.map((ch) => ({
+      story_code: ch.storyCode,
+      story_name: ch.storyName,
+      story_key: ch.storyKey,
+      avg_tag: ch.avgTag,
+      ...(includeSummaries ? { summary: chapterSummaries[ch.storyKey] ?? "" } : {}),
+    })),
+  };
+  if (eventSummaryText) data.event_summary = eventSummaryText;
+  return data;
 }
 
 export function readStoryFromStore(

@@ -1,0 +1,18 @@
+{
+  "scope": "items",
+  "pattern": "公开渠道",
+  "total": 1,
+  "results": [
+    {
+      "item_id": "7001",
+      "name": "招聘许可",
+      "classify_raw": "NORMAL",
+      "classify_label": "普通",
+      "item_type": "TKT_RECRUIT",
+      "rarity_raw": "TIER_4",
+      "rarity_label": "T4",
+      "usage": "可从公开渠道招聘一位干员。",
+      "obtain_approach": "采购中心、任务奖励"
+    }
+  ]
+}

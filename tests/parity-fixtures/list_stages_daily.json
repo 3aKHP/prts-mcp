@@ -1,0 +1,21 @@
+{
+  "total": 1,
+  "offset": 0,
+  "limit": 50,
+  "filters": {
+    "chapter": null,
+    "type": "DAILY"
+  },
+  "stages": [
+    {
+      "stage_id": "daily_01",
+      "name": "货物运送",
+      "code": "CE-5",
+      "type": "DAILY",
+      "type_label": "每日",
+      "difficulty_label": "普通",
+      "zone_id": "daily_zone1",
+      "zone_display": "daily_zone1"
+    }
+  ]
+}

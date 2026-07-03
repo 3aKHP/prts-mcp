@@ -23,20 +23,27 @@ This repository contains two independent implementations for different deploymen
 | [`python/`](python/) | Python 3.10+ | stdio | Local Claude Desktop / Claude Code, Docker |
 | [`ts/`](ts/) | TypeScript / Node.js | Streamable HTTP | Self-hosted server, remote HTTP access |
 
-### 1.x Compatibility Matrix
+### Release Lines
 
-1.7.0 is the last 1.x feature release and the LTS baseline. Future 1.7.x updates are limited to compatibility, security, data-sync, and critical bug fixes while 2.0 development focuses on tool-surface consolidation, structured output defaults, and Python/TypeScript transport parity.
+Two release lines ship in parallel:
 
-| Area | Python | TypeScript | 1.x policy |
-|------|--------|------------|------------|
-| Current line | `1.7.0` LTS | `1.7.0` LTS | 1.7.x is the final 1.x maintenance line |
-| MCP tools | Same 32 public tool names and required parameters | Same 32 public tool names and required parameters | Tool names, required parameters, and default markdown output stay stable through 1.7.x |
-| GameData | `GAMEDATA_PATH` or auto-synced `zh_CN-excel.zip` | `GAMEDATA_PATH` or auto-synced `zh_CN-excel.zip` | Custom paths disable auto-sync |
-| Level data | Auto-synced `zh_CN-levels.zip` beside GameData | Auto-synced `zh_CN-levels.zip` beside GameData | Custom GameData roots may provide their own `zh_CN/gamedata/levels` |
-| Story data | `STORYJSON_PATH` or auto-synced `zh_CN.zip` | `STORYJSON_PATH` or auto-synced `zh_CN.zip` | Custom zip paths disable auto-sync |
-| Bundled fallback data | Docker image only | Docker image and published npm package | PyPI remains data-light |
+| Line | Version | Tools | Status |
+|------|---------|-------|--------|
+| **2.0** (`main`) | `2.0.0` | 23 | Tool-surface consolidation + output channel (structuredContent). Cross-transport parity deferred beyond 2.0. |
+| **1.7 LTS** (`lts/1.7`) | `1.7.0` | 32 | Stable maintenance line. 1.7.x accepts only compatibility, security, data-sync, and critical bug fixes. |
 
-See [`docs/migration-0.x-to-1.0.md`](docs/migration-0.x-to-1.0.md) for the 0.x to 1.0 migration notes.
+| Area | Python | TypeScript |
+|------|--------|------------|
+| MCP tools | Same 23 public tool names and required parameters (2.0) / 32 on 1.7 LTS | Same 23 (2.0) / 32 on 1.7 LTS |
+| GameData | `GAMEDATA_PATH` or auto-synced `zh_CN-excel.zip` | `GAMEDATA_PATH` or auto-synced `zh_CN-excel.zip` |
+| Level data | Auto-synced `zh_CN-levels.zip` beside GameData | Auto-synced `zh_CN-levels.zip` beside GameData |
+| Story data | `STORYJSON_PATH` or auto-synced `zh_CN.zip` | `STORYJSON_PATH` or auto-synced `zh_CN.zip` |
+| Bundled fallback data | Docker image only | Docker image and published npm package (PyPI stays data-light) |
+
+See [`docs/migration-1.x-to-2.0.md`](docs/migration-1.x-to-2.0.md) for the 1.x → 2.0
+breaking changes (tool consolidation, `operator_name` → `name`, output channel),
+and [`docs/migration-0.x-to-1.0.md`](docs/migration-0.x-to-1.0.md) for the 0.x → 1.0
+transition.
 
 ### Tools
 
@@ -45,34 +52,43 @@ Both implementations expose the same tool set:
 | Tool | Description |
 |------|-------------|
 | `search_prts(query, limit)` | Search PRTS Wiki by keyword, returns matching article titles |
-| `read_prts_page(page_title)` | Fetch the plain-text content of a PRTS Wiki article |
-| `get_operator_archives(operator_name)` | Retrieve operator archive records (Chinese name) |
-| `get_operator_voicelines(operator_name)` | Retrieve operator voice lines (Chinese name) |
-| `get_operator_basic_info(operator_name)` | Retrieve basic operator profile: class, rarity, faction, recruit tags, talents (Chinese name) |
+| `prts_page(page_title, action, ...)` | Read a wiki page or its metadata; `action` ∈ read / sections / categories / links / template |
+| `get_operator_archives(name)` | Retrieve operator archive records (Chinese name) |
+| `get_operator_voicelines(name)` | Retrieve operator voice lines (Chinese name) |
+| `get_operator_basic_info(name)` | Retrieve basic operator profile: class, rarity, faction, recruit tags, talents (Chinese name) |
 | `list_story_events(category?)` | List story events; optional filter: `main` (main story) or `activities` |
-| `list_stories(event_id, include_summaries?)` | List chapters of an event in official order, with optional summaries |
-| `get_event_summary(event_id)` | Narrative overview of all chapters in an event with summaries |
+| `list_stories(event_id, include_summaries?)` | List chapters of an event in official order; `include_summaries` adds the event-level overview + per-chapter summaries |
 | `get_story_summary(story_key)` | Single-chapter summary (LLM long summary or official one-liner) |
 | `read_story(story_key, include_narration)` | Read full dialogue for a single chapter |
 | `read_activity(event_id, include_narration, page, page_size)` | Read a complete activity's transcript, with pagination |
-| `list_search_scopes` | List available search domains (operators, stories, enemies, stages, items) with descriptions |
-| `search_data(pattern, scope, max_results)` | Full-text regex search across operator names, descriptions, archives, and voice lines |
+| `search(scope, pattern, max_results)` | Full-text regex search within a data domain: `scope` ∈ operators / enemies / stages / items |
 | `search_stories(pattern, character?, line_type?, context_lines?, max_results?, event_id?)` | Full-text regex search across story dialogue, narration, and choice lines with filtering |
-| `list_prts_sections(page_title)` | Section table of contents for a wiki page |
-| `get_prts_categories(page_title)` | Category tags for a wiki page |
-| `get_prts_links(page_title, direction, limit)` | Outbound links or inbound backlinks with pagination |
-| `get_prts_template(page_title)` | Extract structured template data (key-value pairs) from a wiki page |
 | `list_enemies()` | List all enemies in the handbook with threat level and description |
 | `get_enemy_info(name, stage_id?)` | Retrieve full enemy handbook entry by name, or stage-specific stats when `stage_id` is provided |
-| `search_enemies(pattern, max_results?)` | Full-text regex search across enemy names, descriptions, and abilities |
 | `get_stage_enemies(stage_id)` | List enemies actually spawned in a stage, with stage-specific levels and combat stats |
 | `get_enemy_appearances(name, limit?, offset?)` | Reverse lookup stages where an enemy actually spawns |
 | `list_stages(chapter?, type?, limit?, offset?)` | List stages with optional zone and stage-type filters |
 | `get_stage_info(stage_id)` | Retrieve detailed stage information by stage ID |
-| `search_stages(pattern, max_results?)` | Full-text regex search across stage names, codes, descriptions, and types |
 | `list_items(category?, limit?, offset?)` | List items/materials from `item_table.json` with optional category filtering |
 | `get_item_info(name)` | Retrieve item/material details, usage, obtain methods, drops, production, and shop links |
-| `search_items(pattern, max_results?)` | Full-text regex search across item names, descriptions, usage, obtain methods, and types |
+| `get_operator_memoirs(name)` | Resolve an operator's memoir (干员密录) story keys for follow-up `read_story` calls |
+| `find_character_appearances(name, scope?, max_events?)` | Find chapters/events where a character speaks (dialog) or is mentioned (name substring) |
+| `find_speakers_in(event_id)` | List every speaker in an event with dialog line counts |
+
+### Output Channel
+
+Both implementations keep markdown as the default, human-readable output on
+MCP's `content` field. Deployments whose client consumes MCP-native
+`structuredContent` can opt in via a **connection-level** `output_channel` knob
+(`content` (default) / `structured` / `both`):
+
+- **Python** — `PRTS_OUTPUT_CHANNEL` environment variable.
+- **TypeScript** — `?output_channel=` query string, `x-prts-output-channel` header, or `PRTS_OUTPUT_CHANNEL` env.
+
+The default `content` requires no configuration and is unchanged from 1.x. See
+the [2.0 migration guide](docs/migration-1.x-to-2.0.md) for the per-tool
+mapping and the rationale for choosing a channel over a per-call format
+parameter.
 
 ### Quick Start
 
@@ -106,20 +122,26 @@ Published Docker images and the npm package include bundled fallback game/level/
 | [`python/`](python/) | Python 3.10+ | stdio | Claude Desktop / Claude Code 本地接入、Docker |
 | [`ts/`](ts/) | TypeScript / Node.js | Streamable HTTP | 个人服务器部署，供他人通过 HTTP 调用 |
 
-### 1.x 兼容矩阵
+### 版本线
 
-1.7.0 是最后一个 1.x 功能版本和 LTS 基线。后续 1.7.x 仅接受兼容性、安全性、数据同步和关键缺陷修复；2.0 开发线将集中处理工具面合并、结构化输出默认值和 Python/TypeScript 传输对齐。
+两个版本线并行维护：
 
-| 范围 | Python | TypeScript | 1.x 策略 |
-|------|--------|------------|----------|
-| 当前版本线 | `1.7.0` LTS | `1.7.0` LTS | 1.7.x 是最后的 1.x 维护线 |
-| MCP 工具 | 相同的 32 个工具名和必填参数 | 相同的 32 个工具名和必填参数 | 1.7.x 期间保持工具名、必填参数和默认 markdown 输出稳定 |
-| 干员数据 | `GAMEDATA_PATH` 或自动同步 `zh_CN-excel.zip` | `GAMEDATA_PATH` 或自动同步 `zh_CN-excel.zip` | 自定义路径会禁用自动同步 |
-| 关卡战斗数据 | 自动同步与 GameData 并列的 `zh_CN-levels.zip` | 自动同步与 GameData 并列的 `zh_CN-levels.zip` | 自定义 GameData 根目录可直接提供 `zh_CN/gamedata/levels` |
-| 剧情数据 | `STORYJSON_PATH` 或自动同步 `zh_CN.zip` | `STORYJSON_PATH` 或自动同步 `zh_CN.zip` | 自定义 zip 会禁用自动同步 |
-| bundled 兜底数据 | Docker 镜像 | Docker 镜像和正式 npm 包 | PyPI 继续保持轻量 |
+| 版本线 | 版本 | 工具数 | 状态 |
+|--------|------|--------|------|
+| **2.0**（`main`） | `2.0.0` | 23 | 工具面合并 + output channel（structuredContent）。双端协议同步后置到 2.0 之后。 |
+| **1.7 LTS**（`lts/1.7`） | `1.7.0` | 32 | 稳定维护线。1.7.x 仅接受兼容性、安全性、数据同步和关键缺陷修复。 |
 
-0.x 到 1.0 的迁移说明见 [`docs/migration-0.x-to-1.0.md`](docs/migration-0.x-to-1.0.md)。
+| 范围 | Python | TypeScript |
+|------|--------|------------|
+| MCP 工具 | 相同的 23 个工具名和必填参数（2.0）/ 1.7 LTS 为 32 个 | 相同的 23 个（2.0）/ 1.7 LTS 为 32 个 |
+| 干员数据 | `GAMEDATA_PATH` 或自动同步 `zh_CN-excel.zip` | `GAMEDATA_PATH` 或自动同步 `zh_CN-excel.zip` |
+| 关卡战斗数据 | 自动同步与 GameData 并列的 `zh_CN-levels.zip` | 自动同步与 GameData 并列的 `zh_CN-levels.zip` |
+| 剧情数据 | `STORYJSON_PATH` 或自动同步 `zh_CN.zip` | `STORYJSON_PATH` 或自动同步 `zh_CN.zip` |
+| bundled 兜底数据 | Docker 镜像 | Docker 镜像和正式 npm 包（PyPI 保持轻量） |
+
+1.x → 2.0 的破坏性变更（工具面合并、`operator_name` → `name`、output channel）见
+[`docs/migration-1.x-to-2.0.md`](docs/migration-1.x-to-2.0.md)；0.x → 1.0 迁移见
+[`docs/migration-0.x-to-1.0.md`](docs/migration-0.x-to-1.0.md)。
 
 ### 工具集
 
@@ -128,34 +150,37 @@ Published Docker images and the npm package include bundled fallback game/level/
 | 工具 | 说明 |
 |------|------|
 | `search_prts(query, limit)` | 关键词搜索 PRTS 维基词条，返回匹配标题列表 |
-| `read_prts_page(page_title)` | 读取指定词条的纯文本内容 |
-| `get_operator_archives(operator_name)` | 获取干员档案资料（中文名） |
-| `get_operator_voicelines(operator_name)` | 获取干员语音记录（中文名） |
-| `get_operator_basic_info(operator_name)` | 获取干员基本信息：职业、稀有度、所属、招募标签、天赋（中文名） |
+| `prts_page(page_title, action, ...)` | 读取词条正文或元数据；`action` ∈ read / sections / categories / links / template |
+| `get_operator_archives(name)` | 获取干员档案资料（中文名） |
+| `get_operator_voicelines(name)` | 获取干员语音记录（中文名） |
+| `get_operator_basic_info(name)` | 获取干员基本信息：职业、稀有度、所属、招募标签、天赋（中文名） |
 | `list_story_events(category?)` | 列出剧情活动，可选过滤：`main`（主线）或 `activities`（活动） |
-| `list_stories(event_id, include_summaries?)` | 列出指定活动的章节（按官方顺序），可选附带梗概 |
-| `get_event_summary(event_id)` | 获取活动的章节梗概概览，含 LLM 长摘要 |
+| `list_stories(event_id, include_summaries?)` | 列出指定活动的章节（按官方顺序）；`include_summaries` 附活动级概览 + 每章梗概 |
 | `get_story_summary(story_key)` | 获取单章梗概（LLM 长摘要或官方一句话简介） |
 | `read_story(story_key, include_narration)` | 读取单章完整台词 |
 | `read_activity(event_id, include_narration, page, page_size)` | 读取整个活动的完整剧情，支持分页 |
-| `list_search_scopes` | 列出可搜索的数据域（干员、剧情、敌人、关卡、物品）及其内容类型 |
-| `search_data(pattern, scope, max_results)` | 在干员名称、描述、档案、语音中执行全文正则搜索 |
+| `search(scope, pattern, max_results)` | 在指定数据域执行全文正则搜索：`scope` ∈ operators / enemies / stages / items |
 | `search_stories(pattern, character?, line_type?, context_lines?, max_results?, event_id?)` | 在剧情台词中执行全文正则搜索，支持按角色和台词类型过滤 |
-| `list_prts_sections(page_title)` | 获取词条的章节目录 |
-| `get_prts_categories(page_title)` | 获取词条的分类标签 |
-| `get_prts_links(page_title, direction, limit)` | 获取词条的出链或入链，支持分页 |
-| `get_prts_template(page_title)` | 提取词条中的结构化模板键值对数据 |
 | `list_enemies()` | 列出敌方图鉴中所有敌人及其威胁等级和描述 |
 | `get_enemy_info(name, stage_id?)` | 获取指定敌人的详细图鉴资料；传入 `stage_id` 时返回关卡级数值 |
-| `search_enemies(pattern, max_results?)` | 在敌人名称、描述和能力中执行全文正则搜索 |
 | `get_stage_enemies(stage_id)` | 获取指定关卡实际出场敌人及关卡级等级/战斗属性 |
 | `get_enemy_appearances(name, limit?, offset?)` | 反查指定敌人实际出现在哪些关卡 |
 | `list_stages(chapter?, type?, limit?, offset?)` | 列出关卡，支持按章节/区域和关卡类型过滤 |
 | `get_stage_info(stage_id)` | 根据关卡 ID 获取关卡详细信息 |
-| `search_stages(pattern, max_results?)` | 在关卡名称、编号、描述和类型中执行全文正则搜索 |
 | `list_items(category?, limit?, offset?)` | 列出物品/材料，支持按类别过滤和分页 |
 | `get_item_info(name)` | 获取物品/材料详情、用途、获取方式、掉落、基建产出和商店关联 |
-| `search_items(pattern, max_results?)` | 在物品名称、描述、用途、获取方式和类型中执行全文正则搜索 |
+| `get_operator_memoirs(name)` | 解析干员密录的 story_key，便于后续 `read_story` 调用 |
+| `find_character_appearances(name, scope?, max_events?)` | 查找角色在哪些章节/活动中开口（对话）或被提及（名字子串） |
+| `find_speakers_in(event_id)` | 列出指定活动中所有发言角色及其对话行数 |
+
+### 输出通道
+
+两个实现默认在 MCP 的 `content` 字段输出人类可读的 markdown。若部署环境使用的客户端能消费 MCP 原生的 `structuredContent`，可通过**连接级**的 `output_channel` 开关（`content`（默认）/ `structured` / `both`）启用：
+
+- **Python** — `PRTS_OUTPUT_CHANNEL` 环境变量。
+- **TypeScript** — `?output_channel=` 查询字符串、`x-prts-output-channel` 请求头，或 `PRTS_OUTPUT_CHANNEL` 环境变量。
+
+默认 `content` 无需任何配置，与 1.x 一致。各工具的通道映射，以及「为何选连接级通道而非 per-call 格式参数」的设计理由，见 [2.0 迁移指南](docs/migration-1.x-to-2.0.md)。
 
 ### 快速开始
 
