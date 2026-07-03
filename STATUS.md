@@ -6,19 +6,19 @@ _Last updated: 2026-07-03_
 
 | 实现 | 版本 | 状态 |
 |------|------|------|
-| Python | 2.0.0.dev0 | Development（2.0 代码工作完成，文档发版准备中） |
-| TypeScript | 2.0.0-dev.0 | Development（2.0 代码工作完成，文档发版准备中） |
+| Python | 2.0.0 | Stable（最新发布） |
+| TypeScript | 2.0.0 | Stable（最新发布） |
 
+- 当前稳定发布：2.0.0（23 个 MCP 工具）
 - 当前 LTS 发布：1.7.0（32 个 MCP 工具，剧情角色追踪）
-- 当前稳定发布：1.7.0 LTS
-- 当前开发目标：2.0.0 — 工具面合并（32 → 23）与 output channel（structuredContent）已在 `dev` 分支落地，双端代码与测试就绪；**双端协议同步（Python 上 HTTP / TS 上 stdio）已后置到 2.0 之后**。
-- 兼容性合约：1.7.x 期间既有 32 个工具名、必填参数、默认输出格式不变；仅接受兼容性、安全性、数据同步和关键缺陷修复
+- 2.0 交付内容：工具面合并（32 → 23）+ output channel（structuredContent）；**双端协议同步（Python 上 HTTP / TS 上 stdio）已后置到 2.0 之后**。
+- 兼容性合约：1.7.x LTS 线既有 32 个工具名、必填参数、默认输出格式不变；仅接受兼容性、安全性、数据同步和关键缺陷修复
 
 ## 当前分支
 
-- `main`：1.7.0 LTS（发布线）
-- `lts/1.7`：1.7.x 维护线（从 1.7.0 发布提交创建）
-- `dev`：2.0.0-dev（开发中）
+- `main`：2.0.0（最新稳定发布线）
+- `lts/1.7`：1.7.x LTS 维护线（从 1.7.0 发布提交创建）
+- `dev`：2.0 之后的开发集成线
 
 1.7.0 是最后一个 1.x 功能版本和 LTS 基线。它将 server.py/server.ts 和 story.py/story.ts 单体文件拆分为聚焦子模块，保留向后兼容垫片（shim），并新增剧情角色追踪工具：`find_character_appearances`、`find_speakers_in`。后续功能开发转向 2.0；1.7.x 仅做兼容性、安全性、数据同步和关键缺陷修复。
 
@@ -93,7 +93,7 @@ PRTS-MCP/
 | [ArknightsStoryJson](https://github.com/3aKHP/ArknightsStoryJson) | 剧情台词 | GitHub Release `zh_CN.zip` |
 | [PRTS Wiki API](https://prts.wiki/api.php) | 世界观词条/阵营设定 | 实时 HTTP 请求 |
 
-## 工具清单 (23, 2.0 dev 分支)
+## 工具清单 (23, 2.0 发布线)
 
 | # | 工具 | 数据源 | 版本 |
 |---|------|--------|------|
@@ -165,7 +165,7 @@ PRTS-MCP/
 
 | 版本 | 日期 | 亮点 |
 |------|------|------|
-| 2.0.0 _(dev，未正式发版)_ | 进行中 | 工具面合并 32 → 23 + output channel（structuredContent）；双端协议同步后置 |
+| 2.0.0 | 2026-07-03 | 工具面合并 32 → 23 + output channel（structuredContent）；双端协议同步后置 |
 | 1.7.0 | 2026-07-02 | 1.7 LTS：剧情角色追踪 + 模块拆分（32 工具） |
 | 1.6.1 | 2026-06-03 | 干员密录发现 + 搜索缓存优化（30 工具） |
 | 1.6.0 | 2026-05-28 | 关卡敌人融合 + 物品/材料域（29 工具） |
