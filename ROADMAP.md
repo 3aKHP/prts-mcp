@@ -1,17 +1,17 @@
 # PRTS-MCP Roadmap
 
-_Last updated: 2026-07-02_ · [中文版](ROADMAP.zh-CN.md)
+_Last updated: 2026-07-03_ · [中文版](ROADMAP.zh-CN.md)
 
 PRTS-MCP is past 1.0. Version 1.7.0 is the final 1.x feature release and the 1.7 LTS baseline. This document tracks **what comes next** — not what has shipped. For shipped features, see the Python and TypeScript CHANGELOGs.
 
 ## Current Release
 
-- Python: `1.7.0` LTS
-- TypeScript: `1.7.0` LTS
-- `dev` branch current target after the LTS release: `2.0.0-dev`
-- 32 public MCP tools, frozen in the 1.7 LTS line (CI-enforced).
-- See [migration guide](docs/migration-0.x-to-1.0.md) for the
-  0.x → 1.0 transition.
+- Python: `1.7.0` LTS _(stable line)_
+- TypeScript: `1.7.0` LTS _(stable line)_
+- `dev` branch: **2.0 development** — tool-surface consolidation (32 → 23 tools) and the output channel (structuredContent) are implemented on `dev`; cross-transport parity is deferred beyond 2.0.
+- 32 public MCP tools frozen in the 1.7 LTS line (CI-enforced); 23 public MCP tools on the 2.0 `dev` line.
+- See [migration guide 0.x → 1.0](docs/migration-0.x-to-1.0.md) and
+  [migration guide 1.x → 2.0](docs/migration-1.x-to-2.0.md).
 
 ## 1.x Compatibility Contract
 
@@ -118,56 +118,79 @@ Three structural shifts that warrant a major bump.
 
 ### Tool surface consolidation (context budget)
 
-The 1.x tool surface reached 32 tools by the 1.7.0 LTS release. For long-context flagship models this is fine; for 128K-class models, every additional tool schema eats into the prompt budget and hurts tool-selection accuracy.
+The 1.x tool surface reached 32 tools by the 1.7.0 LTS release. For long-context flagship models this is fine; for 128K-class models, every additional tool schema eats into the prompt budget and hurts tool-selection accuracy. 2.0 consolidates server-side by *schema shape* — merging tools that share parameter structure and output shape, keeping tools whose semantics genuinely differ — and drops the 32 → **23 tools** without losing capability.
 
 **Background**: MCP currently has no protocol-level support for deferred tool loading. Closed proposals: lazy hydration (#1978), lazyRegistration (#2376). Open drafts: tool-search query (#1821), token-bloat mitigations (#1576). Claude Code's ToolSearch is an Anthropic-API-level feature (`tool_reference` blocks), not portable to Cursor/Cline/Chatbox.
 
-**Approach**: server-side consolidation by *schema shape*, not by data domain. Merge tools that share parameter structure and output shape; keep tools whose semantics genuinely differ. Estimated reduction: 24 → ~16 tools (about a third) without losing capability.
+**Delivered in 2.0**:
 
-**Phase 1 (2.0 migration design)**:
-
-- `search(scope, pattern, ...)` consolidates `search_data`,
-  `search_stories`, `search_enemies`, `list_search_scopes`. Same
-  parameter shape across all four; differs only in `scope`.
+- `search(scope, pattern, max_results)` consolidates `search_data`,
+  `search_enemies`, `search_stages`, `search_items`, and `list_search_scopes`
+  into one tool keyed on a `scope` enum (`operators` / `enemies` / `stages` /
+  `items`). Story dialogue search remains the separate `search_stories` tool,
+  because its filters (character, line type, context lines) differ in shape.
 - `prts_page(page_title, action, ...)` consolidates `read_prts_page`,
-  `list_prts_sections`, `get_prts_categories`, `get_prts_links`,
-  `get_prts_template`. Single primary key; action selects the
-  sub-operation.
+  `list_prts_sections`, `get_prts_categories`, `get_prts_links`, and
+  `get_prts_template` into one tool keyed on an `action` enum.
+- `list_stories(event_id, include_summaries=true)` now prepends the event-level
+  LLM overview, absorbing the former `get_event_summary`. The single-chapter
+  deep summary tool `get_story_summary` is unchanged.
+- The deprecated legacy aliases behind these three consolidations are dropped
+  from the 2.0 tool surface. The 1.7 LTS line keeps the existing 32-tool surface.
 
-**Phase 2 (2.0)**: drop or hide the deprecated legacy aliases according to the final 2.0 migration plan. The 1.7 LTS line keeps the existing 32-tool surface.
-
-**What we explicitly will NOT consolidate**:
+**What was explicitly NOT consolidated**:
 
 - Operator triplet (`get_operator_archives` / `voicelines` /
   `basic_info`): outputs differ in shape and length; merging hurts
   LLM selection accuracy more than it saves context.
-- Enemy triplet (`list_enemies` / `get_enemy_info` / `search_enemies`):
-  same reason.
+- Enemy pair (`list_enemies` / `get_enemy_info`): same reason. (The enemy
+  search tool `search_enemies` was folded into the cross-domain
+  `search(scope="enemies")` as described above.)
 - Story tools (`read_story` / `read_activity` / `get_story_summary`):
   genuinely distinct actions on related-but-different data.
 
 The bar for consolidation: same parameter shape, similar output length and structure, an LLM choosing between them today is choosing between near-synonyms.
 
-### Output format becomes selectable
+### Output channel (structuredContent)
 
-- Add an optional `output_format=markdown|json` parameter (default
-  `markdown` in 1.x — additive, no break).
-- JSON mode returns structured objects suitable for downstream
-  automation.
-- 2.0 flips the **default** to `json`, making this the breaking change.
-- Markdown remains supported under explicit opt-in.
+2.0 adds structured output via MCP's native `structuredContent` field. The
+control plane is a single **connection-level** `output_channel` knob
+(`content` (default) / `structured` / `both`), set via the
+`PRTS_OUTPUT_CHANNEL` env var on Python and via query string / header / env on
+TypeScript. Structural tools (17) carry real structured payloads with chainable
+IDs and raw/label field pairs; narrative tools (6) stay content-only. The
+default `content` channel preserves the 1.x human-readable markdown output, so
+incapable clients (e.g. Chatbox) are unaffected without configuration.
 
-The original staged plan expected 1.x opt-in. With 1.7 now serving as the LTS line, the exact migration path belongs to the 2.0 design phase and must be documented before the first 2.0 prerelease.
+**Design choice — channel, not a per-call format parameter.** The original
+roadmap proposed a per-call `output_format=markdown|json` parameter with 2.0
+flipping the default to `json`. **That shape was rejected during design.** The
+primary consumer is an LLM agent, and JSON inflates prompt tokens ~15–30%
+versus markdown — which would negate the context-budget savings the
+tool-surface consolidation was built to deliver. Instead, markdown stays the
+always-on `content` text and structured data rides a separate channel; the two
+axes are orthogonal. The default is **not** flipped to JSON.
+
+See [the 2.0 migration guide](docs/migration-1.x-to-2.0.md) for the per-tool
+channel mapping and client configuration.
 
 ### Implementation parity (Python ↔ TypeScript)
 
-Today the implementations have de-facto roles: Python is recommended for Docker / stdio, TypeScript for `npm install -g` / HTTP. 2.0 removes this asymmetry:
+2.0 narrows, but does not remove, the de-facto role split between the two
+implementations. Delivered in 2.0:
 
-- Both implementations support stdio **and** Streamable HTTP.
-- npm and PyPI packages have equivalent capability surface.
-- Environment variable names and defaults are unified.
-- Recommended deployment scenarios collapse into "use whichever runtime
-  fits your stack".
+- npm and PyPI packages have an equivalent **capability surface** — the same
+  23 tool names, parameters, structuredContent payloads, and parity fixtures
+  shared across both implementations.
+- Environment variable names and defaults are unified (`PRTS_OUTPUT_CHANNEL`,
+  `GAMEDATA_PATH`, `STORYJSON_PATH`, `GITHUB_TOKEN`, `GITHUB_MIRRORS`).
+
+**Deferred beyond 2.0 — cross-transport parity.** The original goal that both
+implementations support stdio **and** Streamable HTTP (Python gaining HTTP,
+TypeScript gaining stdio) is postponed to a later release. 2.0 ships with the
+same transport split as 1.x: Python = stdio (FastMCP), TypeScript =
+Streamable HTTP (Express). Recommended deployment scenarios therefore stay
+"Python for Docker / local stdio, TypeScript for `npm install -g` / HTTP."
 
 ### Cleanup
 

@@ -8,6 +8,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Added
 
+- **Output channel design replaces the per-call `output_format` parameter
+  (2.0 design decision).** The original roadmap proposed an optional
+  `output_format=markdown|json` parameter with 2.0 flipping the default to
+  `json`. **That shape was rejected during design.** The primary consumer is an
+  LLM agent, and JSON inflates prompt tokens ~15–30% versus markdown — which
+  would negate the context-budget savings the tool-surface consolidation
+  delivers. 2.0 instead keeps markdown as the always-on `content` text and
+  carries structured data on MCP's native `structuredContent` field, selected
+  by a **connection-level** `output_channel` knob (`content` (default) /
+  `structured` / `both`) via the `PRTS_OUTPUT_CHANNEL` env var. The default is
+  **not** flipped to JSON. See [`docs/migration-1.x-to-2.0.md`](../docs/migration-1.x-to-2.0.md)
+  for the per-tool channel mapping and client configuration.
 - **Output channel (2.0).** Optional structured-content delivery via MCP's
   native `structuredContent` channel, controlled by a connection-level
   `PRTS_OUTPUT_CHANNEL` env var (`content` (default) / `structured` / `both`).

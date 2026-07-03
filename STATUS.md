@@ -1,18 +1,18 @@
 # PRTS-MCP 项目状态
 
-_Last updated: 2026-07-02_
+_Last updated: 2026-07-03_
 
 ## 当前版本
 
 | 实现 | 版本 | 状态 |
 |------|------|------|
-| Python | 2.0.0.dev0 | Development |
-| TypeScript | 2.0.0-dev.0 | Development |
+| Python | 2.0.0.dev0 | Development（2.0 代码工作完成，文档发版准备中） |
+| TypeScript | 2.0.0-dev.0 | Development（2.0 代码工作完成，文档发版准备中） |
 
-- 当前 LTS 发布：32 个 MCP 工具（1.7.0，剧情角色追踪）
+- 当前 LTS 发布：1.7.0（32 个 MCP 工具，剧情角色追踪）
 - 当前稳定发布：1.7.0 LTS
-- 当前开发目标：2.0.0
-- 兼容性合约：1.7.x 期间既有工具名、必填参数、默认输出格式不变；仅接受兼容性、安全性、数据同步和关键缺陷修复
+- 当前开发目标：2.0.0 — 工具面合并（32 → 23）与 output channel（structuredContent）已在 `dev` 分支落地，双端代码与测试就绪；**双端协议同步（Python 上 HTTP / TS 上 stdio）已后置到 2.0 之后**。
+- 兼容性合约：1.7.x 期间既有 32 个工具名、必填参数、默认输出格式不变；仅接受兼容性、安全性、数据同步和关键缺陷修复
 
 ## 当前分支
 
@@ -93,7 +93,7 @@ PRTS-MCP/
 | [ArknightsStoryJson](https://github.com/3aKHP/ArknightsStoryJson) | 剧情台词 | GitHub Release `zh_CN.zip` |
 | [PRTS Wiki API](https://prts.wiki/api.php) | 世界观词条/阵营设定 | 实时 HTTP 请求 |
 
-## 工具清单 (23, current branch)
+## 工具清单 (23, 2.0 dev 分支)
 
 | # | 工具 | 数据源 | 版本 |
 |---|------|--------|------|
@@ -134,6 +134,28 @@ PRTS-MCP/
 > `list_stories(event_id, include_summaries=True)` 现附带活动级长摘要（吸收了
 > 1.x 的 `get_event_summary`）；单章深摘要仍为独立的 `get_story_summary`。
 
+## Output Channel（2.0 新增）
+
+2.0 在 MCP 原生 `structuredContent` 字段上新增结构化输出能力，由**连接级**的
+`output_channel` 开关控制（`content`（默认）/ `structured` / `both`）。Python 经
+`PRTS_OUTPUT_CHANNEL` 环境变量设置，TypeScript 经查询字符串 / 请求头 / 环境变量设置。
+默认 `content` 与 1.x 行为一致，无需配置。
+
+- **结构化工具（17 个）** 走 `structuredContent`，载荷含可链式调用的 ID 与
+  raw/label 字段对：`search_prts`、`get_operator_basic_info`、`list_enemies`、
+  `get_enemy_info`、`get_stage_enemies`、`get_enemy_appearances`、`list_stages`、
+  `get_stage_info`、`list_items`、`get_item_info`、`search`、`list_story_events`、
+  `list_stories`、`search_stories`、`get_operator_memoirs`、`find_character_appearances`、
+  `find_speakers_in`。
+- **叙事工具（6 个）** 仅 `content`（markdown），无结构化形态：`prts_page`（所有
+  action）、`get_operator_archives`、`get_operator_voicelines`、`get_story_summary`、
+  `read_story`、`read_activity`。
+
+> 设计选择：采用连接级通道而非 per-call 的 `output_format=markdown|json` 参数，且
+> **不**翻转默认到 JSON——主要消费者是 LLM agent，JSON 会令 prompt token 膨胀
+> 15–30%，抵消工具面合并带来的上下文预算收益。详见
+> [`docs/migration-1.x-to-2.0.md`](docs/migration-1.x-to-2.0.md)。
+
 ## 遗留 TODO
 
 - [ ] PRTS 搜索结果中 redirect 页面自动解析（MediaWiki API 限制）
@@ -143,6 +165,7 @@ PRTS-MCP/
 
 | 版本 | 日期 | 亮点 |
 |------|------|------|
+| 2.0.0 _(dev，未正式发版)_ | 进行中 | 工具面合并 32 → 23 + output channel（structuredContent）；双端协议同步后置 |
 | 1.7.0 | 2026-07-02 | 1.7 LTS：剧情角色追踪 + 模块拆分（32 工具） |
 | 1.6.1 | 2026-06-03 | 干员密录发现 + 搜索缓存优化（30 工具） |
 | 1.6.0 | 2026-05-28 | 关卡敌人融合 + 物品/材料域（29 工具） |

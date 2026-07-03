@@ -58,6 +58,14 @@ If `main` still points to the 1.7 line when the fix ships, merge `lts/1.7` back 
 2.0 work may break the 1.x compatibility contract. The 2.0 branch must provide migration notes before prerelease for:
 
 - Final tool-surface consolidation.
-- Markdown/JSON output-format behavior.
-- Python and TypeScript transport parity.
+- Output channel (`structuredContent`) behavior — note 2.0 keeps markdown as
+  the default `content` and does **not** flip to a JSON default; the originally
+  proposed per-call `output_format=markdown|json` parameter was rejected during
+  design.
 - Removed or hidden legacy tool aliases.
+
+Cross-transport parity (Python gaining HTTP, TypeScript gaining stdio) was an
+original 2.0 boundary goal but is **deferred beyond 2.0**; 2.0 ships with the
+same transport split as 1.x (Python = stdio, TypeScript = Streamable HTTP).
+See [`docs/migration-1.x-to-2.0.md`](../migration-1.x-to-2.0.md) for the
+delivered 2.0 changes.

@@ -14,6 +14,7 @@ PRTS-MCP 是面向明日方舟同人创作的 MCP Server，包含 Python（stdio
 | 项目现状、版本状态、仓库结构 | [`STATUS.md`](STATUS.md) |
 | 代码规范、反模式、已知陷阱 | [`docs/dev/STYLE.md`](docs/dev/STYLE.md) |
 | 路线图与未来规划 | [`ROADMAP.md`](ROADMAP.md) |
+| 1.x → 2.0 迁移（破坏性变更） | [`docs/migration-1.x-to-2.0.md`](docs/migration-1.x-to-2.0.md) |
 | 1.7 LTS 维护规则 | [`docs/dev/LTS.md`](docs/dev/LTS.md) |
 | 外部贡献者指南 | [`python/CONTRIBUTING.md`](python/CONTRIBUTING.md) |
 | Python 实现 | [`python/`](python/) |
@@ -87,7 +88,7 @@ fix/*（最新稳定 hotfix）────────→ main ──→ dev（f
 
 例：
 - `feat/v2.0.0-tool-surface`
-- `refactor/v2.0.0-output-format`
+- `refactor/v2.0.0-output-channel`
 - `fix/v1.7.1-sync-schema`
 
 ## 单次迭代循环
@@ -219,6 +220,7 @@ EOF
 | `ts/CHANGELOG.md` | 新版本条目 |
 | `ts/package-lock.json` | npm lockfile 顶层版本 |
 | `ROADMAP.md` | 当前版本号 |
+| `ROADMAP.zh-CN.md` | 当前版本号（与 `ROADMAP.md` 成对同步，勿漏） |
 
 涉及用户可见行为变化时，顺手更新 `README.md`。
 
@@ -238,7 +240,7 @@ git push origin python/v1.3.1 ts/v1.3.1
 本项目 Python 和 TypeScript 是**独立实现**，不是翻译关系。规则：
 
 - 改了一个实现的工具行为，**必须检查**另一个实现是否有对应改动
-- 公共工具名、必填参数、输出格式在两套实现间必须一致（CI 有 tool surface 测试）
+- 公共工具名、必填参数、输出格式（含 `structuredContent` 载荷）在两套实现间必须一致（CI 有 tool surface / output-channel parity 测试）
 - 新工具建议先在一个实现中完成，验证后再移植到另一个
 - 两套实现各有独立的 CHANGELOG，版本号尽量同步
 
