@@ -58,6 +58,7 @@ const CSS_JS_RE =
   /@(font-face|keyframes|media|import|charset|namespace|supports|page)[^{]*\{[^}]*\}|\(window\.RLQ\s*\|\|\s*\[\]\)\.push\([^)]*\)|<style[^>]*>.*?<\/style>|<script[^>]*>.*?<\/script>/gis;
 
 const HTML_TAG_RE = /<[^>]+>/g;
+const REDIRECT_SNIPPET_RE = /#\s*(?:重定向|REDIRECT)/i;
 
 const NAMED_ENTITIES: Record<string, string> = {
   quot: '"', amp: "&", lt: "<", gt: ">", apos: "'", nbsp: " ",
@@ -80,7 +81,7 @@ function cleanSnippet(snippet: string): string {
   snippet = snippet.replace(/\s*"[^"]*"\s*:\s*"[^"]*"\s*,?\s*/g, " ");
   // Remove isolated pipe-value artifacts with Chinese keys
   snippet = snippet.replace(/\|[一-鿿\w]+\s*=[^\n]*/g, "");
-  snippet = snippet.replace(/#重定向|#REDIRECT/g, "");
+  snippet = snippet.replace(REDIRECT_SNIPPET_RE, "");
   // Collapse whitespace
   snippet = snippet.replace(/[ \t]+/g, " ");
   snippet = snippet.replace(/,{2,}/g, "");
@@ -101,8 +102,6 @@ const TECHNICAL_PAGE_PATTERNS = [
 function isTechnicalPage(title: string): boolean {
   return TECHNICAL_PAGE_PATTERNS.some((p) => p.test(title));
 }
-
-const REDIRECT_SNIPPET_RE = /#\s*(?:重定向|REDIRECT)/i;
 
 function isRedirectLike(snippet: string): boolean {
   return REDIRECT_SNIPPET_RE.test(snippet);

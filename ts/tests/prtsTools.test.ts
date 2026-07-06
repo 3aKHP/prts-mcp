@@ -80,7 +80,7 @@ test("buildPrtsSearch resolves redirect-like search results", async () => {
     {
       query: {
         searchinfo: { totalhits: 1 },
-        search: [{ title: "阿米亚", snippet: "#REDIRECT [[阿米娅]]" }],
+        search: [{ title: "阿米亚", snippet: "# redirect [[阿米娅]]" }],
       },
     },
     {

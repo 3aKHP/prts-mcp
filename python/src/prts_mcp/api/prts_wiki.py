@@ -401,7 +401,7 @@ def _clean_snippet(snippet: str) -> str:
     snippet = re.sub(r'\s*"[^"]*"\s*:\s*"[^"]*"\s*,?\s*', " ", snippet)
     # Remove isolated pipe-value artifacts with Chinese keys
     snippet = re.sub(r"\|[一-鿿\w]+\s*=[^\n]*", "", snippet)
-    snippet = re.sub(r"#重定向|#REDIRECT", "", snippet)
+    snippet = _REDIRECT_SNIPPET_RE.sub("", snippet)
     # Collapse whitespace
     snippet = re.sub(r"[ \t]+", " ", snippet)
     snippet = re.sub(r",{2,}", "", snippet)

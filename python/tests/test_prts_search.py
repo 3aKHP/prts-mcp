@@ -55,7 +55,7 @@ def test_search_prts_resolves_redirect_like_result(
                 "query": {
                     "searchinfo": {"totalhits": 1},
                     "search": [
-                        {"title": "阿米亚", "snippet": "#REDIRECT [[阿米娅]]"},
+                        {"title": "阿米亚", "snippet": "# redirect [[阿米娅]]"},
                     ],
                 },
             },
