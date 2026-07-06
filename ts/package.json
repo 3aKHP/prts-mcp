@@ -5,7 +5,8 @@
   "type": "module",
   "main": "dist/server.js",
   "bin": {
-    "prts-mcp-ts": "./dist/server.js"
+    "prts-mcp-ts": "./dist/server.js",
+    "prts-mcp-ts-bun": "./dist/server-bun.js"
   },
   "files": [
     "dist/",
@@ -19,10 +20,11 @@
     "build:bun": "bun run build",
     "dev": "tsx src/server.ts",
     "start": "node dist/server.js",
-    "start:bun": "bun dist/server.js",
+    "start:bun": "bun dist/server-bun.js",
     "smoke:http": "node scripts/smoke-http.mjs -- node dist/server.js",
     "smoke:http:fixture": "node scripts/smoke-http.mjs --fixture-data -- node dist/server.js",
-    "smoke:bun": "bun scripts/smoke-http.mjs --fixture-data -- bun dist/server.js",
+    "smoke:bun": "bun scripts/smoke-http.mjs --fixture-data -- bun dist/server-bun.js",
+    "smoke:bun:package": "bun scripts/smoke-package-bun.mjs",
     "test": "node --import tsx --test \"tests/**/*.test.ts\"",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "tsc"

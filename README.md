@@ -21,7 +21,7 @@ This repository contains two independent implementations for different deploymen
 | Directory | Language | Transport | Use case |
 |-----------|----------|-----------|----------|
 | [`python/`](python/) | Python 3.10+ | stdio | Local Claude Desktop / Claude Code, Docker |
-| [`ts/`](ts/) | TypeScript / Node.js | Streamable HTTP | Self-hosted server, remote HTTP access |
+| [`ts/`](ts/) | TypeScript / Node.js + Bun | Streamable HTTP | Self-hosted server, remote HTTP access |
 
 ### Release Lines
 
@@ -95,6 +95,12 @@ parameter.
 - **Local stdio (Python / Docker)** → see [`python/`](python/)
 - **HTTP server (TypeScript / Docker)** → see [`ts/`](ts/)
 
+The TypeScript implementation supports Node.js and Bun. Node.js remains the
+default for `npx prts-mcp-ts`, npm global installs, systemd deployments, the
+default Dockerfile, and npm Trusted Publishing. Bun is available as an explicit
+optional runtime via `bunx --bun -p prts-mcp-ts prts-mcp-ts-bun` or the
+supported `ts/Dockerfile.bun` build path.
+
 ### Data Sources
 
 - **PRTS Wiki API** (`https://prts.wiki/api.php`) — lore articles, faction info, world-building entries
@@ -120,7 +126,7 @@ Published Docker images and the npm package include bundled fallback game/level/
 | 目录 | 语言 | 传输方式 | 适用场景 |
 |------|------|----------|----------|
 | [`python/`](python/) | Python 3.10+ | stdio | Claude Desktop / Claude Code 本地接入、Docker |
-| [`ts/`](ts/) | TypeScript / Node.js | Streamable HTTP | 个人服务器部署，供他人通过 HTTP 调用 |
+| [`ts/`](ts/) | TypeScript / Node.js + Bun | Streamable HTTP | 个人服务器部署，供他人通过 HTTP 调用 |
 
 ### 版本线
 
@@ -186,6 +192,11 @@ Published Docker images and the npm package include bundled fallback game/level/
 
 - **本地 stdio 接入（Python / Docker）** → 见 [`python/`](python/)
 - **HTTP 服务部署（TypeScript / Docker）** → 见 [`ts/`](ts/)
+
+TypeScript 实现支持 Node.js 与 Bun。Node.js 仍是 `npx prts-mcp-ts`、npm 全局安装、
+systemd 部署、默认 Dockerfile 和 npm Trusted Publishing 的默认路径；Bun 作为显式可选
+运行时，可通过 `bunx --bun -p prts-mcp-ts prts-mcp-ts-bun` 或受支持的
+`ts/Dockerfile.bun` 构建路径使用。
 
 ### 数据源
 

@@ -226,7 +226,8 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.value }}
         run: |
-          printf '\n---\n\n**Install**\n```bash\n# Run directly (Streamable HTTP on :3000)\nnpx prts-mcp-ts\n\n# Or install globally\nnpm install -g prts-mcp-ts@%s\n```\n\nMCP endpoint: `http://localhost:3000/mcp`\n' \
+          printf '\n---\n\n**Install**\n```bash\n# Run directly with the default Node.js entrypoint (Streamable HTTP on :3000)\nnpx prts-mcp-ts\n\n# Or install globally\nnpm install -g prts-mcp-ts@%s\n\n# Optional Bun runtime\nbunx --bun -p prts-mcp-ts@%s prts-mcp-ts-bun\n```\n\nMCP endpoint: `http://localhost:3000/mcp`\n' \
+            "$VERSION" \
             "$VERSION" >> release_notes.txt
 
       - name: Create GitHub Release

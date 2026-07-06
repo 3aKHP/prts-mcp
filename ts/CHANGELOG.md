@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Added
+
+- Added the `prts-mcp-ts-bun` public bin as the supported optional Bun runtime
+  entry point. The default `prts-mcp-ts` bin remains Node.js-based.
+- Added a packed-package Bun smoke test that runs `npm pack`, installs the
+  tarball with Bun in a temporary project, starts `prts-mcp-ts-bun`, and reuses
+  the HTTP MCP smoke harness.
+
+### Changed
+
+- Promoted the Bun runtime and `ts/Dockerfile.bun` from candidate coverage to a
+  supported optional TypeScript runtime path, verified against Bun `1.3.14`.
+  Node/npm remains the default runtime, Dockerfile, and Trusted Publishing path.
+
 ## [2.0.2] - 2026-07-07
 
 ### Added
