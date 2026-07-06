@@ -29,7 +29,7 @@ Two release lines ship in parallel:
 
 | Line | Version | Tools | Status |
 |------|---------|-------|--------|
-| **2.0** (`main`) | `2.0.2` | 23 | Tool-surface consolidation + output channel (structuredContent). Cross-transport parity deferred beyond 2.0. |
+| **2.1** (`main`) | `2.1.0` | 23 | TypeScript supports Node.js plus Bun as a supported optional runtime. Cross-transport parity deferred beyond 2.1. |
 | **1.7 LTS** (`lts/1.7`) | `1.7.0` | 32 | Stable maintenance line. 1.7.x accepts only compatibility, security, data-sync, and critical bug fixes. |
 
 | Area | Python | TypeScript |
@@ -134,7 +134,7 @@ Published Docker images and the npm package include bundled fallback game/level/
 
 | 版本线 | 版本 | 工具数 | 状态 |
 |--------|------|--------|------|
-| **2.0**（`main`） | `2.0.2` | 23 | 工具面合并 + output channel（structuredContent）。双端协议同步后置到 2.0 之后。 |
+| **2.1**（`main`） | `2.1.0` | 23 | TypeScript 支持 Node.js + Bun 受支持可选运行时。双端协议同步后置到 2.1 之后。 |
 | **1.7 LTS**（`lts/1.7`） | `1.7.0` | 32 | 稳定维护线。1.7.x 仅接受兼容性、安全性、数据同步和关键缺陷修复。 |
 
 | 范围 | Python | TypeScript |

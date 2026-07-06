@@ -6,15 +6,13 @@ _Last updated: 2026-07-07_
 
 | 实现 | 版本 | 状态 |
 |------|------|------|
-| Python | 2.1.0.dev0 | Development |
-| TypeScript | 2.1.0-dev.0 | Development |
+| Python | 2.1.0 | Stable |
+| TypeScript | 2.1.0 | Stable |
 
-- 当前稳定发布：2.0.2（23 个 MCP 工具）
+- 当前稳定发布：2.1.0（23 个 MCP 工具）
 - 当前 LTS 发布：1.7.0（32 个 MCP 工具，剧情角色追踪）
-- 当前开发目标：2.1.0（正式支持 Bun 的 minor 版本）
-- 当前稳定补丁线：2.0.x
-- 当前开发线：2.1.x
-- 2.1.0 开发目标：将 TS Bun 从候选路径提升为受支持可选运行时，新增
+- 当前稳定补丁线：2.1.x
+- 2.1.0 发布内容：将 TS Bun 从候选路径提升为受支持可选运行时，新增
   `prts-mcp-ts-bun` npm bin，并保留 Node/npm 作为默认入口、默认 Dockerfile 和
   npm Trusted Publishing 路径。Bun 最低验证版本为 1.3.14。
 - 2.0.2 补丁集：TS HTTP MCP smoke harness、TS Bun 候选运行路径、
@@ -24,9 +22,9 @@ _Last updated: 2026-07-07_
 
 ## 当前分支
 
-- `main`：2.0.2（最新稳定发布线）
+- `main`：2.1.0（最新稳定发布线）
 - `lts/1.7`：1.7.x LTS 维护线（从 1.7.0 发布提交创建）
-- `develop`：2.1 的开发集成线
+- `develop`：后续版本开发集成线
 
 1.7.0 是最后一个 1.x 功能版本和 LTS 基线。它将 server.py/server.ts 和 story.py/story.ts 单体文件拆分为聚焦子模块，保留向后兼容垫片（shim），并新增剧情角色追踪工具：`find_character_appearances`、`find_speakers_in`。后续功能开发转向 2.0；1.7.x 仅做兼容性、安全性、数据同步和关键缺陷修复。
 
@@ -164,7 +162,7 @@ PRTS-MCP/
 > 15–30%，抵消工具面合并带来的上下文预算收益。详见
 > [`docs/migration-1.x-to-2.0.md`](docs/migration-1.x-to-2.0.md)。
 
-## 2.1.0 开发内容
+## 2.1.0 发布内容
 
 - [x] TS Bun 从候选路径提升为受支持可选运行时；`prts-mcp-ts` 继续走
   Node.js，新增 `prts-mcp-ts-bun` 作为显式 Bun 入口。
@@ -186,6 +184,7 @@ PRTS-MCP/
 
 | 版本 | 日期 | 亮点 |
 |------|------|------|
+| 2.1.0 | 2026-07-07 | TypeScript 正式支持 Bun 可选运行时；新增 `prts-mcp-ts-bun`；Bun Dockerfile 提升为受支持替代构建路径 |
 | 2.0.2 | 2026-07-07 | TS HTTP MCP smoke harness；Bun 候选运行路径；`search_prts` redirect 解析与技术页面过滤修复 |
 | 2.0.1 | 2026-07-03 | 修复 `list_story_events` 缺失剧情数据时的 output-channel 包装；统一 TS 文本结果 helper；补充 MCP 示例配置 |
 | 2.0.0 | 2026-07-03 | 工具面合并 32 → 23 + output channel（structuredContent）；双端协议同步后置 |
