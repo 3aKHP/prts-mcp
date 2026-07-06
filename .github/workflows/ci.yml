@@ -201,6 +201,10 @@ jobs:
         run: npx tsc
         working-directory: ts
 
+      - name: Smoke test HTTP MCP protocol
+        run: npm run smoke:http:fixture
+        working-directory: ts
+
   build-image-ts:
     runs-on: ubuntu-latest
     needs: verify-ts
@@ -209,6 +213,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: 'ts/package.json'
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -252,14 +261,8 @@ jobs:
       - name: Build Docker image
         run: docker build -f ts/Dockerfile -t prts-mcp-ts:latest .
 
-      - name: Smoke test Docker image (HTTP health check)
+      - name: Smoke test Docker image (HTTP MCP protocol)
         run: |
           docker run -d --name prts-mcp-ts-ci -p 3000:3000 prts-mcp-ts:latest
-          # Wait for server to be ready
-          for i in $(seq 1 10); do
-            if curl -sf http://localhost:3000/health; then break; fi
-            sleep 1
-          done
-          curl -sf http://localhost:3000/health | grep '"status":"ok"'
-          echo "Health check passed."
-          docker rm -f prts-mcp-ts-ci
+          trap 'docker rm -f prts-mcp-ts-ci' EXIT
+          node ts/scripts/smoke-http.mjs --origin http://localhost:3000
