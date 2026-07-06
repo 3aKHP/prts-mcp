@@ -108,18 +108,22 @@ function isRedirectLike(snippet: string): boolean {
 }
 
 async function resolveRedirectTitle(title: string): Promise<string | null> {
-  const data = (await prtsGet({
-    action: "query",
-    redirects: 1,
-    titles: title,
-    format: "json",
-  })) as {
-    query?: {
-      redirects?: Array<{ from?: string; to?: string }>;
+  try {
+    const data = (await prtsGet({
+      action: "query",
+      redirects: 1,
+      titles: title,
+      format: "json",
+    })) as {
+      query?: {
+        redirects?: Array<{ from?: string; to?: string }>;
+      };
     };
-  };
-  for (const item of data.query?.redirects ?? []) {
-    if (item.from === title && item.to) return item.to;
+    for (const item of data.query?.redirects ?? []) {
+      if (item.from === title && item.to) return item.to;
+    }
+  } catch {
+    return null;
   }
   return null;
 }
@@ -165,7 +169,7 @@ export async function searchPrts(
     srlimit: fetchLimit,
     srnamespace: 0,
     srinfo: "totalhits",
-    srprop: "snippet|redirecttitle|redirectsnippet",
+    srprop: "snippet|redirecttitle",
     format: "json",
   };
   if (searchMode === "title") {
@@ -178,7 +182,6 @@ export async function searchPrts(
         title: string;
         snippet: string;
         redirecttitle?: string;
-        redirectsnippet?: string;
       }>;
     };
   };

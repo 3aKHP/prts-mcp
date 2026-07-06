@@ -16,12 +16,14 @@ function mockFetch(payload: unknown | unknown[], requests?: string[]): () => voi
   const queue = Array.isArray(payload) ? [...payload] : [payload];
   globalThis.fetch = (async (input) => {
     requests?.push(String(input));
+    const next = queue.shift();
+    if (next instanceof Error) throw next;
     return {
       ok: true,
       status: 200,
       json: async () => {
-        if (queue.length === 0) throw new Error("unexpected fetch call");
-        return queue.shift();
+        if (next === undefined) throw new Error("unexpected fetch call");
+        return next;
       },
     };
   }) as typeof fetch;
@@ -97,8 +99,30 @@ test("buildPrtsSearch resolves redirect-like search results", async () => {
     assert.deepStrictEqual(data.results, [{ title: "阿米娅", snippet: "阿米娅" }]);
     assert.equal(
       new URL(requests[0]).searchParams.get("srprop"),
-      "snippet|redirecttitle|redirectsnippet",
+      "snippet|redirecttitle",
     );
+    assert.equal(new URL(requests[1]).searchParams.get("redirects"), "1");
+    assert.equal(new URL(requests[1]).searchParams.get("titles"), "阿米亚");
+  } finally {
+    restore();
+  }
+});
+
+test("buildPrtsSearch keeps result when redirect resolution fails", async () => {
+  const restore = mockFetch([
+    {
+      query: {
+        searchinfo: { totalhits: 1 },
+        search: [{ title: "阿米亚", snippet: "# redirect [[阿米娅]]" }],
+      },
+    },
+    new Error("redirect lookup failed"),
+  ]);
+  try {
+    const data = await buildPrtsSearch("阿米亚", 1);
+    if (typeof data === "string") assert.fail(`unexpected error: ${data}`);
+    assert.equal(data.total, 1);
+    assert.deepStrictEqual(data.results, [{ title: "阿米亚", snippet: "阿米娅" }]);
   } finally {
     restore();
   }

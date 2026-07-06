@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import html as _html
+import logging
 import re
 
 import xml.etree.ElementTree as ET
@@ -13,6 +14,7 @@ from prts_mcp.utils.sanitizer import strip_wikitext
 
 # --- Shared httpx client (connection pooling) ---
 
+_logger = logging.getLogger(__name__)
 _client: httpx.AsyncClient | None = None
 
 
@@ -76,22 +78,25 @@ def _is_redirect_like(snippet: str) -> bool:
 
 async def _resolve_redirect_title(title: str) -> str | None:
     """Resolve a redirect page title to its target, returning None if unchanged."""
-    await _rate_limit()
-    resp = await _get_client().get(
-        PRTS_API_ENDPOINT,
-        params={
-            "action": "query",
-            "redirects": "1",
-            "titles": title,
-            "format": "json",
-        },
-    )
-    resp.raise_for_status()
-    data = resp.json()
-    redirects = data.get("query", {}).get("redirects", [])
-    for item in redirects:
-        if item.get("from") == title and item.get("to"):
-            return item["to"]
+    try:
+        await _rate_limit()
+        resp = await _get_client().get(
+            PRTS_API_ENDPOINT,
+            params={
+                "action": "query",
+                "redirects": "1",
+                "titles": title,
+                "format": "json",
+            },
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        redirects = data.get("query", {}).get("redirects", [])
+        for item in redirects:
+            if item.get("from") == title and item.get("to"):
+                return item["to"]
+    except Exception as exc:
+        _logger.debug("Failed to resolve PRTS redirect title %r: %s", title, exc)
     return None
 
 
@@ -120,7 +125,7 @@ async def search_prts(
         "srlimit": str(limit * 2 if filter_technical else limit),
         "srnamespace": "0",
         "srinfo": "totalhits",
-        "srprop": "snippet|redirecttitle|redirectsnippet",
+        "srprop": "snippet|redirecttitle",
         "format": "json",
     }
     if srwhat:

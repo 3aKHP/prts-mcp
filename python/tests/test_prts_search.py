@@ -20,7 +20,7 @@ class FakeResponse:
 
 
 class FakeClient:
-    def __init__(self, payloads: list[dict[str, Any]]) -> None:
+    def __init__(self, payloads: list[dict[str, Any] | Exception]) -> None:
         self.payloads = payloads
         self.requests: list[dict[str, Any]] = []
 
@@ -28,7 +28,10 @@ class FakeClient:
         self.requests.append(params)
         if not self.payloads:
             raise AssertionError("unexpected request")
-        return FakeResponse(self.payloads.pop(0))
+        payload = self.payloads.pop(0)
+        if isinstance(payload, Exception):
+            raise payload
+        return FakeResponse(payload)
 
 
 async def _no_rate_limit() -> None:
@@ -37,7 +40,7 @@ async def _no_rate_limit() -> None:
 
 def _patch_client(
     monkeypatch: pytest.MonkeyPatch,
-    payloads: list[dict[str, Any]],
+    payloads: list[dict[str, Any] | Exception],
 ) -> FakeClient:
     client = FakeClient(payloads)
     monkeypatch.setattr("prts_mcp.api.prts_wiki._get_client", lambda: client)
@@ -74,9 +77,35 @@ def test_search_prts_resolves_redirect_like_result(
         "totalhits": 1,
         "results": [{"title": "阿米娅", "snippet": "阿米娅"}],
     }
-    assert client.requests[0]["srprop"] == "snippet|redirecttitle|redirectsnippet"
+    assert client.requests[0]["srprop"] == "snippet|redirecttitle"
     assert client.requests[1]["redirects"] == "1"
     assert client.requests[1]["titles"] == "阿米亚"
+
+
+def test_search_prts_keeps_result_when_redirect_resolution_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _patch_client(
+        monkeypatch,
+        [
+            {
+                "query": {
+                    "searchinfo": {"totalhits": 1},
+                    "search": [
+                        {"title": "阿米亚", "snippet": "# redirect [[阿米娅]]"},
+                    ],
+                },
+            },
+            RuntimeError("redirect lookup failed"),
+        ],
+    )
+
+    result = asyncio.run(search_prts("阿米亚", limit=1))
+
+    assert result == {
+        "totalhits": 1,
+        "results": [{"title": "阿米亚", "snippet": "阿米娅"}],
+    }
 
 
 def test_search_prts_filters_technical_pages_but_keeps_totalhits(
