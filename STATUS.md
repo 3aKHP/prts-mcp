@@ -6,12 +6,12 @@ _Last updated: 2026-07-07_
 
 | 实现 | 版本 | 状态 |
 |------|------|------|
-| Python | 2.0.2 | Stable |
-| TypeScript | 2.0.2 | Stable |
+| Python | 2.0.3.dev0 | Development |
+| TypeScript | 2.0.3-dev.0 | Development |
 
 - 当前稳定发布：2.0.2（23 个 MCP 工具）
 - 当前 LTS 发布：1.7.0（32 个 MCP 工具，剧情角色追踪）
-- 下一开发目标：待 2.0.2 release 回合并后在 `develop` 重新打开
+- 当前开发目标：2.0.3（2.0.x 补丁线）
 - 当前补丁线：2.0.x
 - 2.0.2 补丁集：TS HTTP MCP smoke harness、TS Bun 候选运行路径、
   `search_prts` redirect/技术页面过滤修复。Bun 仍是可选候选路径；默认 TS
