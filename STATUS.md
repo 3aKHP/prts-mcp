@@ -6,12 +6,14 @@ _Last updated: 2026-07-07_
 
 | 实现 | 版本 | 状态 |
 |------|------|------|
-| Python | 2.1.0 | Stable |
-| TypeScript | 2.1.0 | Stable |
+| Python | 2.2.0.dev0 | Development |
+| TypeScript | 2.2.0-dev.0 | Development |
 
 - 当前稳定发布：2.1.0（23 个 MCP 工具）
 - 当前 LTS 发布：1.7.0（32 个 MCP 工具，剧情角色追踪）
+- 当前开发目标：2.2.0（评估默认 Bun runtime / Dockerfile 切换）
 - 当前稳定补丁线：2.1.x
+- 当前开发线：2.2.x
 - 2.1.0 发布内容：将 TS Bun 从候选路径提升为受支持可选运行时，新增
   `prts-mcp-ts-bun` npm bin，并保留 Node/npm 作为默认入口、默认 Dockerfile 和
   npm Trusted Publishing 路径。Bun 最低验证版本为 1.3.14。
@@ -24,7 +26,7 @@ _Last updated: 2026-07-07_
 
 - `main`：2.1.0（最新稳定发布线）
 - `lts/1.7`：1.7.x LTS 维护线（从 1.7.0 发布提交创建）
-- `develop`：后续版本开发集成线
+- `develop`：2.2 的开发集成线
 
 1.7.0 是最后一个 1.x 功能版本和 LTS 基线。它将 server.py/server.ts 和 story.py/story.ts 单体文件拆分为聚焦子模块，保留向后兼容垫片（shim），并新增剧情角色追踪工具：`find_character_appearances`、`find_speakers_in`。后续功能开发转向 2.0；1.7.x 仅做兼容性、安全性、数据同步和关键缺陷修复。
 
