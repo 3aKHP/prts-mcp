@@ -18,6 +18,7 @@
     "build": "tsc",
     "dev": "tsx src/server.ts",
     "start": "node dist/server.js",
+    "smoke:http": "node scripts/smoke-http.mjs -- node dist/server.js",
     "test": "node --import tsx --test \"tests/**/*.test.ts\"",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "tsc"
