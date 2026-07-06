@@ -169,13 +169,24 @@ async function waitForHealth(origin, timeoutMs) {
 async function readJsonOrText(res) {
   const raw = await res.text();
   if (!raw) return null;
-  const sseMatch = raw.match(/^data:\s*(\{[\s\S]*\})/m);
-  const body = sseMatch?.[1] ?? raw;
+  const body = parseSseData(raw) ?? raw;
   try {
     return JSON.parse(body);
   } catch {
     return raw;
   }
+}
+
+function parseSseData(raw) {
+  for (const event of raw.split(/\r?\n\r?\n/)) {
+    const data = event
+      .split(/\r?\n/)
+      .filter((line) => line.startsWith("data:"))
+      .map((line) => line.slice("data:".length).trimStart())
+      .join("\n");
+    if (data) return data;
+  }
+  return null;
 }
 
 async function mcpPost(origin, body, sessionId, timeoutMs, outputChannel) {
@@ -228,6 +239,18 @@ function structuredContent(response) {
   return response.body?.result?.structuredContent;
 }
 
+function requireStructuredObject(step, response) {
+  const payload = structuredContent(response);
+  if (!payload || typeof payload !== "object") {
+    throw new SmokeFailure(
+      step,
+      "missing structuredContent object",
+      JSON.stringify(response.body?.result ?? response.body, null, 2),
+    );
+  }
+  return payload;
+}
+
 function hasDataUnavailable(text) {
   return text.includes("暂不可用") || text.includes("未就绪") || text.includes("请稍后重试");
 }
@@ -247,118 +270,123 @@ function writeJson(path, data) {
 }
 
 async function createFixtureData() {
+  const { default: AdmZip } = await import("adm-zip");
   const root = mkdtempSync(join(tmpdir(), "prts-http-smoke-"));
-  const gamedata = join(root, "gamedata");
-  const excel = join(gamedata, "zh_CN", "gamedata", "excel");
-  const storyZip = join(root, "storyjson", "zh_CN.zip");
+  try {
+    const gamedata = join(root, "gamedata");
+    const excel = join(gamedata, "zh_CN", "gamedata", "excel");
+    const storyZip = join(root, "storyjson", "zh_CN.zip");
 
-  writeJson(join(excel, "character_table.json"), {
-    char_002_amiya: {
-      name: "阿米娅",
-      appellation: "Amiya",
-      displayNumber: "R001",
-      description: "<@ba.kw>法术伤害</>",
-      rarity: "TIER_5",
-      profession: "CASTER",
-      subProfessionId: "corecaster",
-      position: "RANGED",
-      nationId: "rhodes",
-      groupId: "",
-      teamId: "",
-      tagList: ["输出", "支援"],
-      itemUsage: "罗德岛的公开领袖。",
-      itemDesc: "阿米娅的信物。",
-      itemObtainApproach: "主线获得",
-      talents: [
-        {
-          candidates: [
-            { name: "？？？", description: "" },
-            { name: "情绪吸收", description: "攻击回复技力" },
+    writeJson(join(excel, "character_table.json"), {
+      char_002_amiya: {
+        name: "阿米娅",
+        appellation: "Amiya",
+        displayNumber: "R001",
+        description: "<@ba.kw>法术伤害</>",
+        rarity: "TIER_5",
+        profession: "CASTER",
+        subProfessionId: "corecaster",
+        position: "RANGED",
+        nationId: "rhodes",
+        groupId: "",
+        teamId: "",
+        tagList: ["输出", "支援"],
+        itemUsage: "罗德岛的公开领袖。",
+        itemDesc: "阿米娅的信物。",
+        itemObtainApproach: "主线获得",
+        talents: [
+          {
+            candidates: [
+              { name: "？？？", description: "" },
+              { name: "情绪吸收", description: "攻击回复技力" },
+            ],
+          },
+        ],
+      },
+    });
+    writeJson(join(excel, "handbook_info_table.json"), {
+      handbookDict: {
+        char_002_amiya: {
+          storyTextAudio: [
+            {
+              storyTitle: "档案资料一",
+              stories: [{ storyText: "阿米娅的档案文本。" }],
+            },
           ],
         },
-      ],
-    },
-  });
-  writeJson(join(excel, "handbook_info_table.json"), {
-    handbookDict: {
-      char_002_amiya: {
-        storyTextAudio: [
-          {
-            storyTitle: "档案资料一",
-            stories: [{ storyText: "阿米娅的档案文本。" }],
-          },
-        ],
       },
-    },
-  });
-  writeJson(join(excel, "charword_table.json"), {
-    charWords: {
-      amiya_001: {
-        charId: "char_002_amiya",
-        voiceTitle: "任命助理",
-        voiceText: "博士，今天也请多指教。",
+    });
+    writeJson(join(excel, "charword_table.json"), {
+      charWords: {
+        amiya_001: {
+          charId: "char_002_amiya",
+          voiceTitle: "任命助理",
+          voiceText: "博士，今天也请多指教。",
+        },
       },
-    },
-  });
-  writeJson(join(excel, "story_review_table.json"), {});
-  writeJson(join(excel, "item_table.json"), { items: {} });
+    });
+    writeJson(join(excel, "story_review_table.json"), {});
+    writeJson(join(excel, "item_table.json"), { items: {} });
 
-  const { default: AdmZip } = await import("adm-zip");
-  mkdirSync(dirname(storyZip), { recursive: true });
-  const zip = new AdmZip();
-  const firstStoryKey = "activities/act_test/level_act_test_01_beg";
-  const secondStoryKey = "activities/act_test/level_act_test_02_end";
-  const storyFiles = {
-    "zh_CN/gamedata/excel/story_review_table.json": {
-      act_test: {
-        name: "测试活动",
-        entryType: "ACTIVITY",
-        infoUnlockDatas: [
-          {
-            storyTxt: firstStoryKey,
-            storyCode: "TEST-1",
-            storyName: "开端",
-            avgTag: "BEG",
-            storySort: 1,
-          },
-          {
-            storyTxt: secondStoryKey,
-            storyCode: "TEST-2",
-            storyName: "终章",
-            avgTag: "END",
-            storySort: 2,
-          },
+    mkdirSync(dirname(storyZip), { recursive: true });
+    const zip = new AdmZip();
+    const firstStoryKey = "activities/act_test/level_act_test_01_beg";
+    const secondStoryKey = "activities/act_test/level_act_test_02_end";
+    const storyFiles = {
+      "zh_CN/gamedata/excel/story_review_table.json": {
+        act_test: {
+          name: "测试活动",
+          entryType: "ACTIVITY",
+          infoUnlockDatas: [
+            {
+              storyTxt: firstStoryKey,
+              storyCode: "TEST-1",
+              storyName: "开端",
+              avgTag: "BEG",
+              storySort: 1,
+            },
+            {
+              storyTxt: secondStoryKey,
+              storyCode: "TEST-2",
+              storyName: "终章",
+              avgTag: "END",
+              storySort: 2,
+            },
+          ],
+        },
+      },
+      [`zh_CN/gamedata/story/${firstStoryKey}.json`]: {
+        storyCode: "TEST-1",
+        storyName: "开端",
+        avgTag: "BEG",
+        eventName: "测试活动",
+        storyInfo: "测试简介",
+        storyList: [
+          { prop: "name", attributes: { name: "阿米娅", content: "你好，{@nickname}。" } },
+          { prop: "sticker", attributes: { content: "<b>场景描述</b>" } },
         ],
       },
-    },
-    [`zh_CN/gamedata/story/${firstStoryKey}.json`]: {
-      storyCode: "TEST-1",
-      storyName: "开端",
-      avgTag: "BEG",
-      eventName: "测试活动",
-      storyInfo: "测试简介",
-      storyList: [
-        { prop: "name", attributes: { name: "阿米娅", content: "你好，{@nickname}。" } },
-        { prop: "sticker", attributes: { content: "<b>场景描述</b>" } },
-      ],
-    },
-    [`zh_CN/gamedata/story/${secondStoryKey}.json`]: {
-      storyCode: "TEST-2",
-      storyName: "终章",
-      avgTag: "END",
-      eventName: "测试活动",
-      storyInfo: "",
-      storyList: [
-        { prop: "name", attributes: { name: "博士", content: "结束。" } },
-      ],
-    },
-  };
-  for (const [path, data] of Object.entries(storyFiles)) {
-    zip.addFile(path, Buffer.from(JSON.stringify(data), "utf-8"));
+      [`zh_CN/gamedata/story/${secondStoryKey}.json`]: {
+        storyCode: "TEST-2",
+        storyName: "终章",
+        avgTag: "END",
+        eventName: "测试活动",
+        storyInfo: "",
+        storyList: [
+          { prop: "name", attributes: { name: "博士", content: "结束。" } },
+        ],
+      },
+    };
+    for (const [path, data] of Object.entries(storyFiles)) {
+      zip.addFile(path, Buffer.from(JSON.stringify(data), "utf-8"));
+    }
+    zip.writeZip(storyZip);
+
+    return { root, gamedata, storyZip };
+  } catch (err) {
+    rmSync(root, { recursive: true, force: true });
+    throw err;
   }
-  zip.writeZip(storyZip);
-
-  return { root, gamedata, storyZip };
 }
 
 async function initializeSession(origin, timeoutMs, outputChannel) {
@@ -384,6 +412,31 @@ async function initializeSession(origin, timeoutMs, outputChannel) {
     throw new SmokeFailure("initialize", "missing Mcp-Session-Id response header", JSON.stringify(init.body));
   }
   return init.sessionId;
+}
+
+async function sendInitialized(origin, sessionId, timeoutMs, outputChannel) {
+  console.log("Sending initialized notification ...");
+  const response = await mcpPost(
+    origin,
+    { jsonrpc: "2.0", method: "notifications/initialized" },
+    sessionId,
+    timeoutMs,
+    outputChannel,
+  );
+  if (![200, 202].includes(response.status)) {
+    throw new SmokeFailure(
+      "notifications/initialized",
+      `expected HTTP 200 or 202, got ${response.status}`,
+      JSON.stringify(response.body),
+    );
+  }
+  if (response.body && typeof response.body === "object" && response.body.error) {
+    throw new SmokeFailure(
+      "notifications/initialized",
+      "JSON-RPC returned error",
+      JSON.stringify(response.body.error),
+    );
+  }
 }
 
 async function checkToolsList(origin, sessionId, timeoutMs, outputChannel) {
@@ -437,7 +490,15 @@ async function checkOperator(origin, sessionId, timeoutMs, outputChannel) {
     3,
   );
   const text = resultText(response);
-  if (!text.includes("阿米娅") || hasDataUnavailable(text)) {
+  const payload = requireStructuredObject("tools/call get_operator_basic_info", response);
+  if (payload.name !== "阿米娅" || !payload.rarity) {
+    throw new SmokeFailure(
+      "tools/call get_operator_basic_info",
+      "expected structured operator payload for 阿米娅",
+      JSON.stringify(payload, null, 2),
+    );
+  }
+  if (!text.includes("阿米娅")) {
     throw new SmokeFailure(
       "tools/call get_operator_basic_info",
       "expected usable bundled GameData result for 阿米娅",
@@ -461,11 +522,11 @@ async function discoverStoryTarget(origin, sessionId, timeoutMs, outputChannel, 
   if (hasDataUnavailable(eventsText)) {
     throw new SmokeFailure("tools/call list_story_events", "story data is unavailable", eventsText.slice(0, 500));
   }
-  const eventsPayload = structuredContent(eventsResponse);
-  if (!eventsPayload || !Array.isArray(eventsPayload.events)) {
+  const eventsPayload = requireStructuredObject("tools/call list_story_events", eventsResponse);
+  if (!Array.isArray(eventsPayload.events)) {
     throw new SmokeFailure(
       "tools/call list_story_events",
-      "missing structuredContent.events; run smoke with output_channel=both",
+      "missing structuredContent.events array",
       JSON.stringify(eventsResponse.body.result, null, 2),
     );
   }
@@ -493,11 +554,11 @@ async function discoverStoryTarget(origin, sessionId, timeoutMs, outputChannel, 
   if (hasDataUnavailable(storiesText) || storiesText.includes("未找到活动")) {
     throw new SmokeFailure("tools/call list_stories", `event ${eventId} did not return stories`, storiesText.slice(0, 500));
   }
-  const storiesPayload = structuredContent(storiesResponse);
-  if (!storiesPayload || !Array.isArray(storiesPayload.chapters)) {
+  const storiesPayload = requireStructuredObject("tools/call list_stories", storiesResponse);
+  if (!Array.isArray(storiesPayload.chapters)) {
     throw new SmokeFailure(
       "tools/call list_stories",
-      "missing structuredContent.chapters",
+      "missing structuredContent.chapters array",
       JSON.stringify(storiesResponse.body.result, null, 2),
     );
   }
@@ -541,12 +602,12 @@ async function checkStructuredOutput(origin, sessionId, timeoutMs, outputChannel
     { scope: "operators", pattern: "阿米娅", max_results: 1 },
     7,
   );
-  const payload = structuredContent(response);
-  if (!payload || typeof payload !== "object") {
+  const payload = requireStructuredObject("output_channel structuredContent", response);
+  if (!Array.isArray(payload.results)) {
     throw new SmokeFailure(
       "output_channel structuredContent",
-      "structural tool did not return structuredContent",
-      JSON.stringify(response.body.result, null, 2),
+      "structural search tool did not return a results array",
+      JSON.stringify(payload, null, 2),
     );
   }
 }
@@ -554,6 +615,7 @@ async function checkStructuredOutput(origin, sessionId, timeoutMs, outputChannel
 async function runSmoke(origin, options) {
   await waitForHealth(origin, options.timeoutMs);
   const sessionId = await initializeSession(origin, options.timeoutMs, options.outputChannel);
+  await sendInitialized(origin, sessionId, options.timeoutMs, options.outputChannel);
   await checkToolsList(origin, sessionId, options.timeoutMs, options.outputChannel);
   await checkOperator(origin, sessionId, options.timeoutMs, options.outputChannel);
   const target = await discoverStoryTarget(
