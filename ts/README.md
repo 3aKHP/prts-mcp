@@ -64,6 +64,11 @@ bun run smoke:bun    # 使用临时 fixture 数据启动 Bun server 并跑 HTTP 
 bun run start:bun    # 运行 dist/server.js
 ```
 
+现阶段 TypeScript 单元测试仍由 Node 的 `node:test` 路径覆盖；Bun 候选路径使用
+`bun run typecheck`、`bun run build:bun` 和黑盒 HTTP MCP smoke 验证运行时兼容性。
+如调整 `package.json` 或 `package-lock.json` 依赖，请同步运行 `bun install --lockfile-only`
+刷新 `bun.lock`。
+
 候选 Bun Docker 镜像可从仓库根目录构建：
 
 ```bash

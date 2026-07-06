@@ -221,10 +221,17 @@ jobs:
         run: bun install --frozen-lockfile
         working-directory: ts
 
+      - name: Type-check with Bun
+        run: bun run typecheck
+        working-directory: ts
+
       - name: Build with Bun
         run: bun run build:bun
         working-directory: ts
 
+      # The full unit suite uses Node's node:test runner and stays covered by
+      # verify-ts. Bun candidate coverage is intentionally black-box runtime
+      # smoke until a dedicated bun:test migration is planned.
       - name: Smoke test Bun runtime
         run: bun run smoke:bun
         working-directory: ts
@@ -294,6 +301,9 @@ jobs:
   build-image-ts-bun:
     runs-on: ubuntu-latest
     needs: verify-ts-bun
+    # Candidate Bun Docker build: run on PRs as well as develop/main to collect
+    # compatibility data before any default-runtime switch. The job does not
+    # save gamedata caches, so PR branches do not publish cache entries.
 
     steps:
       - name: Checkout repository
