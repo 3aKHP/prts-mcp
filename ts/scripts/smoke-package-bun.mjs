@@ -5,7 +5,7 @@
  */
 
 import { spawn } from "node:child_process";
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -72,6 +72,16 @@ function installedBinPath() {
   return join(tempRoot, "node_modules", ".bin", isWindows ? "prts-mcp-ts-bun.exe" : "prts-mcp-ts-bun");
 }
 
+function assertInstalledBin() {
+  const bin = installedBinPath();
+  if (!existsSync(bin)) {
+    throw new Error(`Installed Bun bin is missing: ${bin}`);
+  }
+  if (statSync(bin).size <= 0) {
+    throw new Error(`Installed Bun bin is empty: ${bin}`);
+  }
+}
+
 function smokeServerCommand() {
   if (!isWindows) return ["prts-mcp-ts-bun"];
 
@@ -100,10 +110,7 @@ async function main() {
     console.log("Installing packed tarball with Bun ...");
     await run(bunCommand(), ["add", tarball], { cwd: tempRoot });
 
-    const bin = installedBinPath();
-    if (!existsSync(bin)) {
-      throw new Error(`Installed Bun bin is missing: ${bin}`);
-    }
+    assertInstalledBin();
 
     const env = { ...process.env };
     const key = pathKey(env);
@@ -117,7 +124,11 @@ async function main() {
       { cwd: tempRoot, env },
     );
   } finally {
-    rmSync(tempRoot, { recursive: true, force: true });
+    try {
+      rmSync(tempRoot, { recursive: true, force: true });
+    } catch {
+      // Best-effort cleanup: preserve the original smoke failure.
+    }
   }
 }
 

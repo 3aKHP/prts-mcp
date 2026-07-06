@@ -12,4 +12,10 @@ if (!("Bun" in globalThis)) {
   process.exit(1);
 }
 
-await import("./server.js");
+try {
+  await import("./server.js");
+} catch (err) {
+  const message = err instanceof Error ? err.message : String(err);
+  process.stderr.write(`prts-mcp-ts-bun failed to load server: ${message}\n`);
+  process.exit(1);
+}
