@@ -93,17 +93,36 @@ function cleanSnippet(snippet: string): string {
 // ---------------------------------------------------------------------------
 
 const TECHNICAL_PAGE_PATTERNS = [
-  "/spine",
-  "/data",
-  "/db",
-  "/lua",
-  "/json",
-  "Widget:",
-  "Template:",
+  /\/(?:spine|data|db|lua|json|module)(?:$|[/:._-])/i,
+  /\.(?:json|lua)$/i,
+  /^(?:Widget|Template|Module|MediaWiki|模块|模板):/i,
 ];
 
 function isTechnicalPage(title: string): boolean {
-  return TECHNICAL_PAGE_PATTERNS.some((p) => title.includes(p));
+  return TECHNICAL_PAGE_PATTERNS.some((p) => p.test(title));
+}
+
+const REDIRECT_SNIPPET_RE = /#\s*(?:重定向|REDIRECT)/i;
+
+function isRedirectLike(snippet: string): boolean {
+  return REDIRECT_SNIPPET_RE.test(snippet);
+}
+
+async function resolveRedirectTitle(title: string): Promise<string | null> {
+  const data = (await prtsGet({
+    action: "query",
+    redirects: 1,
+    titles: title,
+    format: "json",
+  })) as {
+    query?: {
+      redirects?: Array<{ from?: string; to?: string }>;
+    };
+  };
+  for (const item of data.query?.redirects ?? []) {
+    if (item.from === title && item.to) return item.to;
+  }
+  return null;
 }
 
 function stripHtml(text: string): string {
@@ -147,6 +166,7 @@ export async function searchPrts(
     srlimit: fetchLimit,
     srnamespace: 0,
     srinfo: "totalhits",
+    srprop: "snippet|redirecttitle|redirectsnippet",
     format: "json",
   };
   if (searchMode === "title") {
@@ -155,18 +175,28 @@ export async function searchPrts(
   const data = (await prtsGet(params)) as {
     query?: {
       searchinfo?: { totalhits: number };
-      search?: Array<{ title: string; snippet: string }>;
+      search?: Array<{
+        title: string;
+        snippet: string;
+        redirecttitle?: string;
+        redirectsnippet?: string;
+      }>;
     };
   };
   const totalHits = data.query?.searchinfo?.totalhits ?? 0;
   const results: SearchResult[] = [];
   for (const item of data.query?.search ?? []) {
-    if (filterTechnical && isTechnicalPage(item.title)) continue;
+    let title = item.title;
+    const rawSnippet = item.snippet ?? "";
+    if (!item.redirecttitle && isRedirectLike(rawSnippet)) {
+      title = await resolveRedirectTitle(title) ?? title;
+    }
+    if (filterTechnical && isTechnicalPage(title)) continue;
     if (results.length >= limit) break;
-    let snippet = stripWikitext(item.snippet ?? "");
+    let snippet = stripWikitext(rawSnippet);
     snippet = unescapeHTMLEntities(snippet);
     snippet = cleanSnippet(snippet);
-    results.push({ title: item.title, snippet });
+    results.push({ title, snippet });
   }
   return { totalHits, results };
 }

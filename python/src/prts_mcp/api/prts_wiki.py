@@ -58,18 +58,41 @@ _HTML_ENTITY_RE = re.compile(r"&#?[a-zA-Z0-9]+;")
 
 
 _TECHNICAL_PAGE_PATTERNS = (
-    "/spine",
-    "/data",
-    "/db",
-    "/lua",
-    "/json",
-    "Widget:",
-    "Template:",
+    re.compile(r"/(?:spine|data|db|lua|json|module)(?:$|[/:._-])", re.IGNORECASE),
+    re.compile(r"\.(?:json|lua)$", re.IGNORECASE),
+    re.compile(r"^(?:Widget|Template|Module|MediaWiki|模块|模板):", re.IGNORECASE),
 )
+
+_REDIRECT_SNIPPET_RE = re.compile(r"#\s*(?:重定向|REDIRECT)", re.IGNORECASE)
 
 
 def _is_technical_page(title: str) -> bool:
-    return any(p in title for p in _TECHNICAL_PAGE_PATTERNS)
+    return any(p.search(title) for p in _TECHNICAL_PAGE_PATTERNS)
+
+
+def _is_redirect_like(snippet: str) -> bool:
+    return bool(_REDIRECT_SNIPPET_RE.search(snippet))
+
+
+async def _resolve_redirect_title(title: str) -> str | None:
+    """Resolve a redirect page title to its target, returning None if unchanged."""
+    await _rate_limit()
+    resp = await _get_client().get(
+        PRTS_API_ENDPOINT,
+        params={
+            "action": "query",
+            "redirects": "1",
+            "titles": title,
+            "format": "json",
+        },
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    redirects = data.get("query", {}).get("redirects", [])
+    for item in redirects:
+        if item.get("from") == title and item.get("to"):
+            return item["to"]
+    return None
 
 
 async def search_prts(
@@ -97,6 +120,7 @@ async def search_prts(
         "srlimit": str(limit * 2 if filter_technical else limit),
         "srnamespace": "0",
         "srinfo": "totalhits",
+        "srprop": "snippet|redirecttitle|redirectsnippet",
         "format": "json",
     }
     if srwhat:
@@ -108,11 +132,16 @@ async def search_prts(
     results: list[dict] = []
     for item in data.get("query", {}).get("search", []):
         title = item["title"]
+        raw_snippet = item.get("snippet", "")
+        if not item.get("redirecttitle") and _is_redirect_like(raw_snippet):
+            target = await _resolve_redirect_title(title)
+            if target:
+                title = target
         if filter_technical and _is_technical_page(title):
             continue
         if len(results) >= limit:
             break
-        snippet = strip_wikitext(item.get("snippet", ""))
+        snippet = strip_wikitext(raw_snippet)
         snippet = _html.unescape(snippet)
         snippet = _clean_snippet(snippet)
         results.append({
