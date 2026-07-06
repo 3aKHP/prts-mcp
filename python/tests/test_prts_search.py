@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any
+from collections.abc import Coroutine
+from typing import Any, TypeVar
 
 import pytest
 
 from prts_mcp.api.prts_wiki import search_prts
+
+_T = TypeVar("_T")
 
 
 class FakeResponse:
@@ -38,6 +41,14 @@ async def _no_rate_limit() -> None:
     return None
 
 
+def _run(coro: Coroutine[Any, Any, _T]) -> _T:
+    loop = asyncio.new_event_loop()
+    try:
+        return loop.run_until_complete(coro)
+    finally:
+        loop.close()
+
+
 def _patch_client(
     monkeypatch: pytest.MonkeyPatch,
     payloads: list[dict[str, Any] | Exception],
@@ -58,7 +69,7 @@ def test_search_prts_resolves_redirect_like_result(
                 "query": {
                     "searchinfo": {"totalhits": 1},
                     "search": [
-                        {"title": "阿米亚", "snippet": "# redirect [[阿米娅]]"},
+                        {"title": "阿米亚", "snippet": "#redirect [[阿米娅]]"},
                     ],
                 },
             },
@@ -71,7 +82,7 @@ def test_search_prts_resolves_redirect_like_result(
         ],
     )
 
-    result = asyncio.run(search_prts("阿米亚", limit=1))
+    result = _run(search_prts("阿米亚", limit=1))
 
     assert result == {
         "totalhits": 1,
@@ -92,7 +103,7 @@ def test_search_prts_keeps_result_when_redirect_resolution_fails(
                 "query": {
                     "searchinfo": {"totalhits": 1},
                     "search": [
-                        {"title": "阿米亚", "snippet": "# redirect [[阿米娅]]"},
+                        {"title": "阿米亚", "snippet": "#redirect [[阿米娅]]"},
                     ],
                 },
             },
@@ -100,7 +111,7 @@ def test_search_prts_keeps_result_when_redirect_resolution_fails(
         ],
     )
 
-    result = asyncio.run(search_prts("阿米亚", limit=1))
+    result = _run(search_prts("阿米亚", limit=1))
 
     assert result == {
         "totalhits": 1,
@@ -126,7 +137,7 @@ def test_search_prts_filters_technical_pages_but_keeps_totalhits(
         ],
     )
 
-    result = asyncio.run(search_prts("凯尔希", limit=2))
+    result = _run(search_prts("凯尔希", limit=2))
 
     assert result == {
         "totalhits": 2,
@@ -151,7 +162,7 @@ def test_search_prts_filter_technical_false_keeps_technical_pages(
         ],
     )
 
-    result = asyncio.run(search_prts("凯尔希", limit=1, filter_technical=False))
+    result = _run(search_prts("凯尔希", limit=1, filter_technical=False))
 
     assert result == {
         "totalhits": 1,
@@ -176,6 +187,6 @@ def test_search_prts_filtered_empty_is_structured_empty(
         ],
     )
 
-    result = asyncio.run(search_prts("敌人数据", limit=1))
+    result = _run(search_prts("敌人数据", limit=1))
 
     assert result == {"totalhits": 1, "results": []}

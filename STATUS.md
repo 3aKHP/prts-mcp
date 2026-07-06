@@ -6,23 +6,23 @@ _Last updated: 2026-07-07_
 
 | 实现 | 版本 | 状态 |
 |------|------|------|
-| Python | 2.0.2.dev0 | Development |
-| TypeScript | 2.0.2-dev.0 | Development |
+| Python | 2.0.2 | Stable |
+| TypeScript | 2.0.2 | Stable |
 
-- 当前稳定发布：2.0.1（23 个 MCP 工具）
+- 当前稳定发布：2.0.2（23 个 MCP 工具）
 - 当前 LTS 发布：1.7.0（32 个 MCP 工具，剧情角色追踪）
-- 当前开发目标：2.0.2（2.0.x 补丁线）
+- 下一开发目标：待 2.0.2 release 回合并后在 `develop` 重新打开
 - 当前补丁线：2.0.x
-- `develop` 上的 2.0.2 补丁集已完成：TS HTTP MCP smoke harness、TS Bun
-  候选运行路径、`search_prts` redirect/技术页面过滤修复。Bun 仍是可选候选
-  路径；默认 TS 本地开发、npm 全局安装、`npx prts-mcp-ts`、systemd 部署与
-  npm Trusted Publishing 继续走 Node/npm。
+- 2.0.2 补丁集：TS HTTP MCP smoke harness、TS Bun 候选运行路径、
+  `search_prts` redirect/技术页面过滤修复。Bun 仍是可选候选路径；默认 TS
+  本地开发、npm 全局安装、`npx prts-mcp-ts`、systemd 部署与 npm Trusted
+  Publishing 继续走 Node/npm。
 - 2.0 交付内容：工具面合并（32 → 23）+ output channel（structuredContent）；**双端协议同步（Python 上 HTTP / TS 上 stdio）已后置到 2.0 之后**。
 - 兼容性合约：1.7.x LTS 线既有 32 个工具名、必填参数、默认输出格式不变；仅接受兼容性、安全性、数据同步和关键缺陷修复
 
 ## 当前分支
 
-- `main`：2.0.1（最新稳定发布线）
+- `main`：2.0.2（最新稳定发布线）
 - `lts/1.7`：1.7.x LTS 维护线（从 1.7.0 发布提交创建）
 - `develop`：2.0 之后的开发集成线
 
@@ -162,7 +162,7 @@ PRTS-MCP/
 > 15–30%，抵消工具面合并带来的上下文预算收益。详见
 > [`docs/migration-1.x-to-2.0.md`](docs/migration-1.x-to-2.0.md)。
 
-## 2.0.2 发版准备状态
+## 2.0.2 发布内容
 
 - [x] TS HTTP MCP smoke harness 已加入 Node/Bun/Docker 候选验证路径。
 - [x] TS Bun 候选运行路径已加入；不改变 Node/npm 默认运行与发布合同。
@@ -170,13 +170,12 @@ PRTS-MCP/
   保留原始搜索结果。
 - [x] PRTS 搜索结果中 `/spine`、`/data`、`/module` 等技术页面过滤已改进，
   `filter_technical=false` 仍保留为 escape hatch。
-- [ ] release 分支仍需去掉 dev 版本后缀，将 changelog `[Unreleased]`
-  转为 `2.0.2` 日期条目，并按标准 GitFlow 发布到 `main` 后打实现级 tag。
 
 ## 最近发布
 
 | 版本 | 日期 | 亮点 |
 |------|------|------|
+| 2.0.2 | 2026-07-07 | TS HTTP MCP smoke harness；Bun 候选运行路径；`search_prts` redirect 解析与技术页面过滤修复 |
 | 2.0.1 | 2026-07-03 | 修复 `list_story_events` 缺失剧情数据时的 output-channel 包装；统一 TS 文本结果 helper；补充 MCP 示例配置 |
 | 2.0.0 | 2026-07-03 | 工具面合并 32 → 23 + output channel（structuredContent）；双端协议同步后置 |
 | 1.7.0 | 2026-07-02 | 1.7 LTS：剧情角色追踪 + 模块拆分（32 工具） |
