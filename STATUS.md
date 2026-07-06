@@ -1,6 +1,6 @@
 # PRTS-MCP 项目状态
 
-_Last updated: 2026-07-03_
+_Last updated: 2026-07-07_
 
 ## 当前版本
 
@@ -13,6 +13,10 @@ _Last updated: 2026-07-03_
 - 当前 LTS 发布：1.7.0（32 个 MCP 工具，剧情角色追踪）
 - 当前开发目标：2.0.2（2.0.x 补丁线）
 - 当前补丁线：2.0.x
+- `develop` 上的 2.0.2 补丁集已完成：TS HTTP MCP smoke harness、TS Bun
+  候选运行路径、`search_prts` redirect/技术页面过滤修复。Bun 仍是可选候选
+  路径；默认 TS 本地开发、npm 全局安装、`npx prts-mcp-ts`、systemd 部署与
+  npm Trusted Publishing 继续走 Node/npm。
 - 2.0 交付内容：工具面合并（32 → 23）+ output channel（structuredContent）；**双端协议同步（Python 上 HTTP / TS 上 stdio）已后置到 2.0 之后**。
 - 兼容性合约：1.7.x LTS 线既有 32 个工具名、必填参数、默认输出格式不变；仅接受兼容性、安全性、数据同步和关键缺陷修复
 
@@ -158,10 +162,16 @@ PRTS-MCP/
 > 15–30%，抵消工具面合并带来的上下文预算收益。详见
 > [`docs/migration-1.x-to-2.0.md`](docs/migration-1.x-to-2.0.md)。
 
-## 遗留 TODO
+## 2.0.2 发版准备状态
 
-- [ ] PRTS 搜索结果中 redirect 页面自动解析（MediaWiki API 限制）
-- [ ] PRTS 搜索结果中 `/spine`、`/data` 等技术页面的更精确过滤
+- [x] TS HTTP MCP smoke harness 已加入 Node/Bun/Docker 候选验证路径。
+- [x] TS Bun 候选运行路径已加入；不改变 Node/npm 默认运行与发布合同。
+- [x] PRTS 搜索结果中 redirect 页面自动解析已实现，follow-up lookup 失败时
+  保留原始搜索结果。
+- [x] PRTS 搜索结果中 `/spine`、`/data`、`/module` 等技术页面过滤已改进，
+  `filter_technical=false` 仍保留为 escape hatch。
+- [ ] release 分支仍需去掉 dev 版本后缀，将 changelog `[Unreleased]`
+  转为 `2.0.2` 日期条目，并按标准 GitFlow 发布到 `main` 后打实现级 tag。
 
 ## 最近发布
 

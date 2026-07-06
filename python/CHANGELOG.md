@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Fixed
+
+- `search_prts` now resolves redirect-like PRTS Wiki search hits to their
+  target page when the search response lacks redirect metadata, while falling
+  back to the original result if the follow-up lookup fails.
+- `search_prts` filters technical/wiki implementation pages more precisely
+  and keeps `totalhits` stable even when visible results are filtered out.
+
 ## [2.0.1] - 2026-07-03
 
 ### Fixed
