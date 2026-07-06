@@ -82,7 +82,7 @@ test("buildPrtsSearch resolves redirect-like search results", async () => {
     {
       query: {
         searchinfo: { totalhits: 1 },
-        search: [{ title: "阿米亚", snippet: "# redirect [[阿米娅]]" }],
+        search: [{ title: "阿米亚", snippet: "#redirect [[阿米娅]]" }],
       },
     },
     {
@@ -113,7 +113,7 @@ test("buildPrtsSearch keeps result when redirect resolution fails", async () => 
     {
       query: {
         searchinfo: { totalhits: 1 },
-        search: [{ title: "阿米亚", snippet: "# redirect [[阿米娅]]" }],
+        search: [{ title: "阿米亚", snippet: "#redirect [[阿米娅]]" }],
       },
     },
     new Error("redirect lookup failed"),
