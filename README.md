@@ -21,7 +21,7 @@ This repository contains two independent implementations for different deploymen
 | Directory | Language | Transport | Use case |
 |-----------|----------|-----------|----------|
 | [`python/`](python/) | Python 3.10+ | stdio | Local Claude Desktop / Claude Code, Docker |
-| [`ts/`](ts/) | TypeScript / Node.js | Streamable HTTP | Self-hosted server, remote HTTP access |
+| [`ts/`](ts/) | TypeScript / Node.js + Bun | Streamable HTTP | Self-hosted server, remote HTTP access |
 
 ### Release Lines
 
@@ -29,7 +29,7 @@ Two release lines ship in parallel:
 
 | Line | Version | Tools | Status |
 |------|---------|-------|--------|
-| **2.0** (`main`) | `2.0.2` | 23 | Tool-surface consolidation + output channel (structuredContent). Cross-transport parity deferred beyond 2.0. |
+| **2.1** (`main`) | `2.1.0` | 23 | TypeScript supports Node.js plus Bun as a supported optional runtime. Cross-transport parity deferred beyond 2.1. |
 | **1.7 LTS** (`lts/1.7`) | `1.7.0` | 32 | Stable maintenance line. 1.7.x accepts only compatibility, security, data-sync, and critical bug fixes. |
 
 | Area | Python | TypeScript |
@@ -95,6 +95,12 @@ parameter.
 - **Local stdio (Python / Docker)** → see [`python/`](python/)
 - **HTTP server (TypeScript / Docker)** → see [`ts/`](ts/)
 
+The TypeScript implementation supports Node.js and Bun. Node.js remains the
+default for `npx prts-mcp-ts`, npm global installs, systemd deployments, the
+default Dockerfile, and npm Trusted Publishing. Bun is available as an explicit
+optional runtime via `bunx --bun -p prts-mcp-ts prts-mcp-ts-bun` or the
+supported `ts/Dockerfile.bun` build path.
+
 ### Data Sources
 
 - **PRTS Wiki API** (`https://prts.wiki/api.php`) — lore articles, faction info, world-building entries
@@ -120,7 +126,7 @@ Published Docker images and the npm package include bundled fallback game/level/
 | 目录 | 语言 | 传输方式 | 适用场景 |
 |------|------|----------|----------|
 | [`python/`](python/) | Python 3.10+ | stdio | Claude Desktop / Claude Code 本地接入、Docker |
-| [`ts/`](ts/) | TypeScript / Node.js | Streamable HTTP | 个人服务器部署，供他人通过 HTTP 调用 |
+| [`ts/`](ts/) | TypeScript / Node.js + Bun | Streamable HTTP | 个人服务器部署，供他人通过 HTTP 调用 |
 
 ### 版本线
 
@@ -128,7 +134,7 @@ Published Docker images and the npm package include bundled fallback game/level/
 
 | 版本线 | 版本 | 工具数 | 状态 |
 |--------|------|--------|------|
-| **2.0**（`main`） | `2.0.2` | 23 | 工具面合并 + output channel（structuredContent）。双端协议同步后置到 2.0 之后。 |
+| **2.1**（`main`） | `2.1.0` | 23 | TypeScript 支持 Node.js + Bun 受支持可选运行时。双端协议同步后置到 2.1 之后。 |
 | **1.7 LTS**（`lts/1.7`） | `1.7.0` | 32 | 稳定维护线。1.7.x 仅接受兼容性、安全性、数据同步和关键缺陷修复。 |
 
 | 范围 | Python | TypeScript |
@@ -186,6 +192,11 @@ Published Docker images and the npm package include bundled fallback game/level/
 
 - **本地 stdio 接入（Python / Docker）** → 见 [`python/`](python/)
 - **HTTP 服务部署（TypeScript / Docker）** → 见 [`ts/`](ts/)
+
+TypeScript 实现支持 Node.js 与 Bun。Node.js 仍是 `npx prts-mcp-ts`、npm 全局安装、
+systemd 部署、默认 Dockerfile 和 npm Trusted Publishing 的默认路径；Bun 作为显式可选
+运行时，可通过 `bunx --bun -p prts-mcp-ts prts-mcp-ts-bun` 或受支持的
+`ts/Dockerfile.bun` 构建路径使用。
 
 ### 数据源
 
