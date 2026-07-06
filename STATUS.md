@@ -14,10 +14,11 @@ _Last updated: 2026-07-07_
 - 当前开发目标：2.1.0（正式支持 Bun 的 minor 版本）
 - 当前稳定补丁线：2.0.x
 - 当前开发线：2.1.x
+- 2.1.0 开发目标：将 TS Bun 从候选路径提升为受支持可选运行时，新增
+  `prts-mcp-ts-bun` npm bin，并保留 Node/npm 作为默认入口、默认 Dockerfile 和
+  npm Trusted Publishing 路径。Bun 最低验证版本为 1.3.14。
 - 2.0.2 补丁集：TS HTTP MCP smoke harness、TS Bun 候选运行路径、
-  `search_prts` redirect/技术页面过滤修复。Bun 仍是可选候选路径；默认 TS
-  本地开发、npm 全局安装、`npx prts-mcp-ts`、systemd 部署与 npm Trusted
-  Publishing 继续走 Node/npm。
+  `search_prts` redirect/技术页面过滤修复。Bun 在 2.0.2 仍是可选候选路径。
 - 2.0 交付内容：工具面合并（32 → 23）+ output channel（structuredContent）；**双端协议同步（Python 上 HTTP / TS 上 stdio）已后置到 2.0 之后**。
 - 兼容性合约：1.7.x LTS 线既有 32 个工具名、必填参数、默认输出格式不变；仅接受兼容性、安全性、数据同步和关键缺陷修复
 
@@ -163,9 +164,18 @@ PRTS-MCP/
 > 15–30%，抵消工具面合并带来的上下文预算收益。详见
 > [`docs/migration-1.x-to-2.0.md`](docs/migration-1.x-to-2.0.md)。
 
+## 2.1.0 开发内容
+
+- [x] TS Bun 从候选路径提升为受支持可选运行时；`prts-mcp-ts` 继续走
+  Node.js，新增 `prts-mcp-ts-bun` 作为显式 Bun 入口。
+- [x] Bun package smoke 覆盖 `npm pack`、临时项目 `bun add`、安装后
+  `prts-mcp-ts-bun` 启动和 HTTP MCP 黑盒 smoke。
+- [x] `ts/Dockerfile.bun` 作为受支持的 Bun 替代构建路径保留；默认
+  `ts/Dockerfile` 不切换。
+
 ## 2.0.2 发布内容
 
-- [x] TS HTTP MCP smoke harness 已加入 Node/Bun/Docker 候选验证路径。
+- [x] TS HTTP MCP smoke harness 已加入 Node/Bun/Docker 验证路径。
 - [x] TS Bun 候选运行路径已加入；不改变 Node/npm 默认运行与发布合同。
 - [x] PRTS 搜索结果中 redirect 页面自动解析已实现，follow-up lookup 失败时
   保留原始搜索结果。

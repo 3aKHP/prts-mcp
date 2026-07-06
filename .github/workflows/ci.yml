@@ -230,10 +230,14 @@ jobs:
         working-directory: ts
 
       # The full unit suite uses Node's node:test runner and stays covered by
-      # verify-ts. Bun candidate coverage is intentionally black-box runtime
-      # smoke until a dedicated bun:test migration is planned.
+      # verify-ts. Bun coverage is intentionally black-box runtime smoke until
+      # a dedicated bun:test migration is planned.
       - name: Smoke test Bun runtime
         run: bun run smoke:bun
+        working-directory: ts
+
+      - name: Smoke test packed Bun bin
+        run: bun run smoke:bun:package
         working-directory: ts
 
   build-image-ts:
@@ -302,9 +306,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: verify-ts-bun
     if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
-    # Candidate Bun Docker build: run on PRs as well as develop/main to collect
-    # compatibility data before any default-runtime switch. The job does not
-    # save gamedata caches, so PR branches do not publish cache entries.
+    # Supported optional Bun Docker build: run on PRs as well as develop/main
+    # to keep the alternative runtime path verified. The job does not save
+    # gamedata caches, so PR branches do not publish cache entries.
 
     steps:
       - name: Checkout repository
@@ -346,11 +350,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build Bun candidate Docker image
-        run: docker build -f ts/Dockerfile.bun -t prts-mcp-ts-bun:candidate .
+      - name: Build Bun Docker image
+        run: docker build -f ts/Dockerfile.bun -t prts-mcp-ts-bun:supported .
 
-      - name: Smoke test Bun candidate Docker image (HTTP MCP protocol)
+      - name: Smoke test Bun Docker image (HTTP MCP protocol)
         run: |
-          docker run -d --name prts-mcp-ts-bun-ci -p 3000:3000 prts-mcp-ts-bun:candidate
+          docker run -d --name prts-mcp-ts-bun-ci -p 3000:3000 prts-mcp-ts-bun:supported
           trap 'docker rm -f prts-mcp-ts-bun-ci' EXIT
           bun ts/scripts/smoke-http.mjs --origin http://localhost:3000
