@@ -58,6 +58,7 @@ const CSS_JS_RE =
   /@(font-face|keyframes|media|import|charset|namespace|supports|page)[^{]*\{[^}]*\}|\(window\.RLQ\s*\|\|\s*\[\]\)\.push\([^)]*\)|<style[^>]*>.*?<\/style>|<script[^>]*>.*?<\/script>/gis;
 
 const HTML_TAG_RE = /<[^>]+>/g;
+const REDIRECT_SNIPPET_RE = /#\s*(?:重定向|REDIRECT)/i;
 
 const NAMED_ENTITIES: Record<string, string> = {
   quot: '"', amp: "&", lt: "<", gt: ">", apos: "'", nbsp: " ",
@@ -80,7 +81,7 @@ function cleanSnippet(snippet: string): string {
   snippet = snippet.replace(/\s*"[^"]*"\s*:\s*"[^"]*"\s*,?\s*/g, " ");
   // Remove isolated pipe-value artifacts with Chinese keys
   snippet = snippet.replace(/\|[一-鿿\w]+\s*=[^\n]*/g, "");
-  snippet = snippet.replace(/#重定向|#REDIRECT/g, "");
+  snippet = snippet.replace(REDIRECT_SNIPPET_RE, "");
   // Collapse whitespace
   snippet = snippet.replace(/[ \t]+/g, " ");
   snippet = snippet.replace(/,{2,}/g, "");
@@ -93,17 +94,38 @@ function cleanSnippet(snippet: string): string {
 // ---------------------------------------------------------------------------
 
 const TECHNICAL_PAGE_PATTERNS = [
-  "/spine",
-  "/data",
-  "/db",
-  "/lua",
-  "/json",
-  "Widget:",
-  "Template:",
+  /\/(?:spine|data|db|lua|json|module)(?:$|[/:._-])/i,
+  /\.(?:json|lua)$/i,
+  /^(?:Widget|Template|Module|MediaWiki|模块|模板):/i,
 ];
 
 function isTechnicalPage(title: string): boolean {
-  return TECHNICAL_PAGE_PATTERNS.some((p) => title.includes(p));
+  return TECHNICAL_PAGE_PATTERNS.some((p) => p.test(title));
+}
+
+function isRedirectLike(snippet: string): boolean {
+  return REDIRECT_SNIPPET_RE.test(snippet);
+}
+
+async function resolveRedirectTitle(title: string): Promise<string | null> {
+  try {
+    const data = (await prtsGet({
+      action: "query",
+      redirects: 1,
+      titles: title,
+      format: "json",
+    })) as {
+      query?: {
+        redirects?: Array<{ from?: string; to?: string }>;
+      };
+    };
+    for (const item of data.query?.redirects ?? []) {
+      if (item.from === title && item.to) return item.to;
+    }
+  } catch {
+    return null;
+  }
+  return null;
 }
 
 function stripHtml(text: string): string {
@@ -147,6 +169,7 @@ export async function searchPrts(
     srlimit: fetchLimit,
     srnamespace: 0,
     srinfo: "totalhits",
+    srprop: "snippet|redirecttitle",
     format: "json",
   };
   if (searchMode === "title") {
@@ -155,18 +178,27 @@ export async function searchPrts(
   const data = (await prtsGet(params)) as {
     query?: {
       searchinfo?: { totalhits: number };
-      search?: Array<{ title: string; snippet: string }>;
+      search?: Array<{
+        title: string;
+        snippet: string;
+        redirecttitle?: string;
+      }>;
     };
   };
   const totalHits = data.query?.searchinfo?.totalhits ?? 0;
   const results: SearchResult[] = [];
   for (const item of data.query?.search ?? []) {
-    if (filterTechnical && isTechnicalPage(item.title)) continue;
+    let title = item.title;
+    const rawSnippet = item.snippet ?? "";
+    if (!item.redirecttitle && isRedirectLike(rawSnippet)) {
+      title = await resolveRedirectTitle(title) ?? title;
+    }
+    if (filterTechnical && isTechnicalPage(title)) continue;
     if (results.length >= limit) break;
-    let snippet = stripWikitext(item.snippet ?? "");
+    let snippet = stripWikitext(rawSnippet);
     snippet = unescapeHTMLEntities(snippet);
     snippet = cleanSnippet(snippet);
-    results.push({ title: item.title, snippet });
+    results.push({ title, snippet });
   }
   return { totalHits, results };
 }

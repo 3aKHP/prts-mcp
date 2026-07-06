@@ -29,9 +29,9 @@ Not allowed in `1.7.x`:
 
 | Branch | Purpose |
 |--------|---------|
-| `main` | Latest stable release line. It is `1.7.0` until 2.0 ships. |
+| `main` | Latest stable release line. Currently 2.x. |
 | `lts/1.7` | Long-term 1.7.x maintenance branch, created from the 1.7.0 release commit. |
-| `dev` | Active 2.0 development after the 1.7.0 LTS release. |
+| `develop` | Active development integration after the 1.7.0 LTS release. |
 
 Do not push directly to any long-lived branch. Use PRs.
 
@@ -49,7 +49,7 @@ Do not push directly to any long-lived branch. Use PRs.
    git push origin python/v1.7.x ts/v1.7.x
    ```
 
-6. Cherry-pick or reimplement the fix on `dev` when it also applies to 2.0.
+6. Cherry-pick or reimplement the fix on `develop` when it also applies to 2.0.
 
 If `main` still points to the 1.7 line when the fix ships, merge `lts/1.7` back to `main` or target `main` directly according to the maintainer's release decision. After 2.0 ships, `main` follows 2.0 and `lts/1.7` remains the only 1.7 maintenance branch.
 

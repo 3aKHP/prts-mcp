@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.0.2] - 2026-07-07
+
+### Added
+
+- Added a reusable HTTP MCP smoke harness for the TypeScript server and CI
+  coverage for Node, Bun, and the candidate Bun Docker image.
+- Added an optional Bun candidate runtime path with Bun scripts, a committed
+  `bun.lock`, `ts/Dockerfile.bun`, and CI smoke coverage. Node/npm remains the
+  default TypeScript runtime and npm Trusted Publishing path.
+
+### Fixed
+
+- `search_prts` now resolves redirect-like PRTS Wiki search hits to their
+  target page when the search response lacks redirect metadata, while falling
+  back to the original result if the follow-up lookup fails.
+- `search_prts` filters technical/wiki implementation pages more precisely
+  and keeps `totalHits` stable even when visible results are filtered out.
+
 ## [2.0.1] - 2026-07-03
 
 ### Changed

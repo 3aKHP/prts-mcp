@@ -6,8 +6,8 @@ PRTS-MCP is past 1.0. Version 1.7.0 is the final 1.x feature release and the 1.7
 
 ## Current Release
 
-- Python: `2.0.1` _(latest stable)_
-- TypeScript: `2.0.1` _(latest stable)_
+- Python: `2.0.2` _(latest stable)_
+- TypeScript: `2.0.2` _(latest stable)_
 - `1.7.0` LTS remains the maintenance line — compatibility, security, data-sync, and critical fixes only.
 - 23 public MCP tools on the 2.0 line (CI-enforced); 32 public MCP tools frozen on the 1.7 LTS line.
 - See [migration guide 0.x → 1.0](docs/migration-0.x-to-1.0.md) and
@@ -69,9 +69,9 @@ Shipped 2026-05-28. See the Python and TypeScript CHANGELOGs for release details
 **Story character tracking (no new data source — indexes existing story JSON)**
 - `find_character_appearances(name, scope?, max_events?)` — chapters / events
   where the character speaks (dialog role exact match) or is mentioned (name
-  substring in any line text). Implemented on `dev` for 1.7.0.
+  substring in any line text). Implemented on `develop` for 1.7.0.
 - `find_speakers_in(event_id)` — every speaker who appears in an event, with
-  dialog line counts. Implemented on `dev` for 1.7.0.
+  dialog line counts. Implemented on `develop` for 1.7.0.
 
 1.7.0 is the final 1.x feature release. The previously planned operator-depth items are deferred to the 2.0 tool-surface redesign instead of being added as more 1.x tools.
 

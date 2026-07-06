@@ -50,6 +50,35 @@ npm run build     # 编译到 dist/
 npm start         # 运行编译后的版本
 ```
 
+### 可选 Bun 候选运行路径
+
+Bun 目前是 TypeScript 实现的候选运行路径，用于收集兼容性和性能数据。
+默认开发、npm 全局安装、`npx prts-mcp-ts`、systemd 部署和 npm Trusted Publishing
+仍然走 Node/npm。
+
+```bash
+cd ts
+bun install --frozen-lockfile
+bun run build:bun
+bun run smoke:bun    # 使用临时 fixture 数据启动 Bun server 并跑 HTTP MCP smoke
+bun run start:bun    # 运行 dist/server.js
+```
+
+现阶段 TypeScript 单元测试仍由 Node 的 `node:test` 路径覆盖；Bun 候选路径使用
+`bun run typecheck`、`bun run build:bun` 和黑盒 HTTP MCP smoke 验证运行时兼容性。
+如调整 `package.json` 或 `package-lock.json` 依赖，请同步运行 `bun install --lockfile-only`
+刷新 `bun.lock`。
+
+候选 Bun Docker 镜像可从仓库根目录构建：
+
+```bash
+docker build -f ts/Dockerfile.bun -t prts-mcp-ts-bun .
+docker run -d -p 3000:3000 -v prts-mcp-ts-data:/data/gamedata -v prts-mcp-ts-levels:/data/gamedata-levels -v prts-mcp-ts-storyjson:/data/storyjson prts-mcp-ts-bun
+```
+
+`ts/Dockerfile.bun` 不替换默认的 `ts/Dockerfile`；是否切换默认 Docker/runtime
+路径会在后续兼容性窗口单独决定。
+
 ---
 
 ## 数据机制

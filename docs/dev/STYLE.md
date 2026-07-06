@@ -251,9 +251,9 @@ TS 文件头注释应注明对应的 Python 文件：`Mirrors python/src/prts_mc
 
 遵循 [SemVer](https://semver.org/)。预发布用 `-alpha.N` / `-beta.N` / `-rc.N` 后缀。
 
-**`dev` 分支上的版本号**始终带开发后缀，发布时去掉：
+**`develop` 分支上的版本号**始终带开发后缀，发布时去掉：
 
-| 文件 | dev 分支 | main 分支（发布时） |
+| 文件 | develop 分支 | main 分支（发布时） |
 |------|---------|-------------------|
 | `python/pyproject.toml` | `2.0.0.dev0` | `2.0.0` |
 | `ts/package.json` | `2.0.0-dev.0` | `2.0.0` |
@@ -263,8 +263,8 @@ TS 文件头注释应注明对应的 Python 文件：`Mirrors python/src/prts_mc
 
 | 文件 | 内容 |
 |------|------|
-| `python/pyproject.toml` | `version` 字段（dev 分支带 `.dev0` 后缀） |
-| `ts/package.json` | `version` 字段（dev 分支带 `-dev.0` 后缀） |
+| `python/pyproject.toml` | `version` 字段（develop 分支带 `.dev0` 后缀） |
+| `ts/package.json` | `version` 字段（develop 分支带 `-dev.0` 后缀） |
 | `python/CHANGELOG.md` | 新版本条目 |
 | `ts/CHANGELOG.md` | 新版本条目 |
 | `ROADMAP.md` | 当前版本号 |
@@ -285,17 +285,19 @@ Tag 使用实现级前缀：`python/vX.Y.Z` 和 `ts/vX.Y.Z`。Tag 必须打在 `
 
 ### 日常开发
 
-在 `dev` 分支上，每个模块级改动（feat / fix / refactor）在 `## [Unreleased]`
+在 `develop` 分支上，每个模块级改动（feat / fix / refactor）在 `## [Unreleased]`
 段落对应分类下追加一行。小型 chore / docs / style 无需改 CHANGELOG。
 
 `main` 分支上不应出现 `[Unreleased]` 段——main 的 CHANGELOG 只包含已发布版本。
 
-### 准备发版（dev → main 发布时）
+### 准备发版（release/* → main + develop 发布时）
 
-1. 将 `## [Unreleased]` 改为 `## [X.Y.Z] - YYYY-MM-DD`
-2. release PR 到 `main` 时不保留空 `## [Unreleased]` 段
-3. 版本号去掉 `-dev` 后缀后合并到 `main`，打 tag
-4. 合并回 `dev` 并 bump 到下个开发版本后，再打开新的空 `## [Unreleased]` 段
+1. 从 `develop` 拉 `release/vX.Y.Z`
+2. 在 release 分支将 `## [Unreleased]` 改为 `## [X.Y.Z] - YYYY-MM-DD`
+3. release PR 到 `main` 时不保留空 `## [Unreleased]` 段
+4. 版本号去掉 `-dev` 后缀后通过 PR 合并到 `main`，在 `main` 的 merge commit 上打 tag
+5. 将同一个 release 分支通过 PR merge 回 `develop`（不要 squash）
+6. 从更新后的 `develop` 拉 chore 分支，bump 到下个开发版本后，再打开新的空 `## [Unreleased]` 段并 PR 回 `develop`
 
 ---
 
