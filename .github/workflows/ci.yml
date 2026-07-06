@@ -201,6 +201,10 @@ jobs:
         run: npx tsc
         working-directory: ts
 
+      - name: Smoke test HTTP MCP protocol
+        run: npm run smoke:http:fixture
+        working-directory: ts
+
   build-image-ts:
     runs-on: ubuntu-latest
     needs: verify-ts

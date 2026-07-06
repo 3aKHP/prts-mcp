@@ -19,6 +19,7 @@
     "dev": "tsx src/server.ts",
     "start": "node dist/server.js",
     "smoke:http": "node scripts/smoke-http.mjs -- node dist/server.js",
+    "smoke:http:fixture": "node scripts/smoke-http.mjs --fixture-data -- node dist/server.js",
     "test": "node --import tsx --test \"tests/**/*.test.ts\"",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "tsc"

@@ -8,7 +8,10 @@
  */
 
 import { spawn } from "node:child_process";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 
 const EXPECTED_TOOLS = [
@@ -56,6 +59,7 @@ function parseArgs(argv) {
     outputChannel: "both",
     storyEventId: undefined,
     storyKey: undefined,
+    fixtureData: false,
     command: [],
   };
 
@@ -77,6 +81,7 @@ function parseArgs(argv) {
     else if (arg === "--output-channel") options.outputChannel = next();
     else if (arg === "--story-event-id") options.storyEventId = next();
     else if (arg === "--story-key") options.storyKey = next();
+    else if (arg === "--fixture-data") options.fixtureData = true;
     else if (arg === "--help" || arg === "-h") {
       printHelp();
       process.exit(0);
@@ -93,6 +98,9 @@ function parseArgs(argv) {
   }
   if (options.origin && options.command.length > 0) {
     throw new Error("Use either --origin or a server command after --, not both");
+  }
+  if (options.origin && options.fixtureData) {
+    throw new Error("--fixture-data can only be used with a spawned server command");
   }
   if (!options.origin && options.command.length === 0) {
     throw new Error("Provide --origin URL or a server command after --");
@@ -113,6 +121,7 @@ Options:
   --output-channel CHANNEL   Session output_channel query value. Default: both.
   --story-event-id ID        Known event id for list_stories.
   --story-key KEY            Known story key for read_story.
+  --fixture-data             Generate temporary minimal GameData and StoryJson fixtures.
 `);
 }
 
@@ -230,6 +239,126 @@ function toolCall(name, args, id) {
     params: { name, arguments: args },
     id,
   };
+}
+
+function writeJson(path, data) {
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, JSON.stringify(data), "utf-8");
+}
+
+async function createFixtureData() {
+  const root = mkdtempSync(join(tmpdir(), "prts-http-smoke-"));
+  const gamedata = join(root, "gamedata");
+  const excel = join(gamedata, "zh_CN", "gamedata", "excel");
+  const storyZip = join(root, "storyjson", "zh_CN.zip");
+
+  writeJson(join(excel, "character_table.json"), {
+    char_002_amiya: {
+      name: "阿米娅",
+      appellation: "Amiya",
+      displayNumber: "R001",
+      description: "<@ba.kw>法术伤害</>",
+      rarity: "TIER_5",
+      profession: "CASTER",
+      subProfessionId: "corecaster",
+      position: "RANGED",
+      nationId: "rhodes",
+      groupId: "",
+      teamId: "",
+      tagList: ["输出", "支援"],
+      itemUsage: "罗德岛的公开领袖。",
+      itemDesc: "阿米娅的信物。",
+      itemObtainApproach: "主线获得",
+      talents: [
+        {
+          candidates: [
+            { name: "？？？", description: "" },
+            { name: "情绪吸收", description: "攻击回复技力" },
+          ],
+        },
+      ],
+    },
+  });
+  writeJson(join(excel, "handbook_info_table.json"), {
+    handbookDict: {
+      char_002_amiya: {
+        storyTextAudio: [
+          {
+            storyTitle: "档案资料一",
+            stories: [{ storyText: "阿米娅的档案文本。" }],
+          },
+        ],
+      },
+    },
+  });
+  writeJson(join(excel, "charword_table.json"), {
+    charWords: {
+      amiya_001: {
+        charId: "char_002_amiya",
+        voiceTitle: "任命助理",
+        voiceText: "博士，今天也请多指教。",
+      },
+    },
+  });
+  writeJson(join(excel, "story_review_table.json"), {});
+  writeJson(join(excel, "item_table.json"), { items: {} });
+
+  const { default: AdmZip } = await import("adm-zip");
+  mkdirSync(dirname(storyZip), { recursive: true });
+  const zip = new AdmZip();
+  const firstStoryKey = "activities/act_test/level_act_test_01_beg";
+  const secondStoryKey = "activities/act_test/level_act_test_02_end";
+  const storyFiles = {
+    "zh_CN/gamedata/excel/story_review_table.json": {
+      act_test: {
+        name: "测试活动",
+        entryType: "ACTIVITY",
+        infoUnlockDatas: [
+          {
+            storyTxt: firstStoryKey,
+            storyCode: "TEST-1",
+            storyName: "开端",
+            avgTag: "BEG",
+            storySort: 1,
+          },
+          {
+            storyTxt: secondStoryKey,
+            storyCode: "TEST-2",
+            storyName: "终章",
+            avgTag: "END",
+            storySort: 2,
+          },
+        ],
+      },
+    },
+    [`zh_CN/gamedata/story/${firstStoryKey}.json`]: {
+      storyCode: "TEST-1",
+      storyName: "开端",
+      avgTag: "BEG",
+      eventName: "测试活动",
+      storyInfo: "测试简介",
+      storyList: [
+        { prop: "name", attributes: { name: "阿米娅", content: "你好，{@nickname}。" } },
+        { prop: "sticker", attributes: { content: "<b>场景描述</b>" } },
+      ],
+    },
+    [`zh_CN/gamedata/story/${secondStoryKey}.json`]: {
+      storyCode: "TEST-2",
+      storyName: "终章",
+      avgTag: "END",
+      eventName: "测试活动",
+      storyInfo: "",
+      storyList: [
+        { prop: "name", attributes: { name: "博士", content: "结束。" } },
+      ],
+    },
+  };
+  for (const [path, data] of Object.entries(storyFiles)) {
+    zip.addFile(path, Buffer.from(JSON.stringify(data), "utf-8"));
+  }
+  zip.writeZip(storyZip);
+
+  return { root, gamedata, storyZip };
 }
 
 async function initializeSession(origin, timeoutMs, outputChannel) {
@@ -445,9 +574,11 @@ async function main() {
   let child;
   let origin = options.origin;
   let stoppingChild = false;
+  let fixture;
 
   try {
     if (!origin) {
+      fixture = options.fixtureData ? await createFixtureData() : undefined;
       const port = options.port ?? await getFreePort(options.host);
       origin = `http://${options.host}:${port}`;
       const [command, ...args] = options.command;
@@ -457,6 +588,13 @@ async function main() {
           ...process.env,
           HOST: options.host,
           PORT: String(port),
+          ...(fixture
+            ? {
+                GAMEDATA_PATH: fixture.gamedata,
+                STORYJSON_PATH: fixture.storyZip,
+                GITHUB_MIRRORS: "",
+              }
+            : {}),
         },
         stdio: ["ignore", "ignore", "pipe"],
       });
@@ -487,6 +625,9 @@ async function main() {
     if (child && !child.killed) {
       stoppingChild = true;
       child.kill();
+    }
+    if (fixture) {
+      rmSync(fixture.root, { recursive: true, force: true });
     }
   }
 }
