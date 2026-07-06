@@ -16,10 +16,13 @@
   },
   "scripts": {
     "build": "tsc",
+    "build:bun": "bun run build",
     "dev": "tsx src/server.ts",
     "start": "node dist/server.js",
+    "start:bun": "bun dist/server.js",
     "smoke:http": "node scripts/smoke-http.mjs -- node dist/server.js",
     "smoke:http:fixture": "node scripts/smoke-http.mjs --fixture-data -- node dist/server.js",
+    "smoke:bun": "bun scripts/smoke-http.mjs --fixture-data -- bun dist/server.js",
     "test": "node --import tsx --test \"tests/**/*.test.ts\"",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "tsc"
