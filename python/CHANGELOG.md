@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-07-07
+
+### Changed
+
+- No user-facing Python changes. This release keeps the Python package version
+  aligned with the 2.2.0 repository release (TypeScript default-runtime flip).
+
 ## [2.1.0] - 2026-07-07
 
 ### Changed
