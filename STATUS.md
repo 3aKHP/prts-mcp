@@ -6,14 +6,18 @@ _Last updated: 2026-07-08_
 
 | 实现 | 版本 | 状态 |
 |------|------|------|
-| Python | 2.2.0 | Stable |
-| TypeScript | 2.2.0 | Stable |
+| Python | 2.3.0 | Stable |
+| TypeScript | 2.3.0 | Stable |
 
-- 当前稳定发布：2.2.0（23 个 MCP 工具）
+- 当前稳定发布：2.3.0（23 个 MCP 工具）
 - 当前 LTS 发布：1.7.0（32 个 MCP 工具，剧情角色追踪）
-- 当前开发目标：2.3.0（待规划）
-- 当前稳定补丁线：2.2.x
-- 当前开发线：2.3.x
+- 当前开发目标：2.4.0（待规划）
+- 当前稳定补丁线：2.3.x
+- 当前开发线：2.4.x
+- 2.3.0 发布内容：Cross-transport parity——Python 新增 Streamable HTTP
+  （`PRTS_TRANSPORT=http`），TypeScript 新增 stdio（`prts-mcp-ts-stdio` bin），
+  双端双 transport。Python HTTP 的 output_channel 为 process-level（env-only，
+  FastMCP session 模型限制），TS HTTP 支持 per-request。
 - 2.2.0 发布内容：TypeScript 默认生产运行时由 Node.js 翻转为 Bun（默认
   `ts/Dockerfile`、CI 主链 `verify-ts`、npm scripts 切 Bun，验证版本 Bun
   `1.3.14`）。Node.js 降级为受支持 legacy/可选路径（`prts-mcp-ts` npm bin、
@@ -29,9 +33,9 @@ _Last updated: 2026-07-08_
 
 ## 当前分支
 
-- `main`：2.2.0（最新稳定发布线）
+- `main`：2.3.0（最新稳定发布线）
 - `lts/1.7`：1.7.x LTS 维护线（从 1.7.0 发布提交创建）
-- `develop`：2.3 的开发集成线
+- `develop`：2.4 的开发集成线
 
 1.7.0 是最后一个 1.x 功能版本和 LTS 基线。它将 server.py/server.ts 和 story.py/story.ts 单体文件拆分为聚焦子模块，保留向后兼容垫片（shim），并新增剧情角色追踪工具：`find_character_appearances`、`find_speakers_in`。后续功能开发转向 2.0；1.7.x 仅做兼容性、安全性、数据同步和关键缺陷修复。
 
@@ -169,6 +173,20 @@ PRTS-MCP/
 > 15–30%，抵消工具面合并带来的上下文预算收益。详见
 > [`docs/migration-1.x-to-2.0.md`](docs/migration-1.x-to-2.0.md)。
 
+## 2.3.0 发布内容
+
+- [x] Python 新增 Streamable HTTP transport（`PRTS_TRANSPORT=http`，Starlette +
+  uvicorn，`/mcp` 端点 + `/health` 探针）。stdio 保持默认（向后兼容）。
+- [x] Python `OUTPUT_CHANNEL` 从进程级常量重构为 `contextvars.ContextVar`，
+  为后续 transport 扩展铺路。**注意**：因 FastMCP Streamable HTTP 的 session
+  模型，Python HTTP 的 output_channel 当前是 process-level（env-only），不支持
+  per-request query/header 解析（TS HTTP 支持 per-request）。
+- [x] TypeScript 新增 stdio transport（`prts-mcp-ts-stdio` bin，
+  `server-stdio.ts` 入口复用 `createMcpServer` + `runStartupSync`）。
+- [x] 跨 transport e2e 测试：Python HTTP（`test_e2e_http.py`）+ TS stdio
+  （`e2eStdio.test.ts`）。
+- [x] 文档同步：README transport 表/快速开始、`.mcp.example.json`、`.env.example`。
+
 ## 2.2.0 发布内容
 
 - [x] Bun 升为默认生产运行时：默认 `ts/Dockerfile`（原 `Dockerfile.bun` 内容
@@ -204,6 +222,7 @@ PRTS-MCP/
 
 | 版本 | 日期 | 亮点 |
 |------|------|------|
+| 2.3.0 | 2026-07-08 | Cross-transport parity：Python 新增 Streamable HTTP，TypeScript 新增 stdio，双端双 transport；部署改为按场景选择 |
 | 2.2.0 | 2026-07-08 | TypeScript 默认生产运行时翻转为 Bun（默认 Dockerfile/CI/scripts）；Node 降级为 legacy 可选路径；npm bin 与发布路径不变 |
 | 2.1.0 | 2026-07-07 | TypeScript 正式支持 Bun 可选运行时；新增 `prts-mcp-ts-bun`；Bun Dockerfile 提升为受支持替代构建路径 |
 | 2.0.2 | 2026-07-07 | TS HTTP MCP smoke harness；Bun 候选运行路径；`search_prts` redirect 解析与技术页面过滤修复 |

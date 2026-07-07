@@ -72,6 +72,10 @@ function installedBinPath() {
   return join(tempRoot, "node_modules", ".bin", isWindows ? "prts-mcp-ts-bun.exe" : "prts-mcp-ts-bun");
 }
 
+function stdioBinPath() {
+  return join(tempRoot, "node_modules", ".bin", isWindows ? "prts-mcp-ts-stdio.exe" : "prts-mcp-ts-stdio");
+}
+
 function assertInstalledBin() {
   const bin = installedBinPath();
   if (!existsSync(bin)) {
@@ -79,6 +83,14 @@ function assertInstalledBin() {
   }
   if (statSync(bin).size <= 0) {
     throw new Error(`Installed Bun bin is empty: ${bin}`);
+  }
+  // Verify the stdio bin shim is also installed (added in 2.3.0).
+  const stdioBin = stdioBinPath();
+  if (!existsSync(stdioBin)) {
+    throw new Error(`Installed stdio bin is missing: ${stdioBin}`);
+  }
+  if (statSync(stdioBin).size <= 0) {
+    throw new Error(`Installed stdio bin is empty: ${stdioBin}`);
   }
 }
 

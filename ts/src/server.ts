@@ -27,9 +27,9 @@ import { parseChannel, type OutputChannel } from "./output.js";
 
 const require = createRequire(import.meta.url);
 const packageJson = require("../package.json") as { version?: string };
-const SERVER_VERSION = packageJson.version ?? "0.0.0";
+export const SERVER_VERSION = packageJson.version ?? "0.0.0";
 
-function log(level: "INFO" | "WARN" | "ERROR", msg: string): void {
+export function log(level: "INFO" | "WARN" | "ERROR", msg: string): void {
   const ts = new Date().toISOString();
   process.stderr.write(`${ts} ${level} prts_mcp.server: ${msg}\n`);
 }
@@ -38,7 +38,7 @@ function log(level: "INFO" | "WARN" | "ERROR", msg: string): void {
 // MCP Server factory — one instance per session
 // ---------------------------------------------------------------------------
 
-function createMcpServer(channel: OutputChannel): McpServer {
+export function createMcpServer(channel: OutputChannel): McpServer {
   const server = new McpServer({
     name: "PRTS_Wiki_Assistant",
     version: SERVER_VERSION,

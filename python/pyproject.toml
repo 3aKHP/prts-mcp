@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "prts-mcp"
-version = "2.2.0"
+version = "2.3.0"
 description = "MCP Server for Arknights PRTS Wiki & game data"
 readme = "README.md"
 license = { text = "MIT" }
@@ -42,6 +42,11 @@ dependencies = [
     "mcp[cli]",
     "httpx",
     "pydantic",
+    # HTTP transport (PRTS_TRANSPORT=http). These are also transitively
+    # required by mcp[cli], but we import uvicorn/starlette directly in
+    # server.py so declare them explicitly to survive upstream reshuffling.
+    "starlette>=0.27",
+    "uvicorn>=0.31",
 ]
 
 [project.urls]
