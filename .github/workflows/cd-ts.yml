@@ -34,12 +34,12 @@ jobs:
         run: npx tsc --noEmit
         working-directory: ts
 
-      - name: Run tests
-        run: npm test
-        working-directory: ts
-
       - name: Build
         run: npx tsc
+        working-directory: ts
+
+      - name: Run tests
+        run: npm test
         working-directory: ts
 
       - name: Check tag matches package version
