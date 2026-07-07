@@ -1,21 +1,24 @@
 # PRTS-MCP 项目状态
 
-_Last updated: 2026-07-07_
+_Last updated: 2026-07-08_
 
 ## 当前版本
 
 | 实现 | 版本 | 状态 |
 |------|------|------|
-| Python | 2.2.0.dev0 | Development |
-| TypeScript | 2.2.0-dev.0 | Development |
+| Python | 2.2.0 | Stable |
+| TypeScript | 2.2.0 | Stable |
 
-- 当前稳定发布：2.1.0（23 个 MCP 工具）
+- 当前稳定发布：2.2.0（23 个 MCP 工具）
 - 当前 LTS 发布：1.7.0（32 个 MCP 工具，剧情角色追踪）
-- 当前开发目标：2.2.0（Bun 升为默认生产运行时：默认 `ts/Dockerfile`、CI 主链、
-  npm scripts 切 Bun；Node 降级为 legacy/可选路径，保留 `prts-mcp-ts` npm bin、
-  `npx`、`ts/Dockerfile.node`。npm 发布路径不变）
-- 当前稳定补丁线：2.1.x
-- 当前开发线：2.2.x
+- 当前开发目标：2.3.0（待规划）
+- 当前稳定补丁线：2.2.x
+- 当前开发线：2.3.x
+- 2.2.0 发布内容：TypeScript 默认生产运行时由 Node.js 翻转为 Bun（默认
+  `ts/Dockerfile`、CI 主链 `verify-ts`、npm scripts 切 Bun，验证版本 Bun
+  `1.3.14`）。Node.js 降级为受支持 legacy/可选路径（`prts-mcp-ts` npm bin、
+  `npx prts-mcp-ts`、`ts/Dockerfile.node`）。npm bin 命名与发布路径
+  （`npm publish --provenance`）不变，零 npm 破坏。
 - 2.1.0 发布内容：将 TS Bun 从候选路径提升为受支持可选运行时，新增
   `prts-mcp-ts-bun` npm bin，并保留 Node/npm 作为默认入口、默认 Dockerfile 和
   npm Trusted Publishing 路径。Bun 最低验证版本为 1.3.14。
@@ -26,9 +29,9 @@ _Last updated: 2026-07-07_
 
 ## 当前分支
 
-- `main`：2.1.0（最新稳定发布线）
+- `main`：2.2.0（最新稳定发布线）
 - `lts/1.7`：1.7.x LTS 维护线（从 1.7.0 发布提交创建）
-- `develop`：2.2 的开发集成线
+- `develop`：2.3 的开发集成线
 
 1.7.0 是最后一个 1.x 功能版本和 LTS 基线。它将 server.py/server.ts 和 story.py/story.ts 单体文件拆分为聚焦子模块，保留向后兼容垫片（shim），并新增剧情角色追踪工具：`find_character_appearances`、`find_speakers_in`。后续功能开发转向 2.0；1.7.x 仅做兼容性、安全性、数据同步和关键缺陷修复。
 
@@ -166,7 +169,7 @@ PRTS-MCP/
 > 15–30%，抵消工具面合并带来的上下文预算收益。详见
 > [`docs/migration-1.x-to-2.0.md`](docs/migration-1.x-to-2.0.md)。
 
-## 2.2.0 开发中（develop）
+## 2.2.0 发布内容
 
 - [x] Bun 升为默认生产运行时：默认 `ts/Dockerfile`（原 `Dockerfile.bun` 内容
   提升）、CI 主验证链（`verify-ts` 切 Bun）、推荐 Docker 部署均走 Bun。
@@ -174,6 +177,7 @@ PRTS-MCP/
   `Dockerfile` 搬迁）、`start:node` / `smoke:http:node` 等 npm scripts。
 - [x] CI 矩阵翻转：`test-ts`（Node 单测，node:test）+ `verify-ts`（Bun 全链）+
   `build-image-ts`（默认 Bun 镜像）+ `build-image-ts-node`（legacy Node 镜像）。
+- [x] `bun.lock` / `package.json` 双 lockfile drift 检查加入 `verify-ts`。
 - [x] npm bin 命名不变：`prts-mcp-ts`=Node（`npx` 开箱即用），
   `prts-mcp-ts-bun`=Bun。npm 发布仍走 `npm publish --provenance`。
 - [x] 文档口径翻转：`ts/README.md`、根 `README.md` 中英文运行时段反转。
@@ -200,6 +204,7 @@ PRTS-MCP/
 
 | 版本 | 日期 | 亮点 |
 |------|------|------|
+| 2.2.0 | 2026-07-08 | TypeScript 默认生产运行时翻转为 Bun（默认 Dockerfile/CI/scripts）；Node 降级为 legacy 可选路径；npm bin 与发布路径不变 |
 | 2.1.0 | 2026-07-07 | TypeScript 正式支持 Bun 可选运行时；新增 `prts-mcp-ts-bun`；Bun Dockerfile 提升为受支持替代构建路径 |
 | 2.0.2 | 2026-07-07 | TS HTTP MCP smoke harness；Bun 候选运行路径；`search_prts` redirect 解析与技术页面过滤修复 |
 | 2.0.1 | 2026-07-03 | 修复 `list_story_events` 缺失剧情数据时的 output-channel 包装；统一 TS 文本结果 helper；补充 MCP 示例配置 |
