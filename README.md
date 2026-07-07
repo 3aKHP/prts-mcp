@@ -20,8 +20,8 @@ This repository contains two independent implementations for different deploymen
 
 | Directory | Language | Transport | Use case |
 |-----------|----------|-----------|----------|
-| [`python/`](python/) | Python 3.10+ | stdio | Local Claude Desktop / Claude Code, Docker |
-| [`ts/`](ts/) | TypeScript / Node.js + Bun | Streamable HTTP | Self-hosted server, remote HTTP access |
+| [`python/`](python/) | Python 3.10+ | stdio + Streamable HTTP | Local Claude Desktop / Claude Code (stdio), self-hosted HTTP server |
+| [`ts/`](ts/) | TypeScript / Node.js + Bun | Streamable HTTP + stdio | Self-hosted HTTP server, local stdio for Claude Desktop / Code |
 
 ### Release Lines
 
@@ -92,8 +92,12 @@ parameter.
 
 ### Quick Start
 
-- **Local stdio (Python / Docker)** → see [`python/`](python/)
-- **HTTP server (TypeScript / Docker)** → see [`ts/`](ts/)
+Since 2.3.0 both implementations support both transports — pick by use case,
+not by language:
+
+- **Local stdio** (Claude Desktop / Claude Code) → Python `prts-mcp` (stdio, default) or TypeScript `npx prts-mcp-ts-stdio`
+- **HTTP server** (self-hosted, remote access) → Python `PRTS_TRANSPORT=http prts-mcp` or TypeScript `npx prts-mcp-ts`
+- See [`python/`](python/) and [`ts/`](ts/) for per-implementation details
 
 The TypeScript implementation supports Bun and Node.js. Since 2.2.0 **Bun is
 the default production runtime**: the default `ts/Dockerfile`, the primary CI
@@ -128,8 +132,8 @@ Published Docker images and the npm package include bundled fallback game/level/
 
 | 目录 | 语言 | 传输方式 | 适用场景 |
 |------|------|----------|----------|
-| [`python/`](python/) | Python 3.10+ | stdio | Claude Desktop / Claude Code 本地接入、Docker |
-| [`ts/`](ts/) | TypeScript / Node.js + Bun | Streamable HTTP | 个人服务器部署，供他人通过 HTTP 调用 |
+| [`python/`](python/) | Python 3.10+ | stdio + Streamable HTTP | Claude Desktop / Claude Code 本地接入（stdio）、自建 HTTP 服务 |
+| [`ts/`](ts/) | TypeScript / Node.js + Bun | Streamable HTTP + stdio | 自建 HTTP 服务、Claude Desktop / Claude Code 本地接入（stdio） |
 
 ### 版本线
 
@@ -193,8 +197,11 @@ Published Docker images and the npm package include bundled fallback game/level/
 
 ### 快速开始
 
-- **本地 stdio 接入（Python / Docker）** → 见 [`python/`](python/)
-- **HTTP 服务部署（TypeScript / Docker）** → 见 [`ts/`](ts/)
+自 2.3.0 起两个实现都支持双传输——按场景选择，而非按语言：
+
+- **本地 stdio 接入**（Claude Desktop / Claude Code）→ Python `prts-mcp`（stdio，默认）或 TypeScript `npx prts-mcp-ts-stdio`
+- **HTTP 服务部署**（自建服务器，供他人调用）→ Python `PRTS_TRANSPORT=http prts-mcp` 或 TypeScript `npx prts-mcp-ts`
+- 详见 [`python/`](python/) 和 [`ts/`](ts/)
 
 TypeScript 实现支持 Bun 与 Node.js。自 2.2.0 起 **Bun 是默认生产运行时**：默认
 `ts/Dockerfile`、CI 主验证链与推荐 Docker 部署均在 Bun 下运行（最低验证版本 Bun
