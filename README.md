@@ -29,7 +29,7 @@ Two release lines ship in parallel:
 
 | Line | Version | Tools | Status |
 |------|---------|-------|--------|
-| **2.2** (`main`) | `2.2.0` | 23 | Bun is the default TypeScript production runtime (default Dockerfile, CI, npm scripts); Node.js remains a supported legacy/optional path. Cross-transport parity deferred beyond 2.2. |
+| **2.3** (`main`) | `2.3.0` | 23 | Cross-transport parity: both implementations support both stdio and Streamable HTTP (Python gains HTTP, TypeScript gains stdio). Bun remains the default TS runtime. |
 | **1.7 LTS** (`lts/1.7`) | `1.7.0` | 32 | Stable maintenance line. 1.7.x accepts only compatibility, security, data-sync, and critical bug fixes. |
 
 | Area | Python | TypeScript |
@@ -141,7 +141,7 @@ Published Docker images and the npm package include bundled fallback game/level/
 
 | 版本线 | 版本 | 工具数 | 状态 |
 |--------|------|--------|------|
-| **2.2**（`main`） | `2.2.0` | 23 | Bun 是 TypeScript 默认生产运行时（默认 Dockerfile、CI、npm scripts）；Node.js 保留为受支持 legacy/可选路径。双端协议同步后置到 2.2 之后。 |
+| **2.3**（`main`） | `2.3.0` | 23 | Cross-transport parity：双端均支持 stdio + Streamable HTTP（Python 新增 HTTP，TypeScript 新增 stdio）。Bun 仍是 TS 默认运行时。 |
 | **1.7 LTS**（`lts/1.7`） | `1.7.0` | 32 | 稳定维护线。1.7.x 仅接受兼容性、安全性、数据同步和关键缺陷修复。 |
 
 | 范围 | Python | TypeScript |

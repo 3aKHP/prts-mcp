@@ -6,8 +6,8 @@ PRTS-MCP is past 1.0. Version 1.7.0 is the final 1.x feature release and the 1.7
 
 ## Current Release
 
-- Python: `2.2.0` _(latest stable)_
-- TypeScript: `2.2.0` _(latest stable)_
+- Python: `2.3.0` _(latest stable)_
+- TypeScript: `2.3.0` _(latest stable)_
 - `1.7.0` LTS remains the maintenance line — compatibility, security, data-sync, and critical fixes only.
 - 23 public MCP tools on the 2.x line (CI-enforced); 32 public MCP tools frozen on the 1.7 LTS line.
 - See [migration guide 0.x → 1.0](docs/migration-0.x-to-1.0.md) and
@@ -185,12 +185,12 @@ implementations. Delivered in 2.0:
 - Environment variable names and defaults are unified (`PRTS_OUTPUT_CHANNEL`,
   `GAMEDATA_PATH`, `STORYJSON_PATH`, `GITHUB_TOKEN`, `GITHUB_MIRRORS`).
 
-**Cross-transport parity — in progress for 2.3.0.** The original goal that
+**Cross-transport parity — delivered in 2.3.0.** The original goal that
 both implementations support stdio **and** Streamable HTTP (Python gaining
-HTTP, TypeScript gaining stdio) was deferred beyond 2.0 and is now being
-delivered in 2.3.0. Python selects transport via `PRTS_TRANSPORT`
+HTTP, TypeScript gaining stdio) was deferred beyond 2.0 and shipped in
+2.3.0. Python selects transport via `PRTS_TRANSPORT`
 (stdio default | http); TypeScript selects via bin (`prts-mcp-ts`[-bun] = HTTP,
-`prts-mcp-ts-stdio` = stdio). After 2.3.0 the deployment guidance becomes
+`prts-mcp-ts-stdio` = stdio). Since 2.3.0 the deployment guidance is
 "choose by use case, not by language."
 
 ### Cleanup
