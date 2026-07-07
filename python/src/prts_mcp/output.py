@@ -56,14 +56,17 @@ def _parse_channel(raw: str | None) -> OutputChannel:
     return value  # type: ignore[return-value]
 
 
-#: Per-connection channel, backed by a ContextVar so each transport can set
-#: its own value per request/session without global mutation.
+#: Per-connection channel, backed by a ContextVar so future transports or
+#: SDK changes can plug in per-connection overrides without touching tool
+#: code.
 #:
-#: The default value is read once from the ``PRTS_OUTPUT_CHANNEL`` env var —
-#: on stdio a connection maps to one process, so the import-time default is
-#: the right scope. The Streamable HTTP transport overrides this per request
-#: via :func:`set_output_channel` (resolving query string / header / env),
-#: matching the TypeScript ``resolveOutputChannel`` precedence.
+#: The default value is read once from the ``PRTS_OUTPUT_CHANNEL`` env var
+#: and is currently the only effective source — both stdio and the
+#: Streamable HTTP transport read it at process scope. Per-request
+#: query/header resolution is NOT supported on the Python HTTP transport
+#: (FastMCP's session model makes per-request contextvars invisible to
+#: tool code; see server.py ``_build_http_app`` docstring). The TypeScript
+#: HTTP transport differs, resolving channel at session creation.
 #:
 #: The module-level identifier ``OUTPUT_CHANNEL`` is kept as a backward-compat
 #: alias for the parsed env default; the *environment variable* that populates
@@ -76,7 +79,8 @@ _channel_var: contextvars.ContextVar[OutputChannel] = contextvars.ContextVar(
 )
 
 #: Backward-compat alias for the env-parsed default. Tools should prefer
-#: :func:`get_output_channel` so per-connection overrides take effect.
+#: :func:`get_output_channel` (the ContextVar is currently env-only but kept
+#: for future transport extensibility).
 OUTPUT_CHANNEL: OutputChannel = _ENV_DEFAULT_CHANNEL
 
 

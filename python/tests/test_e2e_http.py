@@ -90,12 +90,12 @@ def _mcp_post(
 
 
 # ---------------------------------------------------------------------------
-# Fixture: start the HTTP server once
+# Server factory + fixtures
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture(scope="module")
-def server():
+def _start_server(extra_env: dict | None = None) -> dict:
+    """Start an HTTP server with the given env overrides; return origin/proc."""
     port = _free_port()
     origin = f"http://127.0.0.1:{port}"
     env = os.environ.copy()
@@ -105,6 +105,8 @@ def server():
     env["GAMEDATA_PATH"] = str(GAMEDATA_PATH)
     env["GITHUB_MIRRORS"] = ""
     env.setdefault("STORYJSON_PATH", str(GAMEDATA_PATH / "does-not-exist.zip"))
+    if extra_env:
+        env.update(extra_env)
 
     python_src = Path(__file__).resolve().parents[1] / "src"
     env["PYTHONPATH"] = str(python_src)
@@ -115,15 +117,22 @@ def server():
         stderr=subprocess.PIPE,
         env=env,
     )
+    _wait_for_health(origin)
+    return {"origin": origin, "proc": proc}
+
+
+@pytest.fixture(scope="module")
+def server():
+    """Default server (env-default output_channel = content)."""
+    handle = _start_server()
     try:
-        _wait_for_health(origin)
-        yield {"origin": origin, "proc": proc}
+        yield handle
     finally:
-        proc.terminate()
+        handle["proc"].terminate()
         try:
-            proc.wait(timeout=5)
+            handle["proc"].wait(timeout=5)
         except subprocess.TimeoutExpired:
-            proc.kill()
+            handle["proc"].kill()
 
 
 # ---------------------------------------------------------------------------
@@ -184,58 +193,72 @@ def test_initialize_and_tools_list(server):
         assert required in names, f"missing tool {required}; got {sorted(names)[:10]}..."
 
 
-def test_output_channel_env_only_on_http(server):
-    """Python HTTP output_channel is process-level (env-only), not per-request.
+def test_output_channel_env_governs_not_query():
+    """Python HTTP output_channel is process-level (env), not per-request.
 
-    FastMCP's Streamable HTTP session model means tools execute in a
-    long-lived session task, so per-request query/header resolution is not
-    effective. This test verifies that explicitly: a query-string
-    ``output_channel=structured`` is passed but the response remains
-    content-only (env default governs). The TypeScript HTTP transport
-    differs — it resolves channel at session creation.
+    Starts a server with PRTS_OUTPUT_CHANNEL=structured, then calls a
+    structured tool (list_enemies) with ?output_channel=content in the
+    query string. If query-string resolution worked, the response would
+    be content-only (structuredContent null). Because the env governs and
+    the query is ignored, structuredContent stays non-null — proving
+    env-only behavior. Uses list_enemies which needs GameData excel
+    tables; skips if that data is absent.
     """
-    origin = server["origin"]
-    _, _, sid = _mcp_post(
-        origin,
-        {
-            "jsonrpc": "2.0",
-            "method": "initialize",
-            "id": 10,
-            "params": {
-                "protocolVersion": "2024-11-05",
-                "capabilities": {},
-                "clientInfo": {"name": "pytest", "version": "0"},
-            },
-        },
-    )
-    assert sid is not None
-    _mcp_post(
-        origin,
-        {"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}},
-        session_id=sid,
-    )
+    char_table = GAMEDATA_PATH / "zh_CN" / "gamedata" / "excel" / "character_table.json"
+    if not char_table.is_file():
+        pytest.skip("GameData character_table not available; cannot test structured tool")
 
-    # Call list_story_events with output_channel=structured in the query
-    # string. Even though the server is env-default (content), we pass
-    # structured to prove it is IGNORED — structuredContent stays null.
-    status, payload, _ = _mcp_post(
-        origin,
-        {
-            "jsonrpc": "2.0",
-            "method": "tools/call",
-            "id": 11,
-            "params": {"name": "list_story_events", "arguments": {}},
-        },
-        session_id=sid,
-        query="output_channel=structured",
-    )
-    assert status == 200
-    assert payload is not None
-    result = payload.get("result", {})
-    # The query-string override had no effect: structuredContent is null
-    # (would be non-null if the override had taken effect on a structured
-    # tool). This confirms env-only behavior.
-    assert result.get("structuredContent") is None, (
-        "query-string output_channel=structured should be ignored on "
-        "Python HTTP; structuredContent must be null"
-    )
+    handle = _start_server(extra_env={"PRTS_OUTPUT_CHANNEL": "structured"})
+    try:
+        origin = handle["origin"]
+        _, _, sid = _mcp_post(
+            origin,
+            {
+                "jsonrpc": "2.0",
+                "method": "initialize",
+                "id": 1,
+                "params": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {},
+                    "clientInfo": {"name": "pytest", "version": "0"},
+                },
+            },
+        )
+        assert sid is not None
+        _mcp_post(
+            origin,
+            {"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}},
+            session_id=sid,
+        )
+
+        # Call search (structured tool) with ?output_channel=content — the
+        # query should be IGNORED; env=structured governs, so structuredContent
+        # is non-null.
+        status, payload, _ = _mcp_post(
+            origin,
+            {
+                "jsonrpc": "2.0",
+                "method": "tools/call",
+                "id": 2,
+                "params": {
+                    "name": "search",
+                    "arguments": {"scope": "operators", "pattern": "阿"},
+                },
+            },
+            session_id=sid,
+            query="output_channel=content",
+        )
+        assert status == 200
+        assert payload is not None
+        result = payload.get("result", {})
+        assert result.get("structuredContent") is not None, (
+            "env PRTS_OUTPUT_CHANNEL=structured should govern; "
+            "query ?output_channel=content must be ignored. "
+            "If structuredContent is null, the query override leaked."
+        )
+    finally:
+        handle["proc"].terminate()
+        try:
+            handle["proc"].wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            handle["proc"].kill()

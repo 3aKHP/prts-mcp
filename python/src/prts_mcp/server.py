@@ -9,8 +9,8 @@ Supports two transports selected by the ``PRTS_TRANSPORT`` env var:
 - ``stdio`` (default) — FastMCP stdio, for local Claude Desktop / Code.
 - ``http`` — Streamable HTTP via Starlette + uvicorn, for self-hosted
   remote access. Mirrors the TypeScript implementation's HTTP surface
-  (``/mcp`` endpoint, ``/health`` probe, per-request output_channel
-  resolution from query string / header / env).
+  (``/mcp`` endpoint, ``/health`` probe). output_channel is process-level
+  (env-only) on Python HTTP; see ``_build_http_app`` for the limitation.
 
 Sync orchestration lives in startup_sync; its symbols are re-exported here
 for backward compatibility with tests that access them via ``server.*``.
@@ -91,8 +91,6 @@ def _build_http_app():
 
     # Prepend /health so it is matched before any catch-all.
     app.router.routes.insert(0, Route("/health", health))
-
-    return app
 
     return app
 
