@@ -19,6 +19,7 @@ the ``tools_*`` registration modules.
 """
 from __future__ import annotations
 
+import contextvars
 import logging
 import os
 from typing import Any, Literal
@@ -55,21 +56,50 @@ def _parse_channel(raw: str | None) -> OutputChannel:
     return value  # type: ignore[return-value]
 
 
-#: Connection-level channel, read once at import time. On stdio a connection
-#: maps to one process, so a module-level constant is the right scope.
+#: Per-connection channel, backed by a ContextVar so future transports or
+#: SDK changes can plug in per-connection overrides without touching tool
+#: code.
 #:
-#: The module-level identifier ``OUTPUT_CHANNEL`` is the parsed value's name;
-#: the *environment variable* that populates it is ``PRTS_OUTPUT_CHANNEL``
-#: (``PRTS_`` prefix to avoid collisions in shared Docker/CI environments).
-#: Other transports can map their own connection-level control names to the
-#: same parsed value.
-OUTPUT_CHANNEL: OutputChannel = _parse_channel(os.environ.get("PRTS_OUTPUT_CHANNEL"))
+#: The default value is read once from the ``PRTS_OUTPUT_CHANNEL`` env var
+#: and is currently the only effective source — both stdio and the
+#: Streamable HTTP transport read it at process scope. Per-request
+#: query/header resolution is NOT supported on the Python HTTP transport
+#: (FastMCP's session model makes per-request contextvars invisible to
+#: tool code; see server.py ``_build_http_app`` docstring). The TypeScript
+#: HTTP transport differs, resolving channel at session creation.
+#:
+#: The module-level identifier ``OUTPUT_CHANNEL`` is kept as a backward-compat
+#: alias for the parsed env default; the *environment variable* that populates
+#: it is ``PRTS_OUTPUT_CHANNEL`` (``PRTS_`` prefix to avoid collisions in
+#: shared Docker/CI environments).
+_ENV_DEFAULT_CHANNEL: OutputChannel = _parse_channel(os.environ.get("PRTS_OUTPUT_CHANNEL"))
+
+_channel_var: contextvars.ContextVar[OutputChannel] = contextvars.ContextVar(
+    "prts_output_channel", default=_ENV_DEFAULT_CHANNEL
+)
+
+#: Backward-compat alias for the env-parsed default. Tools should prefer
+#: :func:`get_output_channel` (the ContextVar is currently env-only but kept
+#: for future transport extensibility).
+OUTPUT_CHANNEL: OutputChannel = _ENV_DEFAULT_CHANNEL
+
+
+def get_output_channel() -> OutputChannel:
+    """Return the effective output channel for the current context.
+
+    Currently always the env-parsed default, since per-request overrides
+    are not effective under FastMCP's session model (see server.py
+    ``_build_http_app`` docstring). The ContextVar indirection is kept so
+    a future transport or SDK change can plug in per-connection overrides
+    without touching tool code.
+    """
+    return _channel_var.get()
 
 
 def render_result(
     data: dict[str, Any] | None,
     markdown: str,
-    channel: OutputChannel = OUTPUT_CHANNEL,
+    channel: OutputChannel | None = None,
     summary: str | None = None,
 ) -> CallToolResult:
     """Build a ``CallToolResult`` carrying markdown text and/or structured data.
@@ -77,6 +107,12 @@ def render_result(
     The two inputs are kept orthogonal: ``markdown`` is always the
     human-readable rendering, ``data`` is always the structured payload
     (or ``None`` when the call hit an error/missing-data path).
+
+    ``channel`` resolves the effective channel via :func:`get_output_channel`
+    when left as ``None`` (the default). Today that value is the env-parsed
+    process default; the ContextVar indirection is reserved for future
+    per-connection transport support. Pass an explicit value only when
+    overriding per-call (rare).
 
     Channel behaviour:
 
@@ -101,6 +137,8 @@ def render_result(
     a content-only result carrying ``markdown`` — per the design doc, errors
     never travel in structuredContent.
     """
+    if channel is None:
+        channel = get_output_channel()
     if data is None:
         # Error / missing-data path: text only, regardless of channel.
         return CallToolResult(

@@ -1,8 +1,12 @@
 {
   "mcpServers": {
-    "prts_wiki": {
+    "prts_wiki_docker": {
       "command": "docker",
       "args": ["run", "-i", "--rm", "-v", "prts-mcp-data:/data/gamedata", "-v", "prts-mcp-levels:/data/gamedata-levels", "-v", "prts-mcp-storyjson:/data/storyjson", "-e", "PRTS_OUTPUT_CHANNEL=content", "prts-mcp"]
+    },
+    "prts_wiki_ts_stdio": {
+      "command": "npx",
+      "args": ["prts-mcp-ts-stdio"]
     }
   }
 }

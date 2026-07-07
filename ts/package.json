@@ -1,12 +1,13 @@
 {
   "name": "prts-mcp-ts",
   "version": "2.3.0-dev.0",
-  "description": "MCP Server for Arknights PRTS Wiki & game data (TypeScript / Streamable HTTP)",
+  "description": "MCP Server for Arknights PRTS Wiki & game data (TypeScript / Streamable HTTP + stdio)",
   "type": "module",
   "main": "dist/server.js",
   "bin": {
     "prts-mcp-ts": "./dist/server.js",
-    "prts-mcp-ts-bun": "./dist/server-bun.js"
+    "prts-mcp-ts-bun": "./dist/server-bun.js",
+    "prts-mcp-ts-stdio": "./dist/server-stdio.js"
   },
   "files": [
     "dist/",
@@ -23,6 +24,8 @@
     "start": "bun dist/server-bun.js",
     "start:bun": "bun dist/server-bun.js",
     "start:node": "node dist/server.js",
+    "start:stdio": "node dist/server-stdio.js",
+    "start:stdio:bun": "bun dist/server-stdio.js",
     "smoke:http": "bun scripts/smoke-http.mjs -- bun dist/server-bun.js",
     "smoke:http:fixture": "bun scripts/smoke-http.mjs --fixture-data -- bun dist/server-bun.js",
     "smoke:http:node": "node scripts/smoke-http.mjs -- node dist/server.js",

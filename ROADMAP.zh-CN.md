@@ -167,10 +167,11 @@ PRTS-MCP 已进入 1.x 稳定期。1.7.0 是最后一个 1.x 功能版本和 1.7
 - 环境变量名称和默认值统一（`PRTS_OUTPUT_CHANNEL`、`GAMEDATA_PATH`、`STORYJSON_PATH`、
   `GITHUB_TOKEN`、`GITHUB_MIRRORS`）。
 
-**后置到 2.0 之后——跨传输协议同步。** 原目标「两套实现都同时支持 stdio **和**
-Streamable HTTP」（Python 上 HTTP、TypeScript 上 stdio）推迟到后续版本。2.0 仍按 1.x 的
-传输分工发布：Python = stdio（FastMCP），TypeScript = Streamable HTTP（Express）。因此
-部署推荐维持「Python 用于 Docker / 本地 stdio，TypeScript 用于 `npm install -g` / HTTP」。
+**跨传输协议同步——2.3.0 开发中。** 原目标「两套实现都同时支持 stdio **和**
+Streamable HTTP」（Python 上 HTTP、TypeScript 上 stdio）曾后置到 2.0 之后，现于 2.3.0
+交付。Python 经 `PRTS_TRANSPORT` 选择传输（stdio 默认 | http）；TypeScript 经 bin 选择
+（`prts-mcp-ts`[-bun] = HTTP，`prts-mcp-ts-stdio` = stdio）。2.3.0 后部署推荐改为「按场景
+选择，而非按语言」。
 
 ### 清理
 

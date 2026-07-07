@@ -2,7 +2,15 @@
 
 Creates the FastMCP instance, delegates tool registration to focused
 modules (tools_prts / tools_gamedata / tools_story), and starts the
-background data-sync daemon before running the MCP stdio transport.
+background data-sync daemon before running the MCP transport.
+
+Supports two transports selected by the ``PRTS_TRANSPORT`` env var:
+
+- ``stdio`` (default) — FastMCP stdio, for local Claude Desktop / Code.
+- ``http`` — Streamable HTTP via Starlette + uvicorn, for self-hosted
+  remote access. Mirrors the TypeScript implementation's HTTP surface
+  (``/mcp`` endpoint, ``/health`` probe). output_channel is process-level
+  (env-only) on Python HTTP; see ``_build_http_app`` for the limitation.
 
 Sync orchestration lives in startup_sync; its symbols are re-exported here
 for backward compatibility with tests that access them via ``server.*``.
@@ -10,6 +18,7 @@ for backward compatibility with tests that access them via ``server.*``.
 from __future__ import annotations
 
 import logging
+import os
 import sys
 import threading
 
@@ -51,10 +60,58 @@ def _register_tools() -> None:
 _register_tools()
 
 
+# ---------------------------------------------------------------------------
+# Transport selection
+# ---------------------------------------------------------------------------
+
+
+def _build_http_app():
+    """Build the Starlette app for the Streamable HTTP transport.
+
+    Wraps ``mcp.streamable_http_app()`` with a ``/health`` JSON probe.
+
+    Note on output_channel: per-request resolution (query string / header)
+    is **not supported** on the Python HTTP transport. FastMCP's Streamable
+    HTTP uses a stateful session model — the session task is created at
+    ``initialize`` and tools execute inside that long-lived task, so a
+    per-request contextvar set in middleware is invisible to tool code.
+    The output channel is therefore process-level (read from
+    ``PRTS_OUTPUT_CHANNEL`` env) on Python HTTP, matching Python stdio.
+    The TypeScript HTTP transport does support per-request resolution
+    because it resolves the channel at session-creation time and injects
+    it into ``createMcpServer(channel)``.
+    """
+    from starlette.responses import JSONResponse
+    from starlette.routing import Route
+
+    app = mcp.streamable_http_app()
+
+    async def health(_request):
+        return JSONResponse({"status": "ok"})
+
+    # Prepend /health so it is matched before any catch-all.
+    app.router.routes.insert(0, Route("/health", health))
+
+    return app
+
+
 def main() -> None:
+    transport = os.environ.get("PRTS_TRANSPORT", "stdio").strip().lower()
+    # Start background data sync regardless of transport.
     t = threading.Thread(target=_run_startup_sync, daemon=True, name="prts-sync")
     t.start()
-    mcp.run()
+
+    if transport == "http":
+        import uvicorn
+
+        host = os.environ.get("HOST", "0.0.0.0")
+        port = int(os.environ.get("PORT", "3000"))
+        app = _build_http_app()
+        _logger.info("PRTS-MCP Streamable HTTP listening on %s:%s (/mcp)", host, port)
+        uvicorn.run(app, host=host, port=port, log_level="info")
+    else:
+        # stdio (default) — preserves 1.x/2.x behavior.
+        mcp.run()
 
 
 if __name__ == "__main__":

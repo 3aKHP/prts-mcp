@@ -185,12 +185,13 @@ implementations. Delivered in 2.0:
 - Environment variable names and defaults are unified (`PRTS_OUTPUT_CHANNEL`,
   `GAMEDATA_PATH`, `STORYJSON_PATH`, `GITHUB_TOKEN`, `GITHUB_MIRRORS`).
 
-**Deferred beyond 2.0 — cross-transport parity.** The original goal that both
-implementations support stdio **and** Streamable HTTP (Python gaining HTTP,
-TypeScript gaining stdio) is postponed to a later release. 2.0 ships with the
-same transport split as 1.x: Python = stdio (FastMCP), TypeScript =
-Streamable HTTP (Express). Recommended deployment scenarios therefore stay
-"Python for Docker / local stdio, TypeScript for `npm install -g` / HTTP."
+**Cross-transport parity — in progress for 2.3.0.** The original goal that
+both implementations support stdio **and** Streamable HTTP (Python gaining
+HTTP, TypeScript gaining stdio) was deferred beyond 2.0 and is now being
+delivered in 2.3.0. Python selects transport via `PRTS_TRANSPORT`
+(stdio default | http); TypeScript selects via bin (`prts-mcp-ts`[-bun] = HTTP,
+`prts-mcp-ts-stdio` = stdio). After 2.3.0 the deployment guidance becomes
+"choose by use case, not by language."
 
 ### Cleanup
 
