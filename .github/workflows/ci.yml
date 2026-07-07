@@ -222,15 +222,24 @@ jobs:
         # Guards against the dual-lockfile drift risk: if a contributor
         # changes package.json dependencies but forgets to refresh bun.lock,
         # bun install --frozen-lockfile would fail here with an actionable
-        # message instead of a cryptic downstream error. Run bun install
-        # --lockfile-only first to detect drift without touching node_modules.
+        # message instead of a cryptic downstream error.
+        #
+        # Diff against a temporary copy rather than mutating bun.lock in
+        # place: this avoids leaving a dirty lockfile on disk if the step
+        # fails, and avoids false positives when a different Bun version
+        # regenerates a semantically-equivalent but textually-different
+        # lockfile (the comparison is against the committed lockfile
+        # resolved by the pinned Bun 1.3.14 above).
         run: |
+          cp bun.lock bun.lock.tmp
           bun install --lockfile-only
-          if ! git diff --quiet -- bun.lock; then
+          if ! diff -q bun.lock bun.lock.tmp >/dev/null; then
             echo "::error::bun.lock is out of sync with package.json. Run 'bun install --lockfile-only' locally and commit the updated bun.lock."
-            git diff --stat -- bun.lock
+            diff --stat bun.lock bun.lock.tmp || true
+            rm -f bun.lock.tmp
             exit 1
           fi
+          rm -f bun.lock.tmp
         working-directory: ts
 
       - name: Install dependencies
