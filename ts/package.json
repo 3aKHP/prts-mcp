@@ -27,7 +27,7 @@
     "smoke:http:fixture": "bun scripts/smoke-http.mjs --fixture-data -- bun dist/server-bun.js",
     "smoke:http:node": "node scripts/smoke-http.mjs -- node dist/server.js",
     "smoke:http:fixture:node": "node scripts/smoke-http.mjs --fixture-data -- node dist/server.js",
-    "smoke:bun": "npm run smoke:http:fixture",
+    "smoke:bun": "bun run smoke:http:fixture",
     "smoke:bun:package": "bun scripts/smoke-package-bun.mjs",
     "test": "node --import tsx --test \"tests/**/*.test.ts\"",
     "typecheck": "tsc --noEmit",
