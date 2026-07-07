@@ -4,7 +4,29 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [2.3.0] - 2026-07-08
+
+### Added
+
+- Added Streamable HTTP transport: `PRTS_TRANSPORT=http` starts a Starlette
+  + uvicorn server with `/mcp` endpoint, `/health` probe, and `HOST`/`PORT`
+  env control (defaults `0.0.0.0:3000`). `stdio` remains the default.
+  Breaks the 2.0 transport split — the Python implementation now supports
+  both stdio and Streamable HTTP.
+- Added `test_e2e_http.py` covering HTTP health, initialize + tools/list,
+  and env-only output_channel behavior.
+- Declared `starlette>=0.27` and `uvicorn>=0.31` as explicit dependencies
+  (previously transitive via `mcp[cli]`).
+
+### Changed
+
+- Refactored `OUTPUT_CHANNEL` from a module-level constant to a
+  `contextvars.ContextVar`, paving the way for transport-level overrides.
+  Tool code is unchanged; `render_result` resolves the channel via
+  `get_output_channel()` at call time. **Note**: Python HTTP
+  output_channel is currently process-level (env-only) — FastMCP's session
+  model makes per-request contextvars invisible to tool code. The
+  TypeScript HTTP transport supports per-request resolution.
 
 ## [2.2.0] - 2026-07-08
 
