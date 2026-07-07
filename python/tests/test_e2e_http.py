@@ -8,7 +8,7 @@ pattern. Tests that run without network or full data:
   1. /health probe
   2. MCP initialize handshake + session id
   3. tools/list — all tools registered
-  4. output_channel per-request resolution (query string)
+  4. output_channel env-only behavior (query string ignored)
 """
 from __future__ import annotations
 

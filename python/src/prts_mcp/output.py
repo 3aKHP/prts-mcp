@@ -109,9 +109,10 @@ def render_result(
     (or ``None`` when the call hit an error/missing-data path).
 
     ``channel`` resolves the effective channel via :func:`get_output_channel`
-    when left as ``None`` (the default), so per-connection overrides set by
-    the HTTP transport's middleware are honored. Pass an explicit value only
-    when overriding per-call (rare).
+    when left as ``None`` (the default). Today that value is the env-parsed
+    process default; the ContextVar indirection is reserved for future
+    per-connection transport support. Pass an explicit value only when
+    overriding per-call (rare).
 
     Channel behaviour:
 
