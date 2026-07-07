@@ -267,9 +267,16 @@ jobs:
 
   build-image-ts:
     # Default Docker image — Bun runtime (ts/Dockerfile is Bun since 2.2.0).
+    # Runs on develop/main branch pushes. Also runs on pull requests whose
+    # head branch is release/** so that a release PR validates the default
+    # image before it ships to main (github.head_ref is only set on
+    # pull_request events; branch pushes are covered by the ref checks).
     runs-on: ubuntu-latest
     needs: [verify-ts, test-ts]
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    if: |
+      github.ref == 'refs/heads/main' ||
+      github.ref == 'refs/heads/develop' ||
+      (github.event_name == 'pull_request' && startsWith(github.head_ref, 'release/'))
 
     steps:
       - name: Checkout repository
