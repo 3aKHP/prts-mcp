@@ -13,6 +13,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - Added `ts/Dockerfile.node` as the supported Node.js legacy Docker build path.
 - Added Node legacy npm scripts: `start:node`, `smoke:http:node`,
   `smoke:http:fixture:node`, and `dev:bun` for Bun-native development.
+- Added an explicit `bun.lock`/`package.json` drift check in `verify-ts` so
+  dual-lockfile desync fails fast with an actionable message.
 
 ### Changed
 
