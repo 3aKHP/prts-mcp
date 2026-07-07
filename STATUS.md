@@ -11,7 +11,9 @@ _Last updated: 2026-07-07_
 
 - 当前稳定发布：2.1.0（23 个 MCP 工具）
 - 当前 LTS 发布：1.7.0（32 个 MCP 工具，剧情角色追踪）
-- 当前开发目标：2.2.0（评估默认 Bun runtime / Dockerfile 切换）
+- 当前开发目标：2.2.0（Bun 升为默认生产运行时：默认 `ts/Dockerfile`、CI 主链、
+  npm scripts 切 Bun；Node 降级为 legacy/可选路径，保留 `prts-mcp-ts` npm bin、
+  `npx`、`ts/Dockerfile.node`。npm 发布路径不变）
 - 当前稳定补丁线：2.1.x
 - 当前开发线：2.2.x
 - 2.1.0 发布内容：将 TS Bun 从候选路径提升为受支持可选运行时，新增
@@ -163,6 +165,18 @@ PRTS-MCP/
 > **不**翻转默认到 JSON——主要消费者是 LLM agent，JSON 会令 prompt token 膨胀
 > 15–30%，抵消工具面合并带来的上下文预算收益。详见
 > [`docs/migration-1.x-to-2.0.md`](docs/migration-1.x-to-2.0.md)。
+
+## 2.2.0 开发中（develop）
+
+- [x] Bun 升为默认生产运行时：默认 `ts/Dockerfile`（原 `Dockerfile.bun` 内容
+  提升）、CI 主验证链（`verify-ts` 切 Bun）、推荐 Docker 部署均走 Bun。
+- [x] Node 降级为 legacy/可选路径：新增 `ts/Dockerfile.node`（原 Node
+  `Dockerfile` 搬迁）、`start:node` / `smoke:http:node` 等 npm scripts。
+- [x] CI 矩阵翻转：`test-ts`（Node 单测，node:test）+ `verify-ts`（Bun 全链）+
+  `build-image-ts`（默认 Bun 镜像）+ `build-image-ts-node`（legacy Node 镜像）。
+- [x] npm bin 命名不变：`prts-mcp-ts`=Node（`npx` 开箱即用），
+  `prts-mcp-ts-bun`=Bun。npm 发布仍走 `npm publish --provenance`。
+- [x] 文档口径翻转：`ts/README.md`、根 `README.md` 中英文运行时段反转。
 
 ## 2.1.0 发布内容
 

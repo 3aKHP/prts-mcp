@@ -4,10 +4,11 @@
 
 提供 23 个 MCP 工具（2.0）：PRTS 词条检索与页面结构、干员档案/语音/基础信息、剧情活动与台词、角色出场追踪、全文搜索、敌人图鉴、关卡查询、关卡敌人融合，以及物品/材料查询。完整清单见仓库根目录 [`README.md`](../README.md)。
 
-TypeScript 实现正式支持 Node.js 与 Bun 双运行时。默认 `prts-mcp-ts`、`npx`、
-npm 全局安装、systemd 部署、默认 Dockerfile 与 npm Trusted Publishing 仍走
-Node.js；Bun 作为显式可选运行时提供 `prts-mcp-ts-bun` 入口和
-`ts/Dockerfile.bun` 构建路径。
+TypeScript 实现正式支持 Bun 与 Node.js 双运行时。自 2.2.0 起 **Bun 是默认生产
+运行时**：默认 `ts/Dockerfile`、CI 主验证链与推荐 Docker 部署均在 Bun 下运行（最低
+验证版本 Bun `1.3.14`）。Node.js 保留为受支持的 legacy/可选运行时，通过 `prts-mcp-ts`
+npm bin、`npx prts-mcp-ts` 与 `ts/Dockerfile.node` 构建路径提供。npm 发布路径仍走 npm CLI
+（`npm publish --provenance`，与运行时无关）。
 
 > **2.0 变更**：工具面由 1.x 的 32 个合并为 23 个（详见 [1.x → 2.0 迁移指南](../docs/migration-1.x-to-2.0.md)）；新增可选的 output channel（查询字符串 `?output_channel=` / 请求头 `x-prts-output-channel` / `PRTS_OUTPUT_CHANNEL` 环境变量，默认 `content`，与 1.x 行为一致）。
 
@@ -15,12 +16,20 @@ Node.js；Bun 作为显式可选运行时提供 `prts-mcp-ts-bun` 入口和
 
 ## 快速开始（Docker）
 
+自 2.2.0 起默认镜像在 Bun 下运行（行为与 Node 镜像一致，仅基础镜像和入口不同）：
+
 ```bash
-# 从仓库根目录构建（可选预置 bundled 数据，详见下方）
+# 从仓库根目录构建默认 Bun 镜像（可选预置 bundled 数据，详见下方）
 docker build -f ts/Dockerfile -t prts-mcp-ts .
 
 # 运行（named volume 持久化游戏数据，推荐）
 docker run -d -p 3000:3000 -v prts-mcp-ts-data:/data/gamedata -v prts-mcp-ts-levels:/data/gamedata-levels -v prts-mcp-ts-storyjson:/data/storyjson prts-mcp-ts
+```
+
+需要 Node.js 镜像时改用 legacy 构建路径：
+
+```bash
+docker build -f ts/Dockerfile.node -t prts-mcp-ts-node .
 ```
 
 服务启动后 MCP 端点为 `http://<host>:3000/mcp`，健康检查端点为 `http://<host>:3000/health`。
@@ -37,10 +46,16 @@ http://localhost:3000/mcp
 
 ## 快速试用（npx）
 
-无需克隆仓库，直接运行：
+无需克隆仓库，直接运行（Node.js 入口，最低试用门槛，无需额外安装运行时）：
 
 ```bash
 npx prts-mcp-ts
+```
+
+需要 Bun 运行时试用：
+
+```bash
+bunx --bun -p prts-mcp-ts prts-mcp-ts-bun
 ```
 
 服务启动后 MCP 端点为 `http://localhost:3000/mcp`。
@@ -50,16 +65,24 @@ npx prts-mcp-ts
 ```bash
 cd ts
 npm install
-npm run dev       # tsx 直接运行，支持热重载
+npm run dev       # tsx 直接运行（Node），支持热重载
 npm run build     # 编译到 dist/
-npm start         # 运行编译后的版本
+npm start         # 运行编译后的版本（自 2.2.0 起默认走 Bun 入口）
 ```
 
-### 可选 Bun 运行路径
+需要 Bun 原生开发体验：
 
-Bun 是 TypeScript 实现的受支持可选运行时，最低验证版本为 Bun `1.3.14`。
-默认开发、npm 全局安装、`npx prts-mcp-ts`、systemd 部署和 npm Trusted Publishing
-仍然走 Node/npm；需要 Bun 时请显式调用 Bun 入口。
+```bash
+cd ts
+bun install --frozen-lockfile
+bun run dev:bun    # bun 直接运行源码
+bun run start      # 运行 dist/server-bun.js
+```
+
+### 默认 Bun 运行路径
+
+自 2.2.0 起 Bun 是 TypeScript 实现的默认生产运行时，最低验证版本为 Bun `1.3.14`。
+默认 `ts/Dockerfile`、CI 主验证链与推荐 Docker 部署均在 Bun 下运行。
 
 无需克隆仓库的一次性运行：
 
@@ -80,26 +103,36 @@ prts-mcp-ts-bun
 cd ts
 bun install --frozen-lockfile
 bun run build:bun
-bun run smoke:bun    # 使用临时 fixture 数据启动 Bun server 并跑 HTTP MCP smoke
+bun run smoke:bun          # 使用临时 fixture 数据启动 Bun server 并跑 HTTP MCP smoke
 bun run smoke:bun:package  # npm pack 后用 Bun 安装并验证 prts-mcp-ts-bun
-bun run start:bun    # 运行 dist/server-bun.js
+bun run start              # 运行 dist/server-bun.js（自 2.2.0 起 npm start 默认走 Bun）
 ```
 
-现阶段 TypeScript 单元测试仍由 Node 的 `node:test` 路径覆盖；Bun 路径使用
-`bun run typecheck`、`bun run build:bun`、源码级 HTTP MCP smoke 和安装后 package smoke
-验证运行时兼容性。
+TypeScript 单元测试仍由 Node 的 `node:test` 路径覆盖（见下方 Node legacy 路径）；Bun
+路径使用 `bun run typecheck`、`bun run build:bun`、源码级 HTTP MCP smoke 和安装后 package
+smoke 验证运行时兼容性。
 如调整 `package.json` 或 `package-lock.json` 依赖，请同步运行 `bun install --lockfile-only`
 刷新 `bun.lock`。
 
-受支持的 Bun Docker 替代镜像可从仓库根目录构建：
+### Node legacy 运行路径
+
+Node.js 仍是受支持的运行时，但自 2.2.0 起降级为 legacy/可选路径。npm bin `prts-mcp-ts`
+保持 Node 入口（`npx prts-mcp-ts` 仍零额外运行时依赖）。
 
 ```bash
-docker build -f ts/Dockerfile.bun -t prts-mcp-ts-bun .
-docker run -d -p 3000:3000 -v prts-mcp-ts-data:/data/gamedata -v prts-mcp-ts-levels:/data/gamedata-levels -v prts-mcp-ts-storyjson:/data/storyjson prts-mcp-ts-bun
+# npm 入口（Node）
+npx prts-mcp-ts
+# 或本地编译后运行
+npm run start:node    # node dist/server.js
+npm run smoke:http:fixture:node
 ```
 
-`ts/Dockerfile.bun` 不替换默认的 `ts/Dockerfile`；是否切换默认 Docker/runtime
-路径会在后续兼容性窗口单独决定。
+legacy Node Docker 镜像：
+
+```bash
+docker build -f ts/Dockerfile.node -t prts-mcp-ts-node .
+docker run -d -p 3000:3000 -v prts-mcp-ts-data:/data/gamedata -v prts-mcp-ts-levels:/data/gamedata-levels -v prts-mcp-ts-storyjson:/data/storyjson prts-mcp-ts-node
+```
 
 ---
 
