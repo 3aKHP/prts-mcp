@@ -19,6 +19,7 @@ the ``tools_*`` registration modules.
 """
 from __future__ import annotations
 
+import contextvars
 import logging
 import os
 from typing import Any, Literal
@@ -55,21 +56,60 @@ def _parse_channel(raw: str | None) -> OutputChannel:
     return value  # type: ignore[return-value]
 
 
-#: Connection-level channel, read once at import time. On stdio a connection
-#: maps to one process, so a module-level constant is the right scope.
+#: Per-connection channel, backed by a ContextVar so each transport can set
+#: its own value per request/session without global mutation.
 #:
-#: The module-level identifier ``OUTPUT_CHANNEL`` is the parsed value's name;
-#: the *environment variable* that populates it is ``PRTS_OUTPUT_CHANNEL``
-#: (``PRTS_`` prefix to avoid collisions in shared Docker/CI environments).
-#: Other transports can map their own connection-level control names to the
-#: same parsed value.
-OUTPUT_CHANNEL: OutputChannel = _parse_channel(os.environ.get("PRTS_OUTPUT_CHANNEL"))
+#: The default value is read once from the ``PRTS_OUTPUT_CHANNEL`` env var —
+#: on stdio a connection maps to one process, so the import-time default is
+#: the right scope. The Streamable HTTP transport overrides this per request
+#: via :func:`set_output_channel` (resolving query string / header / env),
+#: matching the TypeScript ``resolveOutputChannel`` precedence.
+#:
+#: The module-level identifier ``OUTPUT_CHANNEL`` is kept as a backward-compat
+#: alias for the parsed env default; the *environment variable* that populates
+#: it is ``PRTS_OUTPUT_CHANNEL`` (``PRTS_`` prefix to avoid collisions in
+#: shared Docker/CI environments).
+_ENV_DEFAULT_CHANNEL: OutputChannel = _parse_channel(os.environ.get("PRTS_OUTPUT_CHANNEL"))
+
+_channel_var: contextvars.ContextVar[OutputChannel] = contextvars.ContextVar(
+    "prts_output_channel", default=_ENV_DEFAULT_CHANNEL
+)
+
+#: Backward-compat alias for the env-parsed default. Tools should prefer
+#: :func:`get_output_channel` so per-connection overrides take effect.
+OUTPUT_CHANNEL: OutputChannel = _ENV_DEFAULT_CHANNEL
+
+
+def get_output_channel() -> OutputChannel:
+    """Return the effective output channel for the current connection context.
+
+    On stdio this is the env-parsed default (one process, one connection).
+    On Streamable HTTP a per-request middleware calls
+    :func:`set_output_channel` to override it with the query/header-resolved
+    value, and this function reads that override.
+    """
+    return _channel_var.get()
+
+
+def set_output_channel(channel: OutputChannel) -> contextvars.Token[OutputChannel]:
+    """Set the output channel for the current connection context.
+
+    Returns the ContextVar token for later restoration via
+    :func:`reset_output_channel`. HTTP middleware should call this at the
+    start of each request.
+    """
+    return _channel_var.set(channel)
+
+
+def reset_output_channel(token: contextvars.Token[OutputChannel]) -> None:
+    """Restore the output channel to its previous value (undo ``set``)."""
+    _channel_var.reset(token)
 
 
 def render_result(
     data: dict[str, Any] | None,
     markdown: str,
-    channel: OutputChannel = OUTPUT_CHANNEL,
+    channel: OutputChannel | None = None,
     summary: str | None = None,
 ) -> CallToolResult:
     """Build a ``CallToolResult`` carrying markdown text and/or structured data.
@@ -77,6 +117,11 @@ def render_result(
     The two inputs are kept orthogonal: ``markdown`` is always the
     human-readable rendering, ``data`` is always the structured payload
     (or ``None`` when the call hit an error/missing-data path).
+
+    ``channel`` resolves the effective channel via :func:`get_output_channel`
+    when left as ``None`` (the default), so per-connection overrides set by
+    the HTTP transport's middleware are honored. Pass an explicit value only
+    when overriding per-call (rare).
 
     Channel behaviour:
 
@@ -101,6 +146,8 @@ def render_result(
     a content-only result carrying ``markdown`` — per the design doc, errors
     never travel in structuredContent.
     """
+    if channel is None:
+        channel = get_output_channel()
     if data is None:
         # Error / missing-data path: text only, regardless of channel.
         return CallToolResult(
