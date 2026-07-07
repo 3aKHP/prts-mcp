@@ -29,7 +29,7 @@ Two release lines ship in parallel:
 
 | Line | Version | Tools | Status |
 |------|---------|-------|--------|
-| **2.1** (`main`) | `2.1.0` | 23 | TypeScript supports Node.js plus Bun as a supported optional runtime. Cross-transport parity deferred beyond 2.1. |
+| **2.2** (`main`) | `2.2.0` | 23 | Bun is the default TypeScript production runtime (default Dockerfile, CI, npm scripts); Node.js remains a supported legacy/optional path. Cross-transport parity deferred beyond 2.2. |
 | **1.7 LTS** (`lts/1.7`) | `1.7.0` | 32 | Stable maintenance line. 1.7.x accepts only compatibility, security, data-sync, and critical bug fixes. |
 
 | Area | Python | TypeScript |
@@ -95,11 +95,14 @@ parameter.
 - **Local stdio (Python / Docker)** → see [`python/`](python/)
 - **HTTP server (TypeScript / Docker)** → see [`ts/`](ts/)
 
-The TypeScript implementation supports Node.js and Bun. Node.js remains the
-default for `npx prts-mcp-ts`, npm global installs, systemd deployments, the
-default Dockerfile, and npm Trusted Publishing. Bun is available as an explicit
-optional runtime via `bunx --bun -p prts-mcp-ts prts-mcp-ts-bun` or the
-supported `ts/Dockerfile.bun` build path.
+The TypeScript implementation supports Bun and Node.js. Since 2.2.0 **Bun is
+the default production runtime**: the default `ts/Dockerfile`, the primary CI
+verification path, and the recommended Docker deployment all run under Bun
+(verified against Bun `1.3.14`). Node.js remains a supported legacy/optional
+runtime via the `prts-mcp-ts` npm bin (so `npx prts-mcp-ts` stays
+zero-dependency), `npm install -g`, and the `ts/Dockerfile.node` build path.
+The npm publishing path still uses npm CLI (`npm publish --provenance`,
+runtime-agnostic).
 
 ### Data Sources
 
@@ -134,7 +137,7 @@ Published Docker images and the npm package include bundled fallback game/level/
 
 | 版本线 | 版本 | 工具数 | 状态 |
 |--------|------|--------|------|
-| **2.1**（`main`） | `2.1.0` | 23 | TypeScript 支持 Node.js + Bun 受支持可选运行时。双端协议同步后置到 2.1 之后。 |
+| **2.2**（`main`） | `2.2.0` | 23 | Bun 是 TypeScript 默认生产运行时（默认 Dockerfile、CI、npm scripts）；Node.js 保留为受支持 legacy/可选路径。双端协议同步后置到 2.2 之后。 |
 | **1.7 LTS**（`lts/1.7`） | `1.7.0` | 32 | 稳定维护线。1.7.x 仅接受兼容性、安全性、数据同步和关键缺陷修复。 |
 
 | 范围 | Python | TypeScript |
@@ -193,10 +196,11 @@ Published Docker images and the npm package include bundled fallback game/level/
 - **本地 stdio 接入（Python / Docker）** → 见 [`python/`](python/)
 - **HTTP 服务部署（TypeScript / Docker）** → 见 [`ts/`](ts/)
 
-TypeScript 实现支持 Node.js 与 Bun。Node.js 仍是 `npx prts-mcp-ts`、npm 全局安装、
-systemd 部署、默认 Dockerfile 和 npm Trusted Publishing 的默认路径；Bun 作为显式可选
-运行时，可通过 `bunx --bun -p prts-mcp-ts prts-mcp-ts-bun` 或受支持的
-`ts/Dockerfile.bun` 构建路径使用。
+TypeScript 实现支持 Bun 与 Node.js。自 2.2.0 起 **Bun 是默认生产运行时**：默认
+`ts/Dockerfile`、CI 主验证链与推荐 Docker 部署均在 Bun 下运行（最低验证版本 Bun
+`1.3.14`）。Node.js 保留为受支持的 legacy/可选运行时，通过 `prts-mcp-ts` npm bin（因此
+`npx prts-mcp-ts` 仍零额外运行时依赖）、`npm install -g` 与 `ts/Dockerfile.node` 构建
+路径提供。npm 发布路径仍走 npm CLI（`npm publish --provenance`，与运行时无关）。
 
 ### 数据源
 

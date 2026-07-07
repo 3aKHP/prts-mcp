@@ -1,24 +1,25 @@
-FROM node:24-alpine AS builder
+FROM oven/bun:1.3.14-alpine AS builder
 
 WORKDIR /build
 
-# Install dependencies first (layer cache)
-COPY ts/package.json ts/package-lock.json ./
-RUN npm ci --ignore-scripts
+# Install dependencies first (layer cache). Since 2.2.0 Bun is the default
+# production runtime; npm remains the publishing path (see cd-ts.yml).
+COPY ts/package.json ts/bun.lock ./
+RUN bun install --frozen-lockfile
 
 # Compile TypeScript
 COPY ts/tsconfig.json ./
 COPY ts/src/ src/
-RUN npx tsc
+RUN bun run build
 
 # ---------------------------------------------------------------------------
-FROM node:24-alpine AS runtime
+FROM oven/bun:1.3.14-alpine AS runtime
 
 WORKDIR /app
 
 # Production dependencies only
-COPY ts/package.json ts/package-lock.json ./
-RUN npm ci --omit=dev --ignore-scripts
+COPY ts/package.json ts/bun.lock ./
+RUN bun install --frozen-lockfile --production
 
 # Compiled JS
 COPY --from=builder /build/dist ./dist
@@ -38,4 +39,4 @@ RUN mkdir -p /data/gamedata /data/gamedata-levels /data/storyjson
 
 EXPOSE 3000
 
-ENTRYPOINT ["node", "dist/server.js"]
+ENTRYPOINT ["bun", "dist/server-bun.js"]

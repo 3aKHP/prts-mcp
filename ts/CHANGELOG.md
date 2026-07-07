@@ -4,6 +4,51 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.2.0] - 2026-07-08
+
+### Added
+
+- Added `ts/Dockerfile.node` as the supported Node.js legacy Docker build path.
+- Added Node legacy npm scripts: `start:node`, `smoke:http:node`,
+  `smoke:http:fixture:node`, and `dev:bun` for Bun-native development.
+- Added an explicit `bun.lock`/`package.json` drift check in `verify-ts` so
+  dual-lockfile desync fails fast with an actionable message.
+- Extended `build-image-ts` to also run on `release/**` pull requests so the
+  default Bun image is validated before shipping to main.
+
+### Fixed
+
+- Fixed the default Docker image shipping without bundled fallback data:
+  `.dockerignore`'s `*.zip` rule stripped the CI-pre-fetched
+  `data/storyjson/zh_CN.zip` (and gamedata archives) from `COPY data/ data/`,
+  leaving the container without offline storyjson fallback. Added negation
+  rules so bundled data zips reach the image.
+
+### Changed
+
+- Bun is now the default production runtime for the TypeScript implementation:
+  the default `ts/Dockerfile`, the primary CI verification path (`verify-ts`),
+  and the recommended Docker deployment all run under Bun (verified against
+  Bun `1.3.14`). **Node.js remains a supported legacy/optional runtime** via
+  the `prts-mcp-ts` npm bin (so `npx prts-mcp-ts` stays zero-dependency),
+  `npm install -g`, and the new `ts/Dockerfile.node` build path. The npm
+  publishing path is unchanged (`npm publish --provenance`, runtime-agnostic).
+- Default npm scripts (`start`, `smoke:http`, `smoke:http:fixture`) now drive
+  the Bun entrypoint; `start:bun` / `smoke:bun` / `smoke:bun:package` retained
+  verbatim for 2.1.0 backward compatibility.
+- CI matrix flipped: `verify-ts` is now Bun-based (type-check, build, runtime
+  smoke, packed-package smoke); the `node:test` unit suite moved to a new
+  `test-ts` job; `build-image-ts` builds the default Bun image; a new
+  `build-image-ts-node` job covers the legacy Node image.
+
+### Removed
+
+- Removed the now-redundant `ts/Dockerfile.bun`; its content is promoted to
+  the default `ts/Dockerfile`.
+- Removed the `verify-ts-bun` and `build-image-ts-bun` CI jobs; their
+  coverage is absorbed by the new Bun-default `verify-ts` and
+  `build-image-ts`.
+
 ## [2.1.0] - 2026-07-07
 
 ### Added

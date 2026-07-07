@@ -170,8 +170,19 @@ jobs:
 
   # ---------------------------------------------------------------------------
   # TypeScript implementation
+  #
+  # Since 2.2.0 Bun is the default production runtime. The Bun pipeline
+  # (verify-ts + build-image-ts) is the primary verification path; Node.js
+  # stays covered as a supported legacy/optional runtime by test-ts (unit
+  # tests, which still run on node:test) and build-image-ts-node (legacy
+  # Docker image). The npm bin surface is unchanged: prts-mcp-ts stays
+  # Node-based, prts-mcp-ts-bun stays Bun-based.
   # ---------------------------------------------------------------------------
-  verify-ts:
+  test-ts:
+    # Unit tests run on Node's node:test runner. They are split into their own
+    # job (rather than folded into verify-ts) because the Bun pipeline does
+    # not use node:test, and keeping the unit suite on Node preserves the
+    # existing test runner without a bun:test migration.
     runs-on: ubuntu-latest
 
     steps:
@@ -189,23 +200,13 @@ jobs:
         run: npm ci
         working-directory: ts
 
-      - name: Type-check
-        run: npx tsc --noEmit
-        working-directory: ts
-
       - name: Run tests
         run: npm test
         working-directory: ts
 
-      - name: Build
-        run: npx tsc
-        working-directory: ts
-
-      - name: Smoke test HTTP MCP protocol
-        run: npm run smoke:http:fixture
-        working-directory: ts
-
-  verify-ts-bun:
+  verify-ts:
+    # Primary TS verification path: Bun runtime, type-check, build, and
+    # black-box HTTP MCP smoke (including packed-package smoke).
     runs-on: ubuntu-latest
 
     steps:
@@ -216,6 +217,30 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: "1.3.14"
+
+      - name: Verify bun.lock is in sync with package.json
+        # Guards against the dual-lockfile drift risk: if a contributor
+        # changes package.json dependencies but forgets to refresh bun.lock,
+        # bun install --frozen-lockfile would fail here with an actionable
+        # message instead of a cryptic downstream error.
+        #
+        # Diff against a temporary copy rather than mutating bun.lock in
+        # place: this avoids leaving a dirty lockfile on disk if the step
+        # fails, and avoids false positives when a different Bun version
+        # regenerates a semantically-equivalent but textually-different
+        # lockfile (the comparison is against the committed lockfile
+        # resolved by the pinned Bun 1.3.14 above).
+        run: |
+          cp bun.lock bun.lock.tmp
+          bun install --lockfile-only
+          if ! diff -q bun.lock bun.lock.tmp >/dev/null; then
+            echo "::error::bun.lock is out of sync with package.json. Run 'bun install --lockfile-only' locally and commit the updated bun.lock."
+            diff --stat bun.lock bun.lock.tmp || true
+            rm -f bun.lock.tmp
+            exit 1
+          fi
+          rm -f bun.lock.tmp
+        working-directory: ts
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -229,8 +254,8 @@ jobs:
         run: bun run build:bun
         working-directory: ts
 
-      # The full unit suite uses Node's node:test runner and stays covered by
-      # verify-ts. Bun coverage is intentionally black-box runtime smoke until
+      # The full unit suite uses Node's node:test runner and is covered by
+      # test-ts. Bun coverage is intentionally black-box runtime smoke until
       # a dedicated bun:test migration is planned.
       - name: Smoke test Bun runtime
         run: bun run smoke:bun
@@ -241,18 +266,26 @@ jobs:
         working-directory: ts
 
   build-image-ts:
+    # Default Docker image — Bun runtime (ts/Dockerfile is Bun since 2.2.0).
+    # Runs on develop/main branch pushes. Also runs on pull requests whose
+    # head branch is release/** so that a release PR validates the default
+    # image before it ships to main (github.head_ref is only set on
+    # pull_request events; branch pushes are covered by the ref checks).
     runs-on: ubuntu-latest
-    needs: verify-ts
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    needs: [verify-ts, test-ts]
+    if: |
+      github.ref == 'refs/heads/main' ||
+      github.ref == 'refs/heads/develop' ||
+      (github.event_name == 'pull_request' && startsWith(github.head_ref, 'release/'))
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version-file: 'ts/package.json'
+          bun-version: "1.3.14"
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -300,24 +333,24 @@ jobs:
         run: |
           docker run -d --name prts-mcp-ts-ci -p 3000:3000 prts-mcp-ts:latest
           trap 'docker rm -f prts-mcp-ts-ci' EXIT
-          node ts/scripts/smoke-http.mjs --origin http://localhost:3000
+          bun ts/scripts/smoke-http.mjs --origin http://localhost:3000
 
-  build-image-ts-bun:
+  build-image-ts-node:
+    # Legacy Node.js Docker image (ts/Dockerfile.node). Run on PRs as well as
+    # develop/main to keep the legacy Node path verified. The job does not
+    # save gamedata caches, so PR branches do not publish cache entries.
     runs-on: ubuntu-latest
-    needs: verify-ts-bun
+    needs: test-ts
     if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
-    # Supported optional Bun Docker build: run on PRs as well as develop/main
-    # to keep the alternative runtime path verified. The job does not save
-    # gamedata caches, so PR branches do not publish cache entries.
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          bun-version: "1.3.14"
+          node-version-file: 'ts/package.json'
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -350,11 +383,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build Bun Docker image
-        run: docker build -f ts/Dockerfile.bun -t prts-mcp-ts-bun:supported .
+      - name: Build Node Docker image
+        run: docker build -f ts/Dockerfile.node -t prts-mcp-ts-node:legacy .
 
-      - name: Smoke test Bun Docker image (HTTP MCP protocol)
+      - name: Smoke test Node Docker image (HTTP MCP protocol)
         run: |
-          docker run -d --name prts-mcp-ts-bun-ci -p 3000:3000 prts-mcp-ts-bun:supported
-          trap 'docker rm -f prts-mcp-ts-bun-ci' EXIT
-          bun ts/scripts/smoke-http.mjs --origin http://localhost:3000
+          docker run -d --name prts-mcp-ts-node-ci -p 3000:3000 prts-mcp-ts-node:legacy
+          trap 'docker rm -f prts-mcp-ts-node-ci' EXIT
+          node ts/scripts/smoke-http.mjs --origin http://localhost:3000
