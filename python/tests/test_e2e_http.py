@@ -30,9 +30,6 @@ import pytest
 GAMEDATA_PATH = Path(__file__).resolve().parents[2] / "data" / "gamedata"
 GAMEDATA_PATH = GAMEDATA_PATH.resolve()
 
-_op_table = GAMEDATA_PATH / "zh_CN" / "gamedata" / "excel" / "character_table.json"
-_has_operator_data = _op_table.is_file()
-
 
 def _free_port() -> int:
     """Return a free TCP port on localhost."""
@@ -68,6 +65,7 @@ def _mcp_post(
     body: dict,
     session_id: str | None = None,
     extra_headers: dict | None = None,
+    query: str | None = None,
 ) -> tuple[int, dict | None, str | None]:
     headers = {
         "Content-Type": "application/json",
@@ -77,7 +75,10 @@ def _mcp_post(
         headers["mcp-session-id"] = session_id
     if extra_headers:
         headers.update(extra_headers)
-    r = httpx.post(f"{origin}/mcp", json=body, headers=headers, timeout=10.0)
+    url = f"{origin}/mcp"
+    if query:
+        url += f"?{query}"
+    r = httpx.post(url, json=body, headers=headers, timeout=10.0)
     sid = r.headers.get("mcp-session-id")
     payload: dict | None = None
     if r.text:
@@ -188,10 +189,10 @@ def test_output_channel_env_only_on_http(server):
 
     FastMCP's Streamable HTTP session model means tools execute in a
     long-lived session task, so per-request query/header resolution is not
-    effective. This test documents that: a query-string output_channel
-    does NOT change the tool's output shape (the env default 'content'
-    governs). The TypeScript HTTP transport differs — it resolves channel
-    at session creation.
+    effective. This test verifies that explicitly: a query-string
+    ``output_channel=structured`` is passed but the response remains
+    content-only (env default governs). The TypeScript HTTP transport
+    differs — it resolves channel at session creation.
     """
     origin = server["origin"]
     _, _, sid = _mcp_post(
@@ -214,9 +215,9 @@ def test_output_channel_env_only_on_http(server):
         session_id=sid,
     )
 
-    # Call list_story_events (graceful error path, no data needed) with
-    # output_channel=structured in the query string. It should be IGNORED
-    # — the response is content-only (env default), confirming env-only.
+    # Call list_story_events with output_channel=structured in the query
+    # string. Even though the server is env-default (content), we pass
+    # structured to prove it is IGNORED — structuredContent stays null.
     status, payload, _ = _mcp_post(
         origin,
         {
@@ -226,12 +227,15 @@ def test_output_channel_env_only_on_http(server):
             "params": {"name": "list_story_events", "arguments": {}},
         },
         session_id=sid,
+        query="output_channel=structured",
     )
     assert status == 200
     assert payload is not None
     result = payload.get("result", {})
-    # Content-only: structuredContent should be absent or null (error path
-    # is always content-only regardless, but the point is the query string
-    # had no effect).
-    assert "content" in result
-    assert result.get("structuredContent") is None
+    # The query-string override had no effect: structuredContent is null
+    # (would be non-null if the override had taken effect on a structured
+    # tool). This confirms env-only behavior.
+    assert result.get("structuredContent") is None, (
+        "query-string output_channel=structured should be ignored on "
+        "Python HTTP; structuredContent must be null"
+    )

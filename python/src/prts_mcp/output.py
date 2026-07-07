@@ -81,29 +81,15 @@ OUTPUT_CHANNEL: OutputChannel = _ENV_DEFAULT_CHANNEL
 
 
 def get_output_channel() -> OutputChannel:
-    """Return the effective output channel for the current connection context.
+    """Return the effective output channel for the current context.
 
-    On stdio this is the env-parsed default (one process, one connection).
-    On Streamable HTTP a per-request middleware calls
-    :func:`set_output_channel` to override it with the query/header-resolved
-    value, and this function reads that override.
+    Currently always the env-parsed default, since per-request overrides
+    are not effective under FastMCP's session model (see server.py
+    ``_build_http_app`` docstring). The ContextVar indirection is kept so
+    a future transport or SDK change can plug in per-connection overrides
+    without touching tool code.
     """
     return _channel_var.get()
-
-
-def set_output_channel(channel: OutputChannel) -> contextvars.Token[OutputChannel]:
-    """Set the output channel for the current connection context.
-
-    Returns the ContextVar token for later restoration via
-    :func:`reset_output_channel`. HTTP middleware should call this at the
-    start of each request.
-    """
-    return _channel_var.set(channel)
-
-
-def reset_output_channel(token: contextvars.Token[OutputChannel]) -> None:
-    """Restore the output channel to its previous value (undo ``set``)."""
-    _channel_var.reset(token)
 
 
 def render_result(

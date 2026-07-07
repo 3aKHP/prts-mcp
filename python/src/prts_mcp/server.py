@@ -94,12 +94,6 @@ def _build_http_app():
 
     return app
 
-    async def health(_request):
-        return JSONResponse({"status": "ok"})
-
-    # Prepend /health so it is matched before any catch-all.
-    app.router.routes.insert(0, Route("/health", health))
-
     return app
 
 

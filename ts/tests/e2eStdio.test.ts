@@ -10,21 +10,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawn, ChildProcess } from "node:child_process";
-import { existsSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, "..", "..");
 const GAMEDATA_PATH = join(REPO_ROOT, "data", "gamedata");
-const OPERATOR_TABLE = join(
-  GAMEDATA_PATH,
-  "zh_CN",
-  "gamedata",
-  "excel",
-  "character_table.json",
-);
-const HAS_OPERATOR_DATA = existsSync(OPERATOR_TABLE);
 
 // ---------------------------------------------------------------------------
 // Helpers
