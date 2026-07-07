@@ -23,7 +23,7 @@
     "start": "bun dist/server-bun.js",
     "start:bun": "bun dist/server-bun.js",
     "start:node": "node dist/server.js",
-    "smoke:http": "bun scripts/smoke-http.mjs --fixture-data -- bun dist/server-bun.js",
+    "smoke:http": "bun scripts/smoke-http.mjs -- bun dist/server-bun.js",
     "smoke:http:fixture": "bun scripts/smoke-http.mjs --fixture-data -- bun dist/server-bun.js",
     "smoke:http:node": "node scripts/smoke-http.mjs -- node dist/server.js",
     "smoke:http:fixture:node": "node scripts/smoke-http.mjs --fixture-data -- node dist/server.js",
