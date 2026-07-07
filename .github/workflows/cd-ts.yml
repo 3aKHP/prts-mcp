@@ -21,6 +21,11 @@ jobs:
           cache: 'npm'
           cache-dependency-path: 'ts/package-lock.json'
 
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.14"
+
       - name: Install dependencies
         run: npm ci
         working-directory: ts
@@ -51,7 +56,9 @@ jobs:
       - name: Smoke test (health + tools/list)
         working-directory: ts
         run: |
-          node dist/server.js &
+          # Smoke test runs the published Bun entrypoint (the default
+          # production runtime since 2.2.0) to verify the release artifact.
+          bun dist/server-bun.js &
           SERVER_PID=$!
           for i in $(seq 1 10); do
             if curl -sf http://localhost:3000/health; then break; fi
@@ -226,7 +233,7 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.value }}
         run: |
-          printf '\n---\n\n**Install**\n```bash\n# Run directly with the default Node.js entrypoint (Streamable HTTP on :3000)\nnpx prts-mcp-ts\n\n# Or install globally\nnpm install -g prts-mcp-ts@%s\n\n# Optional Bun runtime\nbunx --bun -p prts-mcp-ts@%s prts-mcp-ts-bun\n```\n\nMCP endpoint: `http://localhost:3000/mcp`\n' \
+          printf '\n---\n\n**Install**\n```bash\n# Run directly with npx (Node.js entrypoint, zero extra runtime install)\nnpx prts-mcp-ts\n\n# Or install globally\nnpm install -g prts-mcp-ts@%s\n\n# Bun runtime (default production runtime since 2.2.0)\nbunx --bun -p prts-mcp-ts@%s prts-mcp-ts-bun\n```\n\nThe default Docker image (`prts-mcp-ts:latest`) runs under Bun since 2.2.0;\n`ts/Dockerfile.node` provides the legacy Node.js image.\n\nMCP endpoint: `http://localhost:3000/mcp`\n' \
             "$VERSION" \
             "$VERSION" >> release_notes.txt
 
