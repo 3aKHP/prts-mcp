@@ -173,10 +173,11 @@ PRTS-MCP/
 ## 2.3.0 开发中（develop）
 
 - [x] Python 新增 Streamable HTTP transport（`PRTS_TRANSPORT=http`，Starlette +
-  uvicorn，`/mcp` 端点 + `/health` 探针 + per-request output_channel
-  middleware）。stdio 保持默认（向后兼容）。
+  uvicorn，`/mcp` 端点 + `/health` 探针）。stdio 保持默认（向后兼容）。
 - [x] Python `OUTPUT_CHANNEL` 从进程级常量重构为 `contextvars.ContextVar`，
-  支持 HTTP 下的 per-request 解析（query / header / env）。工具代码零改动。
+  为后续 transport 扩展铺路。**注意**：因 FastMCP Streamable HTTP 的 session
+  模型，Python HTTP 的 output_channel 当前是 process-level（env-only），不支持
+  per-request query/header 解析（TS HTTP 支持 per-request）。
 - [x] TypeScript 新增 stdio transport（`prts-mcp-ts-stdio` bin，
   `server-stdio.ts` 入口复用 `createMcpServer` + `runStartupSync`）。
 - [x] 跨 transport e2e 测试：Python HTTP（`test_e2e_http.py`）+ TS stdio

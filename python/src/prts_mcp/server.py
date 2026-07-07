@@ -65,50 +65,34 @@ _register_tools()
 # ---------------------------------------------------------------------------
 
 
-def _resolve_http_channel(query_val: str | None, header_val: str | None) -> str:
-    """Resolve output_channel for an HTTP request.
-
-    Precedence matches the TypeScript ``resolveOutputChannel``:
-    query string → header → env → default (content).
-    """
-    from prts_mcp.output import _parse_channel
-
-    if query_val:
-        return _parse_channel(query_val)
-    if header_val:
-        return _parse_channel(header_val)
-    return _parse_channel(os.environ.get("PRTS_OUTPUT_CHANNEL"))
-
-
 def _build_http_app():
     """Build the Starlette app for the Streamable HTTP transport.
 
-    Wraps ``mcp.streamable_http_app()`` with:
-    - a per-request output_channel middleware (query / header / env)
-    - a ``/health`` JSON probe endpoint
+    Wraps ``mcp.streamable_http_app()`` with a ``/health`` JSON probe.
+
+    Note on output_channel: per-request resolution (query string / header)
+    is **not supported** on the Python HTTP transport. FastMCP's Streamable
+    HTTP uses a stateful session model — the session task is created at
+    ``initialize`` and tools execute inside that long-lived task, so a
+    per-request contextvar set in middleware is invisible to tool code.
+    The output channel is therefore process-level (read from
+    ``PRTS_OUTPUT_CHANNEL`` env) on Python HTTP, matching Python stdio.
+    The TypeScript HTTP transport does support per-request resolution
+    because it resolves the channel at session-creation time and injects
+    it into ``createMcpServer(channel)``.
     """
-    from starlette.middleware.base import BaseHTTPMiddleware
     from starlette.responses import JSONResponse
     from starlette.routing import Route
 
-    from prts_mcp.output import set_output_channel, reset_output_channel
-
     app = mcp.streamable_http_app()
 
-    class OutputChannelMiddleware(BaseHTTPMiddleware):
-        async def dispatch(self, request, call_next):
-            query_val = request.query_params.get("output_channel")
-            # Starlette headers are case-insensitive
-            header_val = request.headers.get("x-prts-output-channel")
-            channel = _resolve_http_channel(query_val, header_val)
-            token = set_output_channel(channel)
-            try:
-                response = await call_next(request)
-            finally:
-                reset_output_channel(token)
-            return response
+    async def health(_request):
+        return JSONResponse({"status": "ok"})
 
-    app.add_middleware(OutputChannelMiddleware)
+    # Prepend /health so it is matched before any catch-all.
+    app.router.routes.insert(0, Route("/health", health))
+
+    return app
 
     async def health(_request):
         return JSONResponse({"status": "ok"})
