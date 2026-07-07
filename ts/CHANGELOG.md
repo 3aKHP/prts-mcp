@@ -4,9 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
-
-## [2.2.0] - 2026-07-07
+## [2.2.0] - 2026-07-08
 
 ### Added
 
@@ -15,6 +13,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
   `smoke:http:fixture:node`, and `dev:bun` for Bun-native development.
 - Added an explicit `bun.lock`/`package.json` drift check in `verify-ts` so
   dual-lockfile desync fails fast with an actionable message.
+- Extended `build-image-ts` to also run on `release/**` pull requests so the
+  default Bun image is validated before shipping to main.
+
+### Fixed
+
+- Fixed the default Docker image shipping without bundled fallback data:
+  `.dockerignore`'s `*.zip` rule stripped the CI-pre-fetched
+  `data/storyjson/zh_CN.zip` (and gamedata archives) from `COPY data/ data/`,
+  leaving the container without offline storyjson fallback. Added negation
+  rules so bundled data zips reach the image.
 
 ### Changed
 
