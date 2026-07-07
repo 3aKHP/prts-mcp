@@ -113,8 +113,8 @@ def _start_server(extra_env: dict | None = None) -> dict:
 
     proc = subprocess.Popen(
         [sys.executable, "-m", "prts_mcp.server"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
         env=env,
     )
     _wait_for_health(origin)
@@ -197,12 +197,12 @@ def test_output_channel_env_governs_not_query():
     """Python HTTP output_channel is process-level (env), not per-request.
 
     Starts a server with PRTS_OUTPUT_CHANNEL=structured, then calls a
-    structured tool (list_enemies) with ?output_channel=content in the
-    query string. If query-string resolution worked, the response would
-    be content-only (structuredContent null). Because the env governs and
+    structured tool (search) with ?output_channel=content in the query
+    string. If query-string resolution worked, the response would be
+    content-only (structuredContent null). Because the env governs and
     the query is ignored, structuredContent stays non-null — proving
-    env-only behavior. Uses list_enemies which needs GameData excel
-    tables; skips if that data is absent.
+    env-only behavior. Uses search(operators) which needs the
+    character_table; skips if that data is absent or returns no results.
     """
     char_table = GAMEDATA_PATH / "zh_CN" / "gamedata" / "excel" / "character_table.json"
     if not char_table.is_file():
@@ -251,6 +251,17 @@ def test_output_channel_env_governs_not_query():
         assert status == 200
         assert payload is not None
         result = payload.get("result", {})
+        # Guard against the data-unavailable error path: if search hit the
+        # error/missing-data branch, structuredContent is null regardless of
+        # channel (text_result is used), which would make the channel
+        # assertion below meaningless. Verify data was actually returned first.
+        content_text = ""
+        if result.get("content"):
+            content_text = result["content"][0].get("text", "")
+        assert "暂不可用" not in content_text and "未就绪" not in content_text, (
+            f"search returned a data-unavailable path; cannot verify channel "
+            f"behavior. Response: {content_text[:120]}"
+        )
         assert result.get("structuredContent") is not None, (
             "env PRTS_OUTPUT_CHANNEL=structured should govern; "
             "query ?output_channel=content must be ignored. "

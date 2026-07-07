@@ -105,7 +105,12 @@ def main() -> None:
         import uvicorn
 
         host = os.environ.get("HOST", "0.0.0.0")
-        port = int(os.environ.get("PORT", "3000"))
+        port_raw = os.environ.get("PORT", "3000")
+        try:
+            port = int(port_raw)
+        except ValueError:
+            _logger.error("PORT must be numeric, got %r. Exiting.", port_raw)
+            sys.exit(1)
         app = _build_http_app()
         _logger.info("PRTS-MCP Streamable HTTP listening on %s:%s (/mcp)", host, port)
         uvicorn.run(app, host=host, port=port, log_level="info")
