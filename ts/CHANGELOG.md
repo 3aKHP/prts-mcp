@@ -4,7 +4,28 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [2.3.0] - 2026-07-08
+
+### Added
+
+- Added stdio transport support: new `prts-mcp-ts-stdio` npm bin and
+  `ts/src/server-stdio.ts` entry point. Reuses the existing
+  `createMcpServer` factory and `runStartupSync`; connects an
+  `StdioServerTransport` for single-session local MCP clients (Claude
+  Desktop, Claude Code, Cursor). Breaks the 2.0 transport split — the
+  TypeScript implementation now supports both Streamable HTTP (existing
+  `prts-mcp-ts` / `prts-mcp-ts-bun` bins) and stdio.
+- Added `start:stdio` / `start:stdio:bun` npm scripts.
+- Added `e2eStdio.test.ts` covering stdio initialize handshake, tools/list,
+  and graceful error handling.
+- Extended `smoke-package-bun.mjs` to assert the `prts-mcp-ts-stdio` bin
+  shim is installed and non-empty after `npm pack` + `bun add`.
+
+### Changed
+
+- `server.ts` now exports `createMcpServer`, `SERVER_VERSION`, and `log`
+  (previously module-private) so the stdio entry point can reuse them
+  without duplicating tool registration logic.
 
 ## [2.2.0] - 2026-07-08
 
