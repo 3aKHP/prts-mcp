@@ -65,6 +65,42 @@ test("searchPrts keeps results when redirect lookup fails", async () => {
   }
 });
 
+test("searchPrts batches redirect resolution", async () => {
+  const requests: string[] = [];
+  const restore = mockFetch([
+    {
+      query: {
+        searchinfo: { totalhits: 2 },
+        search: [
+          { title: "别名甲", snippet: "# redirect [[目标甲]]" },
+          { title: "别名乙", snippet: "# redirect [[目标乙]]" },
+        ],
+      },
+    },
+    {
+      query: {
+        redirects: [
+          { from: "别名甲", to: "目标甲" },
+          { from: "别名乙", to: "目标乙" },
+        ],
+      },
+    },
+  ], requests);
+  try {
+    assert.deepEqual(await searchPrts("别名", 2), {
+      totalHits: 2,
+      results: [
+        { title: "目标甲", snippet: "目标甲" },
+        { title: "目标乙", snippet: "目标乙" },
+      ],
+    });
+    assert.equal(requests.length, 2);
+    assert.equal(new URL(requests[1]).searchParams.get("titles"), "别名甲|别名乙");
+  } finally {
+    restore();
+  }
+});
+
 test("searchPrts uses native redirecttitle without another request", async () => {
   const requests: string[] = [];
   const restore = mockFetch([

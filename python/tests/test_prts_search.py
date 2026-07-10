@@ -93,6 +93,43 @@ def test_search_prts_keeps_result_when_redirect_lookup_fails(
     }
 
 
+def test_search_prts_batches_redirect_resolution(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = _patch_client(
+        monkeypatch,
+        [
+            {
+                "query": {
+                    "searchinfo": {"totalhits": 2},
+                    "search": [
+                        {"title": "别名甲", "snippet": "# redirect [[目标甲]]"},
+                        {"title": "别名乙", "snippet": "# redirect [[目标乙]]"},
+                    ],
+                },
+            },
+            {
+                "query": {
+                    "redirects": [
+                        {"from": "别名甲", "to": "目标甲"},
+                        {"from": "别名乙", "to": "目标乙"},
+                    ],
+                },
+            },
+        ],
+    )
+
+    assert asyncio.run(search_prts("别名", limit=2)) == {
+        "totalhits": 2,
+        "results": [
+            {"title": "目标甲", "snippet": "目标甲"},
+            {"title": "目标乙", "snippet": "目标乙"},
+        ],
+    }
+    assert len(client.requests) == 2
+    assert client.requests[1]["titles"] == "别名甲|别名乙"
+
+
 def test_search_prts_uses_native_redirect_title(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
