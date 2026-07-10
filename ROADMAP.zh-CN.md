@@ -1,6 +1,6 @@
 # PRTS-MCP 路线图
 
-_最近更新：2026-07-08_ · [English](ROADMAP.md)
+_最近更新：2026-07-10_ · [English](ROADMAP.md)
 
 PRTS-MCP 已进入 1.x 稳定期。1.7.0 是最后一个 1.x 功能版本和 1.7 LTS 基线。本文档记录**接下来要做什么**——已发布的内容请查看 Python 和 TypeScript 各自的 CHANGELOG。
 

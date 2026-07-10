@@ -1,6 +1,6 @@
 # PRTS-MCP Roadmap
 
-_Last updated: 2026-07-08_ · [中文版](ROADMAP.zh-CN.md)
+_Last updated: 2026-07-10_ · [中文版](ROADMAP.zh-CN.md)
 
 PRTS-MCP is past 1.0. Version 1.7.0 is the final 1.x feature release and the 1.7 LTS baseline. This document tracks **what comes next** — not what has shipped. For shipped features, see the Python and TypeScript CHANGELOGs.
 
