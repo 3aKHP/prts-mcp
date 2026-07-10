@@ -3,10 +3,11 @@ import test from "node:test";
 
 import { searchPrts } from "../src/api/prtsWiki.js";
 
-function mockFetch(payloads: unknown[], requests: string[] = []): () => void {
+function mockFetch(payloads: unknown[], requests?: string[]): () => void {
   const original = globalThis.fetch;
+  const recordedRequests = requests ?? [];
   globalThis.fetch = (async (input) => {
-    requests.push(String(input));
+    recordedRequests.push(String(input));
     const payload = payloads.shift();
     if (payload instanceof Error) throw payload;
     return {
@@ -38,6 +39,7 @@ test("searchPrts resolves redirect-like results", async () => {
     });
     assert.equal(new URL(requests[0]).searchParams.get("srprop"), "snippet|redirecttitle");
     assert.equal(new URL(requests[1]).searchParams.get("redirects"), "1");
+    assert.equal(new URL(requests[1]).searchParams.get("titles"), "阿米亚");
   } finally {
     restore();
   }
@@ -58,6 +60,31 @@ test("searchPrts keeps results when redirect lookup fails", async () => {
       totalHits: 1,
       results: [{ title: "阿米亚", snippet: "阿米娅" }],
     });
+  } finally {
+    restore();
+  }
+});
+
+test("searchPrts uses native redirecttitle without another request", async () => {
+  const requests: string[] = [];
+  const restore = mockFetch([
+    {
+      query: {
+        searchinfo: { totalhits: 1 },
+        search: [{
+          title: "阿米亚",
+          redirecttitle: "阿米娅",
+          snippet: "罗德岛领袖。",
+        }],
+      },
+    },
+  ], requests);
+  try {
+    assert.deepEqual(await searchPrts("阿米亚", 1), {
+      totalHits: 1,
+      results: [{ title: "阿米娅", snippet: "罗德岛领袖。" }],
+    });
+    assert.equal(requests.length, 1);
   } finally {
     restore();
   }

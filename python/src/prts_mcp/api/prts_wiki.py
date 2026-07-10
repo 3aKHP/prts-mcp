@@ -136,7 +136,9 @@ async def search_prts(
     for item in data.get("query", {}).get("search", []):
         title = item["title"]
         raw_snippet = item.get("snippet", "")
-        if not item.get("redirecttitle") and _is_redirect_like(raw_snippet):
+        if item.get("redirecttitle"):
+            title = item["redirecttitle"]
+        elif _is_redirect_like(raw_snippet):
             target = await _resolve_redirect_title(title)
             if target:
                 title = target

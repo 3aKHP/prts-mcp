@@ -184,7 +184,9 @@ export async function searchPrts(
   for (const item of data.query?.search ?? []) {
     let title = item.title;
     const rawSnippet = item.snippet ?? "";
-    if (!item.redirecttitle && isRedirectLike(rawSnippet)) {
+    if (item.redirecttitle) {
+      title = item.redirecttitle;
+    } else if (isRedirectLike(rawSnippet)) {
       title = await resolveRedirectTitle(title) ?? title;
     }
     if (filterTechnical && isTechnicalPage(title)) continue;

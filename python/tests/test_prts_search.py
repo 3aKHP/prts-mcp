@@ -93,6 +93,34 @@ def test_search_prts_keeps_result_when_redirect_lookup_fails(
     }
 
 
+def test_search_prts_uses_native_redirect_title(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = _patch_client(
+        monkeypatch,
+        [
+            {
+                "query": {
+                    "searchinfo": {"totalhits": 1},
+                    "search": [
+                        {
+                            "title": "阿米亚",
+                            "redirecttitle": "阿米娅",
+                            "snippet": "罗德岛领袖。",
+                        },
+                    ],
+                },
+            },
+        ],
+    )
+
+    assert asyncio.run(search_prts("阿米亚", limit=1)) == {
+        "totalhits": 1,
+        "results": [{"title": "阿米娅", "snippet": "罗德岛领袖。"}],
+    }
+    assert len(client.requests) == 1
+
+
 def test_search_prts_filters_technical_pages_and_keeps_totalhits(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
