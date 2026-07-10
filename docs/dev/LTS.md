@@ -29,9 +29,9 @@ Not allowed in `1.7.x`:
 
 | Branch | Purpose |
 |--------|---------|
-| `main` | Latest stable release line. It is `1.7.0` until 2.0 ships. |
+| `main` | Latest stable release line. Currently 2.x. |
 | `lts/1.7` | Long-term 1.7.x maintenance branch, created from the 1.7.0 release commit. |
-| `dev` | Active 2.0 development after the 1.7.0 LTS release. |
+| `develop` | Active development integration after the 1.7.0 LTS release. |
 
 Do not push directly to any long-lived branch. Use PRs.
 
@@ -58,7 +58,8 @@ Do not push directly to any long-lived branch. Use PRs.
    LTS prerelease tags are not supported: `alpha` and `beta` are reserved for
    the current release line.
 
-6. Cherry-pick or reimplement the fix on `dev` when it also applies to 2.0.
+6. Cherry-pick or reimplement the fix on `develop` when it also applies to the
+   current development line.
 
 `main` follows the current stable 2.x release line. Do not merge `lts/1.7`
 back to `main`; cherry-pick or reimplement an applicable fix on the current
