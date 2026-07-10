@@ -141,7 +141,9 @@ jobs:
             PRERELEASE="${VERSION#*-}"
             echo "value=${PRERELEASE%%.*}" >> $GITHUB_OUTPUT
           else
-            echo "value=latest" >> $GITHUB_OUTPUT
+            # Keep the 1.7 maintenance line separate from the current stable
+            # release line. The latter alone owns npm's `latest` dist-tag.
+            echo "value=lts-1.7" >> $GITHUB_OUTPUT
           fi
 
       - name: Publish to npm (Trusted Publishing)
