@@ -32,3 +32,4 @@ LICENSE      text eol=lf
 *.gif   binary
 *.ico   binary
 *.lock  binary
+python/uv.lock text eol=lf diff

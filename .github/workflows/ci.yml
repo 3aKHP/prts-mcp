@@ -35,11 +35,17 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install package
-        run: python -m pip install -e python/ pytest
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.28"
+          enable-cache: true
+
+      - name: Sync Python environment
+        run: uv sync --project python --locked
 
       - name: Compile source files
-        run: python -m compileall python/src python/scripts
+        run: uv run --project python --no-sync python -m compileall python/src python/scripts
 
       - name: Download storyjson zip for integration tests
         run: |
@@ -53,7 +59,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run tests
-        run: python -m pytest python/tests
+        run: uv run --project python --no-sync python -m pytest python/tests
         env:
           STORYJSON_ZIP: ${{ github.workspace }}/.ci-data/storyjson/zh_CN.zip
 
@@ -61,7 +67,7 @@ jobs:
         run: |
           mkdir -p .ci-empty/gamedata
           export GAMEDATA_PATH="$PWD/.ci-empty/gamedata"
-          python - <<'PY'
+          uv run --project python --no-sync python - <<'PY'
           from pathlib import Path
           from prts_mcp.config import Config
           from prts_mcp.data.operator import get_operator_archives

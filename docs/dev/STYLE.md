@@ -2,7 +2,9 @@
 
 面向所有协作者（人类与 AI）。本文件记录代码架构硬原则、反模式、CHANGELOG 规则、测试规范以及历史陷阱。
 
-日常工作流见 [`../../CLAUDE.md`](../../CLAUDE.md)；项目现状见 [`../../STATUS.md`](../../STATUS.md)。
+公开贡献流程见 [`../../CONTRIBUTING.md`](../../CONTRIBUTING.md)，跨平台开发环境见
+[`ENVIRONMENT.md`](ENVIRONMENT.md)。当前维护者与 AI 的日常工作流见
+[`../../CLAUDE.md`](../../CLAUDE.md)；项目现状见 [`../../STATUS.md`](../../STATUS.md)。
 
 ---
 
@@ -165,7 +167,7 @@ async def get_operator_archives(
 - 测试文件：`python/tests/test_<module>.py`
 - 使用 pytest fixtures，共享 fixture 放 `conftest.py`
 - 大型测试数据（zip 文件）通过 `story_zip` fixture 按需 skip
-- 运行：`cd python && python -m pytest tests/ -v`
+- 运行：`uv run --directory python --locked python -m pytest tests/ -v`
 
 ---
 
@@ -222,7 +224,7 @@ server.tool(
 - 测试文件：`ts/tests/<module>.test.ts`
 - 使用 Node.js 内置 `node:test` + `node:assert`
 - 共享 fixture 放 `ts/tests/fixtures/`
-- 运行：`cd ts && npm test`
+- 运行：`cd ts && npm run build && npm test`
 
 ---
 
@@ -255,15 +257,17 @@ TS 文件头注释应注明对应的 Python 文件：`Mirrors python/src/prts_mc
 
 | 文件 | develop 分支 | main 分支（发布时） |
 |------|---------|-------------------|
-| `python/pyproject.toml` | `2.0.0.dev0` | `2.0.0` |
-| `ts/package.json` | `2.0.0-dev.0` | `2.0.0` |
-| `ts/package-lock.json` | `2.0.0-dev.0` | `2.0.0` |
+| `python/pyproject.toml` | `2.4.0.dev0` | `2.4.0` |
+| `python/uv.lock` | `2.4.0.dev0` | `2.4.0` |
+| `ts/package.json` | `2.4.0-dev.0` | `2.4.0` |
+| `ts/package-lock.json` | `2.4.0-dev.0` | `2.4.0` |
 
 **版本号需要同步更新的地方**：
 
 | 文件 | 内容 |
 |------|------|
 | `python/pyproject.toml` | `version` 字段（develop 分支带 `.dev0` 后缀） |
+| `python/uv.lock` | Python 项目版本和锁定依赖 |
 | `ts/package.json` | `version` 字段（develop 分支带 `-dev.0` 后缀） |
 | `python/CHANGELOG.md` | 新版本条目 |
 | `ts/CHANGELOG.md` | 新版本条目 |
@@ -307,13 +311,13 @@ Tag 使用实现级前缀：`python/vX.Y.Z` 和 `ts/vX.Y.Z`。Tag 必须打在 `
 
 ```bash
 # Python
-cd python && python -m pytest tests/ -v          # 全量单测
-cd python && python -m pytest tests/ -v -k test_xxx  # 单个测试
+uv run --directory python --locked python -m pytest tests/ -v             # 全量单测
+uv run --directory python --locked python -m pytest tests/ -v -k test_xxx # 单个测试
 
 # TypeScript
-cd ts && npm test                                  # 全量单测
-cd ts && npm run typecheck                         # 类型检查
-cd ts && npm run build                             # 编译
+npm --prefix ts run build                           # 先生成 stdio e2e 所需 dist
+npm --prefix ts test                                # 全量单测
+npm --prefix ts run typecheck                       # 类型检查
 ```
 
 ### 测试规范

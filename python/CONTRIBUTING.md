@@ -1,101 +1,15 @@
-# Contributing
+# Python Contribution Notes
 
-感谢你愿意参与 `prts-mcp`。
+整个仓库的贡献规则见 [`CONTRIBUTING.md`](../CONTRIBUTING.md)，跨平台环境准备见
+[`docs/dev/ENVIRONMENT.md`](../docs/dev/ENVIRONMENT.md)。
 
-当前项目有 1.7 LTS 维护线和 2.0 开发线。为了避免把本地开发习惯、私有数据和临时发布方式带进公开仓库，请在提交前先阅读下面这些约束。
-
-## Branch Strategy
-
-长期分支：
-
-- `main`：最新稳定发布。2.0 发布前指向 1.7.0 LTS。
-- `lts/1.7`：1.7.x 长期维护线，只接受兼容性、安全性、数据同步、关键缺陷和文档修复。
-- `dev`：2.0 开发集成。
-
-分支规则：
-
-- **2.0 功能开发、重构、性能优化、文档更新**：从 `dev` 拉出新分支，PR 目标为 `dev`。
-- **1.7 LTS 修复**：从 `lts/1.7` 拉出新分支，PR 目标为 `lts/1.7`，必要时同步到 `dev`。
-- **最新稳定紧急修复**：从 `main` 拉出新分支，PR 目标为 `main`，合并后 forward merge 或 cherry-pick 到 `dev`。
-- 分支命名：`<type>/v<version>-<topic>`，如 `feat/v2.0.0-tool-surface`、`fix/v1.7.1-sync-schema`。
-- 未经过整理的实验分支、临时部署分支和本地备份分支不要推到公开远程。
-
-1.7 LTS 维护范围见 [`../docs/dev/LTS.md`](../docs/dev/LTS.md)。
-
-## Commit Convention
-
-本仓库提交信息遵循 Conventional Commits。
-
-推荐格式：
-
-```text
-type(scope): summary
-```
-
-常用类型：
-
-- `feat`: 新功能
-- `fix`: Bug 修复
-- `docs`: 文档更新
-- `refactor`: 重构但不改变外部行为
-- `test`: 测试相关
-- `chore`: 构建、工具、仓库维护
-- `ci`: CI/CD 配置
-
-示例：
-
-```text
-feat(config): add bundled data fallback path
-docs(deployment): update volume mount instructions
-ci(github): update verify assertion for new error message
-```
-
-## Public Repo Boundary
-
-本仓库包含源码、文档和预置的干员数据文件（`data/gamedata/`）。预置数据由 CI 在构建镜像时通过 `scripts/fetch_gamedata.py` 从 `3aKHP/ArknightsGameData` Release 压缩包拉取，作为镜像内的离线保底。
-
-请不要提交以下内容：
-
-- `local_repo.jsonc`
-- `.mcp.json`
-- `docker-compose.override.yml`
-- 本机绝对路径、私有镜像地址、个人临时部署脚本
-- 大体积打包产物，如 `*.tar`
-
-如果你需要本地配置，请优先使用仓库里的示例文件：
-
-- `.mcp.example.json`
-- `docker-compose.override.example.yml`
-
-## Local Development
+从仓库根目录运行 Python 检查：
 
 ```bash
-pip install -e .
-python -m compileall src scripts
+uv sync --directory python --locked
+uv run --directory python --locked python -m compileall src scripts
+uv run --directory python --locked python -m pytest tests -q
 ```
 
-如果你需要完整干员功能，直接运行服务即可，auto-sync 会在启动时自动下载数据：
-
-```bash
-prts-mcp
-```
-
-如担心 GitHub 匿名限流，设置 `GITHUB_TOKEN`；如需强制使用自己的本地数据目录并禁用 auto-sync，设置 `GAMEDATA_PATH`。
-
-如果你要在本地构建 Docker 镜像并希望镜像内含 bundled 数据：
-
-```bash
-python scripts/fetch_gamedata.py
-docker build -t prts-mcp .
-```
-
-`fetch_gamedata.py` 会下载 `zh_CN-excel.zip` 并解压到 `data/gamedata/`，运行时 auto-sync 也使用同一条 Release archive 链路。
-
-兼容脚本 `scripts/package_operator_data.py` 仍在仓库中，但已是 deprecated 入口，不再推荐使用。
-
-## Pull Requests
-
-- 保持单个 PR 聚焦一个主题。
-- 在描述中说明改动动机、行为变化和验证方式。
-- 如果改动影响部署、数据路径或仓库边界，请同步更新 `README.md` 或 `docs/deployment.md`。
-- 提交前请确认 CI 能通过。
+Python 实现的使用与部署说明见 [`README.md`](README.md)。代码需要遵守根贡献
+指南和 [`docs/dev/STYLE.md`](../docs/dev/STYLE.md) 中的架构、store 与 parity 约束。
