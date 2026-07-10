@@ -60,7 +60,9 @@ Do not push directly to any long-lived branch. Use PRs.
 
 6. Cherry-pick or reimplement the fix on `dev` when it also applies to 2.0.
 
-If `main` still points to the 1.7 line when the fix ships, merge `lts/1.7` back to `main` or target `main` directly according to the maintainer's release decision. After 2.0 ships, `main` follows 2.0 and `lts/1.7` remains the only 1.7 maintenance branch.
+`main` follows the current stable 2.x release line. Do not merge `lts/1.7`
+back to `main`; cherry-pick or reimplement an applicable fix on the current
+development line instead.
 
 ## 2.0 Boundary
 
