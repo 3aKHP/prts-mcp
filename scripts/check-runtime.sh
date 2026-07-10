@@ -132,7 +132,7 @@ check_bun() {
   if [[ ! "${major}" =~ ^[0-9]+$ ]] ||
      [[ ! "${minor}" =~ ^[0-9]+$ ]] ||
      [[ ! "${patch}" =~ ^[0-9]+$ ]]; then
-    echo "Could not parse Bun version: ${version}" >&2
+    echo "Unsupported or malformed Bun version: ${version}. Expected stable MAJOR.MINOR.PATCH." >&2
     return 1
   fi
   if ((major < 1 ||

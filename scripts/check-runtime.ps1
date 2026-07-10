@@ -123,7 +123,19 @@ Invoke-Required "Bun runtime" {
     $bunVersion = & $bun.Source --version
     Assert-NativeExit "bun --version"
     Write-Host "bun=$bunVersion"
-    if ([version]$bunVersion -lt [version]"1.3.14") {
+    if ($bunVersion -match '^[0-9]+\.[0-9]+\.[0-9]+-') {
+        throw "Bun prerelease versions are not supported: $bunVersion. Use Bun >=1.3.14 stable."
+    }
+
+    $parsedBunVersion = $null
+    if (
+        $bunVersion -notmatch '^[0-9]+\.[0-9]+\.[0-9]+$' -or
+        -not [version]::TryParse($bunVersion, [ref]$parsedBunVersion)
+    ) {
+        throw "Unsupported or malformed Bun version: $bunVersion. Expected stable MAJOR.MINOR.PATCH."
+    }
+
+    if ($parsedBunVersion -lt [version]"1.3.14") {
         throw "Bun >=1.3.14 is required."
     }
 }
