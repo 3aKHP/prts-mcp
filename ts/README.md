@@ -1,6 +1,7 @@
 # PRTS MCP Server — TypeScript 实现
 
-明日方舟同人创作辅助 MCP Server，TypeScript 版本。通过 **Streamable HTTP 传输**（单端点 `/mcp`）对外提供服务，适合部署在个人服务器或云环境，供他人通过 HTTP 接入。
+明日方舟同人创作辅助 MCP Server，TypeScript 版本。支持 **Streamable HTTP**
+（单端点 `/mcp`）与 **stdio**，既可部署为 HTTP 服务，也可接入本地 MCP 客户端。
 
 提供 23 个 MCP 工具（2.0）：PRTS 词条检索与页面结构、干员档案/语音/基础信息、剧情活动与台词、角色出场追踪、全文搜索、敌人图鉴、关卡查询、关卡敌人融合，以及物品/材料查询。完整清单见仓库根目录 [`README.md`](../README.md)。
 
@@ -167,8 +168,8 @@ docker run -d -p 3000:3000 -v prts-mcp-ts-data:/data/gamedata -v prts-mcp-ts-lev
 ## 预置 bundled 数据（本地构建推荐）
 
 ```bash
-pip install -e python/
-python python/scripts/fetch_gamedata.py --output ts/data/gamedata
+uv sync --directory python --locked
+uv run --directory python --locked python scripts/fetch_gamedata.py --output ../ts/data/gamedata
 mkdir -p ts/data/storyjson
 gh release download --repo 3aKHP/ArknightsStoryJson --pattern "zh_CN.zip" --dir ts/data/storyjson/ --clobber
 docker build -f ts/Dockerfile -t prts-mcp-ts .

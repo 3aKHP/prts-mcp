@@ -39,19 +39,21 @@ Do not push directly to any long-lived branch. Use PRs.
 
 1. Branch from `lts/1.7` with `fix/v1.7.x-<topic>` or `docs/v1.7.x-<topic>`.
 2. Make the smallest compatible fix.
-3. Run `.\scripts\check-runtime.ps1 -Full` for runtime-sensitive changes.
+3. Run `./scripts/check-runtime.sh --full` for runtime-sensitive changes.
 4. Open a PR to `lts/1.7`.
 5. After merge, tag the LTS commit with both implementation tags:
 
-   ```powershell
+   ```bash
    git tag python/v1.7.x
    git tag ts/v1.7.x
    git push origin python/v1.7.x ts/v1.7.x
    ```
 
-6. Cherry-pick or reimplement the fix on `develop` when it also applies to 2.0.
+6. Cherry-pick or reimplement the fix on `develop` when it also applies to the
+   current development line.
 
-If `main` still points to the 1.7 line when the fix ships, merge `lts/1.7` back to `main` or target `main` directly according to the maintainer's release decision. After 2.0 ships, `main` follows 2.0 and `lts/1.7` remains the only 1.7 maintenance branch.
+`main` follows the latest stable 2.x release. Do not merge `lts/1.7` into
+`main`; cherry-pick or reimplement applicable fixes on `develop` instead.
 
 ## 2.0 Boundary
 
@@ -64,8 +66,8 @@ If `main` still points to the 1.7 line when the fix ships, merge `lts/1.7` back 
   design.
 - Removed or hidden legacy tool aliases.
 
-Cross-transport parity (Python gaining HTTP, TypeScript gaining stdio) was an
-original 2.0 boundary goal but is **deferred beyond 2.0**; 2.0 ships with the
-same transport split as 1.x (Python = stdio, TypeScript = Streamable HTTP).
+Cross-transport parity was deferred from 2.0 and delivered in 2.3.0: Python
+gained Streamable HTTP and TypeScript gained stdio, while both original
+transport entry points remained compatible.
 See [`docs/migration-1.x-to-2.0.md`](../migration-1.x-to-2.0.md) for the
 delivered 2.0 changes.

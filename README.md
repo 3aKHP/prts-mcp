@@ -118,6 +118,12 @@ Game data lives in the `gamedata` volume. Level combat data lives in the `gameda
 
 Published Docker images and the npm package include bundled fallback game/level/story data prepared by CI. The PyPI package stays lightweight and does not embed these data files; it relies on startup auto-sync or user-provided data paths.
 
+### Development
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and
+[`docs/dev/ENVIRONMENT.md`](docs/dev/ENVIRONMENT.md) for Linux/WSL, Windows,
+and macOS development setup.
+
 ---
 
 <a id="中文"></a>
@@ -218,6 +224,12 @@ TypeScript 实现支持 Bun 与 Node.js。自 2.2.0 起 **Bun 是默认生产运
 干员/表格数据存放在 `gamedata` volume，关卡战斗数据存放在 `gamedata-levels` volume，剧情数据存放在 `storyjson` volume，均在服务器开始监听后于后台自动同步。
 
 正式发布的 Docker 镜像和 npm 包会由 CI 预置 bundled 兜底数据；PyPI 包保持轻量，不内置这些数据文件，依赖启动时 auto-sync 或用户自行提供数据路径。
+
+### 开发与贡献
+
+贡献流程见 [`CONTRIBUTING.md`](CONTRIBUTING.md)，Linux/WSL、Windows 和
+macOS 的开发环境入口见
+[`docs/dev/ENVIRONMENT.md`](docs/dev/ENVIRONMENT.md)。
 
 ---
 

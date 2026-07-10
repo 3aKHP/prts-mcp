@@ -1,6 +1,6 @@
 # PRTS-MCP 项目状态
 
-_Last updated: 2026-07-08_
+_Last updated: 2026-07-10_
 
 ## 当前版本
 
@@ -67,6 +67,7 @@ PRTS-MCP/
 │   │   └── utils/          # wikitext 清洗等工具
 │   ├── tests/              # pytest 测试
 │   ├── pyproject.toml      # 包元数据、依赖
+│   ├── uv.lock             # Python 开发环境锁文件
 │   └── CHANGELOG.md
 ├── ts/                     # TypeScript 实现 (Streamable HTTP, Express)
 │   ├── src/                # 源码，结构对齐 python/
@@ -96,6 +97,7 @@ PRTS-MCP/
 │   ├── cd.yml              # Python PyPI 发布
 │   └── cd-ts.yml           # TS npm + Docker 发布
 ├── CLAUDE.md               # AI 协作说明（本会话必读）
+├── CONTRIBUTING.md         # 公开贡献指南与环境准备入口
 ├── ROADMAP.md              # 路线图
 ├── STATUS.md               # 本文件
 └── README.md               # 面向用户的说明

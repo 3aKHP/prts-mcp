@@ -2,8 +2,9 @@
 from __future__ import annotations
 
 import os
-import pytest
 from pathlib import Path
+
+import pytest
 
 # ---------------------------------------------------------------------------
 # Local zip path — used only when the file actually exists on disk.
@@ -13,9 +14,10 @@ from pathlib import Path
 # Override via STORYJSON_ZIP env var for other development environments.
 # ---------------------------------------------------------------------------
 
-_LOCAL_ZIP = Path(
-    os.environ.get("STORYJSON_ZIP", r"F:\2026-Spring\ArknightsStoryJson\zh_CN.zip")
+_DEFAULT_STORY_ZIP = (
+    Path(__file__).resolve().parents[2] / "data" / "storyjson" / "zh_CN.zip"
 )
+_LOCAL_ZIP = Path(os.environ.get("STORYJSON_ZIP", str(_DEFAULT_STORY_ZIP)))
 
 
 @pytest.fixture(scope="session")
