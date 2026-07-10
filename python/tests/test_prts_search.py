@@ -104,8 +104,8 @@ def test_search_prts_uses_native_redirect_title(
                     "searchinfo": {"totalhits": 1},
                     "search": [
                         {
-                            "title": "阿米亚",
-                            "redirecttitle": "阿米娅",
+                            "title": "阿米娅",
+                            "redirecttitle": "阿米亚",
                             "snippet": "罗德岛领袖。",
                         },
                     ],

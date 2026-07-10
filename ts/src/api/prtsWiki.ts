@@ -107,23 +107,25 @@ function isRedirectLike(snippet: string): boolean {
   return REDIRECT_SNIPPET_RE.test(snippet);
 }
 
-async function resolveRedirectTitle(title: string): Promise<string | null> {
+async function resolveRedirectTitles(titles: string[]): Promise<Map<string, string>> {
+  if (titles.length === 0) return new Map();
   try {
     const data = (await prtsGet({
       action: "query",
       redirects: 1,
-      titles: title,
+      titles: titles.join("|"),
       format: "json",
     })) as {
       query?: { redirects?: Array<{ from?: string; to?: string }> };
     };
+    const targets = new Map<string, string>();
     for (const item of data.query?.redirects ?? []) {
-      if (item.from === title && item.to) return item.to;
+      if (item.from && item.to) targets.set(item.from, item.to);
     }
+    return targets;
   } catch {
-    return null;
+    return new Map();
   }
-  return null;
 }
 
 function stripHtml(text: string): string {
@@ -180,17 +182,19 @@ export async function searchPrts(
     };
   };
   const totalHits = data.query?.searchinfo?.totalhits ?? 0;
+  const searchResults = data.query?.search ?? [];
+  const redirectTargets = await resolveRedirectTitles(
+    searchResults
+      .filter((item) => !item.redirecttitle && isRedirectLike(item.snippet ?? ""))
+      .map((item) => item.title),
+  );
   const results: SearchResult[] = [];
-  for (const item of data.query?.search ?? []) {
+  for (const item of searchResults) {
+    if (results.length >= limit) break;
     let title = item.title;
     const rawSnippet = item.snippet ?? "";
-    if (item.redirecttitle) {
-      title = item.redirecttitle;
-    } else if (isRedirectLike(rawSnippet)) {
-      title = await resolveRedirectTitle(title) ?? title;
-    }
+    if (!item.redirecttitle) title = redirectTargets.get(title) ?? title;
     if (filterTechnical && isTechnicalPage(title)) continue;
-    if (results.length >= limit) break;
     let snippet = stripWikitext(rawSnippet);
     snippet = unescapeHTMLEntities(snippet);
     snippet = cleanSnippet(snippet);

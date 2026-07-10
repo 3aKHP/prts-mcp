@@ -76,8 +76,10 @@ def _is_redirect_like(snippet: str) -> bool:
     return bool(_REDIRECT_SNIPPET_RE.search(snippet))
 
 
-async def _resolve_redirect_title(title: str) -> str | None:
-    """Resolve a redirect page title, returning None if lookup fails or is unchanged."""
+async def _resolve_redirect_titles(titles: list[str]) -> dict[str, str]:
+    """Resolve redirect page titles in one request, returning known targets."""
+    if not titles:
+        return {}
     try:
         await _rate_limit()
         response = await _get_client().get(
@@ -85,18 +87,20 @@ async def _resolve_redirect_title(title: str) -> str | None:
             params={
                 "action": "query",
                 "redirects": "1",
-                "titles": title,
+                "titles": "|".join(titles),
                 "format": "json",
             },
         )
         response.raise_for_status()
         redirects = response.json().get("query", {}).get("redirects", [])
-        for item in redirects:
-            if item.get("from") == title and item.get("to"):
-                return item["to"]
+        return {
+            item["from"]: item["to"]
+            for item in redirects
+            if item.get("from") and item.get("to")
+        }
     except Exception as exc:
-        _logger.debug("Failed to resolve PRTS redirect title %r: %s", title, exc)
-    return None
+        _logger.debug("Failed to resolve PRTS redirect titles %r: %s", titles, exc)
+    return {}
 
 
 async def search_prts(
@@ -132,20 +136,23 @@ async def search_prts(
         return {"totalhits": 0, "results": []}
     data = resp.json()
     totalhits = data.get("query", {}).get("searchinfo", {}).get("totalhits", 0)
+    search_results = data.get("query", {}).get("search", [])
+    redirect_targets = await _resolve_redirect_titles([
+        item["title"]
+        for item in search_results
+        if not item.get("redirecttitle")
+        and _is_redirect_like(item.get("snippet", ""))
+    ])
     results: list[dict] = []
-    for item in data.get("query", {}).get("search", []):
-        title = item["title"]
-        raw_snippet = item.get("snippet", "")
-        if item.get("redirecttitle"):
-            title = item["redirecttitle"]
-        elif _is_redirect_like(raw_snippet):
-            target = await _resolve_redirect_title(title)
-            if target:
-                title = target
-        if filter_technical and _is_technical_page(title):
-            continue
+    for item in search_results:
         if len(results) >= limit:
             break
+        title = item["title"]
+        raw_snippet = item.get("snippet", "")
+        if not item.get("redirecttitle"):
+            title = redirect_targets.get(title, title)
+        if filter_technical and _is_technical_page(title):
+            continue
         snippet = strip_wikitext(raw_snippet)
         snippet = _html.unescape(snippet)
         snippet = _clean_snippet(snippet)

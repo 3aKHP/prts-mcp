@@ -72,8 +72,8 @@ test("searchPrts uses native redirecttitle without another request", async () =>
       query: {
         searchinfo: { totalhits: 1 },
         search: [{
-          title: "阿米亚",
-          redirecttitle: "阿米娅",
+          title: "阿米娅",
+          redirecttitle: "阿米亚",
           snippet: "罗德岛领袖。",
         }],
       },
