@@ -138,8 +138,8 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#ts/v}"
           if [[ "${VERSION}" == *-* ]]; then
-            PRERELEASE="${VERSION#*-}"
-            echo "value=${PRERELEASE%%.*}" >> $GITHUB_OUTPUT
+            echo "::error::LTS releases must use stable version tags; alpha and beta are reserved for the current release line"
+            exit 1
           else
             # Keep the 1.7 maintenance line separate from the current stable
             # release line. The latter alone owns npm's `latest` dist-tag.

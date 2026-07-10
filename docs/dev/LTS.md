@@ -50,14 +50,13 @@ Do not push directly to any long-lived branch. Use PRs.
    ```
 
    The TypeScript CD workflow on `lts/1.7` publishes stable npm releases under
-   the `lts-1.7` dist-tag. `latest` belongs exclusively to the current stable
-   release line on `main`; never move it as part of an LTS release. LTS
-   consumers should install `prts-mcp-ts@lts-1.7` (or a fully pinned version).
-   Before the next LTS release, seed the channel once with the current release:
-
-   ```bash
-   npm dist-tag add prts-mcp-ts@1.7.1 lts-1.7
-   ```
+   the `lts-1.7` dist-tag. npm's `latest` belongs exclusively to the current
+   stable release line on `main`; never move it as part of an LTS release.
+   LTS consumers should install `prts-mcp-ts@lts-1.7` (or a fully pinned
+   version). The channel is initialized at `1.7.1`; do not move it manually,
+   because each subsequent stable LTS release updates it automatically.
+   LTS prerelease tags are not supported: `alpha` and `beta` are reserved for
+   the current release line.
 
 6. Cherry-pick or reimplement the fix on `dev` when it also applies to 2.0.
 
