@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+## [2.3.1] - 2026-07-10
+
+### Security
+
+- Updated transitive production dependencies to resolve known vulnerabilities
+  in HTTP and JSON-schema support packages.
+
+### Fixed
+
+- Synchronized the `prts-mcp-ts-stdio` bin metadata in `package-lock.json`.
+
 ## [2.3.0] - 2026-07-08
 
 ### Added
