@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+## [2.3.1] - 2026-07-10
+
+### Changed
+
+- Kept the Python package version aligned with the TypeScript 2.3.1 security
+  update.
+
 ## [2.3.0] - 2026-07-08
 
 ### Added
