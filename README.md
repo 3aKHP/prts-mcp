@@ -29,7 +29,7 @@ This repository contains two independent implementations for different deploymen
 
 | Area | Python | TypeScript | 1.x policy |
 |------|--------|------------|------------|
-| Current line | `1.7.0` LTS | `1.7.0` LTS | 1.7.x is the final 1.x maintenance line |
+| Current line | `1.7.1` LTS | `1.7.1` LTS | 1.7.x is the final 1.x maintenance line |
 | MCP tools | Same 32 public tool names and required parameters | Same 32 public tool names and required parameters | Tool names, required parameters, and default markdown output stay stable through 1.7.x |
 | GameData | `GAMEDATA_PATH` or auto-synced `zh_CN-excel.zip` | `GAMEDATA_PATH` or auto-synced `zh_CN-excel.zip` | Custom paths disable auto-sync |
 | Level data | Auto-synced `zh_CN-levels.zip` beside GameData | Auto-synced `zh_CN-levels.zip` beside GameData | Custom GameData roots may provide their own `zh_CN/gamedata/levels` |
@@ -112,7 +112,7 @@ Published Docker images and the npm package include bundled fallback game/level/
 
 | 范围 | Python | TypeScript | 1.x 策略 |
 |------|--------|------------|----------|
-| 当前版本线 | `1.7.0` LTS | `1.7.0` LTS | 1.7.x 是最后的 1.x 维护线 |
+| 当前版本线 | `1.7.1` LTS | `1.7.1` LTS | 1.7.x 是最后的 1.x 维护线 |
 | MCP 工具 | 相同的 32 个工具名和必填参数 | 相同的 32 个工具名和必填参数 | 1.7.x 期间保持工具名、必填参数和默认 markdown 输出稳定 |
 | 干员数据 | `GAMEDATA_PATH` 或自动同步 `zh_CN-excel.zip` | `GAMEDATA_PATH` 或自动同步 `zh_CN-excel.zip` | 自定义路径会禁用自动同步 |
 | 关卡战斗数据 | 自动同步与 GameData 并列的 `zh_CN-levels.zip` | 自动同步与 GameData 并列的 `zh_CN-levels.zip` | 自定义 GameData 根目录可直接提供 `zh_CN/gamedata/levels` |

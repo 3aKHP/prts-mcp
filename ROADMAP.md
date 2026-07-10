@@ -1,14 +1,13 @@
 # PRTS-MCP Roadmap
 
-_Last updated: 2026-07-02_ · [中文版](ROADMAP.zh-CN.md)
+_Last updated: 2026-07-10_ · [中文版](ROADMAP.zh-CN.md)
 
 PRTS-MCP is past 1.0. Version 1.7.0 is the final 1.x feature release and the 1.7 LTS baseline. This document tracks **what comes next** — not what has shipped. For shipped features, see the Python and TypeScript CHANGELOGs.
 
-## Current Release
+## Current LTS Release
 
-- Python: `1.7.0` LTS
-- TypeScript: `1.7.0` LTS
-- `dev` branch current target after the LTS release: `2.0.0-dev`
+- Python: `1.7.1` LTS
+- TypeScript: `1.7.1` LTS
 - 32 public MCP tools, frozen in the 1.7 LTS line (CI-enforced).
 - See [migration guide](docs/migration-0.x-to-1.0.md) for the
   0.x → 1.0 transition.
@@ -108,81 +107,24 @@ The following feature ideas remain useful but are no longer scheduled as 1.x min
 | Critical bug fixes | Incorrect results, crashes, resource leaks, parity regressions |
 | Documentation fixes | LTS support notes, deployment corrections, migration clarifications |
 
-No new capabilities are planned for 1.7.x. Former patch-line ideas such as search unification, PRTS page unification, JSON output defaults, and golden test infrastructure now belong to 2.0 planning unless they are required to fix a 1.7 LTS regression.
+No new capabilities are planned for 1.7.x. Former patch-line ideas such as search unification, PRTS page unification, JSON output defaults, and golden test infrastructure are part of the delivered 2.x history unless they are required to fix a 1.7 LTS regression.
 
 ---
 
-## 2.0 Boundary Changes
+## 2.0 Boundary Changes (Delivered)
 
-Three structural shifts that warrant a major bump.
+2.0 delivered the planned major migration while keeping the 1.7 LTS line
+unchanged:
 
-### Tool surface consolidation (context budget)
+- **Tool surface:** schema-oriented consolidation reduced the public 2.x
+  surface from 32 to 23 tools. The 1.7 LTS line retains all 32 names.
+- **Structured output:** 2.x uses MCP `structuredContent` through an
+  `output_channel` control while preserving human-readable content by default.
+- **Transport parity:** both implementations support stdio and Streamable HTTP
+  on 2.x; 1.7 LTS keeps its established deployment roles.
 
-The 1.x tool surface reached 32 tools by the 1.7.0 LTS release. For long-context flagship models this is fine; for 128K-class models, every additional tool schema eats into the prompt budget and hurts tool-selection accuracy.
-
-**Background**: MCP currently has no protocol-level support for deferred tool loading. Closed proposals: lazy hydration (#1978), lazyRegistration (#2376). Open drafts: tool-search query (#1821), token-bloat mitigations (#1576). Claude Code's ToolSearch is an Anthropic-API-level feature (`tool_reference` blocks), not portable to Cursor/Cline/Chatbox.
-
-**Approach**: server-side consolidation by *schema shape*, not by data domain. Merge tools that share parameter structure and output shape; keep tools whose semantics genuinely differ. Estimated reduction: 24 → ~16 tools (about a third) without losing capability.
-
-**Phase 1 (2.0 migration design)**:
-
-- `search(scope, pattern, ...)` consolidates `search_data`,
-  `search_stories`, `search_enemies`, `list_search_scopes`. Same
-  parameter shape across all four; differs only in `scope`.
-- `prts_page(page_title, action, ...)` consolidates `read_prts_page`,
-  `list_prts_sections`, `get_prts_categories`, `get_prts_links`,
-  `get_prts_template`. Single primary key; action selects the
-  sub-operation.
-
-**Phase 2 (2.0)**: drop or hide the deprecated legacy aliases according to the final 2.0 migration plan. The 1.7 LTS line keeps the existing 32-tool surface.
-
-**What we explicitly will NOT consolidate**:
-
-- Operator triplet (`get_operator_archives` / `voicelines` /
-  `basic_info`): outputs differ in shape and length; merging hurts
-  LLM selection accuracy more than it saves context.
-- Enemy triplet (`list_enemies` / `get_enemy_info` / `search_enemies`):
-  same reason.
-- Story tools (`read_story` / `read_activity` / `get_event_summary`):
-  genuinely distinct actions on related-but-different data.
-
-The bar for consolidation: same parameter shape, similar output length and structure, an LLM choosing between them today is choosing between near-synonyms.
-
-### Output format becomes selectable
-
-- Add an optional `output_format=markdown|json` parameter (default
-  `markdown` in 1.x — additive, no break).
-- JSON mode returns structured objects suitable for downstream
-  automation.
-- 2.0 flips the **default** to `json`, making this the breaking change.
-- Markdown remains supported under explicit opt-in.
-
-The original staged plan expected 1.x opt-in. With 1.7 now serving as the LTS line, the exact migration path belongs to the 2.0 design phase and must be documented before the first 2.0 prerelease.
-
-### Implementation parity (Python ↔ TypeScript)
-
-Today the implementations have de-facto roles: Python is recommended for Docker / stdio, TypeScript for `npm install -g` / HTTP. 2.0 removes this asymmetry:
-
-- Both implementations support stdio **and** Streamable HTTP.
-- npm and PyPI packages have equivalent capability surface.
-- Environment variable names and defaults are unified.
-- Recommended deployment scenarios collapse into "use whichever runtime
-  fits your stack".
-
-### Cleanup
-
-- Drop any 0.x-compat shims that survive into late 1.x.
-- Drop the deprecated tool aliases introduced by the 2.0 migration plan (see
-  consolidation section above).
-
-### 2.0 Non-Goals
-
-- Not rewriting the MCP protocol layer.
-- Not introducing new transports beyond stdio + HTTP.
-- Not breaking data-sync semantics.
-- **Not implementing a custom deferred-tool-loading scheme.** If MCP
-  spec standardizes one (e.g. SEP-1821 merges), we adopt it; otherwise
-  consolidation + description optimization is our answer.
+The migration did not add a custom deferred-tool-loading protocol or change
+data-sync semantics.
 
 ---
 
