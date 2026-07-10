@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import html as _html
+import logging
 import re
 
 import xml.etree.ElementTree as ET
@@ -13,6 +14,7 @@ from prts_mcp.utils.sanitizer import strip_wikitext
 
 # --- Shared httpx client (connection pooling) ---
 
+_logger = logging.getLogger(__name__)
 _client: httpx.AsyncClient | None = None
 
 
@@ -58,18 +60,47 @@ _HTML_ENTITY_RE = re.compile(r"&#?[a-zA-Z0-9]+;")
 
 
 _TECHNICAL_PAGE_PATTERNS = (
-    "/spine",
-    "/data",
-    "/db",
-    "/lua",
-    "/json",
-    "Widget:",
-    "Template:",
+    re.compile(r"/(?:spine|data|db|lua|json|module)(?:$|[/:._-])", re.IGNORECASE),
+    re.compile(r"\.(?:json|lua)$", re.IGNORECASE),
+    re.compile(r"^(?:Widget|Template|Module|MediaWiki|模块|模板):", re.IGNORECASE),
 )
+
+_REDIRECT_SNIPPET_RE = re.compile(r"#\s*(?:重定向|REDIRECT)", re.IGNORECASE)
 
 
 def _is_technical_page(title: str) -> bool:
-    return any(p in title for p in _TECHNICAL_PAGE_PATTERNS)
+    return any(p.search(title) for p in _TECHNICAL_PAGE_PATTERNS)
+
+
+def _is_redirect_like(snippet: str) -> bool:
+    return bool(_REDIRECT_SNIPPET_RE.search(snippet))
+
+
+async def _resolve_redirect_titles(titles: list[str]) -> dict[str, str]:
+    """Resolve redirect page titles in one request, returning known targets."""
+    if not titles:
+        return {}
+    try:
+        await _rate_limit()
+        response = await _get_client().get(
+            PRTS_API_ENDPOINT,
+            params={
+                "action": "query",
+                "redirects": "1",
+                "titles": "|".join(titles),
+                "format": "json",
+            },
+        )
+        response.raise_for_status()
+        redirects = response.json().get("query", {}).get("redirects", [])
+        return {
+            item["from"]: item["to"]
+            for item in redirects
+            if item.get("from") and item.get("to")
+        }
+    except Exception as exc:
+        _logger.debug("Failed to resolve PRTS redirect titles %r: %s", titles, exc)
+    return {}
 
 
 async def search_prts(
@@ -93,6 +124,7 @@ async def search_prts(
         "srlimit": str(limit * 2 if filter_technical else limit),
         "srnamespace": "0",
         "srinfo": "totalhits",
+        "srprop": "snippet|redirecttitle",
         "format": "json",
     }
     if srwhat:
@@ -104,14 +136,24 @@ async def search_prts(
         return {"totalhits": 0, "results": []}
     data = resp.json()
     totalhits = data.get("query", {}).get("searchinfo", {}).get("totalhits", 0)
+    search_results = data.get("query", {}).get("search", [])
+    redirect_targets = await _resolve_redirect_titles([
+        item["title"]
+        for item in search_results
+        if not item.get("redirecttitle")
+        and _is_redirect_like(item.get("snippet", ""))
+    ])
     results: list[dict] = []
-    for item in data.get("query", {}).get("search", []):
-        title = item["title"]
-        if filter_technical and _is_technical_page(title):
-            continue
+    for item in search_results:
         if len(results) >= limit:
             break
-        snippet = strip_wikitext(item.get("snippet", ""))
+        title = item["title"]
+        raw_snippet = item.get("snippet", "")
+        if not item.get("redirecttitle"):
+            title = redirect_targets.get(title, title)
+        if filter_technical and _is_technical_page(title):
+            continue
+        snippet = strip_wikitext(raw_snippet)
         snippet = _html.unescape(snippet)
         snippet = _clean_snippet(snippet)
         results.append({
@@ -371,7 +413,7 @@ def _clean_snippet(snippet: str) -> str:
     snippet = re.sub(r'\s*"[^"]*"\s*:\s*"[^"]*"\s*,?\s*', " ", snippet)
     # Remove isolated pipe-value artifacts with Chinese keys
     snippet = re.sub(r"\|[一-鿿\w]+\s*=[^\n]*", "", snippet)
-    snippet = re.sub(r"#重定向|#REDIRECT", "", snippet)
+    snippet = _REDIRECT_SNIPPET_RE.sub("", snippet)
     # Collapse whitespace
     snippet = re.sub(r"[ \t]+", " ", snippet)
     snippet = re.sub(r",{2,}", "", snippet)

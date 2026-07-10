@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- `search_prts` now resolves redirect-like search results and filters technical
+  pages more precisely while preserving the upstream total-hit count.
+
 ## [1.7.0] - 2026-07-02
 
 1.7.0 is the final 1.x feature release and the 1.7 LTS baseline. Future 1.7.x updates are limited to compatibility, security, data-sync, and critical bug fixes.
