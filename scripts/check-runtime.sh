@@ -121,19 +121,26 @@ check_bun() {
     return 1
   fi
 
-  local version
+  local version major minor patch
   version="$(bun --version)" || return 1
   printf 'bun=%s\n' "${version}"
-  node - "${version}" <<'JS'
-const actual = process.argv[2].split(".").map(Number);
-const minimum = [1, 3, 14];
-for (let i = 0; i < minimum.length; i += 1) {
-  if ((actual[i] ?? 0) > minimum[i]) process.exit(0);
-  if ((actual[i] ?? 0) < minimum[i]) {
-    throw new Error("Bun >=1.3.14 is required");
-  }
-}
-JS
+  if [[ "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+- ]]; then
+    echo "Bun prerelease versions are not supported: ${version}. Use Bun >=1.3.14 stable." >&2
+    return 1
+  fi
+  IFS=. read -r major minor patch <<< "${version}"
+  if [[ ! "${major}" =~ ^[0-9]+$ ]] ||
+     [[ ! "${minor}" =~ ^[0-9]+$ ]] ||
+     [[ ! "${patch}" =~ ^[0-9]+$ ]]; then
+    echo "Could not parse Bun version: ${version}" >&2
+    return 1
+  fi
+  if ((major < 1 ||
+       (major == 1 && minor < 3) ||
+       (major == 1 && minor == 3 && patch < 14))); then
+    echo "Bun >=1.3.14 is required." >&2
+    return 1
+  fi
 }
 
 check_ts_dependencies() {
@@ -146,28 +153,38 @@ check_ts_dependencies() {
 }
 
 run_python_tests() {
-  cd "${PYTHON_DIR}" || return 1
-  uv run --frozen --no-sync python -m pytest tests -q
+  (
+    cd "${PYTHON_DIR}" || exit 1
+    uv run --frozen --no-sync python -m pytest tests -q
+  )
 }
 
 run_ts_build() {
-  cd "${TS_DIR}" || return 1
-  npm run build
+  (
+    cd "${TS_DIR}" || exit 1
+    npm run build
+  )
 }
 
 run_ts_tests() {
-  cd "${TS_DIR}" || return 1
-  npm test
+  (
+    cd "${TS_DIR}" || exit 1
+    npm test
+  )
 }
 
 run_ts_typecheck() {
-  cd "${TS_DIR}" || return 1
-  npm run typecheck
+  (
+    cd "${TS_DIR}" || exit 1
+    npm run typecheck
+  )
 }
 
 run_bun_smoke() {
-  cd "${TS_DIR}" || return 1
-  npm run smoke:bun
+  (
+    cd "${TS_DIR}" || exit 1
+    npm run smoke:bun
+  )
 }
 
 printf 'Repo root: %s\n' "${REPO_ROOT}"
