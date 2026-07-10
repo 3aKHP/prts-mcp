@@ -103,75 +103,22 @@ PRTS-MCP 已进入 1.x 稳定期。1.7.0 是最后一个 1.x 功能版本和 1.7
 | 关键缺陷修复 | 错误结果、崩溃、资源泄漏、双实现 parity 回归 |
 | 文档修复 | LTS 支持说明、部署修正、迁移说明澄清 |
 
-1.7.x 不规划新能力。原 patch 线中的搜索合并、PRTS 页面合并、JSON 输出默认值和 golden test 基础设施，除非用于修复 1.7 LTS 回归，否则 都归入 2.0 规划。
+1.7.x 不规划新能力。原 patch 线中的搜索合并、PRTS 页面合并、JSON 输出默认值和 golden test 基础设施，除非用于修复 1.7 LTS 回归，否则均属于已交付的 2.x 历史。
 
 ---
 
-## 2.0 边界变化
+## 2.0 边界变化（已交付）
 
-三个值得 major 升级的结构性变更。
+2.0 已完成规划中的 major 迁移，同时保持 1.7 LTS 线不变：
 
-### 工具面合并（上下文预算）
+- **工具面：** 按 schema 形态合并后，2.x 公共工具面从 32 降至 23；1.7 LTS
+  继续保留全部 32 个名称。
+- **结构化输出：** 2.x 通过 MCP `structuredContent` 和 `output_channel`
+  控制面提供结构化输出，默认仍保留人类可读的内容。
+- **传输等价：** 2.x 的两个实现均支持 stdio 与 Streamable HTTP；1.7 LTS
+  保持既有部署角色。
 
-1.x 工具面在 1.7.0 LTS 时已达到 32 个。旗舰长上下文模型不在乎；但对 128K 级别模型，每个工具 schema 都吃 prompt 预算并降低工具选择准确率。
-
-**背景**：MCP 协议层目前无原生 deferred tool loading 支持。已关闭 提案：lazy hydration（#1978）、lazyRegistration（#2376）。开放草案： tool-search query（#1821）、token-bloat 缓解（#1576）。Claude Code 的 ToolSearch 是 Anthropic API 层特性（`tool_reference` blocks）， 不能移植到 Cursor / Cline / Chatbox。
-
-**方法**：服务端按 *schema 形态* 合并，而非按数据域合并。合并参数 结构和输出形态相似的工具，保留语义真正不同的工具。预估缩减： 24 → ~16 个工具（约 1/3），不损失能力。
-
-**阶段一（2.0 迁移设计）**：
-
-- `search(scope, pattern, ...)` 合并 `search_data` / `search_stories` /
-  `search_enemies` / `list_search_scopes`。四者参数形态完全相同，
-  仅 `scope` 不同。
-- `prts_page(page_title, action, ...)` 合并 `read_prts_page` /
-  `list_prts_sections` / `get_prts_categories` / `get_prts_links` /
-  `get_prts_template`。共享主键 `page_title`，`action` 选择子操作。
-
-**阶段二（2.0）**：按最终 2.0 迁移方案移除或隐藏 deprecated 旧别名。 1.7 LTS 线保留现有 32 工具面。
-
-**明确不合并的部分**：
-
-- 干员三件套（`get_operator_archives` / `voicelines` / `basic_info`）：
-  输出形态和长度差异大，合并反而降低 LLM 选择准确率，得不偿失。
-- 敌人三件套（`list_enemies` / `get_enemy_info` / `search_enemies`）：
-  同上。
-- 剧情工具（`read_story` / `read_activity` / `get_event_summary`）：
-  在相关但不同的数据上做真正不同的动作。
-
-合并的门槛：参数形态相同、输出长度和结构相似、LLM 在它们之间 做选择本质上是在选近义词。
-
-### 输出格式可选
-
-- 新增可选 `output_format=markdown|json` 参数，1.x 默认
-  `markdown`（增量、不破坏）。
-- JSON 模式返回结构化对象，便于下游自动化。
-- 2.0 翻转**默认值**为 `json`，这才是 break point。
-- markdown 在 2.0 仍可显式选择，不删除。
-
-原计划希望 1.x 期间先提供 opt-in。现在 1.7 已成为 LTS 线，具体迁移 路径归入 2.0 设计阶段，并必须在首个 2.0 预发布前写清楚。
-
-### 双实现等价化（Python ↔ TypeScript）
-
-目前两套实现存在事实上的角色分工：Python 主要面向 Docker / stdio， TypeScript 主要面向 `npm install -g` / HTTP。2.0 取消这种不对称：
-
-- 两套实现都同时支持 stdio **和** Streamable HTTP。
-- npm 包和 PyPI 包能力对等。
-- 环境变量名称和默认值统一。
-- 部署推荐折叠为"用你 stack 里顺手的那个 runtime 即可"。
-
-### 清理
-
-- 移除晚期 1.x 仍残留的 0.x 兼容 shim（如果有）。
-- 移除 2.0 迁移方案引入的 deprecated 工具别名（见上方"工具面合并"部分）。
-
-### 2.0 Non-Goals
-
-- 不重写 MCP 协议层。
-- 不引入 stdio + HTTP 之外的传输方式。
-- 不破坏数据同步语义。
-- **不实现自定义的 deferred tool loading 方案**。若 MCP spec 标准化
-  （如 SEP-1821 合入），则采纳；否则合并 + 描述优化就是我们的回答。
+该迁移没有引入自定义 deferred-tool-loading 协议，也没有改变数据同步语义。
 
 ---
 
