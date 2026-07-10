@@ -1,19 +1,21 @@
 # PRTS-MCP 项目状态
 
-_Last updated: 2026-07-08_
+_Last updated: 2026-07-10_
 
 ## 当前版本
 
 | 实现 | 版本 | 状态 |
 |------|------|------|
-| Python | 2.3.0 | Stable |
-| TypeScript | 2.3.0 | Stable |
+| Python | 2.3.1 | Stable |
+| TypeScript | 2.3.1 | Stable |
 
-- 当前稳定发布：2.3.0（23 个 MCP 工具）
+- 当前稳定发布：2.3.1（23 个 MCP 工具）
 - 当前 LTS 发布：1.7.0（32 个 MCP 工具，剧情角色追踪）
 - 当前开发目标：2.4.0（待规划）
 - 当前稳定补丁线：2.3.x
 - 当前开发线：2.4.x
+- 2.3.1 发布内容：TypeScript 生产依赖安全更新，并同步
+  `prts-mcp-ts-stdio` 的 npm 锁文件 bin 元数据；不改变 MCP 工具面或传输行为。
 - 2.3.0 发布内容：Cross-transport parity——Python 新增 Streamable HTTP
   （`PRTS_TRANSPORT=http`），TypeScript 新增 stdio（`prts-mcp-ts-stdio` bin），
   双端双 transport。Python HTTP 的 output_channel 为 process-level（env-only，
@@ -33,7 +35,7 @@ _Last updated: 2026-07-08_
 
 ## 当前分支
 
-- `main`：2.3.0（最新稳定发布线）
+- `main`：2.3.1（最新稳定发布线）
 - `lts/1.7`：1.7.x LTS 维护线（从 1.7.0 发布提交创建）
 - `develop`：2.4 的开发集成线
 
@@ -222,6 +224,7 @@ PRTS-MCP/
 
 | 版本 | 日期 | 亮点 |
 |------|------|------|
+| 2.3.1 | 2026-07-10 | TypeScript 生产依赖安全更新；同步 `prts-mcp-ts-stdio` npm 锁文件 bin 元数据 |
 | 2.3.0 | 2026-07-08 | Cross-transport parity：Python 新增 Streamable HTTP，TypeScript 新增 stdio，双端双 transport；部署改为按场景选择 |
 | 2.2.0 | 2026-07-08 | TypeScript 默认生产运行时翻转为 Bun（默认 Dockerfile/CI/scripts）；Node 降级为 legacy 可选路径；npm bin 与发布路径不变 |
 | 2.1.0 | 2026-07-07 | TypeScript 正式支持 Bun 可选运行时；新增 `prts-mcp-ts-bun`；Bun Dockerfile 提升为受支持替代构建路径 |
