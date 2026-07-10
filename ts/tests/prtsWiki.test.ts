@@ -1,12 +1,15 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { type TestContext } from "node:test";
 
 import { searchPrts } from "../src/api/prtsWiki.js";
 
-function mockFetch(payloads: unknown[], requests?: string[]): () => void {
-  const original = globalThis.fetch;
+function mockFetch(
+  t: TestContext,
+  payloads: unknown[],
+  requests?: string[],
+): void {
   const recordedRequests = requests ?? [];
-  globalThis.fetch = (async (input) => {
+  t.mock.method(globalThis, "fetch", async (input) => {
     recordedRequests.push(String(input));
     const payload = payloads.shift();
     if (payload instanceof Error) throw payload;
@@ -15,15 +18,20 @@ function mockFetch(payloads: unknown[], requests?: string[]): () => void {
       status: 200,
       json: async () => payload,
     };
-  }) as typeof fetch;
-  return () => {
-    globalThis.fetch = original;
-  };
+  });
+  t.mock.method(
+    globalThis,
+    "setTimeout",
+    ((callback: () => void) => {
+      callback();
+      return 0;
+    }) as typeof setTimeout,
+  );
 }
 
-test("searchPrts resolves redirect-like results", async () => {
+test("searchPrts resolves redirect-like results", async (t) => {
   const requests: string[] = [];
-  const restore = mockFetch([
+  mockFetch(t, [
     {
       query: {
         searchinfo: { totalhits: 1 },
@@ -32,21 +40,17 @@ test("searchPrts resolves redirect-like results", async () => {
     },
     { query: { redirects: [{ from: "阿米亚", to: "阿米娅" }] } },
   ], requests);
-  try {
-    assert.deepEqual(await searchPrts("阿米亚", 1), {
-      totalHits: 1,
-      results: [{ title: "阿米娅", snippet: "阿米娅" }],
-    });
-    assert.equal(new URL(requests[0]).searchParams.get("srprop"), "snippet|redirecttitle");
-    assert.equal(new URL(requests[1]).searchParams.get("redirects"), "1");
-    assert.equal(new URL(requests[1]).searchParams.get("titles"), "阿米亚");
-  } finally {
-    restore();
-  }
+  assert.deepEqual(await searchPrts("阿米亚", 1), {
+    totalHits: 1,
+    results: [{ title: "阿米娅", snippet: "阿米娅" }],
+  });
+  assert.equal(new URL(requests[0]).searchParams.get("srprop"), "snippet|redirecttitle");
+  assert.equal(new URL(requests[1]).searchParams.get("redirects"), "1");
+  assert.equal(new URL(requests[1]).searchParams.get("titles"), "阿米亚");
 });
 
-test("searchPrts keeps results when redirect lookup fails", async () => {
-  const restore = mockFetch([
+test("searchPrts keeps results when redirect lookup fails", async (t) => {
+  mockFetch(t, [
     {
       query: {
         searchinfo: { totalhits: 1 },
@@ -55,19 +59,15 @@ test("searchPrts keeps results when redirect lookup fails", async () => {
     },
     new Error("redirect lookup failed"),
   ]);
-  try {
-    assert.deepEqual(await searchPrts("阿米亚", 1), {
-      totalHits: 1,
-      results: [{ title: "阿米亚", snippet: "阿米娅" }],
-    });
-  } finally {
-    restore();
-  }
+  assert.deepEqual(await searchPrts("阿米亚", 1), {
+    totalHits: 1,
+    results: [{ title: "阿米亚", snippet: "阿米娅" }],
+  });
 });
 
-test("searchPrts batches redirect resolution", async () => {
+test("searchPrts batches redirect resolution", async (t) => {
   const requests: string[] = [];
-  const restore = mockFetch([
+  mockFetch(t, [
     {
       query: {
         searchinfo: { totalhits: 2 },
@@ -86,24 +86,20 @@ test("searchPrts batches redirect resolution", async () => {
       },
     },
   ], requests);
-  try {
-    assert.deepEqual(await searchPrts("别名", 2), {
-      totalHits: 2,
-      results: [
-        { title: "目标甲", snippet: "目标甲" },
-        { title: "目标乙", snippet: "目标乙" },
-      ],
-    });
-    assert.equal(requests.length, 2);
-    assert.equal(new URL(requests[1]).searchParams.get("titles"), "别名甲|别名乙");
-  } finally {
-    restore();
-  }
+  assert.deepEqual(await searchPrts("别名", 2), {
+    totalHits: 2,
+    results: [
+      { title: "目标甲", snippet: "目标甲" },
+      { title: "目标乙", snippet: "目标乙" },
+    ],
+  });
+  assert.equal(requests.length, 2);
+  assert.equal(new URL(requests[1]).searchParams.get("titles"), "别名甲|别名乙");
 });
 
-test("searchPrts uses native redirecttitle without another request", async () => {
+test("searchPrts uses native redirecttitle without another request", async (t) => {
   const requests: string[] = [];
-  const restore = mockFetch([
+  mockFetch(t, [
     {
       query: {
         searchinfo: { totalhits: 1 },
@@ -115,19 +111,15 @@ test("searchPrts uses native redirecttitle without another request", async () =>
       },
     },
   ], requests);
-  try {
-    assert.deepEqual(await searchPrts("阿米亚", 1), {
-      totalHits: 1,
-      results: [{ title: "阿米娅", snippet: "罗德岛领袖。" }],
-    });
-    assert.equal(requests.length, 1);
-  } finally {
-    restore();
-  }
+  assert.deepEqual(await searchPrts("阿米亚", 1), {
+    totalHits: 1,
+    results: [{ title: "阿米娅", snippet: "罗德岛领袖。" }],
+  });
+  assert.equal(requests.length, 1);
 });
 
-test("searchPrts filters technical pages without changing totalHits", async () => {
-  const restore = mockFetch([
+test("searchPrts filters technical pages without changing totalHits", async (t) => {
+  mockFetch(t, [
     {
       query: {
         searchinfo: { totalhits: 2 },
@@ -138,18 +130,14 @@ test("searchPrts filters technical pages without changing totalHits", async () =
       },
     },
   ]);
-  try {
-    assert.deepEqual(await searchPrts("凯尔希", 2), {
-      totalHits: 2,
-      results: [{ title: "凯尔希", snippet: "罗德岛医生。" }],
-    });
-  } finally {
-    restore();
-  }
+  assert.deepEqual(await searchPrts("凯尔希", 2), {
+    totalHits: 2,
+    results: [{ title: "凯尔希", snippet: "罗德岛医生。" }],
+  });
 });
 
-test("searchPrts can keep technical pages when requested", async () => {
-  const restore = mockFetch([
+test("searchPrts can keep technical pages when requested", async (t) => {
+  mockFetch(t, [
     {
       query: {
         searchinfo: { totalhits: 1 },
@@ -157,12 +145,8 @@ test("searchPrts can keep technical pages when requested", async () => {
       },
     },
   ]);
-  try {
-    assert.deepEqual(await searchPrts("敌人数据", 1, "text", false), {
-      totalHits: 1,
-      results: [{ title: "敌人数据/module", snippet: "技术数据" }],
-    });
-  } finally {
-    restore();
-  }
+  assert.deepEqual(await searchPrts("敌人数据", 1, "text", false), {
+    totalHits: 1,
+    results: [{ title: "敌人数据/module", snippet: "技术数据" }],
+  });
 });
