@@ -113,7 +113,7 @@ MCP 工具描述（Python `@mcp.tool()` 的 docstring / TS `server.tool()` 的�
 ### 何时是重构 PR 的好时机
 
 - 准备在某个模块加新功能，发现"得先清理才能干净地加"——**先开一个 refactor PR，merge 后再开 feature PR**
-- 子代理 CR 里连续两次指出同一类坏味道
+- 连续两轮独立 code review 指出同一类坏味道
 - 文件大小、嵌套深度跨过预警线
 
 ---
@@ -224,7 +224,7 @@ server.tool(
 - 测试文件：`ts/tests/<module>.test.ts`
 - 使用 Node.js 内置 `node:test` + `node:assert`
 - 共享 fixture 放 `ts/tests/fixtures/`
-- 运行：`cd ts && npm run build && npm test`
+- 运行：`npm --prefix ts run build && npm --prefix ts test`
 
 ---
 

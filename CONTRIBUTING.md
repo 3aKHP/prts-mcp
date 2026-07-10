@@ -53,6 +53,18 @@ git diff HEAD -- AGENTS.md CLAUDE.md
 本地材料、生成包、日志或大体积私有数据。公开配置从 `.env.example`、
 `.mcp.example.json` 和各实现的 override example 开始。
 
+## Issues
+
+普通缺陷和功能建议请使用公开 GitHub Issue；安全问题不要公开披露，按
+[`SECURITY.md`](SECURITY.md) 私下报告。缺陷报告请尽量包含受影响版本、Python
+或 TypeScript 实现、stdio 或 Streamable HTTP transport、复现步骤、预期与实际
+结果及脱敏日志。功能建议请说明实际 use case、现有工具的不足，以及是否会改变
+两套实现的公共 MCP surface。
+
+仓库自动化（当前为 KHPilot GitHub App）可能在 Issue 中提供 AI 辅助分诊。Bot
+回复是待核实的线索，不代表维护者已经接受建议、确定优先级、承诺版本或交付时间；
+最终分类、排期与关闭决定由维护者作出。
+
 ## Pull Requests
 
 - 单个 PR 聚焦一个主题，提交信息遵循 Conventional Commits。
@@ -60,3 +72,17 @@ git diff HEAD -- AGENTS.md CLAUDE.md
 - 修改公共 MCP 行为时明确说明 Python/TS parity 检查结果。
 - 确认 diff 中没有 secrets、个人路径或本地 AI 环境适配。
 - 依赖、部署、数据路径或版本变化需要同步相应 lockfile 与文档。
+
+### Review
+
+PR 可能收到人类、自动化 Bot 或 AI 辅助审阅。维护者还可能安排一次 clean-context
+独立审阅；外部 contributor 无需在开 PR 前自行运行特定 Bot、模型或 SubAgent。
+远端 Bot CR 与独立审阅覆盖不同盲点，彼此补充但互不替代。
+
+自动化评论是需要验证的 finding，不是 CI check、approval 或合并门禁，其触发、
+响应时间和覆盖范围也不保证。按当前配置，KHPilot 对同一个 PR 只会主动审阅一次；
+追加 commit 不会自动触发复审，应在现有 thread 或 PR conversation 中
+`@KHPilot[bot]` 请求 re-review，也可以用同样方式追问具体 finding。
+
+请逐条回应可操作反馈；若不同意，应给出代码、测试或文档证据。CI 状态以 PR
+Checks 为准，是否阻塞以及最终 merge 仍由人类维护者决定。
