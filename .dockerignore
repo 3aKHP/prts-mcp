@@ -23,3 +23,11 @@ local_repo.jsonc
 *.tar
 *.zip
 *.7z
+
+# Exceptions: bundled fallback data must reach the Docker image even though
+# it ships as .zip archives. Without these, .dockerignore's *.zip rule above
+# strips the CI-pre-fetched storyjson/gamedata bundles from COPY data/ data/,
+# leaving the image without StoryJSON and packaged GameData archive fallbacks.
+!data/storyjson/zh_CN.zip
+!data/gamedata/archives/zh_CN-excel.zip
+!data/gamedata-levels/archives/zh_CN-levels.zip
