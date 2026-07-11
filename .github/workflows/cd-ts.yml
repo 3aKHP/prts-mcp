@@ -138,10 +138,15 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#ts/v}"
           if [[ "${VERSION}" == *-* ]]; then
-            PRERELEASE="${VERSION#*-}"
-            echo "value=${PRERELEASE%%.*}" >> $GITHUB_OUTPUT
+            echo "::error::LTS releases must use stable version tags; alpha and beta are reserved for the current release line"
+            exit 1
+          elif [[ ! "${VERSION}" =~ ^1\.7\.[0-9]+$ ]]; then
+            echo "::error::LTS releases must use a 1.7.x version tag"
+            exit 1
           else
-            echo "value=latest" >> $GITHUB_OUTPUT
+            # Keep the 1.7 maintenance line separate from the current stable
+            # release line. The latter alone owns npm's `latest` dist-tag.
+            echo "value=lts-1.7" >> $GITHUB_OUTPUT
           fi
 
       - name: Publish to npm (Trusted Publishing)
@@ -235,4 +240,5 @@ jobs:
           body_path: release_notes.txt
           files: ts/prts-mcp-ts-*.tgz
           prerelease: ${{ steps.version.outputs.prerelease }}
-          make_latest: ${{ steps.version.outputs.prerelease == 'true' && 'false' || 'true' }}
+          # An LTS release never supersedes the current GitHub release line.
+          make_latest: false

@@ -46,6 +46,14 @@ jobs:
           TAG_VERSION="${GITHUB_REF_NAME#python/v}"
           python -c "import importlib.metadata, re, sys; normalize=lambda v: re.sub(r'-(alpha|beta|rc|a|b)\.?', lambda m: {'alpha': 'a', 'beta': 'b'}.get(m.group(1), m.group(1)), v); tag=normalize(sys.argv[1]); pkg=normalize(importlib.metadata.version('prts-mcp')); print(f'Version check passed: {tag}') if tag == pkg else (print(f'::error::Tag version ({tag}) does not match package version ({pkg}) in pyproject.toml'), sys.exit(1))" "$TAG_VERSION"
 
+      - name: Validate LTS release tag
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#python/v}"
+          if [[ ! "${TAG_VERSION}" =~ ^1\.7\.[0-9]+$ ]]; then
+            echo "::error::LTS releases must use stable 1.7.x version tags"
+            exit 1
+          fi
+
       - name: Verify import and config fallback
         run: |
           mkdir -p .ci-empty/gamedata .ci-empty/storyjson
@@ -195,10 +203,6 @@ jobs:
           VERSION="${{ steps.version.outputs.value }}"
           docker tag prts-mcp:release "${IMAGE}:${VERSION}"
           docker push "${IMAGE}:${VERSION}"
-          if [[ "${{ steps.version.outputs.prerelease }}" != "true" ]]; then
-            docker tag prts-mcp:release "${IMAGE}:latest"
-            docker push "${IMAGE}:latest"
-          fi
 
   github-release:
     runs-on: ubuntu-latest
@@ -249,7 +253,8 @@ jobs:
           body_path: release_notes.txt
           files: python/dist/*
           prerelease: ${{ needs.build-and-push.outputs.prerelease }}
-          make_latest: ${{ needs.build-and-push.outputs.prerelease == 'true' && 'false' || 'true' }}
+          # An LTS release never supersedes the current GitHub release line.
+          make_latest: false
 
   publish-pypi:
     runs-on: ubuntu-latest

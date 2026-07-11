@@ -29,9 +29,9 @@ Not allowed in `1.7.x`:
 
 | Branch | Purpose |
 |--------|---------|
-| `main` | Latest stable release line. It is `1.7.0` until 2.0 ships. |
+| `main` | Latest stable release line. Currently 2.x. |
 | `lts/1.7` | Long-term 1.7.x maintenance branch, created from the 1.7.0 release commit. |
-| `dev` | Active 2.0 development after the 1.7.0 LTS release. |
+| `develop` | Active development integration after the 1.7.0 LTS release. |
 
 Do not push directly to any long-lived branch. Use PRs.
 
@@ -49,9 +49,21 @@ Do not push directly to any long-lived branch. Use PRs.
    git push origin python/v1.7.x ts/v1.7.x
    ```
 
-6. Cherry-pick or reimplement the fix on `dev` when it also applies to 2.0.
+   The TypeScript CD workflow on `lts/1.7` publishes stable npm releases under
+   the `lts-1.7` dist-tag. npm's `latest` belongs exclusively to the current
+   stable release line on `main`; never move it as part of an LTS release.
+   LTS consumers should install `prts-mcp-ts@lts-1.7` (or a fully pinned
+   version). The channel is initialized at `1.7.1`; do not move it manually,
+   because each subsequent stable LTS release updates it automatically.
+   LTS prerelease tags are not supported: `alpha` and `beta` are reserved for
+   the current release line.
 
-If `main` still points to the 1.7 line when the fix ships, merge `lts/1.7` back to `main` or target `main` directly according to the maintainer's release decision. After 2.0 ships, `main` follows 2.0 and `lts/1.7` remains the only 1.7 maintenance branch.
+6. Cherry-pick or reimplement the fix on `develop` when it also applies to the
+   current development line.
+
+`main` follows the current stable 2.x release line. Do not merge `lts/1.7`
+back to `main`; cherry-pick or reimplement an applicable fix on the current
+development line instead.
 
 ## 2.0 Boundary
 
