@@ -6,14 +6,15 @@ _Last updated: 2026-07-29_
 
 | 实现 | 版本 | 状态 |
 |------|------|------|
-| Python | 2.4.0.dev0 | Development |
-| TypeScript | 2.4.0-dev.0 | Development |
+| Python | 2.4.0 | Stable |
+| TypeScript | 2.4.0 | Stable |
 
-- 当前稳定发布：2.3.1（23 个 MCP 工具）
+- 当前稳定发布：2.4.0（23 个 MCP 工具）
 - 当前 LTS 发布：1.7.0（32 个 MCP 工具，剧情角色追踪）
-- 当前开发目标：2.4.0（常驻服务 Auto-Sync）
-- 当前稳定补丁线：2.3.x
-- 当前开发线：2.4.x
+- 下一开发目标：待发布回合完成后规划
+- 当前稳定补丁线：2.4.x
+- 2.4.0 发布内容：常驻服务默认每小时同步 GameData excel、GameData levels 与
+  StoryJson；GameData 两类归档以同一代原子切换，并支持共享卷跨进程发布锁续租。
 - 2.3.1 发布内容：TypeScript 生产依赖安全更新，并同步
   `prts-mcp-ts-stdio` 的 npm 锁文件 bin 元数据；不改变 MCP 工具面或传输行为。
 - 2.3.0 发布内容：Cross-transport parity——Python 新增 Streamable HTTP
@@ -33,7 +34,7 @@ _Last updated: 2026-07-29_
 - 2.0 交付内容：工具面合并（32 → 23）+ output channel（structuredContent）；**双端协议同步（Python 上 HTTP / TS 上 stdio）已后置到 2.0 之后**。
 - 兼容性合约：1.7.x LTS 线既有 32 个工具名、必填参数、默认输出格式不变；仅接受兼容性、安全性、数据同步和关键缺陷修复
 
-## 2.4.0 开发内容
+## 2.4.0 发布内容
 
 - [x] Python / TypeScript 常驻进程在启动同步后默认每小时检查 GameData excel、
   GameData levels 与 StoryJson Release，无需通过 crontab 重启服务追赶上游。
@@ -47,9 +48,9 @@ _Last updated: 2026-07-29_
 
 ## 当前分支
 
-- `main`：2.3.1（最新稳定发布线）
+- `main`：2.4.0（最新稳定发布线）
 - `lts/1.7`：1.7.x LTS 维护线（从 1.7.0 发布提交创建）
-- `develop`：2.4 的开发集成线
+- `develop`：发布回合完成后开启下一开发周期
 
 1.7.0 是最后一个 1.x 功能版本和 LTS 基线。它将 server.py/server.ts 和 story.py/story.ts 单体文件拆分为聚焦子模块，保留向后兼容垫片（shim），并新增剧情角色追踪工具：`find_character_appearances`、`find_speakers_in`。后续功能开发转向 2.0；1.7.x 仅做兼容性、安全性、数据同步和关键缺陷修复。
 
@@ -238,6 +239,7 @@ PRTS-MCP/
 
 | 版本 | 日期 | 亮点 |
 |------|------|------|
+| 2.4.0 | 2026-07-29 | 常驻服务 Auto-Sync；GameData excel/levels 原子成对发布；共享卷跨进程协调与锁续租 |
 | 2.3.1 | 2026-07-10 | TypeScript 生产依赖安全更新；同步 `prts-mcp-ts-stdio` npm 锁文件 bin 元数据 |
 | 2.3.0 | 2026-07-08 | Cross-transport parity：Python 新增 Streamable HTTP，TypeScript 新增 stdio，双端双 transport；部署改为按场景选择 |
 | 2.2.0 | 2026-07-08 | TypeScript 默认生产运行时翻转为 Bun（默认 Dockerfile/CI/scripts）；Node 降级为 legacy 可选路径；npm bin 与发布路径不变 |
