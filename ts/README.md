@@ -139,13 +139,15 @@ docker run -d -p 3000:3000 -v prts-mcp-ts-data:/data/gamedata -v prts-mcp-ts-lev
 
 ## 数据机制
 
-服务器开始监听后会在后台自动同步三类数据：
+服务器开始监听后会立即在后台同步三类数据，此后默认每小时检查一次新 Release，无需重启进程：
 
 - **游戏表格数据**（`/data/gamedata` volume）：从 [3aKHP/ArknightsGameData](https://github.com/3aKHP/ArknightsGameData) Release 下载 `zh_CN-excel.zip`，其内容同步自 [Kengxxiao/ArknightsGameData](https://github.com/Kengxxiao/ArknightsGameData)
 - **关卡战斗数据**（`/data/gamedata-levels` volume）：从同一 Release 下载 `zh_CN-levels.zip`，用于关卡实际出怪和关卡级敌人数值
 - **剧情数据**（`/data/storyjson` volume）：从 [ArknightsStoryJson](https://github.com/3aKHP/ArknightsStoryJson) Releases 下载 `zh_CN.zip`
 
 镜像内置 bundled 数据作为网络不可用时的离线保底。
+
+周期可通过 `PRTS_AUTO_SYNC_INTERVAL_SECONDS` 调整（`60..604800` 秒）；设为 `0` 时只执行启动同步。
 
 > 正式发布到 npm 的包会由 CI 预置 bundled 数据；本地 `npm pack` 或手动发布前需先运行下方预置步骤，否则包内只会包含空目录占位。
 
@@ -161,6 +163,7 @@ docker run -d -p 3000:3000 -v prts-mcp-ts-data:/data/gamedata -v prts-mcp-ts-lev
 | `STORYJSON_PATH` | 未设置 | 设置后指向本地 `zh_CN.zip`，**剧情 auto-sync 被禁用** |
 | `GITHUB_TOKEN` | 空 | 用于提高 GitHub API 限额，降低限流风险 |
 | `GITHUB_MIRRORS` | 空 | 逗号分隔的 ghproxy 风格代理前缀列表（如 `https://ghproxy.net`），依次在直连失败后尝试 |
+| `PRTS_AUTO_SYNC_INTERVAL_SECONDS` | `3600` | GitHub Release 周期检查间隔（秒）；有效范围 `60..604800`，`0` 表示只执行启动同步；非法值回落到默认值 |
 | `PRTS_OUTPUT_CHANNEL` | `content` | 2.0 输出通道：`content`（默认，仅 markdown，与 1.x 一致）/ `structured`（仅 structuredContent）/ `both`。也可经查询字符串 `?output_channel=` 或请求头 `x-prts-output-channel` 按请求覆盖。仅在客户端确认支持 `structuredContent` 时才用非默认值 |
 
 ---
