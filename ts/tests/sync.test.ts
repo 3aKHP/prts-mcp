@@ -111,6 +111,31 @@ test("syncRelease reads Python release metadata", async () => {
   assert.equal(fetches, 0);
 });
 
+test("syncRelease serializes concurrent release checks", async () => {
+  const spec = tempSpec();
+  mkdirSync(dirname(spec.localZip), { recursive: true });
+  writeFileSync(spec.localZip, "cached");
+  let activeChecks = 0;
+  let maxActiveChecks = 0;
+
+  await withFetchMock((async () => {
+    activeChecks += 1;
+    maxActiveChecks = Math.max(maxActiveChecks, activeChecks);
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 25));
+    activeChecks -= 1;
+    throw new Error("network down");
+  }) as typeof fetch, async () => {
+    const results = await Promise.all([
+      syncRelease(spec, true),
+      syncRelease(spec, true),
+    ]);
+    assert.deepEqual(new Set(results.map((result) => result.status)), new Set([
+      "offline_fallback",
+    ]));
+  });
+  assert.equal(maxActiveChecks, 1);
+});
+
 test("syncRelease treats invalid validated zip as no_data", async () => {
   const spec = {
     ...tempSpec(),
@@ -389,7 +414,13 @@ test("concurrent archive activation keeps the authoritative tree", async () => {
   const required = spec.requiredFiles[0];
   writeZip(spec.localZip, { [required]: "{}" });
 
+  let activeChecks = 0;
+  let maxActiveChecks = 0;
   await withFetchMock((async () => {
+    activeChecks += 1;
+    maxActiveChecks = Math.max(maxActiveChecks, activeChecks);
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 25));
+    activeChecks -= 1;
     throw new Error("network down");
   }) as typeof fetch, async () => {
     const results = await Promise.all([
@@ -398,9 +429,10 @@ test("concurrent archive activation keeps the authoritative tree", async () => {
     ]);
     assert.deepEqual(new Set(results.map((result) => result.status)), new Set([
       "updated",
-      "up_to_date",
+      "offline_fallback",
     ]));
     assert.equal(existsSync(join(activeArchiveRoot(spec), required)), true);
     assert.equal(existsSync(join(dirname(spec.localZip), ".activation.lock")), false);
   });
+  assert.equal(maxActiveChecks, 1);
 });

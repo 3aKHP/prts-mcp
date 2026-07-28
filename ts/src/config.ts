@@ -26,7 +26,7 @@
  *     3. null — no level combat data available.
  */
 
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -139,8 +139,8 @@ function activatedRoot(root: string): string {
       readFileSync(join(root, "archives", "extract_meta.json"), "utf-8"),
     ) as { data_root?: unknown };
     if (typeof value.data_root !== "string" || value.data_root.length === 0) return root;
-    const base = resolve(root);
-    const activated = resolve(root, value.data_root);
+    const base = realpathSync(root);
+    const activated = realpathSync(resolve(root, value.data_root));
     const rel = relative(base, activated);
     if (rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute(rel)) return root;
     return existsSync(activated) && statSync(activated).isDirectory() ? activated : root;

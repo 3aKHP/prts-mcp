@@ -9,7 +9,7 @@
  * - Skips the upstream check entirely when cached data is fresher than the TTL.
  */
 
-import { createReadStream, existsSync, statSync } from "node:fs";
+import { createReadStream, existsSync, realpathSync, statSync } from "node:fs";
 import { createHash, randomUUID } from "node:crypto";
 import {
   mkdir,
@@ -340,7 +340,7 @@ export async function downloadReleaseAsset(
  *   3. Tag unchanged AND zip exists → up_to_date (refresh fetchedAt)
  *   4. Tag changed or zip missing → downloadReleaseAsset → updated / fallback
  */
-export async function syncRelease(
+async function syncReleaseLocked(
   spec: ReleaseSpec,
   forceCheck = false,
 ): Promise<SyncResult> {
@@ -436,8 +436,8 @@ async function loadExtractMeta(spec: ReleaseArchiveSpec): Promise<ExtractMeta | 
     };
     if (typeof value.commit_sha !== "string" || value.commit_sha.length === 0) return null;
     if (typeof value.data_root !== "string" || value.data_root.length === 0) return null;
-    const root = resolve(spec.localRoot);
-    const dataRoot = resolve(spec.localRoot, value.data_root);
+    const root = realpathSync(spec.localRoot);
+    const dataRoot = realpathSync(resolve(spec.localRoot, value.data_root));
     const rel = relative(root, dataRoot);
     if (rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute(rel)) return null;
     if (!existsSync(dataRoot) || !statSync(dataRoot).isDirectory()) return null;
@@ -559,10 +559,11 @@ async function archiveActivationSha(
 }
 
 async function withArchiveActivationLock<T>(
-  spec: ReleaseArchiveSpec,
+  spec: Pick<ReleaseSpec, "localZip">,
   run: () => Promise<T>,
+  lockName = ".activation.lock",
 ): Promise<T> {
-  const lock = join(dirname(spec.localZip), ".activation.lock");
+  const lock = join(dirname(spec.localZip), lockName);
   const owner = randomUUID().replaceAll("-", "");
   const deadline = Date.now() + ACTIVATION_LOCK_TIMEOUT_MS;
   for (;;) {
@@ -622,6 +623,36 @@ async function withArchiveActivationLock<T>(
   }
 }
 
+/** Publish a release ZIP and its metadata as one serialized operation. */
+export async function syncRelease(
+  spec: ReleaseSpec,
+  forceCheck = false,
+): Promise<SyncResult> {
+  const dummySpec: RepoSpec = {
+    owner: spec.owner,
+    repo: spec.repo,
+    branch: "releases",
+    files: [spec.assetName],
+    localRoot: dirname(spec.localZip),
+  };
+  try {
+    await mkdir(dirname(spec.localZip), { recursive: true });
+    return await withArchiveActivationLock(
+      spec,
+      () => syncReleaseLocked(spec, forceCheck),
+      ".release.lock",
+    );
+  } catch (err) {
+    const cache = await loadReleaseMeta(spec);
+    return {
+      spec: dummySpec,
+      status: releaseZipError(spec) === null ? "offline_fallback" : "no_data",
+      commitSha: cache?.commitSha ?? null,
+      error: errorMessage(err),
+    };
+  }
+}
+
 async function pruneReleaseTrees(
   spec: ReleaseArchiveSpec,
   keep: Set<string>,
@@ -649,7 +680,7 @@ async function pruneReleaseTrees(
  * This keeps the gamedata distribution path aligned with storyjson releases
  * while preserving the existing on-disk ArknightsGameData layout.
  */
-export async function syncReleaseArchive(
+async function syncReleaseArchiveLocked(
   spec: ReleaseArchiveSpec,
   forceCheck = false,
 ): Promise<SyncResult> {
@@ -699,28 +730,14 @@ export async function syncReleaseArchive(
       const activationSha = await archiveActivationSha(spec, releaseResult.commitSha);
       const staged = await stageReleaseTree(spec, activationSha);
       staging = staged.staging;
-      const alreadyActivated = await withArchiveActivationLock(spec, async () => {
-        const currentMeta = await loadExtractMeta(spec);
-        const currentRoot = currentMeta?.dataRoot ?? spec.localRoot;
-        if (
-          currentMeta?.commitSha === activationSha
-          && archiveFilesPresent(spec, currentRoot)
-        ) {
-          await rm(staged.staging, { recursive: true, force: true });
-          staging = null;
-          return true;
-        }
-        await rename(staged.staging, staged.activated);
+      const currentMeta = await loadExtractMeta(spec);
+      const currentRoot = currentMeta?.dataRoot ?? spec.localRoot;
+      if (
+        currentMeta?.commitSha === activationSha
+        && archiveFilesPresent(spec, currentRoot)
+      ) {
+        await rm(staged.staging, { recursive: true, force: true });
         staging = null;
-        if (dirname(currentRoot) === await releasesPath(spec)) {
-          const now = new Date();
-          await utimes(currentRoot, now, now);
-        }
-        await saveExtractMeta(spec, activationSha, staged.activated);
-        await pruneReleaseTrees(spec, new Set([currentRoot, staged.activated]));
-        return false;
-      });
-      if (alreadyActivated) {
         return {
           spec: dummySpec,
           status: "up_to_date",
@@ -728,6 +745,14 @@ export async function syncReleaseArchive(
           error: null,
         };
       }
+      await rename(staged.staging, staged.activated);
+      staging = null;
+      if (dirname(currentRoot) === await releasesPath(spec)) {
+        const now = new Date();
+        await utimes(currentRoot, now, now);
+      }
+      await saveExtractMeta(spec, activationSha, staged.activated);
+      await pruneReleaseTrees(spec, new Set([currentRoot, staged.activated]));
       return {
         spec: dummySpec,
         status: "updated",
@@ -760,4 +785,35 @@ export async function syncReleaseArchive(
     commitSha: releaseResult.commitSha,
     error: releaseResult.error,
   };
+}
+
+/** Publish and activate one release archive under a shared-volume lock. */
+export async function syncReleaseArchive(
+  spec: ReleaseArchiveSpec,
+  forceCheck = false,
+): Promise<SyncResult> {
+  const dummySpec: RepoSpec = {
+    owner: spec.owner,
+    repo: spec.repo,
+    branch: "releases",
+    files: spec.requiredFiles,
+    localRoot: spec.localRoot,
+  };
+  try {
+    await mkdir(dirname(spec.localZip), { recursive: true });
+    return await withArchiveActivationLock(
+      spec,
+      () => syncReleaseArchiveLocked(spec, forceCheck),
+    );
+  } catch (err) {
+    const active = await loadExtractMeta(spec);
+    return {
+      spec: dummySpec,
+      status: archiveFilesPresent(spec, active?.dataRoot ?? spec.localRoot)
+        ? "offline_fallback"
+        : "no_data",
+      commitSha: null,
+      error: errorMessage(err),
+    };
+  }
 }

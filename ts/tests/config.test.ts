@@ -1,6 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, renameSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  renameSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -126,6 +132,36 @@ test("activation snapshot keeps a tool call on one generation", async () => {
       loadConfig().effectiveExcelPath,
       join(custom, ".releases", "second", "zh_CN", "gamedata", "excel"),
     );
+  } finally {
+    delete process.env["GAMEDATA_PATH"];
+  }
+});
+
+test("activated release symlink cannot escape the configured root", async () => {
+  const root = tempRoot();
+  const custom = join(root, "gamedata");
+  const outside = join(root, "outside");
+  const excel = join(outside, "zh_CN", "gamedata", "excel");
+  mkdirSync(excel, { recursive: true });
+  for (const name of [
+    "character_table.json",
+    "handbook_info_table.json",
+    "charword_table.json",
+    "story_review_table.json",
+  ]) writeFileSync(join(excel, name), "{}", "utf-8");
+  const archives = join(custom, "archives");
+  mkdirSync(join(custom, ".releases"), { recursive: true });
+  mkdirSync(archives);
+  symlinkSync(outside, join(custom, ".releases", "escaped"), "dir");
+  writeFileSync(
+    join(archives, "extract_meta.json"),
+    JSON.stringify({ commit_sha: "escaped", data_root: ".releases/escaped" }),
+    "utf-8",
+  );
+  process.env["GAMEDATA_PATH"] = custom;
+  try {
+    const { loadConfig } = await loadConfigModule();
+    assert.notEqual(loadConfig().effectiveExcelPath, excel);
   } finally {
     delete process.env["GAMEDATA_PATH"];
   }

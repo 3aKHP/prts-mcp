@@ -5,6 +5,7 @@ import json
 import os
 import subprocess
 import sys
+import threading
 import time
 import zipfile
 from concurrent.futures import ThreadPoolExecutor
@@ -100,6 +101,38 @@ class TestCheckLatestRelease:
 # ---------------------------------------------------------------------------
 
 class TestSyncRelease:
+    def test_concurrent_release_checks_are_serialized(self, tmp_path):
+        spec = _make_spec(tmp_path)
+        _write_zip(spec.local_zip)
+        guard = threading.Lock()
+        active_checks = 0
+        max_active_checks = 0
+
+        def check_release(_spec):
+            nonlocal active_checks, max_active_checks
+            with guard:
+                active_checks += 1
+                max_active_checks = max(max_active_checks, active_checks)
+            time.sleep(0.05)
+            with guard:
+                active_checks -= 1
+            return None
+
+        with patch(
+            "prts_mcp.data.sync.check_latest_release",
+            side_effect=check_release,
+        ):
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                results = list(
+                    pool.map(
+                        lambda _: sync_release(spec, force_check=True),
+                        range(2),
+                    )
+                )
+
+        assert max_active_checks == 1
+        assert {result.status for result in results} == {"offline_fallback"}
+
     def test_reads_typescript_release_metadata(self, tmp_path):
         spec = _make_spec(tmp_path)
         _write_zip(spec.local_zip)
@@ -589,11 +622,28 @@ class TestSyncReleaseArchive:
             commit_sha="abc123",
             error=None,
         )
+        publication_guard = threading.Lock()
+        active_publications = 0
+        max_active_publications = 0
 
-        with patch("prts_mcp.data.sync.sync_release", return_value=release_result):
+        def publish_release(*_args, **_kwargs):
+            nonlocal active_publications, max_active_publications
+            with publication_guard:
+                active_publications += 1
+                max_active_publications = max(
+                    max_active_publications,
+                    active_publications,
+                )
+            time.sleep(0.05)
+            with publication_guard:
+                active_publications -= 1
+            return release_result
+
+        with patch("prts_mcp.data.sync.sync_release", side_effect=publish_release):
             with ThreadPoolExecutor(max_workers=2) as pool:
                 results = list(pool.map(lambda _: sync_release_archive(spec), range(2)))
 
+        assert max_active_publications == 1
         assert {result.status for result in results} == {"updated", "up_to_date"}
         active_root = _active_archive_root(spec)
         assert (active_root / required).is_file()

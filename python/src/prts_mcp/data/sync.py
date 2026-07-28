@@ -281,7 +281,7 @@ def download_release_asset(spec: ReleaseSpec, tag: str, url: str, timeout: float
         raise
 
 
-def sync_release(spec: ReleaseSpec, *, force_check: bool = False) -> SyncResult:
+def _sync_release_locked(spec: ReleaseSpec, *, force_check: bool = False) -> SyncResult:
     """Check latest GitHub Release and download asset if the tag has changed.
 
     Decision tree mirrors the legacy per-file sync path:
@@ -521,9 +521,12 @@ def _archive_activation_sha(spec: ReleaseArchiveSpec, release_sha: str | None) -
 
 
 @contextmanager
-def _archive_activation_lock(spec: ReleaseArchiveSpec) -> Iterator[None]:
-    """Serialize archive publication across Python and TypeScript processes."""
-    lock = spec.local_zip.parent / ".activation.lock"
+def _archive_activation_lock(
+    spec: ReleaseSpec | ReleaseArchiveSpec,
+    lock_name: str = ".activation.lock",
+) -> Iterator[None]:
+    """Serialize release state changes across Python and TypeScript processes."""
+    lock = spec.local_zip.parent / lock_name
     owner = uuid4().hex
     deadline = time.monotonic() + _ACTIVATION_LOCK_TIMEOUT_SECONDS
     while True:
@@ -571,6 +574,33 @@ def _archive_activation_lock(spec: ReleaseArchiveSpec) -> Iterator[None]:
             shutil.rmtree(lock, ignore_errors=True)
 
 
+def sync_release(spec: ReleaseSpec, *, force_check: bool = False) -> SyncResult:
+    """Publish a release ZIP and its metadata as one serialized operation."""
+    dummy_spec = RepoSpec(
+        owner=spec.owner,
+        repo=spec.repo,
+        branch="releases",
+        files=(spec.asset_name,),
+        local_root=spec.local_zip.parent,
+    )
+    try:
+        spec.local_zip.parent.mkdir(parents=True, exist_ok=True)
+        with _archive_activation_lock(spec, ".release.lock"):
+            return _sync_release_locked(spec, force_check=force_check)
+    except Exception as exc:  # noqa: BLE001
+        cache = CacheMeta.load(_release_cache_path(spec))
+        return SyncResult(
+            spec=dummy_spec,
+            status=(
+                "offline_fallback"
+                if _release_zip_error(spec) is None
+                else "no_data"
+            ),
+            commit_sha=cache.commit_sha if cache is not None else None,
+            error=str(exc),
+        )
+
+
 def _prune_release_trees(spec: ReleaseArchiveSpec, keep: set[Path]) -> None:
     releases = _releases_path(spec)
     cutoff = time.time() - _RELEASE_RETENTION_SECONDS
@@ -591,16 +621,11 @@ def _prune_release_trees(spec: ReleaseArchiveSpec, keep: set[Path]) -> None:
         pass
 
 
-def sync_release_archive(
+def _sync_release_archive_locked(
     spec: ReleaseArchiveSpec,
     *,
     force_check: bool = False,
 ) -> SyncResult:
-    """Download a GitHub Release zip asset and extract it into local_root.
-
-    This keeps the data distribution path aligned with storyjson releases while
-    preserving the existing on-disk ArknightsGameData layout.
-    """
     release_result = sync_release(
         ReleaseSpec(
             owner=spec.owner,
@@ -652,33 +677,32 @@ def sync_release_archive(
         try:
             activation_sha = _archive_activation_sha(spec, release_result.commit_sha)
             staging, activated_root = _stage_release_tree(spec, activation_sha)
-            with _archive_activation_lock(spec):
-                current_meta = _load_extract_meta(spec)
-                current_root = (
-                    current_meta[1] if current_meta is not None else spec.local_root
+            current_meta = _load_extract_meta(spec)
+            current_root = (
+                current_meta[1] if current_meta is not None else spec.local_root
+            )
+            if (
+                current_meta is not None
+                and current_meta[0] == activation_sha
+                and all(
+                    (current_root / path).is_file()
+                    for path in spec.required_files
                 )
-                if (
-                    current_meta is not None
-                    and current_meta[0] == activation_sha
-                    and all(
-                        (current_root / path).is_file()
-                        for path in spec.required_files
-                    )
-                ):
-                    shutil.rmtree(staging, ignore_errors=True)
-                    staging = None
-                    return SyncResult(
-                        spec=dummy_spec,
-                        status="up_to_date",
-                        commit_sha=activation_sha,
-                        error=None,
-                    )
-                staging.replace(activated_root)
+            ):
+                shutil.rmtree(staging, ignore_errors=True)
                 staging = None
-                if current_root.parent == _releases_path(spec):
-                    os.utime(current_root)
-                _save_extract_meta(spec, activation_sha, activated_root)
-                _prune_release_trees(spec, {current_root, activated_root})
+                return SyncResult(
+                    spec=dummy_spec,
+                    status="up_to_date",
+                    commit_sha=activation_sha,
+                    error=None,
+                )
+            staging.replace(activated_root)
+            staging = None
+            if current_root.parent == _releases_path(spec):
+                os.utime(current_root)
+            _save_extract_meta(spec, activation_sha, activated_root)
+            _prune_release_trees(spec, {current_root, activated_root})
         except Exception as exc:  # noqa: BLE001
             if staging is not None:
                 shutil.rmtree(staging, ignore_errors=True)
@@ -708,3 +732,29 @@ def sync_release_archive(
         commit_sha=release_result.commit_sha,
         error=release_result.error,
     )
+
+
+def sync_release_archive(
+    spec: ReleaseArchiveSpec,
+    *,
+    force_check: bool = False,
+) -> SyncResult:
+    """Publish and activate one release archive under a shared-volume lock."""
+    dummy_spec = RepoSpec(
+        owner=spec.owner,
+        repo=spec.repo,
+        branch="releases",
+        files=spec.required_files,
+        local_root=spec.local_root,
+    )
+    try:
+        spec.local_zip.parent.mkdir(parents=True, exist_ok=True)
+        with _archive_activation_lock(spec):
+            return _sync_release_archive_locked(spec, force_check=force_check)
+    except Exception as exc:  # noqa: BLE001
+        return SyncResult(
+            spec=dummy_spec,
+            status=("offline_fallback" if _archive_files_present(spec) else "no_data"),
+            commit_sha=None,
+            error=str(exc),
+        )
