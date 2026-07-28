@@ -295,7 +295,10 @@ export async function downloadReleaseAsset(
  *   3. Tag unchanged AND zip exists → up_to_date (refresh fetchedAt)
  *   4. Tag changed or zip missing → downloadReleaseAsset → updated / fallback
  */
-export async function syncRelease(spec: ReleaseSpec): Promise<SyncResult> {
+export async function syncRelease(
+  spec: ReleaseSpec,
+  forceCheck = false,
+): Promise<SyncResult> {
   // Use a dummy RepoSpec so existing result logging can share the same shape.
   const dummySpec: RepoSpec = {
     owner: spec.owner,
@@ -309,7 +312,7 @@ export async function syncRelease(spec: ReleaseSpec): Promise<SyncResult> {
   const zipError = releaseZipError(spec);
   const zipOk = zipError === null;
 
-  if (cache !== null && zipOk && cacheIsFresh(cache)) {
+  if (!forceCheck && cache !== null && zipOk && cacheIsFresh(cache)) {
     return { spec: dummySpec, status: "up_to_date", commitSha: cache.commitSha, error: null };
   }
 
@@ -371,6 +374,34 @@ function archiveMissingFiles(spec: ReleaseArchiveSpec): string[] {
   });
 }
 
+function extractMetaPath(spec: ReleaseArchiveSpec): string {
+  return join(dirname(spec.localZip), "extract_meta.json");
+}
+
+async function loadExtractedSha(spec: ReleaseArchiveSpec): Promise<string | null> {
+  try {
+    const value = JSON.parse(await readFile(extractMetaPath(spec), "utf-8")) as {
+      commit_sha?: unknown;
+    };
+    return typeof value.commit_sha === "string" && value.commit_sha.length > 0
+      ? value.commit_sha
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+async function saveExtractedSha(
+  spec: ReleaseArchiveSpec,
+  commitSha: string,
+): Promise<void> {
+  const path = extractMetaPath(spec);
+  const tmp = `${path}.tmp`;
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(tmp, JSON.stringify({ commit_sha: commitSha }, null, 2), "utf-8");
+  await rename(tmp, path);
+}
+
 function validateArchiveZip(zipPath: string, requiredFiles: readonly string[]): string[] {
   try {
     const zip = new AdmZip(zipPath);
@@ -420,7 +451,8 @@ async function safeExtractZip(zipPath: string, localRoot: string): Promise<void>
  * while preserving the existing on-disk ArknightsGameData layout.
  */
 export async function syncReleaseArchive(
-  spec: ReleaseArchiveSpec
+  spec: ReleaseArchiveSpec,
+  forceCheck = false,
 ): Promise<SyncResult> {
   const releaseResult = await syncRelease({
     owner: spec.owner,
@@ -428,7 +460,7 @@ export async function syncReleaseArchive(
     assetName: spec.assetName,
     localZip: spec.localZip,
     validateZip: (zipPath) => validateArchiveZip(zipPath, spec.requiredFiles),
-  });
+  }, forceCheck);
 
   const dummySpec: RepoSpec = {
     owner: spec.owner,
@@ -455,7 +487,11 @@ export async function syncReleaseArchive(
         };
   }
 
-  const shouldExtract = releaseResult.status === "updated" || !filesOk;
+  const extractedSha = await loadExtractedSha(spec);
+  const shouldExtract = releaseResult.status === "updated"
+    || !filesOk
+    || extractedSha === null
+    || extractedSha !== releaseResult.commitSha;
   if (shouldExtract) {
     try {
       await safeExtractZip(spec.localZip, spec.localRoot);
@@ -492,6 +528,19 @@ export async function syncReleaseArchive(
             commitSha: releaseResult.commitSha,
             error,
           };
+    }
+
+    if (releaseResult.commitSha !== null) {
+      await saveExtractedSha(spec, releaseResult.commitSha);
+    }
+
+    if (releaseResult.status === "up_to_date") {
+      return {
+        spec: dummySpec,
+        status: "updated",
+        commitSha: releaseResult.commitSha,
+        error: null,
+      };
     }
   }
 

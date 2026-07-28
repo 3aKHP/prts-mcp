@@ -14,6 +14,9 @@ from typing import Callable, Literal
 _logger = logging.getLogger("prts_mcp.server")
 
 _SYNC_RETRY_DELAYS_SECONDS = (30, 120, 600)
+_AUTO_SYNC_DEFAULT_INTERVAL_SECONDS = 3600
+_AUTO_SYNC_MIN_INTERVAL_SECONDS = 60
+_AUTO_SYNC_MAX_INTERVAL_SECONDS = 7 * 24 * 60 * 60
 # Startup sync labels are fixed domains; keep their locks for process lifetime
 # so overlapping initial/retry attempts share the same mutex.
 _SYNC_LOCKS: dict[str, threading.Lock] = {}
@@ -106,7 +109,7 @@ def _log_sync_result(r) -> None:  # type: ignore[no-untyped-def]
         )
 
 
-def _run_startup_sync() -> None:
+def _run_startup_sync(*, force_check: bool = False) -> None:
     """Check upstream GitHub and download data files if outdated.
 
     Skipped when GAMEDATA_PATH is explicitly set to a custom location —
@@ -130,7 +133,7 @@ def _run_startup_sync() -> None:
         )
 
         def _sync_gamedata() -> bool:
-            r = sync_release_archive(archive_spec)
+            r = sync_release_archive(archive_spec, force_check=force_check)
             _log_sync_result(r)
             if r.status == "updated":
                 from prts_mcp.data.operator import clear_operator_caches
@@ -150,7 +153,7 @@ def _run_startup_sync() -> None:
             "Gamedata",
             lambda: _single_flight_sync("Gamedata", _sync_gamedata) != "done",
         )
-        if needs_retry:
+        if needs_retry and not force_check:
             _schedule_sync_retry("Gamedata", _sync_gamedata)
 
         levels_spec = GAMEDATA_LEVELS.archive_spec(
@@ -159,7 +162,7 @@ def _run_startup_sync() -> None:
         )
 
         def _sync_levels() -> bool:
-            r = sync_release_archive(levels_spec)
+            r = sync_release_archive(levels_spec, force_check=force_check)
             _log_sync_result(r)
             if r.status == "updated":
                 from prts_mcp.data.enemy import clear_enemy_caches
@@ -173,7 +176,7 @@ def _run_startup_sync() -> None:
             "Gamedata levels",
             lambda: _single_flight_sync("Gamedata levels", _sync_levels) != "done",
         )
-        if needs_retry:
+        if needs_retry and not force_check:
             _schedule_sync_retry("Gamedata levels", _sync_levels)
 
     # Always try to sync storyjson from GitHub Release (unless user supplied their own zip)
@@ -181,7 +184,7 @@ def _run_startup_sync() -> None:
         release_spec = STORY_ZH_CN.release_spec(cfg.storyjson_zip)
 
         def _sync_storyjson() -> bool:
-            r = sync_release(release_spec)
+            r = sync_release(release_spec, force_check=force_check)
             _log_sync_result(r)
             if r.status == "updated":
                 from prts_mcp.data.story import clear_story_caches
@@ -193,5 +196,53 @@ def _run_startup_sync() -> None:
             "Storyjson",
             lambda: _single_flight_sync("Storyjson", _sync_storyjson) != "done",
         )
-        if needs_retry:
+        if needs_retry and not force_check:
             _schedule_sync_retry("Storyjson", _sync_storyjson)
+
+
+def _auto_sync_interval_seconds() -> int:
+    raw = os.environ.get("PRTS_AUTO_SYNC_INTERVAL_SECONDS")
+    if raw is None:
+        return _AUTO_SYNC_DEFAULT_INTERVAL_SECONDS
+    try:
+        if not raw.strip():
+            raise ValueError
+        interval = int(raw)
+    except ValueError:
+        interval = -1
+    if interval == 0:
+        return 0
+    if not (
+        _AUTO_SYNC_MIN_INTERVAL_SECONDS
+        <= interval
+        <= _AUTO_SYNC_MAX_INTERVAL_SECONDS
+    ):
+        _logger.warning(
+            "Invalid PRTS_AUTO_SYNC_INTERVAL_SECONDS=%r; using %ss.",
+            raw,
+            _AUTO_SYNC_DEFAULT_INTERVAL_SECONDS,
+        )
+        return _AUTO_SYNC_DEFAULT_INTERVAL_SECONDS
+    return interval
+
+
+def _run_auto_sync(stop_event: threading.Event | None = None) -> None:
+    """Run startup sync, then keep checking Releases for the process lifetime."""
+    stop = stop_event or threading.Event()
+    interval = _auto_sync_interval_seconds()
+    force_check = False
+
+    while True:
+        try:
+            _run_startup_sync(force_check=force_check)
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Auto-sync cycle threw unexpectedly: %s", exc)
+
+        if interval == 0:
+            _logger.info("Periodic auto-sync is disabled; startup sync completed.")
+            return
+
+        _logger.info("Next auto-sync check in %ss.", interval)
+        if stop.wait(interval):
+            return
+        force_check = True

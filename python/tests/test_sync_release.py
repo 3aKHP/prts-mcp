@@ -194,6 +194,31 @@ class TestSyncRelease:
         mock_check.assert_not_called()
         assert result.status == "up_to_date"
 
+    def test_forced_check_bypasses_fresh_cache(self, tmp_path):
+        spec = _make_spec(tmp_path)
+        sha = "freshsha"
+        _write_zip(spec.local_zip)
+
+        from prts_mcp.data.sync import CacheMeta
+        from datetime import datetime, timezone
+        CacheMeta(
+            repo="3aKHP/ArknightsStoryJson",
+            branch="releases",
+            commit_sha=sha,
+            fetched_at=datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            files=["zh_CN.zip"],
+        ).save(spec.local_zip.parent / "release_meta.json")
+
+        with patch(
+            "prts_mcp.data.sync.check_latest_release",
+            return_value=(f"upstream-{sha}", "http://x"),
+        ) as mock_check:
+            result = sync_release(spec, force_check=True)
+
+        mock_check.assert_called_once_with(spec)
+        assert result.status == "up_to_date"
+        assert result.commit_sha == sha
+
 
 # ---------------------------------------------------------------------------
 # sync_release_archive
@@ -238,6 +263,9 @@ class TestSyncReleaseArchive:
         assert result.status == "updated"
         assert (spec.local_root / "zh_CN/gamedata/excel/character_table.json").is_file()
         assert (spec.local_root / "zh_CN/gamedata/excel/handbook_info_table.json").is_file()
+        assert json.loads(
+            (spec.local_zip.parent / "extract_meta.json").read_text(encoding="utf-8")
+        ) == {"commit_sha": "abc123"}
 
     def test_up_to_date_archive_extracts_when_required_files_missing(self, tmp_path):
         zip_path = tmp_path / "archives" / "zh_CN-excel.zip"
@@ -270,8 +298,59 @@ class TestSyncReleaseArchive:
         ):
             result = sync_release_archive(spec)
 
-        assert result.status == "up_to_date"
+        assert result.status == "updated"
         assert (spec.local_root / "zh_CN/gamedata/excel/character_table.json").is_file()
+
+    def test_retries_activation_after_extraction_failure(self, tmp_path):
+        zip_path = tmp_path / "archives" / "zh_CN-excel.zip"
+        zip_path.parent.mkdir(parents=True)
+        required = "zh_CN/gamedata/excel/character_table.json"
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            zf.writestr(required, '{"version":"new"}')
+
+        spec = ReleaseArchiveSpec(
+            owner="3aKHP",
+            repo="ArknightsGameData",
+            asset_name="zh_CN-excel.zip",
+            local_zip=zip_path,
+            local_root=tmp_path / "gamedata",
+            required_files=(required,),
+        )
+        old_file = spec.local_root / required
+        old_file.parent.mkdir(parents=True)
+        old_file.write_text('{"version":"old"}', encoding="utf-8")
+        release_result = SyncResult(
+            spec=ReleaseSpec(
+                owner=spec.owner,
+                repo=spec.repo,
+                asset_name=spec.asset_name,
+                local_zip=spec.local_zip,
+            ),
+            status="up_to_date",
+            commit_sha="abc123",
+            error=None,
+        )
+
+        with (
+            patch("prts_mcp.data.sync.sync_release", return_value=release_result),
+            patch(
+                "prts_mcp.data.sync._safe_extract_zip",
+                side_effect=RuntimeError("interrupted extraction"),
+            ),
+        ):
+            first = sync_release_archive(spec)
+
+        assert first.status == "offline_fallback"
+        assert not (spec.local_zip.parent / "extract_meta.json").exists()
+
+        with patch("prts_mcp.data.sync.sync_release", return_value=release_result):
+            second = sync_release_archive(spec)
+
+        assert second.status == "updated"
+        assert old_file.read_text(encoding="utf-8") == '{"version":"new"}'
+        assert json.loads(
+            (spec.local_zip.parent / "extract_meta.json").read_text(encoding="utf-8")
+        ) == {"commit_sha": "abc123"}
 
     def test_archive_missing_required_zip_entry_returns_no_data(self, tmp_path):
         zip_path = tmp_path / "archives" / "zh_CN-levels.zip"

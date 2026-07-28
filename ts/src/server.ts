@@ -18,7 +18,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { registerPrtsTools } from "./tools/prtsTools.js";
 import { registerGamedataTools } from "./tools/gamedataTools.js";
 import { registerStoryTools } from "./tools/storyTools.js";
-import { runStartupSync } from "./startupSync.js";
+import { startAutoSync } from "./startupSync.js";
 import { parseChannel, type OutputChannel } from "./output.js";
 
 // ---------------------------------------------------------------------------
@@ -215,7 +215,5 @@ const HOST = process.env["HOST"] ?? "0.0.0.0";
 
 app.listen(PORT, HOST, () => {
   log("INFO", `PRTS MCP Server ${SERVER_VERSION} listening on ${HOST}:${PORT} (StreamableHTTP at /mcp)`);
-  void runStartupSync().catch((err: unknown) => {
-    log("ERROR", `Startup sync threw unexpectedly: ${err instanceof Error ? err.message : String(err)}`);
-  });
+  startAutoSync();
 });

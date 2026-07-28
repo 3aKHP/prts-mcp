@@ -34,7 +34,11 @@ function log(level: "INFO" | "WARN" | "ERROR", msg: string): void {
 // ---------------------------------------------------------------------------
 
 const SYNC_RETRY_DELAYS_MS = [30_000, 120_000, 600_000] as const;
+const AUTO_SYNC_DEFAULT_INTERVAL_SECONDS = 3600;
+const AUTO_SYNC_MIN_INTERVAL_SECONDS = 60;
+const AUTO_SYNC_MAX_INTERVAL_SECONDS = 7 * 24 * 60 * 60;
 const syncInFlight = new Set<string>();
+let autoSyncStarted = false;
 type SyncRunResult = "retry" | "done" | "skipped";
 
 function shouldRetrySync(status: string): boolean {
@@ -85,7 +89,7 @@ function scheduleSyncRetry(
 // Startup sync entry point
 // ---------------------------------------------------------------------------
 
-export async function runStartupSync(): Promise<void> {
+export async function runStartupSync(forceCheck = false): Promise<void> {
   const cfg = loadConfig();
   const startupTasks: Promise<void>[] = [];
 
@@ -100,7 +104,7 @@ export async function runStartupSync(): Promise<void> {
     );
 
     const runGamedataSync = async (): Promise<boolean> => {
-      const r = await syncReleaseArchive(archiveSpec);
+      const r = await syncReleaseArchive(archiveSpec, forceCheck);
       const sha = r.commitSha ? r.commitSha.slice(0, 8) : "unknown";
       if (r.status === "updated") {
         clearOperatorCaches();
@@ -127,7 +131,9 @@ export async function runStartupSync(): Promise<void> {
           return true;
         })
         .then((result) => {
-          if (result !== "done") scheduleSyncRetry("Gamedata", runGamedataSync);
+          if (result !== "done" && !forceCheck) {
+            scheduleSyncRetry("Gamedata", runGamedataSync);
+          }
         }),
     );
 
@@ -138,7 +144,7 @@ export async function runStartupSync(): Promise<void> {
     );
 
     const runLevelsSync = async (): Promise<boolean> => {
-      const r = await syncReleaseArchive(levelsSpec);
+      const r = await syncReleaseArchive(levelsSpec, forceCheck);
       const sha = r.commitSha ? r.commitSha.slice(0, 8) : "unknown";
       if (r.status === "updated") {
         clearEnemyCaches();
@@ -161,7 +167,9 @@ export async function runStartupSync(): Promise<void> {
           return true;
         })
         .then((result) => {
-          if (result !== "done") scheduleSyncRetry("Gamedata levels", runLevelsSync);
+          if (result !== "done" && !forceCheck) {
+            scheduleSyncRetry("Gamedata levels", runLevelsSync);
+          }
         }),
     );
   }
@@ -171,7 +179,7 @@ export async function runStartupSync(): Promise<void> {
     const releaseSpec = releaseSpecForDataset(STORY_ZH_CN, cfg.storyjsonZip);
 
     const runStorySync = async (): Promise<boolean> => {
-      const r = await syncRelease(releaseSpec);
+      const r = await syncRelease(releaseSpec, forceCheck);
       const sha = r.commitSha ? r.commitSha.slice(0, 8) : "unknown";
       if (r.status === "updated") {
         clearStoryCaches();
@@ -193,7 +201,9 @@ export async function runStartupSync(): Promise<void> {
           return true;
         })
         .then((result) => {
-          if (result !== "done") scheduleSyncRetry("Storyjson", runStorySync);
+          if (result !== "done" && !forceCheck) {
+            scheduleSyncRetry("Storyjson", runStorySync);
+          }
         }),
     );
   } else {
@@ -201,4 +211,81 @@ export async function runStartupSync(): Promise<void> {
   }
 
   await Promise.all(startupTasks);
+}
+
+export function resolveAutoSyncIntervalMs(
+  raw = process.env["PRTS_AUTO_SYNC_INTERVAL_SECONDS"],
+): number {
+  if (raw === undefined) return AUTO_SYNC_DEFAULT_INTERVAL_SECONDS * 1000;
+  const normalized = raw.trim();
+  const interval = /^[+-]?\d+$/.test(normalized) ? Number(normalized) : Number.NaN;
+  if (interval === 0) return 0;
+  if (
+    !Number.isInteger(interval)
+    || interval < AUTO_SYNC_MIN_INTERVAL_SECONDS
+    || interval > AUTO_SYNC_MAX_INTERVAL_SECONDS
+  ) {
+    log(
+      "WARN",
+      "Invalid PRTS_AUTO_SYNC_INTERVAL_SECONDS="
+        + JSON.stringify(raw)
+        + "; using "
+        + AUTO_SYNC_DEFAULT_INTERVAL_SECONDS
+        + "s.",
+    );
+    return AUTO_SYNC_DEFAULT_INTERVAL_SECONDS * 1000;
+  }
+  return interval * 1000;
+}
+
+interface AutoSyncTimer {
+  unref?: () => void;
+}
+
+type AutoSyncSchedule = (
+  callback: () => void,
+  delayMs: number,
+) => AutoSyncTimer;
+
+export function runAutoSyncLoop(
+  runSync: (forceCheck: boolean) => Promise<void> = runStartupSync,
+  intervalMs = resolveAutoSyncIntervalMs(),
+  schedule: AutoSyncSchedule = (callback, delayMs) =>
+    setTimeout(callback, delayMs),
+): void {
+  let forceCheck = false;
+
+  const runCycle = (): void => {
+    void runSync(forceCheck)
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : String(err);
+        log("ERROR", "Auto-sync cycle threw unexpectedly: " + message);
+      })
+      .finally(() => {
+        if (intervalMs === 0) {
+          log("INFO", "Periodic auto-sync is disabled; startup sync completed.");
+          return;
+        }
+        log(
+          "INFO",
+          "Next auto-sync check in " + Math.round(intervalMs / 1000) + "s.",
+        );
+        const timer = schedule(() => {
+          forceCheck = true;
+          runCycle();
+        }, intervalMs);
+        timer.unref?.();
+      });
+  };
+
+  runCycle();
+}
+
+export function startAutoSync(): void {
+  if (autoSyncStarted) {
+    log("INFO", "Auto-sync is already running; skipping duplicate start.");
+    return;
+  }
+  autoSyncStarted = true;
+  runAutoSyncLoop();
 }

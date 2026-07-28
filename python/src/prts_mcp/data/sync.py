@@ -257,7 +257,7 @@ def download_release_asset(spec: ReleaseSpec, tag: str, url: str, timeout: float
         raise
 
 
-def sync_release(spec: ReleaseSpec) -> SyncResult:
+def sync_release(spec: ReleaseSpec, *, force_check: bool = False) -> SyncResult:
     """Check latest GitHub Release and download asset if the tag has changed.
 
     Decision tree mirrors the legacy per-file sync path:
@@ -279,7 +279,12 @@ def sync_release(spec: ReleaseSpec) -> SyncResult:
     zip_error = _release_zip_error(spec)
     zip_ok = zip_error is None
 
-    if cache is not None and zip_ok and _release_cache_is_fresh(cache):
+    if (
+        not force_check
+        and cache is not None
+        and zip_ok
+        and _release_cache_is_fresh(cache)
+    ):
         _logger.debug("Release cache is fresh for %s/%s; skipping check.", spec.owner, spec.repo)
         return SyncResult(spec=_dummy_spec, status="up_to_date", commit_sha=cache.commit_sha, error=None)
 
@@ -358,6 +363,30 @@ def _archive_missing_files(spec: ReleaseArchiveSpec) -> list[str]:
     return [f for f in spec.required_files if not (spec.local_root / f).is_file()]
 
 
+def _extract_meta_path(spec: ReleaseArchiveSpec) -> Path:
+    return spec.local_zip.parent / "extract_meta.json"
+
+
+def _load_extracted_sha(spec: ReleaseArchiveSpec) -> str | None:
+    try:
+        value = json.loads(_extract_meta_path(spec).read_text(encoding="utf-8"))
+        commit_sha = value.get("commit_sha")
+        return commit_sha if isinstance(commit_sha, str) and commit_sha else None
+    except (OSError, json.JSONDecodeError, AttributeError):
+        return None
+
+
+def _save_extracted_sha(spec: ReleaseArchiveSpec, commit_sha: str) -> None:
+    path = _extract_meta_path(spec)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp.write_text(
+        json.dumps({"commit_sha": commit_sha}, indent=2),
+        encoding="utf-8",
+    )
+    tmp.replace(path)
+
+
 def _validate_archive_zip(zip_path: Path, required_files: tuple[str, ...]) -> list[str]:
     try:
         with zipfile.ZipFile(zip_path) as zf:
@@ -396,7 +425,11 @@ def _safe_extract_zip(zip_path: Path, local_root: Path) -> None:
         raise
 
 
-def sync_release_archive(spec: ReleaseArchiveSpec) -> SyncResult:
+def sync_release_archive(
+    spec: ReleaseArchiveSpec,
+    *,
+    force_check: bool = False,
+) -> SyncResult:
     """Download a GitHub Release zip asset and extract it into local_root.
 
     This keeps the data distribution path aligned with storyjson releases while
@@ -409,7 +442,8 @@ def sync_release_archive(spec: ReleaseArchiveSpec) -> SyncResult:
             asset_name=spec.asset_name,
             local_zip=spec.local_zip,
             validate_zip=lambda path: _validate_archive_zip(path, spec.required_files),
-        )
+        ),
+        force_check=force_check,
     )
     dummy_spec = RepoSpec(
         owner=spec.owner,
@@ -435,7 +469,13 @@ def sync_release_archive(spec: ReleaseArchiveSpec) -> SyncResult:
             error=release_result.error,
         )
 
-    should_extract = release_result.status == "updated" or not files_ok
+    extracted_sha = _load_extracted_sha(spec)
+    should_extract = (
+        release_result.status == "updated"
+        or not files_ok
+        or extracted_sha is None
+        or extracted_sha != release_result.commit_sha
+    )
     if should_extract:
         try:
             _safe_extract_zip(spec.local_zip, spec.local_root)
@@ -469,6 +509,17 @@ def sync_release_archive(spec: ReleaseArchiveSpec) -> SyncResult:
                 status="no_data",
                 commit_sha=release_result.commit_sha,
                 error=error,
+            )
+
+        if release_result.commit_sha is not None:
+            _save_extracted_sha(spec, release_result.commit_sha)
+
+        if release_result.status == "up_to_date":
+            return SyncResult(
+                spec=dummy_spec,
+                status="updated",
+                commit_sha=release_result.commit_sha,
+                error=None,
             )
 
     return SyncResult(

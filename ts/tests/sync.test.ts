@@ -1,6 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import AdmZip from "adm-zip";
@@ -126,6 +133,44 @@ test("syncRelease validates zip before fresh-cache fast path", async () => {
   });
 });
 
+test("syncRelease forced check bypasses fresh-cache fast path", async () => {
+  const spec = tempSpec();
+  mkdirSync(dirname(spec.localZip), { recursive: true });
+  writeFileSync(spec.localZip, "cached");
+  writeFileSync(
+    join(dirname(spec.localZip), "release_meta.json"),
+    JSON.stringify({
+      repo: "3aKHP/ArknightsStoryJson",
+      branch: "releases",
+      commitSha: "cached-sha",
+      fetchedAt: new Date().toISOString(),
+      files: ["zh_CN.zip"],
+    }),
+    "utf-8",
+  );
+
+  let fetchCalls = 0;
+  await withFetchMock((async () => {
+    fetchCalls += 1;
+    return new Response(
+      JSON.stringify({
+        tag_name: "upstream-cached-sha",
+        assets: [{
+          name: "zh_CN.zip",
+          browser_download_url: "https://example.test/zh_CN.zip",
+        }],
+      }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    );
+  }) as typeof fetch, async () => {
+    const result = await syncRelease(spec, true);
+
+    assert.equal(fetchCalls, 1);
+    assert.equal(result.status, "up_to_date");
+    assert.equal(result.commitSha, "cached-sha");
+  });
+});
+
 test("syncRelease converts zip validation exceptions to no_data", async () => {
   const spec = {
     ...tempSpec(),
@@ -189,5 +234,45 @@ test("syncReleaseArchive returns no_data when zip misses required entries", asyn
 
     assert.equal(result.status, "no_data");
     assert.match(result.error ?? "", /enemy_database\.json/);
+  });
+});
+
+test("syncReleaseArchive retries activation after extraction failure", async () => {
+  const spec = tempArchiveSpec();
+  const required = spec.requiredFiles[0];
+  writeZip(spec.localZip, {
+    [required]: '{"version":"new"}',
+    "blocked/child.json": "{}",
+  });
+  writeFileSync(
+    join(dirname(spec.localZip), "release_meta.json"),
+    JSON.stringify({
+      repo: "3aKHP/ArknightsGameData",
+      branch: "releases",
+      commitSha: "abc123",
+      fetchedAt: new Date().toISOString(),
+      files: [spec.assetName],
+    }),
+    "utf-8",
+  );
+  const requiredPath = join(spec.localRoot, required);
+  mkdirSync(dirname(requiredPath), { recursive: true });
+  writeFileSync(requiredPath, '{"version":"old"}', "utf-8");
+  const blocker = join(spec.localRoot, "blocked");
+  writeFileSync(blocker, "not a directory", "utf-8");
+  const extractMeta = join(dirname(spec.localZip), "extract_meta.json");
+
+  const first = await syncReleaseArchive(spec);
+
+  assert.equal(first.status, "offline_fallback");
+  assert.equal(existsSync(extractMeta), false);
+
+  unlinkSync(blocker);
+  const second = await syncReleaseArchive(spec);
+
+  assert.equal(second.status, "updated");
+  assert.equal(readFileSync(requiredPath, "utf-8"), '{"version":"new"}');
+  assert.deepEqual(JSON.parse(readFileSync(extractMeta, "utf-8")), {
+    commit_sha: "abc123",
   });
 });
