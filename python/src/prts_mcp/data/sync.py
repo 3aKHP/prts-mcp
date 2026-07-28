@@ -11,6 +11,7 @@ import json
 import logging
 import os
 import shutil
+import threading
 import time
 import zipfile
 from contextlib import contextmanager
@@ -98,7 +99,9 @@ _CACHE_TTL_SECONDS = 3600
 _ACTIVATION_LOCK_TIMEOUT_SECONDS = 120
 _ACTIVATION_LOCK_STALE_SECONDS = 30 * 60
 _ACTIVATION_LOCK_OWNER_GRACE_SECONDS = 10
+_ACTIVATION_LOCK_HEARTBEAT_SECONDS = 60
 _RELEASE_RETENTION_SECONDS = 24 * 60 * 60
+_GAMEDATA_PAIR_META = ".gamedata_pair.json"
 
 
 # ---------------------------------------------------------------------------
@@ -538,11 +541,13 @@ def _archive_activation_lock(
         except FileExistsError:
             if lock.is_symlink():
                 raise ValueError(f"Unsafe activation lock symlink: {lock}")
+            owner_path = lock / "owner"
             try:
-                age = time.time() - lock.stat().st_mtime
+                lease_path = owner_path if owner_path.is_file() else lock
+                age = time.time() - lease_path.stat().st_mtime
             except FileNotFoundError:
                 continue
-            ownerless = not (lock / "owner").is_file()
+            ownerless = not owner_path.is_file()
             stale = age > _ACTIVATION_LOCK_STALE_SECONDS or (
                 ownerless and age > _ACTIVATION_LOCK_OWNER_GRACE_SECONDS
             )
@@ -561,15 +566,31 @@ def _archive_activation_lock(
                 raise TimeoutError(f"Timed out waiting for archive activation lock: {lock}")
             time.sleep(0.05)
     try:
-        (lock / "owner").write_text(owner, encoding="utf-8")
+        owner_path = lock / "owner"
+        owner_path.write_text(owner, encoding="utf-8")
     except Exception:
         shutil.rmtree(lock, ignore_errors=True)
         raise
+    stop_heartbeat = threading.Event()
+
+    def _refresh_lease() -> None:
+        while not stop_heartbeat.wait(_ACTIVATION_LOCK_HEARTBEAT_SECONDS):
+            try:
+                if owner_path.read_text(encoding="utf-8") != owner:
+                    return
+                owner_path.touch()
+            except OSError:
+                return
+
+    heartbeat = threading.Thread(target=_refresh_lease, daemon=True)
+    heartbeat.start()
     try:
         yield
     finally:
+        stop_heartbeat.set()
+        heartbeat.join(timeout=1)
         try:
-            current_owner = (lock / "owner").read_text(encoding="utf-8")
+            current_owner = owner_path.read_text(encoding="utf-8")
         except OSError:
             current_owner = None
         if current_owner == owner:
@@ -761,3 +782,153 @@ def sync_release_archive(
             commit_sha=None,
             error=str(exc),
         )
+
+
+def _gamedata_pair_path(
+    excel_spec: ReleaseArchiveSpec,
+    levels_spec: ReleaseArchiveSpec,
+) -> Path:
+    excel_parent = excel_spec.local_root.resolve().parent
+    levels_parent = levels_spec.local_root.resolve().parent
+    if excel_parent != levels_parent:
+        raise ValueError("GameData excel and levels roots must share one parent")
+    return excel_parent / _GAMEDATA_PAIR_META
+
+
+def _load_gamedata_pair(
+    excel_spec: ReleaseArchiveSpec,
+    levels_spec: ReleaseArchiveSpec,
+) -> tuple[str, Path, Path] | None:
+    try:
+        value = json.loads(
+            _gamedata_pair_path(excel_spec, levels_spec).read_text(encoding="utf-8")
+        )
+        commit_sha = value.get("commit_sha")
+        excel_data_root = value.get("excel_data_root")
+        levels_data_root = value.get("levels_data_root")
+        if not all(
+            isinstance(item, str) and item
+            for item in (commit_sha, excel_data_root, levels_data_root)
+        ):
+            return None
+        excel_root = (excel_spec.local_root / excel_data_root).resolve()
+        levels_root = (levels_spec.local_root / levels_data_root).resolve()
+        if not excel_root.is_relative_to(excel_spec.local_root.resolve()):
+            return None
+        if not levels_root.is_relative_to(levels_spec.local_root.resolve()):
+            return None
+        if not all((excel_root / path).is_file() for path in excel_spec.required_files):
+            return None
+        if not all((levels_root / path).is_file() for path in levels_spec.required_files):
+            return None
+        return commit_sha, excel_root, levels_root
+    except (OSError, json.JSONDecodeError, AttributeError, ValueError):
+        return None
+
+
+def _save_gamedata_pair(
+    excel_spec: ReleaseArchiveSpec,
+    levels_spec: ReleaseArchiveSpec,
+    commit_sha: str,
+    excel_root: Path,
+    levels_root: Path,
+) -> None:
+    path = _gamedata_pair_path(excel_spec, levels_spec)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
+    tmp.write_text(
+        json.dumps(
+            {
+                "commit_sha": commit_sha,
+                "excel_data_root": excel_root.relative_to(
+                    excel_spec.local_root.resolve()
+                ).as_posix(),
+                "levels_data_root": levels_root.relative_to(
+                    levels_spec.local_root.resolve()
+                ).as_posix(),
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    tmp.replace(path)
+
+
+def _initialize_gamedata_pair(
+    excel_spec: ReleaseArchiveSpec,
+    levels_spec: ReleaseArchiveSpec,
+) -> None:
+    if _load_gamedata_pair(excel_spec, levels_spec) is not None:
+        return
+    excel_meta = _load_extract_meta(excel_spec)
+    levels_meta = _load_extract_meta(levels_spec)
+    excel_root = excel_meta[1] if excel_meta is not None else excel_spec.local_root
+    levels_root = levels_meta[1] if levels_meta is not None else levels_spec.local_root
+    if not all((excel_root / path).is_file() for path in excel_spec.required_files):
+        return
+    if not all((levels_root / path).is_file() for path in levels_spec.required_files):
+        return
+    sha_parts = (
+        excel_meta[0] if excel_meta is not None else "legacy",
+        levels_meta[0] if levels_meta is not None else "legacy",
+    )
+    commit_sha = sha_parts[0] if sha_parts[0] == sha_parts[1] else "legacy-pair"
+    _save_gamedata_pair(
+        excel_spec,
+        levels_spec,
+        commit_sha,
+        excel_root,
+        levels_root,
+    )
+
+
+def sync_release_archive_pair(
+    excel_spec: ReleaseArchiveSpec,
+    levels_spec: ReleaseArchiveSpec,
+    *,
+    force_check: bool = False,
+) -> tuple[SyncResult, SyncResult]:
+    """Activate Excel and levels as one cross-process visible generation."""
+    pair_path = _gamedata_pair_path(excel_spec, levels_spec)
+    pair_path.parent.mkdir(parents=True, exist_ok=True)
+    lock_spec = ReleaseSpec(
+        owner=excel_spec.owner,
+        repo=excel_spec.repo,
+        asset_name="gamedata-pair",
+        local_zip=pair_path.parent / "gamedata-pair",
+    )
+    with _archive_activation_lock(lock_spec, ".gamedata-pair.lock"):
+        _initialize_gamedata_pair(excel_spec, levels_spec)
+        current_pair = _load_gamedata_pair(excel_spec, levels_spec)
+        if current_pair is not None:
+            now = time.time()
+            for root in current_pair[1:]:
+                try:
+                    os.utime(root, (now, now))
+                except OSError:
+                    pass
+        excel_result = sync_release_archive(excel_spec, force_check=force_check)
+        levels_result = sync_release_archive(levels_spec, force_check=force_check)
+        excel_meta = _load_extract_meta(excel_spec)
+        levels_meta = _load_extract_meta(levels_spec)
+        if (
+            excel_meta is not None
+            and levels_meta is not None
+            and excel_meta[0] == levels_meta[0]
+            and all(
+                (excel_meta[1] / path).is_file()
+                for path in excel_spec.required_files
+            )
+            and all(
+                (levels_meta[1] / path).is_file()
+                for path in levels_spec.required_files
+            )
+        ):
+            _save_gamedata_pair(
+                excel_spec,
+                levels_spec,
+                excel_meta[0],
+                excel_meta[1],
+                levels_meta[1],
+            )
+        return excel_result, levels_result

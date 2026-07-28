@@ -99,6 +99,62 @@ class TestActivatedDataRoot:
         assert cfg.excel_path == root / "zh_CN" / "gamedata" / "excel"
         assert cfg.effective_excel_path == excel
 
+    def test_pair_manifest_hides_partially_activated_generation(self, tmp_path):
+        gamedata = tmp_path / "gamedata"
+        levels = tmp_path / "gamedata-levels"
+        for generation in ("old", "new"):
+            excel = (
+                gamedata
+                / ".releases"
+                / generation
+                / "zh_CN"
+                / "gamedata"
+                / "excel"
+            )
+            excel.mkdir(parents=True)
+            for name in config_module._REQUIRED_OPERATOR_FILES:
+                (excel / name).write_text("{}", encoding="utf-8")
+            enemy_db = (
+                levels
+                / ".releases"
+                / generation
+                / "zh_CN"
+                / "gamedata"
+                / "levels"
+                / "enemydata"
+                / "enemy_database.json"
+            )
+            enemy_db.parent.mkdir(parents=True)
+            enemy_db.write_text("{}", encoding="utf-8")
+        for root, generation in ((gamedata, "new"), (levels, "old")):
+            archives = root / "archives"
+            archives.mkdir()
+            (archives / "extract_meta.json").write_text(
+                json.dumps({
+                    "commit_sha": generation,
+                    "data_root": f".releases/{generation}",
+                }),
+                encoding="utf-8",
+            )
+        (tmp_path / ".gamedata_pair.json").write_text(
+            json.dumps({
+                "commit_sha": "old",
+                "excel_data_root": ".releases/old",
+                "levels_data_root": ".releases/old",
+            }),
+            encoding="utf-8",
+        )
+
+        with patch.dict(os.environ, {"GAMEDATA_PATH": str(gamedata)}):
+            cfg = Config.load()
+
+        assert str(cfg.effective_excel_path).endswith(
+            "/gamedata/.releases/old/zh_CN/gamedata/excel"
+        )
+        assert str(cfg.effective_levels_path).endswith(
+            "/gamedata-levels/.releases/old"
+        )
+
     def test_late_old_generation_load_cannot_replace_current_cache(self, tmp_path):
         root = tmp_path / "gamedata"
         archives = root / "archives"

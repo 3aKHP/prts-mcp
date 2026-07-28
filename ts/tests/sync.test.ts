@@ -13,7 +13,14 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import AdmZip from "adm-zip";
-import { syncRelease, syncReleaseArchive, type ReleaseArchiveSpec, type ReleaseSpec } from "../src/data/sync.ts";
+import {
+  syncRelease,
+  syncReleaseArchive,
+  syncReleaseArchivePair,
+  withArchiveActivationLock,
+  type ReleaseArchiveSpec,
+  type ReleaseSpec,
+} from "../src/data/sync.ts";
 
 function tempSpec(): ReleaseSpec {
   const root = mkdtempSync(join(tmpdir(), "prts-sync-test-"));
@@ -441,6 +448,108 @@ test("syncReleaseArchive reclaims an abandoned ownerless lock", async () => {
     assert.equal(result.status, "updated");
     assert.equal(existsSync(lock), false);
   });
+});
+
+test("live owner heartbeat prevents stale lock takeover", async () => {
+  const spec = tempArchiveSpec();
+  mkdirSync(dirname(spec.localZip), { recursive: true });
+  let releaseFirst: (() => void) | undefined;
+  let secondEntered = false;
+  let resolveEntered: (() => void) | undefined;
+  const firstEntered = new Promise<void>((resolve) => { resolveEntered = resolve; });
+  const first = withArchiveActivationLock(
+    spec,
+    () => new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+      resolveEntered?.();
+    }),
+    ".activation.lock",
+    { timeoutMs: 1_000, staleMs: 40, ownerGraceMs: 10, heartbeatMs: 10 },
+  );
+  await firstEntered;
+  await new Promise((resolveDelay) => setTimeout(resolveDelay, 80));
+  const second = withArchiveActivationLock(
+    spec,
+    async () => { secondEntered = true; },
+    ".activation.lock",
+    { timeoutMs: 1_000, staleMs: 40, ownerGraceMs: 10, heartbeatMs: 10 },
+  );
+  await new Promise((resolveDelay) => setTimeout(resolveDelay, 80));
+  assert.equal(secondEntered, false);
+  releaseFirst?.();
+  await Promise.all([first, second]);
+  assert.equal(secondEntered, true);
+});
+
+test("pair manifest switches only after both archives share one SHA", async () => {
+  const root = mkdtempSync(join(tmpdir(), "prts-sync-pair-test-"));
+  const excelRequired = "zh_CN/gamedata/excel/character_table.json";
+  const levelsRequired = "zh_CN/gamedata/levels/enemydata/enemy_database.json";
+  const excelSpec: ReleaseArchiveSpec = {
+    owner: "3aKHP",
+    repo: "ArknightsGameData",
+    assetName: "zh_CN-excel.zip",
+    localZip: join(root, "gamedata", "archives", "zh_CN-excel.zip"),
+    localRoot: join(root, "gamedata"),
+    requiredFiles: [excelRequired],
+  };
+  const levelsSpec: ReleaseArchiveSpec = {
+    owner: "3aKHP",
+    repo: "ArknightsGameData",
+    assetName: "zh_CN-levels.zip",
+    localZip: join(root, "gamedata-levels", "archives", "zh_CN-levels.zip"),
+    localRoot: join(root, "gamedata-levels"),
+    requiredFiles: [levelsRequired],
+  };
+  for (const [spec, required] of [
+    [excelSpec, excelRequired],
+    [levelsSpec, levelsRequired],
+  ] as const) {
+    const path = join(spec.localRoot, required);
+    mkdirSync(dirname(path), { recursive: true });
+    mkdirSync(dirname(spec.localZip), { recursive: true });
+    writeFileSync(path, "old", "utf-8");
+    writeFileSync(
+      join(dirname(spec.localZip), "release_meta.json"),
+      JSON.stringify({
+        repo: "3aKHP/ArknightsGameData",
+        branch: "releases",
+        commit_sha: "new",
+        fetched_at: "2099-01-01T00:00:00Z",
+        files: [spec.assetName],
+      }),
+      "utf-8",
+    );
+  }
+  writeZip(excelSpec.localZip, { [excelRequired]: "new" });
+  writeZip(levelsSpec.localZip, { "wrong/path.json": "new" });
+
+  await withFetchMock((async () => {
+    throw new Error("network down");
+  }) as typeof fetch, async () => {
+    const [, levelsResult] = await syncReleaseArchivePair(excelSpec, levelsSpec);
+    assert.equal(levelsResult.status, "offline_fallback");
+  });
+  const pairPath = join(root, ".gamedata_pair.json");
+  let pair = JSON.parse(readFileSync(pairPath, "utf-8")) as {
+    commit_sha: string;
+    excel_data_root: string;
+    levels_data_root: string;
+  };
+  assert.equal(pair.commit_sha, "legacy");
+  assert.equal(pair.excel_data_root, ".");
+  assert.equal(pair.levels_data_root, ".");
+
+  writeZip(levelsSpec.localZip, { [levelsRequired]: "new" });
+  await withFetchMock((async () => {
+    throw new Error("network down");
+  }) as typeof fetch, async () => {
+    await syncReleaseArchivePair(excelSpec, levelsSpec);
+  });
+  pair = JSON.parse(readFileSync(pairPath, "utf-8"));
+  assert.equal(pair.commit_sha, "new");
+  assert.match(pair.excel_data_root, /^\.releases\//);
+  assert.match(pair.levels_data_root, /^\.releases\//);
 });
 
 test("syncReleaseArchive prunes stale staging without a new release", async () => {

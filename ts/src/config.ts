@@ -50,7 +50,10 @@ export function registerActivationListener(listener: () => void): void {
 }
 
 function activationMetaToken(root: string): readonly unknown[] {
-  const path = join(root, "archives", "extract_meta.json");
+  return activationPathToken(join(root, "archives", "extract_meta.json"));
+}
+
+function activationPathToken(path: string): readonly unknown[] {
   try {
     const info = statSync(path);
     return [path, info.ino, info.size, info.mtimeMs, info.ctimeMs];
@@ -68,6 +71,7 @@ export function checkActivationChange(): void {
     : DEFAULT_GAMEDATA_PATH;
   const levels = resolveLevelsPath(gamedata);
   const signature = JSON.stringify([
+    ...activationPathToken(gamedataPairPath(gamedata, levels)),
     ...activationMetaToken(gamedata),
     ...activationMetaToken(levels),
   ]);
@@ -155,6 +159,46 @@ function activatedRoot(root: string): string {
   }
 }
 
+function gamedataPairPath(gamedataRoot: string, levelsRoot: string): string {
+  const gamedataParent = dirname(resolve(gamedataRoot));
+  const levelsParent = dirname(resolve(levelsRoot));
+  if (gamedataParent !== levelsParent) {
+    return join(gamedataParent, ".gamedata_pair.invalid");
+  }
+  return join(gamedataParent, ".gamedata_pair.json");
+}
+
+function activatedPair(
+  gamedataRoot: string,
+  levelsRoot: string,
+): readonly [string, string] | null {
+  try {
+    const value = JSON.parse(
+      readFileSync(gamedataPairPath(gamedataRoot, levelsRoot), "utf-8"),
+    ) as {
+      commit_sha?: unknown;
+      excel_data_root?: unknown;
+      levels_data_root?: unknown;
+    };
+    if (typeof value.commit_sha !== "string" || value.commit_sha.length === 0) return null;
+    if (typeof value.excel_data_root !== "string" || value.excel_data_root.length === 0) return null;
+    if (typeof value.levels_data_root !== "string" || value.levels_data_root.length === 0) return null;
+    const excelBase = realpathSync(gamedataRoot);
+    const levelsBase = realpathSync(levelsRoot);
+    const activeExcelRoot = realpathSync(resolve(excelBase, value.excel_data_root));
+    const activeLevelsRoot = realpathSync(resolve(levelsBase, value.levels_data_root));
+    const excelRel = relative(excelBase, activeExcelRoot);
+    const levelsRel = relative(levelsBase, activeLevelsRoot);
+    if (excelRel === ".." || excelRel.startsWith(`..${sep}`) || isAbsolute(excelRel)) return null;
+    if (levelsRel === ".." || levelsRel.startsWith(`..${sep}`) || isAbsolute(levelsRel)) return null;
+    if (!statSync(activeExcelRoot).isDirectory()) return null;
+    if (!statSync(activeLevelsRoot).isDirectory()) return null;
+    return [activeExcelRoot, activeLevelsRoot];
+  } catch {
+    return null;
+  }
+}
+
 function levelsPath(gamedataRoot: string): string {
   return join(dirname(gamedataRoot), "gamedata-levels");
 }
@@ -238,8 +282,9 @@ export function loadConfig(): Config {
     : DEFAULT_GAMEDATA_PATH;
 
   const ep = excelPath(gamedataPath);
-  const activeEp = excelPath(activatedRoot(gamedataPath));
   const lp = resolveLevelsPath(gamedataPath);
+  const pair = activatedPair(gamedataPath, lp);
+  const activeEp = excelPath(pair?.[0] ?? activatedRoot(gamedataPath));
   const bep = excelPath(BUNDLED_GAMEDATA_PATH);
   const blp = BUNDLED_LEVELS_PATH;
 
@@ -248,7 +293,7 @@ export function loadConfig(): Config {
   else if (filesComplete(bep)) effectiveExcelPath = bep;
 
   let effectiveLevelsPath: string | null = null;
-  const activeLp = activatedRoot(lp);
+  const activeLp = pair?.[1] ?? activatedRoot(lp);
   if (levelsComplete(activeLp)) effectiveLevelsPath = activeLp;
   else if (levelsComplete(blp)) effectiveLevelsPath = blp;
 

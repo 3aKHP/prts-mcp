@@ -119,7 +119,7 @@ def _run_startup_sync(*, force_check: bool = False) -> None:
     """
     from prts_mcp.config import Config, _DEFAULT_GAMEDATA_PATH
     from prts_mcp.data.datasets import GAMEDATA_EXCEL, GAMEDATA_LEVELS, STORY_ZH_CN
-    from prts_mcp.data.sync import sync_release, sync_release_archive
+    from prts_mcp.data.sync import sync_release, sync_release_archive_pair
 
     cfg = Config.load()
     if cfg.is_custom_gamedata:
@@ -132,11 +132,27 @@ def _run_startup_sync(*, force_check: bool = False) -> None:
             local_zip=_DEFAULT_GAMEDATA_PATH / "archives" / "zh_CN-excel.zip",
             local_root=_DEFAULT_GAMEDATA_PATH,
         )
+        levels_spec = GAMEDATA_LEVELS.archive_spec(
+            local_zip=cfg.levels_path / "archives" / "zh_CN-levels.zip",
+            local_root=cfg.levels_path,
+        )
 
-        def _sync_gamedata() -> bool:
-            r = sync_release_archive(archive_spec, force_check=force_check)
-            _log_sync_result(r)
-            if r.status == "updated":
+        def _sync_gamedata_pair() -> bool:
+            excel_result, levels_result = sync_release_archive_pair(
+                archive_spec,
+                levels_spec,
+                force_check=force_check,
+            )
+            _log_sync_result(excel_result)
+            _log_sync_result(levels_result)
+            same_generation = (
+                excel_result.commit_sha is not None
+                and excel_result.commit_sha == levels_result.commit_sha
+            )
+            if same_generation and (
+                excel_result.status == "updated"
+                or levels_result.status == "updated"
+            ):
                 from prts_mcp.data.operator import clear_operator_caches
                 from prts_mcp.data.enemy import clear_enemy_caches
                 from prts_mcp.data.item import clear_item_caches
@@ -148,37 +164,18 @@ def _run_startup_sync(*, force_check: bool = False) -> None:
                 clear_stage_enemy_caches()
                 from prts_mcp.data.stage import clear_stage_caches as _clear_stages
                 _clear_stages()
-            return _sync_needs_retry(r.status)
+            return (
+                _sync_needs_retry(excel_result.status)
+                or _sync_needs_retry(levels_result.status)
+                or not same_generation
+            )
 
         needs_retry = _run_initial_sync(
             "Gamedata",
-            lambda: _single_flight_sync("Gamedata", _sync_gamedata) != "done",
+            lambda: _single_flight_sync("Gamedata", _sync_gamedata_pair) != "done",
         )
         if needs_retry and not force_check:
-            _schedule_sync_retry("Gamedata", _sync_gamedata)
-
-        levels_spec = GAMEDATA_LEVELS.archive_spec(
-            local_zip=cfg.levels_path / "archives" / "zh_CN-levels.zip",
-            local_root=cfg.levels_path,
-        )
-
-        def _sync_levels() -> bool:
-            r = sync_release_archive(levels_spec, force_check=force_check)
-            _log_sync_result(r)
-            if r.status == "updated":
-                from prts_mcp.data.enemy import clear_enemy_caches
-                from prts_mcp.data.stage_enemy import clear_stage_enemy_caches
-
-                clear_enemy_caches()
-                clear_stage_enemy_caches()
-            return _sync_needs_retry(r.status)
-
-        needs_retry = _run_initial_sync(
-            "Gamedata levels",
-            lambda: _single_flight_sync("Gamedata levels", _sync_levels) != "done",
-        )
-        if needs_retry and not force_check:
-            _schedule_sync_retry("Gamedata levels", _sync_levels)
+            _schedule_sync_retry("Gamedata", _sync_gamedata_pair)
 
     # Always try to sync storyjson from GitHub Release (unless user supplied their own zip)
     if "STORYJSON_PATH" not in os.environ:

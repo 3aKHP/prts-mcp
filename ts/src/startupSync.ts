@@ -17,7 +17,7 @@ import { clearItemCaches } from "./data/item.js";
 import { clearStageEnemyCaches } from "./data/stageEnemy.js";
 import { clearSearchCaches } from "./data/search.js";
 import { clearStoryCaches } from "./data/story.js";
-import { syncRelease, syncReleaseArchive } from "./data/sync.js";
+import { syncRelease, syncReleaseArchivePair } from "./data/sync.js";
 import { archiveSpecForDataset, releaseSpecForDataset, GAMEDATA_EXCEL, GAMEDATA_LEVELS, STORY_ZH_CN } from "./data/datasets.js";
 
 // ---------------------------------------------------------------------------
@@ -102,17 +102,20 @@ export async function runStartupSync(forceCheck = false): Promise<void> {
       join(cfg.gamedataPath, "archives", "zh_CN-excel.zip"),
       cfg.gamedataPath,
     );
+    const levelsSpec = archiveSpecForDataset(
+      GAMEDATA_LEVELS,
+      join(cfg.levelsPath, "archives", "zh_CN-levels.zip"),
+      cfg.levelsPath,
+    );
 
     const runGamedataSync = async (): Promise<boolean> => {
-      const r = await syncReleaseArchive(archiveSpec, forceCheck);
+      const [r, levelsResult] = await syncReleaseArchivePair(
+        archiveSpec,
+        levelsSpec,
+        forceCheck,
+      );
       const sha = r.commitSha ? r.commitSha.slice(0, 8) : "unknown";
       if (r.status === "updated") {
-        clearOperatorCaches();
-        clearEnemyCaches();
-        clearStageCaches();
-        clearItemCaches();
-        clearStageEnemyCaches();
-        clearSearchCaches();
         log("INFO", `Data updated from GitHub Release (${r.spec.repo} @ ${sha}).`);
       } else if (r.status === "up_to_date") {
         log("INFO", `Data is up to date (${r.spec.repo} @ ${sha}).`);
@@ -121,7 +124,34 @@ export async function runStartupSync(forceCheck = false): Promise<void> {
       } else {
         log("ERROR", `Sync failed for ${r.spec.repo} — no data. Error: ${r.error}`);
       }
-      return shouldRetrySync(r.status);
+      const levelsSha = levelsResult.commitSha
+        ? levelsResult.commitSha.slice(0, 8)
+        : "unknown";
+      if (levelsResult.status === "updated") {
+        log("INFO", `Level data updated from GitHub Release (${levelsResult.spec.repo} @ ${levelsSha}).`);
+      } else if (levelsResult.status === "up_to_date") {
+        log("INFO", `Level data is up to date (${levelsResult.spec.repo} @ ${levelsSha}).`);
+      } else if (levelsResult.status === "offline_fallback") {
+        log("WARN", `Network unavailable; using cached level data (${levelsResult.spec.repo} @ ${levelsSha}). Error: ${levelsResult.error}`);
+      } else {
+        log("ERROR", `Level data sync failed for ${levelsResult.spec.repo} — no data. Error: ${levelsResult.error}`);
+      }
+      const sameGeneration = r.commitSha !== null
+        && r.commitSha === levelsResult.commitSha;
+      if (
+        sameGeneration
+        && (r.status === "updated" || levelsResult.status === "updated")
+      ) {
+        clearOperatorCaches();
+        clearEnemyCaches();
+        clearStageCaches();
+        clearItemCaches();
+        clearStageEnemyCaches();
+        clearSearchCaches();
+      }
+      return shouldRetrySync(r.status)
+        || shouldRetrySync(levelsResult.status)
+        || !sameGeneration;
     };
 
     startupTasks.push(
@@ -133,42 +163,6 @@ export async function runStartupSync(forceCheck = false): Promise<void> {
         .then((result) => {
           if (result !== "done" && !forceCheck) {
             scheduleSyncRetry("Gamedata", runGamedataSync);
-          }
-        }),
-    );
-
-    const levelsSpec = archiveSpecForDataset(
-      GAMEDATA_LEVELS,
-      join(cfg.levelsPath, "archives", "zh_CN-levels.zip"),
-      cfg.levelsPath,
-    );
-
-    const runLevelsSync = async (): Promise<boolean> => {
-      const r = await syncReleaseArchive(levelsSpec, forceCheck);
-      const sha = r.commitSha ? r.commitSha.slice(0, 8) : "unknown";
-      if (r.status === "updated") {
-        clearEnemyCaches();
-        clearStageEnemyCaches();
-        log("INFO", `Level data updated from GitHub Release (${r.spec.repo} @ ${sha}).`);
-      } else if (r.status === "up_to_date") {
-        log("INFO", `Level data is up to date (${r.spec.repo} @ ${sha}).`);
-      } else if (r.status === "offline_fallback") {
-        log("WARN", `Network unavailable; using cached level data (${r.spec.repo} @ ${sha}). Error: ${r.error}`);
-      } else {
-        log("ERROR", `Level data sync failed for ${r.spec.repo} — no data. Error: ${r.error}`);
-      }
-      return shouldRetrySync(r.status);
-    };
-
-    startupTasks.push(
-      singleFlightSync("Gamedata levels", runLevelsSync)
-        .catch((err: unknown) => {
-          log("ERROR", `Level data sync threw unexpectedly: ${err instanceof Error ? err.message : String(err)}`);
-          return true;
-        })
-        .then((result) => {
-          if (result !== "done" && !forceCheck) {
-            scheduleSyncRetry("Gamedata levels", runLevelsSync);
           }
         }),
     );

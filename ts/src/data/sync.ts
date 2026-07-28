@@ -48,7 +48,9 @@ const CACHE_TTL_SECONDS = 3600;
 const ACTIVATION_LOCK_TIMEOUT_MS = 120_000;
 const ACTIVATION_LOCK_STALE_MS = 30 * 60_000;
 const ACTIVATION_LOCK_OWNER_GRACE_MS = 10_000;
+const ACTIVATION_LOCK_HEARTBEAT_MS = 60_000;
 const RELEASE_RETENTION_MS = 24 * 60 * 60_000;
+const GAMEDATA_PAIR_META = ".gamedata_pair.json";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -560,14 +562,26 @@ async function archiveActivationSha(
   return `local-${digest}`;
 }
 
-async function withArchiveActivationLock<T>(
+interface ActivationLockTiming {
+  timeoutMs?: number;
+  staleMs?: number;
+  ownerGraceMs?: number;
+  heartbeatMs?: number;
+}
+
+export async function withArchiveActivationLock<T>(
   spec: Pick<ReleaseSpec, "localZip">,
   run: () => Promise<T>,
   lockName = ".activation.lock",
+  timing: ActivationLockTiming = {},
 ): Promise<T> {
   const lock = join(dirname(spec.localZip), lockName);
   const owner = randomUUID().replaceAll("-", "");
-  const deadline = Date.now() + ACTIVATION_LOCK_TIMEOUT_MS;
+  const timeoutMs = timing.timeoutMs ?? ACTIVATION_LOCK_TIMEOUT_MS;
+  const staleMs = timing.staleMs ?? ACTIVATION_LOCK_STALE_MS;
+  const ownerGraceMs = timing.ownerGraceMs ?? ACTIVATION_LOCK_OWNER_GRACE_MS;
+  const heartbeatMs = timing.heartbeatMs ?? ACTIVATION_LOCK_HEARTBEAT_MS;
+  const deadline = Date.now() + timeoutMs;
   for (;;) {
     try {
       await mkdir(lock);
@@ -582,11 +596,19 @@ async function withArchiveActivationLock<T>(
         throw statErr;
       }
       if (info.isSymbolicLink()) throw new Error(`Unsafe activation lock symlink: ${lock}`);
-      const age = Date.now() - info.mtimeMs;
-      const ownerless = !existsSync(join(lock, "owner"));
+      const ownerPath = join(lock, "owner");
+      let leaseInfo = info;
+      let ownerless = true;
+      try {
+        leaseInfo = await lstat(ownerPath);
+        ownerless = false;
+      } catch (ownerErr) {
+        if ((ownerErr as NodeJS.ErrnoException).code !== "ENOENT") throw ownerErr;
+      }
+      const age = Date.now() - leaseInfo.mtimeMs;
       if (
-        age > ACTIVATION_LOCK_STALE_MS
-        || (ownerless && age > ACTIVATION_LOCK_OWNER_GRACE_MS)
+        age > staleMs
+        || (ownerless && age > ownerGraceMs)
       ) {
         const quarantine = `${lock}.stale-${randomUUID().replaceAll("-", "")}`;
         try {
@@ -604,18 +626,30 @@ async function withArchiveActivationLock<T>(
       await delay(50);
     }
   }
+  const ownerPath = join(lock, "owner");
   try {
-    await writeFile(join(lock, "owner"), owner, "utf-8");
+    await writeFile(ownerPath, owner, "utf-8");
   } catch (err) {
     await rm(lock, { recursive: true, force: true });
     throw err;
   }
+  const heartbeat = setInterval(() => {
+    void readFile(ownerPath, "utf-8")
+      .then((currentOwner) => {
+        if (currentOwner !== owner) return;
+        const now = new Date();
+        return utimes(ownerPath, now, now);
+      })
+      .catch(() => undefined);
+  }, heartbeatMs);
+  heartbeat.unref();
   try {
     return await run();
   } finally {
+    clearInterval(heartbeat);
     let currentOwner: string | null = null;
     try {
-      currentOwner = await readFile(join(lock, "owner"), "utf-8");
+      currentOwner = await readFile(ownerPath, "utf-8");
     } catch {
       // A stale-lock successor owns the original path now.
     }
@@ -819,4 +853,139 @@ export async function syncReleaseArchive(
       error: errorMessage(err),
     };
   }
+}
+
+interface GamedataPairMeta {
+  commitSha: string;
+  excelRoot: string;
+  levelsRoot: string;
+}
+
+function gamedataPairPath(
+  excelSpec: ReleaseArchiveSpec,
+  levelsSpec: ReleaseArchiveSpec,
+): string {
+  const excelParent = dirname(resolve(excelSpec.localRoot));
+  const levelsParent = dirname(resolve(levelsSpec.localRoot));
+  if (excelParent !== levelsParent) {
+    throw new Error("GameData excel and levels roots must share one parent");
+  }
+  return join(excelParent, GAMEDATA_PAIR_META);
+}
+
+async function loadGamedataPair(
+  excelSpec: ReleaseArchiveSpec,
+  levelsSpec: ReleaseArchiveSpec,
+): Promise<GamedataPairMeta | null> {
+  try {
+    const value = JSON.parse(
+      await readFile(gamedataPairPath(excelSpec, levelsSpec), "utf-8"),
+    ) as {
+      commit_sha?: unknown;
+      excel_data_root?: unknown;
+      levels_data_root?: unknown;
+    };
+    if (typeof value.commit_sha !== "string" || value.commit_sha.length === 0) return null;
+    if (typeof value.excel_data_root !== "string" || value.excel_data_root.length === 0) return null;
+    if (typeof value.levels_data_root !== "string" || value.levels_data_root.length === 0) return null;
+    const excelBase = realpathSync(excelSpec.localRoot);
+    const levelsBase = realpathSync(levelsSpec.localRoot);
+    const excelRoot = realpathSync(resolve(excelBase, value.excel_data_root));
+    const levelsRoot = realpathSync(resolve(levelsBase, value.levels_data_root));
+    const excelRel = relative(excelBase, excelRoot);
+    const levelsRel = relative(levelsBase, levelsRoot);
+    if (excelRel === ".." || excelRel.startsWith(`..${sep}`) || isAbsolute(excelRel)) return null;
+    if (levelsRel === ".." || levelsRel.startsWith(`..${sep}`) || isAbsolute(levelsRel)) return null;
+    if (!archiveFilesPresent(excelSpec, excelRoot)) return null;
+    if (!archiveFilesPresent(levelsSpec, levelsRoot)) return null;
+    return { commitSha: value.commit_sha, excelRoot, levelsRoot };
+  } catch {
+    return null;
+  }
+}
+
+async function saveGamedataPair(
+  excelSpec: ReleaseArchiveSpec,
+  levelsSpec: ReleaseArchiveSpec,
+  commitSha: string,
+  excelRoot: string,
+  levelsRoot: string,
+): Promise<void> {
+  const path = gamedataPairPath(excelSpec, levelsSpec);
+  const tmp = join(dirname(path), `.${basename(path)}.${randomUUID().replaceAll("-", "")}.tmp`);
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(tmp, JSON.stringify({
+    commit_sha: commitSha,
+    excel_data_root: relative(excelSpec.localRoot, excelRoot).replaceAll("\\", "/") || ".",
+    levels_data_root: relative(levelsSpec.localRoot, levelsRoot).replaceAll("\\", "/") || ".",
+  }, null, 2), "utf-8");
+  await rename(tmp, path);
+}
+
+async function initializeGamedataPair(
+  excelSpec: ReleaseArchiveSpec,
+  levelsSpec: ReleaseArchiveSpec,
+): Promise<void> {
+  if (await loadGamedataPair(excelSpec, levelsSpec) !== null) return;
+  const excelMeta = await loadExtractMeta(excelSpec);
+  const levelsMeta = await loadExtractMeta(levelsSpec);
+  const excelRoot = excelMeta?.dataRoot ?? excelSpec.localRoot;
+  const levelsRoot = levelsMeta?.dataRoot ?? levelsSpec.localRoot;
+  if (!archiveFilesPresent(excelSpec, excelRoot)) return;
+  if (!archiveFilesPresent(levelsSpec, levelsRoot)) return;
+  const commitSha = excelMeta?.commitSha === levelsMeta?.commitSha
+    ? (excelMeta?.commitSha ?? "legacy")
+    : "legacy-pair";
+  await saveGamedataPair(
+    excelSpec,
+    levelsSpec,
+    commitSha,
+    excelRoot,
+    levelsRoot,
+  );
+}
+
+/** Activate GameData Excel and levels as one cross-process visible generation. */
+export async function syncReleaseArchivePair(
+  excelSpec: ReleaseArchiveSpec,
+  levelsSpec: ReleaseArchiveSpec,
+  forceCheck = false,
+): Promise<readonly [SyncResult, SyncResult]> {
+  const pairPath = gamedataPairPath(excelSpec, levelsSpec);
+  await mkdir(dirname(pairPath), { recursive: true });
+  return withArchiveActivationLock(
+    { localZip: join(dirname(pairPath), "gamedata-pair") },
+    async () => {
+      await initializeGamedataPair(excelSpec, levelsSpec);
+      const currentPair = await loadGamedataPair(excelSpec, levelsSpec);
+      if (currentPair !== null) {
+        const now = new Date();
+        await Promise.all([
+          utimes(currentPair.excelRoot, now, now).catch(() => undefined),
+          utimes(currentPair.levelsRoot, now, now).catch(() => undefined),
+        ]);
+      }
+      const excelResult = await syncReleaseArchive(excelSpec, forceCheck);
+      const levelsResult = await syncReleaseArchive(levelsSpec, forceCheck);
+      const excelMeta = await loadExtractMeta(excelSpec);
+      const levelsMeta = await loadExtractMeta(levelsSpec);
+      if (
+        excelMeta !== null
+        && levelsMeta !== null
+        && excelMeta.commitSha === levelsMeta.commitSha
+        && archiveFilesPresent(excelSpec, excelMeta.dataRoot)
+        && archiveFilesPresent(levelsSpec, levelsMeta.dataRoot)
+      ) {
+        await saveGamedataPair(
+          excelSpec,
+          levelsSpec,
+          excelMeta.commitSha,
+          excelMeta.dataRoot,
+          levelsMeta.dataRoot,
+        );
+      }
+      return [excelResult, levelsResult] as const;
+    },
+    ".gamedata-pair.lock",
+  );
 }

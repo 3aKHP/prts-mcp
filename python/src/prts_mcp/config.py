@@ -28,7 +28,10 @@ def register_activation_listener(listener: Callable[[], None]) -> None:
 
 
 def _activation_meta_token(root: Path) -> tuple[object, ...]:
-    path = root / "archives" / "extract_meta.json"
+    return _activation_path_token(root / "archives" / "extract_meta.json")
+
+
+def _activation_path_token(path: Path) -> tuple[object, ...]:
     try:
         info = path.stat()
         return (
@@ -52,7 +55,11 @@ def check_activation_change() -> None:
     custom = "GAMEDATA_PATH" in os.environ
     gamedata = Path(os.environ["GAMEDATA_PATH"]) if custom else _DEFAULT_GAMEDATA_PATH
     levels = _resolve_levels_path(gamedata)
-    signature = _activation_meta_token(gamedata) + _activation_meta_token(levels)
+    signature = (
+        _activation_path_token(_gamedata_pair_path(gamedata, levels))
+        + _activation_meta_token(gamedata)
+        + _activation_meta_token(levels)
+    )
     with _activation_lock:
         previous = _activation_signature
         _activation_signature = signature
@@ -173,6 +180,45 @@ def _activated_root(root: Path) -> Path:
     return root
 
 
+def _gamedata_pair_path(gamedata_root: Path, levels_root: Path) -> Path:
+    gamedata_parent = gamedata_root.resolve().parent
+    levels_parent = levels_root.resolve().parent
+    if gamedata_parent != levels_parent:
+        return gamedata_parent / ".gamedata_pair.invalid"
+    return gamedata_parent / ".gamedata_pair.json"
+
+
+def _activated_pair(
+    gamedata_root: Path,
+    levels_root: Path,
+) -> tuple[Path, Path] | None:
+    try:
+        value = json.loads(
+            _gamedata_pair_path(gamedata_root, levels_root).read_text(
+                encoding="utf-8"
+            )
+        )
+        commit_sha = value.get("commit_sha")
+        excel_data_root = value.get("excel_data_root")
+        levels_data_root = value.get("levels_data_root")
+        if not all(
+            isinstance(item, str) and item
+            for item in (commit_sha, excel_data_root, levels_data_root)
+        ):
+            return None
+        excel_root = (gamedata_root / excel_data_root).resolve()
+        active_levels_root = (levels_root / levels_data_root).resolve()
+        if not excel_root.is_relative_to(gamedata_root.resolve()):
+            return None
+        if not active_levels_root.is_relative_to(levels_root.resolve()):
+            return None
+        if not excel_root.is_dir() or not active_levels_root.is_dir():
+            return None
+        return excel_root, active_levels_root
+    except (OSError, json.JSONDecodeError, AttributeError, ValueError):
+        return None
+
+
 def _levels_path(gamedata_root: Path) -> Path:
     return gamedata_root.parent / "gamedata-levels"
 
@@ -212,11 +258,20 @@ class Config:
 
     def __post_init__(self) -> None:
         ep = _excel_path(self.gamedata_path)
-        active_ep = _excel_path(_activated_root(self.gamedata_path))
         object.__setattr__(self, "excel_path", ep)
 
         lp = _resolve_levels_path(self.gamedata_path)
         object.__setattr__(self, "levels_path", lp)
+        active_pair = _activated_pair(self.gamedata_path, lp)
+        active_gamedata_root = (
+            active_pair[0]
+            if active_pair is not None
+            else _activated_root(self.gamedata_path)
+        )
+        active_levels_root = (
+            active_pair[1] if active_pair is not None else _activated_root(lp)
+        )
+        active_ep = _excel_path(active_gamedata_root)
 
         bep = _excel_path(_BUNDLED_GAMEDATA_PATH)
         object.__setattr__(self, "bundled_excel_path", bep)
@@ -234,9 +289,8 @@ class Config:
         else:
             object.__setattr__(self, "effective_excel_path", None)
 
-        active_lp = _activated_root(lp)
-        if _levels_complete(active_lp):
-            object.__setattr__(self, "effective_levels_path", active_lp)
+        if _levels_complete(active_levels_root):
+            object.__setattr__(self, "effective_levels_path", active_levels_root)
         elif _levels_complete(blp):
             object.__setattr__(self, "effective_levels_path", blp)
         else:

@@ -92,6 +92,59 @@ test("effective excel path uses the activated release tree", async () => {
   }
 });
 
+test("pair manifest hides a partially activated generation", async () => {
+  const root = tempRoot();
+  const gamedata = join(root, "gamedata");
+  const levels = join(root, "gamedata-levels");
+  for (const generation of ["old", "new"]) {
+    const excel = join(gamedata, ".releases", generation, "zh_CN", "gamedata", "excel");
+    mkdirSync(excel, { recursive: true });
+    for (const name of [
+      "character_table.json",
+      "handbook_info_table.json",
+      "charword_table.json",
+      "story_review_table.json",
+    ]) writeFileSync(join(excel, name), "{}", "utf-8");
+    const enemyDir = join(
+      levels,
+      ".releases",
+      generation,
+      "zh_CN",
+      "gamedata",
+      "levels",
+      "enemydata",
+    );
+    mkdirSync(enemyDir, { recursive: true });
+    writeFileSync(join(enemyDir, "enemy_database.json"), "{}", "utf-8");
+  }
+  for (const [dataRoot, generation] of [[gamedata, "new"], [levels, "old"]]) {
+    const archives = join(dataRoot, "archives");
+    mkdirSync(archives);
+    writeFileSync(join(archives, "extract_meta.json"), JSON.stringify({
+      commit_sha: generation,
+      data_root: `.releases/${generation}`,
+    }), "utf-8");
+  }
+  writeFileSync(join(root, ".gamedata_pair.json"), JSON.stringify({
+    commit_sha: "old",
+    excel_data_root: ".releases/old",
+    levels_data_root: ".releases/old",
+  }), "utf-8");
+
+  process.env["GAMEDATA_PATH"] = gamedata;
+  try {
+    const { loadConfig } = await loadConfigModule();
+    const cfg = loadConfig();
+    assert.equal(
+      cfg.effectiveExcelPath,
+      join(gamedata, ".releases", "old", "zh_CN", "gamedata", "excel"),
+    );
+    assert.equal(cfg.effectiveLevelsPath, join(levels, ".releases", "old"));
+  } finally {
+    delete process.env["GAMEDATA_PATH"];
+  }
+});
+
 test("activation snapshot keeps a tool call on one generation", async () => {
   const root = tempRoot();
   const custom = join(root, "gamedata");

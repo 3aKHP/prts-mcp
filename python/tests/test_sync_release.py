@@ -20,6 +20,7 @@ from prts_mcp.data.sync import (
     SyncResult,
     check_latest_release,
     sync_release_archive,
+    sync_release_archive_pair,
     sync_release,
     _archive_activation_lock,
 )
@@ -365,6 +366,7 @@ class TestSyncReleaseArchive:
         lock = archive_dir / ".activation.lock"
         old = time.time() - 31 * 60
         os.utime(lock, (old, old))
+        os.utime(lock / "owner", (old, old))
         second = _archive_activation_lock(spec)
         second.__enter__()
         try:
@@ -373,6 +375,42 @@ class TestSyncReleaseArchive:
         finally:
             second.__exit__(None, None, None)
         assert not lock.exists()
+
+    def test_live_owner_heartbeat_prevents_stale_takeover(self, tmp_path):
+        archive_dir = tmp_path / "archives"
+        archive_dir.mkdir()
+        spec = ReleaseArchiveSpec(
+            owner="3aKHP",
+            repo="ArknightsGameData",
+            asset_name="zh_CN-excel.zip",
+            local_zip=archive_dir / "zh_CN-excel.zip",
+            local_root=tmp_path / "gamedata",
+            required_files=(),
+        )
+        acquired = threading.Event()
+        release = threading.Event()
+
+        def wait_for_lock() -> None:
+            with _archive_activation_lock(spec):
+                acquired.set()
+                release.wait(timeout=2)
+
+        with (
+            patch("prts_mcp.data.sync._ACTIVATION_LOCK_STALE_SECONDS", 0.05),
+            patch("prts_mcp.data.sync._ACTIVATION_LOCK_HEARTBEAT_SECONDS", 0.01),
+        ):
+            first = _archive_activation_lock(spec)
+            first.__enter__()
+            thread = threading.Thread(target=wait_for_lock)
+            thread.start()
+            time.sleep(0.15)
+            assert not acquired.is_set()
+            first.__exit__(None, None, None)
+            assert acquired.wait(timeout=2)
+            release.set()
+            thread.join(timeout=2)
+
+        assert not thread.is_alive()
 
     def test_extracts_updated_archive(self, tmp_path):
         zip_path = tmp_path / "archives" / "zh_CN-excel.zip"
@@ -794,3 +832,77 @@ print(sync.sync_release_archive(spec).status)
 
         assert previous.is_dir()
         assert previous.stat().st_mtime > old
+
+    def test_pair_manifest_stays_old_until_both_archives_share_one_sha(self, tmp_path):
+        excel_required = "zh_CN/gamedata/excel/character_table.json"
+        levels_required = "zh_CN/gamedata/levels/enemydata/enemy_database.json"
+        excel_spec = ReleaseArchiveSpec(
+            owner="3aKHP",
+            repo="ArknightsGameData",
+            asset_name="zh_CN-excel.zip",
+            local_zip=tmp_path / "gamedata" / "archives" / "zh_CN-excel.zip",
+            local_root=tmp_path / "gamedata",
+            required_files=(excel_required,),
+        )
+        levels_spec = ReleaseArchiveSpec(
+            owner="3aKHP",
+            repo="ArknightsGameData",
+            asset_name="zh_CN-levels.zip",
+            local_zip=tmp_path / "gamedata-levels" / "archives" / "zh_CN-levels.zip",
+            local_root=tmp_path / "gamedata-levels",
+            required_files=(levels_required,),
+        )
+
+        def activate(spec: ReleaseArchiveSpec, generation: str, required: str) -> None:
+            root = spec.local_root / ".releases" / generation
+            path = root / required
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(generation, encoding="utf-8")
+            archive_dir = spec.local_zip.parent
+            archive_dir.mkdir(parents=True, exist_ok=True)
+            (archive_dir / "extract_meta.json").write_text(
+                json.dumps({
+                    "commit_sha": generation,
+                    "data_root": f".releases/{generation}",
+                }),
+                encoding="utf-8",
+            )
+
+        activate(excel_spec, "old", excel_required)
+        activate(levels_spec, "old", levels_required)
+
+        def partial_sync(spec, *, force_check=False):
+            del force_check
+            if spec is excel_spec:
+                activate(excel_spec, "new", excel_required)
+                return SyncResult(excel_spec, "updated", "new", None)
+            return SyncResult(levels_spec, "offline_fallback", "old", "offline")
+
+        with patch(
+            "prts_mcp.data.sync.sync_release_archive",
+            side_effect=partial_sync,
+        ):
+            sync_release_archive_pair(excel_spec, levels_spec)
+
+        pair_path = tmp_path / ".gamedata_pair.json"
+        pair = json.loads(pair_path.read_text(encoding="utf-8"))
+        assert pair["commit_sha"] == "old"
+        assert pair["excel_data_root"] == ".releases/old"
+        assert pair["levels_data_root"] == ".releases/old"
+
+        def complete_sync(spec, *, force_check=False):
+            del force_check
+            required = excel_required if spec is excel_spec else levels_required
+            activate(spec, "new", required)
+            return SyncResult(spec, "updated", "new", None)
+
+        with patch(
+            "prts_mcp.data.sync.sync_release_archive",
+            side_effect=complete_sync,
+        ):
+            sync_release_archive_pair(excel_spec, levels_spec)
+
+        pair = json.loads(pair_path.read_text(encoding="utf-8"))
+        assert pair["commit_sha"] == "new"
+        assert pair["excel_data_root"] == ".releases/new"
+        assert pair["levels_data_root"] == ".releases/new"
