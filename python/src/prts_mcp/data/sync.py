@@ -97,6 +97,7 @@ def _get_cascading(url: str, *, timeout: float, **kwargs: object) -> httpx.Respo
 _CACHE_TTL_SECONDS = 3600
 _ACTIVATION_LOCK_TIMEOUT_SECONDS = 120
 _ACTIVATION_LOCK_STALE_SECONDS = 30 * 60
+_ACTIVATION_LOCK_OWNER_GRACE_SECONDS = 10
 _RELEASE_RETENTION_SECONDS = 24 * 60 * 60
 
 
@@ -134,14 +135,20 @@ class CacheMeta:
             data = json.loads(path.read_text(encoding="utf-8"))
             commit_sha = data.get("commit_sha", data.get("commitSha"))
             fetched_at = data.get("fetched_at", data.get("fetchedAt"))
-            if not isinstance(commit_sha, str) or not isinstance(fetched_at, str):
+            files = data.get("files")
+            if (
+                not isinstance(commit_sha, str)
+                or not isinstance(fetched_at, str)
+                or not isinstance(files, list)
+                or not all(isinstance(file, str) for file in files)
+            ):
                 return None
             return cls(
                 repo=data["repo"],
                 branch=data["branch"],
                 commit_sha=commit_sha,
                 fetched_at=fetched_at,
-                files=data["files"],
+                files=files,
             )
         except (json.JSONDecodeError, TypeError, KeyError, AttributeError):
             return None
@@ -413,7 +420,7 @@ def _save_extract_meta(
     data_root: Path,
 ) -> None:
     path = _extract_meta_path(spec)
-    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
     path.parent.mkdir(parents=True, exist_ok=True)
     relative_root = data_root.relative_to(spec.local_root).as_posix()
     tmp.write_text(
@@ -527,9 +534,13 @@ def _archive_activation_lock(spec: ReleaseArchiveSpec) -> Iterator[None]:
             if lock.is_symlink():
                 raise ValueError(f"Unsafe activation lock symlink: {lock}")
             try:
-                stale = time.time() - lock.stat().st_mtime > _ACTIVATION_LOCK_STALE_SECONDS
+                age = time.time() - lock.stat().st_mtime
             except FileNotFoundError:
                 continue
+            ownerless = not (lock / "owner").is_file()
+            stale = age > _ACTIVATION_LOCK_STALE_SECONDS or (
+                ownerless and age > _ACTIVATION_LOCK_OWNER_GRACE_SECONDS
+            )
             if stale:
                 quarantine = lock.with_name(f"{lock.name}.stale-{uuid4().hex}")
                 try:

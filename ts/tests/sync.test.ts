@@ -7,6 +7,7 @@ import {
   readFileSync,
   symlinkSync,
   unlinkSync,
+  utimesSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -362,6 +363,24 @@ test("syncReleaseArchive rejects a symlinked release directory", async () => {
     const result = await syncReleaseArchive(spec);
     assert.equal(result.status, "no_data");
     assert.match(result.error ?? "", /Unsafe release directory symlink/);
+  });
+});
+
+test("syncReleaseArchive reclaims an abandoned ownerless lock", async () => {
+  const spec = tempArchiveSpec();
+  const required = spec.requiredFiles[0];
+  writeZip(spec.localZip, { [required]: "{}" });
+  const lock = join(dirname(spec.localZip), ".activation.lock");
+  mkdirSync(lock);
+  const abandoned = new Date(Date.now() - 11_000);
+  utimesSync(lock, abandoned, abandoned);
+
+  await withFetchMock((async () => {
+    throw new Error("network down");
+  }) as typeof fetch, async () => {
+    const result = await syncReleaseArchive(spec);
+    assert.equal(result.status, "updated");
+    assert.equal(existsSync(lock), false);
   });
 });
 

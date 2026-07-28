@@ -47,6 +47,7 @@ const GITHUB_UA = "PRTS-MCP-Bot/0.1 (Arknights fan-creation helper)";
 const CACHE_TTL_SECONDS = 3600;
 const ACTIVATION_LOCK_TIMEOUT_MS = 120_000;
 const ACTIVATION_LOCK_STALE_MS = 30 * 60_000;
+const ACTIVATION_LOCK_OWNER_GRACE_MS = 10_000;
 const RELEASE_RETENTION_MS = 24 * 60 * 60_000;
 
 // ---------------------------------------------------------------------------
@@ -452,7 +453,10 @@ async function saveExtractMeta(
   dataRoot: string,
 ): Promise<void> {
   const path = extractMetaPath(spec);
-  const tmp = `${path}.tmp`;
+  const tmp = join(
+    dirname(path),
+    `.${basename(path)}.${randomUUID().replaceAll("-", "")}.tmp`,
+  );
   await mkdir(dirname(path), { recursive: true });
   await writeFile(tmp, JSON.stringify({
     commit_sha: commitSha,
@@ -575,7 +579,12 @@ async function withArchiveActivationLock<T>(
         throw statErr;
       }
       if (info.isSymbolicLink()) throw new Error(`Unsafe activation lock symlink: ${lock}`);
-      if (Date.now() - info.mtimeMs > ACTIVATION_LOCK_STALE_MS) {
+      const age = Date.now() - info.mtimeMs;
+      const ownerless = !existsSync(join(lock, "owner"));
+      if (
+        age > ACTIVATION_LOCK_STALE_MS
+        || (ownerless && age > ACTIVATION_LOCK_OWNER_GRACE_MS)
+      ) {
         const quarantine = `${lock}.stale-${randomUUID().replaceAll("-", "")}`;
         try {
           await rename(lock, quarantine);

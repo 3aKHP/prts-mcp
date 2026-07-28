@@ -259,6 +259,27 @@ class TestSyncRelease:
 # ---------------------------------------------------------------------------
 
 class TestSyncReleaseArchive:
+    def test_reclaims_abandoned_ownerless_lock(self, tmp_path):
+        archive_dir = tmp_path / "archives"
+        archive_dir.mkdir()
+        spec = ReleaseArchiveSpec(
+            owner="3aKHP",
+            repo="ArknightsGameData",
+            asset_name="zh_CN-excel.zip",
+            local_zip=archive_dir / "zh_CN-excel.zip",
+            local_root=tmp_path / "gamedata",
+            required_files=(),
+        )
+        lock = archive_dir / ".activation.lock"
+        lock.mkdir()
+        abandoned = time.time() - 11
+        os.utime(lock, (abandoned, abandoned))
+
+        with _archive_activation_lock(spec):
+            assert (lock / "owner").is_file()
+
+        assert not lock.exists()
+
     def test_stale_lock_owner_cannot_remove_successor_lock(self, tmp_path):
         archive_dir = tmp_path / "archives"
         archive_dir.mkdir()
