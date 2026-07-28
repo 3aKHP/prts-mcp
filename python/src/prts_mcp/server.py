@@ -29,6 +29,7 @@ from mcp.server.fastmcp import FastMCP
 from prts_mcp.startup_sync import (
     _SYNC_LOCKS,
     _SYNC_LOCKS_GUARD,
+    _run_auto_sync,
     _run_startup_sync,
     _run_initial_sync,
     _schedule_sync_retry,
@@ -98,7 +99,7 @@ def _build_http_app():
 def main() -> None:
     transport = os.environ.get("PRTS_TRANSPORT", "stdio").strip().lower()
     # Start background data sync regardless of transport.
-    t = threading.Thread(target=_run_startup_sync, daemon=True, name="prts-sync")
+    t = threading.Thread(target=_run_auto_sync, daemon=True, name="prts-sync")
     t.start()
 
     if transport == "http":

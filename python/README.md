@@ -59,13 +59,15 @@ GAMEDATA_PATH=/path/to/ArknightsGameData prts-mcp
 
 ## 数据机制
 
-服务器启动时自动同步三类数据：
+服务器启动时会立即在后台同步三类数据，此后默认每小时检查一次新 Release，无需重启进程：
 
 - **游戏表格数据**（`gamedata` volume）：从 [3aKHP/ArknightsGameData](https://github.com/3aKHP/ArknightsGameData) Release 下载 `zh_CN-excel.zip`，其内容同步自 [Kengxxiao/ArknightsGameData](https://github.com/Kengxxiao/ArknightsGameData)
 - **关卡战斗数据**（`gamedata-levels` volume）：从同一 Release 下载 `zh_CN-levels.zip`，用于关卡实际出怪和关卡级敌人数值
 - **剧情数据**（`storyjson` volume）：从 [ArknightsStoryJson](https://github.com/3aKHP/ArknightsStoryJson) Releases 下载 `zh_CN.zip`
 
 镜像内置 bundled 数据作为网络不可用时的离线保底。
+
+周期可通过 `PRTS_AUTO_SYNC_INTERVAL_SECONDS` 调整（`60..604800` 秒）；设为 `0` 时只执行启动同步。
 
 > PyPI 包本身不内置 bundled 数据；直接 `pip install prts-mcp` 时会在启动时自动同步，或使用 `GAMEDATA_PATH` / `STORYJSON_PATH` 指向你自己的本地数据。若 `GAMEDATA_PATH` 指向完整 ArknightsGameData 仓库根目录，内含的 `zh_CN/gamedata/levels` 会直接用于关卡战斗数据；否则默认在其相邻目录维护 `gamedata-levels`。正式 Docker 镜像会由 CI 预置兜底数据。
 

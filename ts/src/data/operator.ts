@@ -6,7 +6,12 @@
  * lazily on first call and cached in module-level variables.
  */
 
-import { loadConfig, hasOperatorData } from "../config.js";
+import {
+  checkActivationChange,
+  hasOperatorData,
+  loadConfig,
+  registerActivationListener,
+} from "../config.js";
 import { DirectoryStore } from "./stores.js";
 import { stripWikitext } from "../utils/sanitizer.js";
 import { clearSearchCaches } from "./search.js";
@@ -35,6 +40,8 @@ export function clearOperatorCaches(): void {
   // Propagate to search cache; see Python operator.clear_operator_caches.
   clearSearchCaches();
 }
+
+registerActivationListener(clearOperatorCaches);
 
 // ---------------------------------------------------------------------------
 // JSON shape types (only the fields we actually use)
@@ -148,6 +155,7 @@ function operatorStore(): DirectoryStore {
 }
 
 export function getCharacterTable(): Record<string, CharacterEntry> {
+  checkActivationChange();
   if (_characterTable === null) {
     _characterTable = loadJson<Record<string, CharacterEntry>>(
       "character_table.json"
@@ -158,6 +166,7 @@ export function getCharacterTable(): Record<string, CharacterEntry> {
 }
 
 export function getHandbookTable(): HandbookTable {
+  checkActivationChange();
   if (_handbookTable === null) {
     _handbookTable = loadJson<HandbookTable>(
       "handbook_info_table.json"
@@ -168,6 +177,7 @@ export function getHandbookTable(): HandbookTable {
 }
 
 export function getCharwordTable(): CharwordTable {
+  checkActivationChange();
   if (_charwordTable === null) {
     _charwordTable = loadJson<CharwordTable>("charword_table.json");
   }
@@ -176,6 +186,7 @@ export function getCharwordTable(): CharwordTable {
 }
 
 export function resolveCharId(name: string): string | null {
+  checkActivationChange();
   if (_nameToId === null) {
     const ct = getCharacterTable();
     _nameToId = new Map(

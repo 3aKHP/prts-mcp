@@ -26,9 +26,9 @@
  *     3. null — no level combat data available.
  */
 
-import { existsSync, statSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // ---------------------------------------------------------------------------
@@ -39,6 +39,53 @@ export const PRTS_API_ENDPOINT = "https://prts.wiki/api.php";
 export const USER_AGENT = "PRTS-MCP-Bot/0.1 (Arknights fan-creation helper)";
 /** Minimum seconds between PRTS API requests. */
 export const RATE_LIMIT_INTERVAL = 1.5;
+
+const activationListeners = new Set<() => void>();
+let activationSignature: string | null = null;
+let activationSnapshot: { config: Config; signature: string } | null = null;
+
+/** Register a cache invalidator for activated GameData generation changes. */
+export function registerActivationListener(listener: () => void): void {
+  activationListeners.add(listener);
+}
+
+function activationMetaToken(root: string): readonly unknown[] {
+  return activationPathToken(join(root, "archives", "extract_meta.json"));
+}
+
+function activationPathToken(path: string): readonly unknown[] {
+  try {
+    const info = statSync(path);
+    return [path, info.ino, info.size, info.mtimeMs, info.ctimeMs];
+  } catch {
+    return [path, null];
+  }
+}
+
+/** Invalidate GameData caches when either activation pointer is replaced. */
+export function checkActivationChange(): void {
+  if (activationSnapshot !== null) return;
+  const isCustom = "GAMEDATA_PATH" in process.env;
+  const gamedata = isCustom
+    ? process.env["GAMEDATA_PATH"]!
+    : DEFAULT_GAMEDATA_PATH;
+  const levels = resolveLevelsPath(gamedata);
+  const signature = JSON.stringify([
+    ...activationPathToken(gamedataPairPath(gamedata, levels)),
+    ...activationMetaToken(gamedata),
+    ...activationMetaToken(levels),
+  ]);
+  const previous = activationSignature;
+  activationSignature = signature;
+  if (previous === null || previous === signature) return;
+  for (const listener of activationListeners) {
+    try {
+      listener();
+    } catch (err) {
+      console.error("Failed to invalidate a GameData cache", err);
+    }
+  }
+}
 
 const REQUIRED_OPERATOR_FILES = [
   "character_table.json",
@@ -94,6 +141,62 @@ export const DEFAULT_GAMEDATA_PATH = resolveDefaultGamedataPath();
 
 function excelPath(gamedataRoot: string): string {
   return join(gamedataRoot, "zh_CN", "gamedata", "excel");
+}
+
+function activatedRoot(root: string): string {
+  try {
+    const value = JSON.parse(
+      readFileSync(join(root, "archives", "extract_meta.json"), "utf-8"),
+    ) as { data_root?: unknown };
+    if (typeof value.data_root !== "string" || value.data_root.length === 0) return root;
+    const base = realpathSync(root);
+    const activated = realpathSync(resolve(root, value.data_root));
+    const rel = relative(base, activated);
+    if (rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute(rel)) return root;
+    return existsSync(activated) && statSync(activated).isDirectory() ? activated : root;
+  } catch {
+    return root;
+  }
+}
+
+function gamedataPairPath(gamedataRoot: string, levelsRoot: string): string {
+  const gamedataParent = dirname(resolve(gamedataRoot));
+  const levelsParent = dirname(resolve(levelsRoot));
+  if (gamedataParent !== levelsParent) {
+    return join(gamedataParent, ".gamedata_pair.invalid");
+  }
+  return join(gamedataParent, ".gamedata_pair.json");
+}
+
+function activatedPair(
+  gamedataRoot: string,
+  levelsRoot: string,
+): readonly [string, string] | null {
+  try {
+    const value = JSON.parse(
+      readFileSync(gamedataPairPath(gamedataRoot, levelsRoot), "utf-8"),
+    ) as {
+      commit_sha?: unknown;
+      excel_data_root?: unknown;
+      levels_data_root?: unknown;
+    };
+    if (typeof value.commit_sha !== "string" || value.commit_sha.length === 0) return null;
+    if (typeof value.excel_data_root !== "string" || value.excel_data_root.length === 0) return null;
+    if (typeof value.levels_data_root !== "string" || value.levels_data_root.length === 0) return null;
+    const excelBase = realpathSync(gamedataRoot);
+    const levelsBase = realpathSync(levelsRoot);
+    const activeExcelRoot = realpathSync(resolve(excelBase, value.excel_data_root));
+    const activeLevelsRoot = realpathSync(resolve(levelsBase, value.levels_data_root));
+    const excelRel = relative(excelBase, activeExcelRoot);
+    const levelsRel = relative(levelsBase, activeLevelsRoot);
+    if (excelRel === ".." || excelRel.startsWith(`..${sep}`) || isAbsolute(excelRel)) return null;
+    if (levelsRel === ".." || levelsRel.startsWith(`..${sep}`) || isAbsolute(levelsRel)) return null;
+    if (!statSync(activeExcelRoot).isDirectory()) return null;
+    if (!statSync(activeLevelsRoot).isDirectory()) return null;
+    return [activeExcelRoot, activeLevelsRoot];
+  } catch {
+    return null;
+  }
 }
 
 function levelsPath(gamedataRoot: string): string {
@@ -171,6 +274,8 @@ export function hasLevelsData(cfg: Config): boolean {
 }
 
 export function loadConfig(): Config {
+  if (activationSnapshot !== null) return activationSnapshot.config;
+  checkActivationChange();
   const isCustomGamedata = "GAMEDATA_PATH" in process.env;
   const gamedataPath = isCustomGamedata
     ? process.env["GAMEDATA_PATH"]!
@@ -178,15 +283,18 @@ export function loadConfig(): Config {
 
   const ep = excelPath(gamedataPath);
   const lp = resolveLevelsPath(gamedataPath);
+  const pair = activatedPair(gamedataPath, lp);
+  const activeEp = excelPath(pair?.[0] ?? activatedRoot(gamedataPath));
   const bep = excelPath(BUNDLED_GAMEDATA_PATH);
   const blp = BUNDLED_LEVELS_PATH;
 
   let effectiveExcelPath: string | null = null;
-  if (filesComplete(ep)) effectiveExcelPath = ep;
+  if (filesComplete(activeEp)) effectiveExcelPath = activeEp;
   else if (filesComplete(bep)) effectiveExcelPath = bep;
 
   let effectiveLevelsPath: string | null = null;
-  if (levelsComplete(lp)) effectiveLevelsPath = lp;
+  const activeLp = pair?.[1] ?? activatedRoot(lp);
+  if (levelsComplete(activeLp)) effectiveLevelsPath = activeLp;
   else if (levelsComplete(blp)) effectiveLevelsPath = blp;
 
   // storyjson zip: default is alongside gamedata in the user data dir.
@@ -205,7 +313,7 @@ export function loadConfig(): Config {
   else if (existsSync(BUNDLED_STORYJSON_ZIP))
     effectiveStoryjsonZip = BUNDLED_STORYJSON_ZIP;
 
-  return {
+  const config = {
     gamedataPath,
     isCustomGamedata,
     excelPath: ep,
@@ -217,4 +325,26 @@ export function loadConfig(): Config {
     storyjsonZip,
     effectiveStoryjsonZip,
   };
+  return config;
+}
+
+/** Keep one activated generation stable for a complete synchronous tool call. */
+export function withActivationSnapshot<T>(run: () => T): T {
+  if (activationSnapshot !== null) return run();
+  let config: Config;
+  let signature: string;
+  for (;;) {
+    checkActivationChange();
+    signature = activationSignature ?? "";
+    config = loadConfig();
+    checkActivationChange();
+    if (signature === (activationSignature ?? "")) break;
+  }
+  const snapshot = { config, signature };
+  activationSnapshot = snapshot;
+  try {
+    return run();
+  } finally {
+    if (activationSnapshot === snapshot) activationSnapshot = null;
+  }
 }

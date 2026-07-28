@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from functools import lru_cache
 from typing import Any
 
-from prts_mcp.config import Config
+from prts_mcp.config import Config, activation_aware_cache, register_activation_listener
 from prts_mcp.data.stores import DirectoryStore
 
 
@@ -18,6 +17,9 @@ def clear_enemy_caches() -> None:
     _load_enemy_database.cache_clear()
     _build_enemy_name_to_id.cache_clear()
     _enemy_search_records.cache_clear()
+
+
+register_activation_listener(clear_enemy_caches)
 
 
 _HANDBOOK_FILE = "enemy_handbook_table.json"
@@ -76,7 +78,7 @@ def _m_value(obj: Any, default: Any = None) -> Any:
     return obj if obj is not None else default
 
 
-@lru_cache(maxsize=1)
+@activation_aware_cache(maxsize=1)
 def _load_enemy_handbook() -> dict[str, Any]:
     store = _store()
     if not store.exists(_HANDBOOK_FILE):
@@ -86,7 +88,7 @@ def _load_enemy_handbook() -> dict[str, Any]:
     return store.read_json(_HANDBOOK_FILE)
 
 
-@lru_cache(maxsize=1)
+@activation_aware_cache(maxsize=1)
 def _load_enemy_database() -> dict[str, Any] | None:
     """Load enemy_database.json. Returns None when the file is absent.
 
@@ -108,7 +110,7 @@ def _load_enemy_database() -> dict[str, Any] | None:
     return {"_index": index}
 
 
-@lru_cache(maxsize=1)
+@activation_aware_cache(maxsize=1)
 def _build_enemy_name_to_id() -> dict[str, str]:
     raw = _load_enemy_handbook()
     ed = raw.get("enemyData", {})
@@ -632,7 +634,7 @@ def _render_enemy_search_card(entry: dict) -> str:
     return "\n".join(lines)
 
 
-@lru_cache(maxsize=1)
+@activation_aware_cache(maxsize=1)
 def _enemy_search_records() -> tuple[_EnemySearchRecord, ...]:
     raw = _load_enemy_handbook()
     ed = raw.get("enemyData", {})

@@ -3,7 +3,7 @@
  * Mirrors python/src/prts_mcp/data/search.py.
  */
 
-import { loadConfig, hasOperatorData } from "../config.js";
+import { checkActivationChange, loadConfig, hasOperatorData } from "../config.js";
 import { stripWikitext } from "../utils/sanitizer.js";
 import {
   getCharacterTable,
@@ -144,6 +144,7 @@ export function renderSearch(data: SearchPayload): string {
 }
 
 function getOperatorSearchRecords(): OperatorSearchEntry[] {
+  checkActivationChange();
   if (operatorSearchRecords !== null) return operatorSearchRecords;
 
   const ct = getCharacterTable();

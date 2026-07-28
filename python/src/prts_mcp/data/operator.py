@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from functools import lru_cache
 from typing import Any
 
-from prts_mcp.config import Config
+from prts_mcp.config import Config, activation_aware_cache, register_activation_listener
 from prts_mcp.data.stores import DirectoryStore
 from prts_mcp.utils.sanitizer import strip_wikitext
 
@@ -24,6 +23,9 @@ def clear_operator_caches() -> None:
         clear_search_caches()
     except ImportError:
         pass
+
+
+register_activation_listener(clear_operator_caches)
 
 
 def _missing_operator_data_message() -> str:
@@ -53,22 +55,22 @@ def _load_json(filename: str) -> dict[str, Any]:
     return store.read_json(filename)
 
 
-@lru_cache(maxsize=1)
+@activation_aware_cache(maxsize=1)
 def _load_character_table() -> dict[str, Any]:
     return _load_json("character_table.json")
 
 
-@lru_cache(maxsize=1)
+@activation_aware_cache(maxsize=1)
 def _load_handbook_table() -> dict[str, Any]:
     return _load_json("handbook_info_table.json")
 
 
-@lru_cache(maxsize=1)
+@activation_aware_cache(maxsize=1)
 def _load_charword_table() -> dict[str, Any]:
     return _load_json("charword_table.json")
 
 
-@lru_cache(maxsize=1)
+@activation_aware_cache(maxsize=1)
 def _build_name_to_id() -> dict[str, str]:
     """Map operator Chinese name -> charId."""
     ct = _load_character_table()

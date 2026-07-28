@@ -1,6 +1,6 @@
 # PRTS-MCP 项目状态
 
-_Last updated: 2026-07-10_
+_Last updated: 2026-07-29_
 
 ## 当前版本
 
@@ -11,7 +11,7 @@ _Last updated: 2026-07-10_
 
 - 当前稳定发布：2.3.1（23 个 MCP 工具）
 - 当前 LTS 发布：1.7.0（32 个 MCP 工具，剧情角色追踪）
-- 当前开发目标：2.4.0（待规划）
+- 当前开发目标：2.4.0（常驻服务 Auto-Sync）
 - 当前稳定补丁线：2.3.x
 - 当前开发线：2.4.x
 - 2.3.1 发布内容：TypeScript 生产依赖安全更新，并同步
@@ -32,6 +32,18 @@ _Last updated: 2026-07-10_
   `search_prts` redirect/技术页面过滤修复。Bun 在 2.0.2 仍是可选候选路径。
 - 2.0 交付内容：工具面合并（32 → 23）+ output channel（structuredContent）；**双端协议同步（Python 上 HTTP / TS 上 stdio）已后置到 2.0 之后**。
 - 兼容性合约：1.7.x LTS 线既有 32 个工具名、必填参数、默认输出格式不变；仅接受兼容性、安全性、数据同步和关键缺陷修复
+
+## 2.4.0 开发内容
+
+- [x] Python / TypeScript 常驻进程在启动同步后默认每小时检查 GameData excel、
+  GameData levels 与 StoryJson Release，无需通过 crontab 重启服务追赶上游。
+- [x] `PRTS_AUTO_SYNC_INTERVAL_SECONDS` 支持 `60..604800` 秒，`0` 保留启动同步但
+  关闭周期检查；非法值回落到 1 小时。
+- [x] 周期轮次绕过 1 小时 fresh-cache 快捷路径，更新成功后清除对应内存缓存。
+- [x] GameData 归档使用独立解压激活标记；下载后解压中断不会永久卡在旧数据，
+  后续轮次会继续重试同一 Release。
+- [x] GameData excel 与 levels 以同一代原子切换，周期更新期间工具不会读到新旧
+  混合的数据组合；共享卷发布锁在长任务期间持续续租，避免被误判为陈旧锁。
 
 ## 当前分支
 
