@@ -11,7 +11,11 @@ _SRC_DIR = _PYTHON_DIR / "src"
 if str(_SRC_DIR) not in sys.path:
     sys.path.insert(0, str(_SRC_DIR))
 
+from prts_mcp.config import Config  # noqa: E402
 from prts_mcp.data.datasets import GAMEDATA_EXCEL, GAMEDATA_LEVELS, STORY_ZH_CN  # noqa: E402
+
+
+_EXCEL_ROOT = Path("zh_CN/gamedata/excel")
 
 
 def parse_args() -> argparse.Namespace:
@@ -31,19 +35,40 @@ def main() -> int:
     gamedata_root = data_root / "gamedata"
     levels_root = data_root / "gamedata-levels"
     story_zip = data_root / "storyjson" / STORY_ZH_CN.asset_name
+    config = Config(
+        gamedata_path=gamedata_root,
+        storyjson_zip=story_zip,
+        is_custom_gamedata=True,
+    )
 
-    missing = [path for path in GAMEDATA_EXCEL.required_files if not (gamedata_root / path).is_file()]
+    active_excel = config.effective_excel_path
+    if active_excel is None or not active_excel.is_relative_to(gamedata_root):
+        missing = [gamedata_root / path for path in GAMEDATA_EXCEL.required_files]
+    else:
+        missing = [
+            active_excel / Path(path).relative_to(_EXCEL_ROOT)
+            for path in GAMEDATA_EXCEL.required_files
+            if not (active_excel / Path(path).relative_to(_EXCEL_ROOT)).is_file()
+        ]
     if missing:
         print("Missing bundled gamedata files:", file=sys.stderr)
         for path in missing:
-            print(f" - {gamedata_root / path}", file=sys.stderr)
+            print(f" - {path}", file=sys.stderr)
         return 1
 
-    missing_levels = [path for path in GAMEDATA_LEVELS.required_files if not (levels_root / path).is_file()]
+    active_levels = config.effective_levels_path
+    if active_levels is None or not active_levels.is_relative_to(levels_root):
+        missing_levels = [levels_root / path for path in GAMEDATA_LEVELS.required_files]
+    else:
+        missing_levels = [
+            active_levels / path
+            for path in GAMEDATA_LEVELS.required_files
+            if not (active_levels / path).is_file()
+        ]
     if missing_levels:
         print("Missing bundled level data files:", file=sys.stderr)
         for path in missing_levels:
-            print(f" - {levels_root / path}", file=sys.stderr)
+            print(f" - {path}", file=sys.stderr)
         return 1
 
     if not story_zip.is_file():
