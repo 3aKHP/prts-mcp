@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Fixed
+
+- Capped the MCP Python SDK below 2.0 so Docker and other unlocked `pip`
+  installs retain the compatible `mcp.server.fastmcp` API.
+
 ### Added
 
 - Added process-lifetime auto-sync: after the startup check, GameData excel,
