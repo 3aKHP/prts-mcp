@@ -74,7 +74,13 @@ export function checkActivationChange(): void {
   const previous = activationSignature;
   activationSignature = signature;
   if (previous === null || previous === signature) return;
-  for (const listener of activationListeners) listener();
+  for (const listener of activationListeners) {
+    try {
+      listener();
+    } catch (err) {
+      console.error("Failed to invalidate a GameData cache", err);
+    }
+  }
 }
 
 const REQUIRED_OPERATOR_FILES = [

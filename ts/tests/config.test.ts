@@ -137,6 +137,42 @@ test("activation snapshot keeps a tool call on one generation", async () => {
   }
 });
 
+test("one failing activation listener does not block the rest", async () => {
+  const root = tempRoot();
+  const custom = join(root, "gamedata");
+  const archives = join(custom, "archives");
+  mkdirSync(archives, { recursive: true });
+  process.env["GAMEDATA_PATH"] = custom;
+  const originalError = console.error;
+  console.error = () => {};
+  try {
+    const { checkActivationChange, registerActivationListener } =
+      await loadConfigModule();
+    checkActivationChange();
+    let completed = 0;
+    registerActivationListener(() => {
+      throw new Error("listener failed");
+    });
+    registerActivationListener(() => {
+      completed += 1;
+    });
+    const tmp = join(archives, "extract_meta.tmp");
+    writeFileSync(
+      tmp,
+      JSON.stringify({ commit_sha: "next", data_root: ".releases/next" }),
+      "utf-8",
+    );
+    renameSync(tmp, join(archives, "extract_meta.json"));
+
+    checkActivationChange();
+
+    assert.equal(completed, 1);
+  } finally {
+    console.error = originalError;
+    delete process.env["GAMEDATA_PATH"];
+  }
+});
+
 test("activated release symlink cannot escape the configured root", async () => {
   const root = tempRoot();
   const custom = join(root, "gamedata");

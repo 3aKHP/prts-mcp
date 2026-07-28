@@ -602,9 +602,9 @@ def sync_release(spec: ReleaseSpec, *, force_check: bool = False) -> SyncResult:
 
 
 def _prune_release_trees(spec: ReleaseArchiveSpec, keep: set[Path]) -> None:
-    releases = _releases_path(spec)
-    cutoff = time.time() - _RELEASE_RETENTION_SECONDS
     try:
+        releases = _releases_path(spec)
+        cutoff = time.time() - _RELEASE_RETENTION_SECONDS
         for candidate in releases.iterdir():
             if candidate in keep:
                 continue
@@ -646,6 +646,7 @@ def _sync_release_archive_locked(
 
     extract_meta = _load_extract_meta(spec)
     active_root = extract_meta[1] if extract_meta is not None else spec.local_root
+    _prune_release_trees(spec, {active_root})
     files_ok = all((active_root / f).is_file() for f in spec.required_files)
     if release_result.status == "no_data":
         if files_ok:

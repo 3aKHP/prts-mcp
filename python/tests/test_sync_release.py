@@ -741,9 +741,20 @@ print(sync.sync_release_archive(spec).status)
         orphan.mkdir()
         os.utime(orphan, (old, old))
 
+        with patch(
+            "prts_mcp.data.sync.sync_release",
+            return_value=SyncResult(
+                spec=spec,
+                status="offline_fallback",
+                commit_sha="one",
+                error="offline",
+            ),
+        ):
+            assert sync_release_archive(spec).status == "offline_fallback"
+        assert not orphan.exists()
+
         with patch("prts_mcp.data.sync.sync_release", return_value=release_result("two")):
             assert sync_release_archive(spec).status == "updated"
 
         assert previous.is_dir()
         assert previous.stat().st_mtime > old
-        assert not orphan.exists()

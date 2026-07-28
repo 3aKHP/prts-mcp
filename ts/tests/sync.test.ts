@@ -409,6 +409,25 @@ test("syncReleaseArchive reclaims an abandoned ownerless lock", async () => {
   });
 });
 
+test("syncReleaseArchive prunes stale staging without a new release", async () => {
+  const spec = tempArchiveSpec();
+  const required = spec.requiredFiles[0];
+  writeZip(spec.localZip, { [required]: "{}" });
+
+  await withFetchMock((async () => {
+    throw new Error("network down");
+  }) as typeof fetch, async () => {
+    assert.equal((await syncReleaseArchive(spec)).status, "updated");
+    const orphan = join(spec.localRoot, ".releases", ".orphan.tmp");
+    mkdirSync(orphan);
+    const stale = new Date(Date.now() - 25 * 60 * 60_000);
+    utimesSync(orphan, stale, stale);
+
+    assert.equal((await syncReleaseArchive(spec)).status, "offline_fallback");
+    assert.equal(existsSync(orphan), false);
+  });
+});
+
 test("concurrent archive activation keeps the authoritative tree", async () => {
   const spec = tempArchiveSpec();
   const required = spec.requiredFiles[0];

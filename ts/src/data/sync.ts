@@ -657,9 +657,9 @@ async function pruneReleaseTrees(
   spec: ReleaseArchiveSpec,
   keep: Set<string>,
 ): Promise<void> {
-  const releases = await releasesPath(spec);
-  const cutoff = Date.now() - RELEASE_RETENTION_MS;
   try {
+    const releases = await releasesPath(spec);
+    const cutoff = Date.now() - RELEASE_RETENTION_MS;
     for (const name of await readdir(releases)) {
       const candidate = join(releases, name);
       if (keep.has(candidate)) continue;
@@ -702,6 +702,7 @@ async function syncReleaseArchiveLocked(
 
   const extractMeta = await loadExtractMeta(spec);
   const activeRoot = extractMeta?.dataRoot ?? spec.localRoot;
+  await pruneReleaseTrees(spec, new Set([activeRoot]));
   const filesOk = archiveFilesPresent(spec, activeRoot);
   if (releaseResult.status === "no_data") {
     return filesOk
