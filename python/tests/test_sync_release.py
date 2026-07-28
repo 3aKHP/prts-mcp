@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 import zipfile
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -462,3 +465,126 @@ class TestSyncReleaseArchive:
 
         assert result.status == "no_data"
         assert "Unsafe zip member path" in (result.error or "")
+
+    def test_rejects_release_directory_symlink(self, tmp_path):
+        zip_path = tmp_path / "archives" / "zh_CN-excel.zip"
+        zip_path.parent.mkdir(parents=True)
+        required = "zh_CN/gamedata/excel/character_table.json"
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            zf.writestr(required, "{}")
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        local_root = tmp_path / "gamedata"
+        local_root.mkdir()
+        (local_root / ".releases").symlink_to(outside, target_is_directory=True)
+        spec = ReleaseArchiveSpec(
+            owner="3aKHP",
+            repo="ArknightsGameData",
+            asset_name=zip_path.name,
+            local_zip=zip_path,
+            local_root=local_root,
+            required_files=(required,),
+        )
+        release_result = SyncResult(
+            spec=spec,
+            status="updated",
+            commit_sha="abc123",
+            error=None,
+        )
+
+        with patch("prts_mcp.data.sync.sync_release", return_value=release_result):
+            result = sync_release_archive(spec)
+
+        assert result.status == "no_data"
+        assert "Unsafe release directory symlink" in (result.error or "")
+        assert list(outside.iterdir()) == []
+
+    def test_concurrent_activation_keeps_authoritative_tree(self, tmp_path):
+        zip_path = tmp_path / "archives" / "zh_CN-excel.zip"
+        zip_path.parent.mkdir(parents=True)
+        required = "zh_CN/gamedata/excel/character_table.json"
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            zf.writestr(required, "{}")
+        spec = ReleaseArchiveSpec(
+            owner="3aKHP",
+            repo="ArknightsGameData",
+            asset_name=zip_path.name,
+            local_zip=zip_path,
+            local_root=tmp_path / "gamedata",
+            required_files=(required,),
+        )
+        release_result = SyncResult(
+            spec=spec,
+            status="updated",
+            commit_sha="abc123",
+            error=None,
+        )
+
+        with patch("prts_mcp.data.sync.sync_release", return_value=release_result):
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                results = list(pool.map(lambda _: sync_release_archive(spec), range(2)))
+
+        assert {result.status for result in results} == {"updated", "up_to_date"}
+        active_root = _active_archive_root(spec)
+        assert (active_root / required).is_file()
+        assert not (spec.local_zip.parent / ".activation.lock").exists()
+
+    def test_cross_process_activation_keeps_authoritative_tree(self, tmp_path):
+        zip_path = tmp_path / "archives" / "zh_CN-excel.zip"
+        zip_path.parent.mkdir(parents=True)
+        required = "zh_CN/gamedata/excel/character_table.json"
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            zf.writestr(required, "{}")
+        local_root = tmp_path / "gamedata"
+        script = """
+import sys
+from pathlib import Path
+import prts_mcp.data.sync as sync
+
+zip_path = Path(sys.argv[1])
+local_root = Path(sys.argv[2])
+required = sys.argv[3]
+spec = sync.ReleaseArchiveSpec(
+    owner="3aKHP",
+    repo="ArknightsGameData",
+    asset_name=zip_path.name,
+    local_zip=zip_path,
+    local_root=local_root,
+    required_files=(required,),
+)
+sync.sync_release = lambda *args, **kwargs: sync.SyncResult(
+    spec=sync.RepoSpec(
+        owner=spec.owner,
+        repo=spec.repo,
+        branch="releases",
+        files=spec.required_files,
+        local_root=spec.local_root,
+    ),
+    status="updated",
+    commit_sha="abc123",
+    error=None,
+)
+print(sync.sync_release_archive(spec).status)
+"""
+        processes = [
+            subprocess.Popen(
+                [sys.executable, "-c", script, str(zip_path), str(local_root), required],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            for _ in range(2)
+        ]
+        outputs = [process.communicate(timeout=20) for process in processes]
+
+        assert all(process.returncode == 0 for process in processes), outputs
+        assert {stdout.strip() for stdout, _ in outputs} == {"updated", "up_to_date"}
+        spec = ReleaseArchiveSpec(
+            owner="3aKHP",
+            repo="ArknightsGameData",
+            asset_name=zip_path.name,
+            local_zip=zip_path,
+            local_root=local_root,
+            required_files=(required,),
+        )
+        assert (_active_archive_root(spec) / required).is_file()

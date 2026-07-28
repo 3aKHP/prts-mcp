@@ -4,7 +4,7 @@
  * Mirrors python/src/prts_mcp/data/stage_enemy.py.
  */
 
-import { loadConfig, hasLevelsData } from "../config.js";
+import { loadConfig, hasLevelsData, registerActivationListener } from "../config.js";
 import { DirectoryStore } from "./stores.js";
 
 const DATABASE_FILE = "enemydata/enemy_database.json";
@@ -106,6 +106,8 @@ export function clearStageEnemyCaches(): void {
   enemyAppearanceIndex = null;
 }
 
+registerActivationListener(clearStageEnemyCaches);
+
 function excelStore(): DirectoryStore {
   const ep = loadConfig().effectiveExcelPath;
   if (ep === null) throw new Error("effectiveExcelPath is null");
@@ -128,6 +130,7 @@ function missingLevelsMessage(): string {
 }
 
 function loadStageTable(): Record<string, StageEntry> {
+  loadConfig();
   if (stageTable === null) {
     const raw = excelStore().readJson<{ stages?: Record<string, StageEntry> }>("stage_table.json");
     if (!raw || typeof raw !== "object" || !raw.stages) {
@@ -139,6 +142,7 @@ function loadStageTable(): Record<string, StageEntry> {
 }
 
 function loadEnemyHandbook(): Record<string, EnemyHandbookEntry> {
+  loadConfig();
   if (enemyHandbook === null) {
     const raw = excelStore().readJson<{ enemyData?: Record<string, EnemyHandbookEntry> }>("enemy_handbook_table.json");
     if (!raw || typeof raw !== "object" || !raw.enemyData) {
@@ -150,6 +154,7 @@ function loadEnemyHandbook(): Record<string, EnemyHandbookEntry> {
 }
 
 function loadEnemyDatabase(): Record<string, Record<number, EnemyData>> {
+  loadConfig();
   if (enemyDatabase === null) {
     const raw = levelsStore().readJson<{
       enemies?: Array<{ Key?: string; Value?: Array<{ level?: number | string; enemyData?: EnemyData }> }>;
@@ -169,6 +174,7 @@ function loadEnemyDatabase(): Record<string, Record<number, EnemyData>> {
 }
 
 function buildNameToEnemyId(): Map<string, string> {
+  loadConfig();
   if (nameToEnemyId === null) {
     nameToEnemyId = new Map();
     for (const [enemyId, info] of Object.entries(loadEnemyHandbook())) {
@@ -380,6 +386,7 @@ function findEnemyAppearances(enemyId: string): Array<[string, number]> {
 }
 
 function getEnemyAppearanceIndex(): Map<string, Array<[string, number]>> {
+  loadConfig();
   if (enemyAppearanceIndex !== null) return enemyAppearanceIndex;
   const index = new Map<string, Array<[string, number]>>();
   const stages = loadStageTable();

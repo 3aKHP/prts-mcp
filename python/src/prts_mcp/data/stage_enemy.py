@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 from collections import Counter
-from functools import lru_cache
 from typing import Any
 
-from prts_mcp.config import Config
+from prts_mcp.config import Config, activation_aware_cache, register_activation_listener
 from prts_mcp.data.stores import DirectoryStore
 
 
@@ -46,7 +45,10 @@ def clear_stage_enemy_caches() -> None:
     _enemy_appearance_index.cache_clear()
 
 
-@lru_cache(maxsize=1)
+register_activation_listener(clear_stage_enemy_caches)
+
+
+@activation_aware_cache(maxsize=1)
 def _load_stage_table() -> dict[str, dict[str, Any]]:
     raw = _excel_store().read_json("stage_table.json")
     stages = raw.get("stages") if isinstance(raw, dict) else None
@@ -55,7 +57,7 @@ def _load_stage_table() -> dict[str, dict[str, Any]]:
     return stages
 
 
-@lru_cache(maxsize=1)
+@activation_aware_cache(maxsize=1)
 def _load_enemy_handbook() -> dict[str, dict[str, Any]]:
     raw = _excel_store().read_json("enemy_handbook_table.json")
     data = raw.get("enemyData") if isinstance(raw, dict) else None
@@ -64,7 +66,7 @@ def _load_enemy_handbook() -> dict[str, dict[str, Any]]:
     return data
 
 
-@lru_cache(maxsize=1)
+@activation_aware_cache(maxsize=1)
 def _load_enemy_database() -> dict[str, dict[int, dict[str, Any]]]:
     raw = _levels_store().read_json(_DATABASE_FILE)
     index: dict[str, dict[int, dict[str, Any]]] = {}
@@ -88,7 +90,7 @@ def _load_enemy_database() -> dict[str, dict[int, dict[str, Any]]]:
     return index
 
 
-@lru_cache(maxsize=1)
+@activation_aware_cache(maxsize=1)
 def _build_enemy_name_to_id() -> dict[str, str]:
     return {
         str(info["name"]): enemy_id
@@ -305,7 +307,7 @@ def _find_enemy_appearances(enemy_id: str) -> list[tuple[str, int]]:
     return _enemy_appearance_index().get(enemy_id, [])
 
 
-@lru_cache(maxsize=1)
+@activation_aware_cache(maxsize=1)
 def _enemy_appearance_index() -> dict[str, list[tuple[str, int]]]:
     appearances: dict[str, list[tuple[str, int]]] = {}
     store = _levels_store()

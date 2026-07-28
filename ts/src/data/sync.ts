@@ -9,10 +9,11 @@
  * - Skips the upstream check entirely when cached data is fresher than the TTL.
  */
 
-import { existsSync, statSync } from "node:fs";
+import { createReadStream, existsSync, statSync } from "node:fs";
 import { createHash, randomUUID } from "node:crypto";
 import {
   mkdir,
+  lstat,
   readFile,
   readdir,
   rename,
@@ -21,6 +22,7 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 import AdmZip from "adm-zip";
 
 // ---------------------------------------------------------------------------
@@ -42,6 +44,9 @@ const GITHUB_UA = "PRTS-MCP-Bot/0.1 (Arknights fan-creation helper)";
 
 /** Skip the upstream SHA check if cached data is fresher than this (seconds). */
 const CACHE_TTL_SECONDS = 3600;
+const ACTIVATION_LOCK_TIMEOUT_MS = 120_000;
+const ACTIVATION_LOCK_STALE_MS = 30 * 60_000;
+const RELEASE_RETENTION_MS = 24 * 60 * 60_000;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -462,12 +467,29 @@ async function safeExtractZip(zipPath: string, localRoot: string): Promise<void>
   }
 }
 
-async function extractReleaseTree(
+async function releasesPath(spec: ReleaseArchiveSpec): Promise<string> {
+  const releases = join(spec.localRoot, ".releases");
+  try {
+    if ((await lstat(releases)).isSymbolicLink()) {
+      throw new Error(`Unsafe release directory symlink: ${releases}`);
+    }
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
+  }
+  await mkdir(releases, { recursive: true });
+  const info = await lstat(releases);
+  const rel = relative(resolve(spec.localRoot), resolve(releases));
+  if (info.isSymbolicLink() || rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute(rel)) {
+    throw new Error(`Unsafe release directory: ${releases}`);
+  }
+  return releases;
+}
+
+async function stageReleaseTree(
   spec: ReleaseArchiveSpec,
   commitSha: string,
-): Promise<string> {
-  const releases = join(spec.localRoot, ".releases");
-  await mkdir(releases, { recursive: true });
+): Promise<{ staging: string; activated: string }> {
+  const releases = await releasesPath(spec);
   const releaseKey = createHash("sha256").update(commitSha).digest("hex").slice(0, 16);
   const generation = `${releaseKey}-${randomUUID().replaceAll("-", "")}`;
   const staging = join(releases, `.${generation}.tmp`);
@@ -478,8 +500,7 @@ async function extractReleaseTree(
     if (missing.length > 0) {
       throw new Error(`Archive extraction missing required files: ${missing.slice(0, 10).join("; ")}`);
     }
-    await rename(staging, activated);
-    return activated;
+    return { staging, activated };
   } catch (err) {
     await rm(staging, { recursive: true, force: true });
     throw err;
@@ -491,19 +512,69 @@ async function archiveActivationSha(
   releaseSha: string | null,
 ): Promise<string> {
   if (releaseSha !== null) return releaseSha;
-  const digest = createHash("sha256").update(await readFile(spec.localZip)).digest("hex");
+  const hash = createHash("sha256");
+  for await (const chunk of createReadStream(spec.localZip)) hash.update(chunk);
+  const digest = hash.digest("hex");
   return `local-${digest}`;
+}
+
+async function withArchiveActivationLock<T>(
+  spec: ReleaseArchiveSpec,
+  run: () => Promise<T>,
+): Promise<T> {
+  const lock = join(dirname(spec.localZip), ".activation.lock");
+  const deadline = Date.now() + ACTIVATION_LOCK_TIMEOUT_MS;
+  for (;;) {
+    try {
+      await mkdir(lock);
+      break;
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== "EEXIST") throw err;
+      let info;
+      try {
+        info = await lstat(lock);
+      } catch (statErr) {
+        if ((statErr as NodeJS.ErrnoException).code === "ENOENT") continue;
+        throw statErr;
+      }
+      if (info.isSymbolicLink()) throw new Error(`Unsafe activation lock symlink: ${lock}`);
+      if (Date.now() - info.mtimeMs > ACTIVATION_LOCK_STALE_MS) {
+        const quarantine = `${lock}.stale-${randomUUID().replaceAll("-", "")}`;
+        try {
+          await rename(lock, quarantine);
+        } catch (renameErr) {
+          if ((renameErr as NodeJS.ErrnoException).code === "ENOENT") continue;
+          throw renameErr;
+        }
+        await rm(quarantine, { recursive: true, force: true });
+        continue;
+      }
+      if (Date.now() >= deadline) {
+        throw new Error(`Timed out waiting for archive activation lock: ${lock}`);
+      }
+      await delay(50);
+    }
+  }
+  try {
+    return await run();
+  } finally {
+    await rm(lock, { recursive: true, force: true });
+  }
 }
 
 async function pruneReleaseTrees(
   spec: ReleaseArchiveSpec,
   keep: Set<string>,
 ): Promise<void> {
-  const releases = join(spec.localRoot, ".releases");
+  const releases = await releasesPath(spec);
+  const cutoff = Date.now() - RELEASE_RETENTION_MS;
   try {
     for (const name of await readdir(releases)) {
       const candidate = join(releases, name);
-      if (!keep.has(candidate)) {
+      if (name.startsWith(".") || keep.has(candidate)) continue;
+      const info = await lstat(candidate);
+      if (info.mtimeMs >= cutoff) continue;
+      if (info.isDirectory() || info.isSymbolicLink()) {
         await rm(candidate, { recursive: true, force: true });
       }
     }
@@ -563,11 +634,36 @@ export async function syncReleaseArchive(
     || extractedSha === null
     || (releaseResult.commitSha !== null && extractedSha !== releaseResult.commitSha);
   if (shouldExtract) {
+    let staging: string | null = null;
     try {
       const activationSha = await archiveActivationSha(spec, releaseResult.commitSha);
-      const activatedRoot = await extractReleaseTree(spec, activationSha);
-      await saveExtractMeta(spec, activationSha, activatedRoot);
-      await pruneReleaseTrees(spec, new Set([activeRoot, activatedRoot]));
+      const staged = await stageReleaseTree(spec, activationSha);
+      staging = staged.staging;
+      const alreadyActivated = await withArchiveActivationLock(spec, async () => {
+        const currentMeta = await loadExtractMeta(spec);
+        const currentRoot = currentMeta?.dataRoot ?? spec.localRoot;
+        if (
+          currentMeta?.commitSha === activationSha
+          && archiveFilesPresent(spec, currentRoot)
+        ) {
+          await rm(staged.staging, { recursive: true, force: true });
+          staging = null;
+          return true;
+        }
+        await rename(staged.staging, staged.activated);
+        staging = null;
+        await saveExtractMeta(spec, activationSha, staged.activated);
+        await pruneReleaseTrees(spec, new Set([currentRoot, staged.activated]));
+        return false;
+      });
+      if (alreadyActivated) {
+        return {
+          spec: dummySpec,
+          status: "up_to_date",
+          commitSha: activationSha,
+          error: null,
+        };
+      }
       return {
         spec: dummySpec,
         status: "updated",
@@ -575,6 +671,7 @@ export async function syncReleaseArchive(
         error: null,
       };
     } catch (err) {
+      if (staging !== null) await rm(staging, { recursive: true, force: true });
       const error = errorMessage(err);
       return archiveFilesPresent(spec, activeRoot)
         ? {

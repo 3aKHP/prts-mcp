@@ -11,11 +11,13 @@ import json
 import logging
 import os
 import shutil
+import time
 import zipfile
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Callable, Literal
+from typing import Callable, Iterator, Literal
 from uuid import uuid4
 
 import httpx
@@ -93,6 +95,9 @@ def _get_cascading(url: str, *, timeout: float, **kwargs: object) -> httpx.Respo
 
 # Skip the upstream SHA check if cached data is fresher than this many seconds.
 _CACHE_TTL_SECONDS = 3600
+_ACTIVATION_LOCK_TIMEOUT_SECONDS = 120
+_ACTIVATION_LOCK_STALE_SECONDS = 30 * 60
+_RELEASE_RETENTION_SECONDS = 24 * 60 * 60
 
 
 # ---------------------------------------------------------------------------
@@ -430,7 +435,7 @@ def _safe_extract_zip(zip_path: Path, local_root: Path) -> None:
                 if member.is_dir():
                     continue
                 dest = (local_root / member.filename).resolve()
-                if not dest.is_relative_to(root):
+                if dest == root or not dest.is_relative_to(root):
                     raise ValueError(f"Unsafe zip member path: {member.filename}")
 
                 dest.parent.mkdir(parents=True, exist_ok=True)
@@ -449,9 +454,27 @@ def _safe_extract_zip(zip_path: Path, local_root: Path) -> None:
         raise
 
 
-def _extract_release_tree(spec: ReleaseArchiveSpec, commit_sha: str) -> Path:
+def _releases_path(spec: ReleaseArchiveSpec) -> Path:
     releases = spec.local_root / ".releases"
+    try:
+        if releases.is_symlink():
+            raise ValueError(f"Unsafe release directory symlink: {releases}")
+    except OSError as exc:
+        raise ValueError(f"Cannot inspect release directory: {releases}") from exc
     releases.mkdir(parents=True, exist_ok=True)
+    if (
+        releases.is_symlink()
+        or not releases.resolve().is_relative_to(spec.local_root.resolve())
+    ):
+        raise ValueError(f"Unsafe release directory: {releases}")
+    return releases
+
+
+def _stage_release_tree(
+    spec: ReleaseArchiveSpec,
+    commit_sha: str,
+) -> tuple[Path, Path]:
+    releases = _releases_path(spec)
     release_key = hashlib.sha256(commit_sha.encode("utf-8")).hexdigest()[:16]
     generation = f"{release_key}-{uuid4().hex}"
     staging = releases / f".{generation}.tmp"
@@ -464,8 +487,7 @@ def _extract_release_tree(spec: ReleaseArchiveSpec, commit_sha: str) -> Path:
                 "Archive extraction missing required files: "
                 + "; ".join(missing[:10])
             )
-        staging.replace(activated)
-        return activated
+        return staging, activated
     except Exception:
         shutil.rmtree(staging, ignore_errors=True)
         raise
@@ -481,11 +503,54 @@ def _archive_activation_sha(spec: ReleaseArchiveSpec, release_sha: str | None) -
     return f"local-{digest.hexdigest()}"
 
 
+@contextmanager
+def _archive_activation_lock(spec: ReleaseArchiveSpec) -> Iterator[None]:
+    """Serialize archive publication across Python and TypeScript processes."""
+    lock = spec.local_zip.parent / ".activation.lock"
+    deadline = time.monotonic() + _ACTIVATION_LOCK_TIMEOUT_SECONDS
+    while True:
+        try:
+            lock.mkdir(parents=False)
+            break
+        except FileExistsError:
+            if lock.is_symlink():
+                raise ValueError(f"Unsafe activation lock symlink: {lock}")
+            try:
+                stale = time.time() - lock.stat().st_mtime > _ACTIVATION_LOCK_STALE_SECONDS
+            except FileNotFoundError:
+                continue
+            if stale:
+                quarantine = lock.with_name(f"{lock.name}.stale-{uuid4().hex}")
+                try:
+                    lock.replace(quarantine)
+                except FileNotFoundError:
+                    continue
+                shutil.rmtree(quarantine, ignore_errors=True)
+                continue
+            if time.monotonic() >= deadline:
+                raise TimeoutError(f"Timed out waiting for archive activation lock: {lock}")
+            time.sleep(0.05)
+    try:
+        yield
+    finally:
+        shutil.rmtree(lock, ignore_errors=True)
+
+
 def _prune_release_trees(spec: ReleaseArchiveSpec, keep: set[Path]) -> None:
-    releases = spec.local_root / ".releases"
+    releases = _releases_path(spec)
+    cutoff = time.time() - _RELEASE_RETENTION_SECONDS
     try:
         for candidate in releases.iterdir():
-            if candidate not in keep:
+            if candidate.name.startswith(".") or candidate in keep:
+                continue
+            try:
+                if candidate.stat().st_mtime >= cutoff:
+                    continue
+            except OSError:
+                continue
+            if candidate.is_symlink():
+                candidate.unlink(missing_ok=True)
+            elif candidate.is_dir():
                 shutil.rmtree(candidate, ignore_errors=True)
     except OSError:
         pass
@@ -519,7 +584,9 @@ def sync_release_archive(
         local_root=spec.local_root,
     )
 
-    files_ok = _archive_files_present(spec)
+    extract_meta = _load_extract_meta(spec)
+    active_root = extract_meta[1] if extract_meta is not None else spec.local_root
+    files_ok = all((active_root / f).is_file() for f in spec.required_files)
     if release_result.status == "no_data":
         if files_ok:
             return SyncResult(
@@ -535,8 +602,6 @@ def sync_release_archive(
             error=release_result.error,
         )
 
-    extract_meta = _load_extract_meta(spec)
-    previous_root = extract_meta[1] if extract_meta is not None else spec.local_root
     extracted_sha = extract_meta[0] if extract_meta is not None else None
     should_extract = (
         release_result.status == "updated"
@@ -548,10 +613,38 @@ def sync_release_archive(
         )
     )
     if should_extract:
+        staging: Path | None = None
         try:
             activation_sha = _archive_activation_sha(spec, release_result.commit_sha)
-            activated_root = _extract_release_tree(spec, activation_sha)
+            staging, activated_root = _stage_release_tree(spec, activation_sha)
+            with _archive_activation_lock(spec):
+                current_meta = _load_extract_meta(spec)
+                current_root = (
+                    current_meta[1] if current_meta is not None else spec.local_root
+                )
+                if (
+                    current_meta is not None
+                    and current_meta[0] == activation_sha
+                    and all(
+                        (current_root / path).is_file()
+                        for path in spec.required_files
+                    )
+                ):
+                    shutil.rmtree(staging, ignore_errors=True)
+                    staging = None
+                    return SyncResult(
+                        spec=dummy_spec,
+                        status="up_to_date",
+                        commit_sha=activation_sha,
+                        error=None,
+                    )
+                staging.replace(activated_root)
+                staging = None
+                _save_extract_meta(spec, activation_sha, activated_root)
+                _prune_release_trees(spec, {current_root, activated_root})
         except Exception as exc:  # noqa: BLE001
+            if staging is not None:
+                shutil.rmtree(staging, ignore_errors=True)
             if _archive_files_present(spec):
                 return SyncResult(
                     spec=dummy_spec,
@@ -565,9 +658,6 @@ def sync_release_archive(
                 commit_sha=release_result.commit_sha,
                 error=str(exc),
             )
-
-        _save_extract_meta(spec, activation_sha, activated_root)
-        _prune_release_trees(spec, {previous_root, activated_root})
         return SyncResult(
             spec=dummy_spec,
             status="updated",

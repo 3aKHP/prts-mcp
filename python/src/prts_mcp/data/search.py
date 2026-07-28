@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from functools import lru_cache
 
-from prts_mcp.config import Config
+from prts_mcp.config import Config, activation_aware_cache
 from prts_mcp.data.operator import (
     _build_name_to_id,
     _load_character_table,
@@ -141,7 +140,7 @@ def render_search(data: dict) -> str:
     raise ValueError(f"不支持的搜索域：{scope!r}。")
 
 
-@lru_cache(maxsize=1)
+@activation_aware_cache(maxsize=1)
 def _operator_search_records() -> tuple[_OperatorSearchRecord, ...]:
     ct = _load_character_table()
     handbook = _load_handbook_table().get("handbookDict", {})

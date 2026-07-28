@@ -1,9 +1,41 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
+import threading
 from dataclasses import dataclass, field
+from functools import lru_cache, wraps
 from pathlib import Path
+from typing import Any, Callable
+
+_logger = logging.getLogger(__name__)
+_activation_lock = threading.RLock()
+_activation_signature: tuple[Path | None, Path | None] | None = None
+_activation_listeners: list[Callable[[], None]] = []
+
+
+def register_activation_listener(listener: Callable[[], None]) -> None:
+    """Register a cache invalidator for activated GameData generation changes."""
+    with _activation_lock:
+        if listener not in _activation_listeners:
+            _activation_listeners.append(listener)
+
+
+def _notify_activation_change(config: Config) -> None:
+    global _activation_signature
+
+    signature = (config.effective_excel_path, config.effective_levels_path)
+    with _activation_lock:
+        previous = _activation_signature
+        _activation_signature = signature
+        if previous is None or previous == signature:
+            return
+        for listener in tuple(_activation_listeners):
+            try:
+                listener()
+            except Exception:  # noqa: BLE001
+                _logger.exception("Failed to invalidate a GameData cache")
 
 # ---------------------------------------------------------------------------
 # Path design (two separate roots, never mixed up)
@@ -206,4 +238,27 @@ class Config:
             if "STORYJSON_PATH" in os.environ
             else _DEFAULT_STORYJSON_ZIP
         )
-        return cls(gamedata_path=gamedata, storyjson_zip=storyjson_zip, is_custom_gamedata=custom)
+        config = cls(
+            gamedata_path=gamedata,
+            storyjson_zip=storyjson_zip,
+            is_custom_gamedata=custom,
+        )
+        _notify_activation_change(config)
+        return config
+
+
+def activation_aware_cache(maxsize: int = 1) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+    """Cache GameData reads while checking the active generation on every access."""
+    def decorate(func: Callable[..., Any]) -> Callable[..., Any]:
+        cached = lru_cache(maxsize=maxsize)(func)
+
+        @wraps(func)
+        def wrapped(*args: Any, **kwargs: Any) -> Any:
+            Config.load()
+            return cached(*args, **kwargs)
+
+        wrapped.cache_clear = cached.cache_clear  # type: ignore[attr-defined]
+        wrapped.cache_info = cached.cache_info  # type: ignore[attr-defined]
+        return wrapped
+
+    return decorate

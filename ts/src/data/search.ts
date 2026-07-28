@@ -144,6 +144,7 @@ export function renderSearch(data: SearchPayload): string {
 }
 
 function getOperatorSearchRecords(): OperatorSearchEntry[] {
+  loadConfig();
   if (operatorSearchRecords !== null) return operatorSearchRecords;
 
   const ct = getCharacterTable();

@@ -247,6 +247,7 @@ docker run --rm -v prts-mcp-levels:/data/gamedata-levels alpine rm /data/gamedat
 # 宿主机目录场景（Windows）
 Remove-Item "$env:LOCALAPPDATA\prts-mcp\gamedata\archives\release_meta.json"
 Remove-Item "$env:LOCALAPPDATA\prts-mcp\gamedata\archives\extract_meta.json"
+Remove-Item "$env:LOCALAPPDATA\prts-mcp\gamedata-levels\archives\extract_meta.json"
 ```
 
 ---

@@ -40,6 +40,25 @@ export const USER_AGENT = "PRTS-MCP-Bot/0.1 (Arknights fan-creation helper)";
 /** Minimum seconds between PRTS API requests. */
 export const RATE_LIMIT_INTERVAL = 1.5;
 
+const activationListeners = new Set<() => void>();
+let activationSignature: string | null = null;
+
+/** Register a cache invalidator for activated GameData generation changes. */
+export function registerActivationListener(listener: () => void): void {
+  activationListeners.add(listener);
+}
+
+function notifyActivationChange(cfg: Config): void {
+  const signature = JSON.stringify([
+    cfg.effectiveExcelPath,
+    cfg.effectiveLevelsPath,
+  ]);
+  const previous = activationSignature;
+  activationSignature = signature;
+  if (previous === null || previous === signature) return;
+  for (const listener of activationListeners) listener();
+}
+
 const REQUIRED_OPERATOR_FILES = [
   "character_table.json",
   "handbook_info_table.json",
@@ -223,7 +242,7 @@ export function loadConfig(): Config {
   else if (existsSync(BUNDLED_STORYJSON_ZIP))
     effectiveStoryjsonZip = BUNDLED_STORYJSON_ZIP;
 
-  return {
+  const config = {
     gamedataPath,
     isCustomGamedata,
     excelPath: ep,
@@ -235,4 +254,6 @@ export function loadConfig(): Config {
     storyjsonZip,
     effectiveStoryjsonZip,
   };
+  notifyActivationChange(config);
+  return config;
 }

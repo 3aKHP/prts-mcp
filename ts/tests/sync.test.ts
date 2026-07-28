@@ -5,6 +5,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  symlinkSync,
   unlinkSync,
   writeFileSync,
 } from "node:fs";
@@ -316,5 +317,44 @@ test("syncReleaseArchive reports updated after offline activation recovery", asy
       readFileSync(join(activeArchiveRoot(spec), required), "utf-8"),
       '{"version":"new"}',
     );
+  });
+});
+
+test("syncReleaseArchive rejects a symlinked release directory", async () => {
+  const spec = tempArchiveSpec();
+  const required = spec.requiredFiles[0];
+  writeZip(spec.localZip, { [required]: "{}" });
+  const outside = join(dirname(spec.localRoot), "outside");
+  mkdirSync(outside);
+  mkdirSync(spec.localRoot);
+  symlinkSync(outside, join(spec.localRoot, ".releases"), "dir");
+
+  await withFetchMock((async () => {
+    throw new Error("network down");
+  }) as typeof fetch, async () => {
+    const result = await syncReleaseArchive(spec);
+    assert.equal(result.status, "no_data");
+    assert.match(result.error ?? "", /Unsafe release directory symlink/);
+  });
+});
+
+test("concurrent archive activation keeps the authoritative tree", async () => {
+  const spec = tempArchiveSpec();
+  const required = spec.requiredFiles[0];
+  writeZip(spec.localZip, { [required]: "{}" });
+
+  await withFetchMock((async () => {
+    throw new Error("network down");
+  }) as typeof fetch, async () => {
+    const results = await Promise.all([
+      syncReleaseArchive(spec),
+      syncReleaseArchive(spec),
+    ]);
+    assert.deepEqual(new Set(results.map((result) => result.status)), new Set([
+      "updated",
+      "up_to_date",
+    ]));
+    assert.equal(existsSync(join(activeArchiveRoot(spec), required)), true);
+    assert.equal(existsSync(join(dirname(spec.localZip), ".activation.lock")), false);
   });
 });
