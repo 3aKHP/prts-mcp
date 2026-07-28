@@ -13,7 +13,7 @@
  */
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createMcpServer, log, SERVER_VERSION } from "./server.js";
-import { runStartupSync } from "./startupSync.js";
+import { startAutoSync } from "./startupSync.js";
 import { parseChannel } from "./output.js";
 
 async function main(): Promise<void> {
@@ -33,9 +33,7 @@ async function main(): Promise<void> {
   // Background data sync — same as the HTTP path. On stdio the process is
   // typically short-lived (client spawns per use), so retry timers use
   // unref and incomplete sync is acceptable (resumes next launch).
-  void runStartupSync().catch((err) => {
-    log("ERROR", `startup sync failed: ${err instanceof Error ? err.message : String(err)}`);
-  });
+  startAutoSync();
 }
 
 main().catch((err) => {

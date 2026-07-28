@@ -93,6 +93,32 @@ class TestOperatorDataRefresh:
 
             assert operator._load_character_table.cache_info().currsize == 0
 
+    def test_cache_switches_when_activated_generation_changes(self, tmp_path):
+        root = tmp_path / "gamedata"
+        first = root / ".releases" / "first"
+        second = root / ".releases" / "second"
+        write_minimal_gamedata(first)
+        write_minimal_gamedata(second)
+        second_table = second / "zh_CN" / "gamedata" / "excel" / "character_table.json"
+        value = json.loads(second_table.read_text(encoding="utf-8"))
+        value["char_002_amiya"]["appellation"] = "Amiya v2"
+        second_table.write_text(json.dumps(value, ensure_ascii=False), encoding="utf-8")
+        archives = root / "archives"
+        archives.mkdir(parents=True)
+        metadata = archives / "extract_meta.json"
+        metadata.write_text(
+            json.dumps({"commit_sha": "first", "data_root": ".releases/first"}),
+            encoding="utf-8",
+        )
+
+        with patch.dict(os.environ, {"GAMEDATA_PATH": str(root)}, clear=False):
+            assert "Amiya v2" not in get_operator_basic_info("阿米娅")
+            metadata.write_text(
+                json.dumps({"commit_sha": "second", "data_root": ".releases/second"}),
+                encoding="utf-8",
+            )
+            assert "Amiya v2" in get_operator_basic_info("阿米娅")
+
 
 class TestNameToId:
     def test_trap_entry_with_same_name_does_not_override_operator(self, tmp_path):

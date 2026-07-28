@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import re as _re
 from dataclasses import dataclass as _dataclass
-from functools import lru_cache as _lru_cache
 from typing import Any
 
-from prts_mcp.config import Config as _Config
+from prts_mcp.config import (
+    Config as _Config,
+    activation_aware_cache as _activation_aware_cache,
+    register_activation_listener,
+)
 from prts_mcp.data.item import get_item_name_by_id as _get_item_name_by_id
 from prts_mcp.data.stores import DirectoryStore as _DirectoryStore
 
@@ -129,7 +132,7 @@ def _format_drops(drop_info: dict | None) -> str:
 # ---------------------------------------------------------------------------
 
 
-@_lru_cache(maxsize=1)
+@_activation_aware_cache(maxsize=1)
 def _load_stage_table() -> dict[str, dict]:
     if not _has_stage_data():
         raise FileNotFoundError(_STAGE_FILE)
@@ -142,7 +145,7 @@ def _load_stage_table() -> dict[str, dict]:
     return stages
 
 
-@_lru_cache(maxsize=1)
+@_activation_aware_cache(maxsize=1)
 def _load_zone_table() -> dict[str, dict] | None:
     store = _store()
     if not store.exists(_ZONE_FILE):
@@ -174,6 +177,9 @@ def clear_stage_caches() -> None:
     _load_stage_table.cache_clear()
     _load_zone_table.cache_clear()
     _stage_search_records.cache_clear()
+
+
+register_activation_listener(clear_stage_caches)
 
 
 # ---------------------------------------------------------------------------
@@ -491,7 +497,7 @@ def _stage_search_entry(record: _StageSearchRecord) -> dict[str, Any]:
     }
 
 
-@_lru_cache(maxsize=1)
+@_activation_aware_cache(maxsize=1)
 def _stage_search_records() -> tuple[_StageSearchRecord, ...]:
     records: list[_StageSearchRecord] = []
     for sid, entry in sorted(_load_stage_table().items()):

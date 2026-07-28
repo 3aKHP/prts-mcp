@@ -8,17 +8,19 @@ $ErrorActionPreference = "Stop"
 $OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::new()
 
 $RepoRoot = Split-Path -Parent $PSScriptRoot
-$Python = if ($env:PRTS_MCP_PYTHON) {
-    $env:PRTS_MCP_PYTHON
-} else {
-    "E:\Anaconda3\envs\python311\python.exe"
-}
-$PythonSrc = Join-Path $RepoRoot "python\src"
-$PythonVenv = Join-Path $RepoRoot "python\.venv\bin\python.exe"
+$PythonDir = Join-Path $RepoRoot "python"
 $TsDir = Join-Path $RepoRoot "ts"
-
 $Failures = 0
-$Warnings = 0
+
+function Assert-NativeExit {
+    param(
+        [Parameter(Mandatory = $true)][string]$CommandName
+    )
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "$CommandName exited with code $LASTEXITCODE."
+    }
+}
 
 function Invoke-Required {
     param(
@@ -38,67 +40,62 @@ function Invoke-Required {
     }
 }
 
-function Invoke-Warning {
-    param(
-        [Parameter(Mandatory = $true)][string]$Message
-    )
-
-    $script:Warnings += 1
-    Write-Host "[WARN] $Message"
-}
-
 Write-Host "Repo root: $RepoRoot"
-Write-Host "Python: $Python"
 
 Invoke-Required "PowerShell 7+" {
     $version = $PSVersionTable.PSVersion
     Write-Host "PowerShell $version"
     if ($version.Major -lt 7) {
-        throw "Use C:\Program Files\PowerShell\7\pwsh.exe for this repo."
+        throw "PowerShell 7 or newer is required."
     }
 }
 
-Invoke-Required "Python runtime" {
-    if (-not (Test-Path -LiteralPath $Python)) {
-        throw "Missing Python interpreter: $Python"
+Invoke-Required "uv runtime" {
+    $uv = Get-Command uv -ErrorAction Stop
+    Write-Host "uv=$($uv.Source)"
+    & uv --version
+    Assert-NativeExit "uv --version"
+}
+
+Invoke-Required "Python lock and environment" {
+    if (-not (Test-Path -LiteralPath (Join-Path $PythonDir "uv.lock"))) {
+        throw "Missing python/uv.lock."
     }
 
-    $probe = @'
+    Push-Location $PythonDir
+    try {
+        & uv lock --check
+        Assert-NativeExit "uv lock --check"
+
+        & uv sync --check
+        Assert-NativeExit "uv sync --check"
+
+        $probe = @'
 import importlib.metadata as md
 import sys
 
 import mcp
 import pydantic
 import pytest
+from prts_mcp.server import main
 
 print(sys.executable)
 print(sys.version.split()[0])
 print("mcp=" + md.version("mcp"))
 print("pydantic=" + md.version("pydantic"))
 print("pytest=" + md.version("pytest"))
+print("prts_mcp.server import ok")
 '@
-    & $Python -c $probe
-}
-
-Invoke-Required "Python local source import" {
-    $oldPythonPath = $env:PYTHONPATH
-    try {
-        $env:PYTHONPATH = $PythonSrc
-        & $Python -c "from prts_mcp.server import main; print('prts_mcp.server import ok')"
+        & uv run --frozen --no-sync python -c $probe
+        Assert-NativeExit "uv run python probe"
     } finally {
-        $env:PYTHONPATH = $oldPythonPath
-    }
-}
-
-if (Test-Path -LiteralPath $PythonVenv) {
-    $venvProbe = & $PythonVenv -c "import importlib.util as u; print(u.find_spec('mcp'))"
-    if ($venvProbe -eq "None") {
-        Invoke-Warning "python\.venv exists but lacks mcp; use $Python instead."
+        Pop-Location
     }
 }
 
 Invoke-Required "Node runtime" {
     $nodeVersion = & node -v
+    Assert-NativeExit "node -v"
     Write-Host "node=$nodeVersion"
     if ($nodeVersion -notmatch '^v(\d+)\.') {
         throw "Could not parse Node version: $nodeVersion"
@@ -108,34 +105,76 @@ Invoke-Required "Node runtime" {
     }
 }
 
-Invoke-Required "npm PowerShell-safe shim" {
-    $npmCmd = Get-Command npm.cmd -ErrorAction Stop
-    Write-Host "npm.cmd=$($npmCmd.Source)"
-    & npm.cmd -v
+$NpmCommand = if (Get-Command npm.cmd -ErrorAction SilentlyContinue) {
+    "npm.cmd"
+} else {
+    "npm"
+}
 
-    $bareNpm = Get-Command npm -ErrorAction SilentlyContinue
-    if ($bareNpm -and $bareNpm.Source -like "*.ps1") {
-        Invoke-Warning "bare npm resolves to $($bareNpm.Source); prefer npm.cmd in PowerShell."
+Invoke-Required "npm runtime" {
+    $npm = Get-Command $NpmCommand -ErrorAction Stop
+    Write-Host "npm=$($npm.Source)"
+    & $NpmCommand --version
+    Assert-NativeExit "$NpmCommand --version"
+}
+
+Invoke-Required "Bun runtime" {
+    $bun = Get-Command bun -ErrorAction Stop
+    $bunVersion = & $bun.Source --version
+    Assert-NativeExit "bun --version"
+    Write-Host "bun=$bunVersion"
+    if ($bunVersion -match '^[0-9]+\.[0-9]+\.[0-9]+-') {
+        throw "Bun prerelease versions are not supported: $bunVersion. Use Bun >=1.3.14 stable."
+    }
+
+    $parsedBunVersion = $null
+    if (
+        $bunVersion -notmatch '^[0-9]+\.[0-9]+\.[0-9]+$' -or
+        -not [version]::TryParse($bunVersion, [ref]$parsedBunVersion)
+    ) {
+        throw "Unsupported or malformed Bun version: $bunVersion. Expected stable MAJOR.MINOR.PATCH."
+    }
+
+    if ($parsedBunVersion -lt [version]"1.3.14") {
+        throw "Bun >=1.3.14 is required."
     }
 }
 
 Invoke-Required "TypeScript dependencies" {
-    $tsc = Join-Path $TsDir "node_modules\typescript\bin\tsc"
-    $tsx = Join-Path $TsDir "node_modules\tsx\dist\cli.mjs"
+    $tsc = Join-Path $TsDir "node_modules/typescript/bin/tsc"
+    $tsx = Join-Path $TsDir "node_modules/tsx/dist/cli.mjs"
     if (-not (Test-Path -LiteralPath $tsc)) {
-        throw "Missing TypeScript dependency tree. Run npm.cmd ci in ts\ if dependencies need reinstalling."
+        throw "Missing TypeScript dependencies. Run npm ci in ts/."
     }
     if (-not (Test-Path -LiteralPath $tsx)) {
-        throw "Missing tsx dependency tree. Run npm.cmd ci in ts\ if dependencies need reinstalling."
+        throw "Missing tsx dependency. Run npm ci in ts/."
     }
-    Write-Host "typescript and tsx are installed under ts\node_modules"
+
+    Push-Location $TsDir
+    try {
+        & $NpmCommand ls --depth=0
+        Assert-NativeExit "$NpmCommand ls --depth=0"
+    } finally {
+        Pop-Location
+    }
 }
 
 if ($Full) {
     Invoke-Required "Python tests" {
-        Push-Location (Join-Path $RepoRoot "python")
+        Push-Location $PythonDir
         try {
-            & $Python -m pytest tests -q
+            & uv run --frozen --no-sync python -m pytest tests -q
+            Assert-NativeExit "Python tests"
+        } finally {
+            Pop-Location
+        }
+    }
+
+    Invoke-Required "TypeScript build" {
+        Push-Location $TsDir
+        try {
+            & $NpmCommand run build
+            Assert-NativeExit "TypeScript build"
         } finally {
             Pop-Location
         }
@@ -144,7 +183,8 @@ if ($Full) {
     Invoke-Required "TypeScript tests" {
         Push-Location $TsDir
         try {
-            & npm.cmd test
+            & $NpmCommand test
+            Assert-NativeExit "TypeScript tests"
         } finally {
             Pop-Location
         }
@@ -153,7 +193,18 @@ if ($Full) {
     Invoke-Required "TypeScript typecheck" {
         Push-Location $TsDir
         try {
-            & npm.cmd run typecheck
+            & $NpmCommand run typecheck
+            Assert-NativeExit "TypeScript typecheck"
+        } finally {
+            Pop-Location
+        }
+    }
+
+    Invoke-Required "Bun HTTP smoke" {
+        Push-Location $TsDir
+        try {
+            & $NpmCommand run smoke:bun
+            Assert-NativeExit "Bun HTTP smoke"
         } finally {
             Pop-Location
         }
@@ -161,7 +212,7 @@ if ($Full) {
 }
 
 Write-Host ""
-Write-Host "Runtime check complete: $Failures failure(s), $Warnings warning(s)."
+Write-Host "Runtime check complete: $Failures failure(s)."
 if ($Failures -gt 0) {
     exit 1
 }

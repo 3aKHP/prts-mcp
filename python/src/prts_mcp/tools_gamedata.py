@@ -9,6 +9,7 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
+from prts_mcp.config import activation_snapshot
 from prts_mcp.data.operator import (
     get_operator_archives as _get_archives,
     get_operator_voicelines as _get_voicelines,
@@ -51,6 +52,7 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
     """Register the 12 GameData-backed tools on the given FastMCP instance."""
 
     @mcp.tool()
+    @activation_snapshot
     async def get_operator_archives(
         name: Annotated[str, Field(description="干员的游戏内中文名，如「阿米娅」、「能天使」。")],
     ) -> object:
@@ -62,6 +64,7 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         return text_result(_get_archives(name))
 
     @mcp.tool()
+    @activation_snapshot
     async def get_operator_voicelines(
         name: Annotated[str, Field(description="干员的游戏内中文名，如「阿米娅」、「能天使」。")],
     ) -> object:
@@ -73,6 +76,7 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         return text_result(_get_voicelines(name))
 
     @mcp.tool()
+    @activation_snapshot
     async def get_operator_basic_info(
         name: Annotated[str, Field(description="干员的游戏内中文名，如「阿米娅」、「能天使」。")],
     ) -> object:
@@ -91,6 +95,7 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         )
 
     @mcp.tool()
+    @activation_snapshot
     def list_enemies(
         threat_level: Annotated[str | None, Field(default=None, description="按威胁等级过滤：boss（领袖）、elite（精英）、normal（普通）。不填则返回全部。")] = None,
         limit: Annotated[int, Field(default=50, description="返回数量上限，默认 50。")] = 50,
@@ -108,6 +113,7 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         return render_result(data, _render_enemies_listing(data))
 
     @mcp.tool()
+    @activation_snapshot
     def get_enemy_info(
         name: Annotated[str, Field(description="敌人的游戏内中文名，如「源石虫」、「霜星」。")],
         stage_id: Annotated[str | None, Field(default=None, description="可选关卡 ID；设置后返回该关卡内的敌人等级/覆盖后的战斗属性。")] = None,
@@ -131,6 +137,7 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         )
 
     @mcp.tool()
+    @activation_snapshot
     def get_stage_enemies(
         stage_id: Annotated[str, Field(description="关卡 ID，如 'main_00-01'（可从 list_stages 获取）。")],
     ) -> object:
@@ -152,6 +159,7 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         )
 
     @mcp.tool()
+    @activation_snapshot
     def get_enemy_appearances(
         name: Annotated[str, Field(description="敌人的游戏内中文名或 enemyId，如「源石虫」或 enemy_1007_slime。")],
         limit: Annotated[int, Field(default=50, description="返回数量上限，默认 50。")] = 50,
@@ -167,6 +175,7 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         return render_result(data, _render_enemy_appearances(data))
 
     @mcp.tool()
+    @activation_snapshot
     def list_stages(
         chapter: Annotated[str | None, Field(default=None, description="按所属章节（zoneId）过滤，如 'main_0'。不填则返回全部。")] = None,
         type: Annotated[str | None, Field(default=None, description="按关卡类型过滤：MAIN（主线）/ ACTIVITY（活动）/ SUB（支线）/ DAILY（每日）/ CAMPAIGN（剿灭）/ CLIMB_TOWER（爬塔）/ SPECIAL_STORY（特殊故事）/ GUIDE（教程）。不填则返回全部。")] = None,
@@ -188,6 +197,7 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         return render_result(data, _render_stages_listing(data))
 
     @mcp.tool()
+    @activation_snapshot
     def get_stage_info(
         stage_id: Annotated[str, Field(description="关卡 ID，如 'main_00-01'（可从 list_stages 获取）。")],
     ) -> object:
@@ -206,6 +216,7 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         )
 
     @mcp.tool()
+    @activation_snapshot
     def list_items(
         category: Annotated[str | None, Field(default=None, description="按物品分类过滤，如 MATERIAL（材料）、NORMAL（普通）、CONSUME（消耗品）。不填则返回全部可见物品。")] = None,
         limit: Annotated[int, Field(default=50, description="返回数量上限，默认 50。")] = 50,
@@ -221,6 +232,7 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         return render_result(data, _render_items_listing(data))
 
     @mcp.tool()
+    @activation_snapshot
     def get_item_info(
         name: Annotated[str, Field(description="物品中文名或 itemId，如「固源岩」、「招聘许可」或 \"30012\"。")],
     ) -> object:
@@ -238,6 +250,7 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         )
 
     @mcp.tool()
+    @activation_snapshot
     def search(
         scope: Annotated[Literal["operators", "enemies", "stages", "items"], Field(description="搜索域（必填）：operators（干员）/ enemies（敌人）/ stages（关卡）/ items（物品）。")],
         pattern: Annotated[str, Field(description="正则表达式搜索模式，大小写不敏感。")],

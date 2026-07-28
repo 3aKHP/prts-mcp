@@ -20,6 +20,7 @@ _smoke_test*.py
 local_repo.jsonc
 docker-compose.override.yml
 .mcp.json
+.zcode/
 PRTS维基.md
 prts-mcp.tar
 

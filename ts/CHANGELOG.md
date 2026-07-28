@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.4.0] - 2026-07-29
+
+### Added
+
+- Added process-lifetime auto-sync: after the startup check, GameData excel,
+  GameData levels, and StoryJson Releases are checked hourly without a service
+  restart. `PRTS_AUTO_SYNC_INTERVAL_SECONDS` configures the interval or keeps
+  startup-only behavior with `0`.
+- Added archive activation metadata so an interrupted extraction is retried on
+  the next cycle before the downloaded Release is treated as active.
+- GameData excel and levels now become visible as one atomic generation, so
+  tools never observe a mixed old/new pair while a periodic update is running.
+- Shared-volume publication locks now renew their lease while held, preventing
+  long downloads or extraction work from being mistaken for abandoned locks.
+
 ## [2.3.1] - 2026-07-10
 
 ### Security

@@ -12,11 +12,13 @@ on:
     paths:
       - 'python/**'
       - 'ts/**'
+      - 'scripts/test-shared-volume-sync.sh'
       - '.github/workflows/ci.yml'
   pull_request:
     paths:
       - 'python/**'
       - 'ts/**'
+      - 'scripts/test-shared-volume-sync.sh'
       - '.github/workflows/ci.yml'
 
 jobs:
@@ -35,11 +37,17 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install package
-        run: python -m pip install -e python/ pytest
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.28"
+          enable-cache: true
+
+      - name: Sync Python environment
+        run: uv sync --project python --locked
 
       - name: Compile source files
-        run: python -m compileall python/src python/scripts
+        run: uv run --project python --no-sync python -m compileall python/src python/scripts
 
       - name: Download storyjson zip for integration tests
         run: |
@@ -53,7 +61,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run tests
-        run: python -m pytest python/tests
+        run: uv run --project python --no-sync python -m pytest python/tests
         env:
           STORYJSON_ZIP: ${{ github.workspace }}/.ci-data/storyjson/zh_CN.zip
 
@@ -61,7 +69,7 @@ jobs:
         run: |
           mkdir -p .ci-empty/gamedata
           export GAMEDATA_PATH="$PWD/.ci-empty/gamedata"
-          python - <<'PY'
+          uv run --project python --no-sync python - <<'PY'
           from pathlib import Path
           from prts_mcp.config import Config
           from prts_mcp.data.operator import get_operator_archives
@@ -79,7 +87,10 @@ jobs:
   build-image-python:
     runs-on: ubuntu-latest
     needs: verify-python
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    if: |
+      github.ref == 'refs/heads/main' ||
+      github.ref == 'refs/heads/develop' ||
+      (github.event_name == 'pull_request' && startsWith(github.head_ref, 'release/'))
 
     steps:
       - name: Checkout repository
@@ -268,6 +279,41 @@ jobs:
       - name: Smoke test packed Bun bin
         run: bun run smoke:bun:package
         working-directory: ts
+
+  shared-volume-sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.28"
+          enable-cache: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: 'ts/package.json'
+          cache: 'npm'
+          cache-dependency-path: 'ts/package-lock.json'
+
+      - name: Install Python dependencies
+        run: uv sync --project python --locked
+
+      - name: Install TypeScript dependencies
+        run: npm ci
+        working-directory: ts
+
+      - name: Exercise Python and TypeScript on one shared volume
+        run: ./scripts/test-shared-volume-sync.sh
 
   build-image-ts:
     # Default Docker image — Bun runtime (ts/Dockerfile is Bun since 2.2.0).

@@ -6,15 +6,20 @@ cached/bundled data when the network is unavailable.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
 import shutil
+import threading
+import time
 import zipfile
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Callable, Literal
+from typing import Callable, Iterator, Literal
+from uuid import uuid4
 
 import httpx
 
@@ -91,6 +96,12 @@ def _get_cascading(url: str, *, timeout: float, **kwargs: object) -> httpx.Respo
 
 # Skip the upstream SHA check if cached data is fresher than this many seconds.
 _CACHE_TTL_SECONDS = 3600
+_ACTIVATION_LOCK_TIMEOUT_SECONDS = 120
+_ACTIVATION_LOCK_STALE_SECONDS = 30 * 60
+_ACTIVATION_LOCK_OWNER_GRACE_SECONDS = 10
+_ACTIVATION_LOCK_HEARTBEAT_SECONDS = 60
+_RELEASE_RETENTION_SECONDS = 24 * 60 * 60
+_GAMEDATA_PAIR_META = ".gamedata_pair.json"
 
 
 # ---------------------------------------------------------------------------
@@ -125,26 +136,42 @@ class CacheMeta:
             return None
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
-            return cls(**data)
-        except (json.JSONDecodeError, TypeError, KeyError):
+            commit_sha = data.get("commit_sha", data.get("commitSha"))
+            fetched_at = data.get("fetched_at", data.get("fetchedAt"))
+            files = data.get("files")
+            if (
+                not isinstance(commit_sha, str)
+                or not commit_sha
+                or not isinstance(fetched_at, str)
+                or not fetched_at
+                or not isinstance(files, list)
+                or not all(isinstance(file, str) for file in files)
+            ):
+                return None
+            return cls(
+                repo=data["repo"],
+                branch=data["branch"],
+                commit_sha=commit_sha,
+                fetched_at=fetched_at,
+                files=files,
+            )
+        except (json.JSONDecodeError, TypeError, KeyError, AttributeError):
             return None
 
     def save(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(
-            json.dumps(
-                {
-                    "repo": self.repo,
-                    "branch": self.branch,
-                    "commit_sha": self.commit_sha,
-                    "fetched_at": self.fetched_at,
-                    "files": self.files,
-                },
-                ensure_ascii=False,
-                indent=2,
-            ),
+        tmp = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
+        tmp.write_text(
+            json.dumps({
+                "repo": self.repo,
+                "branch": self.branch,
+                "commit_sha": self.commit_sha,
+                "fetched_at": self.fetched_at,
+                "files": self.files,
+            }, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
+        tmp.replace(path)
 
 
 @dataclass
@@ -229,7 +256,9 @@ def check_latest_release(spec: ReleaseSpec, timeout: float = 10.0) -> tuple[str,
 def download_release_asset(spec: ReleaseSpec, tag: str, url: str, timeout: float = 120.0) -> None:
     """Download a release asset zip atomically, then write cache metadata."""
     spec.local_zip.parent.mkdir(parents=True, exist_ok=True)
-    tmp = spec.local_zip.with_suffix(spec.local_zip.suffix + ".tmp")
+    tmp = spec.local_zip.with_name(
+        f".{spec.local_zip.name}.{uuid4().hex}.tmp"
+    )
     try:
         _logger.debug("Downloading release asset %s", url)
         response = _get_cascading(url, timeout=timeout, headers=_github_headers(), follow_redirects=True)
@@ -257,7 +286,7 @@ def download_release_asset(spec: ReleaseSpec, tag: str, url: str, timeout: float
         raise
 
 
-def sync_release(spec: ReleaseSpec) -> SyncResult:
+def _sync_release_locked(spec: ReleaseSpec, *, force_check: bool = False) -> SyncResult:
     """Check latest GitHub Release and download asset if the tag has changed.
 
     Decision tree mirrors the legacy per-file sync path:
@@ -279,7 +308,12 @@ def sync_release(spec: ReleaseSpec) -> SyncResult:
     zip_error = _release_zip_error(spec)
     zip_ok = zip_error is None
 
-    if cache is not None and zip_ok and _release_cache_is_fresh(cache):
+    if (
+        not force_check
+        and cache is not None
+        and zip_ok
+        and _release_cache_is_fresh(cache)
+    ):
         _logger.debug("Release cache is fresh for %s/%s; skipping check.", spec.owner, spec.repo)
         return SyncResult(spec=_dummy_spec, status="up_to_date", commit_sha=cache.commit_sha, error=None)
 
@@ -351,11 +385,57 @@ def _release_zip_error(spec: ReleaseSpec) -> str | None:
 
 
 def _archive_files_present(spec: ReleaseArchiveSpec) -> bool:
-    return all((spec.local_root / f).is_file() for f in spec.required_files)
+    root = _active_archive_root(spec)
+    return all((root / f).is_file() for f in spec.required_files)
 
 
-def _archive_missing_files(spec: ReleaseArchiveSpec) -> list[str]:
-    return [f for f in spec.required_files if not (spec.local_root / f).is_file()]
+def _archive_missing_files(spec: ReleaseArchiveSpec, root: Path) -> list[str]:
+    return [f for f in spec.required_files if not (root / f).is_file()]
+
+
+def _extract_meta_path(spec: ReleaseArchiveSpec) -> Path:
+    return spec.local_zip.parent / "extract_meta.json"
+
+
+def _load_extract_meta(spec: ReleaseArchiveSpec) -> tuple[str, Path] | None:
+    try:
+        value = json.loads(_extract_meta_path(spec).read_text(encoding="utf-8"))
+        commit_sha = value.get("commit_sha")
+        data_root = value.get("data_root")
+        if not isinstance(commit_sha, str) or not commit_sha:
+            return None
+        if not isinstance(data_root, str) or not data_root:
+            return None
+        root = (spec.local_root / data_root).resolve()
+        if not root.is_relative_to(spec.local_root.resolve()) or not root.is_dir():
+            return None
+        return commit_sha, root
+    except (OSError, json.JSONDecodeError, AttributeError):
+        return None
+
+
+def _active_archive_root(spec: ReleaseArchiveSpec) -> Path:
+    meta = _load_extract_meta(spec)
+    return meta[1] if meta is not None else spec.local_root
+
+
+def _save_extract_meta(
+    spec: ReleaseArchiveSpec,
+    commit_sha: str,
+    data_root: Path,
+) -> None:
+    path = _extract_meta_path(spec)
+    tmp = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    relative_root = data_root.relative_to(spec.local_root).as_posix()
+    tmp.write_text(
+        json.dumps(
+            {"commit_sha": commit_sha, "data_root": relative_root},
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    tmp.replace(path)
 
 
 def _validate_archive_zip(zip_path: Path, required_files: tuple[str, ...]) -> list[str]:
@@ -377,7 +457,7 @@ def _safe_extract_zip(zip_path: Path, local_root: Path) -> None:
                 if member.is_dir():
                     continue
                 dest = (local_root / member.filename).resolve()
-                if not dest.is_relative_to(root):
+                if dest == root or not dest.is_relative_to(root):
                     raise ValueError(f"Unsafe zip member path: {member.filename}")
 
                 dest.parent.mkdir(parents=True, exist_ok=True)
@@ -396,12 +476,179 @@ def _safe_extract_zip(zip_path: Path, local_root: Path) -> None:
         raise
 
 
-def sync_release_archive(spec: ReleaseArchiveSpec) -> SyncResult:
-    """Download a GitHub Release zip asset and extract it into local_root.
+def _releases_path(spec: ReleaseArchiveSpec) -> Path:
+    releases = spec.local_root / ".releases"
+    try:
+        if releases.is_symlink():
+            raise ValueError(f"Unsafe release directory symlink: {releases}")
+    except OSError as exc:
+        raise ValueError(f"Cannot inspect release directory: {releases}") from exc
+    releases.mkdir(parents=True, exist_ok=True)
+    if (
+        releases.is_symlink()
+        or not releases.resolve().is_relative_to(spec.local_root.resolve())
+    ):
+        raise ValueError(f"Unsafe release directory: {releases}")
+    return releases
 
-    This keeps the data distribution path aligned with storyjson releases while
-    preserving the existing on-disk ArknightsGameData layout.
-    """
+
+def _stage_release_tree(
+    spec: ReleaseArchiveSpec,
+    commit_sha: str,
+) -> tuple[Path, Path]:
+    releases = _releases_path(spec)
+    release_key = hashlib.sha256(commit_sha.encode("utf-8")).hexdigest()[:16]
+    generation = f"{release_key}-{uuid4().hex}"
+    staging = releases / f".{generation}.tmp"
+    activated = releases / generation
+    try:
+        _safe_extract_zip(spec.local_zip, staging)
+        missing = _archive_missing_files(spec, staging)
+        if missing:
+            raise ValueError(
+                "Archive extraction missing required files: "
+                + "; ".join(missing[:10])
+            )
+        return staging, activated
+    except Exception:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
+
+
+def _archive_activation_sha(spec: ReleaseArchiveSpec, release_sha: str | None) -> str:
+    if release_sha is not None:
+        return release_sha
+    digest = hashlib.sha256()
+    with spec.local_zip.open("rb") as archive:
+        for chunk in iter(lambda: archive.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return f"local-{digest.hexdigest()}"
+
+
+@contextmanager
+def _archive_activation_lock(
+    spec: ReleaseSpec | ReleaseArchiveSpec,
+    lock_name: str = ".activation.lock",
+) -> Iterator[None]:
+    """Serialize release state changes across Python and TypeScript processes."""
+    lock = spec.local_zip.parent / lock_name
+    owner = uuid4().hex
+    deadline = time.monotonic() + _ACTIVATION_LOCK_TIMEOUT_SECONDS
+    while True:
+        try:
+            lock.mkdir(parents=False)
+            break
+        except FileExistsError:
+            if lock.is_symlink():
+                raise ValueError(f"Unsafe activation lock symlink: {lock}")
+            owner_path = lock / "owner"
+            try:
+                lease_path = owner_path if owner_path.is_file() else lock
+                age = time.time() - lease_path.stat().st_mtime
+            except FileNotFoundError:
+                continue
+            ownerless = not owner_path.is_file()
+            stale = age > _ACTIVATION_LOCK_STALE_SECONDS or (
+                ownerless and age > _ACTIVATION_LOCK_OWNER_GRACE_SECONDS
+            )
+            if stale:
+                quarantine = lock.with_name(f"{lock.name}.stale-{uuid4().hex}")
+                try:
+                    lock.replace(quarantine)
+                except OSError as exc:
+                    if not lock.exists():
+                        continue
+                    _logger.error("Failed to reclaim stale activation lock %s: %s", lock, exc)
+                    raise
+                shutil.rmtree(quarantine, ignore_errors=True)
+                continue
+            if time.monotonic() >= deadline:
+                raise TimeoutError(f"Timed out waiting for archive activation lock: {lock}")
+            time.sleep(0.05)
+    try:
+        owner_path = lock / "owner"
+        owner_path.write_text(owner, encoding="utf-8")
+    except Exception:
+        shutil.rmtree(lock, ignore_errors=True)
+        raise
+    stop_heartbeat = threading.Event()
+
+    def _refresh_lease() -> None:
+        while not stop_heartbeat.wait(_ACTIVATION_LOCK_HEARTBEAT_SECONDS):
+            try:
+                if owner_path.read_text(encoding="utf-8") != owner:
+                    return
+                owner_path.touch()
+            except OSError:
+                return
+
+    heartbeat = threading.Thread(target=_refresh_lease, daemon=True)
+    heartbeat.start()
+    try:
+        yield
+    finally:
+        stop_heartbeat.set()
+        heartbeat.join(timeout=1)
+        try:
+            current_owner = owner_path.read_text(encoding="utf-8")
+        except OSError:
+            current_owner = None
+        if current_owner == owner:
+            shutil.rmtree(lock, ignore_errors=True)
+
+
+def sync_release(spec: ReleaseSpec, *, force_check: bool = False) -> SyncResult:
+    """Publish a release ZIP and its metadata as one serialized operation."""
+    dummy_spec = RepoSpec(
+        owner=spec.owner,
+        repo=spec.repo,
+        branch="releases",
+        files=(spec.asset_name,),
+        local_root=spec.local_zip.parent,
+    )
+    try:
+        spec.local_zip.parent.mkdir(parents=True, exist_ok=True)
+        with _archive_activation_lock(spec, ".release.lock"):
+            return _sync_release_locked(spec, force_check=force_check)
+    except Exception as exc:  # noqa: BLE001
+        cache = CacheMeta.load(_release_cache_path(spec))
+        return SyncResult(
+            spec=dummy_spec,
+            status=(
+                "offline_fallback"
+                if _release_zip_error(spec) is None
+                else "no_data"
+            ),
+            commit_sha=cache.commit_sha if cache is not None else None,
+            error=str(exc),
+        )
+
+
+def _prune_release_trees(spec: ReleaseArchiveSpec, keep: set[Path]) -> None:
+    try:
+        releases = _releases_path(spec)
+        cutoff = time.time() - _RELEASE_RETENTION_SECONDS
+        for candidate in releases.iterdir():
+            if candidate in keep:
+                continue
+            try:
+                if candidate.stat().st_mtime >= cutoff:
+                    continue
+            except OSError:
+                continue
+            if candidate.is_symlink():
+                candidate.unlink(missing_ok=True)
+            elif candidate.is_dir():
+                shutil.rmtree(candidate, ignore_errors=True)
+    except OSError:
+        pass
+
+
+def _sync_release_archive_locked(
+    spec: ReleaseArchiveSpec,
+    *,
+    force_check: bool = False,
+) -> SyncResult:
     release_result = sync_release(
         ReleaseSpec(
             owner=spec.owner,
@@ -409,7 +656,8 @@ def sync_release_archive(spec: ReleaseArchiveSpec) -> SyncResult:
             asset_name=spec.asset_name,
             local_zip=spec.local_zip,
             validate_zip=lambda path: _validate_archive_zip(path, spec.required_files),
-        )
+        ),
+        force_check=force_check,
     )
     dummy_spec = RepoSpec(
         owner=spec.owner,
@@ -419,7 +667,10 @@ def sync_release_archive(spec: ReleaseArchiveSpec) -> SyncResult:
         local_root=spec.local_root,
     )
 
-    files_ok = _archive_files_present(spec)
+    extract_meta = _load_extract_meta(spec)
+    active_root = extract_meta[1] if extract_meta is not None else spec.local_root
+    _prune_release_trees(spec, {active_root})
+    files_ok = all((active_root / f).is_file() for f in spec.required_files)
     if release_result.status == "no_data":
         if files_ok:
             return SyncResult(
@@ -435,11 +686,50 @@ def sync_release_archive(spec: ReleaseArchiveSpec) -> SyncResult:
             error=release_result.error,
         )
 
-    should_extract = release_result.status == "updated" or not files_ok
+    extracted_sha = extract_meta[0] if extract_meta is not None else None
+    should_extract = (
+        release_result.status == "updated"
+        or not files_ok
+        or extracted_sha is None
+        or (
+            release_result.commit_sha is not None
+            and extracted_sha != release_result.commit_sha
+        )
+    )
     if should_extract:
+        staging: Path | None = None
         try:
-            _safe_extract_zip(spec.local_zip, spec.local_root)
+            activation_sha = _archive_activation_sha(spec, release_result.commit_sha)
+            staging, activated_root = _stage_release_tree(spec, activation_sha)
+            current_meta = _load_extract_meta(spec)
+            current_root = (
+                current_meta[1] if current_meta is not None else spec.local_root
+            )
+            if (
+                current_meta is not None
+                and current_meta[0] == activation_sha
+                and all(
+                    (current_root / path).is_file()
+                    for path in spec.required_files
+                )
+            ):
+                shutil.rmtree(staging, ignore_errors=True)
+                staging = None
+                return SyncResult(
+                    spec=dummy_spec,
+                    status="up_to_date",
+                    commit_sha=activation_sha,
+                    error=None,
+                )
+            staging.replace(activated_root)
+            staging = None
+            if current_root.parent == _releases_path(spec):
+                os.utime(current_root)
+            _save_extract_meta(spec, activation_sha, activated_root)
+            _prune_release_trees(spec, {current_root, activated_root})
         except Exception as exc:  # noqa: BLE001
+            if staging is not None:
+                shutil.rmtree(staging, ignore_errors=True)
             if _archive_files_present(spec):
                 return SyncResult(
                     spec=dummy_spec,
@@ -453,23 +743,12 @@ def sync_release_archive(spec: ReleaseArchiveSpec) -> SyncResult:
                 commit_sha=release_result.commit_sha,
                 error=str(exc),
             )
-
-        missing = _archive_missing_files(spec)
-        if missing:
-            error = "Archive extraction missing required files: " + "; ".join(missing[:10])
-            if _archive_files_present(spec):
-                return SyncResult(
-                    spec=dummy_spec,
-                    status="offline_fallback",
-                    commit_sha=release_result.commit_sha,
-                    error=error,
-                )
-            return SyncResult(
-                spec=dummy_spec,
-                status="no_data",
-                commit_sha=release_result.commit_sha,
-                error=error,
-            )
+        return SyncResult(
+            spec=dummy_spec,
+            status="updated",
+            commit_sha=activation_sha,
+            error=None,
+        )
 
     return SyncResult(
         spec=dummy_spec,
@@ -477,3 +756,179 @@ def sync_release_archive(spec: ReleaseArchiveSpec) -> SyncResult:
         commit_sha=release_result.commit_sha,
         error=release_result.error,
     )
+
+
+def sync_release_archive(
+    spec: ReleaseArchiveSpec,
+    *,
+    force_check: bool = False,
+) -> SyncResult:
+    """Publish and activate one release archive under a shared-volume lock."""
+    dummy_spec = RepoSpec(
+        owner=spec.owner,
+        repo=spec.repo,
+        branch="releases",
+        files=spec.required_files,
+        local_root=spec.local_root,
+    )
+    try:
+        spec.local_zip.parent.mkdir(parents=True, exist_ok=True)
+        with _archive_activation_lock(spec):
+            return _sync_release_archive_locked(spec, force_check=force_check)
+    except Exception as exc:  # noqa: BLE001
+        return SyncResult(
+            spec=dummy_spec,
+            status=("offline_fallback" if _archive_files_present(spec) else "no_data"),
+            commit_sha=None,
+            error=str(exc),
+        )
+
+
+def _gamedata_pair_path(
+    excel_spec: ReleaseArchiveSpec,
+    levels_spec: ReleaseArchiveSpec,
+) -> Path:
+    excel_parent = excel_spec.local_root.resolve().parent
+    levels_parent = levels_spec.local_root.resolve().parent
+    if excel_parent != levels_parent:
+        raise ValueError("GameData excel and levels roots must share one parent")
+    return excel_parent / _GAMEDATA_PAIR_META
+
+
+def _load_gamedata_pair(
+    excel_spec: ReleaseArchiveSpec,
+    levels_spec: ReleaseArchiveSpec,
+) -> tuple[str, Path, Path] | None:
+    try:
+        value = json.loads(
+            _gamedata_pair_path(excel_spec, levels_spec).read_text(encoding="utf-8")
+        )
+        commit_sha = value.get("commit_sha")
+        excel_data_root = value.get("excel_data_root")
+        levels_data_root = value.get("levels_data_root")
+        if not all(
+            isinstance(item, str) and item
+            for item in (commit_sha, excel_data_root, levels_data_root)
+        ):
+            return None
+        excel_root = (excel_spec.local_root / excel_data_root).resolve()
+        levels_root = (levels_spec.local_root / levels_data_root).resolve()
+        if not excel_root.is_relative_to(excel_spec.local_root.resolve()):
+            return None
+        if not levels_root.is_relative_to(levels_spec.local_root.resolve()):
+            return None
+        if not all((excel_root / path).is_file() for path in excel_spec.required_files):
+            return None
+        if not all((levels_root / path).is_file() for path in levels_spec.required_files):
+            return None
+        return commit_sha, excel_root, levels_root
+    except (OSError, json.JSONDecodeError, AttributeError, ValueError):
+        return None
+
+
+def _save_gamedata_pair(
+    excel_spec: ReleaseArchiveSpec,
+    levels_spec: ReleaseArchiveSpec,
+    commit_sha: str,
+    excel_root: Path,
+    levels_root: Path,
+) -> None:
+    path = _gamedata_pair_path(excel_spec, levels_spec)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
+    tmp.write_text(
+        json.dumps(
+            {
+                "commit_sha": commit_sha,
+                "excel_data_root": excel_root.relative_to(
+                    excel_spec.local_root.resolve()
+                ).as_posix(),
+                "levels_data_root": levels_root.relative_to(
+                    levels_spec.local_root.resolve()
+                ).as_posix(),
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    tmp.replace(path)
+
+
+def _initialize_gamedata_pair(
+    excel_spec: ReleaseArchiveSpec,
+    levels_spec: ReleaseArchiveSpec,
+) -> None:
+    if _load_gamedata_pair(excel_spec, levels_spec) is not None:
+        return
+    excel_meta = _load_extract_meta(excel_spec)
+    levels_meta = _load_extract_meta(levels_spec)
+    excel_root = excel_meta[1] if excel_meta is not None else excel_spec.local_root
+    levels_root = levels_meta[1] if levels_meta is not None else levels_spec.local_root
+    if not all((excel_root / path).is_file() for path in excel_spec.required_files):
+        return
+    if not all((levels_root / path).is_file() for path in levels_spec.required_files):
+        return
+    sha_parts = (
+        excel_meta[0] if excel_meta is not None else "legacy",
+        levels_meta[0] if levels_meta is not None else "legacy",
+    )
+    commit_sha = sha_parts[0] if sha_parts[0] == sha_parts[1] else "legacy-pair"
+    _save_gamedata_pair(
+        excel_spec,
+        levels_spec,
+        commit_sha,
+        excel_root,
+        levels_root,
+    )
+
+
+def sync_release_archive_pair(
+    excel_spec: ReleaseArchiveSpec,
+    levels_spec: ReleaseArchiveSpec,
+    *,
+    force_check: bool = False,
+) -> tuple[SyncResult, SyncResult]:
+    """Activate Excel and levels as one cross-process visible generation."""
+    pair_path = _gamedata_pair_path(excel_spec, levels_spec)
+    pair_path.parent.mkdir(parents=True, exist_ok=True)
+    lock_spec = ReleaseSpec(
+        owner=excel_spec.owner,
+        repo=excel_spec.repo,
+        asset_name="gamedata-pair",
+        local_zip=pair_path.parent / "gamedata-pair",
+    )
+    with _archive_activation_lock(lock_spec, ".gamedata-pair.lock"):
+        _initialize_gamedata_pair(excel_spec, levels_spec)
+        current_pair = _load_gamedata_pair(excel_spec, levels_spec)
+        if current_pair is not None:
+            now = time.time()
+            for root in current_pair[1:]:
+                try:
+                    os.utime(root, (now, now))
+                except OSError:
+                    pass
+        excel_result = sync_release_archive(excel_spec, force_check=force_check)
+        levels_result = sync_release_archive(levels_spec, force_check=force_check)
+        excel_meta = _load_extract_meta(excel_spec)
+        levels_meta = _load_extract_meta(levels_spec)
+        if (
+            excel_meta is not None
+            and levels_meta is not None
+            and excel_meta[0] == levels_meta[0]
+            and all(
+                (excel_meta[1] / path).is_file()
+                for path in excel_spec.required_files
+            )
+            and all(
+                (levels_meta[1] / path).is_file()
+                for path in levels_spec.required_files
+            )
+        ):
+            _save_gamedata_pair(
+                excel_spec,
+                levels_spec,
+                excel_meta[0],
+                excel_meta[1],
+                levels_meta[1],
+            )
+        return excel_result, levels_result

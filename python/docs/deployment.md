@@ -30,7 +30,7 @@ docker build -t prts-mcp .
 docker run -i --rm -v prts-mcp-data:/data/gamedata -v prts-mcp-levels:/data/gamedata-levels -v prts-mcp-storyjson:/data/storyjson prts-mcp
 ```
 
-Named volume 由 Docker 自动管理，无需关心宿主机路径，**在所有平台和所有 MCP 客户端配置里都能直接使用**。首次运行时 auto-sync 自动下载 `3aKHP/ArknightsGameData` 的 `zh_CN-excel.zip` 到 `/data/gamedata`、`zh_CN-levels.zip` 到 `/data/gamedata-levels`，以及剧情 `zh_CN.zip` 到 `/data/storyjson`；此后重启复用缓存，超过 TTL（1小时）时做 Release tag 校验，有更新才重新下载。
+Named volume 由 Docker 自动管理，无需关心宿主机路径，**在所有平台和所有 MCP 客户端配置里都能直接使用**。首次运行时 auto-sync 自动下载 `3aKHP/ArknightsGameData` 的 `zh_CN-excel.zip` 到 `/data/gamedata`、`zh_CN-levels.zip` 到 `/data/gamedata-levels`，以及剧情 `zh_CN.zip` 到 `/data/storyjson`；此后默认每小时检查一次 Release tag，有更新才重新下载、解压并清除进程内数据缓存，无需重启服务。
 
 > 如需降低 GitHub 匿名 API 限流风险，可追加 `-e GITHUB_TOKEN=ghp_xxx`。
 
@@ -234,15 +234,21 @@ docker run -i --rm -v prts-mcp-data:/data/gamedata -v prts-mcp-levels:/data/game
 
 ### 强制重新同步
 
-删除 volume 中的 `archives/release_meta.json` 即可触发下次启动时重新下载：
+删除 volume 中的 `archives/release_meta.json` 即可触发下一轮检查时重新下载。只需重新解压当前归档时，可删除同目录的 `extract_meta.json`：
 
 ```bash
 # named volume 场景
 docker run --rm -v prts-mcp-data:/data/gamedata alpine rm /data/gamedata/archives/release_meta.json
 docker run --rm -v prts-mcp-levels:/data/gamedata-levels alpine rm /data/gamedata-levels/archives/release_meta.json
+# 仅重新解压当前归档
+docker run --rm -v prts-mcp-data:/data/gamedata alpine rm /data/gamedata/archives/extract_meta.json
+docker run --rm -v prts-mcp-levels:/data/gamedata-levels alpine rm /data/gamedata-levels/archives/extract_meta.json
 
 # 宿主机目录场景（Windows）
 Remove-Item "$env:LOCALAPPDATA\prts-mcp\gamedata\archives\release_meta.json"
+Remove-Item "$env:LOCALAPPDATA\prts-mcp\gamedata-levels\archives\release_meta.json"
+Remove-Item "$env:LOCALAPPDATA\prts-mcp\gamedata\archives\extract_meta.json"
+Remove-Item "$env:LOCALAPPDATA\prts-mcp\gamedata-levels\archives\extract_meta.json"
 ```
 
 ---
@@ -255,4 +261,5 @@ Remove-Item "$env:LOCALAPPDATA\prts-mcp\gamedata\archives\release_meta.json"
 | `STORYJSON_PATH` | 未设置（使用 `/data/storyjson/zh_CN.zip`） | 设置后指向本地 `zh_CN.zip`，**剧情 auto-sync 被禁用** |
 | `GITHUB_TOKEN` | 空 | 用于提高 GitHub API 限额，降低限流风险 |
 | `GITHUB_MIRRORS` | 空 | 逗号分隔的 ghproxy 风格代理前缀列表（如 `https://ghproxy.net`），依次在直连失败后尝试；适用于 GitHub 被 GFW 封锁的服务器 |
+| `PRTS_AUTO_SYNC_INTERVAL_SECONDS` | `3600` | GitHub Release 周期检查间隔（秒）；有效范围 `60..604800`，`0` 表示只执行启动同步；非法值回落到默认值 |
 | `PRTS_MCP_ROOT` | `/app`（Docker 内） | 标识 Docker 环境，供 config.py 选择正确的默认路径 |

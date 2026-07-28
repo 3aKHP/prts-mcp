@@ -104,6 +104,36 @@ test("table caches can be cleared explicitly", async () => {
   assert.match(operator.getOperatorBasicInfo("阿米娅"), /Amiya/);
 });
 
+test("table caches switch when the activated generation changes", async () => {
+  const root = tempGamedataRoot();
+  const first = join(root, ".releases", "first");
+  const second = join(root, ".releases", "second");
+  writeMinimalGamedata(first);
+  writeMinimalGamedata(second);
+  const secondTable = join(second, "zh_CN", "gamedata", "excel", "character_table.json");
+  const value = JSON.parse(readFileSync(secondTable, "utf-8")) as {
+    char_002_amiya: { appellation: string };
+  };
+  value.char_002_amiya.appellation = "Amiya v2";
+  writeFileSync(secondTable, JSON.stringify(value), "utf-8");
+  const archives = join(root, "archives");
+  mkdirSync(archives, { recursive: true });
+  const metadata = join(archives, "extract_meta.json");
+  writeFileSync(metadata, JSON.stringify({
+    commit_sha: "first",
+    data_root: ".releases/first",
+  }), "utf-8");
+  process.env["GAMEDATA_PATH"] = root;
+  const operator = await loadOperatorModule();
+
+  assert.doesNotMatch(operator.getOperatorBasicInfo("阿米娅"), /Amiya v2/);
+  writeFileSync(metadata, JSON.stringify({
+    commit_sha: "second",
+    data_root: ".releases/second",
+  }), "utf-8");
+  assert.match(operator.getOperatorBasicInfo("阿米娅"), /Amiya v2/);
+});
+
 test("operator data is incomplete when a required file is not a file", async () => {
   const root = tempGamedataRoot();
   process.env["GAMEDATA_PATH"] = root;

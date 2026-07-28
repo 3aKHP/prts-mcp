@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from functools import lru_cache
 from typing import Any
 
-from prts_mcp.config import Config
+from prts_mcp.config import Config, activation_aware_cache, register_activation_listener
 from prts_mcp.data.stores import DirectoryStore
 
 
@@ -88,7 +87,7 @@ def _short_text(text: str, limit: int = 80) -> str:
     return text[:limit] + ("..." if len(text) > limit else "")
 
 
-@lru_cache(maxsize=1)
+@activation_aware_cache(maxsize=1)
 def _load_items() -> dict[str, dict[str, Any]]:
     store = _store()
     if not store.exists(_ITEM_FILE):
@@ -102,7 +101,7 @@ def _load_items() -> dict[str, dict[str, Any]]:
     return items
 
 
-@lru_cache(maxsize=1)
+@activation_aware_cache(maxsize=1)
 def _build_item_lookup() -> dict[str, str]:
     mapping: dict[str, str] = {}
     for item_id, info in _load_items().items():
@@ -117,6 +116,9 @@ def clear_item_caches() -> None:
     _load_items.cache_clear()
     _build_item_lookup.cache_clear()
     _item_search_records.cache_clear()
+
+
+register_activation_listener(clear_item_caches)
 
 
 def get_item_name_by_id(item_id: str) -> str | None:
@@ -449,7 +451,7 @@ def _item_search_entry(record: _ItemSearchRecord) -> dict[str, Any]:
     }
 
 
-@lru_cache(maxsize=1)
+@activation_aware_cache(maxsize=1)
 def _item_search_records() -> tuple[_ItemSearchRecord, ...]:
     records: list[_ItemSearchRecord] = []
     entries = sorted(_visible_items(), key=lambda kv: (kv[1].get("sortId", 999999), kv[0]))
