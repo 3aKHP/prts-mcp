@@ -138,7 +138,9 @@ class CacheMeta:
             files = data.get("files")
             if (
                 not isinstance(commit_sha, str)
+                or not commit_sha
                 or not isinstance(fetched_at, str)
+                or not fetched_at
                 or not isinstance(files, list)
                 or not all(isinstance(file, str) for file in files)
             ):

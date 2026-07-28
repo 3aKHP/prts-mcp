@@ -44,6 +44,7 @@ test("auto-sync waits for a cycle before scheduling the next one", async () => {
     },
   );
 
+  await flushPromises();
   assert.deepEqual(forceChecks, [false]);
   assert.deepEqual(callbacks, []);
 
@@ -85,6 +86,30 @@ test("auto-sync schedules another cycle after an unexpected error", async () => 
       forceChecks.push(forceCheck);
       if (!forceCheck) throw new Error("boom");
     },
+    60_000,
+    (callback) => {
+      callbacks.push(callback);
+      return {};
+    },
+  );
+
+  await flushPromises();
+  assert.equal(callbacks.length, 1);
+  callbacks.shift()?.();
+  await flushPromises();
+  assert.deepEqual(forceChecks, [false, true]);
+});
+
+test("auto-sync schedules another cycle after a synchronous throw", async () => {
+  const callbacks: Array<() => void> = [];
+  const forceChecks: boolean[] = [];
+
+  runAutoSyncLoop(
+    ((forceCheck: boolean) => {
+      forceChecks.push(forceCheck);
+      if (!forceCheck) throw new Error("boom");
+      return Promise.resolve();
+    }) as (forceCheck: boolean) => Promise<void>,
     60_000,
     (callback) => {
       callbacks.push(callback);

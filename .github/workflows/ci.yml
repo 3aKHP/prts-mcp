@@ -12,11 +12,13 @@ on:
     paths:
       - 'python/**'
       - 'ts/**'
+      - 'scripts/test-shared-volume-sync.sh'
       - '.github/workflows/ci.yml'
   pull_request:
     paths:
       - 'python/**'
       - 'ts/**'
+      - 'scripts/test-shared-volume-sync.sh'
       - '.github/workflows/ci.yml'
 
 jobs:
@@ -274,6 +276,41 @@ jobs:
       - name: Smoke test packed Bun bin
         run: bun run smoke:bun:package
         working-directory: ts
+
+  shared-volume-sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.28"
+          enable-cache: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: 'ts/package.json'
+          cache: 'npm'
+          cache-dependency-path: 'ts/package-lock.json'
+
+      - name: Install Python dependencies
+        run: uv sync --project python --locked
+
+      - name: Install TypeScript dependencies
+        run: npm ci
+        working-directory: ts
+
+      - name: Exercise Python and TypeScript on one shared volume
+        run: ./scripts/test-shared-volume-sync.sh
 
   build-image-ts:
     # Default Docker image — Bun runtime (ts/Dockerfile is Bun since 2.2.0).

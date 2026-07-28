@@ -67,7 +67,8 @@ def _schedule_sync_retry(label: str, sync_func: Callable[[], bool], attempt: int
     delay = _SYNC_RETRY_DELAYS_SECONDS[attempt] if attempt < len(_SYNC_RETRY_DELAYS_SECONDS) else None
     if delay is None:
         _logger.warning(
-            "%s sync still needs retry after %s attempts; waiting for next process start.",
+            "%s sync still needs retry after %s attempts; "
+            "waiting for the next periodic cycle or process start.",
             label,
             len(_SYNC_RETRY_DELAYS_SECONDS),
         )

@@ -187,6 +187,10 @@ run_bun_smoke() {
   )
 }
 
+run_shared_volume_sync_test() {
+  "${REPO_ROOT}/scripts/test-shared-volume-sync.sh"
+}
+
 printf 'Repo root: %s\n' "${REPO_ROOT}"
 
 run_required "Bash host" check_shell
@@ -202,6 +206,7 @@ if [[ "${FULL}" == true ]]; then
   run_required "TypeScript build" run_ts_build
   run_required "TypeScript tests" run_ts_tests
   run_required "TypeScript typecheck" run_ts_typecheck
+  run_required "Cross-runtime shared-volume sync" run_shared_volume_sync_test
   run_required "Bun HTTP smoke" run_bun_smoke
 fi
 

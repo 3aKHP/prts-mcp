@@ -194,6 +194,40 @@ test("syncRelease validates zip before fresh-cache fast path", async () => {
   });
 });
 
+test("syncRelease rejects empty release metadata fields", async () => {
+  const spec = tempSpec();
+  mkdirSync(dirname(spec.localZip), { recursive: true });
+  writeFileSync(spec.localZip, "cached");
+
+  for (const metadata of [
+    { commitSha: "", fetchedAt: new Date().toISOString() },
+    { commitSha: "cached-sha", fetchedAt: "" },
+  ]) {
+    writeFileSync(
+      join(dirname(spec.localZip), "release_meta.json"),
+      JSON.stringify({
+        repo: "3aKHP/ArknightsStoryJson",
+        branch: "releases",
+        ...metadata,
+        files: ["zh_CN.zip"],
+      }),
+      "utf-8",
+    );
+
+    let fetchCalls = 0;
+    await withFetchMock((async () => {
+      fetchCalls += 1;
+      throw new Error("network down");
+    }) as typeof fetch, async () => {
+      const result = await syncRelease(spec);
+
+      assert.equal(fetchCalls, 1);
+      assert.equal(result.status, "offline_fallback");
+      assert.equal(result.commitSha, null);
+    });
+  }
+});
+
 test("syncRelease forced check bypasses fresh-cache fast path", async () => {
   const spec = tempSpec();
   mkdirSync(dirname(spec.localZip), { recursive: true });

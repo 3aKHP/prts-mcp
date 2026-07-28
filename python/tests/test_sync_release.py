@@ -154,6 +154,42 @@ class TestSyncRelease:
         assert result.status == "up_to_date"
         assert result.commit_sha == "same-sha"
 
+    @pytest.mark.parametrize(
+        ("commit_sha", "fetched_at"),
+        [
+            ("", "2099-01-01T00:00:00Z"),
+            ("cached-sha", ""),
+        ],
+    )
+    def test_rejects_empty_release_metadata_fields(
+        self,
+        tmp_path,
+        commit_sha,
+        fetched_at,
+    ):
+        spec = _make_spec(tmp_path)
+        _write_zip(spec.local_zip)
+        (spec.local_zip.parent / "release_meta.json").write_text(
+            json.dumps({
+                "repo": "3aKHP/ArknightsStoryJson",
+                "branch": "releases",
+                "commit_sha": commit_sha,
+                "fetched_at": fetched_at,
+                "files": [spec.asset_name],
+            }),
+            encoding="utf-8",
+        )
+
+        with patch(
+            "prts_mcp.data.sync.check_latest_release",
+            return_value=None,
+        ) as check:
+            result = sync_release(spec)
+
+        check.assert_called_once_with(spec)
+        assert result.status == "offline_fallback"
+        assert result.commit_sha is None
+
     def test_updated_when_new_tag(self, tmp_path):
         spec = _make_spec(tmp_path)
         tag = "upstream-newsha1234"

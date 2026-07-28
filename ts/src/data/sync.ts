@@ -229,7 +229,9 @@ async function loadReleaseMeta(spec: ReleaseSpec): Promise<CacheMeta | null> {
       typeof value.repo !== "string"
       || typeof value.branch !== "string"
       || typeof commitSha !== "string"
+      || commitSha.length === 0
       || typeof fetchedAt !== "string"
+      || fetchedAt.length === 0
       || !Array.isArray(value.files)
     ) return null;
     return {

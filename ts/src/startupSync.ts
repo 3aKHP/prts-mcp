@@ -65,7 +65,7 @@ function scheduleSyncRetry(
 ): void {
   const delayMs = SYNC_RETRY_DELAYS_MS[attempt];
   if (delayMs === undefined) {
-    log("WARN", `${label} sync still needs retry after ${SYNC_RETRY_DELAYS_MS.length} attempts; waiting for next process start.`);
+    log("WARN", `${label} sync still needs retry after ${SYNC_RETRY_DELAYS_MS.length} attempts; waiting for the next periodic cycle or process start.`);
     return;
   }
 
@@ -256,7 +256,8 @@ export function runAutoSyncLoop(
   let forceCheck = false;
 
   const runCycle = (): void => {
-    void runSync(forceCheck)
+    void Promise.resolve()
+      .then(() => runSync(forceCheck))
       .catch((err: unknown) => {
         const message = err instanceof Error ? err.message : String(err);
         log("ERROR", "Auto-sync cycle threw unexpectedly: " + message);
