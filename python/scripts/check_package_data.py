@@ -42,8 +42,14 @@ def main() -> int:
     )
 
     active_excel = config.effective_excel_path
-    if active_excel is None or not active_excel.is_relative_to(gamedata_root):
+    if active_excel is None:
         missing = [gamedata_root / path for path in GAMEDATA_EXCEL.required_files]
+    elif not active_excel.resolve().is_relative_to(gamedata_root.resolve()):
+        print(
+            f"Bundled gamedata resolves outside package root: {active_excel}",
+            file=sys.stderr,
+        )
+        return 1
     else:
         missing = [
             active_excel / Path(path).relative_to(_EXCEL_ROOT)
@@ -57,8 +63,14 @@ def main() -> int:
         return 1
 
     active_levels = config.effective_levels_path
-    if active_levels is None or not active_levels.is_relative_to(levels_root):
+    if active_levels is None:
         missing_levels = [levels_root / path for path in GAMEDATA_LEVELS.required_files]
+    elif not active_levels.resolve().is_relative_to(levels_root.resolve()):
+        print(
+            f"Bundled level data resolves outside package root: {active_levels}",
+            file=sys.stderr,
+        )
+        return 1
     else:
         missing_levels = [
             active_levels / path
