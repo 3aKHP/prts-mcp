@@ -83,6 +83,33 @@ test("syncRelease returns offline_fallback when network fails but zip exists", a
   });
 });
 
+test("syncRelease reads Python release metadata", async () => {
+  const spec = tempSpec();
+  writeZip(spec.localZip, { "zh_CN/storyinfo.json": "{}" });
+  writeFileSync(
+    join(dirname(spec.localZip), "release_meta.json"),
+    JSON.stringify({
+      repo: "3aKHP/ArknightsStoryJson",
+      branch: "releases",
+      commit_sha: "same-sha",
+      fetched_at: "2099-01-01T00:00:00.000Z",
+      files: [spec.assetName],
+    }),
+    "utf-8",
+  );
+  let fetches = 0;
+
+  await withFetchMock((async () => {
+    fetches += 1;
+    throw new Error("unexpected fetch");
+  }) as typeof fetch, async () => {
+    const result = await syncRelease(spec);
+    assert.equal(result.status, "up_to_date");
+    assert.equal(result.commitSha, "same-sha");
+  });
+  assert.equal(fetches, 0);
+});
+
 test("syncRelease treats invalid validated zip as no_data", async () => {
   const spec = {
     ...tempSpec(),

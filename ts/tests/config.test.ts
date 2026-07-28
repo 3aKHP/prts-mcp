@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, renameSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -81,6 +81,51 @@ test("effective excel path uses the activated release tree", async () => {
 
     assert.equal(cfg.excelPath, join(custom, "zh_CN", "gamedata", "excel"));
     assert.equal(cfg.effectiveExcelPath, excel);
+  } finally {
+    delete process.env["GAMEDATA_PATH"];
+  }
+});
+
+test("activation snapshot keeps a tool call on one generation", async () => {
+  const root = tempRoot();
+  const custom = join(root, "gamedata");
+  const archives = join(custom, "archives");
+  mkdirSync(archives, { recursive: true });
+  for (const generation of ["first", "second"]) {
+    const excel = join(custom, ".releases", generation, "zh_CN", "gamedata", "excel");
+    mkdirSync(excel, { recursive: true });
+    for (const name of [
+      "character_table.json",
+      "handbook_info_table.json",
+      "charword_table.json",
+      "story_review_table.json",
+    ]) writeFileSync(join(excel, name), "{}", "utf-8");
+  }
+  const metadata = join(archives, "extract_meta.json");
+  const activate = (generation: string): void => {
+    const tmp = join(archives, `${generation}.tmp`);
+    writeFileSync(tmp, JSON.stringify({
+      commit_sha: generation,
+      data_root: `.releases/${generation}`,
+    }), "utf-8");
+    renameSync(tmp, metadata);
+  };
+  activate("first");
+  process.env["GAMEDATA_PATH"] = custom;
+  try {
+    const { loadConfig, withActivationSnapshot } = await loadConfigModule();
+    const roots = withActivationSnapshot(() => {
+      const first = loadConfig().effectiveExcelPath;
+      activate("second");
+      return [first, loadConfig().effectiveExcelPath];
+    });
+
+    assert.equal(roots[0], roots[1]);
+    assert.equal(roots[0], join(custom, ".releases", "first", "zh_CN", "gamedata", "excel"));
+    assert.equal(
+      loadConfig().effectiveExcelPath,
+      join(custom, ".releases", "second", "zh_CN", "gamedata", "excel"),
+    );
   } finally {
     delete process.env["GAMEDATA_PATH"];
   }

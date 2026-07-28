@@ -19,6 +19,7 @@ import {
   rename,
   rm,
   unlink,
+  utimes,
   writeFile,
 } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
@@ -212,7 +213,31 @@ function releaseCachePath(spec: ReleaseSpec): string {
 async function loadReleaseMeta(spec: ReleaseSpec): Promise<CacheMeta | null> {
   try {
     const text = await readFile(releaseCachePath(spec), "utf-8");
-    return JSON.parse(text) as CacheMeta;
+    const value = JSON.parse(text) as {
+      repo?: unknown;
+      branch?: unknown;
+      commit_sha?: unknown;
+      commitSha?: unknown;
+      fetched_at?: unknown;
+      fetchedAt?: unknown;
+      files?: unknown;
+    };
+    const commitSha = value.commit_sha ?? value.commitSha;
+    const fetchedAt = value.fetched_at ?? value.fetchedAt;
+    if (
+      typeof value.repo !== "string"
+      || typeof value.branch !== "string"
+      || typeof commitSha !== "string"
+      || typeof fetchedAt !== "string"
+      || !Array.isArray(value.files)
+    ) return null;
+    return {
+      repo: value.repo,
+      branch: value.branch,
+      commitSha,
+      fetchedAt,
+      files: value.files.filter((file): file is string => typeof file === "string"),
+    };
   } catch {
     return null;
   }
@@ -223,8 +248,16 @@ async function saveReleaseMeta(
   meta: CacheMeta
 ): Promise<void> {
   const p = releaseCachePath(spec);
+  const tmp = join(dirname(p), `.${basename(p)}.${randomUUID().replaceAll("-", "")}.tmp`);
   await mkdir(dirname(p), { recursive: true });
-  await writeFile(p, JSON.stringify(meta, null, 2), "utf-8");
+  await writeFile(tmp, JSON.stringify({
+    repo: meta.repo,
+    branch: meta.branch,
+    commit_sha: meta.commitSha,
+    fetched_at: meta.fetchedAt,
+    files: meta.files,
+  }, null, 2), "utf-8");
+  await rename(tmp, p);
 }
 
 /**
@@ -263,7 +296,10 @@ export async function downloadReleaseAsset(
   assetUrl: string,
   timeoutMs = 120_000
 ): Promise<void> {
-  const tmp = spec.localZip + ".tmp";
+  const tmp = join(
+    dirname(spec.localZip),
+    `.${basename(spec.localZip)}.${randomUUID().replaceAll("-", "")}.tmp`,
+  );
   await mkdir(dirname(spec.localZip), { recursive: true });
   try {
     const res = await fetchCascading(
@@ -523,6 +559,7 @@ async function withArchiveActivationLock<T>(
   run: () => Promise<T>,
 ): Promise<T> {
   const lock = join(dirname(spec.localZip), ".activation.lock");
+  const owner = randomUUID().replaceAll("-", "");
   const deadline = Date.now() + ACTIVATION_LOCK_TIMEOUT_MS;
   for (;;) {
     try {
@@ -556,9 +593,23 @@ async function withArchiveActivationLock<T>(
     }
   }
   try {
+    await writeFile(join(lock, "owner"), owner, "utf-8");
+  } catch (err) {
+    await rm(lock, { recursive: true, force: true });
+    throw err;
+  }
+  try {
     return await run();
   } finally {
-    await rm(lock, { recursive: true, force: true });
+    let currentOwner: string | null = null;
+    try {
+      currentOwner = await readFile(join(lock, "owner"), "utf-8");
+    } catch {
+      // A stale-lock successor owns the original path now.
+    }
+    if (currentOwner === owner) {
+      await rm(lock, { recursive: true, force: true });
+    }
   }
 }
 
@@ -571,7 +622,7 @@ async function pruneReleaseTrees(
   try {
     for (const name of await readdir(releases)) {
       const candidate = join(releases, name);
-      if (name.startsWith(".") || keep.has(candidate)) continue;
+      if (keep.has(candidate)) continue;
       const info = await lstat(candidate);
       if (info.mtimeMs >= cutoff) continue;
       if (info.isDirectory() || info.isSymbolicLink()) {
@@ -652,6 +703,10 @@ export async function syncReleaseArchive(
         }
         await rename(staged.staging, staged.activated);
         staging = null;
+        if (dirname(currentRoot) === await releasesPath(spec)) {
+          const now = new Date();
+          await utimes(currentRoot, now, now);
+        }
         await saveExtractMeta(spec, activationSha, staged.activated);
         await pruneReleaseTrees(spec, new Set([currentRoot, staged.activated]));
         return false;

@@ -4,7 +4,7 @@
  * Mirrors python/src/prts_mcp/data/enemy.py.
  */
 
-import { loadConfig, registerActivationListener } from "../config.js";
+import { checkActivationChange, loadConfig, registerActivationListener } from "../config.js";
 import { DirectoryStore } from "./stores.js";
 
 // ---------------------------------------------------------------------------
@@ -205,7 +205,7 @@ function hasEnemyData(): boolean {
 }
 
 function getHandbook(): EnemyHandbook {
-  loadConfig();
+  checkActivationChange();
   if (_handbook === null) {
     const cfg = loadConfig();
     if (cfg.effectiveExcelPath === null) throw new Error("effectiveExcelPath is null");
@@ -229,7 +229,7 @@ function mValue<T>(obj: unknown, defaultValue?: T): T | undefined {
 }
 
 function getDbIndex(): Record<string, EnemyDbEntry> {
-  loadConfig();
+  checkActivationChange();
   if (_dbIndex === null) {
     const cfg = loadConfig();
     const lp = cfg.effectiveLevelsPath;
@@ -255,7 +255,7 @@ function join(...parts: (string | undefined | null)[]): string {
 }
 
 function buildNameToEnemyId(): Map<string, string> {
-  loadConfig();
+  checkActivationChange();
   if (_nameToEnemyId === null) {
     const raw = getHandbook();
     const ed = raw.enemyData ?? {};
@@ -668,7 +668,7 @@ function renderEnemySearchCard(entry: EnemySearchPayload["results"][number]): st
 }
 
 function getEnemySearchRecords(): EnemySearchRecord[] {
-  loadConfig();
+  checkActivationChange();
   if (_enemySearchRecords !== null) return _enemySearchRecords;
   const ed = getHandbook().enemyData ?? {};
   _enemySearchRecords = Object.entries(ed)

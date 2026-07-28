@@ -1,18 +1,23 @@
 from __future__ import annotations
 
+import inspect
 import json
 import logging
 import os
 import threading
 from dataclasses import dataclass, field
+from contextvars import ContextVar
 from functools import lru_cache, wraps
 from pathlib import Path
 from typing import Any, Callable
 
 _logger = logging.getLogger(__name__)
 _activation_lock = threading.RLock()
-_activation_signature: tuple[Path | None, Path | None] | None = None
+_activation_signature: tuple[object, ...] | None = None
 _activation_listeners: list[Callable[[], None]] = []
+_activation_snapshot: ContextVar[tuple[Any, tuple[object, ...]] | None] = (
+    ContextVar("prts_activation_snapshot", default=None)
+)
 
 
 def register_activation_listener(listener: Callable[[], None]) -> None:
@@ -22,10 +27,32 @@ def register_activation_listener(listener: Callable[[], None]) -> None:
             _activation_listeners.append(listener)
 
 
-def _notify_activation_change(config: Config) -> None:
+def _activation_meta_token(root: Path) -> tuple[object, ...]:
+    path = root / "archives" / "extract_meta.json"
+    try:
+        info = path.stat()
+        return (
+            str(path),
+            info.st_ino,
+            info.st_size,
+            info.st_mtime_ns,
+            info.st_ctime_ns,
+        )
+    except OSError:
+        return (str(path), None)
+
+
+def check_activation_change() -> None:
+    """Invalidate GameData caches when either activation pointer is replaced."""
     global _activation_signature
 
-    signature = (config.effective_excel_path, config.effective_levels_path)
+    if _activation_snapshot.get() is not None:
+        return
+
+    custom = "GAMEDATA_PATH" in os.environ
+    gamedata = Path(os.environ["GAMEDATA_PATH"]) if custom else _DEFAULT_GAMEDATA_PATH
+    levels = _resolve_levels_path(gamedata)
+    signature = _activation_meta_token(gamedata) + _activation_meta_token(levels)
     with _activation_lock:
         previous = _activation_signature
         _activation_signature = signature
@@ -36,6 +63,24 @@ def _notify_activation_change(config: Config) -> None:
                 listener()
             except Exception:  # noqa: BLE001
                 _logger.exception("Failed to invalidate a GameData cache")
+
+
+def _current_activation_signature() -> tuple[object, ...]:
+    snapshot = _activation_snapshot.get()
+    if snapshot is not None:
+        return snapshot[1]
+    check_activation_change()
+    with _activation_lock:
+        return _activation_signature or ()
+
+
+def _load_activation_snapshot() -> tuple[Config, tuple[object, ...]]:
+    while True:
+        before = _current_activation_signature()
+        config = Config.load()
+        after = _current_activation_signature()
+        if before == after:
+            return config, after
 
 # ---------------------------------------------------------------------------
 # Path design (two separate roots, never mixed up)
@@ -231,6 +276,10 @@ class Config:
 
     @classmethod
     def load(cls) -> Config:
+        snapshot = _activation_snapshot.get()
+        if snapshot is not None:
+            return snapshot[0]
+        check_activation_change()
         custom = "GAMEDATA_PATH" in os.environ
         gamedata = Path(os.environ["GAMEDATA_PATH"]) if custom else _DEFAULT_GAMEDATA_PATH
         storyjson_zip = (
@@ -243,19 +292,54 @@ class Config:
             storyjson_zip=storyjson_zip,
             is_custom_gamedata=custom,
         )
-        _notify_activation_change(config)
         return config
+
+
+def activation_snapshot(func: Callable[..., Any]) -> Callable[..., Any]:
+    """Keep one activated generation stable for a complete tool invocation."""
+    if inspect.iscoroutinefunction(func):
+        @wraps(func)
+        async def async_wrapped(*args: Any, **kwargs: Any) -> Any:
+            if _activation_snapshot.get() is not None:
+                return await func(*args, **kwargs)
+            config, generation = _load_activation_snapshot()
+            token = _activation_snapshot.set((config, generation))
+            try:
+                return await func(*args, **kwargs)
+            finally:
+                _activation_snapshot.reset(token)
+
+        return async_wrapped
+
+    @wraps(func)
+    def wrapped(*args: Any, **kwargs: Any) -> Any:
+        if _activation_snapshot.get() is not None:
+            return func(*args, **kwargs)
+        config, generation = _load_activation_snapshot()
+        token = _activation_snapshot.set((config, generation))
+        try:
+            return func(*args, **kwargs)
+        finally:
+            _activation_snapshot.reset(token)
+
+    return wrapped
 
 
 def activation_aware_cache(maxsize: int = 1) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """Cache GameData reads while checking the active generation on every access."""
     def decorate(func: Callable[..., Any]) -> Callable[..., Any]:
-        cached = lru_cache(maxsize=maxsize)(func)
+        @lru_cache(maxsize=maxsize)
+        def cached(
+            _generation: tuple[object, ...],
+            *args: Any,
+            **kwargs: Any,
+        ) -> Any:
+            return func(*args, **kwargs)
 
         @wraps(func)
         def wrapped(*args: Any, **kwargs: Any) -> Any:
-            Config.load()
-            return cached(*args, **kwargs)
+            generation = _current_activation_signature()
+            return cached(generation, *args, **kwargs)
 
         wrapped.cache_clear = cached.cache_clear  # type: ignore[attr-defined]
         wrapped.cache_info = cached.cache_info  # type: ignore[attr-defined]

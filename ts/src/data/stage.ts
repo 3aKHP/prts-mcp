@@ -1,4 +1,4 @@
-import { loadConfig, registerActivationListener } from "../config.js";
+import { checkActivationChange, loadConfig, registerActivationListener } from "../config.js";
 import { DirectoryStore } from "./stores.js";
 import { getItemNameById } from "./item.js";
 
@@ -196,7 +196,7 @@ function formatDrops(dropInfo: Record<string, unknown> | null | undefined): stri
 // ---------------------------------------------------------------------------
 
 function getStageTable(): StageTable {
-  loadConfig();
+  checkActivationChange();
   if (_stageTable === null) {
     const cfg = loadConfig();
     if (!cfg.effectiveExcelPath) {
@@ -216,7 +216,7 @@ function getStageTable(): StageTable {
 }
 
 function getZoneTable(): ZoneTable | null {
-  loadConfig();
+  checkActivationChange();
   if (_zoneTable === null && !_zoneTableFailed) {
     const cfg = loadConfig();
     if (!cfg.effectiveExcelPath) {
@@ -533,7 +533,7 @@ function stageSearchEntry(record: StageSearchRecord): StageSearchPayload["result
 }
 
 function getStageSearchRecords(): StageSearchRecord[] {
-  loadConfig();
+  checkActivationChange();
   if (_stageSearchRecords !== null) return _stageSearchRecords;
   _stageSearchRecords = Object.entries(getStageTable())
     .sort(([a], [b]) => a.localeCompare(b))

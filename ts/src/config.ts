@@ -42,16 +42,34 @@ export const RATE_LIMIT_INTERVAL = 1.5;
 
 const activationListeners = new Set<() => void>();
 let activationSignature: string | null = null;
+let activationSnapshot: { config: Config; signature: string } | null = null;
 
 /** Register a cache invalidator for activated GameData generation changes. */
 export function registerActivationListener(listener: () => void): void {
   activationListeners.add(listener);
 }
 
-function notifyActivationChange(cfg: Config): void {
+function activationMetaToken(root: string): readonly unknown[] {
+  const path = join(root, "archives", "extract_meta.json");
+  try {
+    const info = statSync(path);
+    return [path, info.ino, info.size, info.mtimeMs, info.ctimeMs];
+  } catch {
+    return [path, null];
+  }
+}
+
+/** Invalidate GameData caches when either activation pointer is replaced. */
+export function checkActivationChange(): void {
+  if (activationSnapshot !== null) return;
+  const isCustom = "GAMEDATA_PATH" in process.env;
+  const gamedata = isCustom
+    ? process.env["GAMEDATA_PATH"]!
+    : DEFAULT_GAMEDATA_PATH;
+  const levels = resolveLevelsPath(gamedata);
   const signature = JSON.stringify([
-    cfg.effectiveExcelPath,
-    cfg.effectiveLevelsPath,
+    ...activationMetaToken(gamedata),
+    ...activationMetaToken(levels),
   ]);
   const previous = activationSignature;
   activationSignature = signature;
@@ -206,6 +224,8 @@ export function hasLevelsData(cfg: Config): boolean {
 }
 
 export function loadConfig(): Config {
+  if (activationSnapshot !== null) return activationSnapshot.config;
+  checkActivationChange();
   const isCustomGamedata = "GAMEDATA_PATH" in process.env;
   const gamedataPath = isCustomGamedata
     ? process.env["GAMEDATA_PATH"]!
@@ -254,6 +274,26 @@ export function loadConfig(): Config {
     storyjsonZip,
     effectiveStoryjsonZip,
   };
-  notifyActivationChange(config);
   return config;
+}
+
+/** Keep one activated generation stable for a complete synchronous tool call. */
+export function withActivationSnapshot<T>(run: () => T): T {
+  if (activationSnapshot !== null) return run();
+  let config: Config;
+  let signature: string;
+  for (;;) {
+    checkActivationChange();
+    signature = activationSignature ?? "";
+    config = loadConfig();
+    checkActivationChange();
+    if (signature === (activationSignature ?? "")) break;
+  }
+  const snapshot = { config, signature };
+  activationSnapshot = snapshot;
+  try {
+    return run();
+  } finally {
+    if (activationSnapshot === snapshot) activationSnapshot = null;
+  }
 }

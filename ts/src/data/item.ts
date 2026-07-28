@@ -4,7 +4,7 @@
  * Mirrors python/src/prts_mcp/data/item.py.
  */
 
-import { loadConfig, registerActivationListener } from "../config.js";
+import { checkActivationChange, loadConfig, registerActivationListener } from "../config.js";
 import { DirectoryStore } from "./stores.js";
 
 const ITEM_FILE = "item_table.json";
@@ -177,7 +177,7 @@ function shortText(text: string, limit = 80): string {
 }
 
 function loadItems(): Record<string, ItemEntry> {
-  loadConfig();
+  checkActivationChange();
   if (itemTable === null) {
     const store = itemStore();
     if (!store.exists(ITEM_FILE)) {
@@ -193,7 +193,7 @@ function loadItems(): Record<string, ItemEntry> {
 }
 
 function buildItemLookup(): Map<string, string> {
-  loadConfig();
+  checkActivationChange();
   if (itemLookup === null) {
     itemLookup = new Map<string, string>();
     for (const [itemId, info] of Object.entries(loadItems())) {
@@ -474,7 +474,7 @@ function itemSearchEntry(record: ItemSearchRecord): ItemSearchPayload["results"]
 }
 
 function getItemSearchRecords(): ItemSearchRecord[] {
-  loadConfig();
+  checkActivationChange();
   if (itemSearchRecords !== null) return itemSearchRecords;
   const entries = visibleItems();
   entries.sort((a, b) => {

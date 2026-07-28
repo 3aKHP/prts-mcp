@@ -132,26 +132,34 @@ class CacheMeta:
             return None
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
-            return cls(**data)
-        except (json.JSONDecodeError, TypeError, KeyError):
+            commit_sha = data.get("commit_sha", data.get("commitSha"))
+            fetched_at = data.get("fetched_at", data.get("fetchedAt"))
+            if not isinstance(commit_sha, str) or not isinstance(fetched_at, str):
+                return None
+            return cls(
+                repo=data["repo"],
+                branch=data["branch"],
+                commit_sha=commit_sha,
+                fetched_at=fetched_at,
+                files=data["files"],
+            )
+        except (json.JSONDecodeError, TypeError, KeyError, AttributeError):
             return None
 
     def save(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(
-            json.dumps(
-                {
-                    "repo": self.repo,
-                    "branch": self.branch,
-                    "commit_sha": self.commit_sha,
-                    "fetched_at": self.fetched_at,
-                    "files": self.files,
-                },
-                ensure_ascii=False,
-                indent=2,
-            ),
+        tmp = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
+        tmp.write_text(
+            json.dumps({
+                "repo": self.repo,
+                "branch": self.branch,
+                "commit_sha": self.commit_sha,
+                "fetched_at": self.fetched_at,
+                "files": self.files,
+            }, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
+        tmp.replace(path)
 
 
 @dataclass
@@ -236,7 +244,9 @@ def check_latest_release(spec: ReleaseSpec, timeout: float = 10.0) -> tuple[str,
 def download_release_asset(spec: ReleaseSpec, tag: str, url: str, timeout: float = 120.0) -> None:
     """Download a release asset zip atomically, then write cache metadata."""
     spec.local_zip.parent.mkdir(parents=True, exist_ok=True)
-    tmp = spec.local_zip.with_suffix(spec.local_zip.suffix + ".tmp")
+    tmp = spec.local_zip.with_name(
+        f".{spec.local_zip.name}.{uuid4().hex}.tmp"
+    )
     try:
         _logger.debug("Downloading release asset %s", url)
         response = _get_cascading(url, timeout=timeout, headers=_github_headers(), follow_redirects=True)
@@ -507,6 +517,7 @@ def _archive_activation_sha(spec: ReleaseArchiveSpec, release_sha: str | None) -
 def _archive_activation_lock(spec: ReleaseArchiveSpec) -> Iterator[None]:
     """Serialize archive publication across Python and TypeScript processes."""
     lock = spec.local_zip.parent / ".activation.lock"
+    owner = uuid4().hex
     deadline = time.monotonic() + _ACTIVATION_LOCK_TIMEOUT_SECONDS
     while True:
         try:
@@ -523,17 +534,30 @@ def _archive_activation_lock(spec: ReleaseArchiveSpec) -> Iterator[None]:
                 quarantine = lock.with_name(f"{lock.name}.stale-{uuid4().hex}")
                 try:
                     lock.replace(quarantine)
-                except FileNotFoundError:
-                    continue
+                except OSError as exc:
+                    if not lock.exists():
+                        continue
+                    _logger.error("Failed to reclaim stale activation lock %s: %s", lock, exc)
+                    raise
                 shutil.rmtree(quarantine, ignore_errors=True)
                 continue
             if time.monotonic() >= deadline:
                 raise TimeoutError(f"Timed out waiting for archive activation lock: {lock}")
             time.sleep(0.05)
     try:
+        (lock / "owner").write_text(owner, encoding="utf-8")
+    except Exception:
+        shutil.rmtree(lock, ignore_errors=True)
+        raise
+    try:
         yield
     finally:
-        shutil.rmtree(lock, ignore_errors=True)
+        try:
+            current_owner = (lock / "owner").read_text(encoding="utf-8")
+        except OSError:
+            current_owner = None
+        if current_owner == owner:
+            shutil.rmtree(lock, ignore_errors=True)
 
 
 def _prune_release_trees(spec: ReleaseArchiveSpec, keep: set[Path]) -> None:
@@ -541,7 +565,7 @@ def _prune_release_trees(spec: ReleaseArchiveSpec, keep: set[Path]) -> None:
     cutoff = time.time() - _RELEASE_RETENTION_SECONDS
     try:
         for candidate in releases.iterdir():
-            if candidate.name.startswith(".") or candidate in keep:
+            if candidate in keep:
                 continue
             try:
                 if candidate.stat().st_mtime >= cutoff:
@@ -640,6 +664,8 @@ def sync_release_archive(
                     )
                 staging.replace(activated_root)
                 staging = None
+                if current_root.parent == _releases_path(spec):
+                    os.utime(current_root)
                 _save_extract_meta(spec, activation_sha, activated_root)
                 _prune_release_trees(spec, {current_root, activated_root})
         except Exception as exc:  # noqa: BLE001

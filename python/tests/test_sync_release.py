@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
+import time
 import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -18,6 +20,7 @@ from prts_mcp.data.sync import (
     check_latest_release,
     sync_release_archive,
     sync_release,
+    _archive_activation_lock,
 )
 
 
@@ -97,6 +100,27 @@ class TestCheckLatestRelease:
 # ---------------------------------------------------------------------------
 
 class TestSyncRelease:
+    def test_reads_typescript_release_metadata(self, tmp_path):
+        spec = _make_spec(tmp_path)
+        _write_zip(spec.local_zip)
+        (spec.local_zip.parent / "release_meta.json").write_text(
+            json.dumps({
+                "repo": "3aKHP/ArknightsStoryJson",
+                "branch": "releases",
+                "commitSha": "same-sha",
+                "fetchedAt": "2099-01-01T00:00:00.000Z",
+                "files": [spec.asset_name],
+            }),
+            encoding="utf-8",
+        )
+
+        with patch("prts_mcp.data.sync.check_latest_release") as check:
+            result = sync_release(spec)
+
+        check.assert_not_called()
+        assert result.status == "up_to_date"
+        assert result.commit_sha == "same-sha"
+
     def test_updated_when_new_tag(self, tmp_path):
         spec = _make_spec(tmp_path)
         tag = "upstream-newsha1234"
@@ -235,6 +259,31 @@ class TestSyncRelease:
 # ---------------------------------------------------------------------------
 
 class TestSyncReleaseArchive:
+    def test_stale_lock_owner_cannot_remove_successor_lock(self, tmp_path):
+        archive_dir = tmp_path / "archives"
+        archive_dir.mkdir()
+        spec = ReleaseArchiveSpec(
+            owner="3aKHP",
+            repo="ArknightsGameData",
+            asset_name="zh_CN-excel.zip",
+            local_zip=archive_dir / "zh_CN-excel.zip",
+            local_root=tmp_path / "gamedata",
+            required_files=(),
+        )
+        first = _archive_activation_lock(spec)
+        first.__enter__()
+        lock = archive_dir / ".activation.lock"
+        old = time.time() - 31 * 60
+        os.utime(lock, (old, old))
+        second = _archive_activation_lock(spec)
+        second.__enter__()
+        try:
+            first.__exit__(None, None, None)
+            assert lock.is_dir()
+        finally:
+            second.__exit__(None, None, None)
+        assert not lock.exists()
+
     def test_extracts_updated_archive(self, tmp_path):
         zip_path = tmp_path / "archives" / "zh_CN-excel.zip"
         zip_path.parent.mkdir(parents=True)
@@ -588,3 +637,42 @@ print(sync.sync_release_archive(spec).status)
             required_files=(required,),
         )
         assert (_active_archive_root(spec) / required).is_file()
+
+    def test_retention_uses_deactivation_time_and_removes_stale_staging(self, tmp_path):
+        zip_path = tmp_path / "archives" / "zh_CN-excel.zip"
+        zip_path.parent.mkdir(parents=True)
+        required = "zh_CN/gamedata/excel/character_table.json"
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            zf.writestr(required, "{}")
+        spec = ReleaseArchiveSpec(
+            owner="3aKHP",
+            repo="ArknightsGameData",
+            asset_name=zip_path.name,
+            local_zip=zip_path,
+            local_root=tmp_path / "gamedata",
+            required_files=(required,),
+        )
+
+        def release_result(sha: str) -> SyncResult:
+            return SyncResult(
+                spec=spec,
+                status="updated",
+                commit_sha=sha,
+                error=None,
+            )
+
+        with patch("prts_mcp.data.sync.sync_release", return_value=release_result("one")):
+            assert sync_release_archive(spec).status == "updated"
+        previous = _active_archive_root(spec)
+        old = time.time() - 25 * 60 * 60
+        os.utime(previous, (old, old))
+        orphan = spec.local_root / ".releases" / ".orphan.tmp"
+        orphan.mkdir()
+        os.utime(orphan, (old, old))
+
+        with patch("prts_mcp.data.sync.sync_release", return_value=release_result("two")):
+            assert sync_release_archive(spec).status == "updated"
+
+        assert previous.is_dir()
+        assert previous.stat().st_mtime > old
+        assert not orphan.exists()

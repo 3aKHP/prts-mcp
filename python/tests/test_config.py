@@ -3,10 +3,11 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 from unittest.mock import patch
 
 import prts_mcp.config as config_module
-from prts_mcp.config import Config
+from prts_mcp.config import Config, activation_aware_cache, activation_snapshot
 
 
 class TestEffectiveStoryjsonZip:
@@ -97,3 +98,93 @@ class TestActivatedDataRoot:
 
         assert cfg.excel_path == root / "zh_CN" / "gamedata" / "excel"
         assert cfg.effective_excel_path == excel
+
+    def test_late_old_generation_load_cannot_replace_current_cache(self, tmp_path):
+        root = tmp_path / "gamedata"
+        archives = root / "archives"
+        archives.mkdir(parents=True)
+        for name in ("first", "second"):
+            generation = root / ".releases" / name
+            generation.mkdir(parents=True)
+        metadata = archives / "extract_meta.json"
+
+        def activate(name: str) -> None:
+            tmp = archives / f"{name}.tmp"
+            tmp.write_text(
+                json.dumps({"commit_sha": name, "data_root": f".releases/{name}"}),
+                encoding="utf-8",
+            )
+            tmp.replace(metadata)
+
+        selected = threading.Event()
+        release_old = threading.Event()
+        block_first = True
+
+        @activation_aware_cache(maxsize=2)
+        def selected_root() -> str:
+            nonlocal block_first
+            value = str(config_module._activated_root(root))
+            if block_first:
+                block_first = False
+                selected.set()
+                release_old.wait(timeout=5)
+            return value
+
+        activate("first")
+        with patch.dict(os.environ, {"GAMEDATA_PATH": str(root)}):
+            thread_result: list[str] = []
+            thread = threading.Thread(target=lambda: thread_result.append(selected_root()))
+            thread.start()
+            assert selected.wait(timeout=5)
+            activate("second")
+            assert selected_root().endswith("/.releases/second")
+            release_old.set()
+            thread.join(timeout=5)
+
+            assert thread_result[0].endswith("/.releases/first")
+            assert selected_root().endswith("/.releases/second")
+
+    def test_activation_snapshot_keeps_multi_table_read_on_one_generation(self, tmp_path):
+        root = tmp_path / "gamedata"
+        archives = root / "archives"
+        archives.mkdir(parents=True)
+        for name in ("first", "second"):
+            excel = root / ".releases" / name / "zh_CN" / "gamedata" / "excel"
+            excel.mkdir(parents=True)
+            for filename in config_module._REQUIRED_OPERATOR_FILES:
+                (excel / filename).write_text("{}", encoding="utf-8")
+        metadata = archives / "extract_meta.json"
+
+        def activate(name: str) -> None:
+            tmp = archives / f"{name}.tmp"
+            tmp.write_text(
+                json.dumps({"commit_sha": name, "data_root": f".releases/{name}"}),
+                encoding="utf-8",
+            )
+            tmp.replace(metadata)
+
+        selected = threading.Event()
+        release_read = threading.Event()
+
+        @activation_snapshot
+        def read_twice() -> tuple[object, object]:
+            first = Config.load().effective_excel_path
+            selected.set()
+            release_read.wait(timeout=5)
+            return first, Config.load().effective_excel_path
+
+        activate("first")
+        with patch.dict(os.environ, {"GAMEDATA_PATH": str(root)}):
+            result: list[tuple[object, object]] = []
+            thread = threading.Thread(target=lambda: result.append(read_twice()))
+            thread.start()
+            assert selected.wait(timeout=5)
+            activate("second")
+            release_read.set()
+            thread.join(timeout=5)
+
+            assert result[0][0] == result[0][1]
+            assert str(result[0][0]).endswith("/.releases/first/zh_CN/gamedata/excel")
+            assert str(Config.load().effective_excel_path).endswith(
+                "/.releases/second/zh_CN/gamedata/excel"
+            )
