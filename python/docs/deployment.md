@@ -240,9 +240,13 @@ docker run -i --rm -v prts-mcp-data:/data/gamedata -v prts-mcp-levels:/data/game
 # named volume 场景
 docker run --rm -v prts-mcp-data:/data/gamedata alpine rm /data/gamedata/archives/release_meta.json
 docker run --rm -v prts-mcp-levels:/data/gamedata-levels alpine rm /data/gamedata-levels/archives/release_meta.json
+# 仅重新解压当前归档
+docker run --rm -v prts-mcp-data:/data/gamedata alpine rm /data/gamedata/archives/extract_meta.json
+docker run --rm -v prts-mcp-levels:/data/gamedata-levels alpine rm /data/gamedata-levels/archives/extract_meta.json
 
 # 宿主机目录场景（Windows）
 Remove-Item "$env:LOCALAPPDATA\prts-mcp\gamedata\archives\release_meta.json"
+Remove-Item "$env:LOCALAPPDATA\prts-mcp\gamedata\archives\extract_meta.json"
 ```
 
 ---

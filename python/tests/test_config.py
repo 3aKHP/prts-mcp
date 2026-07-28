@@ -1,6 +1,7 @@
 """Tests for prts_mcp.config — storyjson zip path resolution."""
 from __future__ import annotations
 
+import json
 import os
 from unittest.mock import patch
 
@@ -71,3 +72,28 @@ class TestEffectiveLevelsPath:
         assert cfg.levels_path == tmp_path / "gamedata-levels"
         assert cfg.effective_levels_path is None
         assert cfg.has_levels_data is False
+
+
+class TestActivatedDataRoot:
+    def test_effective_excel_path_uses_activated_release(self, tmp_path):
+        root = tmp_path / "gamedata"
+        activated = root / ".releases" / "abc123"
+        excel = activated / "zh_CN" / "gamedata" / "excel"
+        excel.mkdir(parents=True)
+        for name in config_module._REQUIRED_OPERATOR_FILES:
+            (excel / name).write_text("{}", encoding="utf-8")
+        archives = root / "archives"
+        archives.mkdir()
+        (archives / "extract_meta.json").write_text(
+            json.dumps({
+                "commit_sha": "abc123",
+                "data_root": ".releases/abc123",
+            }),
+            encoding="utf-8",
+        )
+
+        with patch.dict(os.environ, {"GAMEDATA_PATH": str(root)}):
+            cfg = Config.load()
+
+        assert cfg.excel_path == root / "zh_CN" / "gamedata" / "excel"
+        assert cfg.effective_excel_path == excel

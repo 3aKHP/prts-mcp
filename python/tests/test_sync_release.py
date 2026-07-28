@@ -54,6 +54,13 @@ def _mock_asset_response(content: bytes = b"PK\x03\x04") -> MagicMock:
     return resp
 
 
+def _active_archive_root(spec: ReleaseArchiveSpec) -> Path:
+    meta = json.loads(
+        (spec.local_zip.parent / "extract_meta.json").read_text(encoding="utf-8")
+    )
+    return spec.local_root / meta["data_root"]
+
+
 # ---------------------------------------------------------------------------
 # check_latest_release
 # ---------------------------------------------------------------------------
@@ -261,11 +268,13 @@ class TestSyncReleaseArchive:
             result = sync_release_archive(spec)
 
         assert result.status == "updated"
-        assert (spec.local_root / "zh_CN/gamedata/excel/character_table.json").is_file()
-        assert (spec.local_root / "zh_CN/gamedata/excel/handbook_info_table.json").is_file()
-        assert json.loads(
+        active_root = _active_archive_root(spec)
+        assert (active_root / "zh_CN/gamedata/excel/character_table.json").is_file()
+        assert (active_root / "zh_CN/gamedata/excel/handbook_info_table.json").is_file()
+        meta = json.loads(
             (spec.local_zip.parent / "extract_meta.json").read_text(encoding="utf-8")
-        ) == {"commit_sha": "abc123"}
+        )
+        assert meta["commit_sha"] == "abc123"
 
     def test_up_to_date_archive_extracts_when_required_files_missing(self, tmp_path):
         zip_path = tmp_path / "archives" / "zh_CN-excel.zip"
@@ -299,7 +308,10 @@ class TestSyncReleaseArchive:
             result = sync_release_archive(spec)
 
         assert result.status == "updated"
-        assert (spec.local_root / "zh_CN/gamedata/excel/character_table.json").is_file()
+        assert (
+            _active_archive_root(spec)
+            / "zh_CN/gamedata/excel/character_table.json"
+        ).is_file()
 
     def test_retries_activation_after_extraction_failure(self, tmp_path):
         zip_path = tmp_path / "archives" / "zh_CN-excel.zip"
@@ -347,10 +359,51 @@ class TestSyncReleaseArchive:
             second = sync_release_archive(spec)
 
         assert second.status == "updated"
-        assert old_file.read_text(encoding="utf-8") == '{"version":"new"}'
-        assert json.loads(
+        assert old_file.read_text(encoding="utf-8") == '{"version":"old"}'
+        active_file = _active_archive_root(spec) / required
+        assert active_file.read_text(encoding="utf-8") == '{"version":"new"}'
+        meta = json.loads(
             (spec.local_zip.parent / "extract_meta.json").read_text(encoding="utf-8")
-        ) == {"commit_sha": "abc123"}
+        )
+        assert meta["commit_sha"] == "abc123"
+
+    def test_offline_recovery_activates_and_reports_updated(self, tmp_path):
+        zip_path = tmp_path / "archives" / "zh_CN-excel.zip"
+        zip_path.parent.mkdir(parents=True)
+        required = "zh_CN/gamedata/excel/character_table.json"
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            zf.writestr(required, '{"version":"new"}')
+        spec = ReleaseArchiveSpec(
+            owner="3aKHP",
+            repo="ArknightsGameData",
+            asset_name="zh_CN-excel.zip",
+            local_zip=zip_path,
+            local_root=tmp_path / "gamedata",
+            required_files=(required,),
+        )
+        old_file = spec.local_root / required
+        old_file.parent.mkdir(parents=True)
+        old_file.write_text('{"version":"old"}', encoding="utf-8")
+        release_result = SyncResult(
+            spec=ReleaseSpec(
+                owner=spec.owner,
+                repo=spec.repo,
+                asset_name=spec.asset_name,
+                local_zip=spec.local_zip,
+            ),
+            status="offline_fallback",
+            commit_sha="abc123",
+            error="network down",
+        )
+
+        with patch("prts_mcp.data.sync.sync_release", return_value=release_result):
+            result = sync_release_archive(spec)
+
+        assert result.status == "updated"
+        assert (_active_archive_root(spec) / required).read_text(
+            encoding="utf-8"
+        ) == '{"version":"new"}'
+        assert old_file.read_text(encoding="utf-8") == '{"version":"old"}'
 
     def test_archive_missing_required_zip_entry_returns_no_data(self, tmp_path):
         zip_path = tmp_path / "archives" / "zh_CN-levels.zip"

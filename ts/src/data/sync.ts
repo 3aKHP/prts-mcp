@@ -10,10 +10,13 @@
  */
 
 import { existsSync, statSync } from "node:fs";
+import { createHash, randomUUID } from "node:crypto";
 import {
   mkdir,
   readFile,
+  readdir,
   rename,
+  rm,
   unlink,
   writeFile,
 } from "node:fs/promises";
@@ -360,16 +363,16 @@ export async function syncRelease(
   }
 }
 
-function archiveFilesPresent(spec: ReleaseArchiveSpec): boolean {
+function archiveFilesPresent(spec: ReleaseArchiveSpec, root = spec.localRoot): boolean {
   return spec.requiredFiles.every((f) => {
-    const p = join(spec.localRoot, f);
+    const p = join(root, f);
     return existsSync(p) && statSync(p).isFile();
   });
 }
 
-function archiveMissingFiles(spec: ReleaseArchiveSpec): string[] {
+function archiveMissingFiles(spec: ReleaseArchiveSpec, root: string): string[] {
   return spec.requiredFiles.filter((f) => {
-    const p = join(spec.localRoot, f);
+    const p = join(root, f);
     return !existsSync(p) || !statSync(p).isFile();
   });
 }
@@ -378,27 +381,42 @@ function extractMetaPath(spec: ReleaseArchiveSpec): string {
   return join(dirname(spec.localZip), "extract_meta.json");
 }
 
-async function loadExtractedSha(spec: ReleaseArchiveSpec): Promise<string | null> {
+interface ExtractMeta {
+  commitSha: string;
+  dataRoot: string;
+}
+
+async function loadExtractMeta(spec: ReleaseArchiveSpec): Promise<ExtractMeta | null> {
   try {
     const value = JSON.parse(await readFile(extractMetaPath(spec), "utf-8")) as {
       commit_sha?: unknown;
+      data_root?: unknown;
     };
-    return typeof value.commit_sha === "string" && value.commit_sha.length > 0
-      ? value.commit_sha
-      : null;
+    if (typeof value.commit_sha !== "string" || value.commit_sha.length === 0) return null;
+    if (typeof value.data_root !== "string" || value.data_root.length === 0) return null;
+    const root = resolve(spec.localRoot);
+    const dataRoot = resolve(spec.localRoot, value.data_root);
+    const rel = relative(root, dataRoot);
+    if (rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute(rel)) return null;
+    if (!existsSync(dataRoot) || !statSync(dataRoot).isDirectory()) return null;
+    return { commitSha: value.commit_sha, dataRoot };
   } catch {
     return null;
   }
 }
 
-async function saveExtractedSha(
+async function saveExtractMeta(
   spec: ReleaseArchiveSpec,
   commitSha: string,
+  dataRoot: string,
 ): Promise<void> {
   const path = extractMetaPath(spec);
   const tmp = `${path}.tmp`;
   await mkdir(dirname(path), { recursive: true });
-  await writeFile(tmp, JSON.stringify({ commit_sha: commitSha }, null, 2), "utf-8");
+  await writeFile(tmp, JSON.stringify({
+    commit_sha: commitSha,
+    data_root: relative(spec.localRoot, dataRoot).replaceAll("\\", "/"),
+  }, null, 2), "utf-8");
   await rename(tmp, path);
 }
 
@@ -444,6 +462,56 @@ async function safeExtractZip(zipPath: string, localRoot: string): Promise<void>
   }
 }
 
+async function extractReleaseTree(
+  spec: ReleaseArchiveSpec,
+  commitSha: string,
+): Promise<string> {
+  const releases = join(spec.localRoot, ".releases");
+  await mkdir(releases, { recursive: true });
+  const releaseKey = createHash("sha256").update(commitSha).digest("hex").slice(0, 16);
+  const generation = `${releaseKey}-${randomUUID().replaceAll("-", "")}`;
+  const staging = join(releases, `.${generation}.tmp`);
+  const activated = join(releases, generation);
+  try {
+    await safeExtractZip(spec.localZip, staging);
+    const missing = archiveMissingFiles(spec, staging);
+    if (missing.length > 0) {
+      throw new Error(`Archive extraction missing required files: ${missing.slice(0, 10).join("; ")}`);
+    }
+    await rename(staging, activated);
+    return activated;
+  } catch (err) {
+    await rm(staging, { recursive: true, force: true });
+    throw err;
+  }
+}
+
+async function archiveActivationSha(
+  spec: ReleaseArchiveSpec,
+  releaseSha: string | null,
+): Promise<string> {
+  if (releaseSha !== null) return releaseSha;
+  const digest = createHash("sha256").update(await readFile(spec.localZip)).digest("hex");
+  return `local-${digest}`;
+}
+
+async function pruneReleaseTrees(
+  spec: ReleaseArchiveSpec,
+  keep: Set<string>,
+): Promise<void> {
+  const releases = join(spec.localRoot, ".releases");
+  try {
+    for (const name of await readdir(releases)) {
+      const candidate = join(releases, name);
+      if (!keep.has(candidate)) {
+        await rm(candidate, { recursive: true, force: true });
+      }
+    }
+  } catch {
+    // Best-effort retention cleanup must not roll back an activated release.
+  }
+}
+
 /**
  * Download a GitHub Release zip asset and extract it into localRoot.
  *
@@ -470,7 +538,9 @@ export async function syncReleaseArchive(
     localRoot: spec.localRoot,
   };
 
-  const filesOk = archiveFilesPresent(spec);
+  const extractMeta = await loadExtractMeta(spec);
+  const activeRoot = extractMeta?.dataRoot ?? spec.localRoot;
+  const filesOk = archiveFilesPresent(spec, activeRoot);
   if (releaseResult.status === "no_data") {
     return filesOk
       ? {
@@ -487,61 +557,40 @@ export async function syncReleaseArchive(
         };
   }
 
-  const extractedSha = await loadExtractedSha(spec);
+  const extractedSha = extractMeta?.commitSha ?? null;
   const shouldExtract = releaseResult.status === "updated"
     || !filesOk
     || extractedSha === null
-    || extractedSha !== releaseResult.commitSha;
+    || (releaseResult.commitSha !== null && extractedSha !== releaseResult.commitSha);
   if (shouldExtract) {
     try {
-      await safeExtractZip(spec.localZip, spec.localRoot);
-    } catch (err) {
-      const error = errorMessage(err);
-      return archiveFilesPresent(spec)
-        ? {
-            spec: dummySpec,
-            status: "offline_fallback",
-            commitSha: releaseResult.commitSha,
-            error,
-          }
-        : {
-            spec: dummySpec,
-            status: "no_data",
-            commitSha: releaseResult.commitSha,
-            error,
-          };
-    }
-
-    const missing = archiveMissingFiles(spec);
-    if (missing.length > 0) {
-      const error = `Archive extraction missing required files: ${missing.slice(0, 10).join("; ")}`;
-      return archiveFilesPresent(spec)
-        ? {
-            spec: dummySpec,
-            status: "offline_fallback",
-            commitSha: releaseResult.commitSha,
-            error,
-          }
-        : {
-            spec: dummySpec,
-            status: "no_data",
-            commitSha: releaseResult.commitSha,
-            error,
-          };
-    }
-
-    if (releaseResult.commitSha !== null) {
-      await saveExtractedSha(spec, releaseResult.commitSha);
-    }
-
-    if (releaseResult.status === "up_to_date") {
+      const activationSha = await archiveActivationSha(spec, releaseResult.commitSha);
+      const activatedRoot = await extractReleaseTree(spec, activationSha);
+      await saveExtractMeta(spec, activationSha, activatedRoot);
+      await pruneReleaseTrees(spec, new Set([activeRoot, activatedRoot]));
       return {
         spec: dummySpec,
         status: "updated",
-        commitSha: releaseResult.commitSha,
+        commitSha: activationSha,
         error: null,
       };
+    } catch (err) {
+      const error = errorMessage(err);
+      return archiveFilesPresent(spec, activeRoot)
+        ? {
+            spec: dummySpec,
+            status: "offline_fallback",
+            commitSha: releaseResult.commitSha,
+            error,
+          }
+        : {
+            spec: dummySpec,
+            status: "no_data",
+            commitSha: releaseResult.commitSha,
+            error,
+          };
     }
+
   }
 
   return {

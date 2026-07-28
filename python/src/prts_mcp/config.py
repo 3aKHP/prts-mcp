@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -78,6 +79,23 @@ def _excel_path(gamedata_root: Path) -> Path:
     return gamedata_root / "zh_CN" / "gamedata" / "excel"
 
 
+def _activated_root(root: Path) -> Path:
+    """Resolve the immutable data tree selected by auto-sync metadata."""
+    try:
+        meta = json.loads(
+            (root / "archives" / "extract_meta.json").read_text(encoding="utf-8")
+        )
+        data_root = meta.get("data_root")
+        if not isinstance(data_root, str) or not data_root:
+            return root
+        activated = (root / data_root).resolve()
+        if activated.is_relative_to(root.resolve()) and activated.is_dir():
+            return activated
+    except (OSError, json.JSONDecodeError, AttributeError):
+        pass
+    return root
+
+
 def _levels_path(gamedata_root: Path) -> Path:
     return gamedata_root.parent / "gamedata-levels"
 
@@ -117,6 +135,7 @@ class Config:
 
     def __post_init__(self) -> None:
         ep = _excel_path(self.gamedata_path)
+        active_ep = _excel_path(_activated_root(self.gamedata_path))
         object.__setattr__(self, "excel_path", ep)
 
         lp = _resolve_levels_path(self.gamedata_path)
@@ -131,15 +150,16 @@ class Config:
         # effective_excel_path: the path operator.py should actually read from.
         # Prefer the volume/sync path when its files are present; fall back to
         # bundled data otherwise.  Returns None when neither location has data.
-        if _files_complete(ep):
-            object.__setattr__(self, "effective_excel_path", ep)
+        if _files_complete(active_ep):
+            object.__setattr__(self, "effective_excel_path", active_ep)
         elif _files_complete(bep):
             object.__setattr__(self, "effective_excel_path", bep)
         else:
             object.__setattr__(self, "effective_excel_path", None)
 
-        if _levels_complete(lp):
-            object.__setattr__(self, "effective_levels_path", lp)
+        active_lp = _activated_root(lp)
+        if _levels_complete(active_lp):
+            object.__setattr__(self, "effective_levels_path", active_lp)
         elif _levels_complete(blp):
             object.__setattr__(self, "effective_levels_path", blp)
         else:

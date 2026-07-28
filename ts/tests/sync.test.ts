@@ -44,6 +44,13 @@ function writeZip(path: string, entries: Record<string, string>): void {
   zip.writeZip(path);
 }
 
+function activeArchiveRoot(spec: ReleaseArchiveSpec): string {
+  const meta = JSON.parse(
+    readFileSync(join(dirname(spec.localZip), "extract_meta.json"), "utf-8"),
+  ) as { data_root: string };
+  return join(spec.localRoot, meta.data_root);
+}
+
 function withFetchMock(
   fetchMock: typeof fetch,
   run: () => Promise<void>,
@@ -216,8 +223,8 @@ test("syncReleaseArchive extracts updated archive", async () => {
   }) as typeof fetch, async () => {
     const result = await syncReleaseArchive(spec);
 
-    assert.equal(result.status, "offline_fallback");
-    assert.equal(result.error, "Network unavailable");
+    assert.equal(result.status, "updated");
+    assert.match(result.commitSha ?? "", /^local-/);
   });
 });
 
@@ -242,7 +249,6 @@ test("syncReleaseArchive retries activation after extraction failure", async () 
   const required = spec.requiredFiles[0];
   writeZip(spec.localZip, {
     [required]: '{"version":"new"}',
-    "blocked/child.json": "{}",
   });
   writeFileSync(
     join(dirname(spec.localZip), "release_meta.json"),
@@ -258,7 +264,7 @@ test("syncReleaseArchive retries activation after extraction failure", async () 
   const requiredPath = join(spec.localRoot, required);
   mkdirSync(dirname(requiredPath), { recursive: true });
   writeFileSync(requiredPath, '{"version":"old"}', "utf-8");
-  const blocker = join(spec.localRoot, "blocked");
+  const blocker = join(spec.localRoot, ".releases");
   writeFileSync(blocker, "not a directory", "utf-8");
   const extractMeta = join(dirname(spec.localZip), "extract_meta.json");
 
@@ -271,8 +277,44 @@ test("syncReleaseArchive retries activation after extraction failure", async () 
   const second = await syncReleaseArchive(spec);
 
   assert.equal(second.status, "updated");
-  assert.equal(readFileSync(requiredPath, "utf-8"), '{"version":"new"}');
-  assert.deepEqual(JSON.parse(readFileSync(extractMeta, "utf-8")), {
-    commit_sha: "abc123",
+  assert.equal(readFileSync(requiredPath, "utf-8"), '{"version":"old"}');
+  assert.equal(
+    readFileSync(join(activeArchiveRoot(spec), required), "utf-8"),
+    '{"version":"new"}',
+  );
+  assert.equal(JSON.parse(readFileSync(extractMeta, "utf-8")).commit_sha, "abc123");
+});
+
+test("syncReleaseArchive reports updated after offline activation recovery", async () => {
+  const spec = tempArchiveSpec();
+  const required = spec.requiredFiles[0];
+  writeZip(spec.localZip, { [required]: '{"version":"new"}' });
+  writeFileSync(
+    join(dirname(spec.localZip), "release_meta.json"),
+    JSON.stringify({
+      repo: "3aKHP/ArknightsGameData",
+      branch: "releases",
+      commitSha: "abc123",
+      fetchedAt: "2000-01-01T00:00:00.000Z",
+      files: [spec.assetName],
+    }),
+    "utf-8",
+  );
+  const requiredPath = join(spec.localRoot, required);
+  mkdirSync(dirname(requiredPath), { recursive: true });
+  writeFileSync(requiredPath, '{"version":"old"}', "utf-8");
+
+  await withFetchMock((async () => {
+    throw new Error("network down");
+  }) as typeof fetch, async () => {
+    const result = await syncReleaseArchive(spec, true);
+
+    assert.equal(result.status, "updated");
+    assert.equal(result.commitSha, "abc123");
+    assert.equal(readFileSync(requiredPath, "utf-8"), '{"version":"old"}');
+    assert.equal(
+      readFileSync(join(activeArchiveRoot(spec), required), "utf-8"),
+      '{"version":"new"}',
+    );
   });
 });

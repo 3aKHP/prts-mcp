@@ -52,3 +52,36 @@ test("custom GAMEDATA_PATH without embedded levels uses sibling path", async () 
     delete process.env["PRTS_MCP_ROOT"];
   }
 });
+
+test("effective excel path uses the activated release tree", async () => {
+  const root = tempRoot();
+  const custom = join(root, "gamedata");
+  const activated = join(custom, ".releases", "abc123");
+  const excel = join(activated, "zh_CN", "gamedata", "excel");
+  mkdirSync(excel, { recursive: true });
+  for (const name of [
+    "character_table.json",
+    "handbook_info_table.json",
+    "charword_table.json",
+    "story_review_table.json",
+  ]) {
+    writeFileSync(join(excel, name), "{}", "utf-8");
+  }
+  const archives = join(custom, "archives");
+  mkdirSync(archives, { recursive: true });
+  writeFileSync(join(archives, "extract_meta.json"), JSON.stringify({
+    commit_sha: "abc123",
+    data_root: ".releases/abc123",
+  }), "utf-8");
+
+  process.env["GAMEDATA_PATH"] = custom;
+  try {
+    const { loadConfig } = await loadConfigModule();
+    const cfg = loadConfig();
+
+    assert.equal(cfg.excelPath, join(custom, "zh_CN", "gamedata", "excel"));
+    assert.equal(cfg.effectiveExcelPath, excel);
+  } finally {
+    delete process.env["GAMEDATA_PATH"];
+  }
+});

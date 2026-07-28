@@ -26,9 +26,9 @@
  *     3. null — no level combat data available.
  */
 
-import { existsSync, statSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // ---------------------------------------------------------------------------
@@ -94,6 +94,22 @@ export const DEFAULT_GAMEDATA_PATH = resolveDefaultGamedataPath();
 
 function excelPath(gamedataRoot: string): string {
   return join(gamedataRoot, "zh_CN", "gamedata", "excel");
+}
+
+function activatedRoot(root: string): string {
+  try {
+    const value = JSON.parse(
+      readFileSync(join(root, "archives", "extract_meta.json"), "utf-8"),
+    ) as { data_root?: unknown };
+    if (typeof value.data_root !== "string" || value.data_root.length === 0) return root;
+    const base = resolve(root);
+    const activated = resolve(root, value.data_root);
+    const rel = relative(base, activated);
+    if (rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute(rel)) return root;
+    return existsSync(activated) && statSync(activated).isDirectory() ? activated : root;
+  } catch {
+    return root;
+  }
 }
 
 function levelsPath(gamedataRoot: string): string {
@@ -177,16 +193,18 @@ export function loadConfig(): Config {
     : DEFAULT_GAMEDATA_PATH;
 
   const ep = excelPath(gamedataPath);
+  const activeEp = excelPath(activatedRoot(gamedataPath));
   const lp = resolveLevelsPath(gamedataPath);
   const bep = excelPath(BUNDLED_GAMEDATA_PATH);
   const blp = BUNDLED_LEVELS_PATH;
 
   let effectiveExcelPath: string | null = null;
-  if (filesComplete(ep)) effectiveExcelPath = ep;
+  if (filesComplete(activeEp)) effectiveExcelPath = activeEp;
   else if (filesComplete(bep)) effectiveExcelPath = bep;
 
   let effectiveLevelsPath: string | null = null;
-  if (levelsComplete(lp)) effectiveLevelsPath = lp;
+  const activeLp = activatedRoot(lp);
+  if (levelsComplete(activeLp)) effectiveLevelsPath = activeLp;
   else if (levelsComplete(blp)) effectiveLevelsPath = blp;
 
   // storyjson zip: default is alongside gamedata in the user data dir.

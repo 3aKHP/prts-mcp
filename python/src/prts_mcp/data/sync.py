@@ -6,6 +6,7 @@ cached/bundled data when the network is unavailable.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
@@ -15,6 +16,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Literal
+from uuid import uuid4
 
 import httpx
 
@@ -356,32 +358,54 @@ def _release_zip_error(spec: ReleaseSpec) -> str | None:
 
 
 def _archive_files_present(spec: ReleaseArchiveSpec) -> bool:
-    return all((spec.local_root / f).is_file() for f in spec.required_files)
+    root = _active_archive_root(spec)
+    return all((root / f).is_file() for f in spec.required_files)
 
 
-def _archive_missing_files(spec: ReleaseArchiveSpec) -> list[str]:
-    return [f for f in spec.required_files if not (spec.local_root / f).is_file()]
+def _archive_missing_files(spec: ReleaseArchiveSpec, root: Path) -> list[str]:
+    return [f for f in spec.required_files if not (root / f).is_file()]
 
 
 def _extract_meta_path(spec: ReleaseArchiveSpec) -> Path:
     return spec.local_zip.parent / "extract_meta.json"
 
 
-def _load_extracted_sha(spec: ReleaseArchiveSpec) -> str | None:
+def _load_extract_meta(spec: ReleaseArchiveSpec) -> tuple[str, Path] | None:
     try:
         value = json.loads(_extract_meta_path(spec).read_text(encoding="utf-8"))
         commit_sha = value.get("commit_sha")
-        return commit_sha if isinstance(commit_sha, str) and commit_sha else None
+        data_root = value.get("data_root")
+        if not isinstance(commit_sha, str) or not commit_sha:
+            return None
+        if not isinstance(data_root, str) or not data_root:
+            return None
+        root = (spec.local_root / data_root).resolve()
+        if not root.is_relative_to(spec.local_root.resolve()) or not root.is_dir():
+            return None
+        return commit_sha, root
     except (OSError, json.JSONDecodeError, AttributeError):
         return None
 
 
-def _save_extracted_sha(spec: ReleaseArchiveSpec, commit_sha: str) -> None:
+def _active_archive_root(spec: ReleaseArchiveSpec) -> Path:
+    meta = _load_extract_meta(spec)
+    return meta[1] if meta is not None else spec.local_root
+
+
+def _save_extract_meta(
+    spec: ReleaseArchiveSpec,
+    commit_sha: str,
+    data_root: Path,
+) -> None:
     path = _extract_meta_path(spec)
     tmp = path.with_suffix(path.suffix + ".tmp")
     path.parent.mkdir(parents=True, exist_ok=True)
+    relative_root = data_root.relative_to(spec.local_root).as_posix()
     tmp.write_text(
-        json.dumps({"commit_sha": commit_sha}, indent=2),
+        json.dumps(
+            {"commit_sha": commit_sha, "data_root": relative_root},
+            indent=2,
+        ),
         encoding="utf-8",
     )
     tmp.replace(path)
@@ -423,6 +447,48 @@ def _safe_extract_zip(zip_path: Path, local_root: Path) -> None:
             except OSError:
                 pass
         raise
+
+
+def _extract_release_tree(spec: ReleaseArchiveSpec, commit_sha: str) -> Path:
+    releases = spec.local_root / ".releases"
+    releases.mkdir(parents=True, exist_ok=True)
+    release_key = hashlib.sha256(commit_sha.encode("utf-8")).hexdigest()[:16]
+    generation = f"{release_key}-{uuid4().hex}"
+    staging = releases / f".{generation}.tmp"
+    activated = releases / generation
+    try:
+        _safe_extract_zip(spec.local_zip, staging)
+        missing = _archive_missing_files(spec, staging)
+        if missing:
+            raise ValueError(
+                "Archive extraction missing required files: "
+                + "; ".join(missing[:10])
+            )
+        staging.replace(activated)
+        return activated
+    except Exception:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
+
+
+def _archive_activation_sha(spec: ReleaseArchiveSpec, release_sha: str | None) -> str:
+    if release_sha is not None:
+        return release_sha
+    digest = hashlib.sha256()
+    with spec.local_zip.open("rb") as archive:
+        for chunk in iter(lambda: archive.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return f"local-{digest.hexdigest()}"
+
+
+def _prune_release_trees(spec: ReleaseArchiveSpec, keep: set[Path]) -> None:
+    releases = spec.local_root / ".releases"
+    try:
+        for candidate in releases.iterdir():
+            if candidate not in keep:
+                shutil.rmtree(candidate, ignore_errors=True)
+    except OSError:
+        pass
 
 
 def sync_release_archive(
@@ -469,16 +535,22 @@ def sync_release_archive(
             error=release_result.error,
         )
 
-    extracted_sha = _load_extracted_sha(spec)
+    extract_meta = _load_extract_meta(spec)
+    previous_root = extract_meta[1] if extract_meta is not None else spec.local_root
+    extracted_sha = extract_meta[0] if extract_meta is not None else None
     should_extract = (
         release_result.status == "updated"
         or not files_ok
         or extracted_sha is None
-        or extracted_sha != release_result.commit_sha
+        or (
+            release_result.commit_sha is not None
+            and extracted_sha != release_result.commit_sha
+        )
     )
     if should_extract:
         try:
-            _safe_extract_zip(spec.local_zip, spec.local_root)
+            activation_sha = _archive_activation_sha(spec, release_result.commit_sha)
+            activated_root = _extract_release_tree(spec, activation_sha)
         except Exception as exc:  # noqa: BLE001
             if _archive_files_present(spec):
                 return SyncResult(
@@ -494,33 +566,14 @@ def sync_release_archive(
                 error=str(exc),
             )
 
-        missing = _archive_missing_files(spec)
-        if missing:
-            error = "Archive extraction missing required files: " + "; ".join(missing[:10])
-            if _archive_files_present(spec):
-                return SyncResult(
-                    spec=dummy_spec,
-                    status="offline_fallback",
-                    commit_sha=release_result.commit_sha,
-                    error=error,
-                )
-            return SyncResult(
-                spec=dummy_spec,
-                status="no_data",
-                commit_sha=release_result.commit_sha,
-                error=error,
-            )
-
-        if release_result.commit_sha is not None:
-            _save_extracted_sha(spec, release_result.commit_sha)
-
-        if release_result.status == "up_to_date":
-            return SyncResult(
-                spec=dummy_spec,
-                status="updated",
-                commit_sha=release_result.commit_sha,
-                error=None,
-            )
+        _save_extract_meta(spec, activation_sha, activated_root)
+        _prune_release_trees(spec, {previous_root, activated_root})
+        return SyncResult(
+            spec=dummy_spec,
+            status="updated",
+            commit_sha=activation_sha,
+            error=None,
+        )
 
     return SyncResult(
         spec=dummy_spec,
