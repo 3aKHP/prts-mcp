@@ -6,12 +6,12 @@ _Last updated: 2026-07-29_
 
 | 实现 | 版本 | 状态 |
 |------|------|------|
-| Python | 2.4.0 | Stable |
-| TypeScript | 2.4.0 | Stable |
+| Python | 2.5.0.dev0 | Development |
+| TypeScript | 2.5.0-dev.0 | Development |
 
 - 当前稳定发布：2.4.0（23 个 MCP 工具）
 - 当前 LTS 发布：1.7.0（32 个 MCP 工具，剧情角色追踪）
-- 下一开发目标：待发布回合完成后规划
+- 下一开发目标：2.5.0（开发列车已开启，功能范围待规划）
 - 当前稳定补丁线：2.4.x
 - 2.4.0 发布内容：常驻服务默认每小时同步 GameData excel、GameData levels 与
   StoryJson；GameData 两类归档以同一代原子切换，并支持共享卷跨进程发布锁续租。
@@ -50,7 +50,7 @@ _Last updated: 2026-07-29_
 
 - `main`：2.4.0（最新稳定发布线）
 - `lts/1.7`：1.7.x LTS 维护线（从 1.7.0 发布提交创建）
-- `develop`：发布回合完成后开启下一开发周期
+- `develop`：2.5.0 开发线（功能范围待规划）
 
 1.7.0 是最后一个 1.x 功能版本和 LTS 基线。它将 server.py/server.ts 和 story.py/story.ts 单体文件拆分为聚焦子模块，保留向后兼容垫片（shim），并新增剧情角色追踪工具：`find_character_appearances`、`find_speakers_in`。后续功能开发转向 2.0；1.7.x 仅做兼容性、安全性、数据同步和关键缺陷修复。
 
