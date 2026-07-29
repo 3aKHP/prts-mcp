@@ -273,10 +273,24 @@ class Config:
         )
         active_ep = _excel_path(active_gamedata_root)
 
-        bep = _excel_path(_BUNDLED_GAMEDATA_PATH)
+        bundled_pair = _activated_pair(
+            _BUNDLED_GAMEDATA_PATH,
+            _BUNDLED_LEVELS_PATH,
+        )
+        bundled_gamedata_root = (
+            bundled_pair[0]
+            if bundled_pair is not None
+            else _activated_root(_BUNDLED_GAMEDATA_PATH)
+        )
+        bundled_levels_root = (
+            bundled_pair[1]
+            if bundled_pair is not None
+            else _activated_root(_BUNDLED_LEVELS_PATH)
+        )
+        bep = _excel_path(bundled_gamedata_root)
         object.__setattr__(self, "bundled_excel_path", bep)
 
-        blp = _BUNDLED_LEVELS_PATH
+        blp = bundled_levels_root
         object.__setattr__(self, "bundled_levels_path", blp)
 
         # effective_excel_path: the path operator.py should actually read from.
