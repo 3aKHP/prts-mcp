@@ -87,7 +87,10 @@ jobs:
   build-image-python:
     runs-on: ubuntu-latest
     needs: verify-python
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    if: |
+      github.ref == 'refs/heads/main' ||
+      github.ref == 'refs/heads/develop' ||
+      (github.event_name == 'pull_request' && startsWith(github.head_ref, 'release/'))
 
     steps:
       - name: Checkout repository

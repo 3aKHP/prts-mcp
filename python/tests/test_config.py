@@ -99,6 +99,57 @@ class TestActivatedDataRoot:
         assert cfg.excel_path == root / "zh_CN" / "gamedata" / "excel"
         assert cfg.effective_excel_path == excel
 
+    def test_bundled_fallback_uses_activated_release(self, tmp_path):
+        runtime_root = tmp_path / "runtime" / "gamedata"
+        bundled_gamedata = tmp_path / "bundle" / "gamedata"
+        bundled_levels = tmp_path / "bundle" / "gamedata-levels"
+        excel_generation = bundled_gamedata / ".releases" / "bundled"
+        levels_generation = bundled_levels / ".releases" / "bundled"
+        excel = excel_generation / "zh_CN" / "gamedata" / "excel"
+        excel.mkdir(parents=True)
+        for name in config_module._REQUIRED_OPERATOR_FILES:
+            (excel / name).write_text("{}", encoding="utf-8")
+        enemy_db = (
+            levels_generation
+            / "zh_CN"
+            / "gamedata"
+            / "levels"
+            / "enemydata"
+            / "enemy_database.json"
+        )
+        enemy_db.parent.mkdir(parents=True)
+        enemy_db.write_text("{}", encoding="utf-8")
+        for root in (bundled_gamedata, bundled_levels):
+            archives = root / "archives"
+            archives.mkdir()
+            (archives / "extract_meta.json").write_text(
+                json.dumps({
+                    "commit_sha": "bundled",
+                    "data_root": ".releases/bundled",
+                }),
+                encoding="utf-8",
+            )
+
+        with (
+            patch.dict(os.environ, {"GAMEDATA_PATH": str(runtime_root)}),
+            patch.object(
+                config_module,
+                "_BUNDLED_GAMEDATA_PATH",
+                bundled_gamedata,
+            ),
+            patch.object(
+                config_module,
+                "_BUNDLED_LEVELS_PATH",
+                bundled_levels,
+            ),
+        ):
+            cfg = Config.load()
+
+        assert cfg.bundled_excel_path == excel
+        assert cfg.bundled_levels_path == levels_generation
+        assert cfg.effective_excel_path == excel
+        assert cfg.effective_levels_path == levels_generation
+
     def test_pair_manifest_hides_partially_activated_generation(self, tmp_path):
         gamedata = tmp_path / "gamedata"
         levels = tmp_path / "gamedata-levels"

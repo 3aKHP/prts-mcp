@@ -285,8 +285,10 @@ export function loadConfig(): Config {
   const lp = resolveLevelsPath(gamedataPath);
   const pair = activatedPair(gamedataPath, lp);
   const activeEp = excelPath(pair?.[0] ?? activatedRoot(gamedataPath));
-  const bep = excelPath(BUNDLED_GAMEDATA_PATH);
-  const blp = BUNDLED_LEVELS_PATH;
+  const bundledPair = activatedPair(BUNDLED_GAMEDATA_PATH, BUNDLED_LEVELS_PATH);
+  const bundledGamedataRoot = bundledPair?.[0] ?? activatedRoot(BUNDLED_GAMEDATA_PATH);
+  const bep = excelPath(bundledGamedataRoot);
+  const blp = bundledPair?.[1] ?? activatedRoot(BUNDLED_LEVELS_PATH);
 
   let effectiveExcelPath: string | null = null;
   if (filesComplete(activeEp)) effectiveExcelPath = activeEp;

@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  copyFileSync,
   mkdirSync,
   mkdtempSync,
   renameSync,
@@ -9,6 +10,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 async function loadConfigModule(): Promise<typeof import("../src/config.js")> {
   return import(`../src/config.ts?cacheBust=${Date.now()}-${Math.random()}`);
@@ -87,6 +89,58 @@ test("effective excel path uses the activated release tree", async () => {
 
     assert.equal(cfg.excelPath, join(custom, "zh_CN", "gamedata", "excel"));
     assert.equal(cfg.effectiveExcelPath, excel);
+  } finally {
+    delete process.env["GAMEDATA_PATH"];
+  }
+});
+
+test("bundled fallback uses activated release trees", async () => {
+  const packageRoot = tempRoot();
+  const copiedSource = join(packageRoot, "src", "config.ts");
+  mkdirSync(join(packageRoot, "src"), { recursive: true });
+  copyFileSync(fileURLToPath(new URL("../src/config.ts", import.meta.url)), copiedSource);
+
+  const bundledGamedata = join(packageRoot, "data", "gamedata");
+  const bundledLevels = join(packageRoot, "data", "gamedata-levels");
+  const excelGeneration = join(bundledGamedata, ".releases", "bundled");
+  const levelsGeneration = join(bundledLevels, ".releases", "bundled");
+  const excel = join(excelGeneration, "zh_CN", "gamedata", "excel");
+  mkdirSync(excel, { recursive: true });
+  for (const name of [
+    "character_table.json",
+    "handbook_info_table.json",
+    "charword_table.json",
+    "story_review_table.json",
+  ]) writeFileSync(join(excel, name), "{}", "utf-8");
+  const enemyDir = join(
+    levelsGeneration,
+    "zh_CN",
+    "gamedata",
+    "levels",
+    "enemydata",
+  );
+  mkdirSync(enemyDir, { recursive: true });
+  writeFileSync(join(enemyDir, "enemy_database.json"), "{}", "utf-8");
+  for (const root of [bundledGamedata, bundledLevels]) {
+    const archives = join(root, "archives");
+    mkdirSync(archives);
+    writeFileSync(join(archives, "extract_meta.json"), JSON.stringify({
+      commit_sha: "bundled",
+      data_root: ".releases/bundled",
+    }), "utf-8");
+  }
+
+  process.env["GAMEDATA_PATH"] = join(packageRoot, "runtime", "gamedata");
+  try {
+    const copiedModule = await import(
+      `${pathToFileURL(copiedSource).href}?cacheBust=${Date.now()}-${Math.random()}`
+    ) as typeof import("../src/config.js");
+    const cfg = copiedModule.loadConfig();
+
+    assert.equal(cfg.bundledExcelPath, excel);
+    assert.equal(cfg.bundledLevelsPath, levelsGeneration);
+    assert.equal(cfg.effectiveExcelPath, excel);
+    assert.equal(cfg.effectiveLevelsPath, levelsGeneration);
   } finally {
     delete process.env["GAMEDATA_PATH"];
   }
