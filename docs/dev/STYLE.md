@@ -257,10 +257,10 @@ TS 文件头注释应注明对应的 Python 文件：`Mirrors python/src/prts_mc
 
 | 文件 | develop 分支 | main 分支（发布时） |
 |------|---------|-------------------|
-| `python/pyproject.toml` | `2.4.0.dev0` | `2.4.0` |
-| `python/uv.lock` | `2.4.0.dev0` | `2.4.0` |
-| `ts/package.json` | `2.4.0-dev.0` | `2.4.0` |
-| `ts/package-lock.json` | `2.4.0-dev.0` | `2.4.0` |
+| `python/pyproject.toml` | `2.5.0.dev0` | `2.5.0` |
+| `python/uv.lock` | `2.5.0.dev0` | `2.5.0` |
+| `ts/package.json` | `2.5.0-dev.0` | `2.5.0` |
+| `ts/package-lock.json` | `2.5.0-dev.0` | `2.5.0` |
 
 **版本号需要同步更新的地方**：
 
