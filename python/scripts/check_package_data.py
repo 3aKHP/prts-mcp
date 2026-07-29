@@ -35,6 +35,13 @@ def main() -> int:
     gamedata_root = data_root / "gamedata"
     levels_root = data_root / "gamedata-levels"
     story_zip = data_root / "storyjson" / STORY_ZH_CN.asset_name
+    for label, root in (
+        ("Bundled gamedata", gamedata_root),
+        ("Bundled level data", levels_root),
+    ):
+        if not root.resolve().is_relative_to(data_root):
+            print(f"{label} resolves outside package root: {root}", file=sys.stderr)
+            return 1
     config = Config(
         gamedata_path=gamedata_root,
         storyjson_zip=story_zip,

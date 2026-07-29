@@ -6,6 +6,8 @@ import sys
 from pathlib import Path
 from zipfile import ZipFile
 
+import pytest
+
 from prts_mcp.data.datasets import GAMEDATA_EXCEL, GAMEDATA_LEVELS
 
 
@@ -60,25 +62,36 @@ def test_package_check_follows_active_gamedata_generations(tmp_path: Path) -> No
     assert "Package data check passed" in result.stdout
 
 
-def test_package_check_rejects_symlinked_external_data(tmp_path: Path) -> None:
-    external = tmp_path / "external"
-    external_excel = external / "excel"
-    external_levels = external / "levels"
-    external_excel.mkdir(parents=True)
+def _write_gamedata(gamedata_root: Path, levels_root: Path) -> None:
     for relative_path in GAMEDATA_EXCEL.required_files:
-        (external_excel / Path(relative_path).name).write_text("{}", encoding="utf-8")
+        path = gamedata_root / relative_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("{}", encoding="utf-8")
     for relative_path in GAMEDATA_LEVELS.required_files:
-        path = external_levels / relative_path
+        path = levels_root / relative_path
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("{}", encoding="utf-8")
 
+
+@pytest.mark.parametrize("escaped_root", ["gamedata", "gamedata-levels"])
+def test_package_check_rejects_symlinked_external_data(
+    tmp_path: Path,
+    escaped_root: str,
+) -> None:
     data_root = tmp_path / "package"
-    excel_link = data_root / "gamedata" / "zh_CN" / "gamedata" / "excel"
-    excel_link.parent.mkdir(parents=True)
-    excel_link.symlink_to(external_excel, target_is_directory=True)
-    levels_link = data_root / "gamedata-levels"
-    levels_link.parent.mkdir(parents=True, exist_ok=True)
-    levels_link.symlink_to(external_levels, target_is_directory=True)
+    external_root = tmp_path / "external" / escaped_root
+    gamedata_root = (
+        external_root if escaped_root == "gamedata" else data_root / "gamedata"
+    )
+    levels_root = (
+        external_root
+        if escaped_root == "gamedata-levels"
+        else data_root / "gamedata-levels"
+    )
+    _write_gamedata(gamedata_root, levels_root)
+    linked_root = data_root / escaped_root
+    linked_root.parent.mkdir(parents=True, exist_ok=True)
+    linked_root.symlink_to(external_root, target_is_directory=True)
     _write_story_zip(data_root)
 
     result = _run_package_check(data_root)
