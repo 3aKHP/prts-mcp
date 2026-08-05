@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import subprocess
 import sys
@@ -102,6 +103,104 @@ class TestCheckLatestRelease:
 # ---------------------------------------------------------------------------
 
 class TestSyncRelease:
+    def test_manifest_digest_is_verified_before_activation(self, tmp_path):
+        spec = ReleaseSpec(
+            owner="3aKHP",
+            repo="arknights-data-pipeline",
+            asset_name="zh_CN.zip",
+            local_zip=tmp_path / "storyjson" / "zh_CN.zip",
+            verify_manifest=True,
+        )
+        content = b"verified"
+        release = _mock_release_response("data-new", "zh_CN.zip", "https://example/asset")
+        asset = _mock_asset_response(content)
+        manifest = _mock_asset_response()
+        manifest.json.return_value = {
+            "contractVersion": "prts-mcp-data/v1",
+            "source": {"versionId": "new"},
+            "assets": {
+                "zh_CN.zip": {
+                    "size": len(content),
+                    "sha256": hashlib.sha256(content).hexdigest(),
+                },
+            },
+        }
+        with patch(
+            "prts_mcp.data.sync._get_cascading",
+            side_effect=[release, asset, manifest],
+        ):
+            result = sync_release(spec, force_check=True)
+        assert result.status == "updated"
+        assert spec.local_zip.read_bytes() == content
+
+    def test_manifest_digest_mismatch_keeps_previous_zip(self, tmp_path):
+        spec = ReleaseSpec(
+            owner="3aKHP",
+            repo="arknights-data-pipeline",
+            asset_name="zh_CN.zip",
+            local_zip=tmp_path / "storyjson" / "zh_CN.zip",
+            verify_manifest=True,
+        )
+        spec.local_zip.parent.mkdir(parents=True)
+        spec.local_zip.write_bytes(b"old")
+        release = _mock_release_response("data-new", "zh_CN.zip", "https://example/asset")
+        asset = _mock_asset_response(b"new")
+        manifest = _mock_asset_response()
+        manifest.json.return_value = {
+            "contractVersion": "prts-mcp-data/v1",
+            "source": {"versionId": "new"},
+            "assets": {"zh_CN.zip": {"size": 3, "sha256": "bad"}},
+        }
+        with patch(
+            "prts_mcp.data.sync._get_cascading",
+            side_effect=[release, asset, manifest],
+        ):
+            result = sync_release(spec, force_check=True)
+        assert result.status == "offline_fallback"
+        assert spec.local_zip.read_bytes() == b"old"
+
+    def test_missing_manifest_keeps_legacy_release_compatible(self, tmp_path):
+        spec = ReleaseSpec(
+            owner="3aKHP",
+            repo="arknights-data-pipeline",
+            asset_name="zh_CN.zip",
+            local_zip=tmp_path / "storyjson" / "zh_CN.zip",
+            verify_manifest=True,
+        )
+        release = _mock_release_response("data-legacy", "zh_CN.zip", "https://example/asset")
+        asset = _mock_asset_response(b"legacy")
+        with patch(
+            "prts_mcp.data.sync._get_cascading",
+            side_effect=[release, asset, Exception("HTTP 404")],
+        ):
+            result = sync_release(spec, force_check=True)
+        assert result.status == "updated"
+        assert spec.local_zip.read_bytes() == b"legacy"
+
+    def test_unsupported_manifest_contract_keeps_previous_zip(self, tmp_path):
+        spec = ReleaseSpec(
+            owner="3aKHP",
+            repo="arknights-data-pipeline",
+            asset_name="zh_CN.zip",
+            local_zip=tmp_path / "storyjson" / "zh_CN.zip",
+            verify_manifest=True,
+        )
+        spec.local_zip.parent.mkdir(parents=True)
+        spec.local_zip.write_bytes(b"old")
+        manifest = _mock_asset_response()
+        manifest.json.return_value = {"contractVersion": "unknown", "assets": {}}
+        with patch(
+            "prts_mcp.data.sync._get_cascading",
+            side_effect=[
+                _mock_release_response("data-new", "zh_CN.zip", "https://example/asset"),
+                _mock_asset_response(b"new"),
+                manifest,
+            ],
+        ):
+            result = sync_release(spec, force_check=True)
+        assert result.status == "offline_fallback"
+        assert spec.local_zip.read_bytes() == b"old"
+
     def test_concurrent_release_checks_are_serialized(self, tmp_path):
         spec = _make_spec(tmp_path)
         _write_zip(spec.local_zip)

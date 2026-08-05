@@ -120,6 +120,11 @@ PRTS-MCP/
 
 ## 数据源
 
+2.5.0 开发线（`develop`）的默认 Auto-Sync 只消费自建
+`3aKHP/arknights-data-pipeline` Release；旧版两个上游仓库不再是新版本的数据依赖。
+`main` 的 2.4.x 与 `lts/1.7` 暂保留旧上游兼容路径，供 LTS 维护使用，后续另行设计迁移，
+不在本轮跨线切换。
+
 | 数据源 | 用途 | 同步方式 |
 |--------|------|----------|
 | [arknights-data-pipeline](https://github.com/3aKHP/arknights-data-pipeline) | 干员/敌人/关卡/物品表格 | GitHub Release `zh_CN-excel.zip` |

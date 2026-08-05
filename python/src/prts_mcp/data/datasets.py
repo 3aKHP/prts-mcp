@@ -25,6 +25,7 @@ class ReleaseDatasetSpec:
     repo: str
     asset_name: str
     required_files: tuple[str, ...]
+    verify_manifest: bool = True
 
     def release_spec(self, local_zip: Path) -> ReleaseSpec:
         return ReleaseSpec(
@@ -33,6 +34,7 @@ class ReleaseDatasetSpec:
             asset_name=self.asset_name,
             local_zip=local_zip,
             validate_zip=self.validate_zip,
+            verify_manifest=self.verify_manifest,
         )
 
     def archive_spec(self, *, local_zip: Path, local_root: Path) -> ReleaseArchiveSpec:
@@ -43,6 +45,7 @@ class ReleaseDatasetSpec:
             local_zip=local_zip,
             local_root=local_root,
             required_files=self.required_files,
+            verify_manifest=self.verify_manifest,
         )
 
     def validate_zip(self, zip_path: Path) -> list[str]:

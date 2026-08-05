@@ -237,7 +237,7 @@ test("E2E", async (t) => {
     const r = await mcpPost(origin, tc("list_enemies", { limit: 5 }, 8), sessionId);
     assert.equal(r.status, 200);
     const text = toolResultText(r);
-    assert.ok(text.includes("敌方图鉴") || dataUnavailable(text), `unexpected: ${text.slice(0, 100)}`);
+    assert.ok(text.includes("敌人图鉴") || dataUnavailable(text), `unexpected: ${text.slice(0, 100)}`);
   });
 
   await t.test("list_story_events — data or graceful error", async () => {

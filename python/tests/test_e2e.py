@@ -217,7 +217,7 @@ def test_search(server: subprocess.Popen) -> None:
 
 def test_list_enemies_graceful(server: subprocess.Popen) -> None:
     text = _call_result_text(server, "list_enemies", {"limit": 5}, 8)
-    assert "敌方图鉴" in text or _data_unavailable(text), f"unexpected: {text[:120]}"
+    assert "敌人图鉴" in text or _data_unavailable(text), f"unexpected: {text[:120]}"
 
 
 def test_list_story_events_graceful(server: subprocess.Popen) -> None:
