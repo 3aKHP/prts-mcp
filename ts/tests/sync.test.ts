@@ -12,15 +12,92 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { createHash } from "node:crypto";
 import AdmZip from "adm-zip";
 import {
   syncRelease,
+  downloadReleaseAsset,
   syncReleaseArchive,
   syncReleaseArchivePair,
   withArchiveActivationLock,
   type ReleaseArchiveSpec,
   type ReleaseSpec,
 } from "../src/data/sync.ts";
+
+test("downloadReleaseAsset verifies the optional factory manifest", async () => {
+  const spec = { ...tempSpec(), verifyManifest: true };
+  const content = Buffer.from("verified", "utf-8");
+  const sha256 = createHash("sha256").update(content).digest("hex");
+  let call = 0;
+  await withFetchMock((async (input: RequestInfo | URL) => {
+    call += 1;
+    if (call === 1) return new Response(content);
+    assert.match(String(input), /manifest\.json$/);
+    return new Response(JSON.stringify({
+      contractVersion: "prts-mcp-data/v1",
+      source: { versionId: "test" },
+      assets: { "zh_CN.zip": { size: content.byteLength, sha256 } },
+    }), { headers: { "content-type": "application/json" } });
+  }) as typeof fetch, async () => {
+    await downloadReleaseAsset(spec, "data-test", "https://example/asset");
+  });
+  assert.deepEqual(readFileSync(spec.localZip), content);
+});
+
+test("downloadReleaseAsset keeps the old zip on manifest mismatch", async () => {
+  const spec = { ...tempSpec(), verifyManifest: true };
+  mkdirSync(dirname(spec.localZip), { recursive: true });
+  writeFileSync(spec.localZip, "old", "utf-8");
+  const content = Buffer.from("new", "utf-8");
+  let call = 0;
+  await withFetchMock((async (input: RequestInfo | URL) => {
+    call += 1;
+    if (call === 1) return new Response(content);
+    assert.match(String(input), /manifest\.json$/);
+    return new Response(JSON.stringify({
+      contractVersion: "prts-mcp-data/v1",
+      source: { versionId: "test" },
+      assets: { "zh_CN.zip": { size: content.byteLength, sha256: "bad" } },
+    }));
+  }) as typeof fetch, async () => {
+    await assert.rejects(
+      downloadReleaseAsset(spec, "data-test", "https://example/asset"),
+      /manifest mismatch/,
+    );
+  });
+  assert.equal(readFileSync(spec.localZip, "utf-8"), "old");
+});
+
+test("downloadReleaseAsset keeps legacy releases without a manifest", async () => {
+  const spec = { ...tempSpec(), verifyManifest: true };
+  const content = Buffer.from("legacy", "utf-8");
+  let call = 0;
+  await withFetchMock((async (input: RequestInfo | URL) => {
+    call += 1;
+    if (call === 1) return new Response(content);
+    assert.match(String(input), /manifest\.json$/);
+    return new Response("missing", { status: 404 });
+  }) as typeof fetch, async () => {
+    await downloadReleaseAsset(spec, "data-test", "https://example/asset");
+  });
+  assert.deepEqual(readFileSync(spec.localZip), content);
+});
+
+test("downloadReleaseAsset rejects an unsupported manifest contract", async () => {
+  const spec = { ...tempSpec(), verifyManifest: true };
+  let call = 0;
+  await withFetchMock((async () => {
+    call += 1;
+    if (call === 1) return new Response("new");
+    return new Response(JSON.stringify({ contractVersion: "unknown", assets: {} }));
+  }) as typeof fetch, async () => {
+    await assert.rejects(
+      downloadReleaseAsset(spec, "data-test", "https://example/asset"),
+      /unsupported contractVersion/,
+    );
+  });
+  assert.equal(existsSync(spec.localZip), false);
+});
 
 function tempSpec(): ReleaseSpec {
   const root = mkdtempSync(join(tmpdir(), "prts-sync-test-"));

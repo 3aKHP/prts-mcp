@@ -64,7 +64,8 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "adm-zip": "^0.5.16",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "undici": "^8.10.0"
   },
   "devDependencies": {
     "@types/adm-zip": "^0.5.7",

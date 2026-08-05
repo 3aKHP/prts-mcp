@@ -32,6 +32,11 @@ Two release lines ship in parallel:
 | **2.4** (`main`) | `2.4.0` | 23 | Process-lifetime Auto-Sync keeps GameData and StoryJson current without service restarts; GameData excel and levels activate atomically. |
 | **1.7 LTS** (`lts/1.7`) | `1.7.0` | 32 | Stable maintenance line. 1.7.x accepts only compatibility, security, data-sync, and critical bug fixes. |
 
+The `develop` line (targeting 2.5.0) uses the self-built `arknights-data-pipeline`
+Release exclusively for default Auto-Sync. The 2.4/main and 1.7 LTS lines retain
+their legacy upstream compatibility until a separate, backwards-compatible migration;
+changes to the new factory path must not be backported to LTS as an implicit source switch.
+
 | Area | Python | TypeScript |
 |------|--------|------------|
 | MCP tools | Same 23 public tool names and required parameters (2.0) / 32 on 1.7 LTS | Same 23 (2.0) / 32 on 1.7 LTS |
@@ -39,6 +44,19 @@ Two release lines ship in parallel:
 | Level data | Auto-synced `zh_CN-levels.zip` beside GameData | Auto-synced `zh_CN-levels.zip` beside GameData |
 | Story data | `STORYJSON_PATH` or auto-synced `zh_CN.zip` | `STORYJSON_PATH` or auto-synced `zh_CN.zip` |
 | Bundled fallback data | Docker image only | Docker image and published npm package (PyPI stays data-light) |
+
+### Auto-Sync data contract
+
+Both implementations consume the self-built [`arknights-data-pipeline`](https://github.com/3aKHP/arknights-data-pipeline)
+Release. New releases carry a `manifest.json` with the `prts-mcp-data/v1` contract,
+source `versionId`, and SHA-256/size for each archive; a mismatch is rejected before
+activation, while pre-manifest releases remain readable during the transition. The
+last activated generation stays in place on download, schema, or manifest failure.
+
+`GITHUB_MIRRORS` is an explicit fallback for GitHub URL access. In Node deployments,
+standard `HTTP_PROXY`/`HTTPS_PROXY` (including lowercase spellings) are honored via
+Undici; Bun keeps its native `fetch` path. Proxy support does not weaken manifest or
+ZIP validation.
 
 See [`docs/migration-1.x-to-2.0.md`](docs/migration-1.x-to-2.0.md) for the 1.x → 2.0
 breaking changes (tool consolidation, `operator_name` → `name`, output channel),
@@ -156,6 +174,17 @@ and macOS development setup.
 | 关卡战斗数据 | 自动同步与 GameData 并列的 `zh_CN-levels.zip` | 自动同步与 GameData 并列的 `zh_CN-levels.zip` |
 | 剧情数据 | `STORYJSON_PATH` 或自动同步 `zh_CN.zip` | `STORYJSON_PATH` 或自动同步 `zh_CN.zip` |
 | bundled 兜底数据 | Docker 镜像 | Docker 镜像和正式 npm 包（PyPI 保持轻量） |
+
+### Auto-Sync 数据契约
+
+两套实现都消费自建 [`arknights-data-pipeline`](https://github.com/3aKHP/arknights-data-pipeline)
+Release。新 Release 附带 `manifest.json`，声明 `prts-mcp-data/v1` 契约、源
+`versionId` 以及每个压缩包的大小/SHA-256；不匹配会在激活前拒绝，迁移期间仍兼容没有
+manifest 的旧 Release。下载、结构或 manifest 校验失败时，服务继续使用上一代已激活数据。
+
+`GITHUB_MIRRORS` 是显式的 GitHub 访问备用路径；Node 部署会通过 Undici 使用标准
+`HTTP_PROXY`/`HTTPS_PROXY`（也识别小写变量），Bun 保持原生 `fetch` 路径。代理不会
+绕过 manifest 或 ZIP 校验。
 
 1.x → 2.0 的破坏性变更（工具面合并、`operator_name` → `name`、output channel）见
 [`docs/migration-1.x-to-2.0.md`](docs/migration-1.x-to-2.0.md)；0.x → 1.0 迁移见

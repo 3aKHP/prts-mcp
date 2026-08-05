@@ -147,6 +147,9 @@ docker run -d -p 3000:3000 -v prts-mcp-ts-data:/data/gamedata -v prts-mcp-ts-lev
 
 镜像内置 bundled 数据作为网络不可用时的离线保底。
 
+自建数据工厂的新 Release 附带 manifest（`prts-mcp-data/v1`、源 versionId、包大小和
+SHA-256）；TypeScript 实现会在原子激活前校验它。没有 manifest 的历史 Release 仍兼容读取。
+
 周期可通过 `PRTS_AUTO_SYNC_INTERVAL_SECONDS` 调整（`60..604800` 秒）；设为 `0` 时只执行启动同步。
 
 > 正式发布到 npm 的包会由 CI 预置 bundled 数据；本地 `npm pack` 或手动发布前需先运行下方预置步骤，否则包内只会包含空目录占位。

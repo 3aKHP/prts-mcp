@@ -67,6 +67,9 @@ GAMEDATA_PATH=/path/to/ArknightsGameData prts-mcp
 
 镜像内置 bundled 数据作为网络不可用时的离线保底。
 
+自建数据工厂的新 Release 附带 manifest（`prts-mcp-data/v1`、源 versionId、包大小和
+SHA-256）；Python 实现会在原子激活前校验它。没有 manifest 的历史 Release 仍兼容读取。
+
 周期可通过 `PRTS_AUTO_SYNC_INTERVAL_SECONDS` 调整（`60..604800` 秒）；设为 `0` 时只执行启动同步。
 
 > PyPI 包本身不内置 bundled 数据；直接 `pip install prts-mcp` 时会在启动时自动同步，或使用 `GAMEDATA_PATH` / `STORYJSON_PATH` 指向你自己的本地数据。若 `GAMEDATA_PATH` 指向完整 ArknightsGameData 仓库根目录，内含的 `zh_CN/gamedata/levels` 会直接用于关卡战斗数据；否则默认在其相邻目录维护 `gamedata-levels`。正式 Docker 镜像会由 CI 预置兜底数据。

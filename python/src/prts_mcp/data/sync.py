@@ -40,6 +40,10 @@ GAMEDATA_FILES: tuple[str, ...] = (
     "zh_CN/gamedata/excel/item_table.json",
 )
 
+# Must match the factory manifest contract. Older releases without a manifest
+# remain readable during the migration to the self-built pipeline.
+DATA_CONTRACT_VERSION = "prts-mcp-data/v1"
+
 _GITHUB_UA = "PRTS-MCP-Bot/0.1 (Arknights fan-creation helper)"
 
 
@@ -214,6 +218,7 @@ class ReleaseSpec:
     asset_name: str   # e.g. "zh_CN.zip"
     local_zip: Path   # destination path on disk
     validate_zip: Callable[[Path], list[str]] | None = None
+    verify_manifest: bool = False
 
 
 @dataclass(frozen=True)
@@ -226,6 +231,7 @@ class ReleaseArchiveSpec:
     local_zip: Path
     local_root: Path
     required_files: tuple[str, ...]
+    verify_manifest: bool = False
 
 
 def _release_cache_path(spec: ReleaseSpec) -> Path:
@@ -267,6 +273,8 @@ def download_release_asset(spec: ReleaseSpec, tag: str, url: str, timeout: float
             missing = spec.validate_zip(tmp)
             if missing:
                 raise ValueError("Downloaded release asset is invalid: " + "; ".join(missing[:10]))
+        if spec.verify_manifest:
+            _verify_release_manifest(spec, tag, tmp, timeout=timeout)
         tmp.replace(spec.local_zip)
 
         # Extract version identifier from tag (format: "data-<versionId>")
@@ -284,6 +292,54 @@ def download_release_asset(spec: ReleaseSpec, tag: str, url: str, timeout: float
         except OSError:
             pass
         raise
+
+
+def _verify_release_manifest(
+    spec: ReleaseSpec, tag: str, asset_path: Path, *, timeout: float,
+) -> None:
+    """Verify an asset against the optional factory manifest asset.
+
+    Older releases predate the manifest asset and remain readable during the
+    transition; once a release publishes one, mismatches fail closed.
+    """
+    manifest_url = (
+        f"https://github.com/{spec.owner}/{spec.repo}/releases/download/{tag}/manifest.json"
+    )
+    try:
+        response = _get_cascading(
+            manifest_url, timeout=timeout, headers=_github_headers(), follow_redirects=True,
+        )
+    except Exception as exc:
+        if "404" in str(exc):
+            return
+        raise ValueError(f"manifest unavailable for {tag}: {exc}") from exc
+    try:
+        manifest = response.json()
+        if not isinstance(manifest, dict):
+            raise ValueError("manifest root must be an object")
+        if manifest.get("contractVersion") != DATA_CONTRACT_VERSION:
+            raise ValueError(
+                f"unsupported contractVersion {manifest.get('contractVersion')!r}"
+            )
+        expected = manifest["assets"][spec.asset_name]
+        expected_size = int(expected["size"])
+        expected_sha = str(expected["sha256"])
+        expected_version = tag.removeprefix("data-")
+        source = manifest.get("source", {})
+        if not isinstance(source, dict):
+            raise ValueError("manifest source must be an object")
+        source_version = source.get("versionId")
+        if tag.startswith("data-") and source_version != expected_version:
+            raise ValueError("manifest source version does not match release tag")
+    except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        raise ValueError(f"manifest for {tag} is invalid: {exc}") from exc
+    actual_sha = hashlib.sha256(asset_path.read_bytes()).hexdigest()
+    if expected_size != asset_path.stat().st_size or expected_sha != actual_sha:
+        raise ValueError(
+            f"manifest mismatch for {spec.asset_name}: "
+            f"expected {expected_size}/{expected_sha}, "
+            f"got {asset_path.stat().st_size}/{actual_sha}"
+        )
 
 
 def _sync_release_locked(spec: ReleaseSpec, *, force_check: bool = False) -> SyncResult:
@@ -656,6 +712,7 @@ def _sync_release_archive_locked(
             asset_name=spec.asset_name,
             local_zip=spec.local_zip,
             validate_zip=lambda path: _validate_archive_zip(path, spec.required_files),
+            verify_manifest=spec.verify_manifest,
         ),
         force_check=force_check,
     )

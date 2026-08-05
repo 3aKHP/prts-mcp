@@ -25,6 +25,13 @@ import {
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import AdmZip from "adm-zip";
+import type { Dispatcher } from "undici";
+
+const NATIVE_FETCH = globalThis.fetch;
+let envProxyAgent: Dispatcher | undefined;
+
+/** Versioned contract shared with the arknights-data-pipeline manifest. */
+export const DATA_CONTRACT_VERSION = "prts-mcp-data/v1";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -122,6 +129,32 @@ function urlCandidates(url: string): string[] {
   return [url, ...parseMirrors().map((m) => `${m}/${url}`)];
 }
 
+async function fetchWithRuntimeProxy(
+  url: string,
+  options: Omit<RequestInit, "signal">,
+  signal: AbortSignal,
+): Promise<Response> {
+  // Preserve test/in-process fetch overrides and Bun's native proxy support.
+  if (
+    globalThis.fetch !== NATIVE_FETCH
+    || process.versions.bun
+    || !(
+      process.env["HTTP_PROXY"] || process.env["HTTPS_PROXY"]
+      || process.env["http_proxy"] || process.env["https_proxy"]
+    )
+  ) {
+    return globalThis.fetch(url, { ...options, signal });
+  }
+  const { EnvHttpProxyAgent, fetch: undiciFetch } = await import("undici");
+  if (envProxyAgent === undefined) envProxyAgent = new EnvHttpProxyAgent();
+  const response = await undiciFetch(url, {
+    ...options,
+    signal,
+    dispatcher: envProxyAgent,
+  } as Parameters<typeof undiciFetch>[1]);
+  return response as unknown as Response;
+}
+
 /**
  * fetch() wrapper that cascades through URL candidates on failure.
  *
@@ -140,10 +173,9 @@ async function fetchCascading(
   let lastErr: unknown = new Error("All URL candidates failed");
   for (let i = 0; i < candidates.length; i++) {
     try {
-      const res = await fetch(candidates[i], {
-        ...options,
-        signal: AbortSignal.timeout(timeoutMs),
-      });
+      const res = await fetchWithRuntimeProxy(
+        candidates[i], options, AbortSignal.timeout(timeoutMs),
+      );
       if (res.ok) return res;
       lastErr = new Error(`HTTP ${res.status}`);
       // Direct 4xx → the resource does not exist; mirrors cannot help.
@@ -197,6 +229,8 @@ export interface ReleaseSpec {
   localZip: string;
   /** Optional validator returning missing or invalid zip entries. */
   validateZip?: (zipPath: string) => string[];
+  /** Verify the optional factory manifest when the release provides it. */
+  verifyManifest?: boolean;
 }
 
 /** Describes a GitHub Release zip asset that should be extracted locally. */
@@ -207,6 +241,7 @@ export interface ReleaseArchiveSpec {
   localZip: string;
   localRoot: string;
   requiredFiles: readonly string[];
+  verifyManifest?: boolean;
 }
 
 function releaseCachePath(spec: ReleaseSpec): string {
@@ -319,6 +354,9 @@ export async function downloadReleaseAsset(
     if (missing.length > 0) {
       throw new Error(`Downloaded ${spec.assetName} is missing required entries: ${missing.join(", ")}`);
     }
+    if (spec.verifyManifest) {
+      await verifyReleaseManifest(spec, tag, tmp, timeoutMs);
+    }
     await rename(tmp, spec.localZip);
 
     const commitSha = tag.startsWith(TAG_PREFIX) ? tag.slice(TAG_PREFIX.length) : tag;
@@ -332,6 +370,55 @@ export async function downloadReleaseAsset(
   } catch (err) {
     try { await unlink(tmp); } catch { /* best-effort */ }
     throw err;
+  }
+}
+
+async function verifyReleaseManifest(
+  spec: ReleaseSpec,
+  tag: string,
+  assetPath: string,
+  timeoutMs: number,
+): Promise<void> {
+  const manifestUrl = `https://github.com/${spec.owner}/${spec.repo}/releases/download/${tag}/manifest.json`;
+  let response: Response;
+  try {
+    response = await fetchCascading(
+      manifestUrl, { headers: githubHeaders(), redirect: "follow" }, timeoutMs,
+    );
+  } catch (err) {
+    if (errorMessage(err).includes("HTTP 404")) return;
+    throw new Error(`manifest unavailable for ${tag}: ${errorMessage(err)}`);
+  }
+  let manifest: { assets?: Record<string, { size?: number; sha256?: string }> };
+  try {
+    manifest = await response.json() as typeof manifest;
+  } catch (err) {
+    throw new Error(`manifest for ${tag} is invalid: ${errorMessage(err)}`);
+  }
+  const typedManifest = manifest as typeof manifest & {
+    contractVersion?: unknown;
+    source?: { versionId?: unknown };
+  };
+  if (typedManifest.contractVersion !== DATA_CONTRACT_VERSION) {
+    throw new Error(`manifest for ${tag} has unsupported contractVersion`);
+  }
+  if (
+    tag.startsWith("data-")
+    && typedManifest.source?.versionId !== tag.slice("data-".length)
+  ) {
+    throw new Error(`manifest source version does not match release tag ${tag}`);
+  }
+  const expected = manifest.assets?.[spec.assetName];
+  if (typeof expected?.size !== "number" || typeof expected.sha256 !== "string") {
+    throw new Error(`manifest for ${tag} has no valid entry for ${spec.assetName}`);
+  }
+  const bytes = await readFile(assetPath);
+  const actualSha = createHash("sha256").update(bytes).digest("hex");
+  if (expected.size !== bytes.byteLength || expected.sha256 !== actualSha) {
+    throw new Error(
+      `manifest mismatch for ${spec.assetName}: expected `
+      + `${expected.size}/${expected.sha256}, got ${bytes.byteLength}/${actualSha}`,
+    );
   }
 }
 
