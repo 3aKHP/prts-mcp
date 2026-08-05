@@ -130,7 +130,7 @@ jobs:
         run: |
           mkdir -p ts/data/storyjson
           gh release download \
-            --repo 3aKHP/ArknightsStoryJson \
+            --repo 3aKHP/arknights-data-pipeline \
             --pattern "zh_CN.zip" \
             --dir ts/data/storyjson/ \
             --clobber
@@ -189,7 +189,7 @@ jobs:
         run: |
           mkdir -p ts/data/storyjson
           gh release download \
-            --repo 3aKHP/ArknightsStoryJson \
+            --repo 3aKHP/arknights-data-pipeline \
             --pattern "zh_CN.zip" \
             --dir ts/data/storyjson/ \
             --clobber

@@ -33,7 +33,7 @@ from prts_mcp.data.sync import (
 def _make_spec(tmp_path: Path) -> ReleaseSpec:
     return ReleaseSpec(
         owner="3aKHP",
-        repo="ArknightsStoryJson",
+        repo="arknights-data-pipeline",
         asset_name="zh_CN.zip",
         local_zip=tmp_path / "storyjson" / "zh_CN.zip",
     )
@@ -76,7 +76,7 @@ def _active_archive_root(spec: ReleaseArchiveSpec) -> Path:
 class TestCheckLatestRelease:
     def test_returns_tag_and_url(self, tmp_path):
         spec = _make_spec(tmp_path)
-        tag = "upstream-abc123"
+        tag = "data-abc123"
         url = "https://github.com/example/release/zh_CN.zip"
 
         with patch("httpx.get", return_value=_mock_release_response(tag, "zh_CN.zip", url)):
@@ -86,7 +86,7 @@ class TestCheckLatestRelease:
 
     def test_asset_not_found_returns_none(self, tmp_path):
         spec = _make_spec(tmp_path)
-        with patch("httpx.get", return_value=_mock_release_response("upstream-abc", "other.zip", "http://x")):
+        with patch("httpx.get", return_value=_mock_release_response("data-abc", "other.zip", "http://x")):
             result = check_latest_release(spec)
         assert result is None
 
@@ -139,7 +139,7 @@ class TestSyncRelease:
         _write_zip(spec.local_zip)
         (spec.local_zip.parent / "release_meta.json").write_text(
             json.dumps({
-                "repo": "3aKHP/ArknightsStoryJson",
+                "repo": "3aKHP/arknights-data-pipeline",
                 "branch": "releases",
                 "commitSha": "same-sha",
                 "fetchedAt": "2099-01-01T00:00:00.000Z",
@@ -172,7 +172,7 @@ class TestSyncRelease:
         _write_zip(spec.local_zip)
         (spec.local_zip.parent / "release_meta.json").write_text(
             json.dumps({
-                "repo": "3aKHP/ArknightsStoryJson",
+                "repo": "3aKHP/arknights-data-pipeline",
                 "branch": "releases",
                 "commit_sha": commit_sha,
                 "fetched_at": fetched_at,
@@ -193,7 +193,7 @@ class TestSyncRelease:
 
     def test_updated_when_new_tag(self, tmp_path):
         spec = _make_spec(tmp_path)
-        tag = "upstream-newsha1234"
+        tag = "data-newsha1234"
         asset_url = "https://example.com/zh_CN.zip"
 
         with (
@@ -210,14 +210,14 @@ class TestSyncRelease:
     def test_up_to_date_when_sha_matches(self, tmp_path):
         spec = _make_spec(tmp_path)
         sha = "abc123def456"
-        tag = f"upstream-{sha}"
+        tag = f"data-{sha}"
         _write_zip(spec.local_zip)
 
         # Write a cache meta that matches
         from prts_mcp.data.sync import CacheMeta
         from datetime import datetime, timezone
         CacheMeta(
-            repo="3aKHP/ArknightsStoryJson",
+            repo="3aKHP/arknights-data-pipeline",
             branch="releases",
             commit_sha=sha,
             fetched_at=datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -267,7 +267,7 @@ class TestSyncRelease:
     def test_tag_prefix_stripped_for_sha(self, tmp_path):
         spec = _make_spec(tmp_path)
         sha = "c785d88f552fce9bbe2ce9122bd0e9f516810e20"
-        tag = f"upstream-{sha}"
+        tag = f"data-{sha}"
 
         with (
             patch("prts_mcp.data.sync.check_latest_release", return_value=(tag, "http://x")),
@@ -285,7 +285,7 @@ class TestSyncRelease:
         from prts_mcp.data.sync import CacheMeta
         from datetime import datetime, timezone
         CacheMeta(
-            repo="3aKHP/ArknightsStoryJson",
+            repo="3aKHP/arknights-data-pipeline",
             branch="releases",
             commit_sha=sha,
             fetched_at=datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -306,7 +306,7 @@ class TestSyncRelease:
         from prts_mcp.data.sync import CacheMeta
         from datetime import datetime, timezone
         CacheMeta(
-            repo="3aKHP/ArknightsStoryJson",
+            repo="3aKHP/arknights-data-pipeline",
             branch="releases",
             commit_sha=sha,
             fetched_at=datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -315,7 +315,7 @@ class TestSyncRelease:
 
         with patch(
             "prts_mcp.data.sync.check_latest_release",
-            return_value=(f"upstream-{sha}", "http://x"),
+            return_value=(f"data-{sha}", "http://x"),
         ) as mock_check:
             result = sync_release(spec, force_check=True)
 
@@ -334,7 +334,7 @@ class TestSyncReleaseArchive:
         archive_dir.mkdir()
         spec = ReleaseArchiveSpec(
             owner="3aKHP",
-            repo="ArknightsGameData",
+            repo="arknights-data-pipeline",
             asset_name="zh_CN-excel.zip",
             local_zip=archive_dir / "zh_CN-excel.zip",
             local_root=tmp_path / "gamedata",
@@ -355,7 +355,7 @@ class TestSyncReleaseArchive:
         archive_dir.mkdir()
         spec = ReleaseArchiveSpec(
             owner="3aKHP",
-            repo="ArknightsGameData",
+            repo="arknights-data-pipeline",
             asset_name="zh_CN-excel.zip",
             local_zip=archive_dir / "zh_CN-excel.zip",
             local_root=tmp_path / "gamedata",
@@ -381,7 +381,7 @@ class TestSyncReleaseArchive:
         archive_dir.mkdir()
         spec = ReleaseArchiveSpec(
             owner="3aKHP",
-            repo="ArknightsGameData",
+            repo="arknights-data-pipeline",
             asset_name="zh_CN-excel.zip",
             local_zip=archive_dir / "zh_CN-excel.zip",
             local_root=tmp_path / "gamedata",
@@ -421,7 +421,7 @@ class TestSyncReleaseArchive:
 
         spec = ReleaseArchiveSpec(
             owner="3aKHP",
-            repo="ArknightsGameData",
+            repo="arknights-data-pipeline",
             asset_name="zh_CN-excel.zip",
             local_zip=zip_path,
             local_root=tmp_path / "gamedata",
@@ -464,7 +464,7 @@ class TestSyncReleaseArchive:
 
         spec = ReleaseArchiveSpec(
             owner="3aKHP",
-            repo="ArknightsGameData",
+            repo="arknights-data-pipeline",
             asset_name="zh_CN-excel.zip",
             local_zip=zip_path,
             local_root=tmp_path / "gamedata",
@@ -502,7 +502,7 @@ class TestSyncReleaseArchive:
 
         spec = ReleaseArchiveSpec(
             owner="3aKHP",
-            repo="ArknightsGameData",
+            repo="arknights-data-pipeline",
             asset_name="zh_CN-excel.zip",
             local_zip=zip_path,
             local_root=tmp_path / "gamedata",
@@ -555,7 +555,7 @@ class TestSyncReleaseArchive:
             zf.writestr(required, '{"version":"new"}')
         spec = ReleaseArchiveSpec(
             owner="3aKHP",
-            repo="ArknightsGameData",
+            repo="arknights-data-pipeline",
             asset_name="zh_CN-excel.zip",
             local_zip=zip_path,
             local_root=tmp_path / "gamedata",
@@ -593,7 +593,7 @@ class TestSyncReleaseArchive:
 
         spec = ReleaseArchiveSpec(
             owner="3aKHP",
-            repo="ArknightsGameData",
+            repo="arknights-data-pipeline",
             asset_name="zh_CN-levels.zip",
             local_zip=zip_path,
             local_root=tmp_path / "gamedata-levels",
@@ -617,7 +617,7 @@ class TestSyncReleaseArchive:
 
         spec = ReleaseArchiveSpec(
             owner="3aKHP",
-            repo="ArknightsGameData",
+            repo="arknights-data-pipeline",
             asset_name="zh_CN-excel.zip",
             local_zip=zip_path,
             local_root=tmp_path / "gamedata",
@@ -656,7 +656,7 @@ class TestSyncReleaseArchive:
         (local_root / ".releases").symlink_to(outside, target_is_directory=True)
         spec = ReleaseArchiveSpec(
             owner="3aKHP",
-            repo="ArknightsGameData",
+            repo="arknights-data-pipeline",
             asset_name=zip_path.name,
             local_zip=zip_path,
             local_root=local_root,
@@ -684,7 +684,7 @@ class TestSyncReleaseArchive:
             zf.writestr(required, "{}")
         spec = ReleaseArchiveSpec(
             owner="3aKHP",
-            repo="ArknightsGameData",
+            repo="arknights-data-pipeline",
             asset_name=zip_path.name,
             local_zip=zip_path,
             local_root=tmp_path / "gamedata",
@@ -740,7 +740,7 @@ local_root = Path(sys.argv[2])
 required = sys.argv[3]
 spec = sync.ReleaseArchiveSpec(
     owner="3aKHP",
-    repo="ArknightsGameData",
+    repo="arknights-data-pipeline",
     asset_name=zip_path.name,
     local_zip=zip_path,
     local_root=local_root,
@@ -775,7 +775,7 @@ print(sync.sync_release_archive(spec).status)
         assert {stdout.strip() for stdout, _ in outputs} == {"updated", "up_to_date"}
         spec = ReleaseArchiveSpec(
             owner="3aKHP",
-            repo="ArknightsGameData",
+            repo="arknights-data-pipeline",
             asset_name=zip_path.name,
             local_zip=zip_path,
             local_root=local_root,
@@ -791,7 +791,7 @@ print(sync.sync_release_archive(spec).status)
             zf.writestr(required, "{}")
         spec = ReleaseArchiveSpec(
             owner="3aKHP",
-            repo="ArknightsGameData",
+            repo="arknights-data-pipeline",
             asset_name=zip_path.name,
             local_zip=zip_path,
             local_root=tmp_path / "gamedata",
@@ -838,7 +838,7 @@ print(sync.sync_release_archive(spec).status)
         levels_required = "zh_CN/gamedata/levels/enemydata/enemy_database.json"
         excel_spec = ReleaseArchiveSpec(
             owner="3aKHP",
-            repo="ArknightsGameData",
+            repo="arknights-data-pipeline",
             asset_name="zh_CN-excel.zip",
             local_zip=tmp_path / "gamedata" / "archives" / "zh_CN-excel.zip",
             local_root=tmp_path / "gamedata",
@@ -846,7 +846,7 @@ print(sync.sync_release_archive(spec).status)
         )
         levels_spec = ReleaseArchiveSpec(
             owner="3aKHP",
-            repo="ArknightsGameData",
+            repo="arknights-data-pipeline",
             asset_name="zh_CN-levels.zip",
             local_zip=tmp_path / "gamedata-levels" / "archives" / "zh_CN-levels.zip",
             local_root=tmp_path / "gamedata-levels",

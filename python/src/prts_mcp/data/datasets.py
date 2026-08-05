@@ -88,7 +88,7 @@ def validate_storyjson_zip(zf: ZipFile) -> list[str]:
 GAMEDATA_EXCEL = ReleaseDatasetSpec(
     dataset_id="gamedata.excel",
     owner="3aKHP",
-    repo="ArknightsGameData",
+    repo="arknights-data-pipeline",
     asset_name="zh_CN-excel.zip",
     required_files=GAMEDATA_FILES,
 )
@@ -96,7 +96,7 @@ GAMEDATA_EXCEL = ReleaseDatasetSpec(
 STORY_ZH_CN = ReleaseDatasetSpec(
     dataset_id="story.zh_CN",
     owner="3aKHP",
-    repo="ArknightsStoryJson",
+    repo="arknights-data-pipeline",
     asset_name="zh_CN.zip",
     required_files=STORYJSON_REQUIRED_FILES,
 )
@@ -104,7 +104,7 @@ STORY_ZH_CN = ReleaseDatasetSpec(
 GAMEDATA_LEVELS = ReleaseDatasetSpec(
     dataset_id="gamedata.levels",
     owner="3aKHP",
-    repo="ArknightsGameData",
+    repo="arknights-data-pipeline",
     asset_name="zh_CN-levels.zip",
     required_files=LEVELS_REQUIRED_FILES,
 )

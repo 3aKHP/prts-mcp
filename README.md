@@ -111,8 +111,7 @@ runtime-agnostic).
 ### Data Sources
 
 - **PRTS Wiki API** (`https://prts.wiki/api.php`) — lore articles, faction info, world-building entries
-- **ArknightsGameData** ([`3aKHP/ArknightsGameData`](https://github.com/3aKHP/ArknightsGameData)) — Release archive mirror of [`Kengxxiao/ArknightsGameData`](https://github.com/Kengxxiao/ArknightsGameData), used for operator archives, voice lines, base stats, enemies, stages, items, and level combat data (`zh_CN-excel.zip` + `zh_CN-levels.zip`)
-- **ArknightsStoryJson** ([`3aKHP/ArknightsStoryJson`](https://github.com/3aKHP/ArknightsStoryJson)) — parsed story dialogue, auto-synced from GitHub Releases (`zh_CN.zip`)
+- **arknights-data-pipeline** ([`3aKHP/arknights-data-pipeline`](https://github.com/3aKHP/arknights-data-pipeline)) — self-hosted data factory producing game data tables (`zh_CN-excel.zip`), level combat data (`zh_CN-levels.zip`), and parsed story dialogue with LLM summaries (`zh_CN.zip`) from a single GitHub Release
 
 Game data lives in the `gamedata` volume. Level combat data lives in the `gamedata-levels` volume. Story data lives in the `storyjson` volume. After the server starts listening, all three are checked in the background immediately and then every hour without restarting the process. Set `PRTS_AUTO_SYNC_INTERVAL_SECONDS` to `60..604800` to change the interval, or `0` to keep startup sync only.
 
@@ -218,8 +217,7 @@ TypeScript 实现支持 Bun 与 Node.js。自 2.2.0 起 **Bun 是默认生产运
 ### 数据源
 
 - **PRTS Wiki API** (`https://prts.wiki/api.php`) — 世界观词条、阵营设定
-- **ArknightsGameData** ([`3aKHP/ArknightsGameData`](https://github.com/3aKHP/ArknightsGameData)) — [`Kengxxiao/ArknightsGameData`](https://github.com/Kengxxiao/ArknightsGameData) 的 Release 压缩包镜像，用于干员档案、语音记录、基础信息、敌人、关卡、物品和关卡战斗数据（`zh_CN-excel.zip` + `zh_CN-levels.zip`）
-- **ArknightsStoryJson** ([`3aKHP/ArknightsStoryJson`](https://github.com/3aKHP/ArknightsStoryJson)) — 剧情台词解析数据，从 GitHub Releases 自动同步（`zh_CN.zip`）
+- **arknights-data-pipeline** ([`3aKHP/arknights-data-pipeline`](https://github.com/3aKHP/arknights-data-pipeline)) — 自建数据工厂，从单一 GitHub Release 产出游戏数据表（`zh_CN-excel.zip`）、关卡战斗数据（`zh_CN-levels.zip`）和剧情台词解析+LLM 摘要（`zh_CN.zip`）
 
 干员/表格数据存放在 `gamedata` volume，关卡战斗数据存放在 `gamedata-levels` volume，剧情数据存放在 `storyjson` volume。服务器开始监听后会立即在后台检查，此后默认每小时检查一次，无需重启进程。可用 `PRTS_AUTO_SYNC_INTERVAL_SECONDS=60..604800` 调整周期，或设为 `0` 仅保留启动同步。
 

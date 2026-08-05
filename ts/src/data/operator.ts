@@ -142,7 +142,7 @@ function loadJson<T>(filePath: string): T {
   if (!store.exists(filePath)) {
     throw new Error(
       `干员数据文件不存在：${store.resolveForDiagnostics(filePath)}。` +
-        "数据目录可能为空，或挂载路径有误（GAMEDATA_PATH 应指向 ArknightsGameData 仓库根目录）。"
+        "数据目录可能为空，或挂载路径有误（GAMEDATA_PATH 应指向游戏数据根目录）。"
     );
   }
   return store.readJson<T>(filePath);

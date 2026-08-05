@@ -30,7 +30,7 @@ docker build -t prts-mcp .
 docker run -i --rm -v prts-mcp-data:/data/gamedata -v prts-mcp-levels:/data/gamedata-levels -v prts-mcp-storyjson:/data/storyjson prts-mcp
 ```
 
-Named volume 由 Docker 自动管理，无需关心宿主机路径，**在所有平台和所有 MCP 客户端配置里都能直接使用**。首次运行时 auto-sync 自动下载 `3aKHP/ArknightsGameData` 的 `zh_CN-excel.zip` 到 `/data/gamedata`、`zh_CN-levels.zip` 到 `/data/gamedata-levels`，以及剧情 `zh_CN.zip` 到 `/data/storyjson`；此后默认每小时检查一次 Release tag，有更新才重新下载、解压并清除进程内数据缓存，无需重启服务。
+Named volume 由 Docker 自动管理，无需关心宿主机路径，**在所有平台和所有 MCP 客户端配置里都能直接使用**。首次运行时 auto-sync 自动从 `3aKHP/arknights-data-pipeline` 下载 `zh_CN-excel.zip` 到 `/data/gamedata`、`zh_CN-levels.zip` 到 `/data/gamedata-levels`，以及剧情 `zh_CN.zip` 到 `/data/storyjson`；此后默认每小时检查一次 Release tag，有更新才重新下载、解压并清除进程内数据缓存，无需重启服务。
 
 > 如需降低 GitHub 匿名 API 限流风险，可追加 `-e GITHUB_TOKEN=ghp_xxx`。
 
@@ -220,7 +220,7 @@ npx @modelcontextprotocol/inspector docker run -i --rm -v prts-mcp-data:/data/ga
 pip install -e .
 python scripts/fetch_gamedata.py
 mkdir -p ../data/storyjson
-gh release download --repo 3aKHP/ArknightsStoryJson --pattern "zh_CN.zip" --dir ../data/storyjson/ --clobber
+gh release download --repo 3aKHP/arknights-data-pipeline --pattern "zh_CN.zip" --dir ../data/storyjson/ --clobber
 docker build -t prts-mcp .
 ```
 

@@ -53,7 +53,7 @@ jobs:
         run: |
           mkdir -p .ci-data/storyjson
           gh release download \
-            --repo 3aKHP/ArknightsStoryJson \
+            --repo 3aKHP/arknights-data-pipeline \
             --pattern "zh_CN.zip" \
             --dir .ci-data/storyjson/ \
             --clobber
@@ -122,7 +122,7 @@ jobs:
         run: |
           mkdir -p data/storyjson
           gh release download \
-            --repo 3aKHP/ArknightsStoryJson \
+            --repo 3aKHP/arknights-data-pipeline \
             --pattern "zh_CN.zip" \
             --dir data/storyjson/ \
             --clobber
@@ -361,7 +361,7 @@ jobs:
         run: |
           mkdir -p data/storyjson
           gh release download \
-            --repo 3aKHP/ArknightsStoryJson \
+            --repo 3aKHP/arknights-data-pipeline \
             --pattern "zh_CN.zip" \
             --dir data/storyjson/ \
             --clobber
@@ -426,7 +426,7 @@ jobs:
         run: |
           mkdir -p data/storyjson
           gh release download \
-            --repo 3aKHP/ArknightsStoryJson \
+            --repo 3aKHP/arknights-data-pipeline \
             --pattern "zh_CN.zip" \
             --dir data/storyjson/ \
             --clobber
