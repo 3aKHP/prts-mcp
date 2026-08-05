@@ -302,9 +302,14 @@ def _verify_release_manifest(
     Older releases predate the manifest asset and remain readable during the
     transition; once a release publishes one, mismatches fail closed.
     """
-    manifest_url = (
-        f"https://github.com/{spec.owner}/{spec.repo}/releases/download/{tag}/manifest.json"
-    )
+    if tag == "unknown":
+        manifest_url = (
+            f"https://github.com/{spec.owner}/{spec.repo}/releases/latest/download/manifest.json"
+        )
+    else:
+        manifest_url = (
+            f"https://github.com/{spec.owner}/{spec.repo}/releases/download/{tag}/manifest.json"
+        )
     try:
         response = _get_cascading(
             manifest_url, timeout=timeout, headers=_github_headers(), follow_redirects=True,

@@ -30,6 +30,14 @@ import type { Dispatcher } from "undici";
 const NATIVE_FETCH = globalThis.fetch;
 let envProxyAgent: Dispatcher | undefined;
 
+/** The response surface shared by the global and Undici fetch runtimes. */
+interface FetchResponse {
+  readonly ok: boolean;
+  readonly status: number;
+  json(): Promise<unknown>;
+  arrayBuffer(): Promise<ArrayBuffer>;
+}
+
 /** Versioned contract shared with the arknights-data-pipeline manifest. */
 export const DATA_CONTRACT_VERSION = "prts-mcp-data/v1";
 
@@ -133,7 +141,7 @@ async function fetchWithRuntimeProxy(
   url: string,
   options: Omit<RequestInit, "signal">,
   signal: AbortSignal,
-): Promise<Response> {
+): Promise<FetchResponse> {
   // Preserve test/in-process fetch overrides and Bun's native proxy support.
   if (
     globalThis.fetch !== NATIVE_FETCH
@@ -152,7 +160,7 @@ async function fetchWithRuntimeProxy(
     signal,
     dispatcher: envProxyAgent,
   } as Parameters<typeof undiciFetch>[1]);
-  return response as unknown as Response;
+  return response;
 }
 
 /**
@@ -168,7 +176,7 @@ async function fetchCascading(
   url: string,
   options: Omit<RequestInit, "signal">,
   timeoutMs: number,
-): Promise<Response> {
+): Promise<FetchResponse> {
   const candidates = urlCandidates(url);
   let lastErr: unknown = new Error("All URL candidates failed");
   for (let i = 0; i < candidates.length; i++) {
@@ -379,8 +387,10 @@ async function verifyReleaseManifest(
   assetPath: string,
   timeoutMs: number,
 ): Promise<void> {
-  const manifestUrl = `https://github.com/${spec.owner}/${spec.repo}/releases/download/${tag}/manifest.json`;
-  let response: Response;
+  const manifestUrl = tag === "unknown"
+    ? `https://github.com/${spec.owner}/${spec.repo}/releases/latest/download/manifest.json`
+    : `https://github.com/${spec.owner}/${spec.repo}/releases/download/${tag}/manifest.json`;
+  let response: FetchResponse;
   try {
     response = await fetchCascading(
       manifestUrl, { headers: githubHeaders(), redirect: "follow" }, timeoutMs,
@@ -389,13 +399,17 @@ async function verifyReleaseManifest(
     if (errorMessage(err).includes("HTTP 404")) return;
     throw new Error(`manifest unavailable for ${tag}: ${errorMessage(err)}`);
   }
-  let manifest: { assets?: Record<string, { size?: number; sha256?: string }> };
+  let manifest: unknown;
   try {
-    manifest = await response.json() as typeof manifest;
+    manifest = await response.json();
   } catch (err) {
     throw new Error(`manifest for ${tag} is invalid: ${errorMessage(err)}`);
   }
-  const typedManifest = manifest as typeof manifest & {
+  if (typeof manifest !== "object" || manifest === null || Array.isArray(manifest)) {
+    throw new Error(`manifest for ${tag} is invalid: manifest root must be an object`);
+  }
+  const typedManifest = manifest as {
+    assets?: Record<string, { size?: number; sha256?: string }>;
     contractVersion?: unknown;
     source?: { versionId?: unknown };
   };
@@ -408,7 +422,7 @@ async function verifyReleaseManifest(
   ) {
     throw new Error(`manifest source version does not match release tag ${tag}`);
   }
-  const expected = manifest.assets?.[spec.assetName];
+  const expected = typedManifest.assets?.[spec.assetName];
   if (typeof expected?.size !== "number" || typeof expected.sha256 !== "string") {
     throw new Error(`manifest for ${tag} has no valid entry for ${spec.assetName}`);
   }
@@ -813,6 +827,7 @@ async function syncReleaseArchiveLocked(
     assetName: spec.assetName,
     localZip: spec.localZip,
     validateZip: (zipPath) => validateArchiveZip(zipPath, spec.requiredFiles),
+    verifyManifest: spec.verifyManifest,
   }, forceCheck);
 
   const dummySpec: RepoSpec = {
