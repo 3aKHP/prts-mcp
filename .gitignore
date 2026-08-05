@@ -53,3 +53,8 @@ data/gamedata-levels/archives/
 data/gamedata-levels/**/*.zip
 data/gamedata-levels/**/*.7z
 .release.lock/
+
+# Runtime sync artifacts
+data/*/.releases/
+data/*/release_meta.json
+data/*/zh_CN*.zip

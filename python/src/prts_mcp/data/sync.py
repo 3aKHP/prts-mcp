@@ -269,7 +269,7 @@ def download_release_asset(spec: ReleaseSpec, tag: str, url: str, timeout: float
                 raise ValueError("Downloaded release asset is invalid: " + "; ".join(missing[:10]))
         tmp.replace(spec.local_zip)
 
-        # Extract upstream SHA from tag (format: "upstream-<sha>")
+        # Extract version identifier from tag (format: "data-<versionId>")
         commit_sha = tag[len(_TAG_PREFIX):] if tag.startswith(_TAG_PREFIX) else tag
         CacheMeta(
             repo=f"{spec.owner}/{spec.repo}",

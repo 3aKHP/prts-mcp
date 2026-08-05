@@ -217,8 +217,8 @@ TypeScript 实现支持 Bun 与 Node.js。自 2.2.0 起 **Bun 是默认生产运
 ### 数据源
 
 - **PRTS Wiki API** (`https://prts.wiki/api.php`) — 世界观词条、阵营设定
-- **ArknightsGameData** ([`3aKHP/ArknightsGameData`](https://github.com/3aKHP/ArknightsGameData)) — [`Kengxxiao/ArknightsGameData`](https://github.com/Kengxxiao/ArknightsGameData) 的 Release 压缩包镜像，用于干员档案、语音记录、基础信息、敌人、关卡、物品和关卡战斗数据（`zh_CN-excel.zip` + `zh_CN-levels.zip`）
 - **arknights-data-pipeline** ([`3aKHP/arknights-data-pipeline`](https://github.com/3aKHP/arknights-data-pipeline)) — 自建数据工厂，从单一 GitHub Release 产出游戏数据表（`zh_CN-excel.zip`）、关卡战斗数据（`zh_CN-levels.zip`）和剧情台词解析+LLM 摘要（`zh_CN.zip`）
+
 干员/表格数据存放在 `gamedata` volume，关卡战斗数据存放在 `gamedata-levels` volume，剧情数据存放在 `storyjson` volume。服务器开始监听后会立即在后台检查，此后默认每小时检查一次，无需重启进程。可用 `PRTS_AUTO_SYNC_INTERVAL_SECONDS=60..604800` 调整周期，或设为 `0` 仅保留启动同步。
 
 正式发布的 Docker 镜像和 npm 包会由 CI 预置 bundled 兜底数据；PyPI 包保持轻量，不内置这些数据文件，依赖启动时 auto-sync 或用户自行提供数据路径。
