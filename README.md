@@ -1,5 +1,7 @@
 # PRTS MCP Server
 
+[![MCP Toplist](https://mcptoplist.com/badge/glama%2F3aKHP%2Fprts-mcp.svg)](https://mcptoplist.com/server/glama%2F3aKHP%2Fprts-mcp)
+
 [![PyPI](https://img.shields.io/pypi/v/prts-mcp)](https://pypi.org/project/prts-mcp/)
 [![npm](https://img.shields.io/npm/v/prts-mcp-ts)](https://www.npmjs.com/package/prts-mcp-ts)
 [![License: MIT](https://img.shields.io/github/license/3aKHP/prts-mcp)](LICENSE)
