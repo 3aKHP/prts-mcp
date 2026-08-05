@@ -50,7 +50,7 @@ def _load_json(filename: str) -> dict[str, Any]:
     if not store.exists(filename):
         raise FileNotFoundError(
             f"干员数据文件不存在：{store.root / filename}。"
-            "数据目录可能为空，或挂载路径有误（GAMEDATA_PATH 应指向 ArknightsGameData 仓库根目录）。"
+            "数据目录可能为空，或挂载路径有误（GAMEDATA_PATH 应指向游戏数据根目录）。"
         )
     return store.read_json(filename)
 

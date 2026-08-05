@@ -202,7 +202,7 @@ def _cache_is_fresh(cache: CacheMeta) -> bool:
 # ---------------------------------------------------------------------------
 
 _GITHUB_RELEASES_LATEST_URL = "https://api.github.com/repos/{owner}/{repo}/releases/latest"
-_TAG_PREFIX = "upstream-"
+_TAG_PREFIX = "data-"
 
 
 @dataclass(frozen=True)

@@ -185,7 +185,7 @@ function releaseZipError(spec: ReleaseSpec): string | null {
 
 const GITHUB_RELEASES_LATEST_URL =
   "https://api.github.com/repos/{owner}/{repo}/releases/latest";
-const TAG_PREFIX = "upstream-";
+const TAG_PREFIX = "data-";
 
 /** Describes a GitHub Release asset to download as a local zip. */
 export interface ReleaseSpec {
@@ -714,7 +714,7 @@ async function pruneReleaseTrees(
  * Download a GitHub Release zip asset and extract it into localRoot.
  *
  * This keeps the gamedata distribution path aligned with storyjson releases
- * while preserving the existing on-disk ArknightsGameData layout.
+ * while preserving the existing on-disk game data layout.
  */
 async function syncReleaseArchiveLocked(
   spec: ReleaseArchiveSpec,

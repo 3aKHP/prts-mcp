@@ -33,7 +33,7 @@ for archive_arg, required_file in ((sys.argv[1], sys.argv[3]), (sys.argv[2], sys
     (archive.parent / "release_meta.json").write_text(
         json.dumps(
             {
-                "repo": "3aKHP/ArknightsGameData",
+                "repo": "3aKHP/arknights-data-pipeline",
                 "branch": "releases",
                 "commit_sha": "shared-volume-test",
                 "fetched_at": "2099-01-01T00:00:00Z",
@@ -55,7 +55,7 @@ from prts_mcp.data.sync import ReleaseArchiveSpec, sync_release_archive_pair
 
 excel = ReleaseArchiveSpec(
     owner="3aKHP",
-    repo="ArknightsGameData",
+    repo="arknights-data-pipeline",
     asset_name=Path(sys.argv[3]).name,
     local_zip=Path(sys.argv[3]),
     local_root=Path(sys.argv[1]),
@@ -63,7 +63,7 @@ excel = ReleaseArchiveSpec(
 )
 levels = ReleaseArchiveSpec(
     owner="3aKHP",
-    repo="ArknightsGameData",
+    repo="arknights-data-pipeline",
     asset_name=Path(sys.argv[4]).name,
     local_zip=Path(sys.argv[4]),
     local_root=Path(sys.argv[2]),
@@ -89,7 +89,7 @@ const [, , excelRoot, levelsRoot, excelArchive, levelsArchive, excelRequired, le
 const results = await syncReleaseArchivePair(
   {
     owner: "3aKHP",
-    repo: "ArknightsGameData",
+    repo: "arknights-data-pipeline",
     assetName: basename(excelArchive),
     localZip: excelArchive,
     localRoot: excelRoot,
@@ -97,7 +97,7 @@ const results = await syncReleaseArchivePair(
   },
   {
     owner: "3aKHP",
-    repo: "ArknightsGameData",
+    repo: "arknights-data-pipeline",
     assetName: basename(levelsArchive),
     localZip: levelsArchive,
     localRoot: levelsRoot,

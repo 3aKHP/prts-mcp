@@ -26,7 +26,7 @@ function tempSpec(): ReleaseSpec {
   const root = mkdtempSync(join(tmpdir(), "prts-sync-test-"));
   return {
     owner: "3aKHP",
-    repo: "ArknightsStoryJson",
+    repo: "arknights-data-pipeline",
     assetName: "zh_CN.zip",
     localZip: join(root, "storyjson", "zh_CN.zip"),
   };
@@ -36,7 +36,7 @@ function tempArchiveSpec(assetName = "zh_CN-levels.zip"): ReleaseArchiveSpec {
   const root = mkdtempSync(join(tmpdir(), "prts-sync-archive-test-"));
   return {
     owner: "3aKHP",
-    repo: "ArknightsGameData",
+    repo: "arknights-data-pipeline",
     assetName,
     localZip: join(root, "archives", assetName),
     localRoot: join(root, "gamedata-levels"),
@@ -97,7 +97,7 @@ test("syncRelease reads Python release metadata", async () => {
   writeFileSync(
     join(dirname(spec.localZip), "release_meta.json"),
     JSON.stringify({
-      repo: "3aKHP/ArknightsStoryJson",
+      repo: "3aKHP/arknights-data-pipeline",
       branch: "releases",
       commit_sha: "same-sha",
       fetched_at: "2099-01-01T00:00:00.000Z",
@@ -175,7 +175,7 @@ test("syncRelease validates zip before fresh-cache fast path", async () => {
   writeFileSync(
     join(dirname(spec.localZip), "release_meta.json"),
     JSON.stringify({
-      repo: "3aKHP/ArknightsStoryJson",
+      repo: "3aKHP/arknights-data-pipeline",
       branch: "releases",
       commitSha: "cached-sha",
       fetchedAt: new Date().toISOString(),
@@ -213,7 +213,7 @@ test("syncRelease rejects empty release metadata fields", async () => {
     writeFileSync(
       join(dirname(spec.localZip), "release_meta.json"),
       JSON.stringify({
-        repo: "3aKHP/ArknightsStoryJson",
+        repo: "3aKHP/arknights-data-pipeline",
         branch: "releases",
         ...metadata,
         files: ["zh_CN.zip"],
@@ -242,7 +242,7 @@ test("syncRelease forced check bypasses fresh-cache fast path", async () => {
   writeFileSync(
     join(dirname(spec.localZip), "release_meta.json"),
     JSON.stringify({
-      repo: "3aKHP/ArknightsStoryJson",
+      repo: "3aKHP/arknights-data-pipeline",
       branch: "releases",
       commitSha: "cached-sha",
       fetchedAt: new Date().toISOString(),
@@ -256,7 +256,7 @@ test("syncRelease forced check bypasses fresh-cache fast path", async () => {
     fetchCalls += 1;
     return new Response(
       JSON.stringify({
-        tag_name: "upstream-cached-sha",
+        tag_name: "data-cached-sha",
         assets: [{
           name: "zh_CN.zip",
           browser_download_url: "https://example.test/zh_CN.zip",
@@ -348,7 +348,7 @@ test("syncReleaseArchive retries activation after extraction failure", async () 
   writeFileSync(
     join(dirname(spec.localZip), "release_meta.json"),
     JSON.stringify({
-      repo: "3aKHP/ArknightsGameData",
+      repo: "3aKHP/arknights-data-pipeline",
       branch: "releases",
       commitSha: "abc123",
       fetchedAt: new Date().toISOString(),
@@ -387,7 +387,7 @@ test("syncReleaseArchive reports updated after offline activation recovery", asy
   writeFileSync(
     join(dirname(spec.localZip), "release_meta.json"),
     JSON.stringify({
-      repo: "3aKHP/ArknightsGameData",
+      repo: "3aKHP/arknights-data-pipeline",
       branch: "releases",
       commitSha: "abc123",
       fetchedAt: "2000-01-01T00:00:00.000Z",
@@ -487,7 +487,7 @@ test("pair manifest switches only after both archives share one SHA", async () =
   const levelsRequired = "zh_CN/gamedata/levels/enemydata/enemy_database.json";
   const excelSpec: ReleaseArchiveSpec = {
     owner: "3aKHP",
-    repo: "ArknightsGameData",
+    repo: "arknights-data-pipeline",
     assetName: "zh_CN-excel.zip",
     localZip: join(root, "gamedata", "archives", "zh_CN-excel.zip"),
     localRoot: join(root, "gamedata"),
@@ -495,7 +495,7 @@ test("pair manifest switches only after both archives share one SHA", async () =
   };
   const levelsSpec: ReleaseArchiveSpec = {
     owner: "3aKHP",
-    repo: "ArknightsGameData",
+    repo: "arknights-data-pipeline",
     assetName: "zh_CN-levels.zip",
     localZip: join(root, "gamedata-levels", "archives", "zh_CN-levels.zip"),
     localRoot: join(root, "gamedata-levels"),
@@ -512,7 +512,7 @@ test("pair manifest switches only after both archives share one SHA", async () =
     writeFileSync(
       join(dirname(spec.localZip), "release_meta.json"),
       JSON.stringify({
-        repo: "3aKHP/ArknightsGameData",
+        repo: "3aKHP/arknights-data-pipeline",
         branch: "releases",
         commit_sha: "new",
         fetched_at: "2099-01-01T00:00:00Z",

@@ -122,9 +122,9 @@ PRTS-MCP/
 
 | 数据源 | 用途 | 同步方式 |
 |--------|------|----------|
-| [ArknightsGameData](https://github.com/3aKHP/ArknightsGameData) | 干员/敌人/关卡/物品表格 | GitHub Release `zh_CN-excel.zip` |
-| [ArknightsGameData](https://github.com/3aKHP/ArknightsGameData) | 关卡实际出怪与关卡级敌人数值 | GitHub Release `zh_CN-levels.zip` |
-| [ArknightsStoryJson](https://github.com/3aKHP/ArknightsStoryJson) | 剧情台词 | GitHub Release `zh_CN.zip` |
+| [arknights-data-pipeline](https://github.com/3aKHP/arknights-data-pipeline) | 干员/敌人/关卡/物品表格 | GitHub Release `zh_CN-excel.zip` |
+| [arknights-data-pipeline](https://github.com/3aKHP/arknights-data-pipeline) | 关卡实际出怪与关卡级敌人数值 | GitHub Release `zh_CN-levels.zip` |
+| [arknights-data-pipeline](https://github.com/3aKHP/arknights-data-pipeline) | 剧情台词 + LLM 摘要 | GitHub Release `zh_CN.zip` |
 | [PRTS Wiki API](https://prts.wiki/api.php) | 世界观词条/阵营设定 | 实时 HTTP 请求 |
 
 ## 工具清单 (23, 2.0 发布线)

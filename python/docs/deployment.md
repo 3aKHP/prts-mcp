@@ -220,7 +220,7 @@ npx @modelcontextprotocol/inspector docker run -i --rm -v prts-mcp-data:/data/ga
 pip install -e .
 python scripts/fetch_gamedata.py
 mkdir -p ../data/storyjson
-gh release download --repo 3aKHP/ArknightsStoryJson --pattern "zh_CN.zip" --dir ../data/storyjson/ --clobber
+gh release download --repo 3aKHP/arknights-data-pipeline --pattern "zh_CN.zip" --dir ../data/storyjson/ --clobber
 docker build -t prts-mcp .
 ```
 

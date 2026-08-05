@@ -52,3 +52,4 @@ data/gamedata/**/*.7z
 data/gamedata-levels/archives/
 data/gamedata-levels/**/*.zip
 data/gamedata-levels/**/*.7z
+.release.lock/
