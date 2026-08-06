@@ -11,7 +11,7 @@ from __future__ import annotations
 import pytest
 
 from prts_mcp.api.prts_wiki import _image_magic_ok, download_image_safe
-from prts_mcp.tools_artwork import (
+from prts_mcp.data.artwork_mediawiki import (
     _image_cache,
     _image_cache_get,
     _image_cache_put,
@@ -74,9 +74,9 @@ def test_image_cache_lru_round_trip():
 
 def test_image_cache_lru_evicts_by_byte_total(monkeypatch):
     """When total bytes exceed the cap, the oldest entry is evicted."""
-    import prts_mcp.tools_artwork as ta
+    import prts_mcp.data.artwork_mediawiki as am
 
-    monkeypatch.setattr(ta, "_IMAGE_CACHE_MAX_BYTES", 150)
+    monkeypatch.setattr(am, "_IMAGE_CACHE_MAX_BYTES", 150)
     _image_cache.clear()
     try:
         _image_cache_put("a", "large", b"\x00" * 100)
