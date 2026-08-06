@@ -39,11 +39,11 @@ changes to the new factory path must not be backported to LTS as an implicit sou
 
 | Area | Python | TypeScript |
 |------|--------|------------|
-| MCP tools | Same 23 public tool names and required parameters (2.0) / 32 on 1.7 LTS | Same 23 (2.0) / 32 on 1.7 LTS |
+| MCP tools | Same 24 public tool names and required parameters (2.5) / 32 on 1.7 LTS | Same 24 (2.5) / 32 on 1.7 LTS |
 | GameData | `GAMEDATA_PATH` or auto-synced `zh_CN-excel.zip` | `GAMEDATA_PATH` or auto-synced `zh_CN-excel.zip` |
 | Level data | Auto-synced `zh_CN-levels.zip` beside GameData | Auto-synced `zh_CN-levels.zip` beside GameData |
 | Story data | `STORYJSON_PATH` or auto-synced `zh_CN.zip` | `STORYJSON_PATH` or auto-synced `zh_CN.zip` |
-| Image artwork (2.5) | Opt-in via `IMAGES_ENABLED=true`; auto-synced AKDP image Release (local PNG assets) | Opt-in via `IMAGES_ENABLED=true`; auto-synced AKDP image Release (local PNG assets) |
+| Image artwork (2.5) | Enabled by default; MediaWiki on-demand or AKDP local assets (`LOCAL_IMAGE=true`) | Enabled by default; MediaWiki on-demand or AKDP local assets (`LOCAL_IMAGE=true`) |
 | Bundled fallback data | Docker image only | Docker image and published npm package (PyPI stays data-light) |
 
 ### Auto-Sync data contract
@@ -93,6 +93,7 @@ Both implementations expose the same tool set:
 | `get_operator_memoirs(name)` | Resolve an operator's memoir (干员密录) story keys for follow-up `read_story` calls |
 | `find_character_appearances(name, scope?, max_events?)` | Find chapters/events where a character speaks (dialog) or is mentioned (name substring) |
 | `find_speakers_in(event_id)` | List every speaker in an event with dialog line counts |
+| `operator_artwork(operator_name, action, artwork_id?, variant?)` | List operator illustrations/skins and retrieve image variants (base64); MediaWiki by default, AKDP local assets when `LOCAL_IMAGE=true` |
 
 ### Output Channel
 
@@ -108,6 +109,22 @@ The default `content` requires no configuration and is unchanged from 1.x. See
 the [2.0 migration guide](docs/migration-1.x-to-2.0.md) for the per-tool
 mapping and the rationale for choosing a channel over a per-call format
 parameter.
+
+### Image Artwork
+
+The `operator_artwork` tool (2.5.0+) is **enabled by default**. Two data source
+modes are selected by `LOCAL_IMAGE`:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `IMAGES_ENABLED` | `true` | Master switch; `false` hides `operator_artwork`. |
+| `LOCAL_IMAGE` | `false` | `true` = sync AKDP local PNG assets (~1.5 GB); `false` = fetch on-demand from PRTS MediaWiki (zero download). |
+| `PRTS_IMAGE_CACHE` | `true` | In-memory LRU cache (256 MiB) for MediaWiki images; only effective when `LOCAL_IMAGE=false`. |
+| `ORIGINAL_IMAGE` | `false` | Also sync original-resolution shards; only effective when `LOCAL_IMAGE=true`. |
+| `PRTS_IMAGE_DIR` | `~/.local/share/prts-mcp/images/` | AKDP asset sync target; only effective when `LOCAL_IMAGE=true`. Docker: `/data/images`. |
+
+Zero-config: the tool works immediately via MediaWiki with caching. For the full
+offline AKDP experience, set `LOCAL_IMAGE=true` (triggers ~1.5 GB background sync).
 
 ### Quick Start
 
@@ -170,11 +187,11 @@ and macOS development setup.
 
 | 范围 | Python | TypeScript |
 |------|--------|------------|
-| MCP 工具 | 相同的 23 个工具名和必填参数（2.0）/ 1.7 LTS 为 32 个 | 相同的 23 个（2.0）/ 1.7 LTS 为 32 个 |
+| MCP 工具 | 相同的 24 个工具名和必填参数（2.5）/ 1.7 LTS 为 32 个 | 相同的 24 个（2.5）/ 1.7 LTS 为 32 个 |
 | 干员数据 | `GAMEDATA_PATH` 或自动同步 `zh_CN-excel.zip` | `GAMEDATA_PATH` 或自动同步 `zh_CN-excel.zip` |
 | 关卡战斗数据 | 自动同步与 GameData 并列的 `zh_CN-levels.zip` | 自动同步与 GameData 并列的 `zh_CN-levels.zip` |
 | 剧情数据 | `STORYJSON_PATH` 或自动同步 `zh_CN.zip` | `STORYJSON_PATH` 或自动同步 `zh_CN.zip` |
-| 立绘图片（2.5） | 需 `IMAGES_ENABLED=true` 开启；自动同步 AKDP 图片 Release（本地 PNG 资产） | 需 `IMAGES_ENABLED=true` 开启；自动同步 AKDP 图片 Release（本地 PNG 资产） |
+| 立绘图片（2.5） | 默认开启；MediaWiki 按需获取或 AKDP 本地资产（`LOCAL_IMAGE=true`） | 默认开启；MediaWiki 按需获取或 AKDP 本地资产（`LOCAL_IMAGE=true`） |
 | bundled 兜底数据 | Docker 镜像 | Docker 镜像和正式 npm 包（PyPI 保持轻量） |
 
 ### Auto-Sync 数据契约
@@ -221,6 +238,7 @@ manifest 的旧 Release。下载、结构或 manifest 校验失败时，服务�
 | `get_operator_memoirs(name)` | 解析干员密录的 story_key，便于后续 `read_story` 调用 |
 | `find_character_appearances(name, scope?, max_events?)` | 查找角色在哪些章节/活动中开口（对话）或被提及（名字子串） |
 | `find_speakers_in(event_id)` | 列出指定活动中所有发言角色及其对话行数 |
+| `operator_artwork(operator_name, action, artwork_id?, variant?)` | 列出干员立绘/时装并获取图片变体（base64）；默认走 MediaWiki，`LOCAL_IMAGE=true` 时使用 AKDP 本地资产 |
 
 ### 输出通道
 
@@ -230,6 +248,20 @@ manifest 的旧 Release。下载、结构或 manifest 校验失败时，服务�
 - **TypeScript** — `?output_channel=` 查询字符串、`x-prts-output-channel` 请求头，或 `PRTS_OUTPUT_CHANNEL` 环境变量。
 
 默认 `content` 无需任何配置，与 1.x 一致。各工具的通道映射，以及「为何选连接级通道而非 per-call 格式参数」的设计理由，见 [2.0 迁移指南](docs/migration-1.x-to-2.0.md)。
+
+### 立绘工具
+
+`operator_artwork` 工具（2.5.0+）**默认开启**。通过 `LOCAL_IMAGE` 选择数据源：
+
+| 变量 | 缺省值 | 说明 |
+|----------|---------|-------------|
+| `IMAGES_ENABLED` | `true` | 主开关；`false` 隐藏 `operator_artwork`。 |
+| `LOCAL_IMAGE` | `false` | `true` = 同步 AKDP 本地 PNG 资产（~1.5 GB）；`false` = 从 PRTS MediaWiki 按需获取（零下载）。 |
+| `PRTS_IMAGE_CACHE` | `true` | MediaWiki 图片的内存 LRU 缓存（256 MiB）；仅在 `LOCAL_IMAGE=false` 时生效。 |
+| `ORIGINAL_IMAGE` | `false` | 额外同步原图分辨率分片；仅在 `LOCAL_IMAGE=true` 时生效。 |
+| `PRTS_IMAGE_DIR` | `~/.local/share/prts-mcp/images/` | AKDP 资产同步目标；仅在 `LOCAL_IMAGE=true` 时生效。Docker：`/data/images`。 |
+
+零配置即可使用：默认走 MediaWiki + 缓存。若需离线全量体验，设置 `LOCAL_IMAGE=true`（触发 ~1.5 GB 后台同步）。
 
 ### 快速开始
 
