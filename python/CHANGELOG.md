@@ -8,19 +8,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Added
 
-- New `operator_artwork` tool (opt-in via `IMAGES_ENABLED=true`) serving
-  operator illustration and skin images from the AKDP image Release.
-  `action="list"` returns bounded metadata with semantic labels;
-  `action="get"` returns one image as base64 `ImageContent` (default `large`
-  variant, max 1024px). `LOCAL_IMAGE=true` (default) consumes synced local
-  assets via the existing auto-sync scheduler; `ORIGINAL_IMAGE=true` also
-  pulls full-resolution shards. Labels are joined from `skin_table.json`.
-- `operator_artwork` LOCAL_IMAGE=false mode (PRTS MediaWiki fallback): list
-  via `allimages` + CharinfoV2 `时装N名称` labels, get via `imageinfo` under
-  the full #85 security boundary (hostname/MIME/magic/1MiB/streaming/redirect).
-  `PRTS_IMAGE_CACHE=true` enables a 256MiB LRU. `original` variant rejected
-  (PRTS originals exceed the 1MiB cap). True (AKDP) and false (MediaWiki)
-  paths share no data dependency.
+- New `operator_artwork` tool (enabled by default). `action="list"` returns
+  bounded metadata with semantic labels; `action="get"` returns one image as
+  base64 `ImageContent` (default `large` variant, max 1024px). Default mode
+  (`LOCAL_IMAGE=false`) fetches on-demand from PRTS MediaWiki under the full
+  #85 security boundary (hostname/MIME/magic/1MiB/streaming/redirect) with a
+  256 MiB LRU cache (`PRTS_IMAGE_CACHE=true`). Set `LOCAL_IMAGE=true` to sync
+  ~1.5 GB of AKDP local PNG assets; `ORIGINAL_IMAGE=true` adds full-resolution
+  shards. MediaWiki labels via CharinfoV2 `时装N名称`; AKDP labels via
+  `skin_table.json`. The `original` variant is rejected in MediaWiki mode
+  (PRTS originals exceed the 1 MiB cap).
 
 ## [2.4.0] - 2026-07-29
 
