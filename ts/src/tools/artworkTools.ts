@@ -23,6 +23,12 @@ import {
   type VariantName,
 } from "../data/images.js";
 import {
+  VARIANT_WIDTH,
+  imageCacheGet,
+  imageCachePut,
+  labelFromFilename,
+} from "../data/artworkMediawiki.js";
+import {
   downloadImageSafe,
   getImageinfo,
   getTemplateData,
@@ -58,112 +64,6 @@ function dataNotReady(): CallToolResult {
     "立绘数据未就绪。可能原因：IMAGES_ENABLED 未开启，或图片同步仍在进行中。" +
       "请稍后重试；若持续不可用，请检查网络或 GITHUB_TOKEN。",
   );
-}
-
-// ---------------------------------------------------------------------------
-// LOCAL_IMAGE=false MediaWiki path
-//
-// Data flows entirely from PRTS: allimages for discovery, parsetree
-// (CharinfoV2 时装N名称) for fashion labels, imageinfo for variant URLs,
-// downloadImageSafe for the payload under the #85 boundary. Shares no data
-// dependency with the true (AKDP) path.
-// ---------------------------------------------------------------------------
-
-const IMAGE_CACHE_MAX_BYTES = 256 * 1024 * 1024; // 256 MiB (#85 §4.2)
-const _imageCache = new Map<string, Buffer>();
-let _imageCacheTotal = 0;
-
-const MEDIAWIKI_BASE_LABELS: Record<string, string> = {
-  "1": "精英零立绘",
-  "2": "精英二立绘",
-};
-const VARIANT_WIDTH: Record<string, number> = { large: 1024, preview: 256 };
-
-function imageCacheKey(artworkId: string, variant: string): string {
-  return `${artworkId}|${variant}`;
-}
-
-function imageCacheGet(artworkId: string, variant: string): Buffer | null {
-  const key = imageCacheKey(artworkId, variant);
-  const v = _imageCache.get(key);
-  if (v === undefined) return null;
-  _imageCache.delete(key);
-  _imageCache.set(key, v); // move to end (LRU)
-  return v;
-}
-
-function imageCachePut(artworkId: string, variant: string, data: Buffer): void {
-  const key = imageCacheKey(artworkId, variant);
-  const existing = _imageCache.get(key);
-  if (existing !== undefined) {
-    _imageCache.delete(key);
-    _imageCacheTotal -= existing.byteLength;
-  }
-  _imageCache.set(key, data);
-  _imageCacheTotal += data.byteLength;
-  while (_imageCacheTotal > IMAGE_CACHE_MAX_BYTES && _imageCache.size > 0) {
-    const oldest = _imageCache.keys().next().value;
-    if (oldest === undefined) break;
-    const evicted = _imageCache.get(oldest);
-    _imageCache.delete(oldest);
-    if (evicted !== undefined) _imageCacheTotal -= evicted.byteLength;
-  }
-}
-
-function mediawikiBaseLabel(suffix: string): string {
-  const base = suffix.replace(/\+$/, "");
-  const plus = suffix.endsWith("+");
-  let label = MEDIAWIKI_BASE_LABELS[base];
-  if (label === undefined) label = base ? `立绘 ${base}` : "立绘";
-  if (plus) label += "（变体）";
-  return label;
-}
-
-function mediawikiFashionLabel(
-  rest: string,
-  charinfo: Record<string, unknown>,
-): string {
-  let num = "";
-  for (const ch of rest.slice(4)) {
-    if (/[0-9]/.test(ch)) num += ch;
-    else break;
-  }
-  let label: string | null = null;
-  if (num) {
-    const v = charinfo[`时装${num}名称`];
-    if (typeof v === "string" && v) label = v;
-  }
-  if (label === null) label = num ? `时装 ${num}` : "时装";
-  return label;
-}
-
-export function labelFromFilename(
-  filename: string,
-  charinfo: Record<string, unknown>,
-): string | null {
-  if (!filename.endsWith(".png")) return null;
-  const base = filename.slice(0, -4);
-  const first = base.indexOf("_");
-  const second = base.indexOf("_", first + 1);
-  if (first < 0 || second < 0) return null;
-  const name = base.slice(first + 1, second);
-  const suffix = base.slice(second + 1);
-  let form: string | null = null;
-  if (name.includes("(")) {
-    const b = name.indexOf("(");
-    const e = name.indexOf(")", b);
-    if (0 <= b && b < e) form = name.slice(b + 1, e);
-  }
-  let label: string;
-  if (suffix.startsWith("skin")) {
-    label = mediawikiFashionLabel(suffix, charinfo);
-  } else if (suffix.endsWith("b")) {
-    return null; // 建筑小人
-  } else {
-    label = mediawikiBaseLabel(suffix);
-  }
-  if (form) label += `（${form}）`;
-  return label;
 }
 
 async function doListMediawiki(

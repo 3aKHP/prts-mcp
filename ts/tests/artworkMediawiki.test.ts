@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { labelFromFilename } from "../src/tools/artworkTools.ts";
+import { labelFromFilename } from "../src/data/artworkMediawiki.ts";
 import { downloadImageSafe, imageMagicOk } from "../src/api/prtsWiki.ts";
 
 const CHARINFO: Record<string, unknown> = {
