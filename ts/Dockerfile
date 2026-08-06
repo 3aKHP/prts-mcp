@@ -35,7 +35,9 @@ ENV PRTS_MCP_ROOT=/app
 ENV PORT=3000
 
 # Create the volume mount-point as an empty directory.
-RUN mkdir -p /data/gamedata /data/gamedata-levels /data/storyjson
+# /data/images is only used when LOCAL_IMAGE=true (AKDP local assets);
+# in the default MediaWiki mode it stays empty.
+RUN mkdir -p /data/gamedata /data/gamedata-levels /data/storyjson /data/images
 
 EXPOSE 3000
 
