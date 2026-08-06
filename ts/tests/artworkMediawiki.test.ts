@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { labelFromFilename } from "../src/data/artworkMediawiki.ts";
-import { downloadImageSafe, imageMagicOk } from "../src/api/prtsWiki.ts";
+import { downloadImageSafe, imageMagicOk, listAllimages } from "../src/api/prtsWiki.ts";
 
 const CHARINFO: Record<string, unknown> = {
   "时装1名称": "报童",
@@ -134,7 +134,7 @@ test("downloadImageSafe rejects magic-byte mismatch", async () => {
 
 test("downloadImageSafe rejects body exceeding 1 MiB cap", async () => {
   const oversized = Buffer.alloc(1024 * 1024 + 10, 0);
-  oversized[0] = 0x89; oversized[1] = 0x50; oversized[2] = 0x4e; oversized[3] = 0x47;
+  Buffer.from("\x89PNG\r\n\x1a\n").copy(oversized);
   const res = mockImageRes(oversized, {
     url: "https://media.prts.wiki/img.png",
     contentType: "image/png",
@@ -145,4 +145,38 @@ test("downloadImageSafe rejects body exceeding 1 MiB cap", async () => {
       /exceeds/,
     );
   });
+});
+
+// ---------------------------------------------------------------------------
+// listAllimages pagination
+// ---------------------------------------------------------------------------
+
+test("listAllimages paginates via continue token", async () => {
+  const realFetch = globalThis.fetch;
+  const realDateNow = Date.now;
+  if (_mockClock === 0) _mockClock = realDateNow() + 100_000;
+  Date.now = () => (_mockClock += 2000);
+
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const body = input.toString().includes("aicontinue")
+      ? { query: { allimages: [{ name: "立绘_阿米娅_2.png", size: 200, mime: "image/png" }] } }
+      : {
+          query: { allimages: [{ name: "立绘_阿米娅_1.png", size: 100, mime: "image/png" }] },
+          continue: { aicontinue: "立绘_阿米娅_2.png", continue: "-||" },
+        };
+    return new Response(JSON.stringify(body), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  }) as typeof fetch;
+
+  try {
+    const result = await listAllimages("立绘_阿米娅_");
+    assert.equal(result.length, 2);
+    assert.equal(result[0].name, "立绘_阿米娅_1.png");
+    assert.equal(result[1].name, "立绘_阿米娅_2.png");
+  } finally {
+    globalThis.fetch = realFetch;
+    Date.now = realDateNow;
+  }
 });

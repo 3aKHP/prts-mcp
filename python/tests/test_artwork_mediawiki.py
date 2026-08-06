@@ -1,16 +1,14 @@
 """Tests for LOCAL_IMAGE=false MediaWiki path.
 
 Covers filename→label parsing, the image magic-byte check, the LRU cache
-eviction, and the download_image_safe URL pre-check (bad scheme/host). The
-streaming-rejection paths inside download_image_safe (post-redirect scheme/
-host, Content-Type, magic, 1 MiB cap) require an httpx transport mock and
-are deferred — see PR #92 未尽事宜.
+eviction, the download_image_safe boundary (URL pre-check + in-stream
+rejection paths via httpx MockTransport), and list_allimages pagination.
 """
 from __future__ import annotations
 
 import pytest
 
-from prts_mcp.api.prts_wiki import _image_magic_ok, download_image_safe
+from prts_mcp.api.prts_wiki import _image_magic_ok, download_image_safe, list_allimages
 from prts_mcp.data.artwork_mediawiki import (
     _image_cache,
     _image_cache_get,
@@ -177,3 +175,48 @@ def test_download_safe_rejects_oversized_body(monkeypatch):
 
     with pytest.raises(ValueError, match="exceeds"):
         asyncio.run(_mock_image_download(monkeypatch, handler))
+
+
+# ---------------------------------------------------------------------------
+# list_allimages pagination
+# ---------------------------------------------------------------------------
+
+
+def test_list_allimages_paginates(monkeypatch):
+    """allimages loops on MediaWiki continue tokens to collect all pages."""
+    import asyncio
+    import httpx
+    import prts_mcp.api.prts_wiki as pw
+
+    async def _noop():
+        pass
+
+    monkeypatch.setattr(pw, "_rate_limit", _noop)
+
+    def handler(request):
+        if "aicontinue" in str(request.url):
+            return httpx.Response(200, json={
+                "query": {"allimages": [
+                    {"name": "立绘_阿米娅_2.png", "size": 200, "mime": "image/png"},
+                ]},
+            })
+        return httpx.Response(200, json={
+            "query": {"allimages": [
+                {"name": "立绘_阿米娅_1.png", "size": 100, "mime": "image/png"},
+            ]},
+            "continue": {"aicontinue": "立绘_阿米娅_2.png", "continue": "-||"},
+        })
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    monkeypatch.setattr(pw, "_get_client", lambda: client)
+
+    async def _run():
+        try:
+            return await list_allimages("立绘_阿米娅_")
+        finally:
+            await client.aclose()
+
+    result = asyncio.run(_run())
+    assert len(result) == 2
+    assert result[0]["name"] == "立绘_阿米娅_1.png"
+    assert result[1]["name"] == "立绘_阿米娅_2.png"
