@@ -62,3 +62,87 @@ test("downloadImageSafe rejects bad scheme/host before any network call", async 
     /not allowed/,
   );
 });
+
+// ---------------------------------------------------------------------------
+// downloadImageSafe: in-stream rejection paths (fetch mock + Date.now override
+// to neutralise rate-limit delay)
+// ---------------------------------------------------------------------------
+
+// Module-level mock clock — persists across tests so nextAllowedTime (module
+// state in prtsWiki) never outruns the mock Date.now.
+let _mockClock = 0;
+
+function withMockFetch<T>(mockRes: Response, fn: () => Promise<T>): Promise<T> {
+  const realFetch = globalThis.fetch;
+  const realDateNow = Date.now;
+  if (_mockClock === 0) _mockClock = realDateNow() + 100_000;
+  Date.now = () => (_mockClock += 2000); // always ahead of nextAllowedTime → 0 wait
+  globalThis.fetch = (async () => mockRes) as typeof fetch;
+  return fn().finally(() => {
+    globalThis.fetch = realFetch;
+    Date.now = realDateNow;
+  });
+}
+
+function mockImageRes(body: BodyInit, opts: { url: string; contentType: string; status?: number }): Response {
+  const res = new Response(body, {
+    status: opts.status ?? 200,
+    headers: { "content-type": opts.contentType },
+  });
+  Object.defineProperty(res, "url", { value: opts.url });
+  return res;
+}
+
+test("downloadImageSafe rejects post-redirect scheme downgrade", async () => {
+  const res = mockImageRes(new Uint8Array([0x89, 0x50, 0x4e, 0x47]), {
+    url: "http://evil.com/img.png",
+    contentType: "image/png",
+  });
+  await withMockFetch(res, async () => {
+    await assert.rejects(
+      () => downloadImageSafe("https://media.prts.wiki/img.png"),
+      /disallowed/,
+    );
+  });
+});
+
+test("downloadImageSafe rejects bad Content-Type", async () => {
+  const res = mockImageRes(new Uint8Array([0x89, 0x50]), {
+    url: "https://media.prts.wiki/img.png",
+    contentType: "text/html",
+  });
+  await withMockFetch(res, async () => {
+    await assert.rejects(
+      () => downloadImageSafe("https://media.prts.wiki/img.png"),
+      /content-type/,
+    );
+  });
+});
+
+test("downloadImageSafe rejects magic-byte mismatch", async () => {
+  const res = mockImageRes(Buffer.from("notanimage"), {
+    url: "https://media.prts.wiki/img.png",
+    contentType: "image/png",
+  });
+  await withMockFetch(res, async () => {
+    await assert.rejects(
+      () => downloadImageSafe("https://media.prts.wiki/img.png"),
+      /magic/,
+    );
+  });
+});
+
+test("downloadImageSafe rejects body exceeding 1 MiB cap", async () => {
+  const oversized = Buffer.alloc(1024 * 1024 + 10, 0);
+  oversized[0] = 0x89; oversized[1] = 0x50; oversized[2] = 0x4e; oversized[3] = 0x47;
+  const res = mockImageRes(oversized, {
+    url: "https://media.prts.wiki/img.png",
+    contentType: "image/png",
+  });
+  await withMockFetch(res, async () => {
+    await assert.rejects(
+      () => downloadImageSafe("https://media.prts.wiki/img.png"),
+      /exceeds/,
+    );
+  });
+});

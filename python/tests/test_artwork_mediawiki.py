@@ -97,3 +97,83 @@ def test_download_image_safe_rejects_bad_url():
     # wrong host.
     with pytest.raises(ValueError, match="not allowed"):
         asyncio.run(download_image_safe("https://evil.com/x.png"))
+
+
+# ---------------------------------------------------------------------------
+# download_image_safe: in-stream rejection paths (httpx MockTransport)
+# ---------------------------------------------------------------------------
+
+
+def _mock_image_download(monkeypatch, handler):
+    """Patch _rate_limit (no-op) + _get_client (MockTransport); return coroutine."""
+    import httpx
+    import prts_mcp.api.prts_wiki as pw
+
+    async def _noop():
+        pass
+
+    monkeypatch.setattr(pw, "_rate_limit", _noop)
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    monkeypatch.setattr(pw, "_get_client", lambda: client)
+
+    async def _coro():
+        try:
+            return await pw.download_image_safe("https://media.prts.wiki/img.png")
+        finally:
+            await client.aclose()
+
+    return _coro()
+
+
+def test_download_safe_rejects_redirect_to_bad_host(monkeypatch):
+    """Post-redirect scheme/host change is caught after the stream opens."""
+    import asyncio
+    import httpx
+
+    def handler(request):
+        if request.url.host == "media.prts.wiki":
+            return httpx.Response(302, headers={"location": "http://evil.com/img.png"})
+        return httpx.Response(200, content=b"\x89PNG\r\n\x1a\n",
+                              headers={"content-type": "image/png"})
+
+    with pytest.raises(ValueError, match="disallowed"):
+        asyncio.run(_mock_image_download(monkeypatch, handler))
+
+
+def test_download_safe_rejects_bad_content_type(monkeypatch):
+    """Non-allowlist Content-Type is rejected before reading the body."""
+    import asyncio
+    import httpx
+
+    def handler(request):
+        return httpx.Response(200, content=b"x", headers={"content-type": "text/html"})
+
+    with pytest.raises(ValueError, match="content-type"):
+        asyncio.run(_mock_image_download(monkeypatch, handler))
+
+
+def test_download_safe_rejects_magic_mismatch(monkeypatch):
+    """Valid Content-Type but wrong magic bytes → rejection after full read."""
+    import asyncio
+    import httpx
+
+    def handler(request):
+        return httpx.Response(200, content=b"not-an-image",
+                              headers={"content-type": "image/png"})
+
+    with pytest.raises(ValueError, match="magic"):
+        asyncio.run(_mock_image_download(monkeypatch, handler))
+
+
+def test_download_safe_rejects_oversized_body(monkeypatch):
+    """Body exceeding the 1 MiB cap is rejected mid-stream."""
+    import asyncio
+    import httpx
+    import prts_mcp.api.prts_wiki as pw
+
+    def handler(request):
+        body = b"\x89PNG\r\n\x1a\n" + b"\x00" * (pw._MAX_IMAGE_BYTES + 1)
+        return httpx.Response(200, content=body, headers={"content-type": "image/png"})
+
+    with pytest.raises(ValueError, match="exceeds"):
+        asyncio.run(_mock_image_download(monkeypatch, handler))
