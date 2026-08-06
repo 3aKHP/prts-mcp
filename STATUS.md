@@ -1,18 +1,22 @@
 # PRTS-MCP 项目状态
 
-_Last updated: 2026-07-29_
+_Last updated: 2026-08-07_
 
 ## 当前版本
 
 | 实现 | 版本 | 状态 |
 |------|------|------|
-| Python | 2.5.0.dev0 | Development |
-| TypeScript | 2.5.0-dev.0 | Development |
+| Python | 2.6.0.dev0 | Development |
+| TypeScript | 2.6.0-dev.0 | Development |
 
-- 当前稳定发布：2.4.0（23 个 MCP 工具）
+- 当前稳定发布：2.5.0（24 个 MCP 工具）
 - 当前 LTS 发布：1.7.0（32 个 MCP 工具，剧情角色追踪）
-- 下一开发目标：2.5.0（干员立绘工具 `operator_artwork`，24 个 MCP 工具）
-- 当前稳定补丁线：2.4.x
+- 下一开发目标：2.6.0（待规划）
+- 当前稳定补丁线：2.5.x
+- 2.5.0 发布内容：干员立绘工具 `operator_artwork`（list/get，默认 MediaWiki
+  在线获取 + 256 MiB LRU 缓存，`LOCAL_IMAGE=true` 时使用 AKDP 本地 PNG 资产）；
+  数据源切换到自建 `arknights-data-pipeline` Release；TS stdio 不再泄漏 HTTP
+  监听器；TS JSON 空对象占位守卫。
 - 2.4.0 发布内容：常驻服务默认每小时同步 GameData excel、GameData levels 与
   StoryJson；GameData 两类归档以同一代原子切换，并支持共享卷跨进程发布锁续租。
 - 2.3.1 发布内容：TypeScript 生产依赖安全更新，并同步
@@ -34,6 +38,23 @@ _Last updated: 2026-07-29_
 - 2.0 交付内容：工具面合并（32 → 23）+ output channel（structuredContent）；**双端协议同步（Python 上 HTTP / TS 上 stdio）已后置到 2.0 之后**。
 - 兼容性合约：1.7.x LTS 线既有 32 个工具名、必填参数、默认输出格式不变；仅接受兼容性、安全性、数据同步和关键缺陷修复
 
+## 2.5.0 发布内容
+
+- [x] 干员立绘工具 `operator_artwork`（`action="list"` 返回有界元数据 + 语义
+  标签；`action="get"` 返回单张 base64 `ImageContent`，默认 `large` 变体
+  max 1024px）。默认 MediaWiki 在线获取模式（`LOCAL_IMAGE=false`），覆盖
+  #85 安全边界（hostname/MIME/magic/1MiB/streaming/redirect）+ 256 MiB LRU
+  缓存。`LOCAL_IMAGE=true` 时同步 ~1.5 GB AKDP 本地 PNG 资产。工具面 23 → 24。
+- [x] 数据源切换到自建 `arknights-data-pipeline` Release（`zh_CN-excel.zip`、
+  `zh_CN-levels.zip`、`zh_CN.zip`），Release 清单验证收紧。
+- [x] TS stdio 入口不再因 `server.ts` 模块加载副作用启动 HTTP 监听器（提取
+  无副作用的 `server-core.ts` 工厂）。
+- [x] TS JSON 源 `?? []` 全部替换为 `Array.isArray(x) ? x : []`，防止上游
+  AKDP `{}` 空对象占位导致 `.map()` / `for...of` 崩溃（21 处）。
+- [x] Docker 三个 Dockerfile 创建 `/data/images` 目录，`LOCAL_IMAGE=true` 命名卷
+  有可写目标。
+- [x] Python `initialize` 握手报告实际产品版本（`importlib.metadata`）。
+
 ## 2.4.0 发布内容
 
 - [x] Python / TypeScript 常驻进程在启动同步后默认每小时检查 GameData excel、
@@ -48,9 +69,9 @@ _Last updated: 2026-07-29_
 
 ## 当前分支
 
-- `main`：2.4.0（最新稳定发布线）
+- `main`：2.5.0（最新稳定发布线）
 - `lts/1.7`：1.7.x LTS 维护线（从 1.7.0 发布提交创建）
-- `develop`：2.5.0 开发线（功能范围待规划）
+- `develop`：2.6.0 开发线（待规划）
 
 1.7.0 是最后一个 1.x 功能版本和 LTS 基线。它将 server.py/server.ts 和 story.py/story.ts 单体文件拆分为聚焦子模块，保留向后兼容垫片（shim），并新增剧情角色追踪工具：`find_character_appearances`、`find_speakers_in`。后续功能开发转向 2.0；1.7.x 仅做兼容性、安全性、数据同步和关键缺陷修复。
 
@@ -132,7 +153,7 @@ PRTS-MCP/
 | [arknights-data-pipeline](https://github.com/3aKHP/arknights-data-pipeline) | 剧情台词 + LLM 摘要 | GitHub Release `zh_CN.zip` |
 | [PRTS Wiki API](https://prts.wiki/api.php) | 世界观词条/阵营设定 | 实时 HTTP 请求 |
 
-## 工具清单 (23, 2.0 发布线)
+## 工具清单 (24, 2.x 发布线)
 
 | # | 工具 | 数据源 | 版本 |
 |---|------|--------|------|
@@ -159,6 +180,7 @@ PRTS-MCP/
 | 21 | `get_operator_memoirs` | StoryJson | 1.6.1 |
 | 22 | `find_character_appearances` | StoryJson | 1.7.0 |
 | 23 | `find_speakers_in` | StoryJson | 1.7.0 |
+| 24 | `operator_artwork` | PRTS Wiki / AKDP | 2.5.0 |
 
 > `search(scope, pattern, max_results)` 统一了 1.x 的 `search_data` /
 > `search_enemies` / `search_stages` / `search_items` 与 `list_search_scopes`
@@ -244,6 +266,7 @@ PRTS-MCP/
 
 | 版本 | 日期 | 亮点 |
 |------|------|------|
+| 2.5.0 | 2026-08-07 | 干员立绘工具 `operator_artwork`；数据源切换到自建 arknights-data-pipeline；TS stdio HTTP 泄漏修复 |
 | 2.4.0 | 2026-07-29 | 常驻服务 Auto-Sync；GameData excel/levels 原子成对发布；共享卷跨进程协调与锁续租 |
 | 2.3.1 | 2026-07-10 | TypeScript 生产依赖安全更新；同步 `prts-mcp-ts-stdio` npm 锁文件 bin 元数据 |
 | 2.3.0 | 2026-07-08 | Cross-transport parity：Python 新增 Streamable HTTP，TypeScript 新增 stdio，双端双 transport；部署改为按场景选择 |

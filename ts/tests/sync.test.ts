@@ -348,13 +348,16 @@ test("syncRelease forced check bypasses fresh-cache fast path", async () => {
   await withFetchMock((async () => {
     fetchCalls += 1;
     return new Response(
-      JSON.stringify({
-        tag_name: "data-cached-sha",
-        assets: [{
-          name: "zh_CN.zip",
-          browser_download_url: "https://example.test/zh_CN.zip",
-        }],
-      }),
+      JSON.stringify([
+        {
+          tag_name: "data-cached-sha",
+          created_at: "2026-01-01T00:00:00Z",
+          assets: [{
+            name: "zh_CN.zip",
+            browser_download_url: "https://example.test/zh_CN.zip",
+          }],
+        },
+      ]),
       { status: 200, headers: { "content-type": "application/json" } },
     );
   }) as typeof fetch, async () => {
@@ -428,11 +431,14 @@ test("syncReleaseArchive verifies the factory manifest before activation", async
     call += 1;
     const url = String(input);
     if (call === 1) {
-      assert.match(url, /api\.github\.com\/repos\/3aKHP\/arknights-data-pipeline\/releases\/latest$/);
-      return new Response(JSON.stringify({
-        tag_name: "data-new",
-        assets: [{ name: spec.assetName, browser_download_url: "https://example/asset" }],
-      }), { headers: { "content-type": "application/json" } });
+      assert.match(url, /api\.github\.com\/repos\/3aKHP\/arknights-data-pipeline\/releases\?per_page=100$/);
+      return new Response(JSON.stringify([
+        {
+          tag_name: "data-new",
+          created_at: "2026-01-01T00:00:00Z",
+          assets: [{ name: spec.assetName, browser_download_url: "https://example/asset" }],
+        },
+      ]), { headers: { "content-type": "application/json" } });
     }
     if (call === 2) {
       assert.equal(url, "https://example/asset");
