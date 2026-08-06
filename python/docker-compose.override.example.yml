@@ -11,6 +11,11 @@ services:
       # Optional: set STORYJSON_PATH to use your own local zh_CN.zip.
       # WARNING: setting this disables story auto-sync entirely.
       # STORYJSON_PATH: /data/custom-storyjson/zh_CN.zip
+      # Optional: use AKDP local image assets instead of MediaWiki on-demand.
+      # Requires mounting /data/images (see volumes below).
+      # LOCAL_IMAGE: "true"
+      # Optional: also sync full-resolution original shards (~3 GB total).
+      # ORIGINAL_IMAGE: "true"
     volumes:
       # Recommended: mount a named volume for persistent data across restarts.
       # Use this pattern in docker-compose.override.yml (copy this file):
@@ -19,6 +24,7 @@ services:
       #     - prts-mcp-data:/data/gamedata
       #     - prts-mcp-levels:/data/gamedata-levels
       #     - prts-mcp-storyjson:/data/storyjson
+      #     - prts-mcp-images:/data/images  # only for LOCAL_IMAGE=true
       #
       # Alternatively, bind-mount your own ArknightsGameData repo root (read-only).
       # The server expects zh_CN/gamedata/excel/*.json under the mounted path.
