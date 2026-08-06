@@ -522,7 +522,9 @@ export async function listAllimages(prefix: string, limit = 50): Promise<Allimag
     format: "json",
   };
   const results: AllimagesEntry[] = [];
+  let pages = 0;
   for (;;) {
+    if (++pages > 50) throw new Error("allimages pagination exceeded 50 pages");
     const data = (await prtsGet(params)) as {
       query?: { allimages?: Array<{ name?: string; size?: number; mime?: string }> };
       continue?: Record<string, string>;

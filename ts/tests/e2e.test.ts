@@ -129,6 +129,7 @@ test("E2E", async (t) => {
         XDG_DATA_HOME: dataHome,
         LOCALAPPDATA: localAppData,
         GITHUB_MIRRORS: "",
+        IMAGES_ENABLED: "true",
         SESSION_IDLE_TIMEOUT_MS: "30000",
       },
       stdio: ["ignore", "pipe", "pipe"],

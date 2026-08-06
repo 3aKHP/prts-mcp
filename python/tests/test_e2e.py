@@ -97,6 +97,7 @@ def server():
     env = os.environ.copy()
     env["GAMEDATA_PATH"] = str(GAMEDATA_PATH)
     env["GITHUB_MIRRORS"] = ""
+    env["IMAGES_ENABLED"] = "true"
     # Prevent auto-sync interfering with the test
     env.setdefault("STORYJSON_PATH", str(GAMEDATA_PATH / "does-not-exist.zip"))
 

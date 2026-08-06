@@ -456,7 +456,11 @@ async def list_allimages(prefix: str, limit: int = 50) -> list[dict]:
         "format": "json",
     }
     results: list[dict] = []
+    pages = 0
     while True:
+        if pages >= 50:
+            raise RuntimeError("allimages pagination exceeded 50 pages")
+        pages += 1
         await _rate_limit()
         resp = await _get_client().get(PRTS_API_ENDPOINT, params=params)
         resp.raise_for_status()
