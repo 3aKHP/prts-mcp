@@ -228,9 +228,9 @@ export function getOperatorArchives(name: string): string {
   if (!entry) return `干员 '${name}' 暂无档案数据。`;
 
   const sections: string[] = [];
-  for (const story of entry.storyTextAudio ?? []) {
+  for (const story of Array.isArray(entry.storyTextAudio) ? entry.storyTextAudio : []) {
     const title = story.storyTitle ?? "";
-    const texts = (story.stories ?? [])
+    const texts = (Array.isArray(story.stories) ? story.stories : [])
       .map((s) => s.storyText ?? "")
       .filter(Boolean);
     if (texts.length > 0) {
@@ -340,8 +340,8 @@ export function buildOperatorBasicInfo(name: string): OperatorBasicInfoPayload |
   const affiliation = affiliationParts.length > 0 ? affiliationParts.join(" / ") : "-";
 
   const talents: OperatorTalentPayload[] = [];
-  for (const slot of info.talents ?? []) {
-    const candidates = slot.candidates ?? [];
+  for (const slot of Array.isArray(info.talents) ? info.talents : []) {
+    const candidates = Array.isArray(slot.candidates) ? slot.candidates : [];
     let chosen: TalentCandidate | undefined;
     for (let i = candidates.length - 1; i >= 0; i--) {
       const c = candidates[i];
@@ -370,7 +370,7 @@ export function buildOperatorBasicInfo(name: string): OperatorBasicInfoPayload |
     position,
     position_raw: info.position ?? "",
     affiliation,
-    tag_list: info.tagList ?? [],
+    tag_list: Array.isArray(info.tagList) ? info.tagList : [],
     attack_attribute: info.description ? stripWikitext(info.description) : null,
     item_usage: info.itemUsage || null,
     item_desc: info.itemDesc || null,

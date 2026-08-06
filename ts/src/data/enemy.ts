@@ -240,7 +240,7 @@ function getDbIndex(): Record<string, EnemyDbEntry> {
     if (!store.exists(DATABASE_FILE)) { _dbIndex = {}; return _dbIndex; }
     const raw = store.readJson<EnemyDatabase>(DATABASE_FILE);
     const index: Record<string, EnemyDbEntry> = {};
-    for (const row of raw.enemies ?? []) {
+    for (const row of Array.isArray(raw.enemies) ? raw.enemies : []) {
       if (row.Key && row.Value && row.Value[0]?.enemyData) {
         index[row.Key] = row.Value[0].enemyData;
       }
@@ -439,7 +439,7 @@ export function buildEnemyInfo(name: string): EnemyInfoPayload | string {
   if (!info) return `敌人 '${name}' 暂无详细信息。`;
 
   const levelRaw = info.enemyLevel ?? "";
-  const damageTypesRaw = info.damageType ?? [];
+  const damageTypesRaw = Array.isArray(info.damageType) ? info.damageType : [];
   const payload: EnemyInfoPayload = {
     name: info.name ?? "",
     enemy_id: info.enemyId ?? "",
@@ -451,7 +451,7 @@ export function buildEnemyInfo(name: string): EnemyInfoPayload | string {
     ability: info.ability ?? "",
     damage_types_raw: damageTypesRaw,
     damage_types_label: damageTypesRaw.map((dt) => DAMAGE_TYPE_ZH[dt] ?? dt).join("、"),
-    enemy_tags: info.enemyTags ?? [],
+    enemy_tags: Array.isArray(info.enemyTags) ? info.enemyTags : [],
     stats: null,
   };
 
@@ -484,7 +484,7 @@ function extractEnemyStats(dbEntry: EnemyDbEntry): EnemyStatsPayload {
     if (mValue<boolean>(attrs[key], false)) immunities.push(label);
   }
 
-  const skills = (dbEntry.skills ?? []).map((s) => {
+  const skills = (Array.isArray(dbEntry.skills) ? dbEntry.skills : []).map((s) => {
     const prefab = s.prefabKey ?? "未知";
     const cd = s.cooldown;
     const initCd = s.initCooldown;
@@ -493,7 +493,7 @@ function extractEnemyStats(dbEntry: EnemyDbEntry): EnemyStatsPayload {
     if (cd) cdParts.push(`冷却 ${cd}s`);
     if (initCd && initCd !== cd) cdParts.push(`初始 ${initCd}s`);
     if (spCost) cdParts.push(`SP ${spCost}`);
-    const bbStrs = (s.blackboard ?? [])
+    const bbStrs = (Array.isArray(s.blackboard) ? s.blackboard : [])
       .slice(0, 6)
       .filter((b) => b.value != null)
       .map((b) => {
@@ -638,7 +638,7 @@ export function renderEnemySearch(data: EnemySearchPayload): string {
 function enemySearchEntry(record: EnemySearchRecord): EnemySearchPayload["results"][number] {
   const info = record.info;
   const levelRaw = info.enemyLevel ?? "";
-  const damageTypesRaw = info.damageType ?? [];
+  const damageTypesRaw = Array.isArray(info.damageType) ? info.damageType : [];
   return {
     enemy_id: record.enemyId,
     name: info.name ?? "",
@@ -650,7 +650,7 @@ function enemySearchEntry(record: EnemySearchRecord): EnemySearchPayload["result
     ability: info.ability ?? "",
     damage_types_raw: damageTypesRaw,
     damage_types_label: damageTypesRaw.map((dt) => DAMAGE_TYPE_ZH[dt] ?? dt).join("、"),
-    enemy_tags: info.enemyTags ?? [],
+    enemy_tags: Array.isArray(info.enemyTags) ? info.enemyTags : [],
   };
 }
 
@@ -680,7 +680,7 @@ function getEnemySearchRecords(): EnemySearchRecord[] {
         info.name ?? "",
         info.description ?? "",
         info.ability ?? "",
-        ...(info.enemyTags ?? []),
+        ...(Array.isArray(info.enemyTags) ? info.enemyTags : []),
       ].join(" "),
     }));
   return _enemySearchRecords;
