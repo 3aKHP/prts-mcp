@@ -15,6 +15,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
   variant, max 1024px). `LOCAL_IMAGE=true` (default) consumes synced local
   assets via the existing auto-sync scheduler; `ORIGINAL_IMAGE=true` also
   pulls full-resolution shards. Labels are joined from `skin_table.json`.
+- `operator_artwork` LOCAL_IMAGE=false mode (PRTS MediaWiki fallback): list
+  via `allimages` + CharinfoV2 `时装N名称` labels, get via `imageinfo` under
+  the full #85 security boundary (hostname/MIME/magic/1MiB/streaming/redirect).
+  `PRTS_IMAGE_CACHE=true` enables a 256MiB LRU. `original` variant rejected
+  (PRTS originals exceed the 1MiB cap). True (AKDP) and false (MediaWiki)
+  paths share no data dependency.
 
 ## [2.4.0] - 2026-07-29
 
