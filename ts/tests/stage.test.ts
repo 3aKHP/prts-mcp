@@ -511,3 +511,40 @@ test("searchStages max_results cap", async () => {
   const out = stage.searchStages(".", 1);
   assert.match(out, /共 1 个/);
 });
+
+test("getStageInfo tolerates unlockCondition = {}", async () => {
+  // Regression: upstream AKDP data sometimes has unlockCondition as {}
+  // instead of []. TS ?? [] didn't catch {} (not null/undefined), so
+  // conditions.map() crashed with "conditions.map is not a function".
+  const root = tempGamedataRoot();
+  const excel = join(root, "zh_CN", "gamedata", "excel");
+  mkdirSync(excel, { recursive: true });
+  for (const f of SENTINEL_FILES) {
+    writeFileSync(join(excel, f), "{}", "utf-8");
+  }
+  writeFileSync(join(excel, "item_table.json"), "{}", "utf-8");
+  writeFileSync(join(excel, "stage_table.json"), JSON.stringify({
+    stages: {
+      weird_stage: {
+        stageId: "weird_stage",
+        code: "WS-1",
+        name: "空对象解锁条件关",
+        stageType: "ACTIVITY",
+        difficulty: "NORMAL",
+        zoneId: "zone_ws",
+        levelId: null,
+        apCost: 1,
+        dangerLevel: "LV.1",
+        description: "测试",
+        stageDropInfo: null,
+        unlockCondition: {},
+        hardStagedId: null,
+        bossMark: false,
+      },
+    },
+  }), "utf-8");
+  process.env["GAMEDATA_PATH"] = root;
+  const stage = await loadStageModule();
+  const out = stage.getStageInfo("weird_stage");
+  assert.match(out, /无条件/);
+});
