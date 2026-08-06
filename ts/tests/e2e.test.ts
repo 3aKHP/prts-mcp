@@ -15,7 +15,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { spawn, ChildProcess } from "node:child_process";
 import { createServer } from "node:net";
-import { mkdirSync, mkdtempSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -106,6 +106,9 @@ const tc = (name: string, args: Record<string, unknown>, id: number) => ({
 
 const GAMEDATA_PATH = join(import.meta.dirname, "..", "..", "data", "gamedata");
 const RUN_PRTS_API = process.env["E2E_PRTS_API"] === "1";
+const EXPECTED_VERSION = JSON.parse(
+  readFileSync(join(import.meta.dirname, "..", "package.json"), "utf-8"),
+).version as string;
 
 test("E2E", async (t) => {
   // --- start server ---
@@ -129,6 +132,7 @@ test("E2E", async (t) => {
         XDG_DATA_HOME: dataHome,
         LOCALAPPDATA: localAppData,
         GITHUB_MIRRORS: "",
+        IMAGES_ENABLED: "true",
         SESSION_IDLE_TIMEOUT_MS: "30000",
       },
       stdio: ["ignore", "pipe", "pipe"],
@@ -161,11 +165,13 @@ test("E2E", async (t) => {
     assert.equal(init.status, 200, `status ${init.status}`);
     assert.ok(init.sessionId, "should return Mcp-Session-Id");
     sessionId = init.sessionId!;
+    const serverInfo = (init.body?.result as { serverInfo?: { version?: string } })?.serverInfo;
+    assert.equal(serverInfo?.version, EXPECTED_VERSION, "serverInfo.version should match package.json");
     assert.ok(init.body?.result, "initialize should have result");
   });
 
   // --- tools/list ---
-  await t.test("tools/list returns all 23 tools", async () => {
+  await t.test("tools/list returns all 24 tools", async () => {
     const tl = await mcpPost(
       origin,
       { jsonrpc: "2.0", method: "tools/list", id: 2 },
@@ -175,7 +181,7 @@ test("E2E", async (t) => {
     assert.equal(tl.status, 200);
     const tools = (tl.body?.result as Record<string, unknown>)?.tools as Array<{ name: string }> | undefined;
     assert.ok(tools, "tools/list should return tools");
-    assert.equal(tools!.length, 23, `got ${tools!.length} tools`);
+    assert.equal(tools!.length, 24, `got ${tools!.length} tools`);
 
     const expected = new Set([
       "search_prts", "prts_page",
@@ -189,6 +195,7 @@ test("E2E", async (t) => {
       "get_story_summary",
       "get_operator_memoirs",
       "find_character_appearances", "find_speakers_in",
+      "operator_artwork",
     ]);
     const names = new Set(tools!.map((t) => t.name));
     for (const name of expected) {
@@ -237,7 +244,7 @@ test("E2E", async (t) => {
     const r = await mcpPost(origin, tc("list_enemies", { limit: 5 }, 8), sessionId);
     assert.equal(r.status, 200);
     const text = toolResultText(r);
-    assert.ok(text.includes("敌方图鉴") || dataUnavailable(text), `unexpected: ${text.slice(0, 100)}`);
+    assert.ok(text.includes("敌人图鉴") || dataUnavailable(text), `unexpected: ${text.slice(0, 100)}`);
   });
 
   await t.test("list_story_events — data or graceful error", async () => {

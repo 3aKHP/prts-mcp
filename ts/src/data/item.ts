@@ -377,7 +377,7 @@ export function buildItemInfo(name: string): ItemInfoPayload | string {
     obtain_approach: info.obtainApproach || null,
     description: info.description || null,
     usage: info.usage || null,
-    stage_drop_list: info.stageDropList ?? [],
+    stage_drop_list: Array.isArray(info.stageDropList) ? info.stageDropList : [],
     building_product_list: info.buildingProductList ?? null,
     shop_relate_list: info.shopRelateInfoList ?? null,
     voucher_relate_list: info.voucherRelateList ?? null,

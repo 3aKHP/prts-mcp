@@ -12,9 +12,11 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { createHash } from "node:crypto";
 import AdmZip from "adm-zip";
 import {
   syncRelease,
+  downloadReleaseAsset,
   syncReleaseArchive,
   syncReleaseArchivePair,
   withArchiveActivationLock,
@@ -22,11 +24,102 @@ import {
   type ReleaseSpec,
 } from "../src/data/sync.ts";
 
+test("downloadReleaseAsset verifies the optional factory manifest", async () => {
+  const spec = { ...tempSpec(), verifyManifest: true };
+  const content = Buffer.from("verified", "utf-8");
+  const sha256 = createHash("sha256").update(content).digest("hex");
+  let call = 0;
+  await withFetchMock((async (input: RequestInfo | URL) => {
+    call += 1;
+    if (call === 1) return new Response(content);
+    assert.match(String(input), /manifest\.json$/);
+    return new Response(JSON.stringify({
+      contractVersion: "prts-mcp-data/v1",
+      source: { versionId: "test" },
+      assets: { "zh_CN.zip": { size: content.byteLength, sha256 } },
+    }), { headers: { "content-type": "application/json" } });
+  }) as typeof fetch, async () => {
+    await downloadReleaseAsset(spec, "data-test", "https://example/asset");
+  });
+  assert.deepEqual(readFileSync(spec.localZip), content);
+});
+
+test("downloadReleaseAsset keeps the old zip on manifest mismatch", async () => {
+  const spec = { ...tempSpec(), verifyManifest: true };
+  mkdirSync(dirname(spec.localZip), { recursive: true });
+  writeFileSync(spec.localZip, "old", "utf-8");
+  const content = Buffer.from("new", "utf-8");
+  let call = 0;
+  await withFetchMock((async (input: RequestInfo | URL) => {
+    call += 1;
+    if (call === 1) return new Response(content);
+    assert.match(String(input), /manifest\.json$/);
+    return new Response(JSON.stringify({
+      contractVersion: "prts-mcp-data/v1",
+      source: { versionId: "test" },
+      assets: { "zh_CN.zip": { size: content.byteLength, sha256: "bad" } },
+    }));
+  }) as typeof fetch, async () => {
+    await assert.rejects(
+      downloadReleaseAsset(spec, "data-test", "https://example/asset"),
+      /manifest mismatch/,
+    );
+  });
+  assert.equal(readFileSync(spec.localZip, "utf-8"), "old");
+});
+
+test("downloadReleaseAsset keeps legacy releases without a manifest", async () => {
+  const spec = { ...tempSpec(), verifyManifest: true };
+  const content = Buffer.from("legacy", "utf-8");
+  let call = 0;
+  await withFetchMock((async (input: RequestInfo | URL) => {
+    call += 1;
+    if (call === 1) return new Response(content);
+    assert.match(String(input), /manifest\.json$/);
+    return new Response("missing", { status: 404 });
+  }) as typeof fetch, async () => {
+    await downloadReleaseAsset(spec, "data-test", "https://example/asset");
+  });
+  assert.deepEqual(readFileSync(spec.localZip), content);
+});
+
+test("downloadReleaseAsset rejects an unsupported manifest contract", async () => {
+  const spec = { ...tempSpec(), verifyManifest: true };
+  let call = 0;
+  await withFetchMock((async () => {
+    call += 1;
+    if (call === 1) return new Response("new");
+    return new Response(JSON.stringify({ contractVersion: "unknown", assets: {} }));
+  }) as typeof fetch, async () => {
+    await assert.rejects(
+      downloadReleaseAsset(spec, "data-test", "https://example/asset"),
+      /unsupported contractVersion/,
+    );
+  });
+  assert.equal(existsSync(spec.localZip), false);
+});
+
+test("downloadReleaseAsset rejects a non-object manifest", async () => {
+  const spec = { ...tempSpec(), verifyManifest: true };
+  let call = 0;
+  await withFetchMock((async () => {
+    call += 1;
+    if (call === 1) return new Response("new");
+    return new Response("null", { headers: { "content-type": "application/json" } });
+  }) as typeof fetch, async () => {
+    await assert.rejects(
+      downloadReleaseAsset(spec, "data-test", "https://example/asset"),
+      /manifest for data-test is invalid: manifest root must be an object/,
+    );
+  });
+  assert.equal(existsSync(spec.localZip), false);
+});
+
 function tempSpec(): ReleaseSpec {
   const root = mkdtempSync(join(tmpdir(), "prts-sync-test-"));
   return {
     owner: "3aKHP",
-    repo: "ArknightsStoryJson",
+    repo: "arknights-data-pipeline",
     assetName: "zh_CN.zip",
     localZip: join(root, "storyjson", "zh_CN.zip"),
   };
@@ -36,7 +129,7 @@ function tempArchiveSpec(assetName = "zh_CN-levels.zip"): ReleaseArchiveSpec {
   const root = mkdtempSync(join(tmpdir(), "prts-sync-archive-test-"));
   return {
     owner: "3aKHP",
-    repo: "ArknightsGameData",
+    repo: "arknights-data-pipeline",
     assetName,
     localZip: join(root, "archives", assetName),
     localRoot: join(root, "gamedata-levels"),
@@ -97,7 +190,7 @@ test("syncRelease reads Python release metadata", async () => {
   writeFileSync(
     join(dirname(spec.localZip), "release_meta.json"),
     JSON.stringify({
-      repo: "3aKHP/ArknightsStoryJson",
+      repo: "3aKHP/arknights-data-pipeline",
       branch: "releases",
       commit_sha: "same-sha",
       fetched_at: "2099-01-01T00:00:00.000Z",
@@ -175,7 +268,7 @@ test("syncRelease validates zip before fresh-cache fast path", async () => {
   writeFileSync(
     join(dirname(spec.localZip), "release_meta.json"),
     JSON.stringify({
-      repo: "3aKHP/ArknightsStoryJson",
+      repo: "3aKHP/arknights-data-pipeline",
       branch: "releases",
       commitSha: "cached-sha",
       fetchedAt: new Date().toISOString(),
@@ -213,7 +306,7 @@ test("syncRelease rejects empty release metadata fields", async () => {
     writeFileSync(
       join(dirname(spec.localZip), "release_meta.json"),
       JSON.stringify({
-        repo: "3aKHP/ArknightsStoryJson",
+        repo: "3aKHP/arknights-data-pipeline",
         branch: "releases",
         ...metadata,
         files: ["zh_CN.zip"],
@@ -242,7 +335,7 @@ test("syncRelease forced check bypasses fresh-cache fast path", async () => {
   writeFileSync(
     join(dirname(spec.localZip), "release_meta.json"),
     JSON.stringify({
-      repo: "3aKHP/ArknightsStoryJson",
+      repo: "3aKHP/arknights-data-pipeline",
       branch: "releases",
       commitSha: "cached-sha",
       fetchedAt: new Date().toISOString(),
@@ -255,13 +348,16 @@ test("syncRelease forced check bypasses fresh-cache fast path", async () => {
   await withFetchMock((async () => {
     fetchCalls += 1;
     return new Response(
-      JSON.stringify({
-        tag_name: "upstream-cached-sha",
-        assets: [{
-          name: "zh_CN.zip",
-          browser_download_url: "https://example.test/zh_CN.zip",
-        }],
-      }),
+      JSON.stringify([
+        {
+          tag_name: "data-cached-sha",
+          created_at: "2026-01-01T00:00:00Z",
+          assets: [{
+            name: "zh_CN.zip",
+            browser_download_url: "https://example.test/zh_CN.zip",
+          }],
+        },
+      ]),
       { status: 200, headers: { "content-type": "application/json" } },
     );
   }) as typeof fetch, async () => {
@@ -323,6 +419,46 @@ test("syncReleaseArchive extracts updated archive", async () => {
   });
 });
 
+test("syncReleaseArchive verifies the factory manifest before activation", async () => {
+  const spec = { ...tempArchiveSpec(), verifyManifest: true };
+  const required = spec.requiredFiles[0];
+  const assetPath = join(dirname(spec.localZip), "asset.zip");
+  writeZip(assetPath, { [required]: "new" });
+  const asset = readFileSync(assetPath);
+  let call = 0;
+
+  await withFetchMock((async (input: RequestInfo | URL) => {
+    call += 1;
+    const url = String(input);
+    if (call === 1) {
+      assert.match(url, /api\.github\.com\/repos\/3aKHP\/arknights-data-pipeline\/releases\?per_page=100$/);
+      return new Response(JSON.stringify([
+        {
+          tag_name: "data-new",
+          created_at: "2026-01-01T00:00:00Z",
+          assets: [{ name: spec.assetName, browser_download_url: "https://example/asset" }],
+        },
+      ]), { headers: { "content-type": "application/json" } });
+    }
+    if (call === 2) {
+      assert.equal(url, "https://example/asset");
+      return new Response(asset);
+    }
+    assert.match(url, /releases\/download\/data-new\/manifest\.json$/);
+    return new Response(JSON.stringify({
+      contractVersion: "prts-mcp-data/v1",
+      source: { versionId: "new" },
+      assets: { [spec.assetName]: { size: asset.byteLength, sha256: "bad" } },
+    }), { headers: { "content-type": "application/json" } });
+  }) as typeof fetch, async () => {
+    const result = await syncReleaseArchive(spec, true);
+    assert.equal(result.status, "no_data");
+    assert.match(result.error ?? "", /manifest mismatch/);
+  });
+  assert.equal(existsSync(spec.localZip), false);
+  assert.equal(existsSync(join(spec.localRoot, required)), false);
+});
+
 test("syncReleaseArchive returns no_data when zip misses required entries", async () => {
   const spec = tempArchiveSpec();
   writeZip(spec.localZip, {
@@ -348,7 +484,7 @@ test("syncReleaseArchive retries activation after extraction failure", async () 
   writeFileSync(
     join(dirname(spec.localZip), "release_meta.json"),
     JSON.stringify({
-      repo: "3aKHP/ArknightsGameData",
+      repo: "3aKHP/arknights-data-pipeline",
       branch: "releases",
       commitSha: "abc123",
       fetchedAt: new Date().toISOString(),
@@ -387,7 +523,7 @@ test("syncReleaseArchive reports updated after offline activation recovery", asy
   writeFileSync(
     join(dirname(spec.localZip), "release_meta.json"),
     JSON.stringify({
-      repo: "3aKHP/ArknightsGameData",
+      repo: "3aKHP/arknights-data-pipeline",
       branch: "releases",
       commitSha: "abc123",
       fetchedAt: "2000-01-01T00:00:00.000Z",
@@ -487,7 +623,7 @@ test("pair manifest switches only after both archives share one SHA", async () =
   const levelsRequired = "zh_CN/gamedata/levels/enemydata/enemy_database.json";
   const excelSpec: ReleaseArchiveSpec = {
     owner: "3aKHP",
-    repo: "ArknightsGameData",
+    repo: "arknights-data-pipeline",
     assetName: "zh_CN-excel.zip",
     localZip: join(root, "gamedata", "archives", "zh_CN-excel.zip"),
     localRoot: join(root, "gamedata"),
@@ -495,7 +631,7 @@ test("pair manifest switches only after both archives share one SHA", async () =
   };
   const levelsSpec: ReleaseArchiveSpec = {
     owner: "3aKHP",
-    repo: "ArknightsGameData",
+    repo: "arknights-data-pipeline",
     assetName: "zh_CN-levels.zip",
     localZip: join(root, "gamedata-levels", "archives", "zh_CN-levels.zip"),
     localRoot: join(root, "gamedata-levels"),
@@ -512,7 +648,7 @@ test("pair manifest switches only after both archives share one SHA", async () =
     writeFileSync(
       join(dirname(spec.localZip), "release_meta.json"),
       JSON.stringify({
-        repo: "3aKHP/ArknightsGameData",
+        repo: "3aKHP/arknights-data-pipeline",
         branch: "releases",
         commit_sha: "new",
         fetched_at: "2099-01-01T00:00:00Z",

@@ -387,7 +387,7 @@ export function buildStageInfo(stageId: string): StageInfoPayload | string {
   const rawDesc = entry.description || "";
   const desc = cleanDescription(rawDesc) || "（无描述）";
   const drops = entry.stageDropInfo as Record<string, unknown> | null | undefined;
-  const unlocks = entry.unlockCondition ?? [];
+  const unlocks = Array.isArray(entry.unlockCondition) ? entry.unlockCondition : [];
   const hardId = entry.hardStagedId;
   const levelId = entry.levelId;
   const sixStarId = entry.sixStarStageId;

@@ -61,11 +61,14 @@ GAMEDATA_PATH=/path/to/ArknightsGameData prts-mcp
 
 服务器启动时会立即在后台同步三类数据，此后默认每小时检查一次新 Release，无需重启进程：
 
-- **游戏表格数据**（`gamedata` volume）：从 [3aKHP/ArknightsGameData](https://github.com/3aKHP/ArknightsGameData) Release 下载 `zh_CN-excel.zip`，其内容同步自 [Kengxxiao/ArknightsGameData](https://github.com/Kengxxiao/ArknightsGameData)
+- **游戏表格数据**（`gamedata` volume）：从 [3aKHP/arknights-data-pipeline](https://github.com/3aKHP/arknights-data-pipeline) Release 下载 `zh_CN-excel.zip` 和 `zh_CN-levels.zip`
 - **关卡战斗数据**（`gamedata-levels` volume）：从同一 Release 下载 `zh_CN-levels.zip`，用于关卡实际出怪和关卡级敌人数值
-- **剧情数据**（`storyjson` volume）：从 [ArknightsStoryJson](https://github.com/3aKHP/ArknightsStoryJson) Releases 下载 `zh_CN.zip`
+- **剧情数据**（`storyjson` volume）：从同一 Release 下载 `zh_CN.zip`（含剧情 JSON 和 LLM 摘要）
 
 镜像内置 bundled 数据作为网络不可用时的离线保底。
+
+自建数据工厂的新 Release 附带 manifest（`prts-mcp-data/v1`、源 versionId、包大小和
+SHA-256）；Python 实现会在原子激活前校验它。没有 manifest 的历史 Release 仍兼容读取。
 
 周期可通过 `PRTS_AUTO_SYNC_INTERVAL_SECONDS` 调整（`60..604800` 秒）；设为 `0` 时只执行启动同步。
 

@@ -40,7 +40,7 @@ _logger = logging.getLogger(__name__)
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Fetch the latest ArknightsGameData excel and levels archives from GitHub Releases."
+        description="Fetch the latest game data excel and levels archives from GitHub Releases."
     )
     parser.add_argument(
         "--force",

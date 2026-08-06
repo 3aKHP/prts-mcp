@@ -17,6 +17,7 @@ import os
 import subprocess
 import sys
 import time
+from importlib.metadata import version as _pkg_version
 from pathlib import Path
 
 import pytest
@@ -33,6 +34,7 @@ _op_table = GAMEDATA_PATH / "zh_CN" / "gamedata" / "excel" / "character_table.js
 _has_operator_data = _op_table.is_file()
 
 _run_prts_api = os.environ.get("E2E_PRTS_API") == "1"
+_expected_version = _pkg_version("prts-mcp")
 
 
 def _send(proc: subprocess.Popen, msg: dict) -> None:
@@ -97,6 +99,7 @@ def server():
     env = os.environ.copy()
     env["GAMEDATA_PATH"] = str(GAMEDATA_PATH)
     env["GITHUB_MIRRORS"] = ""
+    env["IMAGES_ENABLED"] = "true"
     # Prevent auto-sync interfering with the test
     env.setdefault("STORYJSON_PATH", str(GAMEDATA_PATH / "does-not-exist.zip"))
 
@@ -150,6 +153,7 @@ EXPECTED_TOOLS = {
     "get_story_summary",
     "get_operator_memoirs",
     "find_character_appearances", "find_speakers_in",
+    "operator_artwork",
 }
 
 
@@ -168,6 +172,9 @@ def test_initialize_handshake(server: subprocess.Popen) -> None:
     assert resp.get("id") == 1, f"Expected initialize response, got: {resp}"
     result = resp.get("result", {})
     assert "serverInfo" in result or "protocolVersion" in result, f"Missing server info: {resp}"
+    server_info = result.get("serverInfo", {})
+    assert server_info.get("version") == _expected_version, \
+        f"Expected product version {_expected_version}, got {server_info.get('version')}"
 
     # Send initialized notification
     _send(server, {"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}})
@@ -180,7 +187,7 @@ def test_tools_list(server: subprocess.Popen) -> None:
     tools = resp["result"]["tools"]
     names = {t["name"] for t in tools}
 
-    assert len(names) == 23, f"Expected 23 tools, got {len(names)}: {sorted(names)}"
+    assert len(names) == 24, f"Expected 24 tools, got {len(names)}: {sorted(names)}"
     for name in EXPECTED_TOOLS:
         assert name in names, f"Missing tool: {name}"
 
@@ -217,7 +224,7 @@ def test_search(server: subprocess.Popen) -> None:
 
 def test_list_enemies_graceful(server: subprocess.Popen) -> None:
     text = _call_result_text(server, "list_enemies", {"limit": 5}, 8)
-    assert "敌方图鉴" in text or _data_unavailable(text), f"unexpected: {text[:120]}"
+    assert "敌人图鉴" in text or _data_unavailable(text), f"unexpected: {text[:120]}"
 
 
 def test_list_story_events_graceful(server: subprocess.Popen) -> None:

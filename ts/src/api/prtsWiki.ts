@@ -476,3 +476,157 @@ export async function getTemplateData(
 
   return parseParsetreeXml(xml);
 }
+
+// ---------------------------------------------------------------------------
+// Image helpers (LOCAL_IMAGE=false MediaWiki fallback)
+//
+// Mirrors prts_wiki.list_allimages / get_imageinfo / download_image_safe.
+// Used by operator_artwork when LOCAL_IMAGE=false to discover File: titles,
+// fetch variant URLs, and download pixel data under the full #85 boundary.
+// ---------------------------------------------------------------------------
+
+const ALLOWED_IMAGE_HOSTS = ["media.prts.wiki"] as const;
+const ALLOWED_IMAGE_MIMES = ["image/png", "image/jpeg", "image/webp"] as const;
+const MAX_IMAGE_BYTES = 1024 * 1024; // 1 MiB decoded cap (#85)
+
+export function imageMagicOk(data: Uint8Array, mime: string): boolean {
+  if (mime === "image/png") {
+    const sig = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+    return sig.every((b, i) => data[i] === b);
+  }
+  if (mime === "image/jpeg") {
+    return data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff;
+  }
+  if (mime === "image/webp") {
+    const riff = [0x52, 0x49, 0x46, 0x46];
+    const webp = [0x57, 0x45, 0x42, 0x50];
+    return riff.every((b, i) => data[i] === b) && webp.every((b, i) => data[i + 8] === b);
+  }
+  return false;
+}
+
+export interface AllimagesEntry {
+  name: string;
+  size: number;
+  mime: string;
+}
+
+/** Mirrors prts_wiki.list_allimages(). */
+export async function listAllimages(prefix: string, limit = 50): Promise<AllimagesEntry[]> {
+  const params: Record<string, string | number> = {
+    action: "query",
+    list: "allimages",
+    aiprefix: prefix,
+    ailimit: limit,
+    aiprop: "name|size|mime",
+    format: "json",
+  };
+  const results: AllimagesEntry[] = [];
+  let pages = 0;
+  for (;;) {
+    if (++pages > 50) throw new Error("allimages pagination exceeded 50 pages");
+    const data = (await prtsGet(params)) as {
+      query?: { allimages?: Array<{ name?: string; size?: number; mime?: string }> };
+      continue?: Record<string, string>;
+    };
+    for (const a of data.query?.allimages ?? []) {
+      results.push({ name: a.name ?? "", size: a.size ?? 0, mime: a.mime ?? "" });
+    }
+    const cont = data.continue;
+    if (!cont) break;
+    Object.assign(params, cont);
+  }
+  return results;
+}
+
+export interface ImageinfoResult {
+  url?: string;
+  thumburl?: string;
+  width?: number;
+  height?: number;
+  mime?: string;
+  size?: number;
+}
+
+/** Mirrors prts_wiki.get_imageinfo(). */
+export async function getImageinfo(title: string, width?: number): Promise<ImageinfoResult | null> {
+  const fullTitle = title.startsWith("File:") ? title : `File:${title}`;
+  const params: Record<string, string | number> = {
+    action: "query",
+    titles: fullTitle,
+    prop: "imageinfo",
+    iiprop: "url|size|mime",
+    format: "json",
+  };
+  if (width !== undefined) params.iiurlwidth = width;
+  const data = (await prtsGet(params)) as {
+    query?: { pages?: Record<string, { imageinfo?: Array<Record<string, unknown>> }> };
+  };
+  for (const page of Object.values(data.query?.pages ?? {})) {
+    const ii = page.imageinfo;
+    if (ii && ii.length > 0) {
+      const info = ii[0];
+      return {
+        url: info["url"] as string | undefined,
+        thumburl: info["thumburl"] as string | undefined,
+        width: info["width"] as number | undefined,
+        height: info["height"] as number | undefined,
+        mime: info["mime"] as string | undefined,
+        size: info["size"] as number | undefined,
+      };
+    }
+  }
+  return null;
+}
+
+/** Mirrors prts_wiki.download_image_safe(). */
+export async function downloadImageSafe(url: string): Promise<Uint8Array> {
+  const parsed = new URL(url);
+  if (parsed.protocol !== "https:" || !(ALLOWED_IMAGE_HOSTS as readonly string[]).includes(parsed.hostname)) {
+    throw new Error(`image URL host not allowed: ${parsed.hostname}`);
+  }
+  await rateLimit();
+  const res = await fetch(url, {
+    headers: DEFAULT_HEADERS,
+    redirect: "follow",
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!res.ok) throw new Error(`image fetch HTTP ${res.status}`);
+  const finalUrl = new URL(res.url);
+  if (finalUrl.protocol !== "https:" || !(ALLOWED_IMAGE_HOSTS as readonly string[]).includes(finalUrl.hostname)) {
+    throw new Error(`redirected to disallowed URL: ${res.url}`);
+  }
+  const ctype = (res.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
+  if (!(ALLOWED_IMAGE_MIMES as readonly string[]).includes(ctype)) {
+    throw new Error(`bad content-type: ${JSON.stringify(ctype)}`);
+  }
+  if (res.body === null) throw new Error("response body is null");
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  const reader = res.body.getReader();
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) {
+        total += value.byteLength;
+        if (total > MAX_IMAGE_BYTES) {
+          throw new Error(`image exceeds ${MAX_IMAGE_BYTES} byte cap`);
+        }
+        chunks.push(value);
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const data = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    data.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  if (!imageMagicOk(data, ctype)) {
+    throw new Error(`magic bytes mismatch for ${JSON.stringify(ctype)}`);
+  }
+  return data;
+}

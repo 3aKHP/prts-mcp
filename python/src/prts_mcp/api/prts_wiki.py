@@ -412,3 +412,139 @@ def _clean_snippet(snippet: str) -> str:
     snippet = re.sub(r",{2,}", "", snippet)
     snippet = re.sub(r"\n{2,}", "\n", snippet)
     return snippet.strip(" ,\n")
+
+
+# ---------------------------------------------------------------------------
+# Image helpers (LOCAL_IMAGE=false MediaWiki fallback)
+#
+# These serve operator_artwork when LOCAL_IMAGE=false: discover File: titles
+# via allimages, fetch variant URLs via imageinfo, and download the pixel data
+# under the full #85 security boundary. Mirrors the python-side path A (local
+# AKDP assets) at the tool-contract level but pulls everything from PRTS.
+# ---------------------------------------------------------------------------
+
+_ALLOWED_IMAGE_HOSTS: tuple[str, ...] = ("media.prts.wiki",)
+_ALLOWED_IMAGE_MIMES: tuple[str, ...] = ("image/png", "image/jpeg", "image/webp")
+_MAX_IMAGE_BYTES = 1024 * 1024  # 1 MiB decoded cap (#85)
+
+
+def _image_magic_ok(data: bytes, mime: str) -> bool:
+    """Verify the payload's magic bytes against its declared MIME type."""
+    if mime == "image/png":
+        return data.startswith(b"\x89PNG\r\n\x1a\n")
+    if mime == "image/jpeg":
+        return data.startswith(b"\xff\xd8\xff")
+    if mime == "image/webp":
+        # RIFF <4 size bytes> WEBP
+        return data[:4] == b"RIFF" and data[8:12] == b"WEBP"
+    return False
+
+
+async def list_allimages(prefix: str, limit: int = 50) -> list[dict]:
+    """List PRTS ``File:`` titles whose name starts with ``prefix``.
+
+    Returns dicts with ``name``/``size``/``mime``. Used by operator_artwork's
+    false-mode list to discover ``立绘_<name>_*`` files. Paginates via
+    MediaWiki continuation when results exceed ``limit``.
+    """
+    params = {
+        "action": "query",
+        "list": "allimages",
+        "aiprefix": prefix,
+        "ailimit": str(limit),
+        "aiprop": "name|size|mime",
+        "format": "json",
+    }
+    results: list[dict] = []
+    pages = 0
+    while True:
+        if pages >= 50:
+            raise RuntimeError("allimages pagination exceeded 50 pages")
+        pages += 1
+        await _rate_limit()
+        resp = await _get_client().get(PRTS_API_ENDPOINT, params=params)
+        resp.raise_for_status()
+        data = resp.json()
+        results.extend(
+            {
+                "name": a.get("name", ""),
+                "size": a.get("size", 0),
+                "mime": a.get("mime", ""),
+            }
+            for a in data.get("query", {}).get("allimages", [])
+        )
+        cont = data.get("continue")
+        if not cont:
+            break
+        params.update({k: str(v) for k, v in cont.items()})
+    return results
+
+
+async def get_imageinfo(title: str, width: int | None = None) -> dict | None:
+    """Fetch image URLs/metadata for a ``File:`` title.
+
+    With ``width`` set, the result carries ``thumburl`` at that pixel width
+    (large=1024 / preview=256). Without it only the original ``url`` is set.
+    """
+    await _rate_limit()
+    full_title = title if title.startswith("File:") else f"File:{title}"
+    params: dict = {
+        "action": "query",
+        "titles": full_title,
+        "prop": "imageinfo",
+        "iiprop": "url|size|mime",
+        "format": "json",
+    }
+    if width is not None:
+        params["iiurlwidth"] = str(width)
+    resp = await _get_client().get(PRTS_API_ENDPOINT, params=params)
+    resp.raise_for_status()
+    data = resp.json()
+    for page in data.get("query", {}).get("pages", {}).values():
+        ii = page.get("imageinfo") or []
+        if ii:
+            info = ii[0]
+            return {
+                "url": info.get("url"),
+                "thumburl": info.get("thumburl"),
+                "width": info.get("width"),
+                "height": info.get("height"),
+                "mime": info.get("mime"),
+                "size": info.get("size"),
+            }
+    return None
+
+
+async def download_image_safe(url: str) -> bytes:
+    """Download an image under the full #85 security boundary.
+
+    Checks: HTTPS + hostname ``media.prts.wiki`` (re-validated after redirect),
+    Content-Type in the MIME allowlist, streaming read capped at 1 MiB, and
+    magic-byte verification of the final payload. Raises ``ValueError`` on any
+    violation; the tool layer degrades that to a text-only result (no partial
+    image is ever returned).
+    """
+    parsed = httpx.URL(url)
+    if parsed.scheme != "https" or parsed.host not in _ALLOWED_IMAGE_HOSTS:
+        raise ValueError(f"image URL host not allowed: {parsed.host}")
+    await _rate_limit()
+    async with _get_client().stream(
+        "GET", url, follow_redirects=True, timeout=httpx.Timeout(30.0),
+    ) as resp:
+        if resp.status_code != 200:
+            raise ValueError(f"image fetch HTTP {resp.status_code}")
+        final = resp.url
+        if final.scheme != "https" or final.host not in _ALLOWED_IMAGE_HOSTS:
+            raise ValueError(f"redirected to disallowed host: {final.host}")
+        ctype = resp.headers.get("content-type", "").split(";")[0].strip().lower()
+        if ctype not in _ALLOWED_IMAGE_MIMES:
+            raise ValueError(f"bad content-type: {ctype!r}")
+        buf = bytearray()
+        async for chunk in resp.aiter_bytes(chunk_size=8192):
+            buf.extend(chunk)
+            if len(buf) > _MAX_IMAGE_BYTES:
+                raise ValueError(f"image exceeds {_MAX_IMAGE_BYTES} byte cap")
+        data = bytes(buf)
+    if not _image_magic_ok(data, ctype):
+        raise ValueError(f"magic bytes mismatch for {ctype!r}")
+    return data

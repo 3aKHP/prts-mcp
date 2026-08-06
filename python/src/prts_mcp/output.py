@@ -24,7 +24,7 @@ import logging
 import os
 from typing import Any, Literal
 
-from mcp.types import CallToolResult, TextContent
+from mcp.types import CallToolResult, ImageContent, TextContent
 
 _logger = logging.getLogger("prts_mcp.output")
 
@@ -206,5 +206,50 @@ def text_result(markdown: str) -> CallToolResult:
     return CallToolResult(
         content=[TextContent(type="text", text=markdown)],
         structuredContent=None,
+        isError=False,
+    )
+
+
+def render_image_result(
+    markdown: str,
+    image_data: str,
+    image_mimetype: str,
+    data: dict[str, Any] | None = None,
+    channel: OutputChannel | None = None,
+    summary: str | None = None,
+) -> CallToolResult:
+    """Build a ``CallToolResult`` carrying text + one image, shaped by the channel.
+
+    The image always rides in ``content`` as an ``ImageContent`` block — MCP
+    does not allow images inside ``structuredContent``. The ``data`` payload
+    (image metadata) travels in ``structuredContent`` per the same channel
+    rules as :func:`render_result`:
+
+    - ``content``   → markdown + image; no structuredContent.
+    - ``structured`` → summary text + image + structuredContent.
+    - ``both``      → markdown + image + structuredContent.
+
+    When ``data is None`` the image is still returned with the markdown text
+    and no structuredContent (rare; prefer passing metadata for ``get``).
+    """
+    if channel is None:
+        channel = get_output_channel()
+    image = ImageContent(type="image", data=image_data, mimeType=image_mimetype)
+    if data is None or channel == "content":
+        return CallToolResult(
+            content=[TextContent(type="text", text=markdown), image],
+            structuredContent=None,
+            isError=False,
+        )
+    if channel == "both":
+        return CallToolResult(
+            content=[TextContent(type="text", text=markdown), image],
+            structuredContent=data,
+            isError=False,
+        )
+    # structured: summary text + image, plus structured payload.
+    return CallToolResult(
+        content=[TextContent(type="text", text=_summarize(data, summary)), image],
+        structuredContent=data,
         isError=False,
     )

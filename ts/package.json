@@ -1,6 +1,6 @@
 {
   "name": "prts-mcp-ts",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "description": "MCP Server for Arknights PRTS Wiki & game data (TypeScript / Streamable HTTP + stdio)",
   "type": "module",
   "main": "dist/server.js",
@@ -64,7 +64,8 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "adm-zip": "^0.5.16",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "undici": "^8.10.0"
   },
   "devDependencies": {
     "@types/adm-zip": "^0.5.7",
@@ -72,5 +73,8 @@
     "@types/node": "^24.0.0",
     "tsx": "^4.21.0",
     "typescript": "^5.8.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true
   }
 }

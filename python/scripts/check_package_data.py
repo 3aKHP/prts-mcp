@@ -46,6 +46,11 @@ def main() -> int:
         gamedata_path=gamedata_root,
         storyjson_zip=story_zip,
         is_custom_gamedata=True,
+        images_enabled=False,
+        local_image=True,
+        original_image=False,
+        prts_image_cache=False,
+        images_path=gamedata_root.parent / "images",
     )
 
     active_excel = config.effective_excel_path

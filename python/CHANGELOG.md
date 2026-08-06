@@ -4,6 +4,47 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.5.0] - 2026-08-07
+
+### Added
+
+- New `operator_artwork` tool (enabled by default). `action="list"` returns
+  bounded metadata with semantic labels; `action="get"` returns one image as
+  base64 `ImageContent` (default `large` variant, max 1024px). Default mode
+  (`LOCAL_IMAGE=false`) fetches on-demand from PRTS MediaWiki under the full
+  #85 security boundary (hostname/MIME/magic/1MiB/streaming/redirect) with a
+  256 MiB LRU cache (`PRTS_IMAGE_CACHE=true`). Set `LOCAL_IMAGE=true` to sync
+  ~1.5 GB of AKDP local PNG assets; `ORIGINAL_IMAGE=true` adds full-resolution
+  shards. MediaWiki labels via CharinfoV2 `时装N名称`; AKDP labels via
+  `skin_table.json`. The `original` variant is rejected in MediaWiki mode
+  (PRTS originals exceed the 1 MiB cap). Tool surface 23 → 24.
+
+### Changed
+
+- **Auto-sync data source switched to self-hosted `arknights-data-pipeline`.**
+  The default sync now consumes `zh_CN-excel.zip`, `zh_CN-levels.zip`, and
+  story `zh_CN.zip` Releases from `3aKHP/arknights-data-pipeline` (the factory
+  repo). The legacy upstream repos are no longer data dependencies on the
+  2.5.0 line. Release manifest verification tightened so a partial or corrupt
+  archive cannot be treated as healthy data.
+
+### Fixed
+
+- **Data sync uses tag-prefix filtering instead of `/releases/latest`.** The
+  `arknights-data-pipeline` repo now hosts both `data-*` and `images-*` GitHub
+  Releases. `check_latest_release` switched from the `/releases/latest`
+  endpoint to the releases list API with `data-` tag-prefix filtering,
+  preventing silent sync stalls if GitHub auto-promotes an `images-*` release
+  to "Latest". Shared `_list_releases` / `_latest_release_by_prefix` /
+  `_asset_url` helpers were lifted from `images_sync` into `sync` to avoid
+  duplication.
+- **Product version reported in MCP `initialize` handshake.** The server now
+  reports its actual package version via `importlib.metadata` instead of an
+  empty placeholder, so MCP clients can display the correct version.
+- **`operator_artwork` allimages pagination.** MediaWiki `allimages` now
+  paginates with `aifrom` continuation (50 per page) to avoid silent
+  truncation when an operator has more than 50 skin images.
+
 ## [2.4.0] - 2026-07-29
 
 ### Fixed

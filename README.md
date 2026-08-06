@@ -29,16 +29,35 @@ Two release lines ship in parallel:
 
 | Line | Version | Tools | Status |
 |------|---------|-------|--------|
-| **2.4** (`main`) | `2.4.0` | 23 | Process-lifetime Auto-Sync keeps GameData and StoryJson current without service restarts; GameData excel and levels activate atomically. |
+| **2.5** (`main`) | `2.5.0` | 24 | Operator artwork tool (`operator_artwork`); MediaWiki on-demand image delivery by default; data source switched to self-hosted `arknights-data-pipeline`. |
 | **1.7 LTS** (`lts/1.7`) | `1.7.0` | 32 | Stable maintenance line. 1.7.x accepts only compatibility, security, data-sync, and critical bug fixes. |
+
+The `main` and `develop` lines use the self-built `arknights-data-pipeline`
+Release exclusively for default Auto-Sync. The 1.7 LTS line retains its legacy
+upstream compatibility until a separate, backwards-compatible migration;
+changes to the new factory path must not be backported to LTS as an implicit source switch.
 
 | Area | Python | TypeScript |
 |------|--------|------------|
-| MCP tools | Same 23 public tool names and required parameters (2.0) / 32 on 1.7 LTS | Same 23 (2.0) / 32 on 1.7 LTS |
+| MCP tools | Same 24 public tool names and required parameters (2.5) / 32 on 1.7 LTS | Same 24 (2.5) / 32 on 1.7 LTS |
 | GameData | `GAMEDATA_PATH` or auto-synced `zh_CN-excel.zip` | `GAMEDATA_PATH` or auto-synced `zh_CN-excel.zip` |
 | Level data | Auto-synced `zh_CN-levels.zip` beside GameData | Auto-synced `zh_CN-levels.zip` beside GameData |
 | Story data | `STORYJSON_PATH` or auto-synced `zh_CN.zip` | `STORYJSON_PATH` or auto-synced `zh_CN.zip` |
+| Image artwork (2.5) | Enabled by default; MediaWiki on-demand or AKDP local assets (`LOCAL_IMAGE=true`) | Enabled by default; MediaWiki on-demand or AKDP local assets (`LOCAL_IMAGE=true`) |
 | Bundled fallback data | Docker image only | Docker image and published npm package (PyPI stays data-light) |
+
+### Auto-Sync data contract
+
+Both implementations consume the self-built [`arknights-data-pipeline`](https://github.com/3aKHP/arknights-data-pipeline)
+Release. New releases carry a `manifest.json` with the `prts-mcp-data/v1` contract,
+source `versionId`, and SHA-256/size for each archive; a mismatch is rejected before
+activation, while pre-manifest releases remain readable during the transition. The
+last activated generation stays in place on download, schema, or manifest failure.
+
+`GITHUB_MIRRORS` is an explicit fallback for GitHub URL access. In Node deployments,
+standard `HTTP_PROXY`/`HTTPS_PROXY` (including lowercase spellings) are honored via
+Undici; Bun keeps its native `fetch` path. Proxy support does not weaken manifest or
+ZIP validation.
 
 See [`docs/migration-1.x-to-2.0.md`](docs/migration-1.x-to-2.0.md) for the 1.x → 2.0
 breaking changes (tool consolidation, `operator_name` → `name`, output channel),
@@ -74,6 +93,7 @@ Both implementations expose the same tool set:
 | `get_operator_memoirs(name)` | Resolve an operator's memoir (干员密录) story keys for follow-up `read_story` calls |
 | `find_character_appearances(name, scope?, max_events?)` | Find chapters/events where a character speaks (dialog) or is mentioned (name substring) |
 | `find_speakers_in(event_id)` | List every speaker in an event with dialog line counts |
+| `operator_artwork(operator_name, action, artwork_id?, variant?)` | List operator illustrations/skins and retrieve image variants (base64); MediaWiki by default, AKDP local assets when `LOCAL_IMAGE=true` |
 
 ### Output Channel
 
@@ -89,6 +109,22 @@ The default `content` requires no configuration and is unchanged from 1.x. See
 the [2.0 migration guide](docs/migration-1.x-to-2.0.md) for the per-tool
 mapping and the rationale for choosing a channel over a per-call format
 parameter.
+
+### Image Artwork
+
+The `operator_artwork` tool (2.5.0+) is **enabled by default**. Two data source
+modes are selected by `LOCAL_IMAGE`:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `IMAGES_ENABLED` | `true` | Master switch; `false` hides `operator_artwork`. |
+| `LOCAL_IMAGE` | `false` | `true` = sync AKDP local PNG assets (~1.5 GB); `false` = fetch on-demand from PRTS MediaWiki (zero download). |
+| `PRTS_IMAGE_CACHE` | `true` | In-memory LRU cache (256 MiB) for MediaWiki images; only effective when `LOCAL_IMAGE=false`. |
+| `ORIGINAL_IMAGE` | `false` | Also sync original-resolution shards; only effective when `LOCAL_IMAGE=true`. |
+| `PRTS_IMAGE_DIR` | `~/.local/share/prts-mcp/images/` | AKDP asset sync target; only effective when `LOCAL_IMAGE=true`. Docker: `/data/images`. |
+
+Zero-config: the tool works immediately via MediaWiki with caching. For the full
+offline AKDP experience, set `LOCAL_IMAGE=true` (triggers ~1.5 GB background sync).
 
 ### Quick Start
 
@@ -111,8 +147,7 @@ runtime-agnostic).
 ### Data Sources
 
 - **PRTS Wiki API** (`https://prts.wiki/api.php`) — lore articles, faction info, world-building entries
-- **ArknightsGameData** ([`3aKHP/ArknightsGameData`](https://github.com/3aKHP/ArknightsGameData)) — Release archive mirror of [`Kengxxiao/ArknightsGameData`](https://github.com/Kengxxiao/ArknightsGameData), used for operator archives, voice lines, base stats, enemies, stages, items, and level combat data (`zh_CN-excel.zip` + `zh_CN-levels.zip`)
-- **ArknightsStoryJson** ([`3aKHP/ArknightsStoryJson`](https://github.com/3aKHP/ArknightsStoryJson)) — parsed story dialogue, auto-synced from GitHub Releases (`zh_CN.zip`)
+- **arknights-data-pipeline** ([`3aKHP/arknights-data-pipeline`](https://github.com/3aKHP/arknights-data-pipeline)) — self-hosted data factory producing game data tables (`zh_CN-excel.zip`), level combat data (`zh_CN-levels.zip`), and parsed story dialogue with LLM summaries (`zh_CN.zip`) from a single GitHub Release
 
 Game data lives in the `gamedata` volume. Level combat data lives in the `gamedata-levels` volume. Story data lives in the `storyjson` volume. After the server starts listening, all three are checked in the background immediately and then every hour without restarting the process. Set `PRTS_AUTO_SYNC_INTERVAL_SECONDS` to `60..604800` to change the interval, or `0` to keep startup sync only.
 
@@ -147,16 +182,28 @@ and macOS development setup.
 
 | 版本线 | 版本 | 工具数 | 状态 |
 |--------|------|--------|------|
-| **2.4**（`main`） | `2.4.0` | 23 | 常驻进程 Auto-Sync 无需重启即可持续追赶 GameData 与 StoryJson；GameData excel 与 levels 原子成对切换。 |
+| **2.5**（`main`） | `2.5.0` | 24 | 干员立绘工具（`operator_artwork`）；默认 MediaWiki 按需获取图片；数据源切换到自建 `arknights-data-pipeline`。 |
 | **1.7 LTS**（`lts/1.7`） | `1.7.0` | 32 | 稳定维护线。1.7.x 仅接受兼容性、安全性、数据同步和关键缺陷修复。 |
 
 | 范围 | Python | TypeScript |
 |------|--------|------------|
-| MCP 工具 | 相同的 23 个工具名和必填参数（2.0）/ 1.7 LTS 为 32 个 | 相同的 23 个（2.0）/ 1.7 LTS 为 32 个 |
+| MCP 工具 | 相同的 24 个工具名和必填参数（2.5）/ 1.7 LTS 为 32 个 | 相同的 24 个（2.5）/ 1.7 LTS 为 32 个 |
 | 干员数据 | `GAMEDATA_PATH` 或自动同步 `zh_CN-excel.zip` | `GAMEDATA_PATH` 或自动同步 `zh_CN-excel.zip` |
 | 关卡战斗数据 | 自动同步与 GameData 并列的 `zh_CN-levels.zip` | 自动同步与 GameData 并列的 `zh_CN-levels.zip` |
 | 剧情数据 | `STORYJSON_PATH` 或自动同步 `zh_CN.zip` | `STORYJSON_PATH` 或自动同步 `zh_CN.zip` |
+| 立绘图片（2.5） | 默认开启；MediaWiki 按需获取或 AKDP 本地资产（`LOCAL_IMAGE=true`） | 默认开启；MediaWiki 按需获取或 AKDP 本地资产（`LOCAL_IMAGE=true`） |
 | bundled 兜底数据 | Docker 镜像 | Docker 镜像和正式 npm 包（PyPI 保持轻量） |
+
+### Auto-Sync 数据契约
+
+两套实现都消费自建 [`arknights-data-pipeline`](https://github.com/3aKHP/arknights-data-pipeline)
+Release。新 Release 附带 `manifest.json`，声明 `prts-mcp-data/v1` 契约、源
+`versionId` 以及每个压缩包的大小/SHA-256；不匹配会在激活前拒绝，迁移期间仍兼容没有
+manifest 的旧 Release。下载、结构或 manifest 校验失败时，服务继续使用上一代已激活数据。
+
+`GITHUB_MIRRORS` 是显式的 GitHub 访问备用路径；Node 部署会通过 Undici 使用标准
+`HTTP_PROXY`/`HTTPS_PROXY`（也识别小写变量），Bun 保持原生 `fetch` 路径。代理不会
+绕过 manifest 或 ZIP 校验。
 
 1.x → 2.0 的破坏性变更（工具面合并、`operator_name` → `name`、output channel）见
 [`docs/migration-1.x-to-2.0.md`](docs/migration-1.x-to-2.0.md)；0.x → 1.0 迁移见
@@ -191,6 +238,7 @@ and macOS development setup.
 | `get_operator_memoirs(name)` | 解析干员密录的 story_key，便于后续 `read_story` 调用 |
 | `find_character_appearances(name, scope?, max_events?)` | 查找角色在哪些章节/活动中开口（对话）或被提及（名字子串） |
 | `find_speakers_in(event_id)` | 列出指定活动中所有发言角色及其对话行数 |
+| `operator_artwork(operator_name, action, artwork_id?, variant?)` | 列出干员立绘/时装并获取图片变体（base64）；默认走 MediaWiki，`LOCAL_IMAGE=true` 时使用 AKDP 本地资产 |
 
 ### 输出通道
 
@@ -200,6 +248,20 @@ and macOS development setup.
 - **TypeScript** — `?output_channel=` 查询字符串、`x-prts-output-channel` 请求头，或 `PRTS_OUTPUT_CHANNEL` 环境变量。
 
 默认 `content` 无需任何配置，与 1.x 一致。各工具的通道映射，以及「为何选连接级通道而非 per-call 格式参数」的设计理由，见 [2.0 迁移指南](docs/migration-1.x-to-2.0.md)。
+
+### 立绘工具
+
+`operator_artwork` 工具（2.5.0+）**默认开启**。通过 `LOCAL_IMAGE` 选择数据源：
+
+| 变量 | 缺省值 | 说明 |
+|----------|---------|-------------|
+| `IMAGES_ENABLED` | `true` | 主开关；`false` 隐藏 `operator_artwork`。 |
+| `LOCAL_IMAGE` | `false` | `true` = 同步 AKDP 本地 PNG 资产（~1.5 GB）；`false` = 从 PRTS MediaWiki 按需获取（零下载）。 |
+| `PRTS_IMAGE_CACHE` | `true` | MediaWiki 图片的内存 LRU 缓存（256 MiB）；仅在 `LOCAL_IMAGE=false` 时生效。 |
+| `ORIGINAL_IMAGE` | `false` | 额外同步原图分辨率分片；仅在 `LOCAL_IMAGE=true` 时生效。 |
+| `PRTS_IMAGE_DIR` | `~/.local/share/prts-mcp/images/` | AKDP 资产同步目标；仅在 `LOCAL_IMAGE=true` 时生效。Docker：`/data/images`。 |
+
+零配置即可使用：默认走 MediaWiki + 缓存。若需离线全量体验，设置 `LOCAL_IMAGE=true`（触发 ~1.5 GB 后台同步）。
 
 ### 快速开始
 
@@ -218,8 +280,7 @@ TypeScript 实现支持 Bun 与 Node.js。自 2.2.0 起 **Bun 是默认生产运
 ### 数据源
 
 - **PRTS Wiki API** (`https://prts.wiki/api.php`) — 世界观词条、阵营设定
-- **ArknightsGameData** ([`3aKHP/ArknightsGameData`](https://github.com/3aKHP/ArknightsGameData)) — [`Kengxxiao/ArknightsGameData`](https://github.com/Kengxxiao/ArknightsGameData) 的 Release 压缩包镜像，用于干员档案、语音记录、基础信息、敌人、关卡、物品和关卡战斗数据（`zh_CN-excel.zip` + `zh_CN-levels.zip`）
-- **ArknightsStoryJson** ([`3aKHP/ArknightsStoryJson`](https://github.com/3aKHP/ArknightsStoryJson)) — 剧情台词解析数据，从 GitHub Releases 自动同步（`zh_CN.zip`）
+- **arknights-data-pipeline** ([`3aKHP/arknights-data-pipeline`](https://github.com/3aKHP/arknights-data-pipeline)) — 自建数据工厂，从单一 GitHub Release 产出游戏数据表（`zh_CN-excel.zip`）、关卡战斗数据（`zh_CN-levels.zip`）和剧情台词解析+LLM 摘要（`zh_CN.zip`）
 
 干员/表格数据存放在 `gamedata` volume，关卡战斗数据存放在 `gamedata-levels` volume，剧情数据存放在 `storyjson` volume。服务器开始监听后会立即在后台检查，此后默认每小时检查一次，无需重启进程。可用 `PRTS_AUTO_SYNC_INTERVAL_SECONDS=60..604800` 调整周期，或设为 `0` 仅保留启动同步。
 

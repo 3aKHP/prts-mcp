@@ -19,31 +19,35 @@ export interface ReleaseDatasetSpec {
   assetName: string;
   requiredFiles: readonly string[];
   validateZip?: (zipPath: string) => string[];
+  verifyManifest?: boolean;
 }
 
 export const GAMEDATA_EXCEL: ReleaseDatasetSpec = {
   datasetId: "gamedata.excel",
   owner: "3aKHP",
-  repo: "ArknightsGameData",
+  repo: "arknights-data-pipeline",
   assetName: "zh_CN-excel.zip",
   requiredFiles: GAMEDATA_FILES,
+  verifyManifest: true,
 };
 
 export const STORY_ZH_CN: ReleaseDatasetSpec = {
   datasetId: "story.zh_CN",
   owner: "3aKHP",
-  repo: "ArknightsStoryJson",
+  repo: "arknights-data-pipeline",
   assetName: "zh_CN.zip",
   requiredFiles: STORYJSON_REQUIRED_FILES,
   validateZip: validateStoryjsonZip,
+  verifyManifest: true,
 };
 
 export const GAMEDATA_LEVELS: ReleaseDatasetSpec = {
   datasetId: "gamedata.levels",
   owner: "3aKHP",
-  repo: "ArknightsGameData",
+  repo: "arknights-data-pipeline",
   assetName: "zh_CN-levels.zip",
   requiredFiles: LEVELS_REQUIRED_FILES,
+  verifyManifest: true,
 };
 
 export function releaseSpecForDataset(
@@ -56,6 +60,7 @@ export function releaseSpecForDataset(
     assetName: dataset.assetName,
     localZip,
     validateZip: dataset.validateZip,
+    verifyManifest: dataset.verifyManifest,
   };
 }
 
@@ -71,6 +76,7 @@ export function archiveSpecForDataset(
     localZip,
     localRoot,
     requiredFiles: dataset.requiredFiles,
+    verifyManifest: dataset.verifyManifest,
   };
 }
 
