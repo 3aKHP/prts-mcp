@@ -270,7 +270,7 @@ export interface Config {
   effectiveStoryjsonZip: string | null;
   /** IMAGES_ENABLED — master switch; false → operator_artwork not registered. */
   imagesEnabled: boolean;
-  /** LOCAL_IMAGE — true = AKDP local assets, false = MediaWiki fallback (future). */
+  /** LOCAL_IMAGE — true = AKDP local assets, false = MediaWiki (default). */
   localImage: boolean;
   /** ORIGINAL_IMAGE — true = also sync original-variant shards. */
   originalImage: boolean;
@@ -346,10 +346,10 @@ export function loadConfig(): Config {
     effectiveLevelsPath,
     storyjsonZip,
     effectiveStoryjsonZip,
-    imagesEnabled: envBool("IMAGES_ENABLED", false),
-    localImage: envBool("LOCAL_IMAGE", true),
+    imagesEnabled: envBool("IMAGES_ENABLED", true),
+    localImage: envBool("LOCAL_IMAGE", false),
     originalImage: envBool("ORIGINAL_IMAGE", false),
-    prtsImageCache: envBool("PRTS_IMAGE_CACHE", false),
+    prtsImageCache: envBool("PRTS_IMAGE_CACHE", true),
     imagesPath,
   };
   return config;

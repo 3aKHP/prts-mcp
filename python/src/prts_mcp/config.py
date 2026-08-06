@@ -258,7 +258,7 @@ class Config:
     storyjson_zip: Path          # storyjson zip path (custom, volume, or default)
     is_custom_gamedata: bool     # True when GAMEDATA_PATH was set by the user
     images_enabled: bool         # IMAGES_ENABLED; False → operator_artwork not registered
-    local_image: bool            # LOCAL_IMAGE; True = AKDP local assets, False = MediaWiki (future)
+    local_image: bool            # LOCAL_IMAGE; True = AKDP local assets, False = MediaWiki
     original_image: bool         # ORIGINAL_IMAGE; True = also sync original-variant shards
     prts_image_cache: bool       # PRTS_IMAGE_CACHE; True = LRU-cache MediaWiki images (false mode)
     images_path: Path            # image asset sync target (PRTS_IMAGE_DIR or default)
@@ -380,10 +380,10 @@ class Config:
             gamedata_path=gamedata,
             storyjson_zip=storyjson_zip,
             is_custom_gamedata=custom,
-            images_enabled=_env_bool("IMAGES_ENABLED", False),
-            local_image=_env_bool("LOCAL_IMAGE", True),
+            images_enabled=_env_bool("IMAGES_ENABLED", True),
+            local_image=_env_bool("LOCAL_IMAGE", False),
             original_image=_env_bool("ORIGINAL_IMAGE", False),
-            prts_image_cache=_env_bool("PRTS_IMAGE_CACHE", False),
+            prts_image_cache=_env_bool("PRTS_IMAGE_CACHE", True),
             images_path=images_path,
         )
         return config

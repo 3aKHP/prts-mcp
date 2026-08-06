@@ -116,6 +116,7 @@ def test_build_artwork_labels():
 @pytest.fixture
 def mock_images(monkeypatch, tmp_path):
     """Stand up a fake active generation directory with index.json + PNGs."""
+    monkeypatch.setenv("LOCAL_IMAGE", "true")
     gen = tmp_path / "gen"
     gen.mkdir()
     (gen / "index.json").write_text(json.dumps(_sample_index()), "utf-8")
