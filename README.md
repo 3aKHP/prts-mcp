@@ -43,6 +43,7 @@ changes to the new factory path must not be backported to LTS as an implicit sou
 | GameData | `GAMEDATA_PATH` or auto-synced `zh_CN-excel.zip` | `GAMEDATA_PATH` or auto-synced `zh_CN-excel.zip` |
 | Level data | Auto-synced `zh_CN-levels.zip` beside GameData | Auto-synced `zh_CN-levels.zip` beside GameData |
 | Story data | `STORYJSON_PATH` or auto-synced `zh_CN.zip` | `STORYJSON_PATH` or auto-synced `zh_CN.zip` |
+| Image artwork (2.5) | Opt-in via `IMAGES_ENABLED=true`; auto-synced AKDP image Release (local PNG assets) | Opt-in via `IMAGES_ENABLED=true`; auto-synced AKDP image Release (local PNG assets) |
 | Bundled fallback data | Docker image only | Docker image and published npm package (PyPI stays data-light) |
 
 ### Auto-Sync data contract
@@ -173,6 +174,7 @@ and macOS development setup.
 | 干员数据 | `GAMEDATA_PATH` 或自动同步 `zh_CN-excel.zip` | `GAMEDATA_PATH` 或自动同步 `zh_CN-excel.zip` |
 | 关卡战斗数据 | 自动同步与 GameData 并列的 `zh_CN-levels.zip` | 自动同步与 GameData 并列的 `zh_CN-levels.zip` |
 | 剧情数据 | `STORYJSON_PATH` 或自动同步 `zh_CN.zip` | `STORYJSON_PATH` 或自动同步 `zh_CN.zip` |
+| 立绘图片（2.5） | 需 `IMAGES_ENABLED=true` 开启；自动同步 AKDP 图片 Release（本地 PNG 资产） | 需 `IMAGES_ENABLED=true` 开启；自动同步 AKDP 图片 Release（本地 PNG 资产） |
 | bundled 兜底数据 | Docker 镜像 | Docker 镜像和正式 npm 包（PyPI 保持轻量） |
 
 ### Auto-Sync 数据契约

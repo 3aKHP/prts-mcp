@@ -17,6 +17,7 @@ import { clearItemCaches } from "./data/item.js";
 import { clearStageEnemyCaches } from "./data/stageEnemy.js";
 import { clearSearchCaches } from "./data/search.js";
 import { clearStoryCaches } from "./data/story.js";
+import { syncImages } from "./data/imagesSync.js";
 import { syncRelease, syncReleaseArchivePair } from "./data/sync.js";
 import { archiveSpecForDataset, releaseSpecForDataset, GAMEDATA_EXCEL, GAMEDATA_LEVELS, STORY_ZH_CN } from "./data/datasets.js";
 
@@ -202,6 +203,40 @@ export async function runStartupSync(forceCheck = false): Promise<void> {
     );
   } else {
     log("INFO", `STORYJSON_PATH is set (${process.env["STORYJSON_PATH"]}); story auto-sync disabled.`);
+  }
+
+  // Images artwork sync (2.5.0) — LOCAL_IMAGE mode consumes AKDP assets.
+  if (cfg.imagesEnabled && cfg.localImage) {
+    const runImagesSync = async (): Promise<boolean> => {
+      const r = await syncImages(cfg.imagesPath, {
+        includeOriginal: cfg.originalImage,
+        forceCheck,
+      });
+      const sha = r.commitSha ? r.commitSha.slice(0, 8) : "unknown";
+      if (r.status === "updated") {
+        log("INFO", `Images updated from GitHub Release (${r.spec.repo} @ ${sha}).`);
+      } else if (r.status === "up_to_date") {
+        log("INFO", `Images are up to date (${r.spec.repo} @ ${sha}).`);
+      } else if (r.status === "offline_fallback") {
+        log("WARN", `Network unavailable; using cached images (${r.spec.repo} @ ${sha}). Error: ${r.error}`);
+      } else {
+        log("WARN", `Images sync failed — no data. Error: ${r.error}`);
+      }
+      return shouldRetrySync(r.status);
+    };
+
+    startupTasks.push(
+      singleFlightSync("Images", runImagesSync)
+        .catch((err: unknown) => {
+          log("ERROR", `Images sync threw unexpectedly: ${err instanceof Error ? err.message : String(err)}`);
+          return true;
+        })
+        .then((result) => {
+          if (result !== "done" && !forceCheck) {
+            scheduleSyncRetry("Images", runImagesSync);
+          }
+        }),
+    );
   }
 
   await Promise.all(startupTasks);

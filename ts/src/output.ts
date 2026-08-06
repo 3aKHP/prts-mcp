@@ -1,4 +1,4 @@
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import type { CallToolResult, ImageContent } from "@modelcontextprotocol/sdk/types.js";
 
 export type OutputChannel = "content" | "structured" | "both";
 
@@ -50,4 +50,27 @@ export function renderResult<T extends object>(
 
 export function textResult(markdown: string): CallToolResult {
   return { content: [text(markdown)] };
+}
+
+export function renderImageResult<T extends object>(
+  markdown: string,
+  imageDataBase64: string,
+  imageMimetype: string,
+  data: T | null,
+  channel: OutputChannel,
+  summary?: string,
+): CallToolResult {
+  const image: ImageContent = {
+    type: "image",
+    data: imageDataBase64,
+    mimeType: imageMimetype,
+  };
+  if (data === null || channel === "content") {
+    return { content: [text(markdown), image] };
+  }
+  const structuredContent = data as StructuredContent;
+  if (channel === "both") {
+    return { content: [text(markdown), image], structuredContent };
+  }
+  return { content: [text(summarize(data, summary)), image], structuredContent };
 }
