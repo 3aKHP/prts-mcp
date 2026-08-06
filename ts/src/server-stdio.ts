@@ -12,7 +12,7 @@
  * (stdio has no query string / headers); the default is "content".
  */
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { createMcpServer, log, SERVER_VERSION } from "./server.js";
+import { createMcpServer, log, SERVER_VERSION } from "./server-core.js";
 import { startAutoSync } from "./startupSync.js";
 import { parseChannel } from "./output.js";
 

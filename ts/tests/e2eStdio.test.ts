@@ -12,10 +12,14 @@ import assert from "node:assert/strict";
 import { spawn, ChildProcess } from "node:child_process";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { readFileSync } from "node:fs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, "..", "..");
 const GAMEDATA_PATH = join(REPO_ROOT, "data", "gamedata");
+const EXPECTED_VERSION = JSON.parse(
+  readFileSync(join(REPO_ROOT, "ts", "package.json"), "utf-8"),
+).version as string;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -102,6 +106,7 @@ test("stdio: initialize handshake + tools/list", async () => {
     const result = initResp["result"] as Record<string, unknown>;
     const serverInfo = result["serverInfo"] as Record<string, string>;
     assert.equal(serverInfo["name"], "PRTS_Wiki_Assistant");
+    assert.equal(serverInfo["version"], EXPECTED_VERSION, "serverInfo.version should match package.json");
 
     // notifications/initialized
     await send(child, {
@@ -177,5 +182,47 @@ test("stdio: graceful error for unavailable data", async () => {
     );
   } finally {
     child.kill();
+  }
+});
+
+test("stdio: does not start an HTTP listener", async () => {
+  // The stdio entry must not import server.ts (which binds a TCP port at
+  // module load).  We set PORT to a unique high number, spawn the stdio
+  // server, then probe whether that port is bound.
+  const probePort = 39999;
+  const distServer = join(REPO_ROOT, "ts", "dist", "server-stdio.js");
+  const child = spawn(process.execPath, [distServer], {
+    stdio: ["pipe", "pipe", "pipe"],
+    env: {
+      ...process.env,
+      GAMEDATA_PATH: GAMEDATA_PATH,
+      GITHUB_MIRRORS: "",
+      STORYJSON_PATH: join(GAMEDATA_PATH, "does-not-exist.zip"),
+      PORT: String(probePort),
+    } as Record<string, string>,
+  });
+
+  let stderrText = "";
+  child.stderr?.on("data", (d: Buffer) => { stderrText += d.toString(); });
+
+  try {
+    // Give the process time to start (and bind, if buggy).
+    await new Promise((r) => setTimeout(r, 1500));
+
+    const net = await import("node:net");
+    const probe = net.createServer();
+    const portIsFree = await new Promise<boolean>((resolve) => {
+      probe.once("error", () => resolve(false));
+      probe.once("listening", () => { probe.close(); resolve(true); });
+      probe.listen(probePort, "127.0.0.1");
+    });
+
+    assert.ok(
+      portIsFree,
+      `stdio server must not bind TCP port ${probePort}. stderr: ${stderrText}`,
+    );
+  } finally {
+    child.kill();
+    await new Promise<void>((r) => child.on("exit", () => r()));
   }
 });
