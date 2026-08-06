@@ -223,9 +223,73 @@ function releaseZipError(spec: ReleaseSpec): string | null {
 // Release-based sync (for zh_CN.zip from GitHub Releases)
 // ---------------------------------------------------------------------------
 
-const GITHUB_RELEASES_LATEST_URL =
-  "https://api.github.com/repos/{owner}/{repo}/releases/latest";
 const TAG_PREFIX = "data-";
+
+// ---------------------------------------------------------------------------
+// Release discovery (tag-prefix filtered)
+//
+// The arknights-data-pipeline repo hosts both ``data-*`` and ``images-*``
+// GitHub Releases.  ``/releases/latest`` may point at an ``images-*`` release
+// if GitHub auto-promotes it, so data sync must filter by tag prefix instead.
+// (imagesSync reuses these helpers for its own prefix filtering.)
+// ---------------------------------------------------------------------------
+
+/** Minimal shape of a GitHub Release object (only the fields we read). */
+export interface GithubRelease {
+  tag_name?: unknown;
+  created_at?: unknown;
+  assets?: unknown;
+  [key: string]: unknown;
+}
+
+/** List all non-draft releases. Returns null on any network/API failure. */
+export async function listReleases(
+  owner: string,
+  repo: string,
+  timeoutMs = 10_000,
+): Promise<GithubRelease[] | null> {
+  const url = `https://api.github.com/repos/${owner}/${repo}/releases?per_page=100`;
+  try {
+    const res = await fetchCascading(url, { headers: githubHeaders() }, timeoutMs);
+    const data = await res.json();
+    return Array.isArray(data) ? (data as GithubRelease[]) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Pick the newest release whose tag starts with *prefix*, sorting by created_at desc. */
+export function latestReleaseByPrefix(
+  releases: GithubRelease[],
+  prefix: string,
+  opts: { excludePrefix?: string } = {},
+): GithubRelease | null {
+  const candidates: GithubRelease[] = [];
+  for (const release of releases) {
+    const tag = release["tag_name"];
+    if (typeof tag !== "string" || !tag.startsWith(prefix)) continue;
+    if (opts.excludePrefix && tag.startsWith(opts.excludePrefix)) continue;
+    candidates.push(release);
+  }
+  if (candidates.length === 0) return null;
+  candidates.sort((a, b) =>
+    String(b["created_at"] ?? "").localeCompare(String(a["created_at"] ?? "")),
+  );
+  return candidates[0];
+}
+
+/** Extract the browser_download_url for *assetName* from a release object. */
+export function assetUrl(release: GithubRelease, assetName: string): string | null {
+  const assets = release["assets"];
+  if (!Array.isArray(assets)) return null;
+  for (const a of assets) {
+    if (typeof a === "object" && a !== null && (a as Record<string, unknown>)["name"] === assetName) {
+      const url = (a as Record<string, unknown>)["browser_download_url"];
+      if (typeof url === "string") return url;
+    }
+  }
+  return null;
+}
 
 /** Describes a GitHub Release asset to download as a local zip. */
 export interface ReleaseSpec {
@@ -309,29 +373,26 @@ async function saveReleaseMeta(
 }
 
 /**
- * Fetch the latest release tag and asset download URL.
- * Returns null on any network or API failure.
+ * Return the latest ``data-*`` release tag and asset download URL.
+ *
+ * Uses the releases list API with tag-prefix filtering instead of
+ * ``/releases/latest``, because the data-pipeline repo also hosts
+ * ``images-*`` releases that may be promoted to "Latest" on GitHub.
+ * Returns null on network failure or when no matching release/asset is found.
  */
 export async function checkLatestRelease(
   spec: ReleaseSpec,
   timeoutMs = 10_000
 ): Promise<{ tag: string; url: string } | null> {
-  const url = GITHUB_RELEASES_LATEST_URL.replace("{owner}", spec.owner).replace(
-    "{repo}",
-    spec.repo
-  );
-  try {
-    const res = await fetchCascading(url, { headers: githubHeaders() }, timeoutMs);
-    const data = (await res.json()) as {
-      tag_name: string;
-      assets: Array<{ name: string; browser_download_url: string }>;
-    };
-    const asset = data.assets.find((a) => a.name === spec.assetName);
-    if (!asset) return null;
-    return { tag: data.tag_name, url: asset.browser_download_url };
-  } catch {
-    return null;
-  }
+  const releases = await listReleases(spec.owner, spec.repo, timeoutMs);
+  if (releases === null) return null;
+  const latest = latestReleaseByPrefix(releases, TAG_PREFIX);
+  if (!latest) return null;
+  const tag = latest["tag_name"];
+  if (typeof tag !== "string") return null;
+  const url = assetUrl(latest, spec.assetName);
+  if (!url) return null;
+  return { tag, url };
 }
 
 /**

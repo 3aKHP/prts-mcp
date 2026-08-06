@@ -29,8 +29,11 @@ from prts_mcp.data.sync import (
     RepoSpec,
     SyncResult,
     _archive_activation_lock,
+    _asset_url,
     _get_cascading,
     _github_headers,
+    _latest_release_by_prefix,
+    _list_releases,
     _safe_extract_zip,
     _url_candidates,
 )
@@ -68,53 +71,9 @@ def needed_shard_keys(include_original: bool) -> tuple[str, ...]:
 
 
 # ---------------------------------------------------------------------------
-# Discovery (tag-prefix filtered; /releases/latest is not usable — schema §6)
+# Discovery helpers (_list_releases, _latest_release_by_prefix, _asset_url)
+# are imported from sync — data and images releases share the same pattern.
 # ---------------------------------------------------------------------------
-
-
-def _list_releases(owner: str, repo: str, *, timeout: float = 10.0) -> list[dict] | None:
-    """List all non-draft releases. Returns None on any network/API failure."""
-    url = f"https://api.github.com/repos/{owner}/{repo}/releases?per_page=100"
-    try:
-        response = _get_cascading(url, timeout=timeout, headers=_github_headers())
-        data = response.json()
-        return data if isinstance(data, list) else None
-    except Exception:  # noqa: BLE001
-        return None
-
-
-def _latest_release_by_prefix(
-    releases: list[dict],
-    prefix: str,
-    *,
-    exclude_prefix: str | None = None,
-) -> dict | None:
-    """Pick the newest release whose tag starts with ``prefix``.
-
-    Sorts by ``created_at`` (GitHub release creation timestamp) descending,
-    which is robust across baseline/delta tag formats.
-    """
-    candidates: list[dict] = []
-    for release in releases:
-        tag = release.get("tag_name")
-        if not isinstance(tag, str) or not tag.startswith(prefix):
-            continue
-        if exclude_prefix and tag.startswith(exclude_prefix):
-            continue
-        candidates.append(release)
-    if not candidates:
-        return None
-    candidates.sort(key=lambda r: str(r.get("created_at", "")), reverse=True)
-    return candidates[0]
-
-
-def _asset_url(release: dict, asset_name: str) -> str | None:
-    for asset in release.get("assets", []):
-        if isinstance(asset, dict) and asset.get("name") == asset_name:
-            url = asset.get("browser_download_url")
-            if isinstance(url, str):
-                return url
-    return None
 
 
 def _release_download_url(tag: str, asset_name: str) -> str:

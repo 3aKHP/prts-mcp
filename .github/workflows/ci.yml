@@ -52,7 +52,8 @@ jobs:
       - name: Download storyjson zip for integration tests
         run: |
           mkdir -p .ci-data/storyjson
-          gh release download \
+          DATA_TAG=$(gh release list --repo 3aKHP/arknights-data-pipeline --json tagName,createdAt --limit 100 --jq '[.[] | select(.tagName | startswith("data-"))] | max_by(.createdAt) | .tagName')
+          gh release download "$DATA_TAG" \
             --repo 3aKHP/arknights-data-pipeline \
             --pattern "zh_CN.zip" \
             --dir .ci-data/storyjson/ \
@@ -121,7 +122,8 @@ jobs:
       - name: Download bundled storyjson zip
         run: |
           mkdir -p data/storyjson
-          gh release download \
+          DATA_TAG=$(gh release list --repo 3aKHP/arknights-data-pipeline --json tagName,createdAt --limit 100 --jq '[.[] | select(.tagName | startswith("data-"))] | max_by(.createdAt) | .tagName')
+          gh release download "$DATA_TAG" \
             --repo 3aKHP/arknights-data-pipeline \
             --pattern "zh_CN.zip" \
             --dir data/storyjson/ \
@@ -360,7 +362,8 @@ jobs:
       - name: Download bundled storyjson zip
         run: |
           mkdir -p data/storyjson
-          gh release download \
+          DATA_TAG=$(gh release list --repo 3aKHP/arknights-data-pipeline --json tagName,createdAt --limit 100 --jq '[.[] | select(.tagName | startswith("data-"))] | max_by(.createdAt) | .tagName')
+          gh release download "$DATA_TAG" \
             --repo 3aKHP/arknights-data-pipeline \
             --pattern "zh_CN.zip" \
             --dir data/storyjson/ \
@@ -425,7 +428,8 @@ jobs:
       - name: Download bundled storyjson zip
         run: |
           mkdir -p data/storyjson
-          gh release download \
+          DATA_TAG=$(gh release list --repo 3aKHP/arknights-data-pipeline --json tagName,createdAt --limit 100 --jq '[.[] | select(.tagName | startswith("data-"))] | max_by(.createdAt) | .tagName')
+          gh release download "$DATA_TAG" \
             --repo 3aKHP/arknights-data-pipeline \
             --pattern "zh_CN.zip" \
             --dir data/storyjson/ \

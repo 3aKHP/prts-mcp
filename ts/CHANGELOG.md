@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [2.5.0] - 2026-08-07
 
 ### Added
 
@@ -17,7 +17,45 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
   ~1.5 GB of AKDP local PNG assets; `ORIGINAL_IMAGE=true` adds full-resolution
   shards. MediaWiki labels via CharinfoV2 `时装N名称`; AKDP labels via
   `skin_table.json`. The `original` variant is rejected in MediaWiki mode
-  (PRTS originals exceed the 1 MiB cap).
+  (PRTS originals exceed the 1 MiB cap). Tool surface 23 → 24.
+
+### Changed
+
+- **Auto-sync data source switched to self-hosted `arknights-data-pipeline`.**
+  The default sync now consumes `zh_CN-excel.zip`, `zh_CN-levels.zip`, and
+  story `zh_CN.zip` Releases from `3aKHP/arknights-data-pipeline` (the factory
+  repo). The legacy upstream repos are no longer data dependencies on the
+  2.5.0 line. Release manifest verification tightened so a partial or corrupt
+  archive cannot be treated as healthy data.
+- `tsx` devDependency updated from 4.21 to 4.23.
+
+### Fixed
+
+- **Data sync uses tag-prefix filtering instead of `/releases/latest`.** The
+  `arknights-data-pipeline` repo now hosts both `data-*` and `images-*` GitHub
+  Releases. `checkLatestRelease` switched from the `/releases/latest` endpoint
+  to the releases list API with `data-` tag-prefix filtering, preventing silent
+  sync stalls if GitHub auto-promotes an `images-*` release to "Latest". Shared
+  `listReleases` / `latestReleaseByPrefix` / `assetUrl` helpers were lifted from
+  `imagesSync` into `sync` to avoid duplication. CI `gh release download` now
+  resolves the latest `data-*` tag before downloading.
+- **TS stdio entry no longer starts an HTTP listener.** The stdio entry point
+  (`server-stdio.ts`) previously imported from `server.ts`, whose module-load
+  side effect called `app.listen()` — spawning a rogue HTTP server on the
+  configured `PORT` alongside the stdio transport. Extracted a side-effect-free
+  `server-core.ts` factory shared by both entry points.
+- **`operator_artwork` allimages pagination.** MediaWiki `allimages` now
+  paginates with `aifrom` continuation (50 per page) to avoid silent
+  truncation when an operator has more than 50 skin images.
+- **Docker images volume for `LOCAL_IMAGE=true`.** All three Dockerfiles now
+  create `/data/images` so the `LOCAL_IMAGE=true` sync path has a writable
+  target directory when running with a named volume.
+- **TS `{}` empty-object placeholder crash.** Upstream AKDP data sometimes
+  emits `{}` instead of `[]` for array fields (`waves`, `fragments`,
+  `actions`, `unlockCondition`, `talents`, `tagList`, etc.). TS `?? []` only
+  catches `null`/`undefined`, so `{}` slipped through and crashed `.map()` /
+  `for...of`. All 21 JSON-sourced `?? []` sites now use
+  `Array.isArray(x) ? x : []` to match Python's falsy `or []` tolerance.
 
 ## [2.4.0] - 2026-07-29
 
