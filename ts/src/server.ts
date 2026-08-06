@@ -15,9 +15,11 @@ import { randomUUID } from "node:crypto";
 import express from "express";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { loadConfig } from "./config.js";
 import { registerPrtsTools } from "./tools/prtsTools.js";
 import { registerGamedataTools } from "./tools/gamedataTools.js";
 import { registerStoryTools } from "./tools/storyTools.js";
+import { registerArtworkTools } from "./tools/artworkTools.js";
 import { startAutoSync } from "./startupSync.js";
 import { parseChannel, type OutputChannel } from "./output.js";
 
@@ -47,6 +49,11 @@ export function createMcpServer(channel: OutputChannel): McpServer {
   registerPrtsTools(server, channel);
   registerGamedataTools(server, channel);
   registerStoryTools(server, channel);
+
+  // operator_artwork is registered only when IMAGES_ENABLED=true.
+  if (loadConfig().imagesEnabled) {
+    registerArtworkTools(server, channel);
+  }
 
   return server;
 }

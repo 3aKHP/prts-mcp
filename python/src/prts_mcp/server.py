@@ -49,6 +49,7 @@ mcp = FastMCP("PRTS_Wiki_Assistant")
 
 def _register_tools() -> None:
     """Register MCP tools via the focused tool modules."""
+    from prts_mcp.config import Config
     from prts_mcp.tools_prts import register_prts_tools
     from prts_mcp.tools_gamedata import register_gamedata_tools
     from prts_mcp.tools_story import register_story_tools
@@ -56,6 +57,12 @@ def _register_tools() -> None:
     register_prts_tools(mcp)
     register_gamedata_tools(mcp)
     register_story_tools(mcp)
+
+    # operator_artwork is registered only when IMAGES_ENABLED=true.
+    if Config.load().images_enabled:
+        from prts_mcp.tools_artwork import register_artwork_tools
+
+        register_artwork_tools(mcp)
 
 
 _register_tools()

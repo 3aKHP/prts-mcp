@@ -197,6 +197,26 @@ def _run_startup_sync(*, force_check: bool = False) -> None:
         if needs_retry and not force_check:
             _schedule_sync_retry("Storyjson", _sync_storyjson)
 
+    # Images artwork sync (2.5.0) — LOCAL_IMAGE mode consumes AKDP assets.
+    if cfg.images_enabled and cfg.local_image:
+        from prts_mcp.data.images_sync import sync_images as _sync_images_release
+
+        def _sync_images() -> bool:
+            r = _sync_images_release(
+                cfg.images_path,
+                include_original=cfg.original_image,
+                force_check=force_check,
+            )
+            _log_sync_result(r)
+            return _sync_needs_retry(r.status)
+
+        needs_retry = _run_initial_sync(
+            "Images",
+            lambda: _single_flight_sync("Images", _sync_images) != "done",
+        )
+        if needs_retry and not force_check:
+            _schedule_sync_retry("Images", _sync_images)
+
 
 def _auto_sync_interval_seconds() -> int:
     raw = os.environ.get("PRTS_AUTO_SYNC_INTERVAL_SECONDS")

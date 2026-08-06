@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Added
+
+- New `operator_artwork` tool (opt-in via `IMAGES_ENABLED=true`) serving
+  operator illustration and skin images from the AKDP image Release.
+  `action="list"` returns bounded metadata with semantic labels;
+  `action="get"` returns one image as base64 `ImageContent` (default `large`
+  variant, max 1024px). `LOCAL_IMAGE=true` (default) consumes synced local
+  assets via the existing auto-sync scheduler; `ORIGINAL_IMAGE=true` also
+  pulls full-resolution shards. Labels are joined from `skin_table.json`.
+
 ## [2.4.0] - 2026-07-29
 
 ### Fixed

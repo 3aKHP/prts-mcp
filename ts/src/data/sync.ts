@@ -108,7 +108,7 @@ export interface SyncResult {
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-function githubHeaders(): Record<string, string> {
+export function githubHeaders(): Record<string, string> {
   const headers: Record<string, string> = { "User-Agent": GITHUB_UA };
   const token = process.env["GITHUB_TOKEN"];
   if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -172,7 +172,7 @@ async function fetchWithRuntimeProxy(
  *   genuinely missing — mirrors won't help).
  * - Network error or HTTP 5xx from any candidate → try the next one.
  */
-async function fetchCascading(
+export async function fetchCascading(
   url: string,
   options: Omit<RequestInit, "signal">,
   timeoutMs: number,
@@ -580,7 +580,7 @@ function validateArchiveZip(zipPath: string, requiredFiles: readonly string[]): 
   }
 }
 
-async function safeExtractZip(zipPath: string, localRoot: string): Promise<void> {
+export async function safeExtractZip(zipPath: string, localRoot: string): Promise<void> {
   const root = resolve(localRoot);
   const zip = new AdmZip(zipPath);
   const tmpPaths: string[] = [];

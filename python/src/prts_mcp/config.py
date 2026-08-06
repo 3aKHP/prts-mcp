@@ -158,6 +158,17 @@ _DEFAULT_GAMEDATA_PATH = _resolve_default_gamedata_path()
 # storyjson zip alongside gamedata in the user data directory.
 _DEFAULT_STORYJSON_ZIP = _DEFAULT_GAMEDATA_PATH.parent / "storyjson" / "zh_CN.zip"
 
+# Image artwork assets (2.5.0) sit alongside gamedata under the data root.
+_DEFAULT_IMAGES_PATH = _DEFAULT_GAMEDATA_PATH.parent / "images"
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    """Parse a boolean env var (``1``/``true``/``yes``/``on``); unset → default."""
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in ("1", "true", "yes", "on")
+
 
 def _excel_path(gamedata_root: Path) -> Path:
     return gamedata_root / "zh_CN" / "gamedata" / "excel"
@@ -246,6 +257,10 @@ class Config:
     gamedata_path: Path          # sync write target (volume or user dir)
     storyjson_zip: Path          # storyjson zip path (custom, volume, or default)
     is_custom_gamedata: bool     # True when GAMEDATA_PATH was set by the user
+    images_enabled: bool         # IMAGES_ENABLED; False → operator_artwork not registered
+    local_image: bool            # LOCAL_IMAGE; True = AKDP local assets, False = MediaWiki (future)
+    original_image: bool         # ORIGINAL_IMAGE; True = also sync original-variant shards
+    images_path: Path            # image asset sync target (PRTS_IMAGE_DIR or default)
 
     # Derived paths — set in __post_init__, never passed to __init__.
     excel_path: Path = field(init=False)
@@ -355,10 +370,19 @@ class Config:
             if "STORYJSON_PATH" in os.environ
             else _DEFAULT_STORYJSON_ZIP
         )
+        images_path = (
+            Path(os.environ["PRTS_IMAGE_DIR"])
+            if "PRTS_IMAGE_DIR" in os.environ
+            else _DEFAULT_IMAGES_PATH
+        )
         config = cls(
             gamedata_path=gamedata,
             storyjson_zip=storyjson_zip,
             is_custom_gamedata=custom,
+            images_enabled=_env_bool("IMAGES_ENABLED", False),
+            local_image=_env_bool("LOCAL_IMAGE", True),
+            original_image=_env_bool("ORIGINAL_IMAGE", False),
+            images_path=images_path,
         )
         return config
 

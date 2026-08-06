@@ -139,6 +139,15 @@ function resolveDefaultGamedataPath(): string {
 
 export const DEFAULT_GAMEDATA_PATH = resolveDefaultGamedataPath();
 
+/** Image artwork assets (2.5.0) sit alongside gamedata under the data root. */
+export const DEFAULT_IMAGES_PATH = join(dirname(DEFAULT_GAMEDATA_PATH), "images");
+
+function envBool(name: string, defaultVal: boolean): boolean {
+  const raw = process.env[name];
+  if (raw === undefined) return defaultVal;
+  return ["1", "true", "yes", "on"].includes(raw.trim().toLowerCase());
+}
+
 function excelPath(gamedataRoot: string): string {
   return join(gamedataRoot, "zh_CN", "gamedata", "excel");
 }
@@ -259,6 +268,14 @@ export interface Config {
    * Null when no zip is found anywhere.
    */
   effectiveStoryjsonZip: string | null;
+  /** IMAGES_ENABLED — master switch; false → operator_artwork not registered. */
+  imagesEnabled: boolean;
+  /** LOCAL_IMAGE — true = AKDP local assets, false = MediaWiki fallback (future). */
+  localImage: boolean;
+  /** ORIGINAL_IMAGE — true = also sync original-variant shards. */
+  originalImage: boolean;
+  /** Image asset sync target (PRTS_IMAGE_DIR or default). */
+  imagesPath: string;
 }
 
 export function hasOperatorData(cfg: Config): boolean {
@@ -315,6 +332,7 @@ export function loadConfig(): Config {
   else if (existsSync(BUNDLED_STORYJSON_ZIP))
     effectiveStoryjsonZip = BUNDLED_STORYJSON_ZIP;
 
+  const imagesPath = process.env["PRTS_IMAGE_DIR"] ?? DEFAULT_IMAGES_PATH;
   const config = {
     gamedataPath,
     isCustomGamedata,
@@ -326,6 +344,10 @@ export function loadConfig(): Config {
     effectiveLevelsPath,
     storyjsonZip,
     effectiveStoryjsonZip,
+    imagesEnabled: envBool("IMAGES_ENABLED", false),
+    localImage: envBool("LOCAL_IMAGE", true),
+    originalImage: envBool("ORIGINAL_IMAGE", false),
+    imagesPath,
   };
   return config;
 }

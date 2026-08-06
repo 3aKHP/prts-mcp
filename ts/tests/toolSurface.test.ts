@@ -40,6 +40,9 @@ const EXPECTED_TOOLS = [
   "get_operator_memoirs",
   "find_character_appearances",
   "find_speakers_in",
+  // operator_artwork is conditionally registered (IMAGES_ENABLED=true); the
+  // name is still part of the frozen source-level surface this test guards.
+  "operator_artwork",
 ];
 
 test("TypeScript MCP tool names are frozen", () => {
@@ -312,7 +315,11 @@ test("output-channel semantic invariant for structured and narrative tools", asy
     ...Object.keys(STRUCTURED_TOOL_ARGS),
     ...Object.keys(NARRATIVE_TOOL_ARGS),
   ];
-  assert.deepEqual([...new Set(invariantTools)].sort(), [...EXPECTED_TOOLS].sort());
+  // operator_artwork is conditionally registered (IMAGES_ENABLED). Its
+  // output-channel behavior is covered by python/tests/test_images.py (list/get
+  // with structured/both channels), not the TS invariant suite; exclude it here.
+  const invariantExpected = EXPECTED_TOOLS.filter((t) => t !== "operator_artwork");
+  assert.deepEqual([...new Set(invariantTools)].sort(), [...invariantExpected].sort());
   assert.equal(new Set(invariantTools).size, invariantTools.length, "tool invariant args contain duplicates");
 
   const root = mkdtempSync(join(tmpdir(), "prts-tool-invariant-"));
