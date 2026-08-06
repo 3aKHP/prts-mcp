@@ -57,6 +57,12 @@ function writeFixture(root: string): string {
         name: "空关",
         levelId: null,
       },
+      act42side_10: {
+        stageId: "act42side_10",
+        code: "AS-10",
+        name: "空对象占位关",
+        levelId: "Obt/Main/level_act42side_10",
+      },
     },
   });
   writeJson(join(excel, "enemy_handbook_table.json"), {
@@ -147,6 +153,15 @@ function writeFixture(root: string): string {
       },
     ],
   });
+  // Level file with {} placeholders where arrays are expected (upstream AKDP
+  // data has ~12 of these). The index builder must skip them gracefully.
+  writeJson(join(levelRoot, "level_act42side_10.json"), {
+    enemyDbRefs: [],
+    waves: [
+      { fragments: {} },
+      { fragments: [{ actions: {} }] },
+    ],
+  });
   return gamedata;
 }
 
@@ -235,4 +250,16 @@ test("missing levels data message", async () => {
   process.env["GAMEDATA_PATH"] = gamedata;
   const mod = await loadModule();
   assert.match(mod.getStageEnemies("main_00-01"), /关卡战斗数据暂不可用/);
+});
+
+test("getEnemyAppearances tolerates {} fragments/actions in level data", async () => {
+  // Regression: upstream AKDP data has ~12 stages where waves[*].fragments
+  // or fragment.actions is {} instead of []. The index builder scans all
+  // stages, so one bad stage blocked ALL enemy appearance queries.
+  const root = tempRoot();
+  process.env["GAMEDATA_PATH"] = writeFixture(root);
+  const mod = await loadModule();
+  // Should not crash — act42side_10 with {} fragments is skipped silently.
+  const out = mod.getEnemyAppearances("源石虫");
+  assert.match(out, /main_00-01/);
 });
