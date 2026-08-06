@@ -148,6 +148,10 @@ async function downloadLarge(url: string, dest: string, timeoutMs = 300_000): Pr
       { headers: githubHeaders(), redirect: "follow" },
       timeoutMs,
     );
+    // TS buffers the full shard in memory (Python streams via httpx.stream).
+    // Default shards cap at ~750 MB (chararts-large); ORIGINAL_IMAGE shards
+    // (~1.8 GB) need a heap-sized runtime. Streaming was explored but blocked
+    // by Node 22 Uint8Array<ArrayBufferLike> generic friction in Readable.fromWeb.
     const buf = Buffer.from(await res.arrayBuffer());
     await writeFile(tmp, buf);
     await rename(tmp, dest);

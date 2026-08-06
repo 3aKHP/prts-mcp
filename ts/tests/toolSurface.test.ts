@@ -315,8 +315,9 @@ test("output-channel semantic invariant for structured and narrative tools", asy
     ...Object.keys(STRUCTURED_TOOL_ARGS),
     ...Object.keys(NARRATIVE_TOOL_ARGS),
   ];
-  // operator_artwork is conditionally registered (IMAGES_ENABLED) and has its
-  // own output-channel coverage; exclude it from this unconditional invariant.
+  // operator_artwork is conditionally registered (IMAGES_ENABLED). Its
+  // output-channel behavior is covered by python/tests/test_images.py (list/get
+  // with structured/both channels), not the TS invariant suite; exclude it here.
   const invariantExpected = EXPECTED_TOOLS.filter((t) => t !== "operator_artwork");
   assert.deepEqual([...new Set(invariantTools)].sort(), [...invariantExpected].sort());
   assert.equal(new Set(invariantTools).size, invariantTools.length, "tool invariant args contain duplicates");

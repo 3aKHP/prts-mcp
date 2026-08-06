@@ -13,7 +13,7 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
-from prts_mcp.config import Config
+from prts_mcp.config import Config, activation_snapshot
 from prts_mcp.data.images import (
     DEFAULT_VARIANT,
     _load_char_skins,
@@ -194,6 +194,7 @@ def register_artwork_tools(mcp) -> None:  # type: ignore[no-untyped-def]
     """Register the ``operator_artwork`` tool on the given FastMCP instance."""
 
     @mcp.tool()
+    @activation_snapshot
     async def operator_artwork(
         operator_name: Annotated[str, Field(description="干员名称（中文），如「阿米娅」。")],
         action: Annotated[Literal["list", "get"], Field(description="操作（必填）：list=列出该干员所有立绘及 artwork_id；get=按 artwork_id 获取一张图片。")],
