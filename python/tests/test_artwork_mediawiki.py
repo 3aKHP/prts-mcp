@@ -1,15 +1,16 @@
 """Tests for LOCAL_IMAGE=false MediaWiki path.
 
-Covers filename→label parsing (base/plus/building-skip/fashion/multi-form),
-the image magic-byte check, and the LRU image cache. Network helpers
-(list_allimages / get_imageinfo / download_image_safe) are exercised via the
-tool-layer mock in test_images.py and are intentionally not re-mocked here —
-the security boundary of download_image_safe is validated through its pure
-helpers (magic check) plus the documented #85 constraints.
+Covers filename→label parsing, the image magic-byte check, the LRU cache
+eviction, and the download_image_safe URL pre-check (bad scheme/host). The
+streaming-rejection paths inside download_image_safe (post-redirect scheme/
+host, Content-Type, magic, 1 MiB cap) require an httpx transport mock and
+are deferred — see PR #92 未尽事宜.
 """
 from __future__ import annotations
 
-from prts_mcp.api.prts_wiki import _image_magic_ok
+import pytest
+
+from prts_mcp.api.prts_wiki import _image_magic_ok, download_image_safe
 from prts_mcp.tools_artwork import (
     _image_cache,
     _image_cache_get,
@@ -69,3 +70,30 @@ def test_image_cache_lru_round_trip():
         assert _image_cache_get("amiya_2", "preview") == b"\x01" * 50
     finally:
         _image_cache.clear()
+
+
+def test_image_cache_lru_evicts_by_byte_total(monkeypatch):
+    """When total bytes exceed the cap, the oldest entry is evicted."""
+    import prts_mcp.tools_artwork as ta
+
+    monkeypatch.setattr(ta, "_IMAGE_CACHE_MAX_BYTES", 150)
+    _image_cache.clear()
+    try:
+        _image_cache_put("a", "large", b"\x00" * 100)
+        _image_cache_put("b", "large", b"\x00" * 100)  # total 200 > 150 → evict "a"
+        assert _image_cache_get("a", "large") is None
+        assert _image_cache_get("b", "large") == b"\x00" * 100
+    finally:
+        _image_cache.clear()
+
+
+def test_download_image_safe_rejects_bad_url():
+    """The URL pre-check (scheme + host) rejects before any network call."""
+    import asyncio
+
+    # http (not https) — rejected pre-stream.
+    with pytest.raises(ValueError, match="not allowed"):
+        asyncio.run(download_image_safe("http://media.prts.wiki/x.png"))
+    # wrong host.
+    with pytest.raises(ValueError, match="not allowed"):
+        asyncio.run(download_image_safe("https://evil.com/x.png"))

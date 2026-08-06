@@ -581,9 +581,9 @@ export async function downloadImageSafe(url: string): Promise<Uint8Array> {
     signal: AbortSignal.timeout(30_000),
   });
   if (!res.ok) throw new Error(`image fetch HTTP ${res.status}`);
-  const finalHost = new URL(res.url).hostname;
-  if (!(ALLOWED_IMAGE_HOSTS as readonly string[]).includes(finalHost)) {
-    throw new Error(`redirected to disallowed host: ${finalHost}`);
+  const finalUrl = new URL(res.url);
+  if (finalUrl.protocol !== "https:" || !(ALLOWED_IMAGE_HOSTS as readonly string[]).includes(finalUrl.hostname)) {
+    throw new Error(`redirected to disallowed URL: ${res.url}`);
   }
   const ctype = (res.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
   if (!(ALLOWED_IMAGE_MIMES as readonly string[]).includes(ctype)) {

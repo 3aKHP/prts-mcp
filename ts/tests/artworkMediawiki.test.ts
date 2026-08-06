@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { labelFromFilename } from "../src/tools/artworkTools.ts";
-import { imageMagicOk } from "../src/api/prtsWiki.ts";
+import { downloadImageSafe, imageMagicOk } from "../src/api/prtsWiki.ts";
 
 const CHARINFO: Record<string, unknown> = {
   "时装1名称": "报童",
@@ -48,4 +48,17 @@ test("imageMagicOk: png/jpeg/webp signatures", () => {
   webp.write("WEBP", 8);
   assert.equal(imageMagicOk(webp, "image/webp"), true);
   assert.equal(imageMagicOk(Buffer.from("notanimage"), "image/png"), false);
+});
+
+test("downloadImageSafe rejects bad scheme/host before any network call", async () => {
+  // http (not https) — rejected pre-stream.
+  await assert.rejects(
+    () => downloadImageSafe("http://media.prts.wiki/x.png"),
+    /not allowed/,
+  );
+  // wrong host.
+  await assert.rejects(
+    () => downloadImageSafe("https://evil.com/x.png"),
+    /not allowed/,
+  );
 });

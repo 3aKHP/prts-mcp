@@ -247,7 +247,7 @@ async def _do_get_mediawiki(
     if image_bytes is None:
         try:
             image_bytes = await _download_image_safe(img_url)
-        except (ValueError, OSError) as exc:
+        except Exception as exc:  # noqa: BLE001 — ValueError (boundary) or httpx.HTTPError (network)
             return text_result(f"下载图片失败：{exc}")
         if cfg.prts_image_cache:
             _image_cache_put(artwork_id, chosen, image_bytes)
