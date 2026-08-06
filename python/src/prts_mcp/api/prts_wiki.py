@@ -444,9 +444,9 @@ async def list_allimages(prefix: str, limit: int = 50) -> list[dict]:
     """List PRTS ``File:`` titles whose name starts with ``prefix``.
 
     Returns dicts with ``name``/``size``/``mime``. Used by operator_artwork's
-    false-mode list to discover ``立绘_<name>_*`` files.
+    false-mode list to discover ``立绘_<name>_*`` files. Paginates via
+    MediaWiki continuation when results exceed ``limit``.
     """
-    await _rate_limit()
     params = {
         "action": "query",
         "list": "allimages",
@@ -455,17 +455,29 @@ async def list_allimages(prefix: str, limit: int = 50) -> list[dict]:
         "aiprop": "name|size|mime",
         "format": "json",
     }
-    resp = await _get_client().get(PRTS_API_ENDPOINT, params=params)
-    resp.raise_for_status()
-    data = resp.json()
-    return [
-        {
-            "name": a.get("name", ""),
-            "size": a.get("size", 0),
-            "mime": a.get("mime", ""),
-        }
-        for a in data.get("query", {}).get("allimages", [])
-    ]
+    results: list[dict] = []
+    pages = 0
+    while True:
+        if pages >= 50:
+            raise RuntimeError("allimages pagination exceeded 50 pages")
+        pages += 1
+        await _rate_limit()
+        resp = await _get_client().get(PRTS_API_ENDPOINT, params=params)
+        resp.raise_for_status()
+        data = resp.json()
+        results.extend(
+            {
+                "name": a.get("name", ""),
+                "size": a.get("size", 0),
+                "mime": a.get("mime", ""),
+            }
+            for a in data.get("query", {}).get("allimages", [])
+        )
+        cont = data.get("continue")
+        if not cont:
+            break
+        params.update({k: str(v) for k, v in cont.items()})
+    return results
 
 
 async def get_imageinfo(title: str, width: int | None = None) -> dict | None:

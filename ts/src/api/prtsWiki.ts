@@ -513,19 +513,30 @@ export interface AllimagesEntry {
 
 /** Mirrors prts_wiki.list_allimages(). */
 export async function listAllimages(prefix: string, limit = 50): Promise<AllimagesEntry[]> {
-  const data = (await prtsGet({
+  const params: Record<string, string | number> = {
     action: "query",
     list: "allimages",
     aiprefix: prefix,
     ailimit: limit,
     aiprop: "name|size|mime",
     format: "json",
-  })) as { query?: { allimages?: Array<{ name?: string; size?: number; mime?: string }> } };
-  return (data.query?.allimages ?? []).map((a) => ({
-    name: a.name ?? "",
-    size: a.size ?? 0,
-    mime: a.mime ?? "",
-  }));
+  };
+  const results: AllimagesEntry[] = [];
+  let pages = 0;
+  for (;;) {
+    if (++pages > 50) throw new Error("allimages pagination exceeded 50 pages");
+    const data = (await prtsGet(params)) as {
+      query?: { allimages?: Array<{ name?: string; size?: number; mime?: string }> };
+      continue?: Record<string, string>;
+    };
+    for (const a of data.query?.allimages ?? []) {
+      results.push({ name: a.name ?? "", size: a.size ?? 0, mime: a.mime ?? "" });
+    }
+    const cont = data.continue;
+    if (!cont) break;
+    Object.assign(params, cont);
+  }
+  return results;
 }
 
 export interface ImageinfoResult {

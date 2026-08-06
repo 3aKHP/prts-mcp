@@ -38,6 +38,7 @@ const EXPECTED_TOOLS = [
   "get_operator_memoirs",
   "find_character_appearances",
   "find_speakers_in",
+  "operator_artwork",
 ];
 
 const DEFAULT_TIMEOUT_MS = 30_000;
