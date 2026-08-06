@@ -11,7 +11,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { z } from "zod";
-import { loadConfig, withActivationSnapshot } from "../config.js";
+import { loadConfig, withActivationSnapshot, type Config } from "../config.js";
 import {
   buildArtworkLabel,
   getCharSkins,
@@ -27,6 +27,7 @@ import {
   getImageinfo,
   getTemplateData,
   listAllimages,
+  type ImageinfoResult,
 } from "../api/prtsWiki.js";
 import { activeGenerationSync } from "../data/imagesSync.js";
 import { resolveCharId } from "../data/operator.js";
@@ -222,6 +223,7 @@ async function doGetMediawiki(
   artworkId: string | undefined,
   variant: VariantName | undefined,
   channel: OutputChannel,
+  cfg: Config,
 ): Promise<CallToolResult> {
   if (!artworkId) {
     return textResult("action=get 时必须提供 artwork_id。请先用 action=list 获取。");
@@ -236,7 +238,7 @@ async function doGetMediawiki(
   if (width === undefined) {
     return textResult(`不支持的变体：${chosen}。false 模式可选 large / preview。`);
   }
-  let info;
+  let info: ImageinfoResult | null;
   try {
     info = await getImageinfo(artworkId, width);
   } catch (err) {
@@ -247,7 +249,6 @@ async function doGetMediawiki(
   }
   const imgUrl = info.thumburl ?? info.url;
   if (!imgUrl) return textResult(`「${artworkId}」无 ${chosen} 变体。`);
-  const cfg = loadConfig();
   let imageBytes: Buffer | null = cfg.prtsImageCache ? imageCacheGet(artworkId, chosen) : null;
   if (imageBytes === null) {
     try {
@@ -487,7 +488,7 @@ export function registerArtworkTools(
         // LOCAL_IMAGE=false: MediaWiki path, no activation snapshot (PRTS is
         // the source of truth, not a local generation that can swap mid-call).
         if (action === "list") return doListMediawiki(operator_name, channel);
-        return doGetMediawiki(operator_name, artwork_id, variant, channel);
+        return doGetMediawiki(operator_name, artwork_id, variant, channel, cfg);
       }
       return withActivationSnapshot(() => {
         if (action === "list") return doList(operator_name, channel);
