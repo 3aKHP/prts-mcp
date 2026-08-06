@@ -34,6 +34,23 @@ Named volume 由 Docker 自动管理，无需关心宿主机路径，**在所有
 
 > 如需降低 GitHub 匿名 API 限流风险，可追加 `-e GITHUB_TOKEN=ghp_xxx`。
 
+### 本地全量立绘模式（LOCAL_IMAGE=true）
+
+默认的 MediaWiki 按需模式不需要 images 卷。如需使用 AKDP 本地全量立绘资产（~1.5 GB），追加 images 卷和相关环境变量：
+
+```bash
+docker run -i --rm \
+  -v prts-mcp-data:/data/gamedata \
+  -v prts-mcp-levels:/data/gamedata-levels \
+  -v prts-mcp-storyjson:/data/storyjson \
+  -v prts-mcp-images:/data/images \
+  -e LOCAL_IMAGE=true \
+  -e ORIGINAL_IMAGE=true \
+  prts-mcp
+```
+
+> `--rm` 不会删除 named volume；`docker compose down -v` 会。`/data/images` 内必须整体保留（`.images_meta.json`、`.releases/<generation>/index.json` 和解压后的 PNG）；同步完成后 ZIP 分片会被删除，单独保留下载包不能被运行时复用。
+
 ### 使用宿主机目录（仅命令行直接运行，不适用于 MCP 客户端配置）
 
 MCP 客户端（Chatbox、Claude Desktop 等）直接调用 Docker 进程，不经过 shell，因此环境变量（`$HOME`、`$env:USERPROFILE`）不会被展开。**如需绑定宿主机目录，必须写硬编码的绝对路径，且只能在命令行手动运行时使用。**
@@ -262,4 +279,9 @@ Remove-Item "$env:LOCALAPPDATA\prts-mcp\gamedata-levels\archives\extract_meta.js
 | `GITHUB_TOKEN` | 空 | 用于提高 GitHub API 限额，降低限流风险 |
 | `GITHUB_MIRRORS` | 空 | 逗号分隔的 ghproxy 风格代理前缀列表（如 `https://ghproxy.net`），依次在直连失败后尝试；适用于 GitHub 被 GFW 封锁的服务器 |
 | `PRTS_AUTO_SYNC_INTERVAL_SECONDS` | `3600` | GitHub Release 周期检查间隔（秒）；有效范围 `60..604800`，`0` 表示只执行启动同步；非法值回落到默认值 |
+| `IMAGES_ENABLED` | `true` | 立绘工具主开关；`false` 隐藏 `operator_artwork` |
+| `LOCAL_IMAGE` | `false` | `true` = 同步 AKDP 本地 PNG 资产（~1.5 GB，需挂载 `/data/images` 卷）；`false` = 从 PRTS MediaWiki 按需获取（零下载） |
+| `ORIGINAL_IMAGE` | `false` | 额外同步原图分辨率分片（总量 ~3 GB）；仅在 `LOCAL_IMAGE=true` 时生效 |
+| `PRTS_IMAGE_CACHE` | `true` | MediaWiki 图片的内存 LRU 缓存（256 MiB）；仅在 `LOCAL_IMAGE=false` 时生效 |
+| `PRTS_IMAGE_DIR` | `/data/images`（Docker） | AKDP 资产同步目标；仅在 `LOCAL_IMAGE=true` 时生效 |
 | `PRTS_MCP_ROOT` | `/app`（Docker 内） | 标识 Docker 环境，供 config.py 选择正确的默认路径 |
