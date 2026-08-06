@@ -274,6 +274,8 @@ export interface Config {
   localImage: boolean;
   /** ORIGINAL_IMAGE — true = also sync original-variant shards. */
   originalImage: boolean;
+  /** PRTS_IMAGE_CACHE — true = LRU-cache MediaWiki images in LOCAL_IMAGE=false mode. */
+  prtsImageCache: boolean;
   /** Image asset sync target (PRTS_IMAGE_DIR or default). */
   imagesPath: string;
 }
@@ -347,6 +349,7 @@ export function loadConfig(): Config {
     imagesEnabled: envBool("IMAGES_ENABLED", false),
     localImage: envBool("LOCAL_IMAGE", true),
     originalImage: envBool("ORIGINAL_IMAGE", false),
+    prtsImageCache: envBool("PRTS_IMAGE_CACHE", false),
     imagesPath,
   };
   return config;

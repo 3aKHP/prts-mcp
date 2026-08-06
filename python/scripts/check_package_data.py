@@ -49,6 +49,7 @@ def main() -> int:
         images_enabled=False,
         local_image=True,
         original_image=False,
+        prts_image_cache=False,
         images_path=gamedata_root.parent / "images",
     )
 
