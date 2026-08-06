@@ -63,7 +63,11 @@ def _data_not_ready() -> object:
 
 
 async def _do_list(operator_name: str) -> object:
-    char_id = _resolve_char_id(operator_name)
+    try:
+        char_id = _resolve_char_id(operator_name)
+    except (OSError, AssertionError):
+        # gamedata not synced yet (effective_excel_path None or table missing).
+        return _data_not_ready()
     if char_id is None:
         return text_result(
             f"找不到干员「{operator_name}」。建议先用 search_prts 确认准确的中文名称。"
@@ -143,8 +147,12 @@ async def _do_get(
         return text_result(
             f"artwork_id「{artwork_id}」不提供「{chosen}」变体（可用：{available}）。"
         )
-    png_path = gen_dir / variant_meta.file
-    if not png_path.is_file():
+    # The file field comes from the network-downloaded index; contain it to
+    # the generation dir so a malformed/compromised upstream cannot read an
+    # arbitrary host file and exfiltrate it base64-encoded.
+    gen_resolved = gen_dir.resolve()
+    png_path = (gen_dir / variant_meta.file).resolve()
+    if not png_path.is_relative_to(gen_resolved) or not png_path.is_file():
         return text_result(
             f"图片文件缺失：{variant_meta.file}。同步可能不完整，请稍后重试。"
         )

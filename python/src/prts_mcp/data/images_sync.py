@@ -304,7 +304,27 @@ def _sync_images_locked(
     delta_tag = str(delta_release.get("tag_name", ""))
     current_version = delta_tag[len(_DELTA_PREFIX):]
 
-    # index.json is a standalone asset on the delta Release (~1.1 MB).
+    meta = _load_meta(image_dir)
+    gen_dir = _active_generation(image_dir)
+    synced = meta.get("shardsSynced") if meta else None
+    same_shards = isinstance(synced, list) and set(synced) == set(shard_keys)
+
+    # Tag-level shortcut: if the release tag's currentVersion and the shard
+    # set already match the active generation, skip the ~1.1 MB index.json
+    # download. baselineVersion rides in index.json but cannot change without
+    # a new delta tag, so tag equality implies baseline equality. force_check
+    # still drives a real GitHub API call here; a TTL freshness skip like
+    # sync.py's _cache_is_fresh is deferred (the API call is cheap; only the
+    # index.json download is avoided when the tag is unchanged).
+    if (
+        meta is not None
+        and gen_dir is not None
+        and meta.get("currentVersion") == current_version
+        and same_shards
+    ):
+        return SyncResult(spec, "up_to_date", current_version, None)
+
+    # Tag differs (or first sync) → download index.json and rebuild.
     index_url = _asset_url(delta_release, "index.json")
     index_bytes = _download_small(index_url) if index_url else None
     if index_bytes is None:
@@ -320,19 +340,6 @@ def _sync_images_locked(
         return SyncResult(spec, "no_data", None, "index.json schema mismatch")
 
     baseline_version = index.baseline_version
-
-    meta = _load_meta(image_dir)
-    gen_dir = _active_generation(image_dir)
-    synced = meta.get("shardsSynced") if meta else None
-    same_shards = isinstance(synced, list) and set(synced) == set(shard_keys)
-    if (
-        meta is not None
-        and gen_dir is not None
-        and meta.get("currentVersion") == current_version
-        and meta.get("baselineVersion") == baseline_version
-        and same_shards
-    ):
-        return SyncResult(spec, "up_to_date", current_version, None)
 
     # --- Rebuild a new generation -----------------------------------------
     releases_dir = _releases_dir(image_dir)

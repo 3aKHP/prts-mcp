@@ -139,7 +139,11 @@ async function downloadSmall(url: string, timeoutMs = 30_000): Promise<Buffer | 
   }
 }
 
-async function downloadLarge(url: string, dest: string, timeoutMs = 300_000): Promise<void> {
+// TS uses a single total deadline (AbortSignal.timeout) whereas Python's
+// httpx.stream uses a per-socket timeout; 30 min covers the largest
+// ORIGINAL_IMAGE shard (~3.6 GB) on slow links. A per-chunk AbortSignal
+// refresh would be ideal but needs a custom read loop.
+async function downloadLarge(url: string, dest: string, timeoutMs = 1_800_000): Promise<void> {
   const tmp = join(
     dirname(dest),
     `.${basename(dest)}.${randomUUID().replaceAll("-", "")}.tmp`,
@@ -309,6 +313,29 @@ async function syncImagesLocked(
   const deltaTag = String(deltaRelease["tag_name"] ?? "");
   const currentVersion = deltaTag.slice(DELTA_PREFIX.length);
 
+  const meta = await loadMeta(imageDir);
+  const genDir = await activeGeneration(imageDir);
+  const syncedRaw = meta?.["shardsSynced"];
+  const syncedSet = Array.isArray(syncedRaw) ? new Set(syncedRaw as string[]) : null;
+  const sameShards = syncedSet !== null
+    && shardKeys.length === syncedSet.size
+    && shardKeys.every((k) => syncedSet.has(k));
+
+  // Tag-level shortcut: if the release tag's currentVersion and the shard
+  // set already match the active generation, skip the ~1.1 MB index.json
+  // download. baselineVersion rides in index.json but cannot change without
+  // a new delta tag, so tag equality implies baseline equality. force_check
+  // still drives a real API call here; a TTL freshness skip is deferred.
+  if (
+    meta !== null
+    && genDir !== null
+    && meta["currentVersion"] === currentVersion
+    && sameShards
+  ) {
+    return { spec, status: "up_to_date", commitSha: currentVersion, error: null };
+  }
+
+  // Tag differs (or first sync) → download index.json and rebuild.
   const indexUrl = assetUrl(deltaRelease, "index.json");
   const indexBytes = indexUrl !== null ? await downloadSmall(indexUrl) : null;
   if (indexBytes === null) {
@@ -328,23 +355,6 @@ async function syncImagesLocked(
   }
 
   const baselineVersion = index.baselineVersion;
-
-  const meta = await loadMeta(imageDir);
-  const genDir = await activeGeneration(imageDir);
-  const syncedRaw = meta?.["shardsSynced"];
-  const syncedSet = Array.isArray(syncedRaw) ? new Set(syncedRaw as string[]) : null;
-  const sameShards = syncedSet !== null
-    && shardKeys.length === syncedSet.size
-    && shardKeys.every((k) => syncedSet.has(k));
-  if (
-    meta !== null
-    && genDir !== null
-    && meta["currentVersion"] === currentVersion
-    && meta["baselineVersion"] === baselineVersion
-    && sameShards
-  ) {
-    return { spec, status: "up_to_date", commitSha: currentVersion, error: null };
-  }
 
   // --- Rebuild a new generation -----------------------------------------
   const relDir = await releasesDir(imageDir);

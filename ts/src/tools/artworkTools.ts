@@ -9,7 +9,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { existsSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { z } from "zod";
 import { loadConfig, withActivationSnapshot } from "../config.js";
 import {
@@ -58,7 +58,13 @@ function dataNotReady(): CallToolResult {
 // ---------------------------------------------------------------------------
 
 function doList(operatorName: string, channel: OutputChannel): CallToolResult {
-  const charId = resolveCharId(operatorName);
+  let charId: string | null;
+  try {
+    charId = resolveCharId(operatorName);
+  } catch {
+    // gamedata not synced yet (effectiveExcelPath null or table missing).
+    return dataNotReady();
+  }
   if (charId === null) {
     return textResult(
       `找不到干员「${operatorName}」。建议先用 search_prts 确认准确的中文名称。`,
@@ -136,8 +142,18 @@ function doGet(
       `artwork_id「${artworkId}」不提供「${chosen}」变体（可用：${available}）。`,
     );
   }
-  const pngPath = join(genDir, variantMeta.file);
-  if (!existsSync(pngPath) || !statSync(pngPath).isFile()) {
+  // The file field comes from the network-downloaded index; contain it to
+  // the generation dir so a malformed upstream cannot read an arbitrary host
+  // file and exfiltrate it base64-encoded.
+  const pngPath = resolve(genDir, variantMeta.file);
+  const relCheck = relative(genDir, pngPath);
+  if (
+    relCheck === ".."
+    || relCheck.startsWith(`..${sep}`)
+    || isAbsolute(relCheck)
+    || !existsSync(pngPath)
+    || !statSync(pngPath).isFile()
+  ) {
     return textResult(
       `图片文件缺失：${variantMeta.file}。同步可能不完整，请稍后重试。`,
     );
