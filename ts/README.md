@@ -25,6 +25,9 @@ docker build -f ts/Dockerfile -t prts-mcp-ts .
 
 # 运行（named volume 持久化游戏数据，推荐）
 docker run -d -p 3000:3000 -v prts-mcp-ts-data:/data/gamedata -v prts-mcp-ts-levels:/data/gamedata-levels -v prts-mcp-ts-storyjson:/data/storyjson prts-mcp-ts
+
+# 本地全量立绘（~1.5 GB AKDP 资产；默认 MediaWiki 按需模式不需要 images 卷）
+docker run -d -p 3000:3000 -v prts-mcp-ts-data:/data/gamedata -v prts-mcp-ts-levels:/data/gamedata-levels -v prts-mcp-ts-storyjson:/data/storyjson -v prts-mcp-ts-images:/data/images -e LOCAL_IMAGE=true prts-mcp-ts
 ```
 
 需要 Node.js 镜像时改用 legacy 构建路径：
@@ -144,6 +147,8 @@ docker run -d -p 3000:3000 -v prts-mcp-ts-data:/data/gamedata -v prts-mcp-ts-lev
 - **游戏表格数据**（`/data/gamedata` volume）：从 [3aKHP/arknights-data-pipeline](https://github.com/3aKHP/arknights-data-pipeline) Release 下载 `zh_CN-excel.zip`
 - **关卡战斗数据**（`/data/gamedata-levels` volume）：从同一 Release 下载 `zh_CN-levels.zip`，用于关卡实际出怪和关卡级敌人数值
 - **剧情数据**（`/data/storyjson` volume）：从同一 Release 下载 `zh_CN.zip`（含剧情 JSON 和 LLM 摘要）
+
+立绘图片默认走 PRTS MediaWiki 按需获取（零下载）。设置 `LOCAL_IMAGE=true` 时额外同步 AKDP 本地 PNG 资产到 `/data/images`（~1.5 GB）；环境变量详见 `python/docs/deployment.md`。
 
 镜像内置 bundled 数据作为网络不可用时的离线保底。
 
