@@ -12,10 +12,14 @@ import assert from "node:assert/strict";
 import { spawn, ChildProcess } from "node:child_process";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { readFileSync } from "node:fs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, "..", "..");
 const GAMEDATA_PATH = join(REPO_ROOT, "data", "gamedata");
+const EXPECTED_VERSION = JSON.parse(
+  readFileSync(join(REPO_ROOT, "ts", "package.json"), "utf-8"),
+).version as string;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -102,6 +106,7 @@ test("stdio: initialize handshake + tools/list", async () => {
     const result = initResp["result"] as Record<string, unknown>;
     const serverInfo = result["serverInfo"] as Record<string, string>;
     assert.equal(serverInfo["name"], "PRTS_Wiki_Assistant");
+    assert.equal(serverInfo["version"], EXPECTED_VERSION, "serverInfo.version should match package.json");
 
     // notifications/initialized
     await send(child, {

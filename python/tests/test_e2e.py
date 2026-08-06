@@ -17,6 +17,7 @@ import os
 import subprocess
 import sys
 import time
+from importlib.metadata import version as _pkg_version
 from pathlib import Path
 
 import pytest
@@ -33,6 +34,7 @@ _op_table = GAMEDATA_PATH / "zh_CN" / "gamedata" / "excel" / "character_table.js
 _has_operator_data = _op_table.is_file()
 
 _run_prts_api = os.environ.get("E2E_PRTS_API") == "1"
+_expected_version = _pkg_version("prts-mcp")
 
 
 def _send(proc: subprocess.Popen, msg: dict) -> None:
@@ -170,6 +172,9 @@ def test_initialize_handshake(server: subprocess.Popen) -> None:
     assert resp.get("id") == 1, f"Expected initialize response, got: {resp}"
     result = resp.get("result", {})
     assert "serverInfo" in result or "protocolVersion" in result, f"Missing server info: {resp}"
+    server_info = result.get("serverInfo", {})
+    assert server_info.get("version") == _expected_version, \
+        f"Expected product version {_expected_version}, got {server_info.get('version')}"
 
     # Send initialized notification
     _send(server, {"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}})

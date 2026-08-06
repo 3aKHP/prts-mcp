@@ -15,7 +15,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { spawn, ChildProcess } from "node:child_process";
 import { createServer } from "node:net";
-import { mkdirSync, mkdtempSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -106,6 +106,9 @@ const tc = (name: string, args: Record<string, unknown>, id: number) => ({
 
 const GAMEDATA_PATH = join(import.meta.dirname, "..", "..", "data", "gamedata");
 const RUN_PRTS_API = process.env["E2E_PRTS_API"] === "1";
+const EXPECTED_VERSION = JSON.parse(
+  readFileSync(join(import.meta.dirname, "..", "package.json"), "utf-8"),
+).version as string;
 
 test("E2E", async (t) => {
   // --- start server ---
@@ -162,6 +165,8 @@ test("E2E", async (t) => {
     assert.equal(init.status, 200, `status ${init.status}`);
     assert.ok(init.sessionId, "should return Mcp-Session-Id");
     sessionId = init.sessionId!;
+    const serverInfo = (init.body?.result as { serverInfo?: { version?: string } })?.serverInfo;
+    assert.equal(serverInfo?.version, EXPECTED_VERSION, "serverInfo.version should match package.json");
     assert.ok(init.body?.result, "initialize should have result");
   });
 
