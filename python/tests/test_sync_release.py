@@ -47,12 +47,16 @@ def _write_zip(path: Path) -> None:
 
 
 def _mock_release_response(tag: str, asset_name: str, download_url: str) -> MagicMock:
+    """Mock a /releases list API response containing one release."""
     resp = MagicMock()
     resp.raise_for_status = MagicMock()
-    resp.json.return_value = {
-        "tag_name": tag,
-        "assets": [{"name": asset_name, "browser_download_url": download_url}],
-    }
+    resp.json.return_value = [
+        {
+            "tag_name": tag,
+            "created_at": "2026-01-01T00:00:00Z",
+            "assets": [{"name": asset_name, "browser_download_url": download_url}],
+        },
+    ]
     return resp
 
 

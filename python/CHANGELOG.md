@@ -30,6 +30,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Fixed
 
+- **Data sync uses tag-prefix filtering instead of `/releases/latest`.** The
+  `arknights-data-pipeline` repo now hosts both `data-*` and `images-*` GitHub
+  Releases. `check_latest_release` switched from the `/releases/latest`
+  endpoint to the releases list API with `data-` tag-prefix filtering,
+  preventing silent sync stalls if GitHub auto-promotes an `images-*` release
+  to "Latest". Shared `_list_releases` / `_latest_release_by_prefix` /
+  `_asset_url` helpers were lifted from `images_sync` into `sync` to avoid
+  duplication.
 - **Product version reported in MCP `initialize` handshake.** The server now
   reports its actual package version via `importlib.metadata` instead of an
   empty placeholder, so MCP clients can display the correct version.

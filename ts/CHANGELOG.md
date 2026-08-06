@@ -31,6 +31,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Fixed
 
+- **Data sync uses tag-prefix filtering instead of `/releases/latest`.** The
+  `arknights-data-pipeline` repo now hosts both `data-*` and `images-*` GitHub
+  Releases. `checkLatestRelease` switched from the `/releases/latest` endpoint
+  to the releases list API with `data-` tag-prefix filtering, preventing silent
+  sync stalls if GitHub auto-promotes an `images-*` release to "Latest". Shared
+  `listReleases` / `latestReleaseByPrefix` / `assetUrl` helpers were lifted from
+  `imagesSync` into `sync` to avoid duplication. CI `gh release download` now
+  resolves the latest `data-*` tag before downloading.
 - **TS stdio entry no longer starts an HTTP listener.** The stdio entry point
   (`server-stdio.ts`) previously imported from `server.ts`, whose module-load
   side effect called `app.listen()` — spawning a rogue HTTP server on the

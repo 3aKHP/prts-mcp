@@ -21,10 +21,14 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { SCHEMA_VERSION, parseIndex } from "./images.js";
 import {
+  assetUrl,
   fetchCascading,
   githubHeaders,
+  latestReleaseByPrefix,
+  listReleases,
   safeExtractZip,
   withArchiveActivationLock,
+  type GithubRelease,
   type ReleaseSpec,
   type RepoSpec,
   type SyncResult,
@@ -63,57 +67,9 @@ function log(level: "INFO" | "WARN" | "ERROR", msg: string): void {
 }
 
 // ---------------------------------------------------------------------------
-// Discovery (tag-prefix filtered; /releases/latest is not usable — schema §6)
+// Discovery helpers (listReleases, latestReleaseByPrefix, assetUrl) are
+// imported from sync — data and images releases share the same pattern.
 // ---------------------------------------------------------------------------
-
-interface GithubRelease {
-  tag_name?: unknown;
-  created_at?: unknown;
-  assets?: unknown;
-  [key: string]: unknown;
-}
-
-async function listReleases(timeoutMs = 10_000): Promise<GithubRelease[] | null> {
-  const url = `https://api.github.com/repos/${IMAGES_REPO_OWNER}/${IMAGES_REPO}/releases?per_page=100`;
-  try {
-    const res = await fetchCascading(url, { headers: githubHeaders() }, timeoutMs);
-    const data = await res.json();
-    return Array.isArray(data) ? (data as GithubRelease[]) : null;
-  } catch {
-    return null;
-  }
-}
-
-function latestReleaseByPrefix(
-  releases: GithubRelease[],
-  prefix: string,
-  opts: { excludePrefix?: string } = {},
-): GithubRelease | null {
-  const candidates: GithubRelease[] = [];
-  for (const release of releases) {
-    const tag = release["tag_name"];
-    if (typeof tag !== "string" || !tag.startsWith(prefix)) continue;
-    if (opts.excludePrefix && tag.startsWith(opts.excludePrefix)) continue;
-    candidates.push(release);
-  }
-  if (candidates.length === 0) return null;
-  candidates.sort((a, b) =>
-    String(b["created_at"] ?? "").localeCompare(String(a["created_at"] ?? "")),
-  );
-  return candidates[0];
-}
-
-function assetUrl(release: GithubRelease, assetName: string): string | null {
-  const assets = release["assets"];
-  if (!Array.isArray(assets)) return null;
-  for (const a of assets) {
-    if (typeof a === "object" && a !== null && (a as Record<string, unknown>)["name"] === assetName) {
-      const url = (a as Record<string, unknown>)["browser_download_url"];
-      if (typeof url === "string") return url;
-    }
-  }
-  return null;
-}
 
 function releaseDownloadUrl(tag: string, assetName: string): string {
   return (
@@ -298,7 +254,7 @@ async function syncImagesLocked(
 ): Promise<SyncResult> {
   const spec = dummySpec(imageDir);
 
-  const releases = await listReleases();
+  const releases = await listReleases(IMAGES_REPO_OWNER, IMAGES_REPO);
   if (releases === null) {
     return offlineOrNoData(imageDir, "Network unavailable");
   }
