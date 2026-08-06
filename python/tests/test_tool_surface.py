@@ -35,6 +35,9 @@ EXPECTED_TOOL_SURFACE = {
     "get_operator_memoirs": ("name",),
     "find_character_appearances": ("name", "scope", "max_events"),
     "find_speakers_in": ("event_id",),
+    # operator_artwork is conditionally registered (IMAGES_ENABLED=true); the
+    # signature is frozen at the source level like the other tools.
+    "operator_artwork": ("operator_name", "action", "artwork_id", "variant"),
 }
 
 
@@ -96,7 +99,12 @@ def test_registered_tool_manifest_has_no_output_schema() -> None:
     app = _build_registered_app()
 
     tools = {tool.name: tool for tool in asyncio.run(app.list_tools())}
-    assert set(tools) == set(EXPECTED_TOOL_SURFACE)
+    # operator_artwork is conditionally registered (IMAGES_ENABLED=true) and is
+    # not part of the default registered manifest; exclude it from the check.
+    expected_registered = {
+        name for name in EXPECTED_TOOL_SURFACE if name != "operator_artwork"
+    }
+    assert set(tools) == expected_registered
 
     for name, tool in tools.items():
         assert tool.outputSchema is None, f"{name} still has outputSchema"

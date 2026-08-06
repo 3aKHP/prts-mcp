@@ -9,7 +9,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { existsSync, readFileSync, statSync } from "node:fs";
-import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { join } from "node:path";
 import { z } from "zod";
 import { loadConfig, withActivationSnapshot } from "../config.js";
 import {
@@ -22,39 +22,13 @@ import {
   type ImagesIndex,
   type VariantName,
 } from "../data/images.js";
+import { activeGenerationSync } from "../data/imagesSync.js";
 import { resolveCharId } from "../data/operator.js";
 import { renderImageResult, renderResult, textResult, type OutputChannel } from "../output.js";
-
-const IMAGES_META = ".images_meta.json";
 
 // ---------------------------------------------------------------------------
 // Synchronous data access (runs inside withActivationSnapshot)
 // ---------------------------------------------------------------------------
-
-/** Resolve the active images generation directory synchronously, or null. */
-function activeGenerationSync(imageDir: string): string | null {
-  let meta: Record<string, unknown>;
-  try {
-    meta = JSON.parse(readFileSync(join(imageDir, IMAGES_META), "utf-8"));
-  } catch {
-    return null;
-  }
-  const rel = meta["generation_root"];
-  if (typeof rel !== "string" || rel.length === 0) return null;
-  const base = resolve(imageDir);
-  const gen = resolve(base, rel);
-  const relCheck = relative(base, gen);
-  if (relCheck === ".." || relCheck.startsWith(`..${sep}`) || isAbsolute(relCheck)) {
-    return null;
-  }
-  try {
-    if (!statSync(gen).isDirectory()) return null;
-    statSync(join(gen, "index.json"));
-    return gen;
-  } catch {
-    return null;
-  }
-}
 
 function loadIndexSync(genDir: string): ImagesIndex | null {
   try {

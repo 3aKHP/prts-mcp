@@ -271,7 +271,7 @@ def _offline_or_no_data(image_dir: Path, *, error: str) -> SyncResult:
     spec = _dummy_spec(image_dir)
     if _active_generation(image_dir) is not None:
         meta = _load_meta(image_dir)
-        ver = meta.get("current_version") if meta else None
+        ver = meta.get("currentVersion") if meta else None
         return SyncResult(
             spec,
             "offline_fallback",
@@ -323,12 +323,14 @@ def _sync_images_locked(
 
     meta = _load_meta(image_dir)
     gen_dir = _active_generation(image_dir)
+    synced = meta.get("shardsSynced") if meta else None
+    same_shards = isinstance(synced, list) and set(synced) == set(shard_keys)
     if (
-        not force_check
-        and meta is not None
+        meta is not None
         and gen_dir is not None
-        and meta.get("current_version") == current_version
-        and meta.get("baseline_version") == baseline_version
+        and meta.get("currentVersion") == current_version
+        and meta.get("baselineVersion") == baseline_version
+        and same_shards
     ):
         return SyncResult(spec, "up_to_date", current_version, None)
 
@@ -343,7 +345,8 @@ def _sync_images_locked(
         baseline_unchanged = (
             meta is not None
             and gen_dir is not None
-            and meta.get("baseline_version") == baseline_version
+            and meta.get("baselineVersion") == baseline_version
+            and same_shards
         )
         if baseline_unchanged:
             # Fast path: reuse prior PNGs, overlay only the new delta.
@@ -364,18 +367,18 @@ def _sync_images_locked(
                 _safe_extract_zip(shard_zip, staging)
                 shard_zip.unlink(missing_ok=True)
 
-        # Delta: overlay incremental PNGs (sentinel delta extracts nothing).
+        # Delta: overlay incremental PNGs. A download/extract failure must
+        # propagate (not be swallowed) so a half-applied delta never activates
+        # — the authoritative index.json would otherwise reference PNGs that
+        # are absent. The sentinel delta (empty zip) downloads and extracts
+        # without raising, so it passes through cleanly.
         delta_asset = f"{_DELTA_ASSET_PREFIX}{current_version}.zip"
         delta_url = _asset_url(delta_release, delta_asset)
         if delta_url is not None:
             delta_zip = staging / ".delta.zip"
-            try:
-                _download_large(delta_url, delta_zip)
-                _safe_extract_zip(delta_zip, staging)
-            except Exception as exc:  # noqa: BLE001
-                _logger.debug("Delta extract skipped: %s", exc)
-            finally:
-                delta_zip.unlink(missing_ok=True)
+            _download_large(delta_url, delta_zip)
+            _safe_extract_zip(delta_zip, staging)
+            delta_zip.unlink(missing_ok=True)
 
         # Authoritative index.json + generation meta.
         (staging / "index.json").write_bytes(index_bytes)
@@ -383,6 +386,7 @@ def _sync_images_locked(
             "schemaVersion": SCHEMA_VERSION,
             "baselineVersion": baseline_version,
             "currentVersion": current_version,
+            "shardsSynced": list(shard_keys),
         }
         _save_meta(staging, gen_meta)
 

@@ -14,8 +14,11 @@
  */
 
 import { createHash, randomUUID } from "node:crypto";
+import { createWriteStream, readFileSync, statSync } from "node:fs";
 import { cp, mkdir, readFile, readdir, rename, rm, stat, unlink, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { SCHEMA_VERSION, parseIndex } from "./images.js";
 import {
   fetchCascading,
@@ -45,7 +48,7 @@ const ORIGINAL_SHARD_KEYS = [
   "skinpack-original",
 ] as const;
 const RETENTION_MS = 24 * 60 * 60 * 1000;
-const IMAGES_META = ".images_meta.json";
+export const IMAGES_META = ".images_meta.json";
 const IMAGES_LOCK = ".images.lock";
 
 export function neededShardKeys(includeOriginal: boolean): readonly string[] {
@@ -148,12 +151,14 @@ async function downloadLarge(url: string, dest: string, timeoutMs = 300_000): Pr
       { headers: githubHeaders(), redirect: "follow" },
       timeoutMs,
     );
-    // TS buffers the full shard in memory (Python streams via httpx.stream).
-    // Default shards cap at ~750 MB (chararts-large); ORIGINAL_IMAGE shards
-    // (~1.8 GB) need a heap-sized runtime. Streaming was explored but blocked
-    // by Node 22 Uint8Array<ArrayBufferLike> generic friction in Readable.fromWeb.
-    const buf = Buffer.from(await res.arrayBuffer());
-    await writeFile(tmp, buf);
+    // Stream the shard to disk so multi-hundred-MB baseline zips do not stay
+    // resident; mirrors python's httpx.stream chunked write. fetchCascading
+    // returns a real Response at runtime (FetchResponse omits body to stay
+    // decoupled from DOM); Node 22's Uint8Array<ArrayBufferLike> generic makes
+    // Readable.fromWeb's type incompatible (runtime is fine), so cast via any.
+    const body = (res as any).body;
+    if (body === null) throw new Error("download response body is null");
+    await pipeline(Readable.fromWeb(body as any), createWriteStream(tmp));
     await rename(tmp, dest);
   } finally {
     await unlink(tmp).catch(() => undefined);
@@ -190,9 +195,14 @@ async function saveMeta(root: string, meta: Record<string, unknown>): Promise<vo
   await rename(tmp, path);
 }
 
-async function activeGeneration(imageDir: string): Promise<string | null> {
-  const meta = await loadMeta(imageDir);
-  if (meta === null) return null;
+/** Synchronous active-generation resolver — shared by sync and tool layers. */
+export function activeGenerationSync(imageDir: string): string | null {
+  let meta: Record<string, unknown>;
+  try {
+    meta = JSON.parse(readFileSync(join(imageDir, IMAGES_META), "utf-8"));
+  } catch {
+    return null;
+  }
   const rel = meta["generation_root"];
   if (typeof rel !== "string" || rel.length === 0) return null;
   const base = resolve(imageDir);
@@ -202,13 +212,16 @@ async function activeGeneration(imageDir: string): Promise<string | null> {
     return null;
   }
   try {
-    const info = await stat(gen);
-    if (!info.isDirectory()) return null;
-    await stat(join(gen, "index.json"));
+    if (!statSync(gen).isDirectory()) return null;
+    statSync(join(gen, "index.json"));
     return gen;
   } catch {
     return null;
   }
+}
+
+async function activeGeneration(imageDir: string): Promise<string | null> {
+  return activeGenerationSync(imageDir);
 }
 
 async function releasesDir(imageDir: string): Promise<string> {
@@ -263,7 +276,7 @@ async function offlineOrNoData(imageDir: string, error: string): Promise<SyncRes
   const spec = dummySpec(imageDir);
   if ((await activeGeneration(imageDir)) !== null) {
     const meta = await loadMeta(imageDir);
-    const ver = meta?.["current_version"];
+    const ver = meta?.["currentVersion"];
     return {
       spec,
       status: "offline_fallback",
@@ -318,12 +331,17 @@ async function syncImagesLocked(
 
   const meta = await loadMeta(imageDir);
   const genDir = await activeGeneration(imageDir);
+  const syncedRaw = meta?.["shardsSynced"];
+  const syncedSet = Array.isArray(syncedRaw) ? new Set(syncedRaw as string[]) : null;
+  const sameShards = syncedSet !== null
+    && shardKeys.length === syncedSet.size
+    && shardKeys.every((k) => syncedSet.has(k));
   if (
-    !forceCheck
-    && meta !== null
+    meta !== null
     && genDir !== null
-    && meta["current_version"] === currentVersion
-    && meta["baseline_version"] === baselineVersion
+    && meta["currentVersion"] === currentVersion
+    && meta["baselineVersion"] === baselineVersion
+    && sameShards
   ) {
     return { spec, status: "up_to_date", commitSha: currentVersion, error: null };
   }
@@ -341,7 +359,8 @@ async function syncImagesLocked(
     const baselineUnchanged =
       meta !== null
       && genDir !== null
-      && meta["baseline_version"] === baselineVersion;
+      && meta["baselineVersion"] === baselineVersion
+      && sameShards;
     if (baselineUnchanged && genDir !== null) {
       // Fast path: reuse prior PNGs, overlay only the new delta.
       await cp(genDir, staging, { recursive: true });
@@ -359,20 +378,18 @@ async function syncImagesLocked(
       }
     }
 
-    // Delta: overlay incremental PNGs (sentinel delta extracts nothing).
+    // Delta: overlay incremental PNGs. A download/extract failure must
+    // propagate (not be swallowed) so a half-applied delta never activates —
+    // the authoritative index.json would otherwise reference PNGs that are
+    // absent. The sentinel delta (empty zip) downloads and extracts without
+    // raising, so it passes through cleanly.
     const deltaAsset = `${DELTA_ASSET_PREFIX}${currentVersion}.zip`;
     const deltaUrl = assetUrl(deltaRelease, deltaAsset);
     if (deltaUrl !== null) {
       const deltaZip = join(staging, ".delta.zip");
-      try {
-        await downloadLarge(deltaUrl, deltaZip);
-        await safeExtractZip(deltaZip, staging);
-      } catch (err) {
-        // sentinel/empty delta or transient failure — non-fatal
-        log("INFO", `Delta extract skipped: ${err instanceof Error ? err.message : String(err)}`);
-      } finally {
-        await unlink(deltaZip).catch(() => undefined);
-      }
+      await downloadLarge(deltaUrl, deltaZip);
+      await safeExtractZip(deltaZip, staging);
+      await unlink(deltaZip).catch(() => undefined);
     }
 
     // Authoritative index.json + generation meta.
@@ -381,6 +398,7 @@ async function syncImagesLocked(
       schemaVersion: SCHEMA_VERSION,
       baselineVersion,
       currentVersion,
+      shardsSynced: [...shardKeys],
     };
     await saveMeta(staging, genMeta);
 
