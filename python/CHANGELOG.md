@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [2.5.0] - 2026-08-07
 
 ### Added
 
@@ -17,7 +17,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
   ~1.5 GB of AKDP local PNG assets; `ORIGINAL_IMAGE=true` adds full-resolution
   shards. MediaWiki labels via CharinfoV2 `时装N名称`; AKDP labels via
   `skin_table.json`. The `original` variant is rejected in MediaWiki mode
-  (PRTS originals exceed the 1 MiB cap).
+  (PRTS originals exceed the 1 MiB cap). Tool surface 23 → 24.
+
+### Changed
+
+- **Auto-sync data source switched to self-hosted `arknights-data-pipeline`.**
+  The default sync now consumes `zh_CN-excel.zip`, `zh_CN-levels.zip`, and
+  story `zh_CN.zip` Releases from `3aKHP/arknights-data-pipeline` (the factory
+  repo). The legacy upstream repos are no longer data dependencies on the
+  2.5.0 line. Release manifest verification tightened so a partial or corrupt
+  archive cannot be treated as healthy data.
+
+### Fixed
+
+- **Product version reported in MCP `initialize` handshake.** The server now
+  reports its actual package version via `importlib.metadata` instead of an
+  empty placeholder, so MCP clients can display the correct version.
+- **`operator_artwork` allimages pagination.** MediaWiki `allimages` now
+  paginates with `aifrom` continuation (50 per page) to avoid silent
+  truncation when an operator has more than 50 skin images.
 
 ## [2.4.0] - 2026-07-29
 
