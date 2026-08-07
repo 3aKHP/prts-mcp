@@ -23,7 +23,7 @@ from uuid import uuid4
 
 import httpx
 
-from prts_mcp.data.images import SCHEMA_VERSION, parse_index
+from prts_mcp.data.images import ImagesIndex, SCHEMA_VERSION, parse_index
 from prts_mcp.data.sync import (
     ReleaseSpec,
     RepoSpec,
@@ -39,6 +39,45 @@ from prts_mcp.data.sync import (
 )
 
 _logger = logging.getLogger(__name__)
+
+
+def _shard_variant_names(shard_keys: tuple[str, ...]) -> set[str]:
+    """Map shard keys (e.g. ``chararts-large``) to variant names (e.g. ``large``)."""
+    return {key.rsplit("-", 1)[-1] for key in shard_keys}
+
+
+def _verify_variant_hashes(
+    staging: Path, index: ImagesIndex, shard_keys: tuple[str, ...],
+) -> None:
+    """Verify each synced variant PNG matches its index sha256 (#100).
+
+    Only variants whose shard was downloaded are checked. A corrupted or
+    tampered shard raises so activation never happens on bad data.
+    """
+    wanted = _shard_variant_names(shard_keys)
+    checked = 0
+    mismatches = 0
+    for skin_id, entry in index.artworks.items():
+        for vname, variant in entry.variants.items():
+            if vname not in wanted:
+                continue
+            png_path = staging / variant.file
+            if not png_path.is_file():
+                continue
+            actual = hashlib.sha256(png_path.read_bytes()).hexdigest()
+            checked += 1
+            if actual != variant.sha256:
+                mismatches += 1
+                if mismatches <= 3:
+                    _logger.warning(
+                        "images sha256 mismatch: %s/%s expected %s got %s",
+                        skin_id, vname, variant.sha256[:12], actual[:12],
+                    )
+    if mismatches:
+        raise ValueError(
+            f"images sha256 verification failed: {mismatches} of {checked} variants mismatch"
+        )
+
 
 IMAGES_REPO_OWNER = "3aKHP"
 IMAGES_REPO = "arknights-data-pipeline"
@@ -345,6 +384,10 @@ def _sync_images_locked(
             _download_large(delta_url, delta_zip)
             _safe_extract_zip(delta_zip, staging)
             delta_zip.unlink(missing_ok=True)
+
+        # Verify every synced variant's sha256 against the index before
+        # activation (#100): a corrupted or tampered shard must not activate.
+        _verify_variant_hashes(staging, index, shard_keys)
 
         # Authoritative index.json + generation meta.
         (staging / "index.json").write_bytes(index_bytes)

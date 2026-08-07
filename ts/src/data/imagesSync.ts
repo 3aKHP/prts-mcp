@@ -14,12 +14,12 @@
  */
 
 import { createHash, randomUUID } from "node:crypto";
-import { createWriteStream, readFileSync, statSync } from "node:fs";
+import { createWriteStream, existsSync, readFileSync, statSync } from "node:fs";
 import { cp, mkdir, readFile, readdir, rename, rm, stat, unlink, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
-import { SCHEMA_VERSION, parseIndex } from "./images.js";
+import { SCHEMA_VERSION, parseIndex, type ImagesIndex } from "./images.js";
 import {
   assetUrl,
   fetchCascading,
@@ -247,6 +247,39 @@ async function offlineOrNoData(imageDir: string, error: string): Promise<SyncRes
   return { spec, status: "no_data", commitSha: null, error };
 }
 
+function shardVariantNames(shardKeys: readonly string[]): Set<string> {
+  return new Set(shardKeys.map((k) => k.split("-").pop()!));
+}
+
+/** Verify each synced variant PNG matches its index sha256 (#100). */
+function verifyVariantHashes(
+  staging: string,
+  index: ImagesIndex,
+  shardKeys: readonly string[],
+): void {
+  const wanted = shardVariantNames(shardKeys);
+  let checked = 0;
+  let mismatches = 0;
+  for (const [skinId, entry] of Object.entries(index.artworks)) {
+    for (const [vname, variant] of Object.entries(entry.variants)) {
+      if (!variant || !wanted.has(vname)) continue;
+      const pngPath = join(staging, variant.file);
+      if (!existsSync(pngPath)) continue;
+      const actual = createHash("sha256").update(readFileSync(pngPath)).digest("hex");
+      checked += 1;
+      if (actual !== variant.sha256) {
+        mismatches += 1;
+        if (mismatches <= 3) {
+          log("WARN", `images sha256 mismatch: ${skinId}/${vname} expected ${variant.sha256.slice(0, 12)} got ${actual.slice(0, 12)}`);
+        }
+      }
+    }
+  }
+  if (mismatches) {
+    throw new Error(`images sha256 verification failed: ${mismatches} of ${checked} variants mismatch`);
+  }
+}
+
 async function syncImagesLocked(
   imageDir: string,
   shardKeys: readonly string[],
@@ -357,6 +390,10 @@ async function syncImagesLocked(
       await safeExtractZip(deltaZip, staging);
       await unlink(deltaZip).catch(() => undefined);
     }
+
+    // Verify every synced variant's sha256 against the index before
+    // activation (#100): a corrupted or tampered shard must not activate.
+    verifyVariantHashes(staging, index, shardKeys);
 
     // Authoritative index.json + generation meta.
     await writeFile(join(staging, "index.json"), indexBytes);

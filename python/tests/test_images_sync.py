@@ -122,3 +122,68 @@ def test_sync_offline_falls_back_to_existing(tmp_path, monkeypatch):
     assert r.status == "offline_fallback"
     assert r.commit_sha == "c1"
     assert _active_generation(image_dir) is not None
+
+
+def test_verify_variant_hashes_passes_on_match(tmp_path):
+    """#100: a variant whose PNG matches its index sha256 verifies cleanly."""
+    import hashlib
+    from prts_mcp.data.images import parse_index
+    from prts_mcp.data.images_sync import _verify_variant_hashes
+
+    png = tmp_path / "chararts" / "test_large.png"
+    png.parent.mkdir(parents=True)
+    content = b"\x89PNG\r\n\x1a\nfake"
+    png.write_bytes(content)
+
+    index = parse_index({
+        "schemaVersion": SCHEMA_VERSION,
+        "baselineVersion": "b1",
+        "currentVersion": "c1",
+        "shards": {},
+        "artworks": {
+            "test_skin": {
+                "kind": "base",
+                "large": {
+                    "file": "chararts/test_large.png",
+                    "sha256": hashlib.sha256(content).hexdigest(),
+                    "w": 1024,
+                    "h": 1024,
+                    "bytes": 100,
+                },
+            },
+        },
+    })
+    assert index is not None
+    _verify_variant_hashes(tmp_path, index, ("chararts-large",))  # no raise
+
+
+def test_verify_variant_hashes_rejects_mismatch(tmp_path):
+    """#100: a corrupted shard must not pass sha256 verification."""
+    from prts_mcp.data.images import parse_index
+    from prts_mcp.data.images_sync import _verify_variant_hashes
+
+    png = tmp_path / "chararts" / "test_large.png"
+    png.parent.mkdir(parents=True)
+    png.write_bytes(b"\x89PNG\r\n\x1a\nfake")
+
+    index = parse_index({
+        "schemaVersion": SCHEMA_VERSION,
+        "baselineVersion": "b1",
+        "currentVersion": "c1",
+        "shards": {},
+        "artworks": {
+            "test_skin": {
+                "kind": "base",
+                "large": {
+                    "file": "chararts/test_large.png",
+                    "sha256": "0" * 64,
+                    "w": 1024,
+                    "h": 1024,
+                    "bytes": 100,
+                },
+            },
+        },
+    })
+    assert index is not None
+    with pytest.raises(ValueError, match="sha256 verification failed"):
+        _verify_variant_hashes(tmp_path, index, ("chararts-large",))
