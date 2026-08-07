@@ -115,11 +115,15 @@ async function downloadLarge(url: string, dest: string, timeoutMs = 1_800_000): 
     // resident; mirrors python's httpx.stream chunked write. fetchCascading
     // returns a real Response at runtime but FetchResponse omits body to stay
     // decoupled from DOM, so narrow res via unknown instead of `any` (#100).
-    // Readable.fromWeb still needs a cast — Node 22's Uint8Array generic makes
-    // its parameter type incompatible at compile time (runtime is fine).
+    // Readable.fromWeb expects a DOM ReadableStream whose generic variance is
+    // incompatible with Node 22's global ReadableStream at compile time; derive
+    // the exact parameter type to avoid bare `any`.
     const body = (res as unknown as { body: ReadableStream | null }).body;
     if (body === null) throw new Error("download response body is null");
-    await pipeline(Readable.fromWeb(body as any), createWriteStream(tmp));
+    await pipeline(
+      Readable.fromWeb(body as unknown as Parameters<typeof Readable.fromWeb>[0]),
+      createWriteStream(tmp),
+    );
     await rename(tmp, dest);
   } finally {
     await unlink(tmp).catch(() => undefined);
