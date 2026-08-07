@@ -166,6 +166,22 @@ fix/*（最新稳定 hotfix）────────→ main ──→ develop
 9. 从同一个 merge commit 创建并推送 `lts/1.7`
 10. 将同一个 release 分支通过双轨 CR 的 PR merge 回 `develop`，然后 bump 到 `2.0.0.dev0` 并重新打开空 `[Unreleased]`
 
+### 路径 F：预发布（→ develop）
+
+用于在 `develop` 上发布 alpha / beta / rc 版本供早期测试。预发布版本号约定：Python 用 PEP 440（`2.6.0a1`、`2.6.0b1`、`2.6.0rc1`），TypeScript 用 npm semver（`2.6.0-alpha.1`、`2.6.0-beta.1`、`2.6.0-rc.1`）。CD tag pattern `v*.*.*-*` 自动匹配两者。
+
+1. **拉分支**：从 `develop` 拉 `release/vX.Y.Z-alpha.N`（或 `-beta.N` / `-rc.N`）
+2. **bump 版本号**：`pyproject.toml` 从 `.dev0` 改为 `X.Y.ZaN`（如 `2.6.0a1`），`package.json` 从 `-dev.0` 改为 `X.Y.Z-alpha.N`（如 `2.6.0-alpha.1`）。运行 `uv lock --directory python` 同步 lockfile，同步 `ts/package-lock.json`
+3. **CHANGELOG**：`[Unreleased]` → `[X.Y.Z-alpha.N] - YYYY-MM-DD`
+4. **跑 `./scripts/check-runtime.sh --full`**
+5. **PR 到 `develop`**：双轨 CR → 人类 merge
+6. **在 `develop` 的 merge commit 上打 tag**：`git tag python/vX.Y.Z-alpha.N && git tag ts/vX.Y.Z-alpha.N && git push origin python/vX.Y.Z-alpha.N ts/vX.Y.Z-alpha.N`
+7. **CD 自动触发**：CI 验证 → PyPI 发布（`pip install` 默认不拉预发布，需 `pip install prts-mcp==X.Y.ZaN` 或 `--pre`）→ npm 发布（dist-tag 自动设为 `alpha`/`beta`/`rc`，`npm install prts-mcp-ts@alpha`）→ GitHub Release（标记为 pre-release，`make_latest: false`）→ Docker（仅版本 tag，不更新 `latest`）
+8. **bump 回开发版本**：从 `develop` 拉 `chore/vX.Y.Z-resume-dev`，`pyproject.toml` → `X.Y.Z.dev0`，`package.json` → `X.Y.Z-dev.0`，重新打开空 `[Unreleased]` 段
+9. **PR 到 `develop`**：双轨 CR → 人类 merge
+
+预发布累积到稳定发布时，按路径 D 走标准 release/* → main 流程；CHANGELOG 中多个预发布条目合并为一个稳定版条目。
+
 ## 验证矩阵
 
 按改动风险选最小的验证集（命令清单以"路径 A 步骤 4"为单一来源，本表只标层级）：
@@ -272,11 +288,16 @@ KHPilot 也可能在公开 Issue 中提供自动回复。这些回复只作为�
 
 涉及用户可见行为变化时，顺手更新 `README.md`。
 
-**打 tag 时使用实现级前缀**，CI 的 CD workflow 按前缀分发。Tag 必须打在 `main` 分支的 merge commit 上（不在 `develop` 打 tag）：
+**打 tag 时使用实现级前缀**，CI 的 CD workflow 按前缀分发。稳定版 tag（无 `-` 后缀）必须打在 `main` 分支的 merge commit 上；预发布 tag（`-alpha`/`-beta`/`-rc` 后缀）可以打在 `develop` 分支的 merge commit 上（见路径 F）。CD 的 `verify` job 会校验：稳定版 tag 的目标 commit 必须在 `main` 上，预发布 tag 的目标 commit 必须在 `develop` 上，不匹配则拒绝发布：
 
 ```bash
+# 稳定版（main merge commit）
 git tag python/v1.3.1 && git tag ts/v1.3.1
 git push origin python/v1.3.1 ts/v1.3.1
+
+# 预发布（develop merge commit）
+git tag python/v2.6.0a1 && git tag ts/v2.6.0-alpha.1
+git push origin python/v2.6.0a1 ts/v2.6.0-alpha.1
 ```
 
 - `python/v*` → PyPI 发布
