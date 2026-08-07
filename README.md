@@ -1,8 +1,6 @@
 # PRTS MCP Server
 
-[![PyPI](https://img.shields.io/pypi/v/prts-mcp)](https://pypi.org/project/prts-mcp/)
-[![npm](https://img.shields.io/npm/v/prts-mcp-ts)](https://www.npmjs.com/package/prts-mcp-ts)
-[![License: MIT](https://img.shields.io/github/license/3aKHP/prts-mcp)](LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/prts-mcp)](https://pypi.org/project/prts-mcp/) [![npm](https://img.shields.io/npm/v/prts-mcp-ts)](https://www.npmjs.com/package/prts-mcp-ts) [![License: MIT](https://img.shields.io/github/license/3aKHP/prts-mcp)](LICENSE)
 
 **Language / 语言：** [English](#english) | [中文](#中文)
 
@@ -32,10 +30,7 @@ Two release lines ship in parallel:
 | **2.5** (`main`) | `2.5.1` | 24 | Operator artwork tool (`operator_artwork`); MediaWiki on-demand image delivery by default; data source switched to self-hosted `arknights-data-pipeline`. |
 | **1.7 LTS** (`lts/1.7`) | `1.7.0` | 32 | Stable maintenance line. 1.7.x accepts only compatibility, security, data-sync, and critical bug fixes. |
 
-The `main` and `develop` lines use the self-built `arknights-data-pipeline`
-Release exclusively for default Auto-Sync. The 1.7 LTS line retains its legacy
-upstream compatibility until a separate, backwards-compatible migration;
-changes to the new factory path must not be backported to LTS as an implicit source switch.
+The `main` and `develop` lines use the self-built `arknights-data-pipeline` Release exclusively for default Auto-Sync. The 1.7 LTS line retains its legacy upstream compatibility until a separate, backwards-compatible migration; changes to the new factory path must not be backported to LTS as an implicit source switch.
 
 | Area | Python | TypeScript |
 |------|--------|------------|
@@ -48,21 +43,11 @@ changes to the new factory path must not be backported to LTS as an implicit sou
 
 ### Auto-Sync data contract
 
-Both implementations consume the self-built [`arknights-data-pipeline`](https://github.com/3aKHP/arknights-data-pipeline)
-Release. New releases carry a `manifest.json` with the `prts-mcp-data/v1` contract,
-source `versionId`, and SHA-256/size for each archive; a mismatch is rejected before
-activation, while pre-manifest releases remain readable during the transition. The
-last activated generation stays in place on download, schema, or manifest failure.
+Both implementations consume the self-built [`arknights-data-pipeline`](https://github.com/3aKHP/arknights-data-pipeline) Release. New releases carry a `manifest.json` with the `prts-mcp-data/v1` contract, source `versionId`, and SHA-256/size for each archive; a mismatch is rejected before activation, while pre-manifest releases remain readable during the transition. The last activated generation stays in place on download, schema, or manifest failure.
 
-`GITHUB_MIRRORS` is an explicit fallback for GitHub URL access. In Node deployments,
-standard `HTTP_PROXY`/`HTTPS_PROXY` (including lowercase spellings) are honored via
-Undici; Bun keeps its native `fetch` path. Proxy support does not weaken manifest or
-ZIP validation.
+`GITHUB_MIRRORS` is an explicit fallback for GitHub URL access. In Node deployments, standard `HTTP_PROXY`/`HTTPS_PROXY` (including lowercase spellings) are honored via Undici; Bun keeps its native `fetch` path. Proxy support does not weaken manifest or ZIP validation.
 
-See [`docs/migration-1.x-to-2.0.md`](docs/migration-1.x-to-2.0.md) for the 1.x → 2.0
-breaking changes (tool consolidation, `operator_name` → `name`, output channel),
-and [`docs/migration-0.x-to-1.0.md`](docs/migration-0.x-to-1.0.md) for the 0.x → 1.0
-transition.
+See [`docs/migration-1.x-to-2.0.md`](docs/migration-1.x-to-2.0.md) for the 1.x → 2.0 breaking changes (tool consolidation, `operator_name` → `name`, output channel), and [`docs/migration-0.x-to-1.0.md`](docs/migration-0.x-to-1.0.md) for the 0.x → 1.0 transition.
 
 ### Tools
 
@@ -97,23 +82,16 @@ Both implementations expose the same tool set:
 
 ### Output Channel
 
-Both implementations keep markdown as the default, human-readable output on
-MCP's `content` field. Deployments whose client consumes MCP-native
-`structuredContent` can opt in via a **connection-level** `output_channel` knob
-(`content` (default) / `structured` / `both`):
+Both implementations keep markdown as the default, human-readable output on MCP's `content` field. Deployments whose client consumes MCP-native `structuredContent` can opt in via a **connection-level** `output_channel` knob (`content` (default) / `structured` / `both`):
 
 - **Python** — `PRTS_OUTPUT_CHANNEL` environment variable.
 - **TypeScript** — `?output_channel=` query string, `x-prts-output-channel` header, or `PRTS_OUTPUT_CHANNEL` env.
 
-The default `content` requires no configuration and is unchanged from 1.x. See
-the [2.0 migration guide](docs/migration-1.x-to-2.0.md) for the per-tool
-mapping and the rationale for choosing a channel over a per-call format
-parameter.
+The default `content` requires no configuration and is unchanged from 1.x. See the [2.0 migration guide](docs/migration-1.x-to-2.0.md) for the per-tool mapping and the rationale for choosing a channel over a per-call format parameter.
 
 ### Image Artwork
 
-The `operator_artwork` tool (2.5.0+) is **enabled by default**. Two data source
-modes are selected by `LOCAL_IMAGE`:
+The `operator_artwork` tool (2.5.0+) is **enabled by default**. Two data source modes are selected by `LOCAL_IMAGE`:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -123,26 +101,17 @@ modes are selected by `LOCAL_IMAGE`:
 | `ORIGINAL_IMAGE` | `false` | Also sync original-resolution shards; only effective when `LOCAL_IMAGE=true`. |
 | `PRTS_IMAGE_DIR` | `~/.local/share/prts-mcp/images/` | AKDP asset sync target; only effective when `LOCAL_IMAGE=true`. Docker: `/data/images`. |
 
-Zero-config: the tool works immediately via MediaWiki with caching. For the full
-offline AKDP experience, set `LOCAL_IMAGE=true` (triggers ~1.5 GB background sync).
+Zero-config: the tool works immediately via MediaWiki with caching. For the full offline AKDP experience, set `LOCAL_IMAGE=true` (triggers ~1.5 GB background sync).
 
 ### Quick Start
 
-Since 2.3.0 both implementations support both transports — pick by use case,
-not by language:
+Since 2.3.0 both implementations support both transports — pick by use case, not by language:
 
 - **Local stdio** (Claude Desktop / Claude Code) → Python `prts-mcp` (stdio, default) or TypeScript `npx prts-mcp-ts-stdio`
 - **HTTP server** (self-hosted, remote access) → Python `PRTS_TRANSPORT=http prts-mcp` or TypeScript `npx prts-mcp-ts`
 - See [`python/`](python/) and [`ts/`](ts/) for per-implementation details
 
-The TypeScript implementation supports Bun and Node.js. Since 2.2.0 **Bun is
-the default production runtime**: the default `ts/Dockerfile`, the primary CI
-verification path, and the recommended Docker deployment all run under Bun
-(verified against Bun `1.3.14`). Node.js remains a supported legacy/optional
-runtime via the `prts-mcp-ts` npm bin (so `npx prts-mcp-ts` stays
-zero-dependency), `npm install -g`, and the `ts/Dockerfile.node` build path.
-The npm publishing path still uses npm CLI (`npm publish --provenance`,
-runtime-agnostic).
+The TypeScript implementation supports Bun and Node.js. Since 2.2.0 **Bun is the default production runtime**: the default `ts/Dockerfile`, the primary CI verification path, and the recommended Docker deployment all run under Bun (verified against Bun `1.3.14`). Node.js remains a supported legacy/optional runtime via the `prts-mcp-ts` npm bin (so `npx prts-mcp-ts` stays zero-dependency), `npm install -g`, and the `ts/Dockerfile.node` build path. The npm publishing path still uses npm CLI (`npm publish --provenance`, runtime-agnostic).
 
 ### Data Sources
 
@@ -155,9 +124,7 @@ Published Docker images and the npm package include bundled fallback game/level/
 
 ### Development
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and
-[`docs/dev/ENVIRONMENT.md`](docs/dev/ENVIRONMENT.md) for Linux/WSL, Windows,
-and macOS development setup.
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and [`docs/dev/ENVIRONMENT.md`](docs/dev/ENVIRONMENT.md) for Linux/WSL, Windows, and macOS development setup.
 
 ---
 
@@ -196,18 +163,11 @@ and macOS development setup.
 
 ### Auto-Sync 数据契约
 
-两套实现都消费自建 [`arknights-data-pipeline`](https://github.com/3aKHP/arknights-data-pipeline)
-Release。新 Release 附带 `manifest.json`，声明 `prts-mcp-data/v1` 契约、源
-`versionId` 以及每个压缩包的大小/SHA-256；不匹配会在激活前拒绝，迁移期间仍兼容没有
-manifest 的旧 Release。下载、结构或 manifest 校验失败时，服务继续使用上一代已激活数据。
+两套实现都消费自建 [`arknights-data-pipeline`](https://github.com/3aKHP/arknights-data-pipeline) Release。新 Release 附带 `manifest.json`，声明 `prts-mcp-data/v1` 契约、源 `versionId` 以及每个压缩包的大小/SHA-256；不匹配会在激活前拒绝，迁移期间仍兼容没有 manifest 的旧 Release。下载、结构或 manifest 校验失败时，服务继续使用上一代已激活数据。
 
-`GITHUB_MIRRORS` 是显式的 GitHub 访问备用路径；Node 部署会通过 Undici 使用标准
-`HTTP_PROXY`/`HTTPS_PROXY`（也识别小写变量），Bun 保持原生 `fetch` 路径。代理不会
-绕过 manifest 或 ZIP 校验。
+`GITHUB_MIRRORS` 是显式的 GitHub 访问备用路径；Node 部署会通过 Undici 使用标准 `HTTP_PROXY`/`HTTPS_PROXY`（也识别小写变量），Bun 保持原生 `fetch` 路径。代理不会绕过 manifest 或 ZIP 校验。
 
-1.x → 2.0 的破坏性变更（工具面合并、`operator_name` → `name`、output channel）见
-[`docs/migration-1.x-to-2.0.md`](docs/migration-1.x-to-2.0.md)；0.x → 1.0 迁移见
-[`docs/migration-0.x-to-1.0.md`](docs/migration-0.x-to-1.0.md)。
+1.x → 2.0 的破坏性变更（工具面合并、`operator_name` → `name`、output channel）见 [`docs/migration-1.x-to-2.0.md`](docs/migration-1.x-to-2.0.md)；0.x → 1.0 迁移见 [`docs/migration-0.x-to-1.0.md`](docs/migration-0.x-to-1.0.md)。
 
 ### 工具集
 
@@ -271,11 +231,7 @@ manifest 的旧 Release。下载、结构或 manifest 校验失败时，服务�
 - **HTTP 服务部署**（自建服务器，供他人调用）→ Python `PRTS_TRANSPORT=http prts-mcp` 或 TypeScript `npx prts-mcp-ts`
 - 详见 [`python/`](python/) 和 [`ts/`](ts/)
 
-TypeScript 实现支持 Bun 与 Node.js。自 2.2.0 起 **Bun 是默认生产运行时**：默认
-`ts/Dockerfile`、CI 主验证链与推荐 Docker 部署均在 Bun 下运行（最低验证版本 Bun
-`1.3.14`）。Node.js 保留为受支持的 legacy/可选运行时，通过 `prts-mcp-ts` npm bin（因此
-`npx prts-mcp-ts` 仍零额外运行时依赖）、`npm install -g` 与 `ts/Dockerfile.node` 构建
-路径提供。npm 发布路径仍走 npm CLI（`npm publish --provenance`，与运行时无关）。
+TypeScript 实现支持 Bun 与 Node.js。自 2.2.0 起 **Bun 是默认生产运行时**：默认 `ts/Dockerfile`、CI 主验证链与推荐 Docker 部署均在 Bun 下运行（最低验证版本 Bun `1.3.14`）。Node.js 保留为受支持的 legacy/可选运行时，通过 `prts-mcp-ts` npm bin（因此 `npx prts-mcp-ts` 仍零额外运行时依赖）、`npm install -g` 与 `ts/Dockerfile.node` 构建路径提供。npm 发布路径仍走 npm CLI（`npm publish --provenance`，与运行时无关）。
 
 ### 数据源
 
@@ -288,9 +244,7 @@ TypeScript 实现支持 Bun 与 Node.js。自 2.2.0 起 **Bun 是默认生产运
 
 ### 开发与贡献
 
-贡献流程见 [`CONTRIBUTING.md`](CONTRIBUTING.md)，Linux/WSL、Windows 和
-macOS 的开发环境入口见
-[`docs/dev/ENVIRONMENT.md`](docs/dev/ENVIRONMENT.md)。
+贡献流程见 [`CONTRIBUTING.md`](CONTRIBUTING.md)，Linux/WSL、Windows 和 macOS 的开发环境入口见 [`docs/dev/ENVIRONMENT.md`](docs/dev/ENVIRONMENT.md)。
 
 ---
 
