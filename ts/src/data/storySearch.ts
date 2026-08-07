@@ -78,6 +78,15 @@ export function clearSearchCache(): void {
   storySearchCache = null;
 }
 
+export function getCacheStats(): Record<string, { loaded: boolean; count: number }> {
+  return {
+    story_search_index: {
+      loaded: storySearchCache !== null,
+      count: storySearchCache ? storySearchCache.index.chapters.length : 0,
+    },
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Formatting
 // ---------------------------------------------------------------------------

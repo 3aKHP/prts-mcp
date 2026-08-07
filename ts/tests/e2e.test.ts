@@ -147,6 +147,24 @@ test("E2E", async (t) => {
 
   t.after(() => { child.kill(); });
 
+  // --- /debug/cache ---
+  await t.test("debug cache returns expected modules", async () => {
+    const res = await fetch(`${origin}/debug/cache`);
+    assert.equal(res.status, 200);
+    const data = await res.json() as Record<string, Record<string, { loaded: boolean; count: number }>>;
+    const expectedModules = [
+      "operator", "enemy", "stage", "stage_enemy", "item",
+      "search", "story_search", "images", "artwork_mediawiki",
+    ];
+    for (const mod of expectedModules) {
+      assert.ok(mod in data, `missing module: ${mod}`);
+      for (const [cacheName, stat] of Object.entries(data[mod])) {
+        assert.equal(typeof stat.loaded, "boolean", `${mod}.${cacheName}.loaded should be boolean`);
+        assert.equal(typeof stat.count, "number", `${mod}.${cacheName}.count should be number`);
+      }
+    }
+  });
+
   // --- protocol handshake ---
   let sessionId: string;
 

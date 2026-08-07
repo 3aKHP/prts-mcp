@@ -45,6 +45,16 @@ export function imageCachePut(artworkId: string, variant: string, data: Buffer):
   }
 }
 
+export function getCacheStats(): Record<string, { loaded: boolean; count: number; bytes?: number }> {
+  return {
+    image_cache: {
+      loaded: _imageCache.size > 0,
+      count: _imageCache.size,
+      bytes: _imageCacheTotal,
+    },
+  };
+}
+
 function mediawikiBaseLabel(suffix: string): string {
   const base = suffix.replace(/\+$/, "");
   const plus = suffix.endsWith("+");

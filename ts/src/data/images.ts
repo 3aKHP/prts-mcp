@@ -183,6 +183,12 @@ export function clearImageCaches(): void {
   _charSkins = null;
 }
 
+export function getCacheStats(): Record<string, { loaded: boolean; count: number }> {
+  return {
+    char_skins: { loaded: _charSkins != null, count: _charSkins ? Object.keys(_charSkins).length : 0 },
+  };
+}
+
 registerActivationListener(clearImageCaches);
 
 // ---------------------------------------------------------------------------

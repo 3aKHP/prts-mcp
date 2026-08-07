@@ -41,6 +41,15 @@ export function clearOperatorCaches(): void {
   clearSearchCaches();
 }
 
+export function getCacheStats(): Record<string, { loaded: boolean; count: number }> {
+  return {
+    character_table: { loaded: _characterTable != null, count: _characterTable ? Object.keys(_characterTable).length : 0 },
+    handbook_table: { loaded: _handbookTable != null, count: _handbookTable ? Object.keys(_handbookTable).length : 0 },
+    charword_table: { loaded: _charwordTable != null, count: _charwordTable ? Object.keys(_charwordTable).length : 0 },
+    name_to_id: { loaded: _nameToId != null, count: _nameToId ? _nameToId.size : 0 },
+  };
+}
+
 registerActivationListener(clearOperatorCaches);
 
 // ---------------------------------------------------------------------------

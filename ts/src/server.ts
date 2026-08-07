@@ -16,6 +16,15 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { startAutoSync } from "./startupSync.js";
 import { parseChannel, type OutputChannel } from "./output.js";
 import { createMcpServer, log, SERVER_VERSION } from "./server-core.js";
+import { getCacheStats as getOperatorCacheStats } from "./data/operator.js";
+import { getCacheStats as getEnemyCacheStats } from "./data/enemy.js";
+import { getCacheStats as getStageCacheStats } from "./data/stage.js";
+import { getCacheStats as getStageEnemyCacheStats } from "./data/stageEnemy.js";
+import { getCacheStats as getItemCacheStats } from "./data/item.js";
+import { getCacheStats as getSearchCacheStats } from "./data/search.js";
+import { getCacheStats as getStorySearchCacheStats } from "./data/storySearch.js";
+import { getCacheStats as getImagesCacheStats } from "./data/images.js";
+import { getCacheStats as getArtworkMediawikiCacheStats } from "./data/artworkMediawiki.js";
 
 function firstString(value: unknown): string | undefined {
   if (typeof value === "string") return value;
@@ -170,6 +179,20 @@ app.all("/mcp", async (req, res) => {
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
+});
+
+app.get("/debug/cache", (_req, res) => {
+  res.json({
+    operator: getOperatorCacheStats(),
+    enemy: getEnemyCacheStats(),
+    stage: getStageCacheStats(),
+    stage_enemy: getStageEnemyCacheStats(),
+    item: getItemCacheStats(),
+    search: getSearchCacheStats(),
+    story_search: getStorySearchCacheStats(),
+    images: getImagesCacheStats(),
+    artwork_mediawiki: getArtworkMediawikiCacheStats(),
+  });
 });
 
 // ---------------------------------------------------------------------------
