@@ -185,10 +185,12 @@ export async function fetchCascading(
         candidates[i], options, AbortSignal.timeout(timeoutMs),
       );
       if (res.ok) return res;
-      // Direct 404 → asset confirmed absent; raise typed so manifest
-      // verification can skip without fail-open on a mirror 404 (#100).
+      // Direct 404 → asset confirmed absent; record the typed error and stop
+      // without trying mirrors. lastErr + break (not throw) so the typed
+      // error survives to the caller even with GITHUB_MIRRORS (#100).
       if (i === 0 && res.status === 404) {
-        throw new AssetNotFoundError(`HTTP 404: ${candidates[i]}`);
+        lastErr = new AssetNotFoundError(`HTTP 404: ${candidates[i]}`);
+        break;
       }
       lastErr = new Error(`HTTP ${res.status}`);
       // Other direct 4xx → the resource does not exist; mirrors cannot help.

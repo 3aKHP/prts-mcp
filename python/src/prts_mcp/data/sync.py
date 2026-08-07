@@ -96,11 +96,12 @@ def _get_cascading(url: str, *, timeout: float, **kwargs: object) -> httpx.Respo
             response = httpx.get(candidate, timeout=timeout, **kwargs)  # type: ignore[arg-type]
             if response.is_success:
                 return response
-            # Direct 404 → asset confirmed absent; raise a typed error so
-            # manifest verification can skip without fail-open on a mirror
-            # 404 (#100).
+            # Direct 404 → asset confirmed absent; record the typed error and
+            # stop without trying mirrors. last_exc + break (not raise) so the
+            # typed error survives to the caller even with GITHUB_MIRRORS (#100).
             if i == 0 and response.status_code == 404:
-                raise _AssetNotFoundError(f"HTTP 404: {candidate}")
+                last_exc = _AssetNotFoundError(f"HTTP 404: {candidate}")
+                break
             last_exc = Exception(f"HTTP {response.status_code}")
             # Other direct 4xx → resource genuinely missing; mirrors cannot help.
             if i == 0 and 400 <= response.status_code < 500:

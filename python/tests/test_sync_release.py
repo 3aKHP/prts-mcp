@@ -23,6 +23,7 @@ from prts_mcp.data.sync import (
     sync_release_archive,
     sync_release_archive_pair,
     sync_release,
+    _AssetNotFoundError,
     _archive_activation_lock,
 )
 
@@ -175,7 +176,7 @@ class TestSyncRelease:
         asset = _mock_asset_response(b"legacy")
         with patch(
             "prts_mcp.data.sync._get_cascading",
-            side_effect=[release, asset, Exception("HTTP 404")],
+            side_effect=[release, asset, _AssetNotFoundError("HTTP 404")],
         ):
             result = sync_release(spec, force_check=True)
         assert result.status == "updated"
