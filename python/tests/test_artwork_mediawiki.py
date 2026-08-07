@@ -19,7 +19,7 @@ from prts_mcp.data.artwork_mediawiki import (
 _CHARINFO = {"时装1名称": "报童", "时装2名称": "见习联结者", "时装3名称": "播种者"}
 
 
-def testlabel_from_filename():
+def test_label_from_filename():
     cases = {
         "立绘_阿米娅_1.png": "精英零立绘",
         "立绘_阿米娅_1+.png": "精英零立绘（变体）",

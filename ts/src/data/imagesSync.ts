@@ -113,11 +113,10 @@ async function downloadLarge(url: string, dest: string, timeoutMs = 1_800_000): 
     );
     // Stream the shard to disk so multi-hundred-MB baseline zips do not stay
     // resident; mirrors python's httpx.stream chunked write. fetchCascading
-    // returns a real Response at runtime (FetchResponse omits body to stay
-    // decoupled from DOM); Node 22's Uint8Array<ArrayBufferLike> generic makes
-    // FetchResponse omits body; narrow res via unknown instead of `any`
-    // (#100). Readable.fromWeb keeps a cast — Node 22's Uint8Array generic
-    // makes its parameter type incompatible (runtime is fine).
+    // returns a real Response at runtime but FetchResponse omits body to stay
+    // decoupled from DOM, so narrow res via unknown instead of `any` (#100).
+    // Readable.fromWeb still needs a cast — Node 22's Uint8Array generic makes
+    // its parameter type incompatible at compile time (runtime is fine).
     const body = (res as unknown as { body: ReadableStream | null }).body;
     if (body === null) throw new Error("download response body is null");
     await pipeline(Readable.fromWeb(body as any), createWriteStream(tmp));
@@ -254,11 +253,11 @@ function shardVariantNames(shardKeys: readonly string[]): Set<string> {
 }
 
 /** Verify each synced variant PNG matches its index sha256 (#100). */
-function verifyVariantHashes(
+async function verifyVariantHashes(
   staging: string,
   index: ImagesIndex,
   shardKeys: readonly string[],
-): void {
+): Promise<void> {
   const wanted = shardVariantNames(shardKeys);
   let checked = 0;
   let mismatches = 0;
@@ -266,8 +265,16 @@ function verifyVariantHashes(
     for (const [vname, variant] of Object.entries(entry.variants)) {
       if (!variant || !wanted.has(vname)) continue;
       const pngPath = join(staging, variant.file);
-      if (!existsSync(pngPath)) continue;
-      const actual = createHash("sha256").update(readFileSync(pngPath)).digest("hex");
+      if (!existsSync(pngPath)) {
+        // Incomplete shard: a wanted variant's file is absent.
+        mismatches += 1;
+        checked += 1;
+        if (mismatches <= 3) {
+          log("WARN", `images sha256 mismatch: ${skinId}/${vname} file missing: ${variant.file}`);
+        }
+        continue;
+      }
+      const actual = createHash("sha256").update(await readFile(pngPath)).digest("hex");
       checked += 1;
       if (actual !== variant.sha256) {
         mismatches += 1;
@@ -395,7 +402,7 @@ async function syncImagesLocked(
 
     // Verify every synced variant's sha256 against the index before
     // activation (#100): a corrupted or tampered shard must not activate.
-    verifyVariantHashes(staging, index, shardKeys);
+    await verifyVariantHashes(staging, index, shardKeys);
 
     // Authoritative index.json + generation meta.
     await writeFile(join(staging, "index.json"), indexBytes);

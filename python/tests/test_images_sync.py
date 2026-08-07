@@ -5,14 +5,20 @@ invariants that a single-shot E2E cannot exercise.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 from zipfile import ZipFile
 
 import pytest
 
-from prts_mcp.data.images import SCHEMA_VERSION
-from prts_mcp.data.images_sync import active_generation, needed_shard_keys, sync_images
+from prts_mcp.data.images import SCHEMA_VERSION, parse_index
+from prts_mcp.data.images_sync import (
+    _verify_variant_hashes,
+    active_generation,
+    needed_shard_keys,
+    sync_images,
+)
 
 
 def _make_index(baseline: str = "b1", current: str = "c1") -> dict:
@@ -126,10 +132,6 @@ def test_sync_offline_falls_back_to_existing(tmp_path, monkeypatch):
 
 def test_verify_variant_hashes_passes_on_match(tmp_path):
     """#100: a variant whose PNG matches its index sha256 verifies cleanly."""
-    import hashlib
-    from prts_mcp.data.images import parse_index
-    from prts_mcp.data.images_sync import _verify_variant_hashes
-
     png = tmp_path / "chararts" / "test_large.png"
     png.parent.mkdir(parents=True)
     content = b"\x89PNG\r\n\x1a\nfake"
@@ -159,9 +161,6 @@ def test_verify_variant_hashes_passes_on_match(tmp_path):
 
 def test_verify_variant_hashes_rejects_mismatch(tmp_path):
     """#100: a corrupted shard must not pass sha256 verification."""
-    from prts_mcp.data.images import parse_index
-    from prts_mcp.data.images_sync import _verify_variant_hashes
-
     png = tmp_path / "chararts" / "test_large.png"
     png.parent.mkdir(parents=True)
     png.write_bytes(b"\x89PNG\r\n\x1a\nfake")
@@ -185,5 +184,31 @@ def test_verify_variant_hashes_rejects_mismatch(tmp_path):
         },
     })
     assert index is not None
+    with pytest.raises(ValueError, match="sha256 verification failed"):
+        _verify_variant_hashes(tmp_path, index, ("chararts-large",))
+
+
+def test_verify_variant_hashes_rejects_missing_file(tmp_path):
+    """#100 CR: a wanted variant whose PNG is absent blocks activation."""
+    index = parse_index({
+        "schemaVersion": SCHEMA_VERSION,
+        "baselineVersion": "b1",
+        "currentVersion": "c1",
+        "shards": {},
+        "artworks": {
+            "test_skin": {
+                "kind": "base",
+                "large": {
+                    "file": "chararts/test_large.png",
+                    "sha256": "0" * 64,
+                    "w": 1024,
+                    "h": 1024,
+                    "bytes": 100,
+                },
+            },
+        },
+    })
+    assert index is not None
+    # No PNG created — the wanted variant's file is absent (incomplete shard).
     with pytest.raises(ValueError, match="sha256 verification failed"):
         _verify_variant_hashes(tmp_path, index, ("chararts-large",))

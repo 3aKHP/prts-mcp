@@ -25,6 +25,7 @@ from prts_mcp.data.sync import (
     sync_release,
     _AssetNotFoundError,
     _archive_activation_lock,
+    _verify_release_manifest,
 )
 
 
@@ -1018,12 +1019,6 @@ class TestManifestAbsenceSemantics:
     lacks the asset → fail closed)."""
 
     def test_skip_when_direct_url_confirms_absence(self, tmp_path):
-        from prts_mcp.data.sync import (
-            ReleaseSpec,
-            _AssetNotFoundError,
-            _verify_release_manifest,
-        )
-
         spec = ReleaseSpec(
             owner="3aKHP",
             repo="arknights-data-pipeline",
@@ -1040,8 +1035,6 @@ class TestManifestAbsenceSemantics:
             _verify_release_manifest(spec, "data-old", asset_path, timeout=1.0)
 
     def test_fail_closed_on_mirror_404(self, tmp_path):
-        from prts_mcp.data.sync import ReleaseSpec, _verify_release_manifest
-
         spec = ReleaseSpec(
             owner="3aKHP",
             repo="arknights-data-pipeline",

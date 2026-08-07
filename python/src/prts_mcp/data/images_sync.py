@@ -46,13 +46,23 @@ def _shard_variant_names(shard_keys: tuple[str, ...]) -> set[str]:
     return {key.rsplit("-", 1)[-1] for key in shard_keys}
 
 
+def _sha256_file(path: Path) -> str:
+    """Stream-hash a file so large PNGs do not stay resident (#100 CR)."""
+    h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
 def _verify_variant_hashes(
     staging: Path, index: ImagesIndex, shard_keys: tuple[str, ...],
 ) -> None:
     """Verify each synced variant PNG matches its index sha256 (#100).
 
-    Only variants whose shard was downloaded are checked. A corrupted or
-    tampered shard raises so activation never happens on bad data.
+    Only variants whose shard was downloaded are checked. A corrupted,
+    tampered, or incomplete shard (a wanted variant whose PNG is absent)
+    raises so activation never happens on bad data.
     """
     wanted = _shard_variant_names(shard_keys)
     checked = 0
@@ -63,8 +73,16 @@ def _verify_variant_hashes(
                 continue
             png_path = staging / variant.file
             if not png_path.is_file():
+                # Incomplete shard: a wanted variant's file is absent.
+                mismatches += 1
+                checked += 1
+                if mismatches <= 3:
+                    _logger.warning(
+                        "images sha256 mismatch: %s/%s file missing: %s",
+                        skin_id, vname, variant.file,
+                    )
                 continue
-            actual = hashlib.sha256(png_path.read_bytes()).hexdigest()
+            actual = _sha256_file(png_path)
             checked += 1
             if actual != variant.sha256:
                 mismatches += 1
