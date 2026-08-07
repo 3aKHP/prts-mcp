@@ -168,21 +168,21 @@ fix/*（最新稳定 hotfix）────────→ main ──→ develop
 
 ## 验证矩阵
 
-按改动风险选最小的验证集，不是每次都跑全量：
+按改动风险选最小的验证集（命令清单以"路径 A 步骤 4"为单一来源，本表只标层级）：
 
 | 改动类型 | 最小验证 |
 |---|---|
 | 仅文档 | 术语 / 链接 targeted grep；引用代码时按需 `uv run --directory python --locked python -m pytest tests -k <topic>` |
-| 小代码（单实现） | 对应实现单测：Python `uv run --directory python --locked python -m pytest tests -q`，或 TS `cd ts && npm run build && npm test` |
-| 工具面 / 数据 / sync 运行时 | 双实现全量 + `./scripts/check-runtime.sh --full` |
-| release / `main` 快照 | 全量 + 双实现 parity 测试 + CHANGELOG / 版本号 / STATUS 口径核对 |
+| 小代码（单实现） | 按"路径 A 步骤 4"的对应实现命令（Python 或 TS，含 `typecheck`） |
+| 工具面 / 数据 / sync 运行时 | "路径 A 步骤 4"双实现全量 + `./scripts/check-runtime.sh --full` |
+| release / `main` 快照 | "路径 A 步骤 4"全量 + 双实现 parity 测试 + CHANGELOG / 版本号 / STATUS 口径核对 |
 
 ## 文档扫描
 
 行为、配置、工具面或运行时契约变更的 PR，收尾前跑一次 stale-term 扫描，别让文档留下过期口径：
 
 ```bash
-rg "operator_artwork|search|prts_page|stdio|Streamable HTTP|arknights-data-pipeline|LOCAL_IMAGE|GITHUB_MIRRORS|PRTS_OUTPUT_CHANNEL" README.md STATUS.md ROADMAP.md python/CHANGELOG.md ts/CHANGELOG.md docs python/README.md ts/README.md
+rg "operator_artwork|search|prts_page|stdio|Streamable HTTP|arknights-data-pipeline|LOCAL_IMAGE|GITHUB_MIRRORS|PRTS_OUTPUT_CHANNEL" README.md STATUS.md ROADMAP.md ROADMAP.zh-CN.md python/CHANGELOG.md ts/CHANGELOG.md docs python/README.md ts/README.md
 ```
 
 词汇按改动域调整：工具名（`operator_artwork`、`search`、`prts_page`）、transport（`stdio`、`Streamable HTTP`）、数据源（`arknights-data-pipeline`）、环境变量（`LOCAL_IMAGE`、`GITHUB_MIRRORS`、`PRTS_OUTPUT_CHANNEL`）。命中过期口径就在同一 PR 内更新。
