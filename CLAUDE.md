@@ -73,11 +73,12 @@ fix/*（最新稳定 hotfix）────────→ main ──→ develop
 
 ## 启动准则
 
-三条硬规则：
+四条硬规则：
 
 - **需明确指令才 Commit**。对话里讨论到"要提交"不算指令，必须出现"请提交 / 请 commit / 请开 PR"这类明确祈使句
 - **不在长期分支直接工作**。所有非 LTS feat / refactor / perf / 非紧急 fix / docs / chore 都 PR 到 `develop`；1.7.x 兼容性、安全性、数据同步和关键缺陷修复 PR 到 `lts/1.7`；最新稳定 hotfix 才 PR 到 `main`
 - **不主动 push**。即使刚 commit 完，也等用户说"请推"
+- **不提交敏感物与本地产物**。不提交 secrets、token、凭据、密钥，也不提交本地运行时产物（`.venv`、`node_modules`、会话/缓存状态）；安全漏洞细节按 [`SECURITY.md`](SECURITY.md) 私下处理，不在公开 commit / PR / issue 中复现
 
 ## 分支命名
 
@@ -164,6 +165,27 @@ fix/*（最新稳定 hotfix）────────→ main ──→ develop
 8. 在 `main` merge commit 上打 tag：`python/v1.7.0` 和 `ts/v1.7.0`
 9. 从同一个 merge commit 创建并推送 `lts/1.7`
 10. 将同一个 release 分支通过双轨 CR 的 PR merge 回 `develop`，然后 bump 到 `2.0.0.dev0` 并重新打开空 `[Unreleased]`
+
+## 验证矩阵
+
+按改动风险选最小的验证集（命令清单以"路径 A 步骤 4"为单一来源，本表只标层级）：
+
+| 改动类型 | 最小验证 |
+|---|---|
+| 仅文档 | 术语 / 链接 targeted grep；引用代码时按需 `uv run --directory python --locked python -m pytest tests -k <topic>` |
+| 小代码（单实现） | 按"路径 A 步骤 4"的对应实现命令（Python 或 TS，含 `typecheck`） |
+| 工具面 / 数据 / sync 运行时 | "路径 A 步骤 4"双实现全量 + `./scripts/check-runtime.sh --full` |
+| release / `main` 快照 | "路径 A 步骤 4"全量 + 双实现 parity 测试 + CHANGELOG / 版本号 / STATUS 口径核对 |
+
+## 文档扫描
+
+行为、配置、工具面或运行时契约变更的 PR，收尾前跑一次 stale-term 扫描，别让文档留下过期口径：
+
+```bash
+rg "operator_artwork|search|prts_page|stdio|Streamable HTTP|arknights-data-pipeline|LOCAL_IMAGE|GITHUB_MIRRORS|PRTS_OUTPUT_CHANNEL" README.md STATUS.md ROADMAP.md ROADMAP.zh-CN.md python/CHANGELOG.md ts/CHANGELOG.md docs python/README.md ts/README.md
+```
+
+词汇按改动域调整：工具名（`operator_artwork`、`search`、`prts_page`）、transport（`stdio`、`Streamable HTTP`）、数据源（`arknights-data-pipeline`）、环境变量（`LOCAL_IMAGE`、`GITHUB_MIRRORS`、`PRTS_OUTPUT_CHANNEL`）。命中过期口径就在同一 PR 内更新。
 
 ## Commit 规范
 
