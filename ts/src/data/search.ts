@@ -64,6 +64,12 @@ export function clearSearchCaches(): void {
   operatorSearchRecords = null;
 }
 
+export function getCacheStats(): Record<string, { loaded: boolean; count: number }> {
+  return {
+    search_records: { loaded: operatorSearchRecords != null, count: operatorSearchRecords ? operatorSearchRecords.length : 0 },
+  };
+}
+
 export function searchOperatorData(pattern: string, maxResults = 30): string {
   const data = buildOperatorSearch(pattern, maxResults);
   if (typeof data === "string") return data;

@@ -6,14 +6,12 @@
  * matching the true-mode boundary (data/images.ts ↔ artworkTools.ts).
  */
 
+import { BASE_ILLUST_LABELS } from "./images.js";
+
 const IMAGE_CACHE_MAX_BYTES = 256 * 1024 * 1024; // 256 MiB (#85 §4.2)
 const _imageCache = new Map<string, Buffer>();
 let _imageCacheTotal = 0;
 
-const MEDIAWIKI_BASE_LABELS: Record<string, string> = {
-  "1": "精英零立绘",
-  "2": "精英二立绘",
-};
 export const VARIANT_WIDTH: Record<string, number> = { large: 1024, preview: 256 };
 
 function imageCacheKey(artworkId: string, variant: string): string {
@@ -47,10 +45,20 @@ export function imageCachePut(artworkId: string, variant: string, data: Buffer):
   }
 }
 
+export function getCacheStats(): Record<string, { loaded: boolean; count: number; bytes?: number }> {
+  return {
+    image_cache: {
+      loaded: _imageCache.size > 0,
+      count: _imageCache.size,
+      bytes: _imageCacheTotal,
+    },
+  };
+}
+
 function mediawikiBaseLabel(suffix: string): string {
   const base = suffix.replace(/\+$/, "");
   const plus = suffix.endsWith("+");
-  let label = MEDIAWIKI_BASE_LABELS[base];
+  let label = BASE_ILLUST_LABELS[base];
   if (label === undefined) label = base ? `立绘 ${base}` : "立绘";
   if (plus) label += "（变体）";
   return label;

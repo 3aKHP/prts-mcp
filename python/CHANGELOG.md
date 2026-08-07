@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Added
+
+- **Cache instrumentation (`/debug/cache` endpoint).** Each data module exports `cache_stats()` returning per-cache `{loaded, count}` (and `bytes` for the MediaWiki image LRU). The read-only `/debug/cache` HTTP endpoint aggregates all 9 modules' stats for observability (#104).
+
+### Changed
+
+- Base illust label mapping (`BASE_ILLUST_LABELS`) consolidated to a single owner in `data/images.py`; `data/artwork_mediawiki.py` imports it instead of maintaining a duplicate (#100).
+
 ## [2.5.1] - 2026-08-07
 
 ### Fixed

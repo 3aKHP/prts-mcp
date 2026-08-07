@@ -142,6 +142,14 @@ export function clearStageCaches(): void {
   _stageSearchRecords = null;
 }
 
+export function getCacheStats(): Record<string, { loaded: boolean; count: number }> {
+  return {
+    stage_table: { loaded: _stageTable != null, count: _stageTable ? Object.keys(_stageTable).length : 0 },
+    zone_table: { loaded: _zoneTable != null, count: _zoneTable ? Object.keys(_zoneTable).length : 0 },
+    stage_search_records: { loaded: _stageSearchRecords != null, count: _stageSearchRecords ? _stageSearchRecords.length : 0 },
+  };
+}
+
 registerActivationListener(clearStageCaches);
 
 // ---------------------------------------------------------------------------

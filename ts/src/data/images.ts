@@ -183,13 +183,19 @@ export function clearImageCaches(): void {
   _charSkins = null;
 }
 
+export function getCacheStats(): Record<string, { loaded: boolean; count: number }> {
+  return {
+    char_skins: { loaded: _charSkins != null, count: _charSkins ? Object.keys(_charSkins).length : 0 },
+  };
+}
+
 registerActivationListener(clearImageCaches);
 
 // ---------------------------------------------------------------------------
 // Label construction
 // ---------------------------------------------------------------------------
 
-const BASE_ILLUST_LABELS: Record<string, string> = {
+export const BASE_ILLUST_LABELS: Record<string, string> = {
   "1": "精英零立绘",
   "2": "精英二立绘",
 };

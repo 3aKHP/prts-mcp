@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from prts_mcp.config import Config, activation_aware_cache, register_activation_listener
+from prts_mcp.config import Config, activation_aware_cache, cache_stat, register_activation_listener
 from prts_mcp.data.stores import DirectoryStore
 from prts_mcp.utils.sanitizer import strip_wikitext
 
@@ -81,6 +81,20 @@ def _build_name_to_id() -> dict[str, str]:
 def resolve_char_id(name: str) -> str | None:
     mapping = _build_name_to_id()
     return mapping.get(name)
+
+
+def cache_stats() -> dict[str, dict]:
+    """Return ``{cache_name: {loaded, count}}`` for instrumentation (#104)."""
+    return {
+        "character_table": cache_stat(_load_character_table),
+        "handbook_table": cache_stat(
+            _load_handbook_table, lambda r: len(r.get("handbookDict") or {})
+        ),
+        "charword_table": cache_stat(
+            _load_charword_table, lambda r: len(r.get("charWords") or {})
+        ),
+        "name_to_id": cache_stat(_build_name_to_id),
+    }
 
 
 # ---------------------------------------------------------------------------

@@ -26,6 +26,15 @@ export function clearEnemyCaches(): void {
   _enemySearchRecords = null;
 }
 
+export function getCacheStats(): Record<string, { loaded: boolean; count: number }> {
+  return {
+    enemy_handbook: { loaded: _handbook != null, count: _handbook ? Object.keys(_handbook.enemyData ?? {}).length : 0 },
+    enemy_database: { loaded: _dbIndex != null, count: _dbIndex ? Object.keys(_dbIndex).length : 0 },
+    enemy_name_to_id: { loaded: _nameToEnemyId != null, count: _nameToEnemyId ? _nameToEnemyId.size : 0 },
+    enemy_search_records: { loaded: _enemySearchRecords != null, count: _enemySearchRecords ? _enemySearchRecords.length : 0 },
+  };
+}
+
 registerActivationListener(clearEnemyCaches);
 
 // ---------------------------------------------------------------------------

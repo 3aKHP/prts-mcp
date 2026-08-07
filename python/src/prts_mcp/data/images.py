@@ -14,6 +14,7 @@ from typing import Any, Mapping
 from prts_mcp.config import (
     Config,
     activation_aware_cache,
+    cache_stat,
     register_activation_listener,
 )
 from prts_mcp.data.stores import DirectoryStore
@@ -164,11 +165,18 @@ def clear_image_caches() -> None:
 register_activation_listener(clear_image_caches)
 
 
+def cache_stats() -> dict[str, dict]:
+    """Return ``{cache_name: {loaded, count}}`` for instrumentation (#104)."""
+    return {
+        "char_skins": cache_stat(load_char_skins),
+    }
+
+
 # ---------------------------------------------------------------------------
 # Label construction
 # ---------------------------------------------------------------------------
 
-_BASE_ILLUST_LABELS: Mapping[str, str] = {"1": "精英零立绘", "2": "精英二立绘"}
+BASE_ILLUST_LABELS: Mapping[str, str] = {"1": "精英零立绘", "2": "精英二立绘"}
 
 
 def build_artwork_label(
@@ -204,7 +212,7 @@ def build_artwork_label(
     suffix = skin_id.rsplit("#", 1)[-1] if "#" in skin_id else ""
     base_num = suffix.rstrip("+")
     plus = "+" in suffix
-    label = _BASE_ILLUST_LABELS.get(base_num)
+    label = BASE_ILLUST_LABELS.get(base_num)
     if label is None:
         label = f"立绘 {base_num}" if base_num else "立绘"
     if plus:

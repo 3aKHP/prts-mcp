@@ -111,6 +111,16 @@ export function clearStageEnemyCaches(): void {
   enemyAppearanceIndex = null;
 }
 
+export function getCacheStats(): Record<string, { loaded: boolean; count: number }> {
+  return {
+    stage_table: { loaded: stageTable != null, count: stageTable ? Object.keys(stageTable).length : 0 },
+    enemy_handbook: { loaded: enemyHandbook != null, count: enemyHandbook ? Object.keys(enemyHandbook).length : 0 },
+    enemy_database: { loaded: enemyDatabase != null, count: enemyDatabase ? Object.keys(enemyDatabase).length : 0 },
+    enemy_name_to_id: { loaded: nameToEnemyId != null, count: nameToEnemyId ? nameToEnemyId.size : 0 },
+    enemy_appearance_index: { loaded: enemyAppearanceIndex != null, count: enemyAppearanceIndex ? enemyAppearanceIndex.size : 0 },
+  };
+}
+
 registerActivationListener(clearStageEnemyCaches);
 
 function excelStore(): DirectoryStore {

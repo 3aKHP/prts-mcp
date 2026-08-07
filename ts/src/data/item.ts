@@ -136,6 +136,14 @@ export function clearItemCaches(): void {
   itemSearchRecords = null;
 }
 
+export function getCacheStats(): Record<string, { loaded: boolean; count: number }> {
+  return {
+    items: { loaded: itemTable != null, count: itemTable ? Object.keys(itemTable).length : 0 },
+    item_lookup: { loaded: itemLookup != null, count: itemLookup ? itemLookup.size : 0 },
+    item_search_records: { loaded: itemSearchRecords != null, count: itemSearchRecords ? itemSearchRecords.length : 0 },
+  };
+}
+
 registerActivationListener(clearItemCaches);
 
 function itemStore(): DirectoryStore {
