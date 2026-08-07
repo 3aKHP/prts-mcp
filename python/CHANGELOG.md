@@ -58,8 +58,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Added
 
-- Added Streamable HTTP transport: `PRTS_TRANSPORT=http` starts a Starlette
-  + uvicorn server with `/mcp` endpoint, `/health` probe, and `HOST`/`PORT` env control (defaults `0.0.0.0:3000`). `stdio` remains the default. Breaks the 2.0 transport split — the Python implementation now supports both stdio and Streamable HTTP.
+- Added Streamable HTTP transport: `PRTS_TRANSPORT=http` starts a Starlette + uvicorn server with `/mcp` endpoint, `/health` probe, and `HOST`/`PORT` env control (defaults `0.0.0.0:3000`). `stdio` remains the default. Breaks the 2.0 transport split — the Python implementation now supports both stdio and Streamable HTTP.
 - Added `test_e2e_http.py` covering HTTP health, initialize + tools/list, and env-only output_channel behavior.
 - Declared `starlette>=0.27` and `uvicorn>=0.31` as explicit dependencies (previously transitive via `mcp[cli]`).
 
