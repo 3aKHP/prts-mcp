@@ -13,6 +13,24 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Verify tag scope vs branch
+        run: |
+          VERSION="${GITHUB_REF_NAME#ts/v}"
+          if [[ "${VERSION}" != *-* ]]; then
+            if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+              echo "::error::Stable tag (no -suffix) must be on main. Use -alpha.1 / -beta.1 / -rc.1 for pre-release tags on develop."
+              exit 1
+            fi
+          else
+            if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/develop; then
+              echo "::error::Pre-release tag (-suffix) must be on develop."
+              exit 1
+            fi
+          fi
+          echo "Tag scope verification passed."
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
