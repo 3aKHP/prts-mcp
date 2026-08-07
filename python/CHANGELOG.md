@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+## [2.6.0-alpha.1] - 2026-08-08
+
 ### Added
 
 - **Cache instrumentation (`/debug/cache` endpoint).** Each data module exports `cache_stats()` returning per-cache `{loaded, count}` (and `bytes` for the MediaWiki image LRU). The read-only `/debug/cache` HTTP endpoint aggregates all 9 modules' stats for observability (#104).
