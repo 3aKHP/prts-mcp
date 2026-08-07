@@ -168,7 +168,7 @@ register_activation_listener(clear_image_caches)
 # Label construction
 # ---------------------------------------------------------------------------
 
-_BASE_ILLUST_LABELS: Mapping[str, str] = {"1": "精英零立绘", "2": "精英二立绘"}
+BASE_ILLUST_LABELS: Mapping[str, str] = {"1": "精英零立绘", "2": "精英二立绘"}
 
 
 def build_artwork_label(
@@ -204,7 +204,7 @@ def build_artwork_label(
     suffix = skin_id.rsplit("#", 1)[-1] if "#" in skin_id else ""
     base_num = suffix.rstrip("+")
     plus = "+" in suffix
-    label = _BASE_ILLUST_LABELS.get(base_num)
+    label = BASE_ILLUST_LABELS.get(base_num)
     if label is None:
         label = f"立绘 {base_num}" if base_num else "立绘"
     if plus:

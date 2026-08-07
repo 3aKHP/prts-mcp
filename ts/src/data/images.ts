@@ -189,7 +189,7 @@ registerActivationListener(clearImageCaches);
 // Label construction
 // ---------------------------------------------------------------------------
 
-const BASE_ILLUST_LABELS: Record<string, string> = {
+export const BASE_ILLUST_LABELS: Record<string, string> = {
   "1": "精英零立绘",
   "2": "精英二立绘",
 };

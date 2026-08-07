@@ -10,11 +10,12 @@ import threading
 from collections import OrderedDict
 from typing import Any, Mapping
 
+from prts_mcp.data.images import BASE_ILLUST_LABELS
+
 _IMAGE_CACHE_LOCK = threading.Lock()
 _image_cache: "OrderedDict[str, bytes]" = OrderedDict()
 _IMAGE_CACHE_MAX_BYTES = 256 * 1024 * 1024  # 256 MiB (#85 §4.2)
 
-_MEDIAWIKI_BASE_LABELS: Mapping[str, str] = {"1": "精英零立绘", "2": "精英二立绘"}
 VARIANT_WIDTH: Mapping[str, int] = {"large": 1024, "preview": 256}
 
 
@@ -45,7 +46,7 @@ def image_cache_put(artwork_id: str, variant: str, data: bytes) -> None:
 def _mediawiki_base_label(suffix: str) -> str:
     base = suffix.rstrip("+")
     plus = "+" in suffix
-    label = _MEDIAWIKI_BASE_LABELS.get(base)
+    label = BASE_ILLUST_LABELS.get(base)
     if label is None:
         label = f"立绘 {base}" if base else "立绘"
     if plus:
