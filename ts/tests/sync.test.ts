@@ -20,9 +20,20 @@ import {
   syncReleaseArchive,
   syncReleaseArchivePair,
   withArchiveActivationLock,
+  fetchCascading,
+  AssetNotFoundError,
   type ReleaseArchiveSpec,
   type ReleaseSpec,
 } from "../src/data/sync.ts";
+
+test("fetchCascading raises AssetNotFoundError on a direct 404 (#100)", async () => {
+  await withFetchMock((async () => new Response("missing", { status: 404 })) as typeof fetch, async () => {
+    await assert.rejects(
+      fetchCascading("https://example.com/asset", {}, 1000),
+      (err: unknown) => err instanceof AssetNotFoundError,
+    );
+  });
+});
 
 test("downloadReleaseAsset verifies the optional factory manifest", async () => {
   const spec = { ...tempSpec(), verifyManifest: true };
