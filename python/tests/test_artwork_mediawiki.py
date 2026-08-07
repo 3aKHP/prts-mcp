@@ -11,15 +11,15 @@ import pytest
 from prts_mcp.api.prts_wiki import _image_magic_ok, download_image_safe, list_allimages
 from prts_mcp.data.artwork_mediawiki import (
     _image_cache,
-    _image_cache_get,
-    _image_cache_put,
-    _label_from_filename,
+    image_cache_get,
+    image_cache_put,
+    label_from_filename,
 )
 
 _CHARINFO = {"时装1名称": "报童", "时装2名称": "见习联结者", "时装3名称": "播种者"}
 
 
-def test_label_from_filename():
+def testlabel_from_filename():
     cases = {
         "立绘_阿米娅_1.png": "精英零立绘",
         "立绘_阿米娅_1+.png": "精英零立绘（变体）",
@@ -33,18 +33,18 @@ def test_label_from_filename():
         "立绘_阿米娅(近卫)_2b.png": None,
     }
     for filename, expected in cases.items():
-        assert _label_from_filename(filename, _CHARINFO) == expected, filename
+        assert label_from_filename(filename, _CHARINFO) == expected, filename
 
 
 def test_label_fashion_fallback_without_charinfo():
     # No CharinfoV2 → fashion falls back to "时装 N".
-    assert _label_from_filename("立绘_阿米娅_skin1.png", {}) == "时装 1"
-    assert _label_from_filename("立绘_阿米娅_skin12.png", {}) == "时装 12"
+    assert label_from_filename("立绘_阿米娅_skin1.png", {}) == "时装 1"
+    assert label_from_filename("立绘_阿米娅_skin12.png", {}) == "时装 12"
 
 
 def test_label_rejects_non_png_and_malformed():
-    assert _label_from_filename("立绘_阿米娅_2.jpg", _CHARINFO) is None
-    assert _label_from_filename("立绘阿米娅", _CHARINFO) is None  # no second underscore
+    assert label_from_filename("立绘_阿米娅_2.jpg", _CHARINFO) is None
+    assert label_from_filename("立绘阿米娅", _CHARINFO) is None  # no second underscore
 
 
 def test_image_magic_ok():
@@ -59,13 +59,13 @@ def test_image_magic_ok():
 def test_image_cache_lru_round_trip():
     _image_cache.clear()
     try:
-        assert _image_cache_get("amiya_2", "large") is None
-        _image_cache_put("amiya_2", "large", b"\x00" * 100)
-        assert _image_cache_get("amiya_2", "large") == b"\x00" * 100
+        assert image_cache_get("amiya_2", "large") is None
+        image_cache_put("amiya_2", "large", b"\x00" * 100)
+        assert image_cache_get("amiya_2", "large") == b"\x00" * 100
         # Different variant misses.
-        assert _image_cache_get("amiya_2", "preview") is None
-        _image_cache_put("amiya_2", "preview", b"\x01" * 50)
-        assert _image_cache_get("amiya_2", "preview") == b"\x01" * 50
+        assert image_cache_get("amiya_2", "preview") is None
+        image_cache_put("amiya_2", "preview", b"\x01" * 50)
+        assert image_cache_get("amiya_2", "preview") == b"\x01" * 50
     finally:
         _image_cache.clear()
 
@@ -77,10 +77,10 @@ def test_image_cache_lru_evicts_by_byte_total(monkeypatch):
     monkeypatch.setattr(am, "_IMAGE_CACHE_MAX_BYTES", 150)
     _image_cache.clear()
     try:
-        _image_cache_put("a", "large", b"\x00" * 100)
-        _image_cache_put("b", "large", b"\x00" * 100)  # total 200 > 150 → evict "a"
-        assert _image_cache_get("a", "large") is None
-        assert _image_cache_get("b", "large") == b"\x00" * 100
+        image_cache_put("a", "large", b"\x00" * 100)
+        image_cache_put("b", "large", b"\x00" * 100)  # total 200 > 150 → evict "a"
+        assert image_cache_get("a", "large") is None
+        assert image_cache_get("b", "large") == b"\x00" * 100
     finally:
         _image_cache.clear()
 

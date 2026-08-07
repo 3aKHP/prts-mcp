@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import base64
 import json
-import logging
 from pathlib import Path
 from typing import Annotated, Literal, Mapping
 
@@ -22,21 +21,19 @@ from prts_mcp.api.prts_wiki import (
 from prts_mcp.config import Config, activation_snapshot
 from prts_mcp.data.images import (
     DEFAULT_VARIANT,
-    _load_char_skins,
+    load_char_skins,
     build_artwork_label,
     parse_index,
 )
 from prts_mcp.data.artwork_mediawiki import (
-    _VARIANT_WIDTH,
-    _image_cache_get,
-    _image_cache_put,
-    _label_from_filename,
+    VARIANT_WIDTH,
+    image_cache_get,
+    image_cache_put,
+    label_from_filename,
 )
-from prts_mcp.data.images_sync import _active_generation
-from prts_mcp.data.operator import _resolve_char_id
+from prts_mcp.data.images_sync import active_generation
+from prts_mcp.data.operator import resolve_char_id
 from prts_mcp.output import render_image_result, render_result, text_result
-
-_logger = logging.getLogger(__name__)
 
 
 def _images_generation() -> Path | None:
@@ -44,7 +41,7 @@ def _images_generation() -> Path | None:
     cfg = Config.load()
     if not cfg.images_enabled:
         return None
-    return _active_generation(cfg.images_path)
+    return active_generation(cfg.images_path)
 
 
 def _load_index(gen_dir: Path):
@@ -88,7 +85,7 @@ async def _do_list_mediawiki(operator_name: str) -> object:
     artworks: list[dict] = []
     for f in files:
         name = f.get("name", "")
-        label = _label_from_filename(name, charinfo)
+        label = label_from_filename(name, charinfo)
         if label is None:
             continue
         artworks.append({
@@ -131,7 +128,7 @@ async def _do_get_mediawiki(
             "请使用 large 或 preview。"
         )
     chosen = variant or DEFAULT_VARIANT
-    width = _VARIANT_WIDTH.get(chosen)
+    width = VARIANT_WIDTH.get(chosen)
     if width is None:
         return text_result(f"不支持的变体：{chosen}。false 模式可选 large / preview。")
     try:
@@ -143,18 +140,18 @@ async def _do_get_mediawiki(
     img_url = info.get("thumburl") or info.get("url")
     if not img_url:
         return text_result(f"「{artwork_id}」无 {chosen} 变体。")
-    image_bytes = _image_cache_get(artwork_id, chosen) if cfg.prts_image_cache else None
+    image_bytes = image_cache_get(artwork_id, chosen) if cfg.prts_image_cache else None
     if image_bytes is None:
         try:
             image_bytes = await _download_image_safe(img_url)
         except Exception as exc:  # noqa: BLE001 — ValueError (boundary) or httpx.HTTPError (network)
             return text_result(f"下载图片失败：{exc}")
         if cfg.prts_image_cache:
-            _image_cache_put(artwork_id, chosen, image_bytes)
+            image_cache_put(artwork_id, chosen, image_bytes)
     image_b64 = base64.b64encode(image_bytes).decode("ascii")
     # CharinfoV2 is not re-fetched in get (list already provided the precise
     # label); derive a best-effort label from the filename.
-    label = _label_from_filename(artwork_id, {}) or artwork_id
+    label = label_from_filename(artwork_id, {}) or artwork_id
     mime = info.get("mime") or "image/png"
     markdown = (
         f"**{label}**（{operator_name}）\n"
@@ -185,7 +182,7 @@ async def _do_list(operator_name: str) -> object:
     if not cfg.local_image:
         return await _do_list_mediawiki(operator_name)
     try:
-        char_id = _resolve_char_id(operator_name)
+        char_id = resolve_char_id(operator_name)
     except (OSError, AssertionError):
         # gamedata not synced yet (effective_excel_path None or table missing).
         return _data_not_ready()
@@ -211,7 +208,7 @@ async def _do_list(operator_name: str) -> object:
     if not matched:
         return text_result(f"未找到「{operator_name}」的立绘数据。")
 
-    char_skins = _load_char_skins()
+    char_skins = load_char_skins()
     artworks = [
         {
             "artwork_id": sid,
@@ -286,7 +283,7 @@ async def _do_get(
         return text_result(f"读取图片文件失败：{exc}")
 
     image_b64 = base64.b64encode(image_bytes).decode("ascii")
-    char_skins = _load_char_skins()
+    char_skins = load_char_skins()
     label = build_artwork_label(artwork_id, char_skins)
     markdown = (
         f"**{label}**（{operator_name}）\n"

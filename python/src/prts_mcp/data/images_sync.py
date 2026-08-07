@@ -206,7 +206,7 @@ def _save_meta(root: Path, meta: dict) -> None:
     tmp.replace(path)
 
 
-def _active_generation(image_dir: Path) -> Path | None:
+def active_generation(image_dir: Path) -> Path | None:
     """Resolve the currently activated generation directory, or None."""
     meta = _load_meta(image_dir)
     if meta is None:
@@ -267,7 +267,7 @@ def _dummy_spec(image_dir: Path) -> RepoSpec:
 def _offline_or_no_data(image_dir: Path, *, error: str) -> SyncResult:
     """Return offline_fallback if cached images exist, else no_data."""
     spec = _dummy_spec(image_dir)
-    if _active_generation(image_dir) is not None:
+    if active_generation(image_dir) is not None:
         meta = _load_meta(image_dir)
         ver = meta.get("currentVersion") if meta else None
         return SyncResult(
@@ -303,7 +303,7 @@ def _sync_images_locked(
     current_version = delta_tag[len(_DELTA_PREFIX):]
 
     meta = _load_meta(image_dir)
-    gen_dir = _active_generation(image_dir)
+    gen_dir = active_generation(image_dir)
     synced = meta.get("shardsSynced") if meta else None
     same_shards = isinstance(synced, list) and set(synced) == set(shard_keys)
 

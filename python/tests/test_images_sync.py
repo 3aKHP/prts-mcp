@@ -12,7 +12,7 @@ from zipfile import ZipFile
 import pytest
 
 from prts_mcp.data.images import SCHEMA_VERSION
-from prts_mcp.data.images_sync import _active_generation, needed_shard_keys, sync_images
+from prts_mcp.data.images_sync import active_generation, needed_shard_keys, sync_images
 
 
 def _make_index(baseline: str = "b1", current: str = "c1") -> dict:
@@ -104,7 +104,7 @@ def test_sync_delta_failure_does_not_activate(tmp_path, monkeypatch):
 
     r = sync_images(image_dir, include_original=False, force_check=True)
     assert r.status == "no_data", "delta failure with no prior generation → no_data"
-    assert _active_generation(image_dir) is None
+    assert active_generation(image_dir) is None
 
 
 def test_sync_offline_falls_back_to_existing(tmp_path, monkeypatch):
@@ -121,7 +121,7 @@ def test_sync_offline_falls_back_to_existing(tmp_path, monkeypatch):
     r = sync_images(image_dir, include_original=False, force_check=True)
     assert r.status == "offline_fallback"
     assert r.commit_sha == "c1"
-    assert _active_generation(image_dir) is not None
+    assert active_generation(image_dir) is not None
 
 
 def test_verify_variant_hashes_passes_on_match(tmp_path):
