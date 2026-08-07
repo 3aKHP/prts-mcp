@@ -134,7 +134,7 @@ def parse_index(data: Mapping[str, Any]) -> ImagesIndex | None:
 
 
 @activation_aware_cache(maxsize=1)
-def _load_char_skins() -> dict[str, Any]:
+def load_char_skins() -> dict[str, Any]:
     """Load the ``charSkins`` mapping from ``skin_table.json``.
 
     Returns an empty mapping when excel data is unavailable or the file is
@@ -158,7 +158,7 @@ def _load_char_skins() -> dict[str, Any]:
 
 def clear_image_caches() -> None:
     """Clear image-related caches after synced game data changes on disk."""
-    _load_char_skins.cache_clear()
+    load_char_skins.cache_clear()
 
 
 register_activation_listener(clear_image_caches)
@@ -188,7 +188,7 @@ def build_artwork_label(
     is already scoped to one operator, so the label only needs to
     distinguish that operator's illusts/skins from each other.
     """
-    skins = char_skins if char_skins is not None else _load_char_skins()
+    skins = char_skins if char_skins is not None else load_char_skins()
     entry = skins.get(skin_id)
 
     if "@" in skin_id:

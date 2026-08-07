@@ -1,9 +1,22 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  gamedataPairNeedsRetry,
   resolveAutoSyncIntervalMs,
   runAutoSyncLoop,
 } from "../src/startupSync.ts";
+
+test("#102: gamedata pair does not retry when both archives are up-to-date", () => {
+  assert.equal(gamedataPairNeedsRetry("up_to_date", "up_to_date"), false);
+  assert.equal(gamedataPairNeedsRetry("updated", "up_to_date"), false);
+  assert.equal(gamedataPairNeedsRetry("up_to_date", "updated"), false);
+});
+
+test("gamedata pair retries only on offline_fallback or no_data", () => {
+  assert.equal(gamedataPairNeedsRetry("no_data", "up_to_date"), true);
+  assert.equal(gamedataPairNeedsRetry("up_to_date", "offline_fallback"), true);
+  assert.equal(gamedataPairNeedsRetry("offline_fallback", "no_data"), true);
+});
 
 function flushPromises(): Promise<void> {
   return new Promise((resolve) => setImmediate(resolve));

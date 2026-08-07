@@ -128,11 +128,11 @@ def mock_images(monkeypatch, tmp_path):
         "prts_mcp.tools_artwork._images_generation", lambda: gen,
     )
     monkeypatch.setattr(
-        "prts_mcp.tools_artwork._resolve_char_id",
+        "prts_mcp.tools_artwork.resolve_char_id",
         lambda name: "char_002_amiya" if name == "阿米娅" else None,
     )
     monkeypatch.setattr(
-        "prts_mcp.tools_artwork._load_char_skins",
+        "prts_mcp.tools_artwork.load_char_skins",
         lambda: {"char_002_amiya@winter#1": {"displaySkin": {"skinName": "报童"}}},
     )
     return gen

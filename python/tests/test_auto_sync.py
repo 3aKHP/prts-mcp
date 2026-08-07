@@ -77,3 +77,16 @@ def test_auto_sync_continues_after_unexpected_cycle_error(monkeypatch):
     startup_sync._run_auto_sync(stop)  # type: ignore[arg-type]
 
     assert force_checks == [False, True]
+
+
+def test_gamedata_pair_retry_ignores_generation_mismatch():
+    """#102: divergent commit_shas alone must not trigger dense retries."""
+    assert startup_sync._gamedata_pair_needs_retry("up_to_date", "up_to_date") is False
+    assert startup_sync._gamedata_pair_needs_retry("updated", "up_to_date") is False
+    assert startup_sync._gamedata_pair_needs_retry("up_to_date", "updated") is False
+
+
+def test_gamedata_pair_retries_on_no_data_or_offline_fallback():
+    assert startup_sync._gamedata_pair_needs_retry("no_data", "up_to_date") is True
+    assert startup_sync._gamedata_pair_needs_retry("up_to_date", "offline_fallback") is True
+    assert startup_sync._gamedata_pair_needs_retry("offline_fallback", "no_data") is True

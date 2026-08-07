@@ -15,14 +15,14 @@ _image_cache: "OrderedDict[str, bytes]" = OrderedDict()
 _IMAGE_CACHE_MAX_BYTES = 256 * 1024 * 1024  # 256 MiB (#85 §4.2)
 
 _MEDIAWIKI_BASE_LABELS: Mapping[str, str] = {"1": "精英零立绘", "2": "精英二立绘"}
-_VARIANT_WIDTH: Mapping[str, int] = {"large": 1024, "preview": 256}
+VARIANT_WIDTH: Mapping[str, int] = {"large": 1024, "preview": 256}
 
 
 def _image_cache_key(artwork_id: str, variant: str) -> str:
     return f"{artwork_id}|{variant}"
 
 
-def _image_cache_get(artwork_id: str, variant: str) -> bytes | None:
+def image_cache_get(artwork_id: str, variant: str) -> bytes | None:
     key = _image_cache_key(artwork_id, variant)
     with _IMAGE_CACHE_LOCK:
         if key in _image_cache:
@@ -31,7 +31,7 @@ def _image_cache_get(artwork_id: str, variant: str) -> bytes | None:
     return None
 
 
-def _image_cache_put(artwork_id: str, variant: str, data: bytes) -> None:
+def image_cache_put(artwork_id: str, variant: str, data: bytes) -> None:
     key = _image_cache_key(artwork_id, variant)
     with _IMAGE_CACHE_LOCK:
         _image_cache[key] = data
@@ -71,7 +71,7 @@ def _mediawiki_fashion_label(rest: str, charinfo: Mapping[str, Any]) -> str:
     return label
 
 
-def _label_from_filename(
+def label_from_filename(
     filename: str, charinfo: Mapping[str, Any],
 ) -> str | None:
     """Derive a label from a PRTS filename like ``立绘_阿米娅_2.png``.
