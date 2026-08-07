@@ -1,15 +1,10 @@
 # PRTS MCP Server — TypeScript 实现
 
-明日方舟同人创作辅助 MCP Server，TypeScript 版本。支持 **Streamable HTTP**
-（单端点 `/mcp`）与 **stdio**，既可部署为 HTTP 服务，也可接入本地 MCP 客户端。
+明日方舟同人创作辅助 MCP Server，TypeScript 版本。支持 **Streamable HTTP** （单端点 `/mcp`）与 **stdio**，既可部署为 HTTP 服务，也可接入本地 MCP 客户端。
 
 提供 23 个 MCP 工具（2.0）：PRTS 词条检索与页面结构、干员档案/语音/基础信息、剧情活动与台词、角色出场追踪、全文搜索、敌人图鉴、关卡查询、关卡敌人融合，以及物品/材料查询。完整清单见仓库根目录 [`README.md`](../README.md)。
 
-TypeScript 实现正式支持 Bun 与 Node.js 双运行时。自 2.2.0 起 **Bun 是默认生产
-运行时**：默认 `ts/Dockerfile`、CI 主验证链与推荐 Docker 部署均在 Bun 下运行（最低
-验证版本 Bun `1.3.14`）。Node.js 保留为受支持的 legacy/可选运行时，通过 `prts-mcp-ts`
-npm bin、`npx prts-mcp-ts` 与 `ts/Dockerfile.node` 构建路径提供。npm 发布路径仍走 npm CLI
-（`npm publish --provenance`，与运行时无关）。
+TypeScript 实现正式支持 Bun 与 Node.js 双运行时。自 2.2.0 起 **Bun 是默认生产运行时**：默认 `ts/Dockerfile`、CI 主验证链与推荐 Docker 部署均在 Bun 下运行（最低验证版本 Bun `1.3.14`）。Node.js 保留为受支持的 legacy/可选运行时，通过 `prts-mcp-ts` npm bin、`npx prts-mcp-ts` 与 `ts/Dockerfile.node` 构建路径提供。npm 发布路径仍走 npm CLI （`npm publish --provenance`，与运行时无关）。
 
 > **2.0 变更**：工具面由 1.x 的 32 个合并为 23 个（详见 [1.x → 2.0 迁移指南](../docs/migration-1.x-to-2.0.md)）；新增可选的 output channel（查询字符串 `?output_channel=` / 请求头 `x-prts-output-channel` / `PRTS_OUTPUT_CHANNEL` 环境变量，默认 `content`，与 1.x 行为一致）。
 
@@ -85,8 +80,7 @@ bun run start      # 运行 dist/server-bun.js
 
 ### 默认 Bun 运行路径
 
-自 2.2.0 起 Bun 是 TypeScript 实现的默认生产运行时，最低验证版本为 Bun `1.3.14`。
-默认 `ts/Dockerfile`、CI 主验证链与推荐 Docker 部署均在 Bun 下运行。
+自 2.2.0 起 Bun 是 TypeScript 实现的默认生产运行时，最低验证版本为 Bun `1.3.14`。默认 `ts/Dockerfile`、CI 主验证链与推荐 Docker 部署均在 Bun 下运行。
 
 无需克隆仓库的一次性运行：
 
@@ -112,16 +106,11 @@ bun run smoke:bun:package  # npm pack 后用 Bun 安装并验证 prts-mcp-ts-bun
 bun run start              # 运行 dist/server-bun.js（自 2.2.0 起 npm start 默认走 Bun）
 ```
 
-TypeScript 单元测试仍由 Node 的 `node:test` 路径覆盖（见下方 Node legacy 路径）；Bun
-路径使用 `bun run typecheck`、`bun run build:bun`、源码级 HTTP MCP smoke 和安装后 package
-smoke 验证运行时兼容性。
-如调整 `package.json` 或 `package-lock.json` 依赖，请同步运行 `bun install --lockfile-only`
-刷新 `bun.lock`。
+TypeScript 单元测试仍由 Node 的 `node:test` 路径覆盖（见下方 Node legacy 路径）；Bun 路径使用 `bun run typecheck`、`bun run build:bun`、源码级 HTTP MCP smoke 和安装后 package smoke 验证运行时兼容性。如调整 `package.json` 或 `package-lock.json` 依赖，请同步运行 `bun install --lockfile-only` 刷新 `bun.lock`。
 
 ### Node legacy 运行路径
 
-Node.js 仍是受支持的运行时，但自 2.2.0 起降级为 legacy/可选路径。npm bin `prts-mcp-ts`
-保持 Node 入口（`npx prts-mcp-ts` 仍零额外运行时依赖）。
+Node.js 仍是受支持的运行时，但自 2.2.0 起降级为 legacy/可选路径。npm bin `prts-mcp-ts` 保持 Node 入口（`npx prts-mcp-ts` 仍零额外运行时依赖）。
 
 ```bash
 # npm 入口（Node）
@@ -152,8 +141,7 @@ docker run -d -p 3000:3000 -v prts-mcp-ts-data:/data/gamedata -v prts-mcp-ts-lev
 
 镜像内置 bundled 数据作为网络不可用时的离线保底。
 
-自建数据工厂的新 Release 附带 manifest（`prts-mcp-data/v1`、源 versionId、包大小和
-SHA-256）；TypeScript 实现会在原子激活前校验它。没有 manifest 的历史 Release 仍兼容读取。
+自建数据工厂的新 Release 附带 manifest（`prts-mcp-data/v1`、源 versionId、包大小和 SHA-256）；TypeScript 实现会在原子激活前校验它。没有 manifest 的历史 Release 仍兼容读取。
 
 周期可通过 `PRTS_AUTO_SYNC_INTERVAL_SECONDS` 调整（`60..604800` 秒）；设为 `0` 时只执行启动同步。
 

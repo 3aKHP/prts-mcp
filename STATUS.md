@@ -13,71 +13,40 @@ _Last updated: 2026-08-07_
 - 当前 LTS 发布：1.7.0（32 个 MCP 工具，剧情角色追踪）
 - 下一开发目标：2.6.0（待规划）
 - 当前稳定补丁线：2.5.x
-- 2.5.0 发布内容：干员立绘工具 `operator_artwork`（list/get，默认 MediaWiki
-  在线获取 + 256 MiB LRU 缓存，`LOCAL_IMAGE=true` 时使用 AKDP 本地 PNG 资产）；
-  数据源切换到自建 `arknights-data-pipeline` Release；TS stdio 不再泄漏 HTTP
-  监听器；TS JSON 空对象占位守卫。
-- 2.4.0 发布内容：常驻服务默认每小时同步 GameData excel、GameData levels 与
-  StoryJson；GameData 两类归档以同一代原子切换，并支持共享卷跨进程发布锁续租。
-- 2.3.1 发布内容：TypeScript 生产依赖安全更新，并同步
-  `prts-mcp-ts-stdio` 的 npm 锁文件 bin 元数据；不改变 MCP 工具面或传输行为。
-- 2.3.0 发布内容：Cross-transport parity——Python 新增 Streamable HTTP
-  （`PRTS_TRANSPORT=http`），TypeScript 新增 stdio（`prts-mcp-ts-stdio` bin），
-  双端双 transport。Python HTTP 的 output_channel 为 process-level（env-only，
-  FastMCP session 模型限制），TS HTTP 支持 per-request。
-- 2.2.0 发布内容：TypeScript 默认生产运行时由 Node.js 翻转为 Bun（默认
-  `ts/Dockerfile`、CI 主链 `verify-ts`、npm scripts 切 Bun，验证版本 Bun
-  `1.3.14`）。Node.js 降级为受支持 legacy/可选路径（`prts-mcp-ts` npm bin、
-  `npx prts-mcp-ts`、`ts/Dockerfile.node`）。npm bin 命名与发布路径
-  （`npm publish --provenance`）不变，零 npm 破坏。
-- 2.1.0 发布内容：将 TS Bun 从候选路径提升为受支持可选运行时，新增
-  `prts-mcp-ts-bun` npm bin，并保留 Node/npm 作为默认入口、默认 Dockerfile 和
-  npm Trusted Publishing 路径。Bun 最低验证版本为 1.3.14。
-- 2.0.2 补丁集：TS HTTP MCP smoke harness、TS Bun 候选运行路径、
-  `search_prts` redirect/技术页面过滤修复。Bun 在 2.0.2 仍是可选候选路径。
+- 2.5.0 发布内容：干员立绘工具 `operator_artwork`（list/get，默认 MediaWiki 在线获取 + 256 MiB LRU 缓存，`LOCAL_IMAGE=true` 时使用 AKDP 本地 PNG 资产）；数据源切换到自建 `arknights-data-pipeline` Release；TS stdio 不再泄漏 HTTP 监听器；TS JSON 空对象占位守卫。
+- 2.4.0 发布内容：常驻服务默认每小时同步 GameData excel、GameData levels 与 StoryJson；GameData 两类归档以同一代原子切换，并支持共享卷跨进程发布锁续租。
+- 2.3.1 发布内容：TypeScript 生产依赖安全更新，并同步 `prts-mcp-ts-stdio` 的 npm 锁文件 bin 元数据；不改变 MCP 工具面或传输行为。
+- 2.3.0 发布内容：Cross-transport parity——Python 新增 Streamable HTTP （`PRTS_TRANSPORT=http`），TypeScript 新增 stdio（`prts-mcp-ts-stdio` bin），双端双 transport。Python HTTP 的 output_channel 为 process-level（env-only， FastMCP session 模型限制），TS HTTP 支持 per-request。
+- 2.2.0 发布内容：TypeScript 默认生产运行时由 Node.js 翻转为 Bun（默认 `ts/Dockerfile`、CI 主链 `verify-ts`、npm scripts 切 Bun，验证版本 Bun `1.3.14`）。Node.js 降级为受支持 legacy/可选路径（`prts-mcp-ts` npm bin、 `npx prts-mcp-ts`、`ts/Dockerfile.node`）。npm bin 命名与发布路径（`npm publish --provenance`）不变，零 npm 破坏。
+- 2.1.0 发布内容：将 TS Bun 从候选路径提升为受支持可选运行时，新增 `prts-mcp-ts-bun` npm bin，并保留 Node/npm 作为默认入口、默认 Dockerfile 和 npm Trusted Publishing 路径。Bun 最低验证版本为 1.3.14。
+- 2.0.2 补丁集：TS HTTP MCP smoke harness、TS Bun 候选运行路径、 `search_prts` redirect/技术页面过滤修复。Bun 在 2.0.2 仍是可选候选路径。
 - 2.0 交付内容：工具面合并（32 → 23）+ output channel（structuredContent）；**双端协议同步（Python 上 HTTP / TS 上 stdio）已后置到 2.0 之后**。
 - 兼容性合约：1.7.x LTS 线既有 32 个工具名、必填参数、默认输出格式不变；仅接受兼容性、安全性、数据同步和关键缺陷修复
 
 ## 2.5.1 发布内容
 
-- [x] gamedata pair retry 逻辑修复：excel/levels 归档均 up-to-date 但
-  `commit_sha` 不一致时不再触发密集重试（30s/120s/600s），留给下一周期。
-- [x] Release manifest 404 fail-open 修复：镜像直接 404 确认缺失时跳过，
-  不再让后续镜像的通用 404 覆盖显式缺失信号（`_AssetNotFoundError` /
-  `AssetNotFoundError`）。
+- [x] gamedata pair retry 逻辑修复：excel/levels 归档均 up-to-date 但 `commit_sha` 不一致时不再触发密集重试（30s/120s/600s），留给下一周期。
+- [x] Release manifest 404 fail-open 修复：镜像直接 404 确认缺失时跳过，不再让后续镜像的通用 404 覆盖显式缺失信号（`_AssetNotFoundError` / `AssetNotFoundError`）。
 - [x] Image shard sha256 验证：下载后验证变体哈希，缺失 PNG 阻止激活。
-- [x] MCP `initialize` 版本握手兜底（Python）：`PackageNotFoundError`
-  时回退 `0.0.0`。
+- [x] MCP `initialize` 版本握手兜底（Python）：`PackageNotFoundError` 时回退 `0.0.0`。
 - [x] CI 升级到 Node 24。
 
 ## 2.5.0 发布内容
 
-- [x] 干员立绘工具 `operator_artwork`（`action="list"` 返回有界元数据 + 语义
-  标签；`action="get"` 返回单张 base64 `ImageContent`，默认 `large` 变体
-  max 1024px）。默认 MediaWiki 在线获取模式（`LOCAL_IMAGE=false`），覆盖
-  #85 安全边界（hostname/MIME/magic/1MiB/streaming/redirect）+ 256 MiB LRU
-  缓存。`LOCAL_IMAGE=true` 时同步 ~1.5 GB AKDP 本地 PNG 资产。工具面 23 → 24。
-- [x] 数据源切换到自建 `arknights-data-pipeline` Release（`zh_CN-excel.zip`、
-  `zh_CN-levels.zip`、`zh_CN.zip`），Release 清单验证收紧。
-- [x] TS stdio 入口不再因 `server.ts` 模块加载副作用启动 HTTP 监听器（提取
-  无副作用的 `server-core.ts` 工厂）。
-- [x] TS JSON 源 `?? []` 全部替换为 `Array.isArray(x) ? x : []`，防止上游
-  AKDP `{}` 空对象占位导致 `.map()` / `for...of` 崩溃（21 处）。
-- [x] Docker 三个 Dockerfile 创建 `/data/images` 目录，`LOCAL_IMAGE=true` 命名卷
-  有可写目标。
+- [x] 干员立绘工具 `operator_artwork`（`action="list"` 返回有界元数据 + 语义标签；`action="get"` 返回单张 base64 `ImageContent`，默认 `large` 变体 max 1024px）。默认 MediaWiki 在线获取模式（`LOCAL_IMAGE=false`），覆盖 #85 安全边界（hostname/MIME/magic/1MiB/streaming/redirect）+ 256 MiB LRU 缓存。`LOCAL_IMAGE=true` 时同步 ~1.5 GB AKDP 本地 PNG 资产。工具面 23 → 24。
+- [x] 数据源切换到自建 `arknights-data-pipeline` Release（`zh_CN-excel.zip`、 `zh_CN-levels.zip`、`zh_CN.zip`），Release 清单验证收紧。
+- [x] TS stdio 入口不再因 `server.ts` 模块加载副作用启动 HTTP 监听器（提取无副作用的 `server-core.ts` 工厂）。
+- [x] TS JSON 源 `?? []` 全部替换为 `Array.isArray(x) ? x : []`，防止上游 AKDP `{}` 空对象占位导致 `.map()` / `for...of` 崩溃（21 处）。
+- [x] Docker 三个 Dockerfile 创建 `/data/images` 目录，`LOCAL_IMAGE=true` 命名卷有可写目标。
 - [x] Python `initialize` 握手报告实际产品版本（`importlib.metadata`）。
 
 ## 2.4.0 发布内容
 
-- [x] Python / TypeScript 常驻进程在启动同步后默认每小时检查 GameData excel、
-  GameData levels 与 StoryJson Release，无需通过 crontab 重启服务追赶上游。
-- [x] `PRTS_AUTO_SYNC_INTERVAL_SECONDS` 支持 `60..604800` 秒，`0` 保留启动同步但
-  关闭周期检查；非法值回落到 1 小时。
+- [x] Python / TypeScript 常驻进程在启动同步后默认每小时检查 GameData excel、 GameData levels 与 StoryJson Release，无需通过 crontab 重启服务追赶上游。
+- [x] `PRTS_AUTO_SYNC_INTERVAL_SECONDS` 支持 `60..604800` 秒，`0` 保留启动同步但关闭周期检查；非法值回落到 1 小时。
 - [x] 周期轮次绕过 1 小时 fresh-cache 快捷路径，更新成功后清除对应内存缓存。
-- [x] GameData 归档使用独立解压激活标记；下载后解压中断不会永久卡在旧数据，
-  后续轮次会继续重试同一 Release。
-- [x] GameData excel 与 levels 以同一代原子切换，周期更新期间工具不会读到新旧
-  混合的数据组合；共享卷发布锁在长任务期间持续续租，避免被误判为陈旧锁。
+- [x] GameData 归档使用独立解压激活标记；下载后解压中断不会永久卡在旧数据，后续轮次会继续重试同一 Release。
+- [x] GameData excel 与 levels 以同一代原子切换，周期更新期间工具不会读到新旧混合的数据组合；共享卷发布锁在长任务期间持续续租，避免被误判为陈旧锁。
 
 ## 当前分支
 
@@ -153,10 +122,7 @@ PRTS-MCP/
 
 ## 数据源
 
-2.5.0 开发线（`develop`）的默认 Auto-Sync 只消费自建
-`3aKHP/arknights-data-pipeline` Release；旧版两个上游仓库不再是新版本的数据依赖。
-`main` 的 2.4.x 与 `lts/1.7` 暂保留旧上游兼容路径，供 LTS 维护使用，后续另行设计迁移，
-不在本轮跨线切换。
+2.5.0 开发线（`develop`）的默认 Auto-Sync 只消费自建 `3aKHP/arknights-data-pipeline` Release；旧版两个上游仓库不再是新版本的数据依赖。 `main` 的 2.4.x 与 `lts/1.7` 暂保留旧上游兼容路径，供 LTS 维护使用，后续另行设计迁移，不在本轮跨线切换。
 
 | 数据源 | 用途 | 同步方式 |
 |--------|------|----------|
@@ -194,85 +160,50 @@ PRTS-MCP/
 | 23 | `find_speakers_in` | StoryJson | 1.7.0 |
 | 24 | `operator_artwork` | PRTS Wiki / AKDP | 2.5.0 |
 
-> `search(scope, pattern, max_results)` 统一了 1.x 的 `search_data` /
-> `search_enemies` / `search_stages` / `search_items` 与 `list_search_scopes`
-> （scope ∈ operators/enemies/stages/items）。剧情台词搜索仍为独立的
-> `search_stories`（参数不同）。
+> `search(scope, pattern, max_results)` 统一了 1.x 的 `search_data` / `search_enemies` / `search_stages` / `search_items` 与 `list_search_scopes` （scope ∈ operators/enemies/stages/items）。剧情台词搜索仍为独立的 `search_stories`（参数不同）。
 >
-> `prts_page(page_title, action, …)` 统一了 1.x 的 `read_prts_page` /
-> `list_prts_sections` / `get_prts_categories` / `get_prts_links` /
-> `get_prts_template`（action ∈ read/sections/categories/links/template）。
-> 维基关键词搜索仍为独立的 `search_prts`。
+> `prts_page(page_title, action, …)` 统一了 1.x 的 `read_prts_page` / `list_prts_sections` / `get_prts_categories` / `get_prts_links` / `get_prts_template`（action ∈ read/sections/categories/links/template）。维基关键词搜索仍为独立的 `search_prts`。
 >
-> `list_stories(event_id, include_summaries=True)` 现附带活动级长摘要（吸收了
-> 1.x 的 `get_event_summary`）；单章深摘要仍为独立的 `get_story_summary`。
+> `list_stories(event_id, include_summaries=True)` 现附带活动级长摘要（吸收了 1.x 的 `get_event_summary`）；单章深摘要仍为独立的 `get_story_summary`。
 
 ## Output Channel（2.0 新增）
 
-2.0 在 MCP 原生 `structuredContent` 字段上新增结构化输出能力，由**连接级**的
-`output_channel` 开关控制（`content`（默认）/ `structured` / `both`）。Python 经
-`PRTS_OUTPUT_CHANNEL` 环境变量设置，TypeScript 经查询字符串 / 请求头 / 环境变量设置。
-默认 `content` 与 1.x 行为一致，无需配置。
+2.0 在 MCP 原生 `structuredContent` 字段上新增结构化输出能力，由**连接级**的 `output_channel` 开关控制（`content`（默认）/ `structured` / `both`）。Python 经 `PRTS_OUTPUT_CHANNEL` 环境变量设置，TypeScript 经查询字符串 / 请求头 / 环境变量设置。默认 `content` 与 1.x 行为一致，无需配置。
 
-- **结构化工具（17 个）** 走 `structuredContent`，载荷含可链式调用的 ID 与
-  raw/label 字段对：`search_prts`、`get_operator_basic_info`、`list_enemies`、
-  `get_enemy_info`、`get_stage_enemies`、`get_enemy_appearances`、`list_stages`、
-  `get_stage_info`、`list_items`、`get_item_info`、`search`、`list_story_events`、
-  `list_stories`、`search_stories`、`get_operator_memoirs`、`find_character_appearances`、
-  `find_speakers_in`。
-- **叙事工具（6 个）** 仅 `content`（markdown），无结构化形态：`prts_page`（所有
-  action）、`get_operator_archives`、`get_operator_voicelines`、`get_story_summary`、
-  `read_story`、`read_activity`。
+- **结构化工具（17 个）** 走 `structuredContent`，载荷含可链式调用的 ID 与 raw/label 字段对：`search_prts`、`get_operator_basic_info`、`list_enemies`、 `get_enemy_info`、`get_stage_enemies`、`get_enemy_appearances`、`list_stages`、 `get_stage_info`、`list_items`、`get_item_info`、`search`、`list_story_events`、 `list_stories`、`search_stories`、`get_operator_memoirs`、`find_character_appearances`、 `find_speakers_in`。
+- **叙事工具（6 个）** 仅 `content`（markdown），无结构化形态：`prts_page`（所有 action）、`get_operator_archives`、`get_operator_voicelines`、`get_story_summary`、 `read_story`、`read_activity`。
 
-> 设计选择：采用连接级通道而非 per-call 的 `output_format=markdown|json` 参数，且
-> **不**翻转默认到 JSON——主要消费者是 LLM agent，JSON 会令 prompt token 膨胀
-> 15–30%，抵消工具面合并带来的上下文预算收益。详见
-> [`docs/migration-1.x-to-2.0.md`](docs/migration-1.x-to-2.0.md)。
+> 设计选择：采用连接级通道而非 per-call 的 `output_format=markdown|json` 参数，且 **不**翻转默认到 JSON——主要消费者是 LLM agent，JSON 会令 prompt token 膨胀 15–30%，抵消工具面合并带来的上下文预算收益。详见 [`docs/migration-1.x-to-2.0.md`](docs/migration-1.x-to-2.0.md)。
 
 ## 2.3.0 发布内容
 
-- [x] Python 新增 Streamable HTTP transport（`PRTS_TRANSPORT=http`，Starlette +
-  uvicorn，`/mcp` 端点 + `/health` 探针）。stdio 保持默认（向后兼容）。
-- [x] Python `OUTPUT_CHANNEL` 从进程级常量重构为 `contextvars.ContextVar`，
-  为后续 transport 扩展铺路。**注意**：因 FastMCP Streamable HTTP 的 session
-  模型，Python HTTP 的 output_channel 当前是 process-level（env-only），不支持
-  per-request query/header 解析（TS HTTP 支持 per-request）。
-- [x] TypeScript 新增 stdio transport（`prts-mcp-ts-stdio` bin，
-  `server-stdio.ts` 入口复用 `createMcpServer` + `runStartupSync`）。
-- [x] 跨 transport e2e 测试：Python HTTP（`test_e2e_http.py`）+ TS stdio
-  （`e2eStdio.test.ts`）。
+- [x] Python 新增 Streamable HTTP transport（`PRTS_TRANSPORT=http`，Starlette + uvicorn，`/mcp` 端点 + `/health` 探针）。stdio 保持默认（向后兼容）。
+- [x] Python `OUTPUT_CHANNEL` 从进程级常量重构为 `contextvars.ContextVar`，为后续 transport 扩展铺路。**注意**：因 FastMCP Streamable HTTP 的 session 模型，Python HTTP 的 output_channel 当前是 process-level（env-only），不支持 per-request query/header 解析（TS HTTP 支持 per-request）。
+- [x] TypeScript 新增 stdio transport（`prts-mcp-ts-stdio` bin， `server-stdio.ts` 入口复用 `createMcpServer` + `runStartupSync`）。
+- [x] 跨 transport e2e 测试：Python HTTP（`test_e2e_http.py`）+ TS stdio （`e2eStdio.test.ts`）。
 - [x] 文档同步：README transport 表/快速开始、`.mcp.example.json`、`.env.example`。
 
 ## 2.2.0 发布内容
 
-- [x] Bun 升为默认生产运行时：默认 `ts/Dockerfile`（原 `Dockerfile.bun` 内容
-  提升）、CI 主验证链（`verify-ts` 切 Bun）、推荐 Docker 部署均走 Bun。
-- [x] Node 降级为 legacy/可选路径：新增 `ts/Dockerfile.node`（原 Node
-  `Dockerfile` 搬迁）、`start:node` / `smoke:http:node` 等 npm scripts。
-- [x] CI 矩阵翻转：`test-ts`（Node 单测，node:test）+ `verify-ts`（Bun 全链）+
-  `build-image-ts`（默认 Bun 镜像）+ `build-image-ts-node`（legacy Node 镜像）。
+- [x] Bun 升为默认生产运行时：默认 `ts/Dockerfile`（原 `Dockerfile.bun` 内容提升）、CI 主验证链（`verify-ts` 切 Bun）、推荐 Docker 部署均走 Bun。
+- [x] Node 降级为 legacy/可选路径：新增 `ts/Dockerfile.node`（原 Node `Dockerfile` 搬迁）、`start:node` / `smoke:http:node` 等 npm scripts。
+- [x] CI 矩阵翻转：`test-ts`（Node 单测，node:test）+ `verify-ts`（Bun 全链）+ `build-image-ts`（默认 Bun 镜像）+ `build-image-ts-node`（legacy Node 镜像）。
 - [x] `bun.lock` / `package.json` 双 lockfile drift 检查加入 `verify-ts`。
-- [x] npm bin 命名不变：`prts-mcp-ts`=Node（`npx` 开箱即用），
-  `prts-mcp-ts-bun`=Bun。npm 发布仍走 `npm publish --provenance`。
+- [x] npm bin 命名不变：`prts-mcp-ts`=Node（`npx` 开箱即用）， `prts-mcp-ts-bun`=Bun。npm 发布仍走 `npm publish --provenance`。
 - [x] 文档口径翻转：`ts/README.md`、根 `README.md` 中英文运行时段反转。
 
 ## 2.1.0 发布内容
 
-- [x] TS Bun 从候选路径提升为受支持可选运行时；`prts-mcp-ts` 继续走
-  Node.js，新增 `prts-mcp-ts-bun` 作为显式 Bun 入口。
-- [x] Bun package smoke 覆盖 `npm pack`、临时项目 `bun add`、安装后
-  `prts-mcp-ts-bun` 启动和 HTTP MCP 黑盒 smoke。
-- [x] `ts/Dockerfile.bun` 作为受支持的 Bun 替代构建路径保留；默认
-  `ts/Dockerfile` 不切换。
+- [x] TS Bun 从候选路径提升为受支持可选运行时；`prts-mcp-ts` 继续走 Node.js，新增 `prts-mcp-ts-bun` 作为显式 Bun 入口。
+- [x] Bun package smoke 覆盖 `npm pack`、临时项目 `bun add`、安装后 `prts-mcp-ts-bun` 启动和 HTTP MCP 黑盒 smoke。
+- [x] `ts/Dockerfile.bun` 作为受支持的 Bun 替代构建路径保留；默认 `ts/Dockerfile` 不切换。
 
 ## 2.0.2 发布内容
 
 - [x] TS HTTP MCP smoke harness 已加入 Node/Bun/Docker 验证路径。
 - [x] TS Bun 候选运行路径已加入；不改变 Node/npm 默认运行与发布合同。
-- [x] PRTS 搜索结果中 redirect 页面自动解析已实现，follow-up lookup 失败时
-  保留原始搜索结果。
-- [x] PRTS 搜索结果中 `/spine`、`/data`、`/module` 等技术页面过滤已改进，
-  `filter_technical=false` 仍保留为 escape hatch。
+- [x] PRTS 搜索结果中 redirect 页面自动解析已实现，follow-up lookup 失败时保留原始搜索结果。
+- [x] PRTS 搜索结果中 `/spine`、`/data`、`/module` 等技术页面过滤已改进， `filter_technical=false` 仍保留为 escape hatch。
 
 ## 最近发布
 

@@ -2,9 +2,7 @@
 
 面向所有协作者（人类与 AI）。本文件记录代码架构硬原则、反模式、CHANGELOG 规则、测试规范以及历史陷阱。
 
-公开贡献流程见 [`../../CONTRIBUTING.md`](../../CONTRIBUTING.md)，跨平台开发环境见
-[`ENVIRONMENT.md`](ENVIRONMENT.md)。当前维护者与 AI 的日常工作流见
-[`../../CLAUDE.md`](../../CLAUDE.md)；项目现状见 [`../../STATUS.md`](../../STATUS.md)。
+公开贡献流程见 [`../../CONTRIBUTING.md`](../../CONTRIBUTING.md)，跨平台开发环境见 [`ENVIRONMENT.md`](ENVIRONMENT.md)。当前维护者与 AI 的日常工作流见 [`../../CLAUDE.md`](../../CLAUDE.md)；项目现状见 [`../../STATUS.md`](../../STATUS.md)。
 
 ---
 
@@ -58,9 +56,7 @@ config.py/ts          ←  路径解析、环境变量
 
 ### 工具描述规范
 
-MCP 工具描述（Python `@mcp.tool()` 的 docstring / TS `server.tool()` 的描述串）
-是 LLM 选择工具的**主要信号**，也是 128K 级模型的 schema 预算大头。所有工具描述
-遵循统一模板：
+MCP 工具描述（Python `@mcp.tool()` 的 docstring / TS `server.tool()` 的描述串）是 LLM 选择工具的**主要信号**，也是 128K 级模型的 schema 预算大头。所有工具描述遵循统一模板：
 
 1. **第一行**：一句话用途，动词开头，说清"做什么 + 面向哪类数据"
 2. **返回什么 / 输出格式**：结构与大致长度提示（如"每行 `- 编号 名称`"）
@@ -74,9 +70,7 @@ MCP 工具描述（Python `@mcp.tool()` 的 docstring / TS `server.tool()` 的�
 - 正文控制在 ~3 短句内；更长的说明拆到参数描述
 - 两套实现的同名工具描述保持语义一致
 
-参数命名约定（新工具照此长）：实体解析用 `name`；正则搜索用 `pattern` +
-`max_results`；可浏览列表分页用 `limit` + `offset`；PRTS 维基关键词搜索用 `query`
-（语义 ≠ 正则 `pattern`）。
+参数命名约定（新工具照此长）：实体解析用 `name`；正则搜索用 `pattern` + `max_results`；可浏览列表分页用 `limit` + `offset`；PRTS 维基关键词搜索用 `query` （语义 ≠ 正则 `pattern`）。
 
 ### 错误处理
 
@@ -289,8 +283,7 @@ Tag 使用实现级前缀：`python/vX.Y.Z` 和 `ts/vX.Y.Z`。Tag 必须打在 `
 
 ### 日常开发
 
-在 `develop` 分支上，每个模块级改动（feat / fix / refactor）在 `## [Unreleased]`
-段落对应分类下追加一行。小型 chore / docs / style 无需改 CHANGELOG。
+在 `develop` 分支上，每个模块级改动（feat / fix / refactor）在 `## [Unreleased]` 段落对应分类下追加一行。小型 chore / docs / style 无需改 CHANGELOG。
 
 `main` 分支上不应出现 `[Unreleased]` 段——main 的 CHANGELOG 只包含已发布版本。
 
