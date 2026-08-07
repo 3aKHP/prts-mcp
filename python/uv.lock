@@ -424,7 +424,7 @@ wheels = [
 
 [[package]]
 name = "prts-mcp"
-version = "2.6.0a1"
+version = "2.6.0.dev0"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },

@@ -6,8 +6,8 @@ _Last updated: 2026-08-07_
 
 | 实现 | 版本 | 状态 |
 |------|------|------|
-| Python | 2.6.0a1 | Pre-release |
-| TypeScript | 2.6.0-alpha.1 | Pre-release |
+| Python | 2.6.0.dev0 | Development |
+| TypeScript | 2.6.0-dev.0 | Development |
 
 - 当前稳定发布：2.5.1（24 个 MCP 工具）
 - 当前 LTS 发布：1.7.0（32 个 MCP 工具，剧情角色追踪）
