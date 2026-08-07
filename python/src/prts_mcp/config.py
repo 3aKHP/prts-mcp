@@ -440,3 +440,20 @@ def activation_aware_cache(maxsize: int = 1) -> Callable[[Callable[..., Any]], C
         return wrapped
 
     return decorate
+
+
+def cache_stat(cached_func: Callable[..., Any]) -> dict[str, Any]:
+    """Best-effort ``{loaded, count}`` for an activation_aware_cache function.
+
+    Uses ``cache_info().currsize`` to determine whether the cache is populated
+    without side effects.  When populated, calling the function hits the
+    lru_cache (no disk I/O) so ``len(result)`` gives the record count.
+    """
+    info = cached_func.cache_info()
+    if info.currsize == 0:
+        return {"loaded": False, "count": 0}
+    try:
+        result = cached_func()
+        return {"loaded": True, "count": len(result) if hasattr(result, "__len__") else 1}
+    except Exception:  # noqa: BLE001
+        return {"loaded": False, "count": 0}

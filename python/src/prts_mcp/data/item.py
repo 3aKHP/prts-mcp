@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-from prts_mcp.config import Config, activation_aware_cache, register_activation_listener
+from prts_mcp.config import Config, activation_aware_cache, cache_stat, register_activation_listener
 from prts_mcp.data.stores import DirectoryStore
 
 
@@ -466,3 +466,12 @@ def _item_search_records() -> tuple[_ItemSearchRecord, ...]:
             search_text=f"{search_text} {item_id}",
         ))
     return tuple(records)
+
+
+def cache_stats() -> dict[str, dict]:
+    """Return ``{cache_name: {loaded, count}}`` for instrumentation (#104)."""
+    return {
+        "items": cache_stat(_load_items),
+        "item_lookup": cache_stat(_build_item_lookup),
+        "item_search_records": cache_stat(_item_search_records),
+    }

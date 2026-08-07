@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-from prts_mcp.config import Config, activation_aware_cache, register_activation_listener
+from prts_mcp.config import Config, activation_aware_cache, cache_stat, register_activation_listener
 from prts_mcp.data.stores import DirectoryStore
 
 
@@ -120,6 +120,16 @@ def _build_enemy_name_to_id() -> dict[str, str]:
 def _resolve_enemy_id(name: str) -> str | None:
     mapping = _build_enemy_name_to_id()
     return mapping.get(name)
+
+
+def cache_stats() -> dict[str, dict]:
+    """Return ``{cache_name: {loaded, count}}`` for instrumentation (#104)."""
+    return {
+        "enemy_handbook": cache_stat(_load_enemy_handbook),
+        "enemy_database": cache_stat(_load_enemy_database),
+        "enemy_name_to_id": cache_stat(_build_enemy_name_to_id),
+        "enemy_search_records": cache_stat(_enemy_search_records),
+    }
 
 
 # ---------------------------------------------------------------------------

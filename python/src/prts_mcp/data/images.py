@@ -14,6 +14,7 @@ from typing import Any, Mapping
 from prts_mcp.config import (
     Config,
     activation_aware_cache,
+    cache_stat,
     register_activation_listener,
 )
 from prts_mcp.data.stores import DirectoryStore
@@ -162,6 +163,13 @@ def clear_image_caches() -> None:
 
 
 register_activation_listener(clear_image_caches)
+
+
+def cache_stats() -> dict[str, dict]:
+    """Return ``{cache_name: {loaded, count}}`` for instrumentation (#104)."""
+    return {
+        "char_skins": cache_stat(load_char_skins),
+    }
 
 
 # ---------------------------------------------------------------------------

@@ -50,6 +50,10 @@ class _StorySearchIndex:
     records: tuple[_StorySearchRecord, ...]
 
 
+# Instrumentation: chapters/records count of the last-built index (#104).
+_index_stats: dict[str, int] = {}
+
+
 # ---------------------------------------------------------------------------
 # Formatting
 # ---------------------------------------------------------------------------
@@ -292,8 +296,13 @@ def story_search_index(store: JsonStore) -> _StorySearchIndex:
     """
     descriptor = _story_store_descriptor(store)
     if descriptor is None:
-        return _build_story_search_index(store)
-    return _cached_story_search_index(descriptor)
+        index = _build_story_search_index(store)
+    else:
+        index = _cached_story_search_index(descriptor)
+    _index_stats.clear()
+    _index_stats["chapters"] = len(index.chapters)
+    _index_stats["records"] = len(index.records)
+    return index
 
 
 def _story_store_descriptor(store: JsonStore) -> tuple[str, str, int, int] | None:
@@ -378,3 +387,15 @@ def _build_story_search_index(store: JsonStore) -> _StorySearchIndex:
 def clear_search_cache() -> None:
     """Clear the cached story search index."""
     _cached_story_search_index.cache_clear()
+    _index_stats.clear()
+
+
+def cache_stats() -> dict[str, dict]:
+    """Return ``{cache_name: {loaded, count}}`` for instrumentation (#104)."""
+    loaded = _cached_story_search_index.cache_info().currsize > 0
+    return {
+        "story_search_index": {
+            "loaded": loaded,
+            "count": _index_stats.get("chapters", 0) if loaded else 0,
+        }
+    }

@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from prts_mcp.config import Config, activation_aware_cache
+from prts_mcp.config import Config, activation_aware_cache, cache_stat
 from prts_mcp.data.operator import (
     _build_name_to_id,
     _load_character_table,
@@ -198,3 +198,10 @@ def _operator_search_records() -> tuple[_OperatorSearchRecord, ...]:
             ))
 
     return tuple(records)
+
+
+def cache_stats() -> dict[str, dict]:
+    """Return ``{cache_name: {loaded, count}}`` for instrumentation (#104)."""
+    return {
+        "search_records": cache_stat(_operator_search_records),
+    }

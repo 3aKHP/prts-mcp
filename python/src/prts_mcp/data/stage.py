@@ -7,6 +7,7 @@ from typing import Any
 from prts_mcp.config import (
     Config as _Config,
     activation_aware_cache as _activation_aware_cache,
+    cache_stat as _cache_stat,
     register_activation_listener,
 )
 from prts_mcp.data.item import get_item_name_by_id as _get_item_name_by_id
@@ -514,3 +515,12 @@ def _stage_search_records() -> tuple[_StageSearchRecord, ...]:
             search_text=search_text,
         ))
     return tuple(records)
+
+
+def cache_stats() -> dict[str, dict]:
+    """Return ``{cache_name: {loaded, count}}`` for instrumentation (#104)."""
+    return {
+        "stage_table": _cache_stat(_load_stage_table),
+        "zone_table": _cache_stat(_load_zone_table),
+        "stage_search_records": _cache_stat(_stage_search_records),
+    }

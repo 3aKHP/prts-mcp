@@ -43,6 +43,16 @@ def image_cache_put(artwork_id: str, variant: str, data: bytes) -> None:
             total -= len(evicted)
 
 
+def cache_stats() -> dict[str, dict]:
+    """Return ``{cache_name: {loaded, count, bytes}}`` for instrumentation (#104)."""
+    with _IMAGE_CACHE_LOCK:
+        count = len(_image_cache)
+        total = sum(len(v) for v in _image_cache.values())
+    return {
+        "image_cache": {"loaded": count > 0, "count": count, "bytes": total},
+    }
+
+
 def _mediawiki_base_label(suffix: str) -> str:
     base = suffix.rstrip("+")
     plus = "+" in suffix

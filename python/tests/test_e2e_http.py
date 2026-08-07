@@ -146,6 +146,22 @@ def test_health(server):
     assert r.json() == {"status": "ok"}
 
 
+def test_debug_cache(server):
+    r = httpx.get(f"{server['origin']}/debug/cache", timeout=5.0)
+    assert r.status_code == 200
+    data = r.json()
+    expected_modules = {
+        "operator", "enemy", "stage", "stage_enemy", "item",
+        "search", "story_search", "images", "artwork_mediawiki",
+    }
+    assert set(data.keys()) == expected_modules
+    for module_name, caches in data.items():
+        assert isinstance(caches, dict)
+        for cache_name, stat in caches.items():
+            assert "loaded" in stat and isinstance(stat["loaded"], bool)
+            assert "count" in stat and isinstance(stat["count"], int)
+
+
 def test_initialize_and_tools_list(server):
     origin = server["origin"]
     status, payload, sid = _mcp_post(
