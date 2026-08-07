@@ -74,6 +74,15 @@ def _url_candidates(url: str) -> list[str]:
     return [url] + [f"{m}/{url}" for m in _parse_mirrors()]
 
 
+class _AssetNotFoundError(Exception):
+    """Direct release URL returned 404 — asset confirmed absent.
+
+    Distinguished from a mirror 404 (mirror lacks the asset; the release
+    may still exist upstream) so manifest verification skips only on a
+    confirmed upstream 404 and stays fail-closed otherwise (#100).
+    """
+
+
 def _get_cascading(url: str, *, timeout: float, **kwargs: object) -> httpx.Response:
     """httpx.get() wrapper that cascades through URL candidates on failure.
 
@@ -87,8 +96,14 @@ def _get_cascading(url: str, *, timeout: float, **kwargs: object) -> httpx.Respo
             response = httpx.get(candidate, timeout=timeout, **kwargs)  # type: ignore[arg-type]
             if response.is_success:
                 return response
+            # Direct 404 → asset confirmed absent; record the typed error and
+            # stop without trying mirrors. last_exc + break (not raise) so the
+            # typed error survives to the caller even with GITHUB_MIRRORS (#100).
+            if i == 0 and response.status_code == 404:
+                last_exc = _AssetNotFoundError(f"HTTP 404: {candidate}")
+                break
             last_exc = Exception(f"HTTP {response.status_code}")
-            # Direct 4xx → resource genuinely missing; mirrors cannot help.
+            # Other direct 4xx → resource genuinely missing; mirrors cannot help.
             if i == 0 and 400 <= response.status_code < 500:
                 break
         except httpx.HTTPStatusError:
@@ -375,9 +390,10 @@ def _verify_release_manifest(
         response = _get_cascading(
             manifest_url, timeout=timeout, headers=_github_headers(), follow_redirects=True,
         )
+    except _AssetNotFoundError:
+        # Direct URL confirmed 404 → release predates the manifest asset.
+        return
     except Exception as exc:
-        if "404" in str(exc):
-            return
         raise ValueError(f"manifest unavailable for {tag}: {exc}") from exc
     try:
         manifest = response.json()

@@ -6,10 +6,10 @@ _Last updated: 2026-08-07_
 
 | 实现 | 版本 | 状态 |
 |------|------|------|
-| Python | 2.5.0 | Stable |
-| TypeScript | 2.5.0 | Stable |
+| Python | 2.5.1 | Stable |
+| TypeScript | 2.5.1 | Stable |
 
-- 当前稳定发布：2.5.0（24 个 MCP 工具）
+- 当前稳定发布：2.5.1（24 个 MCP 工具）
 - 当前 LTS 发布：1.7.0（32 个 MCP 工具，剧情角色追踪）
 - 下一开发目标：2.6.0（待规划）
 - 当前稳定补丁线：2.5.x
@@ -37,6 +37,18 @@ _Last updated: 2026-08-07_
   `search_prts` redirect/技术页面过滤修复。Bun 在 2.0.2 仍是可选候选路径。
 - 2.0 交付内容：工具面合并（32 → 23）+ output channel（structuredContent）；**双端协议同步（Python 上 HTTP / TS 上 stdio）已后置到 2.0 之后**。
 - 兼容性合约：1.7.x LTS 线既有 32 个工具名、必填参数、默认输出格式不变；仅接受兼容性、安全性、数据同步和关键缺陷修复
+
+## 2.5.1 发布内容
+
+- [x] gamedata pair retry 逻辑修复：excel/levels 归档均 up-to-date 但
+  `commit_sha` 不一致时不再触发密集重试（30s/120s/600s），留给下一周期。
+- [x] Release manifest 404 fail-open 修复：镜像直接 404 确认缺失时跳过，
+  不再让后续镜像的通用 404 覆盖显式缺失信号（`_AssetNotFoundError` /
+  `AssetNotFoundError`）。
+- [x] Image shard sha256 验证：下载后验证变体哈希，缺失 PNG 阻止激活。
+- [x] MCP `initialize` 版本握手兜底（Python）：`PackageNotFoundError`
+  时回退 `0.0.0`。
+- [x] CI 升级到 Node 24。
 
 ## 2.5.0 发布内容
 
@@ -69,7 +81,7 @@ _Last updated: 2026-08-07_
 
 ## 当前分支
 
-- `main`：2.5.0（最新稳定发布线）
+- `main`：2.5.1（最新稳定发布线）
 - `lts/1.7`：1.7.x LTS 维护线（从 1.7.0 发布提交创建）
 - `develop`：2.6.0 开发线（待规划）
 
@@ -266,6 +278,7 @@ PRTS-MCP/
 
 | 版本 | 日期 | 亮点 |
 |------|------|------|
+| 2.5.1 | 2026-08-07 | gamedata pair retry 修复；manifest 404 fail-open；image sha256 验证；CI Node 24 |
 | 2.5.0 | 2026-08-07 | 干员立绘工具 `operator_artwork`；数据源切换到自建 arknights-data-pipeline；TS stdio HTTP 泄漏修复 |
 | 2.4.0 | 2026-07-29 | 常驻服务 Auto-Sync；GameData excel/levels 原子成对发布；共享卷跨进程协调与锁续租 |
 | 2.3.1 | 2026-07-10 | TypeScript 生产依赖安全更新；同步 `prts-mcp-ts-stdio` npm 锁文件 bin 元数据 |

@@ -185,8 +185,15 @@ export async function fetchCascading(
         candidates[i], options, AbortSignal.timeout(timeoutMs),
       );
       if (res.ok) return res;
+      // Direct 404 → asset confirmed absent; record the typed error and stop
+      // without trying mirrors. lastErr + break (not throw) so the typed
+      // error survives to the caller even with GITHUB_MIRRORS (#100).
+      if (i === 0 && res.status === 404) {
+        lastErr = new AssetNotFoundError(`HTTP 404: ${candidates[i]}`);
+        break;
+      }
       lastErr = new Error(`HTTP ${res.status}`);
-      // Direct 4xx → the resource does not exist; mirrors cannot help.
+      // Other direct 4xx → the resource does not exist; mirrors cannot help.
       if (i === 0 && res.status >= 400 && res.status < 500) break;
     } catch (err) {
       lastErr = err;
@@ -197,6 +204,19 @@ export async function fetchCascading(
 
 function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
+}
+
+/**
+ * The direct release URL returned 404 — the asset genuinely does not exist.
+ * Distinguished from a mirror 404 (mirror lacks the asset; the release may
+ * still exist upstream) so manifest verification skips only on a confirmed
+ * upstream 404 and stays fail-closed otherwise (#100).
+ */
+export class AssetNotFoundError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AssetNotFoundError";
+  }
 }
 
 function cacheIsFresh(cache: CacheMeta): boolean {
@@ -457,7 +477,8 @@ async function verifyReleaseManifest(
       manifestUrl, { headers: githubHeaders(), redirect: "follow" }, timeoutMs,
     );
   } catch (err) {
-    if (errorMessage(err).includes("HTTP 404")) return;
+    // Direct URL confirmed 404 → release predates the manifest asset.
+    if (err instanceof AssetNotFoundError) return;
     throw new Error(`manifest unavailable for ${tag}: ${errorMessage(err)}`);
   }
   let manifest: unknown;

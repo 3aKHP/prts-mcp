@@ -78,7 +78,7 @@ def _build_name_to_id() -> dict[str, str]:
             if info.get("name") and cid.startswith("char_")}
 
 
-def _resolve_char_id(name: str) -> str | None:
+def resolve_char_id(name: str) -> str | None:
     mapping = _build_name_to_id()
     return mapping.get(name)
 
@@ -94,7 +94,7 @@ def get_operator_archives(name: str) -> str:
         return _missing_operator_data_message()
 
     try:
-        char_id = _resolve_char_id(name)
+        char_id = resolve_char_id(name)
     except FileNotFoundError as exc:
         return str(exc)
     if char_id is None:
@@ -126,7 +126,7 @@ def get_operator_voicelines(name: str) -> str:
         return _missing_operator_data_message()
 
     try:
-        char_id = _resolve_char_id(name)
+        char_id = resolve_char_id(name)
     except FileNotFoundError as exc:
         return str(exc)
     if char_id is None:
@@ -181,7 +181,7 @@ def build_operator_basic_info(name: str) -> dict | str:
         return _missing_operator_data_message()
 
     try:
-        char_id = _resolve_char_id(name)
+        char_id = resolve_char_id(name)
     except FileNotFoundError as exc:
         return str(exc)
     if char_id is None:

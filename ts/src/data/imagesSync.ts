@@ -14,12 +14,12 @@
  */
 
 import { createHash, randomUUID } from "node:crypto";
-import { createWriteStream, readFileSync, statSync } from "node:fs";
+import { createWriteStream, existsSync, readFileSync, statSync } from "node:fs";
 import { cp, mkdir, readFile, readdir, rename, rm, stat, unlink, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
-import { SCHEMA_VERSION, parseIndex } from "./images.js";
+import { SCHEMA_VERSION, parseIndex, type ImagesIndex } from "./images.js";
 import {
   assetUrl,
   fetchCascading,
@@ -113,10 +113,11 @@ async function downloadLarge(url: string, dest: string, timeoutMs = 1_800_000): 
     );
     // Stream the shard to disk so multi-hundred-MB baseline zips do not stay
     // resident; mirrors python's httpx.stream chunked write. fetchCascading
-    // returns a real Response at runtime (FetchResponse omits body to stay
-    // decoupled from DOM); Node 22's Uint8Array<ArrayBufferLike> generic makes
-    // Readable.fromWeb's type incompatible (runtime is fine), so cast via any.
-    const body = (res as any).body;
+    // returns a real Response at runtime but FetchResponse omits body to stay
+    // decoupled from DOM, so narrow res via unknown instead of `any` (#100).
+    // Readable.fromWeb still needs a cast — Node 22's Uint8Array generic makes
+    // its parameter type incompatible at compile time (runtime is fine).
+    const body = (res as unknown as { body: ReadableStream | null }).body;
     if (body === null) throw new Error("download response body is null");
     await pipeline(Readable.fromWeb(body as any), createWriteStream(tmp));
     await rename(tmp, dest);
@@ -247,6 +248,47 @@ async function offlineOrNoData(imageDir: string, error: string): Promise<SyncRes
   return { spec, status: "no_data", commitSha: null, error };
 }
 
+function shardVariantNames(shardKeys: readonly string[]): Set<string> {
+  return new Set(shardKeys.map((k) => k.split("-").pop()!));
+}
+
+/** Verify each synced variant PNG matches its index sha256 (#100). */
+async function verifyVariantHashes(
+  staging: string,
+  index: ImagesIndex,
+  shardKeys: readonly string[],
+): Promise<void> {
+  const wanted = shardVariantNames(shardKeys);
+  let checked = 0;
+  let mismatches = 0;
+  for (const [skinId, entry] of Object.entries(index.artworks)) {
+    for (const [vname, variant] of Object.entries(entry.variants)) {
+      if (!variant || !wanted.has(vname)) continue;
+      const pngPath = join(staging, variant.file);
+      if (!existsSync(pngPath)) {
+        // Incomplete shard: a wanted variant's file is absent.
+        mismatches += 1;
+        checked += 1;
+        if (mismatches <= 3) {
+          log("WARN", `images sha256 mismatch: ${skinId}/${vname} file missing: ${variant.file}`);
+        }
+        continue;
+      }
+      const actual = createHash("sha256").update(await readFile(pngPath)).digest("hex");
+      checked += 1;
+      if (actual !== variant.sha256) {
+        mismatches += 1;
+        if (mismatches <= 3) {
+          log("WARN", `images sha256 mismatch: ${skinId}/${vname} expected ${variant.sha256.slice(0, 12)} got ${actual.slice(0, 12)}`);
+        }
+      }
+    }
+  }
+  if (mismatches) {
+    throw new Error(`images sha256 verification failed: ${mismatches} of ${checked} variants mismatch`);
+  }
+}
+
 async function syncImagesLocked(
   imageDir: string,
   shardKeys: readonly string[],
@@ -357,6 +399,10 @@ async function syncImagesLocked(
       await safeExtractZip(deltaZip, staging);
       await unlink(deltaZip).catch(() => undefined);
     }
+
+    // Verify every synced variant's sha256 against the index before
+    // activation (#100): a corrupted or tampered shard must not activate.
+    await verifyVariantHashes(staging, index, shardKeys);
 
     // Authoritative index.json + generation meta.
     await writeFile(join(staging, "index.json"), indexBytes);

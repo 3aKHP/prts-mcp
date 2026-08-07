@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.5.1] - 2026-08-07
+
+### Fixed
+
+- **Gamedata pair retry no longer fires on commit_sha mismatch.** When both
+  the excel and levels archives are up-to-date but carry divergent
+  `commit_sha` values (stale local metadata, not missing data), the sync no
+  longer schedules dense 30s/120s/600s retries. The next periodic cycle
+  resolves the metadata drift; only `offline_fallback` / `no_data` statuses
+  trigger retries.
+- **Release manifest 404 handling.** When a mirror confirms a release has no
+  `manifest.json` via HTTP 404, the sync skips that mirror cleanly instead of
+  letting a later mirror's generic network 404 overwrite the explicit absence
+  signal. A new `AssetNotFoundError` distinguishes "this release genuinely
+  has no manifest" from "we couldn't reach this mirror".
+- **Image shard sha256 verification.** After downloading AKDP image shards,
+  the sync verifies each wanted variant's sha256 (now async) before
+  activation. A missing PNG for a wanted variant counts as a mismatch and
+  blocks activation (previously silently skipped).
+
+### Changed
+
+- CI upgraded to Node 24 (`actions/*` bumped to Node 24-compatible versions).
+
 ## [2.5.0] - 2026-08-07
 
 ### Added

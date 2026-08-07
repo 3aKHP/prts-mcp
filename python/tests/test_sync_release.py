@@ -23,7 +23,9 @@ from prts_mcp.data.sync import (
     sync_release_archive,
     sync_release_archive_pair,
     sync_release,
+    _AssetNotFoundError,
     _archive_activation_lock,
+    _verify_release_manifest,
 )
 
 
@@ -175,7 +177,7 @@ class TestSyncRelease:
         asset = _mock_asset_response(b"legacy")
         with patch(
             "prts_mcp.data.sync._get_cascading",
-            side_effect=[release, asset, Exception("HTTP 404")],
+            side_effect=[release, asset, _AssetNotFoundError("HTTP 404")],
         ):
             result = sync_release(spec, force_check=True)
         assert result.status == "updated"
@@ -1009,3 +1011,43 @@ print(sync.sync_release_archive(spec).status)
         assert pair["commit_sha"] == "new"
         assert pair["excel_data_root"] == ".releases/new"
         assert pair["levels_data_root"] == ".releases/new"
+
+
+class TestManifestAbsenceSemantics:
+    """#100: manifest verification must distinguish a confirmed upstream 404
+    (release predates the manifest asset → skip) from a mirror 404 (mirror
+    lacks the asset → fail closed)."""
+
+    def test_skip_when_direct_url_confirms_absence(self, tmp_path):
+        spec = ReleaseSpec(
+            owner="3aKHP",
+            repo="arknights-data-pipeline",
+            asset_name="zh_CN.zip",
+            local_zip=tmp_path / "zh_CN.zip",
+        )
+        asset_path = tmp_path / "asset.zip"
+        asset_path.write_bytes(b"PK\x03\x04")
+        with patch(
+            "prts_mcp.data.sync._get_cascading",
+            side_effect=_AssetNotFoundError("HTTP 404"),
+        ):
+            # Must return without raising — release predates the manifest.
+            _verify_release_manifest(spec, "data-old", asset_path, timeout=1.0)
+
+    def test_fail_closed_on_mirror_404(self, tmp_path):
+        spec = ReleaseSpec(
+            owner="3aKHP",
+            repo="arknights-data-pipeline",
+            asset_name="zh_CN.zip",
+            local_zip=tmp_path / "zh_CN.zip",
+        )
+        asset_path = tmp_path / "asset.zip"
+        asset_path.write_bytes(b"PK\x03\x04")
+        # A mirror 404 surfaces as a plain Exception carrying "HTTP 404" —
+        # NOT _AssetNotFoundError. Must fail closed (#100 regression).
+        with patch(
+            "prts_mcp.data.sync._get_cascading",
+            side_effect=Exception("HTTP 404 from mirror"),
+        ):
+            with pytest.raises(ValueError, match="manifest unavailable"):
+                _verify_release_manifest(spec, "data-x", asset_path, timeout=1.0)

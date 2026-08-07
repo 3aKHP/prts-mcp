@@ -21,7 +21,7 @@ import logging
 import os
 import sys
 import threading
-from importlib.metadata import version as _pkg_version
+from importlib.metadata import PackageNotFoundError, version as _pkg_version
 
 from mcp.server.fastmcp import FastMCP
 
@@ -48,7 +48,10 @@ _logger = logging.getLogger("prts_mcp.server")
 mcp = FastMCP("PRTS_Wiki_Assistant")
 # FastMCP does not expose a version parameter; set it on the internal
 # MCPServer so initialize.serverInfo reports the product version.
-mcp._mcp_server.version = _pkg_version("prts-mcp")
+try:
+    mcp._mcp_server.version = _pkg_version("prts-mcp")
+except PackageNotFoundError:
+    mcp._mcp_server.version = "0.0.0"
 
 
 def _register_tools() -> None:

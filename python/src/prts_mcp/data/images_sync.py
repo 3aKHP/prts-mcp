@@ -23,7 +23,7 @@ from uuid import uuid4
 
 import httpx
 
-from prts_mcp.data.images import SCHEMA_VERSION, parse_index
+from prts_mcp.data.images import ImagesIndex, SCHEMA_VERSION, parse_index
 from prts_mcp.data.sync import (
     ReleaseSpec,
     RepoSpec,
@@ -39,6 +39,63 @@ from prts_mcp.data.sync import (
 )
 
 _logger = logging.getLogger(__name__)
+
+
+def _shard_variant_names(shard_keys: tuple[str, ...]) -> set[str]:
+    """Map shard keys (e.g. ``chararts-large``) to variant names (e.g. ``large``)."""
+    return {key.rsplit("-", 1)[-1] for key in shard_keys}
+
+
+def _sha256_file(path: Path) -> str:
+    """Stream-hash a file so large PNGs do not stay resident (#100 CR)."""
+    h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _verify_variant_hashes(
+    staging: Path, index: ImagesIndex, shard_keys: tuple[str, ...],
+) -> None:
+    """Verify each synced variant PNG matches its index sha256 (#100).
+
+    Only variants whose shard was downloaded are checked. A corrupted,
+    tampered, or incomplete shard (a wanted variant whose PNG is absent)
+    raises so activation never happens on bad data.
+    """
+    wanted = _shard_variant_names(shard_keys)
+    checked = 0
+    mismatches = 0
+    for skin_id, entry in index.artworks.items():
+        for vname, variant in entry.variants.items():
+            if vname not in wanted:
+                continue
+            png_path = staging / variant.file
+            if not png_path.is_file():
+                # Incomplete shard: a wanted variant's file is absent.
+                mismatches += 1
+                checked += 1
+                if mismatches <= 3:
+                    _logger.warning(
+                        "images sha256 mismatch: %s/%s file missing: %s",
+                        skin_id, vname, variant.file,
+                    )
+                continue
+            actual = _sha256_file(png_path)
+            checked += 1
+            if actual != variant.sha256:
+                mismatches += 1
+                if mismatches <= 3:
+                    _logger.warning(
+                        "images sha256 mismatch: %s/%s expected %s got %s",
+                        skin_id, vname, variant.sha256[:12], actual[:12],
+                    )
+    if mismatches:
+        raise ValueError(
+            f"images sha256 verification failed: {mismatches} of {checked} variants mismatch"
+        )
+
 
 IMAGES_REPO_OWNER = "3aKHP"
 IMAGES_REPO = "arknights-data-pipeline"
@@ -167,7 +224,7 @@ def _save_meta(root: Path, meta: dict) -> None:
     tmp.replace(path)
 
 
-def _active_generation(image_dir: Path) -> Path | None:
+def active_generation(image_dir: Path) -> Path | None:
     """Resolve the currently activated generation directory, or None."""
     meta = _load_meta(image_dir)
     if meta is None:
@@ -228,7 +285,7 @@ def _dummy_spec(image_dir: Path) -> RepoSpec:
 def _offline_or_no_data(image_dir: Path, *, error: str) -> SyncResult:
     """Return offline_fallback if cached images exist, else no_data."""
     spec = _dummy_spec(image_dir)
-    if _active_generation(image_dir) is not None:
+    if active_generation(image_dir) is not None:
         meta = _load_meta(image_dir)
         ver = meta.get("currentVersion") if meta else None
         return SyncResult(
@@ -264,7 +321,7 @@ def _sync_images_locked(
     current_version = delta_tag[len(_DELTA_PREFIX):]
 
     meta = _load_meta(image_dir)
-    gen_dir = _active_generation(image_dir)
+    gen_dir = active_generation(image_dir)
     synced = meta.get("shardsSynced") if meta else None
     same_shards = isinstance(synced, list) and set(synced) == set(shard_keys)
 
@@ -345,6 +402,10 @@ def _sync_images_locked(
             _download_large(delta_url, delta_zip)
             _safe_extract_zip(delta_zip, staging)
             delta_zip.unlink(missing_ok=True)
+
+        # Verify every synced variant's sha256 against the index before
+        # activation (#100): a corrupted or tampered shard must not activate.
+        _verify_variant_hashes(staging, index, shard_keys)
 
         # Authoritative index.json + generation meta.
         (staging / "index.json").write_bytes(index_bytes)

@@ -6,8 +6,8 @@ PRTS-MCP is past 1.0. Version 1.7.0 is the final 1.x feature release and the 1.7
 
 ## Current Release
 
-- Python: `2.5.0` _(latest stable)_
-- TypeScript: `2.5.0` _(latest stable)_
+- Python: `2.5.1` _(latest stable)_
+- TypeScript: `2.5.1` _(latest stable)_
 - `1.7.0` LTS remains the maintenance line — compatibility, security, data-sync, and critical fixes only.
 - 24 public MCP tools on the 2.x line (CI-enforced); 32 public MCP tools frozen on the 1.7 LTS line.
 - See [migration guide 0.x → 1.0](docs/migration-0.x-to-1.0.md) and
