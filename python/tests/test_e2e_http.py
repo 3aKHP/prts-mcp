@@ -160,6 +160,9 @@ def test_debug_cache(server):
         for cache_name, stat in caches.items():
             assert "loaded" in stat and isinstance(stat["loaded"], bool)
             assert "count" in stat and isinstance(stat["count"], int)
+    # artwork_mediawiki.image_cache includes bytes
+    am = data["artwork_mediawiki"]["image_cache"]
+    assert "bytes" in am and isinstance(am["bytes"], int)
 
 
 def test_initialize_and_tools_list(server):

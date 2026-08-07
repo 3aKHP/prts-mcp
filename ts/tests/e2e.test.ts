@@ -151,18 +151,20 @@ test("E2E", async (t) => {
   await t.test("debug cache returns expected modules", async () => {
     const res = await fetch(`${origin}/debug/cache`);
     assert.equal(res.status, 200);
-    const data = await res.json() as Record<string, Record<string, { loaded: boolean; count: number }>>;
-    const expectedModules = [
+    const data = await res.json() as Record<string, Record<string, { loaded: boolean; count: number; bytes?: number }>>;
+    const expectedModules = new Set([
       "operator", "enemy", "stage", "stage_enemy", "item",
       "search", "story_search", "images", "artwork_mediawiki",
-    ];
-    for (const mod of expectedModules) {
-      assert.ok(mod in data, `missing module: ${mod}`);
-      for (const [cacheName, stat] of Object.entries(data[mod])) {
+    ]);
+    assert.deepEqual(new Set(Object.keys(data)), expectedModules, "module set mismatch");
+    for (const [mod, caches] of Object.entries(data)) {
+      for (const [cacheName, stat] of Object.entries(caches)) {
         assert.equal(typeof stat.loaded, "boolean", `${mod}.${cacheName}.loaded should be boolean`);
         assert.equal(typeof stat.count, "number", `${mod}.${cacheName}.count should be number`);
       }
     }
+    // artwork_mediawiki.image_cache includes bytes
+    assert.equal(typeof data["artwork_mediawiki"]!["image_cache"]!.bytes, "number");
   });
 
   // --- protocol handshake ---

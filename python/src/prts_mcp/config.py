@@ -442,18 +442,31 @@ def activation_aware_cache(maxsize: int = 1) -> Callable[[Callable[..., Any]], C
     return decorate
 
 
-def cache_stat(cached_func: Callable[..., Any]) -> dict[str, Any]:
+def cache_stat(
+    cached_func: Callable[..., Any],
+    count_fn: Callable[[Any], int] | None = None,
+) -> dict[str, Any]:
     """Best-effort ``{loaded, count}`` for an activation_aware_cache function.
 
-    Uses ``cache_info().currsize`` to determine whether the cache is populated
-    without side effects.  When populated, calling the function hits the
-    lru_cache (no disk I/O) so ``len(result)`` gives the record count.
+    Uses ``cache_info().currsize`` to determine whether the cache is populated.
+    When populated, calling the function hits the lru_cache in steady state so
+    ``len(result)`` (or *count_fn*) gives the record count.  If the activation
+    signature changed between the check and the call, the try/except catches
+    any reload failure.
+
+    *count_fn* overrides the default ``len()`` for caches whose top-level
+    structure is nested (e.g. a JSON wrapper whose record count lives in a
+    sub-dict).
     """
     info = cached_func.cache_info()
     if info.currsize == 0:
         return {"loaded": False, "count": 0}
     try:
         result = cached_func()
+        if result is None:
+            return {"loaded": False, "count": 0}
+        if count_fn is not None:
+            return {"loaded": True, "count": count_fn(result)}
         return {"loaded": True, "count": len(result) if hasattr(result, "__len__") else 1}
     except Exception:  # noqa: BLE001
         return {"loaded": False, "count": 0}

@@ -87,8 +87,12 @@ def cache_stats() -> dict[str, dict]:
     """Return ``{cache_name: {loaded, count}}`` for instrumentation (#104)."""
     return {
         "character_table": cache_stat(_load_character_table),
-        "handbook_table": cache_stat(_load_handbook_table),
-        "charword_table": cache_stat(_load_charword_table),
+        "handbook_table": cache_stat(
+            _load_handbook_table, lambda r: len(r.get("handbookDict") or {})
+        ),
+        "charword_table": cache_stat(
+            _load_charword_table, lambda r: len(r.get("charWords") or {})
+        ),
         "name_to_id": cache_stat(_build_name_to_id),
     }
 
