@@ -168,7 +168,9 @@ fix/*（最新稳定 hotfix）────────→ main ──→ develop
 
 ### 路径 F：预发布（→ develop）
 
-用于在 `develop` 上发布 alpha / beta / rc 版本供早期测试。预发布版本号约定：Python 用 PEP 440（`2.6.0a1`、`2.6.0b1`、`2.6.0rc1`），TypeScript 用 npm semver（`2.6.0-alpha.1`、`2.6.0-beta.1`、`2.6.0-rc.1`）。CD tag pattern `v*.*.*-*` 自动匹配两者。
+用于在 `develop` 上发布 alpha / beta / rc 版本供早期测试。
+
+**版本号约定**：tag 始终使用连字符后缀（`-alpha.N` / `-beta.N` / `-rc.N`），Python 和 TS 统一。`pyproject.toml` 内用 PEP 440（`2.6.0a1`），CD 的 version check 自动归一化 `-alpha.` → `a`；`package.json` 内用与 tag 相同的 semver 形式（`2.6.0-alpha.1`）。
 
 1. **拉分支**：从 `develop` 拉 `release/vX.Y.Z-alpha.N`（或 `-beta.N` / `-rc.N`）
 2. **bump 版本号**：`pyproject.toml` 从 `.dev0` 改为 `X.Y.ZaN`（如 `2.6.0a1`），`package.json` 从 `-dev.0` 改为 `X.Y.Z-alpha.N`（如 `2.6.0-alpha.1`）。运行 `uv lock --directory python` 同步 lockfile，同步 `ts/package-lock.json`
@@ -295,9 +297,9 @@ KHPilot 也可能在公开 Issue 中提供自动回复。这些回复只作为�
 git tag python/v1.3.1 && git tag ts/v1.3.1
 git push origin python/v1.3.1 ts/v1.3.1
 
-# 预发布（develop merge commit）
-git tag python/v2.6.0a1 && git tag ts/v2.6.0-alpha.1
-git push origin python/v2.6.0a1 ts/v2.6.0-alpha.1
+# 预发布（develop merge commit）— tag 始终用连字符后缀
+git tag python/v2.6.0-alpha.1 && git tag ts/v2.6.0-alpha.1
+git push origin python/v2.6.0-alpha.1 ts/v2.6.0-alpha.1
 ```
 
 - `python/v*` → PyPI 发布
