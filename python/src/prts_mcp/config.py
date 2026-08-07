@@ -469,4 +469,5 @@ def cache_stat(
             return {"loaded": True, "count": count_fn(result)}
         return {"loaded": True, "count": len(result) if hasattr(result, "__len__") else 1}
     except Exception:  # noqa: BLE001
+        _logger.debug("cache_stat: failed to read cached value", exc_info=True)
         return {"loaded": False, "count": 0}
