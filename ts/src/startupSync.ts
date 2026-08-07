@@ -46,6 +46,21 @@ function shouldRetrySync(status: string): boolean {
   return status === "offline_fallback" || status === "no_data";
 }
 
+/**
+ * Decide whether the gamedata pair sync warrants a dense retry (#102).
+ *
+ * A generation (commitSha) mismatch alone must NOT trigger dense retries
+ * (30s/120s/600s): when both archives are up-to-date, divergent commitShas
+ * are stale local metadata, not missing data, and the next periodic cycle
+ * resolves it. Only offline_fallback / no_data retry immediately.
+ */
+export function gamedataPairNeedsRetry(
+  excelStatus: string,
+  levelsStatus: string,
+): boolean {
+  return shouldRetrySync(excelStatus) || shouldRetrySync(levelsStatus);
+}
+
 async function singleFlightSync(label: string, runSync: () => Promise<boolean>): Promise<SyncRunResult> {
   if (syncInFlight.has(label)) {
     log("INFO", `${label} sync is already running; skipping overlapping attempt.`);
@@ -150,9 +165,7 @@ export async function runStartupSync(forceCheck = false): Promise<void> {
         clearStageEnemyCaches();
         clearSearchCaches();
       }
-      return shouldRetrySync(r.status)
-        || shouldRetrySync(levelsResult.status)
-        || !sameGeneration;
+      return gamedataPairNeedsRetry(r.status, levelsResult.status);
     };
 
     startupTasks.push(

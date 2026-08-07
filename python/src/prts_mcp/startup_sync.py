@@ -42,6 +42,17 @@ def _sync_needs_retry(status: str) -> bool:
     return status in {"offline_fallback", "no_data"}
 
 
+def _gamedata_pair_needs_retry(excel_status: str, levels_status: str) -> bool:
+    """Decide whether the gamedata pair sync warrants a dense retry.
+
+    A generation (commit_sha) mismatch alone must NOT trigger dense retries
+    (30s/120s/600s): when both archives are up-to-date, divergent
+    commit_shas are stale local metadata, not missing data, and the next
+    periodic cycle resolves it. Only offline_fallback / no_data retry.
+    """
+    return _sync_needs_retry(excel_status) or _sync_needs_retry(levels_status)
+
+
 def _run_initial_sync(label: str, sync_func: Callable[[], bool]) -> bool:
     """Run the first sync attempt, treating unexpected exceptions as retry-needed."""
     try:
@@ -164,10 +175,8 @@ def _run_startup_sync(*, force_check: bool = False) -> None:
                 clear_stage_enemy_caches()
                 from prts_mcp.data.stage import clear_stage_caches as _clear_stages
                 _clear_stages()
-            return (
-                _sync_needs_retry(excel_result.status)
-                or _sync_needs_retry(levels_result.status)
-                or not same_generation
+            return _gamedata_pair_needs_retry(
+                excel_result.status, levels_result.status
             )
 
         needs_retry = _run_initial_sync(
