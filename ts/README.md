@@ -164,7 +164,7 @@ docker run -d -p 3000:3000 -v prts-mcp-ts-data:/data/gamedata -v prts-mcp-ts-lev
 | `SESSION_IDLE_TIMEOUT_MS` | `86400000` | Streamable HTTP 会话空闲超时（毫秒）。设为非正数时禁用超时；会话活跃时间、有效值与淘汰计数可由已启用的 `/debug/metrics` 读取。`closed_total` 包含被空闲淘汰而关闭的会话，`evicted_total` 是其中的原因子集。 |
 | `PRTS_METRICS_ENABLED` | `false` | 设为严格的 `true` 才提供 `/debug/metrics`；响应只含进程、缓存、请求、工具和会话的聚合指标，不含 MCP 参数、结果或会话 ID。工具维度只接受内置工具名，避免把调用方输入变成指标标签。生产环境应保持服务仅监听 loopback，且不得为该路径配置公网反向代理。 |
 
-需要验证重复负载与并发会话时，只能在隔离的本机实例上执行 `PRTS_BENCH_ISOLATED=true PRTS_BENCH_ORIGIN=http://127.0.0.1:<port> npm run bench:memory`。脚本要求指标端点已启用，依次记录冷启动、同会话重复和三个并发会话的聚合快照，并在重复阶段新增缓存 miss 时失败；它拒绝非 loopback 目标，不得在生产服务器执行。
+需要验证重复负载与并发会话时，只能在隔离的本机实例上执行 `PRTS_BENCH_ISOLATED=true PRTS_BENCH_ORIGIN=http://127.0.0.1:<port> npm run bench:memory`。脚本要求指标端点和可读剧情/本地图片数据均已启用：它会先发现一个活动、章节和阿米娅立绘，然后以 **6 个并发会话** 执行档案、基础资料、数据搜索、剧情搜索、单章、活动分页和实际图片 get。除重复负载不能新增 cache miss 外，它还要求并发后至少 7 个会话仍在、请求已静止、RSS 不超过 1 GiB、相对冷缓存增长不超过 256 MiB（可用 `PRTS_BENCH_MAX_RSS_BYTES` / `PRTS_BENCH_MAX_RSS_GROWTH_BYTES` 调整）。它拒绝非 loopback 目标，不得在生产正式服务执行。
 
 ---
 
