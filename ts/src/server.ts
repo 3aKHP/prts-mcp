@@ -12,7 +12,8 @@
 
 import { randomUUID } from "node:crypto";
 import express from "express";
-import { NodeStreamableHTTPServerTransport } from "@modelcontextprotocol/node";
+import { createMcpHandler, isLegacyRequest } from "@modelcontextprotocol/server";
+import { NodeStreamableHTTPServerTransport, toNodeHandler, toWebRequest } from "@modelcontextprotocol/node";
 import { startAutoSync } from "./startupSync.js";
 import { parseChannel, type OutputChannel } from "./output.js";
 import { createMcpServer, log, SERVER_VERSION } from "./server-core.js";
@@ -37,6 +38,16 @@ function resolveOutputChannel(req: express.Request): OutputChannel {
   return parseChannel(process.env["PRTS_OUTPUT_CHANNEL"], "PRTS_OUTPUT_CHANNEL", warn);
 }
 
+function resolveModernOutputChannel(request: Request | undefined): OutputChannel {
+  const url = request ? new URL(request.url) : undefined;
+  const queryValue = url?.searchParams.get("output_channel") ?? undefined;
+  const headerValue = request?.headers.get("x-prts-output-channel") ?? undefined;
+  const warn = (message: string) => log("WARN", message);
+  if (queryValue !== undefined) return parseChannel(queryValue, "output_channel", warn);
+  if (headerValue !== undefined) return parseChannel(headerValue, "x-prts-output-channel", warn);
+  return parseChannel(process.env["PRTS_OUTPUT_CHANNEL"], "PRTS_OUTPUT_CHANNEL", warn);
+}
+
 // ---------------------------------------------------------------------------
 // Express + StreamableHTTP
 // ---------------------------------------------------------------------------
@@ -48,6 +59,13 @@ app.use(express.json());
 const transports = new Map<string, NodeStreamableHTTPServerTransport>();
 const METRICS_ENABLED = process.env["PRTS_METRICS_ENABLED"] === "true";
 const runtimeMetrics = METRICS_ENABLED ? new RuntimeMetrics() : null;
+const modernHandler = createMcpHandler(
+  ({ requestInfo }) => createMcpServer(resolveModernOutputChannel(requestInfo)),
+  { legacy: "reject", onerror: (error) => log("ERROR", `Modern MCP request failed: ${error.message}`) },
+);
+const handleModernRequest = toNodeHandler(modernHandler, {
+  onerror: (error) => log("ERROR", `Modern MCP adapter failed: ${error.message}`),
+});
 
 const SESSION_IDLE_TIMEOUT_MS = (() => {
   const raw = process.env["SESSION_IDLE_TIMEOUT_MS"];
@@ -108,6 +126,15 @@ app.all("/mcp", async (req, res) => {
   const requestMetrics = runtimeMetrics?.beginRequest(req.body);
   const sessionId = req.headers["mcp-session-id"] as string | undefined;
   try {
+    // Keep the established sessionful legacy transport intact. SDK v2's
+    // classifier owns the era boundary so malformed modern claims never
+    // silently fall back to the legacy router.
+    const webRequest = await toWebRequest(req, req.body);
+    if (!await isLegacyRequest(webRequest, req.body)) {
+      await handleModernRequest(req, res, req.body);
+      return;
+    }
+
     let transport = sessionId ? transports.get(sessionId) : undefined;
 
     if (!transport) {
