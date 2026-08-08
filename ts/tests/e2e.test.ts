@@ -85,6 +85,8 @@ async function mcpPost(
 }
 
 const MODERN_VERSION = "2026-07-28";
+const DEBUG_TOKEN = "e2e-debug-token";
+const DEBUG_HEADERS = { Authorization: `Bearer ${DEBUG_TOKEN}` };
 
 function modernBody(method: string, params: Record<string, unknown>, id: number): Record<string, unknown> {
   return {
@@ -172,6 +174,7 @@ test("E2E", async (t) => {
         IMAGES_ENABLED: "true",
         SESSION_IDLE_TIMEOUT_MS: "30000",
         PRTS_METRICS_ENABLED: "true",
+        PRTS_DEBUG_TOKEN: DEBUG_TOKEN,
       },
       stdio: ["ignore", "pipe", "pipe"],
     },
@@ -187,7 +190,9 @@ test("E2E", async (t) => {
 
   // --- /debug/cache ---
   await t.test("debug cache returns expected modules", async () => {
-    const res = await fetch(`${origin}/debug/cache`);
+    const unauthenticated = await fetch(`${origin}/debug/cache`);
+    assert.equal(unauthenticated.status, 404);
+    const res = await fetch(`${origin}/debug/cache`, { headers: DEBUG_HEADERS });
     assert.equal(res.status, 200);
     const data = await res.json() as Record<string, Record<string, { loaded: boolean; count: number; hits: number; misses: number; clears: number; bytes?: number }>>;
     const expectedModules = new Set([
@@ -361,7 +366,9 @@ test("E2E", async (t) => {
   });
 
   await t.test("debug metrics exposes aggregate runtime state only", async () => {
-    const res = await fetch(`${origin}/debug/metrics`);
+    const unauthenticated = await fetch(`${origin}/debug/metrics`);
+    assert.equal(unauthenticated.status, 404);
+    const res = await fetch(`${origin}/debug/metrics`, { headers: DEBUG_HEADERS });
     assert.equal(res.status, 200);
     const data = await res.json() as Record<string, unknown>;
     assert.equal(data.schema_version, "prts-mcp.metrics/v1");

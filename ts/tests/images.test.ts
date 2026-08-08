@@ -234,6 +234,8 @@ test("operator_artwork resolves Amiya form aliases and rejects cross-form tokens
     for (const [operatorName, expectedId] of [
       ["阿米娅(近卫)", "char_1001_amiya2#1"],
       ["阿米娅(医疗)", "char_1037_amiya3#1"],
+      ["阿米娅（近卫）", "char_1001_amiya2#1"],
+      ["阿米娅（医疗）", "char_1037_amiya3#1"],
     ]) {
       const result = await server.handler({
         operator_name: operatorName,

@@ -162,9 +162,10 @@ docker run -d -p 3000:3000 -v prts-mcp-ts-data:/data/gamedata -v prts-mcp-ts-lev
 | `PRTS_AUTO_SYNC_INTERVAL_SECONDS` | `3600` | GitHub Release 周期检查间隔（秒）；有效范围 `60..604800`，`0` 表示只执行启动同步；非法值回落到默认值 |
 | `PRTS_OUTPUT_CHANNEL` | `content` | 2.0 输出通道：`content`（默认，仅 markdown，与 1.x 一致）/ `structured`（仅 structuredContent）/ `both`。也可经查询字符串 `?output_channel=` 或请求头 `x-prts-output-channel` 按请求覆盖。仅在客户端确认支持 `structuredContent` 时才用非默认值 |
 | `SESSION_IDLE_TIMEOUT_MS` | `86400000` | Streamable HTTP 会话空闲超时（毫秒）。设为非正数时禁用超时；会话活跃时间、有效值与淘汰计数可由已启用的 `/debug/metrics` 读取。`closed_total` 包含被空闲淘汰而关闭的会话，`evicted_total` 是其中的原因子集。 |
-| `PRTS_METRICS_ENABLED` | `false` | 设为严格的 `true` 才提供 `/debug/metrics`；响应只含进程、缓存、请求、工具和会话的聚合指标，不含 MCP 参数、结果或会话 ID。工具维度只接受内置工具名，避免把调用方输入变成指标标签。生产环境应保持服务仅监听 loopback，且不得为该路径配置公网反向代理。 |
+| `PRTS_METRICS_ENABLED` | `false` | 设为严格的 `true` 才启用 `/debug/metrics`；仍需有效的 `PRTS_DEBUG_TOKEN` Bearer 请求头。响应只含进程、缓存、请求、工具和会话的聚合指标，不含 MCP 参数、结果或会话 ID。工具维度只接受内置工具名，避免把调用方输入变成指标标签。 |
+| `PRTS_DEBUG_TOKEN` | 未设置 | `/debug/cache` 和 `/debug/metrics` 的必需 Bearer token；未设置或不匹配时返回 404。不要公开反向代理这两个路径，也不要把 token 写入日志、请求正文或客户端配置。 |
 
-需要验证重复负载与并发会话时，只能在隔离的本机实例上执行 `PRTS_BENCH_ISOLATED=true PRTS_BENCH_ORIGIN=http://127.0.0.1:<port> npm run bench:memory`。脚本要求指标端点和可读剧情/本地图片数据均已启用：它会先发现一个活动、章节和阿米娅立绘，然后以 **6 个并发会话** 执行档案、基础资料、数据搜索、剧情搜索、单章、活动分页和实际图片 get。除重复负载不能新增 cache miss 外，它还要求并发后至少 7 个会话仍在、请求已静止、RSS 不超过 1 GiB、相对冷缓存增长不超过 256 MiB（可用 `PRTS_BENCH_MAX_RSS_BYTES` / `PRTS_BENCH_MAX_RSS_GROWTH_BYTES` 调整）。它拒绝非 loopback 目标，不得在生产正式服务执行。
+需要验证重复负载与并发会话时，只能在隔离的本机实例上执行 `PRTS_BENCH_ISOLATED=true PRTS_BENCH_ORIGIN=http://127.0.0.1:<port> PRTS_DEBUG_TOKEN=... npm run bench:memory`。脚本要求指标端点、有效诊断 token 和可读剧情/本地图片数据均已启用：它会先发现一个活动、章节和阿米娅立绘，然后以 **6 个并发会话** 执行档案、基础资料、数据搜索、剧情搜索、单章、活动分页和实际图片 get。除重复负载不能新增 cache miss 外，它还要求并发后至少 7 个会话仍在、请求已静止、RSS 不超过 1 GiB、相对冷缓存增长不超过 256 MiB（可用 `PRTS_BENCH_MAX_RSS_BYTES` / `PRTS_BENCH_MAX_RSS_GROWTH_BYTES` 调整）。它拒绝非 loopback 目标，不得在生产正式服务执行。
 
 ---
 

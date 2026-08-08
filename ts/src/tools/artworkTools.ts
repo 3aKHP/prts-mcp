@@ -48,8 +48,12 @@ const ARTWORK_FORM_CHAR_IDS: Readonly<Record<string, string>> = {
   "阿米娅(医疗)": "char_1037_amiya3",
 };
 
+function normalizedArtworkFormName(operatorName: string): string {
+  return operatorName.trim().replaceAll("（", "(").replaceAll("）", ")");
+}
+
 function resolveArtworkCharId(operatorName: string): string | null {
-  return ARTWORK_FORM_CHAR_IDS[operatorName] ?? resolveCharId(operatorName);
+  return ARTWORK_FORM_CHAR_IDS[normalizedArtworkFormName(operatorName)] ?? resolveCharId(operatorName);
 }
 
 // ---------------------------------------------------------------------------
@@ -83,12 +87,13 @@ async function doListMediawiki(
   operatorName: string,
   channel: OutputChannel,
 ): Promise<CallToolResult> {
-  const prefix = `立绘_${operatorName}_`;
+  const normalizedName = normalizedArtworkFormName(operatorName);
+  const prefix = `立绘_${normalizedName}_`;
   let files: { name: string; size: number; mime: string }[];
   let templates: Record<string, Record<string, unknown>>;
   try {
     files = await listAllimages(prefix);
-    templates = await getTemplateData(operatorName);
+    templates = await getTemplateData(normalizedName);
   } catch (err) {
     return textResult(`查询 PRTS 立绘失败：${err instanceof Error ? err.message : String(err)}`);
   }

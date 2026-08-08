@@ -29,14 +29,14 @@ Two release lines ship in parallel:
 
 | Line | Version | Tools | Status |
 |------|---------|-------|--------|
-| **2.5** (`main`) | `2.5.2` | 24 | Operator artwork tool (`operator_artwork`); MediaWiki on-demand image delivery by default; data source switched to self-hosted `arknights-data-pipeline`. |
+| **2.6** (`main`) | `2.6.0` | 24 | MCP SDK v2 with opt-in modern protocol support while retaining legacy clients; Amiya artwork forms; isolated same-host memory canary. |
 | **1.7 LTS** (`lts/1.7`) | `1.7.0` | 32 | Stable maintenance line. 1.7.x accepts only compatibility, security, data-sync, and critical bug fixes. |
 
 The `main` and `develop` lines use the self-built `arknights-data-pipeline` Release exclusively for default Auto-Sync. The 1.7 LTS line retains its legacy upstream compatibility until a separate, backwards-compatible migration; changes to the new factory path must not be backported to LTS as an implicit source switch.
 
 | Area | Python | TypeScript |
 |------|--------|------------|
-| MCP tools | Same 24 public tool names and required parameters (2.5) / 32 on 1.7 LTS | Same 24 (2.5) / 32 on 1.7 LTS |
+| MCP tools | Same 24 public tool names and required parameters (2.x) / 32 on 1.7 LTS | Same 24 (2.x) / 32 on 1.7 LTS |
 | GameData | `GAMEDATA_PATH` or auto-synced `zh_CN-excel.zip` | `GAMEDATA_PATH` or auto-synced `zh_CN-excel.zip` |
 | Level data | Auto-synced `zh_CN-levels.zip` beside GameData | Auto-synced `zh_CN-levels.zip` beside GameData |
 | Story data | `STORYJSON_PATH` or auto-synced `zh_CN.zip` | `STORYJSON_PATH` or auto-synced `zh_CN.zip` |
@@ -50,6 +50,10 @@ Both implementations consume the self-built [`arknights-data-pipeline`](https://
 `GITHUB_MIRRORS` is an explicit fallback for GitHub URL access. In Node deployments, standard `HTTP_PROXY`/`HTTPS_PROXY` (including lowercase spellings) are honored via Undici; Bun keeps its native `fetch` path. Proxy support does not weaken manifest or ZIP validation.
 
 See [`docs/migration-1.x-to-2.0.md`](docs/migration-1.x-to-2.0.md) for the 1.x → 2.0 breaking changes (tool consolidation, `operator_name` → `name`, output channel), and [`docs/migration-0.x-to-1.0.md`](docs/migration-0.x-to-1.0.md) for the 0.x → 1.0 transition.
+
+### MCP protocol compatibility
+
+2.6.0 retains the established initialize/session flow for legacy MCP clients and adds opt-in support for the `2026-07-28` protocol era. Modern HTTP requests use the modern envelope and are stateless; they do not send `Mcp-Session-Id`. For stdio, the first request on a connection selects the era, so open a separate connection when changing protocol modes. See [the 2.5 → 2.6 migration guide](docs/migration-2.5-to-2.6.md) before switching a client to modern mode.
 
 ### Tools
 
@@ -151,12 +155,12 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and [`doc
 
 | 版本线 | 版本 | 工具数 | 状态 |
 |--------|------|--------|------|
-| **2.5**（`main`） | `2.5.2` | 24 | 干员立绘工具（`operator_artwork`）；默认 MediaWiki 按需获取图片；数据源切换到自建 `arknights-data-pipeline`。 |
+| **2.6**（`main`） | `2.6.0` | 24 | MCP SDK v2，并以 opt-in 方式支持现代协议且保留 legacy 客户端；阿米娅形态立绘；隔离同机内存 canary。 |
 | **1.7 LTS**（`lts/1.7`） | `1.7.0` | 32 | 稳定维护线。1.7.x 仅接受兼容性、安全性、数据同步和关键缺陷修复。 |
 
 | 范围 | Python | TypeScript |
 |------|--------|------------|
-| MCP 工具 | 相同的 24 个工具名和必填参数（2.5）/ 1.7 LTS 为 32 个 | 相同的 24 个（2.5）/ 1.7 LTS 为 32 个 |
+| MCP 工具 | 相同的 24 个工具名和必填参数（2.x）/ 1.7 LTS 为 32 个 | 相同的 24 个（2.x）/ 1.7 LTS 为 32 个 |
 | 干员数据 | `GAMEDATA_PATH` 或自动同步 `zh_CN-excel.zip` | `GAMEDATA_PATH` 或自动同步 `zh_CN-excel.zip` |
 | 关卡战斗数据 | 自动同步与 GameData 并列的 `zh_CN-levels.zip` | 自动同步与 GameData 并列的 `zh_CN-levels.zip` |
 | 剧情数据 | `STORYJSON_PATH` 或自动同步 `zh_CN.zip` | `STORYJSON_PATH` 或自动同步 `zh_CN.zip` |
@@ -170,6 +174,10 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and [`doc
 `GITHUB_MIRRORS` 是显式的 GitHub 访问备用路径；Node 部署会通过 Undici 使用标准 `HTTP_PROXY`/`HTTPS_PROXY`（也识别小写变量），Bun 保持原生 `fetch` 路径。代理不会绕过 manifest 或 ZIP 校验。
 
 1.x → 2.0 的破坏性变更（工具面合并、`operator_name` → `name`、output channel）见 [`docs/migration-1.x-to-2.0.md`](docs/migration-1.x-to-2.0.md)；0.x → 1.0 迁移见 [`docs/migration-0.x-to-1.0.md`](docs/migration-0.x-to-1.0.md)。
+
+### MCP 协议兼容性
+
+2.6.0 保留既有 initialize/session 的 legacy MCP 客户端流程，并新增 opt-in 的 `2026-07-28` 协议时代支持。现代 HTTP 请求使用现代 envelope 且无状态，不发送 `Mcp-Session-Id`；stdio 由连接上的第一条请求选择协议时代，切换协议模式时请新建连接。把客户端切换到 modern 前，请先阅读 [2.5 → 2.6 迁移指南](docs/migration-2.5-to-2.6.md)。
 
 ### 工具集
 

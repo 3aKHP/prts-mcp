@@ -9,7 +9,7 @@ PRTS-MCP 2.0 consolidates the 1.x tool surface (32 tools in 1.7.0 LTS) down to *
 - Tool surface: **32 → 23** (net reduction of 9). Eleven legacy tool names are removed/folded into three unified entry points; nothing is lost.
 - One required parameter is renamed: `operator_name` → `name` on four operator tools.
 - Output stays markdown by default. A new **connection-level** output channel can additionally emit MCP-native `structuredContent`; it is **not** a per-call `output_format` parameter and does **not** flip the default to JSON.
-- Transport roles are unchanged in 2.0: Python = stdio, TypeScript = Streamable HTTP. Cross-transport parity (Python HTTP / TS stdio) is deferred beyond 2.0.
+- At the 2.0.0 release, transport roles remained Python = stdio and TypeScript = Streamable HTTP. Cross-transport parity shipped later in 2.3.0; current protocol-era guidance is in [the 2.5 → 2.6 migration guide](migration-2.5-to-2.6.md).
 
 ## Breaking Changes
 
@@ -122,7 +122,7 @@ These are unchanged from 1.x and require no migration:
 - **Markdown content text.** The default `content` output stays markdown, and most tools preserve their 1.7.x rendering. The notable exception is `list_stories(include_summaries=true)`, which now prepends the event-level overview (see breaking change #3 above); tools reached via the new unified entry points (`search`, `prts_page`) render the same cards as their 1.x counterparts. The TS story empty-result wording was aligned to Python.
 - **Environment variable semantics.** `GAMEDATA_PATH`, `STORYJSON_PATH`, `GITHUB_TOKEN`, `GITHUB_MIRRORS`, and the auto-sync behavior are unchanged.
 - **Data sources and sync.** The three Release archives (`zh_CN-excel.zip`, `zh_CN-levels.zip`, story `zh_CN.zip`) and the PRTS Wiki API are unchanged.
-- **Transport roles.** Python remains stdio (FastMCP); TypeScript remains Streamable HTTP (Express). Docker and `npm install -g` deployment paths are unchanged.
+- **2.0 transport semantics.** The original 2.0 release did not require a transport change. Since 2.3.0 both implementations support stdio and Streamable HTTP; Docker and `npm install -g` deployment paths remain compatible.
 
 ## Upgrade Notes
 
@@ -132,8 +132,8 @@ These are unchanged from 1.x and require no migration:
 4. No environment variable changes are required. To opt into structured output, set `PRTS_OUTPUT_CHANNEL=structured` (or `both`) only if your client is confirmed to consume `structuredContent`.
 5. For Docker deployments, no volume or compose changes are needed.
 
-## Deferred Beyond 2.0
+## Later delivery
 
-- **Cross-transport parity.** Both implementations supporting both stdio and Streamable HTTP (Python gaining HTTP, TypeScript gaining stdio) was an original 2.0 boundary goal but is deferred to a later release. 2.0 ships with the same de-facto transport split as 1.x.
+- **Cross-transport parity.** Both implementations gained stdio and Streamable HTTP support in 2.3.0. This guide preserves the 2.0 breaking-change boundary; see [the 2.5 → 2.6 migration guide](migration-2.5-to-2.6.md) for the current dual-era protocol boundary.
 
 For the 0.x → 1.0 transition, see [`migration-0.x-to-1.0.md`](migration-0.x-to-1.0.md).

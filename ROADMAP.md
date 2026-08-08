@@ -1,16 +1,17 @@
 # PRTS-MCP Roadmap
 
-_Last updated: 2026-08-07_ · [中文版](ROADMAP.zh-CN.md)
+_Last updated: 2026-08-09_ · [中文版](ROADMAP.zh-CN.md)
 
 PRTS-MCP is past 1.0. Version 1.7.0 is the final 1.x feature release and the 1.7 LTS baseline. This document tracks **what comes next** — not what has shipped. For shipped features, see the Python and TypeScript CHANGELOGs.
 
 ## Current Release
 
-- Python: `2.5.1` _(latest stable)_
-- TypeScript: `2.5.1` _(latest stable)_
+- Python: `2.6.0` _(latest stable)_
+- TypeScript: `2.6.0` _(latest stable)_
 - `1.7.0` LTS remains the maintenance line — compatibility, security, data-sync, and critical fixes only.
 - 24 public MCP tools on the 2.x line (CI-enforced); 32 public MCP tools frozen on the 1.7 LTS line.
 - See [migration guide 0.x → 1.0](docs/migration-0.x-to-1.0.md) and [migration guide 1.x → 2.0](docs/migration-1.x-to-2.0.md).
+- 2.6.0 retains legacy MCP clients while adding opt-in `2026-07-28` support; see [2.5 → 2.6](docs/migration-2.5-to-2.6.md) before changing client protocol configuration.
 
 ## 1.x Compatibility Contract
 

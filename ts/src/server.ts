@@ -10,7 +10,7 @@
  * as a background task before the server starts listening.
  */
 
-import { randomUUID } from "node:crypto";
+import { randomUUID, timingSafeEqual } from "node:crypto";
 import express from "express";
 import { createMcpHandler, isLegacyRequest } from "@modelcontextprotocol/server";
 import { NodeStreamableHTTPServerTransport, toNodeHandler, toWebRequest } from "@modelcontextprotocol/node";
@@ -58,7 +58,19 @@ app.use(express.json());
 
 const transports = new Map<string, NodeStreamableHTTPServerTransport>();
 const METRICS_ENABLED = process.env["PRTS_METRICS_ENABLED"] === "true";
+const DEBUG_TOKEN = process.env["PRTS_DEBUG_TOKEN"];
 const runtimeMetrics = METRICS_ENABLED ? new RuntimeMetrics() : null;
+
+function debugAuthorized(req: express.Request): boolean {
+  if (!DEBUG_TOKEN) return false;
+  const authorization = req.get("authorization");
+  const expected = `Bearer ${DEBUG_TOKEN}`;
+  if (authorization === undefined) return false;
+  const actualBytes = Buffer.from(authorization);
+  const expectedBytes = Buffer.from(expected);
+  if (actualBytes.byteLength !== expectedBytes.byteLength) return false;
+  return timingSafeEqual(actualBytes, expectedBytes);
+}
 const modernHandler = createMcpHandler(
   ({ requestInfo }) => createMcpServer(resolveModernOutputChannel(requestInfo)),
   { legacy: "reject", onerror: (error) => log("ERROR", `Modern MCP request failed: ${error.message}`) },
@@ -220,12 +232,16 @@ app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
 });
 
-app.get("/debug/cache", (_req, res) => {
+app.get("/debug/cache", (req, res) => {
+  if (!debugAuthorized(req)) {
+    res.sendStatus(404);
+    return;
+  }
   res.json(getCacheStats());
 });
 
-app.get("/debug/metrics", (_req, res) => {
-  if (runtimeMetrics === null) {
+app.get("/debug/metrics", (req, res) => {
+  if (runtimeMetrics === null || !debugAuthorized(req)) {
     res.sendStatus(404);
     return;
   }

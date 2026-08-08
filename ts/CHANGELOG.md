@@ -4,51 +4,25 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [2.6.0] - 2026-08-09
 
 ### Added
 
-- **Six-session memory canary gate (#90).** The isolated loopback benchmark
-  now exercises archives, data search, story search, chapter/activity reads,
-  and an actual artwork image retrieval across six concurrent sessions. It
-  requires cache stability plus a quiescent request state and bounded RSS.
-  Version-controlled same-host canary assets add a separate loopback service,
-  authenticated temporary route, and cgroup limits of `MemoryHigh=1G` /
-  `MemoryMax=1536M` without modifying the stable service.
-
-### Fixed
-
-- **Amiya artwork forms (#123).** `operator_artwork` now resolves
-  `阿米娅(近卫)` and `阿米娅(医疗)` to their distinct artwork char IDs without
-  changing name resolution for other tools. Opaque artwork tokens now require
-  an exact form match in both local and MediaWiki modes, so a base or sibling
-  form cannot retrieve another form's image.
-
-## [2.6.0-alpha.2] - 2026-08-08
-
-### Added
-
-- **Aggregate runtime metrics for Issue #90.** The TypeScript Streamable HTTP server now provides an opt-in `/debug/metrics` endpoint with process memory high-water, request/tool duration and error totals, session age/idle-timeout/lifecycle totals, and nine-domain cache hit/miss/invalidation counters. Metrics are aggregate-only and retain neither MCP arguments/results nor session identifiers.
+- **Cache instrumentation (`/debug/cache` endpoint).** Each data module exports `getCacheStats()` returning per-cache `{loaded, count}` (and `bytes` for the image LRU). The read-only endpoint aggregates all nine modules (#104).
+- **Aggregate runtime metrics for Issue #90.** The TypeScript Streamable HTTP server provides an opt-in `/debug/metrics` endpoint with process memory high-water, request/tool duration and error totals, session age/idle-timeout/lifecycle totals, and nine-domain cache hit/miss/invalidation counters. Metrics are aggregate-only and retain neither MCP arguments/results nor session identifiers.
 - **Production cgroup sampler.** Added a systemd timer template that resolves the PRTS service cgroup dynamically and appends validated five-minute memory and runtime-metrics samples to JSONL, with log rotation and no public reverse-proxy route.
-- **Isolated memory benchmark.** Added a loopback-only repeat/concurrency probe that fails when an unchanged workload produces new cache misses, providing a reproducible input for Issue #90's bounded-growth decision.
+- **Six-session memory canary gate (#90).** The isolated loopback benchmark exercises archives, data search, story search, chapter/activity reads, and an actual artwork image retrieval across six concurrent sessions. It requires cache stability plus a quiescent request state and bounded RSS. Version-controlled same-host canary assets add a separate loopback service, authenticated temporary route, and cgroup limits of `MemoryHigh=1G` / `MemoryMax=1536M` without modifying the stable service.
 
 ### Changed
 
 - Cache debug projections now include process-lifetime `hits`, `misses`, and `clears` fields while preserving the existing nine-domain shape.
-
-## [2.6.0-alpha.1] - 2026-08-08
-
-### Added
-
-- **Cache instrumentation (`/debug/cache` endpoint).** Each data module exports `getCacheStats()` returning per-cache `{loaded, count}` (and `bytes` for the image LRU). The read-only `/debug/cache` HTTP endpoint aggregates all 9 modules' stats for observability (#104).
+- **MCP SDK v2 and dual-era serving (#84).** Migrated to SDK v2. Legacy initialize/session clients remain supported; HTTP clients can opt into the stateless `2026-07-28` envelope for `server/discover`, `tools/list`, and `tools/call` without initialize or `Mcp-Session-Id`.
+- Base illust label mapping (`BASE_ILLUST_LABELS`) is consolidated to a single owner in `data/images.ts`; `data/artworkMediawiki.ts` imports it instead of maintaining a duplicate (#100).
 
 ### Fixed
 
-- `Readable.fromWeb` cast in `imagesSync.ts` narrowed from bare `any` to the exact parameter type via `Parameters<typeof Readable.fromWeb>[0]` (#100).
-
-### Changed
-
-- Base illust label mapping (`BASE_ILLUST_LABELS`) consolidated to a single owner in `data/images.ts`; `data/artworkMediawiki.ts` imports it instead of maintaining a duplicate (#100).
+- `Readable.fromWeb` cast is narrowed from bare `any` to the exact parameter type via `Parameters<typeof Readable.fromWeb>[0]` (#100).
+- **Artwork form and diagnostics boundaries (#123).** `operator_artwork` resolves the half-width and full-width-parenthesis spellings of `阿米娅(近卫)` and `阿米娅(医疗)` to their distinct artwork char IDs without changing name resolution for other tools. Opaque artwork tokens require an exact form match in both local and MediaWiki modes. `/debug/cache` and `/debug/metrics` now require `PRTS_DEBUG_TOKEN` Bearer authentication and otherwise return 404.
 
 ## [2.5.2] - 2026-08-09
 
