@@ -5,7 +5,7 @@
  * game-data-backed tools to a McpServer instance.
  */
 
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { withActivationSnapshot } from "../config.js";
 import {
@@ -41,9 +41,10 @@ import {
 } from "../data/stageEnemy.js";
 import { buildSearch, renderSearch } from "../data/search.js";
 import { renderResult, textResult, type OutputChannel } from "../output.js";
+import { registerTool } from "./registerTool.js";
 
 export function registerGamedataTools(server: McpServer, channel: OutputChannel = "content"): void {
-  server.tool(
+  registerTool(server,
     "get_operator_archives",
     [
       "获取指定干员的档案资料。",
@@ -57,7 +58,7 @@ export function registerGamedataTools(server: McpServer, channel: OutputChannel 
     })
   );
 
-  server.tool(
+  registerTool(server,
     "get_operator_voicelines",
     [
       "获取指定干员的所有语音台词记录。",
@@ -71,7 +72,7 @@ export function registerGamedataTools(server: McpServer, channel: OutputChannel 
     })
   );
 
-  server.tool(
+  registerTool(server,
     "get_operator_basic_info",
     [
       "获取指定干员的基本数值信息。",
@@ -93,7 +94,7 @@ export function registerGamedataTools(server: McpServer, channel: OutputChannel 
 
   // --- Enemy tools ---
 
-  server.tool(
+  registerTool(server,
     "list_enemies",
     [
       "列出敌方图鉴，支持按威胁等级过滤和分页。",
@@ -113,7 +114,7 @@ export function registerGamedataTools(server: McpServer, channel: OutputChannel 
     })
   );
 
-  server.tool(
+  registerTool(server,
     "get_enemy_info",
     [
       "获取指定敌人的详细图鉴资料。",
@@ -137,7 +138,7 @@ export function registerGamedataTools(server: McpServer, channel: OutputChannel 
     })
   );
 
-  server.tool(
+  registerTool(server,
     "get_stage_enemies",
     [
       "获取指定关卡实际出场的敌人列表。",
@@ -159,7 +160,7 @@ export function registerGamedataTools(server: McpServer, channel: OutputChannel 
     })
   );
 
-  server.tool(
+  registerTool(server,
     "get_enemy_appearances",
     [
       "反向查询指定敌人实际出现在哪些关卡。",
@@ -179,7 +180,7 @@ export function registerGamedataTools(server: McpServer, channel: OutputChannel 
 
   // --- Stage tools ---
 
-  server.tool(
+  registerTool(server,
     "list_stages",
     [
       "列出关卡列表，支持按章节和类型过滤。",
@@ -200,7 +201,7 @@ export function registerGamedataTools(server: McpServer, channel: OutputChannel 
     })
   );
 
-  server.tool(
+  registerTool(server,
     "get_stage_info",
     "获取指定关卡的详细信息。返回关卡的编号、类型、难度、所属区域、理智消耗、掉落奖励、解锁条件等。关卡实际出场的敌人见 get_stage_enemies。",
     { stage_id: z.string().describe("关卡 ID，如 'main_00-01'（可从 list_stages 获取）。") },
@@ -218,7 +219,7 @@ export function registerGamedataTools(server: McpServer, channel: OutputChannel 
 
   // --- Item tools ---
 
-  server.tool(
+  registerTool(server,
     "list_items",
     [
       "列出物品/材料列表，支持按分类过滤和分页。",
@@ -236,7 +237,7 @@ export function registerGamedataTools(server: McpServer, channel: OutputChannel 
     })
   );
 
-  server.tool(
+  registerTool(server,
     "get_item_info",
     [
       "获取指定物品/材料的详细信息。",
@@ -259,7 +260,7 @@ export function registerGamedataTools(server: McpServer, channel: OutputChannel 
 
   // --- Search tools ---
 
-  server.tool(
+  registerTool(server,
     "search",
     [
       "在指定数据域中执行全文正则搜索。",

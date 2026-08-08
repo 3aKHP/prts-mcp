@@ -6,8 +6,7 @@
  * only when IMAGES_ENABLED=true (see server.ts).
  */
 
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import type { CallToolResult, McpServer } from "@modelcontextprotocol/server";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { z } from "zod";
@@ -39,6 +38,7 @@ import {
 import { activeGenerationSync } from "../data/imagesSync.js";
 import { resolveCharId } from "../data/operator.js";
 import { renderImageResult, renderResult, textResult, type OutputChannel } from "../output.js";
+import { registerTool } from "./registerTool.js";
 
 // ---------------------------------------------------------------------------
 // Synchronous data access (runs inside withActivationSnapshot)
@@ -376,7 +376,7 @@ export function registerArtworkTools(
   server: McpServer,
   channel: OutputChannel = "content",
 ): void {
-  server.tool(
+  registerTool(server,
     "operator_artwork",
     [
       "查询干员立绘（精英化立绘、时装等）并获取图片。",

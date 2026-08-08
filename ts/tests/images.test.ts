@@ -17,7 +17,7 @@ type ToolHandler = (args: Record<string, unknown>) => unknown | Promise<unknown>
 class CapturingServer {
   handler: ToolHandler | undefined;
 
-  tool(_name: string, _description: unknown, _schema: unknown, handler: ToolHandler): void {
+  registerTool(_name: string, _config: unknown, handler: ToolHandler): void {
     this.handler = handler;
   }
 }
