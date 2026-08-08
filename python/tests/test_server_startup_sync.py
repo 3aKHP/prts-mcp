@@ -1,44 +1,5 @@
 from __future__ import annotations
 
-import sys
-import types
-
-
-class _FakeMcpServer:
-    def __init__(self) -> None:
-        self.version = "0.0.0"
-
-
-class FakeFastMCP:
-    def __init__(self, _name: str):
-        self._mcp_server = _FakeMcpServer()
-
-    def tool(self):
-        return lambda func: func
-
-    def run(self) -> None:
-        pass
-
-
-def _install_server_import_stubs() -> None:
-    mcp_module = types.ModuleType("mcp")
-    mcp_server_module = types.ModuleType("mcp.server")
-    fastmcp_module = types.ModuleType("mcp.server.fastmcp")
-    pydantic_module = types.ModuleType("pydantic")
-    fastmcp_module.FastMCP = FakeFastMCP
-    pydantic_module.Field = lambda *args, **kwargs: kwargs.get("default")
-    mcp_types_module = types.ModuleType("mcp.types")
-    for _name in ("CallToolResult", "ImageContent", "TextContent"):
-        setattr(mcp_types_module, _name, type(_name, (), {}))
-    sys.modules.setdefault("mcp", mcp_module)
-    sys.modules.setdefault("mcp.server", mcp_server_module)
-    sys.modules.setdefault("mcp.server.fastmcp", fastmcp_module)
-    sys.modules.setdefault("mcp.types", mcp_types_module)
-    sys.modules.setdefault("pydantic", pydantic_module)
-
-
-_install_server_import_stubs()
-
 from prts_mcp import server
 
 

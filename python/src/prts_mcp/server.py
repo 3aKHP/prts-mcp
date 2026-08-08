@@ -1,12 +1,12 @@
 """PRTS-MCP server entry point.
 
-Creates the FastMCP instance, delegates tool registration to focused
+Creates the MCPServer instance, delegates tool registration to focused
 modules (tools_prts / tools_gamedata / tools_story), and starts the
 background data-sync daemon before running the MCP transport.
 
 Supports two transports selected by the ``PRTS_TRANSPORT`` env var:
 
-- ``stdio`` (default) — FastMCP stdio, for local Claude Desktop / Code.
+- ``stdio`` (default) — MCP stdio, for local Claude Desktop / Code.
 - ``http`` — Streamable HTTP via Starlette + uvicorn, for self-hosted
   remote access. Mirrors the TypeScript implementation's HTTP surface
   (``/mcp`` endpoint, ``/health`` probe). output_channel is process-level
@@ -23,7 +23,7 @@ import sys
 import threading
 from importlib.metadata import PackageNotFoundError, version as _pkg_version
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server import MCPServer
 
 # Re-export sync orchestration symbols for backward compatibility
 # (tests access these via server._sync_needs_retry etc.)
@@ -45,13 +45,11 @@ logging.basicConfig(
 )
 _logger = logging.getLogger("prts_mcp.server")
 
-mcp = FastMCP("PRTS_Wiki_Assistant")
-# FastMCP does not expose a version parameter; set it on the internal
-# MCPServer so initialize.serverInfo reports the product version.
+mcp = MCPServer("PRTS_Wiki_Assistant")
 try:
-    mcp._mcp_server.version = _pkg_version("prts-mcp")
+    mcp._lowlevel_server.version = _pkg_version("prts-mcp")
 except PackageNotFoundError:
-    mcp._mcp_server.version = "0.0.0"
+    mcp._lowlevel_server.version = "0.0.0"
 
 
 def _register_tools() -> None:

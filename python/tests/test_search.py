@@ -159,7 +159,7 @@ class TestSearchOperatorData:
         assert render_operator_search(data) == expected
         assert search_operator_data("ZZZZZZZ") == expected
         result = render_result(data, expected, channel="structured")
-        assert result.structuredContent == data
+        assert result.structured_content == data
 
     def test_invalid_regex(self) -> None:
         result = search_operator_data("[")
@@ -195,7 +195,7 @@ class TestSearchOperatorData:
             "阿米娅的档案文本。"
         )
         result = render_result(data, render_operator_search(data), channel="both")
-        assert result.structuredContent == data
+        assert result.structured_content == data
 
     def test_unified_search_dispatch(self) -> None:
         data = build_search("operators", "阿米娅", max_results=1)
@@ -273,7 +273,7 @@ class TestSearchStories:
         assert render_story_search(data) == expected
         assert search_stories_from_store(store, "ZZZZZZ") == expected
         result = render_result(data, expected, channel="structured")
-        assert result.structuredContent == data
+        assert result.structured_content == data
 
     @pytest.mark.parametrize("store_kind", ["directory", "zip"])
     def test_invalid_regex(self, tmp_path: Path, store_kind: str) -> None:
@@ -326,4 +326,4 @@ class TestSearchStories:
         assert render_story_search(data) == expected
         assert search_stories_from_store(store, "你好") == expected
         result = render_result(data, expected, channel="both")
-        assert result.structuredContent == data
+        assert result.structured_content == data

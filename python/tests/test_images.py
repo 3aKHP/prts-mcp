@@ -8,7 +8,7 @@ import json
 import pytest
 
 from prts_mcp.data.images import SCHEMA_VERSION, build_artwork_label, parse_index
-from prts_mcp.output import _channel_var
+import prts_mcp.output as output_module
 from prts_mcp.tools_artwork import _do_get, _do_get_mediawiki, _do_list
 
 # A 1x1 transparent PNG used as a stand-in image payload.
@@ -153,8 +153,8 @@ def mock_images(monkeypatch, tmp_path):
 
 def test_list_returns_markdown_with_labels(mock_images):
     result = asyncio.run(_do_list("阿米娅"))
-    assert result.isError is False
-    assert result.structuredContent is None  # default channel = content
+    assert result.is_error is False
+    assert result.structured_content is None  # default channel = content
     text_blocks = [c for c in result.content if c.type == "text"]
     assert len(text_blocks) == 1
     body = text_blocks[0].text
@@ -166,12 +166,15 @@ def test_list_returns_markdown_with_labels(mock_images):
 
 
 def test_list_structured_channel(mock_images):
-    token = _channel_var.set("structured")
+    # test_output reloads the module when exercising import-time environment
+    # parsing, so access the current ContextVar through the module rather than
+    # retaining a stale imported instance.
+    token = output_module._channel_var.set("structured")
     try:
         result = asyncio.run(_do_list("阿米娅"))
     finally:
-        _channel_var.reset(token)
-    data = result.structuredContent
+        output_module._channel_var.reset(token)
+    data = result.structured_content
     assert data is not None
     assert data["operator_name"] == "阿米娅"
     assert data["char_id"] == "char_002_amiya"
@@ -189,10 +192,10 @@ def test_list_unknown_operator(mock_images):
 
 def test_get_returns_image_content(mock_images):
     result = asyncio.run(_do_get("阿米娅", "char_002_amiya#1", "large"))
-    assert result.isError is False
+    assert result.is_error is False
     image_blocks = [c for c in result.content if c.type == "image"]
     assert len(image_blocks) == 1
-    assert image_blocks[0].mimeType == "image/png"
+    assert image_blocks[0].mime_type == "image/png"
     # Pure base64 (no data: prefix) that decodes to the fixture PNG.
     assert image_blocks[0].data == _SAMPLE_PNG_B64
     text_blocks = [c for c in result.content if c.type == "text"]

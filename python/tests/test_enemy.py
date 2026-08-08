@@ -178,7 +178,7 @@ class TestListEnemies:
             f"offset=999 超出范围（总计 {data['total']} 条）。"
         )
         r = render_result(data, list_enemies(offset=999), channel="structured")
-        assert r.structuredContent == data
+        assert r.structured_content == data
 
     def test_filter_no_match_is_structured_no_empty_reason(self, gamedata):
         # Locks the current filter-no-match payload shape. Distinct from the
@@ -195,7 +195,7 @@ class TestListEnemies:
         assert "empty_reason" not in data
         assert list_enemies(threat_level="elite") == "# 敌人图鉴（共 0 个）"
         r = render_result(data, list_enemies(threat_level="elite"), channel="structured")
-        assert r.structuredContent == data
+        assert r.structured_content == data
 
     def test_threat_level_invalid_returns_error(self, gamedata):
         out = list_enemies(threat_level="INVALID")
@@ -348,7 +348,7 @@ class TestSearchEnemies:
         assert render_enemy_search(data) == expected
         assert search_enemies("整合运动") == expected
         r = render_result(data, expected, channel="both")
-        assert r.structuredContent == data
+        assert r.structured_content == data
 
     def test_no_match(self, gamedata):
         data = build_enemy_search("绝对不存在的关键词")
@@ -361,7 +361,7 @@ class TestSearchEnemies:
         assert render_enemy_search(data) == expected
         assert search_enemies("绝对不存在的关键词") == expected
         r = render_result(data, expected, channel="structured")
-        assert r.structuredContent == data
+        assert r.structured_content == data
 
     def test_invalid_regex(self, gamedata):
         out = search_enemies("[unclosed")
