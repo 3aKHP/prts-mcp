@@ -11,7 +11,7 @@
  * Output channel is resolved purely from the PRTS_OUTPUT_CHANNEL env var
  * (stdio has no query string / headers); the default is "content".
  */
-import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
+import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import { createMcpServer, log, SERVER_VERSION } from "./server-core.js";
 import { startAutoSync } from "./startupSync.js";
 import { parseChannel } from "./output.js";
@@ -24,9 +24,10 @@ async function main(): Promise<void> {
     warn,
   );
 
-  const server = createMcpServer(channel);
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
+  serveStdio(() => createMcpServer(channel), {
+    legacy: "serve",
+    onerror: (error) => log("ERROR", `stdio MCP request failed: ${error.message}`),
+  });
 
   log("INFO", `PRTS-MCP stdio server ${SERVER_VERSION} connected (channel=${channel})`);
 

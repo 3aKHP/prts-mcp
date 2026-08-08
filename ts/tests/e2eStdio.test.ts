@@ -20,6 +20,23 @@ const GAMEDATA_PATH = join(REPO_ROOT, "data", "gamedata");
 const EXPECTED_VERSION = JSON.parse(
   readFileSync(join(REPO_ROOT, "ts", "package.json"), "utf-8"),
 ).version as string;
+const MODERN_VERSION = "2026-07-28";
+
+function modernMessage(method: string, params: Record<string, unknown>, id: number): Record<string, unknown> {
+  return {
+    jsonrpc: "2.0",
+    method,
+    id,
+    params: {
+      ...params,
+      _meta: {
+        "io.modelcontextprotocol/protocolVersion": MODERN_VERSION,
+        "io.modelcontextprotocol/clientInfo": { name: "stdio-test", version: "1.0" },
+        "io.modelcontextprotocol/clientCapabilities": {},
+      },
+    },
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -180,6 +197,24 @@ test("stdio: graceful error for unavailable data", async () => {
       text.includes("暂不可用") || text.includes("未就绪") || text.includes("仍在进行中"),
       `unexpected response: ${text.slice(0, 100)}`,
     );
+  } finally {
+    child.kill();
+  }
+});
+
+test("stdio: modern discovery and tools/list need no initialize", async () => {
+  const { child } = startServer();
+  try {
+    await send(child, modernMessage("server/discover", {}, 10));
+    const discover = await recv(child);
+    assert.equal(discover["id"], 10);
+    assert.ok(discover["result"]);
+
+    await send(child, modernMessage("tools/list", {}, 11));
+    const list = await recv(child);
+    assert.equal(list["id"], 11);
+    const tools = (list["result"] as { tools: Array<{ name: string }> }).tools;
+    assert.ok(tools.some((tool) => tool.name === "get_operator_basic_info"));
   } finally {
     child.kill();
   }
