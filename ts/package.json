@@ -32,6 +32,7 @@
     "smoke:http:fixture:node": "node scripts/smoke-http.mjs --fixture-data -- node dist/server.js",
     "smoke:bun": "bun run smoke:http:fixture",
     "smoke:bun:package": "bun scripts/smoke-package-bun.mjs",
+    "bench:memory": "node scripts/bench-memory.mjs",
     "test": "node --import tsx --test \"tests/**/*.test.ts\"",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "tsc"

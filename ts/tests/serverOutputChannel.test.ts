@@ -141,6 +141,8 @@ test("output_channel is resolved once per session by query/header/env priority",
   t.after(() => { child.kill(); });
 
   await waitForHealth(origin);
+  const metricsDisabled = await fetch(`${origin}/debug/metrics`);
+  assert.equal(metricsDisabled.status, 404, "metrics must be disabled unless explicitly enabled");
 
   let id = 1;
   const initialize = (query = "", headers: Record<string, string> = {}) =>

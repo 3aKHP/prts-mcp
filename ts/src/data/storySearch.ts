@@ -9,6 +9,8 @@
 
 import { statSync } from "node:fs";
 import { join } from "node:path";
+import type { CacheStat } from "../cacheStats.js";
+import { CacheMetrics } from "./cacheMetrics.js";
 import { DirectoryStore, type JsonStore, ZipStore } from "./stores.js";
 import {
   type StoryLine,
@@ -73,17 +75,19 @@ export interface StorySearchPayload {
 let storySearchCache:
   | { descriptor: string; index: StorySearchIndex }
   | null = null;
+const storySearchMetrics = new CacheMetrics();
 
 export function clearSearchCache(): void {
+  storySearchMetrics.clear();
   storySearchCache = null;
 }
 
-export function getCacheStats(): Record<string, { loaded: boolean; count: number }> {
+export function getCacheStats(): Record<string, CacheStat> {
   return {
-    story_search_index: {
-      loaded: storySearchCache !== null,
-      count: storySearchCache ? storySearchCache.index.chapters.length : 0,
-    },
+    story_search_index: storySearchMetrics.snapshot(
+      storySearchCache !== null,
+      storySearchCache ? storySearchCache.index.chapters.length : 0,
+    ),
   };
 }
 
@@ -284,7 +288,9 @@ export function renderStorySearch(data: StorySearchPayload): string {
 
 export function storySearchIndex(store: JsonStore): StorySearchIndex {
   const descriptor = storyStoreDescriptor(store);
-  if (descriptor !== null && storySearchCache?.descriptor === descriptor) {
+  const cached = descriptor !== null && storySearchCache?.descriptor === descriptor;
+  storySearchMetrics.access(cached);
+  if (cached && storySearchCache !== null) {
     return storySearchCache.index;
   }
   const index = buildStorySearchIndex(store);

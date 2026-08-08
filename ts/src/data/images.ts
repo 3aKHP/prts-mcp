@@ -14,6 +14,8 @@ import {
   registerActivationListener,
 } from "../config.js";
 import { DirectoryStore } from "./stores.js";
+import { CacheMetrics } from "./cacheMetrics.js";
+import type { CacheStat } from "../cacheStats.js";
 
 export const SCHEMA_VERSION = "akdp-images/v1";
 export const VARIANT_ORDER = ["original", "large", "preview"] as const;
@@ -143,6 +145,7 @@ type CharSkinsCache = Record<string, CharSkinLike> | null;
 // null = not yet loaded; the cache is reset by clearImageCaches on activation
 // changes, mirroring operator.ts's lazy-cache pattern.
 let _charSkins: CharSkinsCache = null;
+const charSkinsMetrics = new CacheMetrics();
 
 /**
  * Load the ``charSkins`` mapping from ``skin_table.json``.
@@ -153,6 +156,7 @@ let _charSkins: CharSkinsCache = null;
  */
 export function getCharSkins(): Record<string, CharSkinLike> {
   checkActivationChange();
+  charSkinsMetrics.access(_charSkins !== null);
   if (_charSkins === null) {
     const ep = loadConfig().effectiveExcelPath;
     if (ep === null) {
@@ -180,12 +184,13 @@ export function getCharSkins(): Record<string, CharSkinLike> {
 }
 
 export function clearImageCaches(): void {
+  charSkinsMetrics.clear();
   _charSkins = null;
 }
 
-export function getCacheStats(): Record<string, { loaded: boolean; count: number }> {
+export function getCacheStats(): Record<string, CacheStat> {
   return {
-    char_skins: { loaded: _charSkins != null, count: _charSkins ? Object.keys(_charSkins).length : 0 },
+    char_skins: charSkinsMetrics.snapshot(_charSkins != null, _charSkins ? Object.keys(_charSkins).length : 0),
   };
 }
 

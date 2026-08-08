@@ -134,6 +134,7 @@ test("E2E", async (t) => {
         GITHUB_MIRRORS: "",
         IMAGES_ENABLED: "true",
         SESSION_IDLE_TIMEOUT_MS: "30000",
+        PRTS_METRICS_ENABLED: "true",
       },
       stdio: ["ignore", "pipe", "pipe"],
     },
@@ -151,7 +152,7 @@ test("E2E", async (t) => {
   await t.test("debug cache returns expected modules", async () => {
     const res = await fetch(`${origin}/debug/cache`);
     assert.equal(res.status, 200);
-    const data = await res.json() as Record<string, Record<string, { loaded: boolean; count: number; bytes?: number }>>;
+    const data = await res.json() as Record<string, Record<string, { loaded: boolean; count: number; hits: number; misses: number; clears: number; bytes?: number }>>;
     const expectedModules = new Set([
       "operator", "enemy", "stage", "stage_enemy", "item",
       "search", "story_search", "images", "artwork_mediawiki",
@@ -161,6 +162,9 @@ test("E2E", async (t) => {
       for (const [cacheName, stat] of Object.entries(caches)) {
         assert.equal(typeof stat.loaded, "boolean", `${mod}.${cacheName}.loaded should be boolean`);
         assert.equal(typeof stat.count, "number", `${mod}.${cacheName}.count should be number`);
+        assert.equal(typeof stat.hits, "number", `${mod}.${cacheName}.hits should be number`);
+        assert.equal(typeof stat.misses, "number", `${mod}.${cacheName}.misses should be number`);
+        assert.equal(typeof stat.clears, "number", `${mod}.${cacheName}.clears should be number`);
       }
     }
     // artwork_mediawiki.image_cache includes bytes
@@ -284,6 +288,27 @@ test("E2E", async (t) => {
     );
     assert.equal(r.status, 200);
     assert.ok(r.body?.result, "reused session should work");
+  });
+
+  await t.test("debug metrics exposes aggregate runtime state only", async () => {
+    const res = await fetch(`${origin}/debug/metrics`);
+    assert.equal(res.status, 200);
+    const data = await res.json() as Record<string, unknown>;
+    assert.equal(data.schema_version, "prts-mcp.metrics/v1");
+    const server = data.server as Record<string, unknown>;
+    const processMetrics = data.process as Record<string, unknown>;
+    const sessions = data.sessions as Record<string, unknown>;
+    const requests = data.requests as Record<string, unknown>;
+    const toolCalls = data.tool_calls as Record<string, unknown>;
+    assert.equal(server.version, EXPECTED_VERSION);
+    assert.equal(typeof processMetrics.rss_bytes, "number");
+    assert.equal(sessions.idle_timeout_ms, 30000);
+    assert.equal(sessions.active, 1);
+    assert.ok(Number(requests.total) >= 10);
+    const byName = toolCalls.by_name as Record<string, Record<string, unknown>>;
+    assert.ok(Number(byName.get_operator_basic_info?.total) >= 2);
+    assert.equal(typeof byName.get_operator_basic_info?.duration_ms_max, "number");
+    assert.equal(JSON.stringify(data).includes(sessionId), false, "metrics must not expose session IDs");
   });
 
   // --- PRTS API tools (opt-in) ---
