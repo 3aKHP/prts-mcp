@@ -40,6 +40,18 @@ import { resolveCharId } from "../data/operator.js";
 import { renderImageResult, renderResult, textResult, type OutputChannel } from "../output.js";
 import { registerTool } from "./registerTool.js";
 
+// These IDs represent forms that deliberately share the base character's
+// display name in the game table. Keep this resolver local to artwork: other
+// operator tools retain their ordinary exact-name lookup contract.
+const ARTWORK_FORM_CHAR_IDS: Readonly<Record<string, string>> = {
+  "阿米娅(近卫)": "char_1001_amiya2",
+  "阿米娅(医疗)": "char_1037_amiya3",
+};
+
+function resolveArtworkCharId(operatorName: string): string | null {
+  return ARTWORK_FORM_CHAR_IDS[operatorName] ?? resolveCharId(operatorName);
+}
+
 // ---------------------------------------------------------------------------
 // Synchronous data access (runs inside withActivationSnapshot)
 // ---------------------------------------------------------------------------
@@ -200,7 +212,7 @@ async function doGetMediawiki(
 function doList(operatorName: string, channel: OutputChannel): CallToolResult {
   let charId: string | null;
   try {
-    charId = resolveCharId(operatorName);
+    charId = resolveArtworkCharId(operatorName);
   } catch {
     // gamedata not synced yet (effectiveExcelPath null or table missing).
     return dataNotReady();
@@ -277,7 +289,7 @@ function doGet(
   }
   let charId: string | null;
   try {
-    charId = resolveCharId(operatorName);
+    charId = resolveArtworkCharId(operatorName);
   } catch {
     return dataNotReady();
   }

@@ -37,6 +37,20 @@ from prts_mcp.data.operator import resolve_char_id
 from prts_mcp.output import render_image_result, render_result, text_result
 
 
+# These IDs represent forms that deliberately share the base character's
+# display name in the game table. Keep this resolver local to artwork: other
+# operator tools must retain their ordinary exact-name lookup contract.
+_ARTWORK_FORM_CHAR_IDS: Mapping[str, str] = {
+    "阿米娅(近卫)": "char_1001_amiya2",
+    "阿米娅(医疗)": "char_1037_amiya3",
+}
+
+
+def _resolve_artwork_char_id(operator_name: str) -> str | None:
+    """Resolve an artwork-only form alias without widening normal lookup."""
+    return _ARTWORK_FORM_CHAR_IDS.get(operator_name) or resolve_char_id(operator_name)
+
+
 def _images_generation() -> Path | None:
     """Return the active images generation directory, or None when unavailable."""
     cfg = Config.load()
@@ -188,7 +202,7 @@ async def _do_list(operator_name: str) -> object:
     if not cfg.local_image:
         return await _do_list_mediawiki(operator_name)
     try:
-        char_id = resolve_char_id(operator_name)
+        char_id = _resolve_artwork_char_id(operator_name)
     except (OSError, AssertionError):
         # gamedata not synced yet (effective_excel_path None or table missing).
         return _data_not_ready()
@@ -269,7 +283,7 @@ async def _do_get(
             f"找不到 artwork_id「{artwork_id}」。该 ID 不透明，请用 action=list 重新获取。"
         )
     try:
-        char_id = resolve_char_id(operator_name)
+        char_id = _resolve_artwork_char_id(operator_name)
     except (OSError, AssertionError):
         return _data_not_ready()
     if char_id is None:

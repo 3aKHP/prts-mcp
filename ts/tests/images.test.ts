@@ -174,3 +174,91 @@ test("operator_artwork rejects cross-operator tokens before local reads or Media
     clearOperatorCaches();
   }
 });
+
+test("operator_artwork resolves Amiya form aliases and rejects cross-form tokens", async () => {
+  const root = mkdtempSync(join(tmpdir(), "prts-artwork-amiya-forms-"));
+  const excel = join(root, "gamedata", "zh_CN", "gamedata", "excel");
+  const imageRoot = join(root, "images");
+  const generation = join(imageRoot, ".releases", "test");
+  mkdirSync(excel, { recursive: true });
+  mkdirSync(generation, { recursive: true });
+  for (const file of [
+    "handbook_info_table.json",
+    "charword_table.json",
+    "story_review_table.json",
+  ]) {
+    writeFileSync(join(excel, file), "{}", "utf-8");
+  }
+  // The production character table intentionally retains only the base name;
+  // the artwork-specific aliases must supply the two transformed char IDs.
+  writeFileSync(join(excel, "character_table.json"), JSON.stringify({
+    char_002_amiya: { name: "阿米娅" },
+  }), "utf-8");
+  writeFileSync(join(imageRoot, ".images_meta.json"), JSON.stringify({
+    generation_root: ".releases/test",
+  }), "utf-8");
+  writeFileSync(join(generation, "index.json"), JSON.stringify({
+    schemaVersion: SCHEMA_VERSION,
+    baselineVersion: "b1",
+    currentVersion: "c1",
+    shards: {},
+    artworks: {
+      "char_1001_amiya2#1": {
+        kind: "base",
+        shard: "chararts",
+        large: { file: "guard.png", w: 1, h: 1, bytes: 1, sha256: "guard" },
+      },
+      "char_1037_amiya3#1": {
+        kind: "base",
+        shard: "chararts",
+        large: { file: "medic.png", w: 1, h: 1, bytes: 1, sha256: "medic" },
+      },
+    },
+  }), "utf-8");
+
+  const savedEnv = {
+    gamedata: process.env["GAMEDATA_PATH"],
+    imageDir: process.env["PRTS_IMAGE_DIR"],
+    localImage: process.env["LOCAL_IMAGE"],
+  };
+  process.env["GAMEDATA_PATH"] = join(root, "gamedata");
+  process.env["PRTS_IMAGE_DIR"] = imageRoot;
+  process.env["LOCAL_IMAGE"] = "true";
+  clearOperatorCaches();
+
+  try {
+    const server = new CapturingServer();
+    registerArtworkTools(server as never);
+    assert.ok(server.handler);
+
+    for (const [operatorName, expectedId] of [
+      ["阿米娅(近卫)", "char_1001_amiya2#1"],
+      ["阿米娅(医疗)", "char_1037_amiya3#1"],
+    ]) {
+      const result = await server.handler({
+        operator_name: operatorName,
+        action: "list",
+      }) as { content: Array<{ type: string; text?: string }> };
+      assert.match(result.content[0]?.text ?? "", new RegExp(expectedId));
+    }
+
+    const crossForm = await server.handler({
+      operator_name: "阿米娅(医疗)",
+      action: "get",
+      artwork_id: "char_1001_amiya2#1",
+      variant: "large",
+    }) as { content: Array<{ type: string; text?: string }> };
+    assert.match(crossForm.content[0]?.text ?? "", /不属于/);
+    assert.equal(crossForm.content.some((block) => block.type === "image"), false);
+  } finally {
+    for (const [key, value] of Object.entries({
+      GAMEDATA_PATH: savedEnv.gamedata,
+      PRTS_IMAGE_DIR: savedEnv.imageDir,
+      LOCAL_IMAGE: savedEnv.localImage,
+    })) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    clearOperatorCaches();
+  }
+});

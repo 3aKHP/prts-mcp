@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Fixed
+
+- **Amiya artwork forms (#123).** `operator_artwork` now resolves
+  `阿米娅(近卫)` and `阿米娅(医疗)` to their distinct artwork char IDs without
+  changing name resolution for other tools. Opaque artwork tokens now require
+  an exact form match in both local and MediaWiki modes, so a base or sibling
+  form cannot retrieve another form's image.
+
 ### Changed
 
 - **MCP SDK v2 and dual-era serving (#84).** Migrated to the exact
