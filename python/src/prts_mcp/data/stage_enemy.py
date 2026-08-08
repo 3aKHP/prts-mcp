@@ -4,6 +4,7 @@ from collections import Counter
 from typing import Any
 
 from prts_mcp.config import Config, activation_aware_cache, cache_stat, register_activation_listener
+from prts_mcp.data.enemy_database import normalize_enemy_database
 from prts_mcp.data.stores import DirectoryStore
 
 
@@ -68,26 +69,7 @@ def _load_enemy_handbook() -> dict[str, dict[str, Any]]:
 
 @activation_aware_cache(maxsize=1)
 def _load_enemy_database() -> dict[str, dict[int, dict[str, Any]]]:
-    raw = _levels_store().read_json(_DATABASE_FILE)
-    index: dict[str, dict[int, dict[str, Any]]] = {}
-    for row in raw.get("enemies", []):
-        key = row.get("Key")
-        values = row.get("Value") or []
-        if not key:
-            continue
-        level_map: dict[int, dict[str, Any]] = {}
-        for value in values:
-            if not isinstance(value, dict):
-                continue
-            try:
-                level = int(value.get("level", 0))
-            except (TypeError, ValueError):
-                level = 0
-            enemy_data = value.get("enemyData")
-            if isinstance(enemy_data, dict):
-                level_map[level] = enemy_data
-        index[str(key)] = level_map
-    return index
+    return normalize_enemy_database(_levels_store().read_json(_DATABASE_FILE))
 
 
 @activation_aware_cache(maxsize=1)
@@ -195,7 +177,7 @@ def _stage_specific_enemy_data(enemy_id: str, level: int, overwritten: Any = Non
 
 def _format_stats(enemy_data: dict[str, Any] | None) -> str:
     if not enemy_data:
-        return "战斗属性：无数据库记录"
+        return "无数据库记录"
     attrs = enemy_data.get("attributes") or {}
     hp = _m_value(attrs.get("maxHp"), 0)
     atk = _m_value(attrs.get("atk"), 0)

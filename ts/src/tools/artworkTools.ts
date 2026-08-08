@@ -24,6 +24,7 @@ import {
 } from "../data/images.js";
 import {
   VARIANT_WIDTH,
+  artworkBelongsToOperator,
   imageCacheGet,
   imageCachePut,
   labelFromFilename,
@@ -127,6 +128,11 @@ async function doGetMediawiki(
 ): Promise<CallToolResult> {
   if (!artworkId) {
     return textResult("action=get 时必须提供 artwork_id。请先用 action=list 获取。");
+  }
+  if (!artworkBelongsToOperator(artworkId, operatorName)) {
+    return textResult(
+      `该 artwork_id 不属于干员「${operatorName}」。artwork_id 为不透明 token，请用 action=list 重新获取。`,
+    );
   }
   if (variant === "original") {
     return textResult(
@@ -267,6 +273,22 @@ function doGet(
   if (entry === undefined) {
     return textResult(
       `找不到 artwork_id「${artworkId}」。该 ID 不透明，请用 action=list 重新获取。`,
+    );
+  }
+  let charId: string | null;
+  try {
+    charId = resolveCharId(operatorName);
+  } catch {
+    return dataNotReady();
+  }
+  if (charId === null) {
+    return textResult(
+      `找不到干员「${operatorName}」。建议先用 search_prts 确认准确的中文名称。`,
+    );
+  }
+  if (charIdOf(artworkId) !== charId) {
+    return textResult(
+      `该 artwork_id 不属于干员「${operatorName}」。artwork_id 为不透明 token，请用 action=list 重新获取。`,
     );
   }
   const variantMeta = entry.variants[chosen];

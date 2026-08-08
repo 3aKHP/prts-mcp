@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from prts_mcp.config import Config, activation_aware_cache, cache_stat, register_activation_listener
+from prts_mcp.data.enemy_database import normalize_enemy_database
 from prts_mcp.data.stores import DirectoryStore
 
 
@@ -99,14 +100,12 @@ def _load_enemy_database() -> dict[str, Any] | None:
     if not _has_database():
         return None
     store = _database_store()
-    raw = store.read_json(_DATABASE_FILE)
-    # Build enemyId → first-level-enemyData lookup
-    index: dict[str, dict] = {}
-    for entry in raw.get("enemies", []):
-        key = entry.get("Key", "")
-        values = entry.get("Value", [])
-        if values and key:
-            index[key] = values[0].get("enemyData", {})
+    levels = normalize_enemy_database(store.read_json(_DATABASE_FILE))
+    index = {
+        enemy_id: level_map.get(0) or next(iter(level_map.values()))
+        for enemy_id, level_map in levels.items()
+        if level_map
+    }
     return {"_index": index}
 
 
