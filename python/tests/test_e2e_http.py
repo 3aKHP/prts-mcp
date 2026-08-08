@@ -29,6 +29,7 @@ import pytest
 
 GAMEDATA_PATH = Path(__file__).resolve().parents[2] / "data" / "gamedata"
 GAMEDATA_PATH = GAMEDATA_PATH.resolve()
+_DEBUG_HEADERS = {"Authorization": "Bearer test-debug-token"}
 
 
 def _free_port() -> int:
@@ -157,6 +158,7 @@ def _start_server(extra_env: dict | None = None) -> dict:
     env["HOST"] = "127.0.0.1"
     env["GAMEDATA_PATH"] = str(GAMEDATA_PATH)
     env["GITHUB_MIRRORS"] = ""
+    env["PRTS_DEBUG_TOKEN"] = "test-debug-token"
     env.setdefault("STORYJSON_PATH", str(GAMEDATA_PATH / "does-not-exist.zip"))
     if extra_env:
         env.update(extra_env)
@@ -200,7 +202,9 @@ def test_health(server):
 
 
 def test_debug_cache(server):
-    r = httpx.get(f"{server['origin']}/debug/cache", timeout=5.0)
+    unauthenticated = httpx.get(f"{server['origin']}/debug/cache", timeout=5.0)
+    assert unauthenticated.status_code == 404
+    r = httpx.get(f"{server['origin']}/debug/cache", headers=_DEBUG_HEADERS, timeout=5.0)
     assert r.status_code == 200
     data = r.json()
     expected_modules = {

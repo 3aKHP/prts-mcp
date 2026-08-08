@@ -7,6 +7,11 @@ METRICS_URL="${PRTS_METRICS_URL:-http://127.0.0.1:5102/debug/metrics}"
 LOG_DIR="${PRTS_METRICS_LOG_DIR:-/var/log/prts-mcp}"
 LOG_FILE="${LOG_DIR}/metrics-samples.jsonl"
 
+if [[ -z "${PRTS_DEBUG_TOKEN:-}" ]]; then
+  echo "PRTS_DEBUG_TOKEN is required for the local metrics probe" >&2
+  exit 1
+fi
+
 control_group="$(systemctl show "${SERVICE}" --property=ControlGroup --value)"
 main_pid="$(systemctl show "${SERVICE}" --property=MainPID --value)"
 if [[ ! "${control_group}" =~ ^/ ]] || [[ "${main_pid}" -le 0 ]]; then
@@ -23,7 +28,7 @@ for required in memory.current memory.peak memory.events; do
   fi
 done
 
-metrics_json="$(curl --fail --silent --show-error --max-time 5 "${METRICS_URL}")"
+metrics_json="$(printf '%s\n' "header = \"Authorization: Bearer ${PRTS_DEBUG_TOKEN}\"" | curl --config - --fail --silent --show-error --max-time 5 "${METRICS_URL}")"
 rss_kb="$(awk '/^VmRSS:/ {print $2; found=1} END {if (!found) exit 1}' "${proc_root}/${main_pid}/status")"
 memory_current="$(<"${cgroup_root}/memory.current")"
 memory_peak="$(<"${cgroup_root}/memory.peak")"

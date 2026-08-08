@@ -22,7 +22,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 ### Fixed
 
 - `Readable.fromWeb` cast is narrowed from bare `any` to the exact parameter type via `Parameters<typeof Readable.fromWeb>[0]` (#100).
-- **Amiya artwork forms (#123).** `operator_artwork` resolves `阿米娅(近卫)` and `阿米娅(医疗)` to their distinct artwork char IDs without changing name resolution for other tools. Opaque artwork tokens require an exact form match in both local and MediaWiki modes, so a base or sibling form cannot retrieve another form's image.
+- **Artwork form and diagnostics boundaries (#123).** `operator_artwork` resolves the half-width and full-width-parenthesis spellings of `阿米娅(近卫)` and `阿米娅(医疗)` to their distinct artwork char IDs without changing name resolution for other tools. Opaque artwork tokens require an exact form match in both local and MediaWiki modes. `/debug/cache` and `/debug/metrics` now require `PRTS_DEBUG_TOKEN` Bearer authentication and otherwise return 404.
 
 ## [2.5.2] - 2026-08-09
 

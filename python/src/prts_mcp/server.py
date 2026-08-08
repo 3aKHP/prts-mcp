@@ -21,6 +21,7 @@ import logging
 import os
 import sys
 import threading
+from secrets import compare_digest
 from importlib.metadata import PackageNotFoundError, version as _pkg_version
 
 from mcp.server import MCPServer
@@ -94,7 +95,7 @@ def _build_http_app():
     because it resolves the channel at session-creation time and injects
     it into ``createMcpServer(channel)``.
     """
-    from starlette.responses import JSONResponse
+    from starlette.responses import JSONResponse, Response
     from starlette.routing import Route
 
     app = mcp.streamable_http_app()
@@ -102,7 +103,15 @@ def _build_http_app():
     async def health(_request):
         return JSONResponse({"status": "ok"})
 
-    async def debug_cache(_request):
+    def debug_authorized(request) -> bool:
+        token = os.environ.get("PRTS_DEBUG_TOKEN")
+        authorization = request.headers.get("authorization")
+        expected = f"Bearer {token}" if token else None
+        return bool(expected and authorization and compare_digest(authorization, expected))
+
+    async def debug_cache(request):
+        if not debug_authorized(request):
+            return Response(status_code=404)
         from prts_mcp.data.artwork_mediawiki import cache_stats as _am
         from prts_mcp.data.enemy import cache_stats as _enemy
         from prts_mcp.data.images import cache_stats as _images

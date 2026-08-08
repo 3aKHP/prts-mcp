@@ -214,6 +214,8 @@ def test_list_unknown_operator(mock_images):
     [
         ("阿米娅(近卫)", "char_1001_amiya2"),
         ("阿米娅(医疗)", "char_1037_amiya3"),
+        ("阿米娅（近卫）", "char_1001_amiya2"),
+        ("阿米娅（医疗）", "char_1037_amiya3"),
     ],
 )
 def test_list_resolves_amiya_artwork_form_aliases(

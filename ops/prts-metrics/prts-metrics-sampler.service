@@ -7,6 +7,7 @@ Type=oneshot
 ExecStart=/opt/prts-mcp/scripts/sample-metrics.sh
 User=root
 Group=root
+EnvironmentFile=/etc/prts-mcp/debug.env
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectHome=true

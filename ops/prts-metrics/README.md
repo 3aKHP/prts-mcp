@@ -16,4 +16,4 @@ systemctl restart prts-mcp-ts.service
 systemctl enable --now prts-metrics-sampler.timer
 ```
 
-The PRTS service must listen on loopback and no reverse-proxy route may expose `/debug/metrics`. The host needs Node.js available as `node` for schema validation (the production host's supported Node runtime satisfies this). Each successful timer run appends one schema-validated JSON object to `/var/log/prts-mcp/metrics-samples.jsonl`; a failed local probe fails the oneshot unit and writes no misleading empty sample.
+Before reloading systemd, create `/etc/prts-mcp/debug.env` with a unique `PRTS_DEBUG_TOKEN` and restrict it to the service operator. Both the server and sampler load this file; the sampler keeps the bearer token out of its process arguments. The PRTS service must listen on loopback and no reverse-proxy route may expose `/debug/metrics`. The host needs Node.js available as `node` for schema validation (the production host's supported Node runtime satisfies this). Each successful timer run appends one schema-validated JSON object to `/var/log/prts-mcp/metrics-samples.jsonl`; a failed local probe fails the oneshot unit and writes no misleading empty sample.

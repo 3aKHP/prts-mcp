@@ -46,9 +46,15 @@ _ARTWORK_FORM_CHAR_IDS: Mapping[str, str] = {
 }
 
 
+def _normalized_artwork_form_name(operator_name: str) -> str:
+    """Normalize only the punctuation accepted by artwork form aliases."""
+    return operator_name.strip().replace("（", "(").replace("）", ")")
+
+
 def _resolve_artwork_char_id(operator_name: str) -> str | None:
     """Resolve an artwork-only form alias without widening normal lookup."""
-    return _ARTWORK_FORM_CHAR_IDS.get(operator_name) or resolve_char_id(operator_name)
+    normalized = _normalized_artwork_form_name(operator_name)
+    return _ARTWORK_FORM_CHAR_IDS.get(normalized) or resolve_char_id(operator_name)
 
 
 def _images_generation() -> Path | None:
@@ -88,10 +94,11 @@ def _data_not_ready() -> object:
 
 async def _do_list_mediawiki(operator_name: str) -> object:
     """LOCAL_IMAGE=false list: discover PRTS File: titles + CharinfoV2 labels."""
-    prefix = f"立绘_{operator_name}_"
+    normalized_name = _normalized_artwork_form_name(operator_name)
+    prefix = f"立绘_{normalized_name}_"
     try:
         files = await _list_allimages(prefix)
-        templates = await _get_template_data(operator_name)
+        templates = await _get_template_data(normalized_name)
     except Exception as exc:  # noqa: BLE001
         return text_result(f"查询 PRTS 立绘失败：{exc}")
     charinfo = templates.get("CharinfoV2")

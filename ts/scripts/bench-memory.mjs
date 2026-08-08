@@ -9,6 +9,7 @@
  */
 
 const origin = requireIsolatedOrigin();
+const debugToken = requireDebugToken();
 const CONCURRENT_SESSIONS = 6;
 const MAX_RSS_BYTES = positiveEnv("PRTS_BENCH_MAX_RSS_BYTES", 1024 * 1024 * 1024);
 const MAX_RSS_GROWTH_BYTES = positiveEnv(
@@ -37,6 +38,12 @@ function requireIsolatedOrigin() {
     throw new Error("PRTS_BENCH_ORIGIN must use a loopback host; do not run this benchmark against production");
   }
   return parsed.origin;
+}
+
+function requireDebugToken() {
+  const token = process.env.PRTS_DEBUG_TOKEN;
+  if (!token) throw new Error("PRTS_DEBUG_TOKEN is required for the isolated benchmark");
+  return token;
 }
 
 async function readJson(res, label) {
@@ -186,7 +193,9 @@ function compactSnapshot(snapshot) {
 }
 
 async function snapshot(label) {
-  const res = await fetch(`${origin}/debug/metrics`);
+  const res = await fetch(`${origin}/debug/metrics`, {
+    headers: { Authorization: `Bearer ${debugToken}` },
+  });
   const data = await readJson(res, `${label} metrics`);
   if (data.schema_version !== "prts-mcp.metrics/v1") {
     throw new Error(`${label} metrics endpoint is unavailable or has unexpected schema`);

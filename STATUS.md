@@ -28,8 +28,8 @@ _Last updated: 2026-08-09_
 
 - [x] Python 迁移到精确锁定的 `mcp[cli]==2.0.0` 和 `MCPServer` API；SDK v2 内部 snake_case 字段保持正确的 camelCase wire 结果。
 - [x] Python 与 TypeScript 同时保留 legacy initialize/session 流程，并支持 opt-in 的 `2026-07-28` 现代协议：HTTP 现代请求无状态且无需 `Mcp-Session-Id`；stdio 由连接上的第一条请求选择协议时代。
-- [x] `operator_artwork` 仅为 `阿米娅(近卫)` / `阿米娅(医疗)` 解析各自 char ID，不改变其他工具的通用干员解析；本地与 MediaWiki opaque artwork token 都必须与请求的精确形态匹配。
-- [x] TS 的 `/debug/metrics` 仅在显式启用时提供聚合进程、缓存、请求、工具和会话指标，不保留 MCP 参数、结果或会话标识；生产反向代理不得公开该路径。
+- [x] `operator_artwork` 仅为 `阿米娅(近卫)` / `阿米娅(医疗)` 的全角或半角括号拼写解析各自 char ID，不改变其他工具的通用干员解析；本地与 MediaWiki opaque artwork token 都必须与请求的精确形态匹配。
+- [x] `/debug/cache` 与 TS 的 `/debug/metrics` 仅在配置 `PRTS_DEBUG_TOKEN` 且 Bearer token 匹配时可用；metrics 还需显式启用，不保留 MCP 参数、结果或会话标识，生产反向代理不得公开这两个路径。
 - [x] 隔离 loopback 的六会话基准覆盖档案、数据/剧情搜索、单章/活动读取及真实立绘 get，要求缓存稳定、请求静止和 RSS 上限；同机 canary 使用独立服务、临时认证路由及 `MemoryHigh=1G` / `MemoryMax=1536M`，不触碰稳定服务。
 
 ## 2.5.2 发布内容

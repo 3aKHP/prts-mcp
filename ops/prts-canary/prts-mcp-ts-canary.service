@@ -16,6 +16,7 @@ RestartSec=5s
 Environment=HOST=127.0.0.1
 Environment=PORT=5103
 Environment=PRTS_METRICS_ENABLED=true
+EnvironmentFile=/etc/prts-mcp-canary/debug.env
 
 # Reuse the active production data read-only. Explicit GAMEDATA_PATH makes
 # the canary a consumer rather than a second auto-sync publisher.
