@@ -141,7 +141,6 @@ def artwork_belongs_to_operator(filename: str, operator_name: str) -> bool:
         return False
     requested = _normalized_operator_name(operator_name)
     actual = _normalized_operator_name(artwork_operator)
-    if requested == actual:
-        return True
-    base = actual.rsplit("(", 1)[0] if actual.endswith(")") and "(" in actual else actual
-    return requested == base
+    # artwork_id is opaque and list-scoped. A base-name request must not be
+    # able to retrieve a transformed form (or vice versa) by reusing a token.
+    return requested == actual

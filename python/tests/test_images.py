@@ -71,6 +71,25 @@ def _sample_index(include_foreign: bool = False) -> dict:
     return index
 
 
+def _add_amiya_form_artworks(index: dict) -> None:
+    artworks = index["artworks"]
+    for char_id, filename in (
+        ("char_1001_amiya2", "amiya_guard.large.png"),
+        ("char_1037_amiya3", "amiya_medic.large.png"),
+    ):
+        artworks[f"{char_id}#1"] = {
+            "kind": "base",
+            "shard": "chararts",
+            "large": {
+                "file": filename,
+                "w": 1024,
+                "h": 1100,
+                "bytes": 50,
+                "sha256": char_id,
+            },
+        }
+
+
 # ---------------------------------------------------------------------------
 # parse_index
 # ---------------------------------------------------------------------------
@@ -188,6 +207,40 @@ def test_list_unknown_operator(mock_images):
     result = asyncio.run(_do_list("不存在"))
     text = result.content[0].text
     assert "找不到" in text
+
+
+@pytest.mark.parametrize(
+    ("operator_name", "expected_char_id"),
+    [
+        ("阿米娅(近卫)", "char_1001_amiya2"),
+        ("阿米娅(医疗)", "char_1037_amiya3"),
+    ],
+)
+def test_list_resolves_amiya_artwork_form_aliases(
+    mock_images, operator_name, expected_char_id,
+):
+    index = _sample_index()
+    _add_amiya_form_artworks(index)
+    (mock_images / "index.json").write_text(json.dumps(index), "utf-8")
+
+    result = asyncio.run(_do_list(operator_name))
+
+    body = result.content[0].text
+    assert expected_char_id in body
+    assert "char_002_amiya#1" not in body
+
+
+def test_get_rejects_opaque_artwork_token_from_another_amiya_form(mock_images):
+    index = _sample_index()
+    _add_amiya_form_artworks(index)
+    (mock_images / "index.json").write_text(json.dumps(index), "utf-8")
+
+    result = asyncio.run(
+        _do_get("阿米娅(医疗)", "char_1001_amiya2#1", "large")
+    )
+
+    assert "不属于" in result.content[0].text
+    assert not any(block.type == "image" for block in result.content)
 
 
 def test_get_returns_image_content(mock_images):

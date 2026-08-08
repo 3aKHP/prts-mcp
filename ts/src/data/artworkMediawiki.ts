@@ -132,6 +132,7 @@ export function artworkBelongsToOperator(filename: string, operatorName: string)
   if (artworkOperator === null) return false;
   const requested = normalizedOperatorName(operatorName);
   const actual = normalizedOperatorName(artworkOperator);
-  if (requested === actual) return true;
-  return requested === actual.replace(/\([^()]*\)$/, "");
+  // artworkId is opaque and list-scoped. A base-name request must not be
+  // able to retrieve a transformed form (or vice versa) by reusing a token.
+  return requested === actual;
 }
