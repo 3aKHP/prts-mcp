@@ -6,13 +6,14 @@ _Last updated: 2026-08-09_
 
 | 实现 | 版本 | 状态 |
 |------|------|------|
-| Python | 2.6.0.dev0 | Development |
-| TypeScript | 2.6.0-dev.0 | Development |
+| Python | 2.6.0 | Stable release |
+| TypeScript | 2.6.0 | Stable release |
 
-- 当前稳定发布：2.5.2（24 个 MCP 工具）
+- 当前稳定发布：2.6.0（24 个 MCP 工具）
 - 当前 LTS 发布：1.7.0（32 个 MCP 工具，剧情角色追踪）
-- 下一开发目标：2.6.0（待规划）
-- 当前稳定补丁线：2.5.x
+- 下一开发目标：2.7.0（在 release branch 回合与开发版本重开后确定）
+- 当前稳定补丁线：2.6.x
+- 2.6.0 发布内容：MCP SDK v2 与 legacy/`2026-07-28` 双时代协议服务；`operator_artwork` 阿米娅近卫/医疗形态解析与精确 opaque token 归属；TS 聚合指标、六会话隔离内存基准及同机 canary 资产。
 - 2.5.0 发布内容：干员立绘工具 `operator_artwork`（list/get，默认 MediaWiki 在线获取 + 256 MiB LRU 缓存，`LOCAL_IMAGE=true` 时使用 AKDP 本地 PNG 资产）；数据源切换到自建 `arknights-data-pipeline` Release；TS stdio 不再泄漏 HTTP 监听器；TS JSON 空对象占位守卫。
 - 2.4.0 发布内容：常驻服务默认每小时同步 GameData excel、GameData levels 与 StoryJson；GameData 两类归档以同一代原子切换，并支持共享卷跨进程发布锁续租。
 - 2.3.1 发布内容：TypeScript 生产依赖安全更新，并同步 `prts-mcp-ts-stdio` 的 npm 锁文件 bin 元数据；不改变 MCP 工具面或传输行为。
@@ -22,6 +23,14 @@ _Last updated: 2026-08-09_
 - 2.0.2 补丁集：TS HTTP MCP smoke harness、TS Bun 候选运行路径、 `search_prts` redirect/技术页面过滤修复。Bun 在 2.0.2 仍是可选候选路径。
 - 2.0 交付内容：工具面合并（32 → 23）+ output channel（structuredContent）；**双端协议同步（Python 上 HTTP / TS 上 stdio）已后置到 2.0 之后**。
 - 兼容性合约：1.7.x LTS 线既有 32 个工具名、必填参数、默认输出格式不变；仅接受兼容性、安全性、数据同步和关键缺陷修复
+
+## 2.6.0 发布内容
+
+- [x] Python 迁移到精确锁定的 `mcp[cli]==2.0.0` 和 `MCPServer` API；SDK v2 内部 snake_case 字段保持正确的 camelCase wire 结果。
+- [x] Python 与 TypeScript 同时保留 legacy initialize/session 流程，并支持 opt-in 的 `2026-07-28` 现代协议：HTTP 现代请求无状态且无需 `Mcp-Session-Id`；stdio 由连接上的第一条请求选择协议时代。
+- [x] `operator_artwork` 仅为 `阿米娅(近卫)` / `阿米娅(医疗)` 解析各自 char ID，不改变其他工具的通用干员解析；本地与 MediaWiki opaque artwork token 都必须与请求的精确形态匹配。
+- [x] TS 的 `/debug/metrics` 仅在显式启用时提供聚合进程、缓存、请求、工具和会话指标，不保留 MCP 参数、结果或会话标识；生产反向代理不得公开该路径。
+- [x] 隔离 loopback 的六会话基准覆盖档案、数据/剧情搜索、单章/活动读取及真实立绘 get，要求缓存稳定、请求静止和 RSS 上限；同机 canary 使用独立服务、临时认证路由及 `MemoryHigh=1G` / `MemoryMax=1536M`，不触碰稳定服务。
 
 ## 2.5.2 发布内容
 
@@ -60,9 +69,9 @@ _Last updated: 2026-08-09_
 
 ## 当前分支
 
-- `main`：2.5.2（最新稳定发布线）
+- `main`：2.6.0（最新稳定发布线）
 - `lts/1.7`：1.7.x LTS 维护线（从 1.7.0 发布提交创建）
-- `develop`：2.6.0 开发线（待规划）
+- `develop`：release branch 回合后重开 2.7.0 开发线
 
 1.7.0 是最后一个 1.x 功能版本和 LTS 基线。它将 server.py/server.ts 和 story.py/story.ts 单体文件拆分为聚焦子模块，保留向后兼容垫片（shim），并新增剧情角色追踪工具：`find_character_appearances`、`find_speakers_in`。后续功能开发转向 2.0；1.7.x 仅做兼容性、安全性、数据同步和关键缺陷修复。
 
@@ -219,6 +228,7 @@ PRTS-MCP/
 
 | 版本 | 日期 | 亮点 |
 |------|------|------|
+| 2.6.0 | 2026-08-09 | MCP SDK v2 双时代协议；阿米娅形态立绘；聚合指标、六会话内存基准与同机 canary |
 | 2.5.2 | 2026-08-09 | npm 生产依赖安全更新；AKDP 直接敌人数据库；剧情标量 Decision；立绘 token 归属校验 |
 | 2.5.1 | 2026-08-07 | gamedata pair retry 修复；manifest 404 fail-open；image sha256 验证；CI Node 24 |
 | 2.5.0 | 2026-08-07 | 干员立绘工具 `operator_artwork`；数据源切换到自建 arknights-data-pipeline；TS stdio HTTP 泄漏修复 |

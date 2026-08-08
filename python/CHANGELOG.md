@@ -4,35 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
-
-### Fixed
-
-- **Amiya artwork forms (#123).** `operator_artwork` now resolves
-  `阿米娅(近卫)` and `阿米娅(医疗)` to their distinct artwork char IDs without
-  changing name resolution for other tools. Opaque artwork tokens now require
-  an exact form match in both local and MediaWiki modes, so a base or sibling
-  form cannot retrieve another form's image.
-
-### Changed
-
-- **MCP SDK v2 and dual-era serving (#84).** Migrated to the exact
-  `mcp[cli]==2.0.0` dependency and `MCPServer` API. Legacy initialize/session
-  clients remain supported; a new stdio connection or HTTP request can instead
-  select the stateless `2026-07-28` envelope, including `server/discover`,
-  `tools/list`, and `tools/call` without initialize. Python result-model
-  construction now uses the SDK v2 snake_case API while preserving its
-  camelCase wire fields.
-
-## [2.6.0-alpha.1] - 2026-08-08
+## [2.6.0] - 2026-08-09
 
 ### Added
 
-- **Cache instrumentation (`/debug/cache` endpoint).** Each data module exports `cache_stats()` returning per-cache `{loaded, count}` (and `bytes` for the MediaWiki image LRU). The read-only `/debug/cache` HTTP endpoint aggregates all 9 modules' stats for observability (#104).
+- **Cache instrumentation (`/debug/cache` endpoint).** Each data module exports `cache_stats()` returning per-cache `{loaded, count}` (and `bytes` for the MediaWiki image LRU). The read-only `/debug/cache` HTTP endpoint aggregates all nine modules for observability (#104).
+
+### Fixed
+
+- **Amiya artwork forms (#123).** `operator_artwork` resolves `阿米娅(近卫)` and `阿米娅(医疗)` to their distinct artwork char IDs without changing name resolution for other tools. Opaque artwork tokens require an exact form match in both local and MediaWiki modes, so a base or sibling form cannot retrieve another form's image.
 
 ### Changed
 
 - Base illust label mapping (`BASE_ILLUST_LABELS`) consolidated to a single owner in `data/images.py`; `data/artwork_mediawiki.py` imports it instead of maintaining a duplicate (#100).
+- **MCP SDK v2 and dual-era serving (#84).** Migrated to the exact `mcp[cli]==2.0.0` dependency and `MCPServer` API. Legacy initialize/session clients remain supported; a new stdio connection or HTTP request can instead select the stateless `2026-07-28` envelope, including `server/discover`, `tools/list`, and `tools/call` without initialize. Python result-model construction uses the SDK v2 snake_case API while preserving its camelCase wire fields.
 
 ## [2.5.2] - 2026-08-09
 
