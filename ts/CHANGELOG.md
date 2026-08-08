@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Added
+
+- **Six-session memory canary gate (#90).** The isolated loopback benchmark
+  now exercises archives, data search, story search, chapter/activity reads,
+  and an actual artwork image retrieval across six concurrent sessions. It
+  requires cache stability plus a quiescent request state and bounded RSS.
+  Version-controlled same-host canary assets add a separate loopback service,
+  authenticated temporary route, and cgroup limits of `MemoryHigh=1G` /
+  `MemoryMax=1536M` without modifying the stable service.
+
 ### Fixed
 
 - **Amiya artwork forms (#123).** `operator_artwork` now resolves
