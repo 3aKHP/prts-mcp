@@ -9,7 +9,7 @@ import pytest
 
 from prts_mcp.data.images import SCHEMA_VERSION, build_artwork_label, parse_index
 from prts_mcp.output import _channel_var
-from prts_mcp.tools_artwork import _do_get, _do_list
+from prts_mcp.tools_artwork import _do_get, _do_get_mediawiki, _do_list
 
 # A 1x1 transparent PNG used as a stand-in image payload.
 _SAMPLE_PNG_B64 = (
@@ -18,8 +18,8 @@ _SAMPLE_PNG_B64 = (
 )
 
 
-def _sample_index() -> dict:
-    return {
+def _sample_index(include_foreign: bool = False) -> dict:
+    index = {
         "schemaVersion": SCHEMA_VERSION,
         "baselineVersion": "b1",
         "currentVersion": "c1",
@@ -56,6 +56,19 @@ def _sample_index() -> dict:
             },
         },
     }
+    if include_foreign:
+        index["artworks"]["char_263_skadi#1"] = {
+            "kind": "base",
+            "shard": "chararts",
+            "large": {
+                "file": "amiya_1.large.png",
+                "w": 1024,
+                "h": 1100,
+                "bytes": 50,
+                "sha256": "h4",
+            },
+        }
+    return index
 
 
 # ---------------------------------------------------------------------------
@@ -196,6 +209,32 @@ def test_get_missing_artwork_id(mock_images):
     result = asyncio.run(_do_get("阿米娅", "char_999_nonexistent#1", "large"))
     text = result.content[0].text
     assert "找不到" in text
+    assert not any(c.type == "image" for c in result.content)
+
+
+def test_get_rejects_artwork_owned_by_another_operator(mock_images):
+    (mock_images / "index.json").write_text(
+        json.dumps(_sample_index(include_foreign=True)), "utf-8",
+    )
+    result = asyncio.run(_do_get("阿米娅", "char_263_skadi#1", "large"))
+    assert "不属于" in result.content[0].text
+    assert not any(c.type == "image" for c in result.content)
+
+
+def test_mediawiki_get_rejects_mismatched_filename_before_network(monkeypatch):
+    import prts_mcp.tools_artwork as artwork
+    from prts_mcp.config import Config
+
+    monkeypatch.setenv("LOCAL_IMAGE", "false")
+
+    async def unexpected_imageinfo(*_args, **_kwargs):
+        raise AssertionError("ownership validation must run before imageinfo")
+
+    monkeypatch.setattr(artwork, "_get_imageinfo", unexpected_imageinfo)
+    result = asyncio.run(_do_get_mediawiki(
+        "阿米娅", "立绘_斯卡蒂_2.png", "large", Config.load(),
+    ))
+    assert "不属于" in result.content[0].text
     assert not any(c.type == "image" for c in result.content)
 
 

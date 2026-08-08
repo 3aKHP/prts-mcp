@@ -201,10 +201,21 @@ def _parse_story_list(story_list: list[dict]) -> list[StoryLine]:
             if content:
                 lines.append(StoryLine(type="narration", role=None, text=_clean_text(content)))
         elif prop_lower == "decision":
-            options = attrs.get("options") or []
+            raw_options = attrs.get("options")
+            if isinstance(raw_options, str):
+                options = [raw_options]
+            elif isinstance(raw_options, list):
+                options = raw_options
+            else:
+                options = []
             for opt in options:
                 # options elements may be plain strings or dicts with a "text" key
-                text = opt if isinstance(opt, str) else (opt.get("text") or "")
+                if isinstance(opt, str):
+                    text = opt
+                elif isinstance(opt, dict):
+                    text = opt.get("text") or ""
+                else:
+                    text = ""
                 if text:
                     lines.append(StoryLine(type="choice", role=None, text=_clean_text(str(text))))
 

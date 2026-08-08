@@ -11,9 +11,11 @@ import pytest
 from prts_mcp.api.prts_wiki import _image_magic_ok, download_image_safe, list_allimages
 from prts_mcp.data.artwork_mediawiki import (
     _image_cache,
+    artwork_belongs_to_operator,
     image_cache_get,
     image_cache_put,
     label_from_filename,
+    operator_from_filename,
 )
 
 _CHARINFO = {"时装1名称": "报童", "时装2名称": "见习联结者", "时装3名称": "播种者"}
@@ -45,6 +47,15 @@ def test_label_fashion_fallback_without_charinfo():
 def test_label_rejects_non_png_and_malformed():
     assert label_from_filename("立绘_阿米娅_2.jpg", _CHARINFO) is None
     assert label_from_filename("立绘阿米娅", _CHARINFO) is None  # no second underscore
+
+
+def test_artwork_filename_owner_accepts_exact_and_base_form_only():
+    assert operator_from_filename("立绘_阿米娅(近卫)_2.png") == "阿米娅(近卫)"
+    assert artwork_belongs_to_operator("立绘_阿米娅(近卫)_2.png", "阿米娅(近卫)")
+    assert artwork_belongs_to_operator("立绘_阿米娅（近卫）_2.png", "阿米娅")
+    assert not artwork_belongs_to_operator("立绘_阿米娅(近卫)_2.png", "阿米")
+    assert not artwork_belongs_to_operator("立绘_斯卡蒂_2.png", "阿米娅")
+    assert not artwork_belongs_to_operator("立绘_阿米娅_2b.png", "阿米娅")
 
 
 def test_image_magic_ok():

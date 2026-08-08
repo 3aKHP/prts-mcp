@@ -255,6 +255,30 @@ class TestGetEnemyInfo:
         assert "**最大生命**：25,000" in out
         assert "**免疫**：眩晕、冻结" in out
 
+    def test_reads_current_akdp_direct_map(self, gamedata):
+        db_path = (
+            gamedata / "zh_CN" / "gamedata" / "levels" / "enemydata"
+            / "enemy_database.json"
+        )
+        db_path.write_text(
+            json.dumps({
+                "enemy_1505_frstar": [{
+                    "level": 0,
+                    "enemyData": {
+                        "attributes": {
+                            "maxHp": {"m_defined": True, "m_value": 25000},
+                            "atk": {"m_defined": True, "m_value": 420},
+                            "def": {"m_defined": True, "m_value": 250},
+                            "magicResistance": {"m_defined": True, "m_value": 50},
+                        }
+                    },
+                }],
+            }, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        clear_enemy_caches()
+        assert "**最大生命**：25,000" in get_enemy_info("霜星")
+
     def test_handbook_only_when_no_db_entry(self, gamedata):
         # 源石虫 has no entry in our minimal database fixture
         out = get_enemy_info("源石虫")

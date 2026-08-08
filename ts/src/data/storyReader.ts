@@ -235,17 +235,18 @@ function parseStoryList(
         lines.push({ type: "narration", role: null, text: cleanText(content) });
       }
     } else if (prop === "decision") {
-      const options = attrs["options"];
-      if (Array.isArray(options)) {
-        for (const opt of options) {
-          let text = "";
-          if (typeof opt === "string") text = opt;
-          else if (opt !== null && typeof opt === "object") {
-            text = String((opt as Record<string, unknown>)["text"] ?? "");
-          }
-          if (text) {
-            lines.push({ type: "choice", role: null, text: cleanText(text) });
-          }
+      const rawOptions = attrs["options"];
+      const options = typeof rawOptions === "string"
+        ? [rawOptions]
+        : Array.isArray(rawOptions) ? rawOptions : [];
+      for (const opt of options) {
+        let text = "";
+        if (typeof opt === "string") text = opt;
+        else if (opt !== null && typeof opt === "object") {
+          text = String((opt as Record<string, unknown>)["text"] ?? "");
+        }
+        if (text) {
+          lines.push({ type: "choice", role: null, text: cleanText(text) });
         }
       }
     }
