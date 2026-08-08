@@ -188,6 +188,32 @@ test("getStageEnemies uses spawn actions and overrides", async () => {
   assert.equal(mod.renderStageEnemies(data), out);
 });
 
+test("getStageEnemies reads the direct-map enemy database from current AKDP releases", async () => {
+  const root = tempRoot();
+  const gamedata = writeFixture(root);
+  writeJson(
+    join(root, "gamedata-levels", "zh_CN", "gamedata", "levels", "enemydata", "enemy_database.json"),
+    {
+      enemy_1007_slime: [{
+        level: 0,
+        enemyData: {
+          attributes: {
+            maxHp: { m_defined: true, m_value: 550 },
+            atk: { m_defined: true, m_value: 130 },
+            def: { m_defined: true, m_value: 0 },
+            magicResistance: { m_defined: true, m_value: 0 },
+          },
+        },
+      }],
+    },
+  );
+  process.env["GAMEDATA_PATH"] = gamedata;
+  const mod = await loadModule();
+  const out = mod.getStageEnemies("main_00-01");
+  assert.match(out, /HP 550/);
+  assert.doesNotMatch(out, /无数据库记录/);
+});
+
 test("getEnemyAppearances", async () => {
   const root = tempRoot();
   process.env["GAMEDATA_PATH"] = writeFixture(root);

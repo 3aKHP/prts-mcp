@@ -64,6 +64,7 @@ function storyFiles(): Record<string, unknown> {
         { prop: "name", attributes: { name: "阿米娅", content: "你好，{@nickname}。" } },
         { prop: "sticker", attributes: { content: "<b>场景描述</b>" } },
         { prop: "decision", attributes: { options: ["选项一"] } },
+        { prop: "decision", attributes: { options: "我相信它们。相信你，凯尔希。" } },
       ],
     },
     [storyPath(SECOND_STORY_KEY)]: {
@@ -128,10 +129,11 @@ function assertStoryStore(store: JsonStore): void {
     "你好，博士。",
     "场景描述",
     "选项一",
+    "我相信它们。相信你，凯尔希。",
   ]);
 
   const dialogsOnly = readStoryFromStore(store, FIRST_STORY_KEY, false);
-  assert.deepEqual(dialogsOnly.lines.map((line) => line.type), ["dialog", "choice"]);
+  assert.deepEqual(dialogsOnly.lines.map((line) => line.type), ["dialog", "choice", "choice"]);
 
   const activity = readActivityFromStore(store, "act_test", true, 1, 1);
   assert.equal(activity.eventName, "测试活动");

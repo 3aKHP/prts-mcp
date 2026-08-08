@@ -210,6 +210,33 @@ def test_get_stage_enemies_golden(gamedata: Path) -> None:
     assert render_stage_enemies(data) == get_stage_enemies("main_00-01")
 
 
+def test_get_stage_enemies_reads_current_akdp_direct_map(gamedata: Path) -> None:
+    db_path = (
+        gamedata / "gamedata-levels" / "zh_CN" / "gamedata" / "levels"
+        / "enemydata" / "enemy_database.json"
+    )
+    db_path.write_text(
+        json.dumps({
+            "enemy_1007_slime": [{
+                "level": 0,
+                "enemyData": {
+                    "attributes": {
+                        "maxHp": {"m_defined": True, "m_value": 550},
+                        "atk": {"m_defined": True, "m_value": 130},
+                        "def": {"m_defined": True, "m_value": 0},
+                        "magicResistance": {"m_defined": True, "m_value": 0},
+                    }
+                },
+            }],
+        }, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    clear_stage_enemy_caches()
+    out = get_stage_enemies("main_00-01")
+    assert "HP 550" in out
+    assert "无数据库记录" not in out
+
+
 def test_get_enemy_appearances_golden(gamedata: Path) -> None:
     # Golden: exact full markdown. Hardcoded (not tautology) — catches
     # build-layer field omissions and header/pagination regressions.

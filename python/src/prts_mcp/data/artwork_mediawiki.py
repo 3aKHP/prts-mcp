@@ -114,3 +114,34 @@ def label_from_filename(
     if form:
         label += f"（{form}）"
     return label
+
+
+def operator_from_filename(filename: str) -> str | None:
+    """Return the declaring operator segment for a listable MediaWiki artwork."""
+    if not filename.endswith(".png") or not filename.startswith("立绘_"):
+        return None
+    if label_from_filename(filename, {}) is None:
+        return None
+    base = filename[:-4]
+    separator = base.find("_", len("立绘_"))
+    if separator < 0:
+        return None
+    operator_name = base[len("立绘_"):separator]
+    return operator_name or None
+
+
+def _normalized_operator_name(name: str) -> str:
+    return name.strip().replace("（", "(").replace("）", ")")
+
+
+def artwork_belongs_to_operator(filename: str, operator_name: str) -> bool:
+    """Check that a MediaWiki artwork belongs to its requested operator."""
+    artwork_operator = operator_from_filename(filename)
+    if artwork_operator is None:
+        return False
+    requested = _normalized_operator_name(operator_name)
+    actual = _normalized_operator_name(artwork_operator)
+    if requested == actual:
+        return True
+    base = actual.rsplit("(", 1)[0] if actual.endswith(")") and "(" in actual else actual
+    return requested == base

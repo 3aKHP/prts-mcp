@@ -32,6 +32,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 - Base illust label mapping (`BASE_ILLUST_LABELS`) consolidated to a single owner in `data/images.ts`; `data/artworkMediawiki.ts` imports it instead of maintaining a duplicate (#100).
 
+## [2.5.2] - 2026-08-09
+
+### Security
+
+- Updated the locked npm production dependency graph, including
+  `@modelcontextprotocol/sdk` 1.30 and `adm-zip` 0.6, resolving the audited
+  production advisories without a breaking SDK-major upgrade.
+
+### Fixed
+
+- **Current AKDP enemy databases.** `get_stage_enemies` and
+  `get_enemy_info` now read the direct enemy-ID mapping emitted by current
+  `zh_CN-levels.zip` releases, while retaining the legacy wrapper format.
+- **Scalar story decisions.** A `Decision.options` string is returned as one
+  complete choice line instead of being dropped or split into characters.
+- **Artwork token ownership.** `operator_artwork(action="get")` rejects an
+  artwork token belonging to another operator before reading local image data
+  or making a MediaWiki request.
+
 ## [2.5.1] - 2026-08-07
 
 ### Fixed

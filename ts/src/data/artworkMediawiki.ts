@@ -110,3 +110,28 @@ export function labelFromFilename(
   if (form) label += `（${form}）`;
   return label;
 }
+
+/** Return the declaring operator segment for a listable MediaWiki artwork. */
+export function operatorFromFilename(filename: string): string | null {
+  if (!filename.endsWith(".png") || !filename.startsWith("立绘_")) return null;
+  if (labelFromFilename(filename, {}) === null) return null;
+  const base = filename.slice(0, -4);
+  const separator = base.indexOf("_", "立绘_".length);
+  if (separator < 0) return null;
+  const operatorName = base.slice("立绘_".length, separator);
+  return operatorName || null;
+}
+
+function normalizedOperatorName(name: string): string {
+  return name.trim().replaceAll("（", "(").replaceAll("）", ")");
+}
+
+/** Check that a MediaWiki artwork belongs to its requested operator. */
+export function artworkBelongsToOperator(filename: string, operatorName: string): boolean {
+  const artworkOperator = operatorFromFilename(filename);
+  if (artworkOperator === null) return false;
+  const requested = normalizedOperatorName(operatorName);
+  const actual = normalizedOperatorName(artworkOperator);
+  if (requested === actual) return true;
+  return requested === actual.replace(/\([^()]*\)$/, "");
+}

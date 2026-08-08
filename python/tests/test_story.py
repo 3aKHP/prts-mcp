@@ -89,6 +89,15 @@ class TestParseStoryList:
         lines = _parse_story_list(items)
         assert lines[0].text == "博士，你好"
 
+    def test_decision_scalar_option_is_one_complete_choice(self):
+        lines = _parse_story_list([{
+            "prop": "Decision",
+            "attributes": {"options": "我相信它们。相信你，凯尔希。", "values": "1"},
+        }])
+        assert lines == [
+            StoryLine(type="choice", role=None, text="我相信它们。相信你，凯尔希。"),
+        ]
+
     def test_mixed_items(self):
         items = [
             {"id": 1, "prop": "Background", "attributes": {}},

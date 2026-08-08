@@ -261,6 +261,31 @@ test("get_enemy_info reads database from sibling levels path", async () => {
   assert.match(out, /\*\*免疫\*\*：眩晕、冻结/);
 });
 
+test("get_enemy_info reads the direct-map enemy database from current AKDP releases", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  writeFixtures(root);
+  writeFileSync(
+    join(root, "zh_CN", "gamedata", "levels", "enemydata", "enemy_database.json"),
+    JSON.stringify({
+      enemy_1505_frstar: [{
+        level: 0,
+        enemyData: {
+          attributes: {
+            maxHp: { m_defined: true, m_value: 25000 },
+            atk: { m_defined: true, m_value: 420 },
+            def: { m_defined: true, m_value: 250 },
+            magicResistance: { m_defined: true, m_value: 50 },
+          },
+        },
+      }],
+    }),
+    "utf-8",
+  );
+  const enemy = await loadEnemyModule();
+  assert.match(enemy.getEnemyInfo("霜星"), /\*\*最大生命\*\*：25,000/);
+});
+
 test("get_enemy_info handbook-only when no database entry", async () => {
   const root = tempGamedataRoot();
   process.env["GAMEDATA_PATH"] = root;
