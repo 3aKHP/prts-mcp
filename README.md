@@ -29,7 +29,7 @@ Two release lines ship in parallel:
 
 | Line | Version | Tools | Status |
 |------|---------|-------|--------|
-| **2.5** (`main`) | `2.5.1` | 24 | Operator artwork tool (`operator_artwork`); MediaWiki on-demand image delivery by default; data source switched to self-hosted `arknights-data-pipeline`. |
+| **2.5** (`main`) | `2.5.2` | 24 | Operator artwork tool (`operator_artwork`); MediaWiki on-demand image delivery by default; data source switched to self-hosted `arknights-data-pipeline`. |
 | **1.7 LTS** (`lts/1.7`) | `1.7.0` | 32 | Stable maintenance line. 1.7.x accepts only compatibility, security, data-sync, and critical bug fixes. |
 
 The `main` and `develop` lines use the self-built `arknights-data-pipeline`
@@ -182,7 +182,7 @@ and macOS development setup.
 
 | 版本线 | 版本 | 工具数 | 状态 |
 |--------|------|--------|------|
-| **2.5**（`main`） | `2.5.1` | 24 | 干员立绘工具（`operator_artwork`）；默认 MediaWiki 按需获取图片；数据源切换到自建 `arknights-data-pipeline`。 |
+| **2.5**（`main`） | `2.5.2` | 24 | 干员立绘工具（`operator_artwork`）；默认 MediaWiki 按需获取图片；数据源切换到自建 `arknights-data-pipeline`。 |
 | **1.7 LTS**（`lts/1.7`） | `1.7.0` | 32 | 稳定维护线。1.7.x 仅接受兼容性、安全性、数据同步和关键缺陷修复。 |
 
 | 范围 | Python | TypeScript |
