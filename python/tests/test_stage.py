@@ -426,7 +426,7 @@ class TestSearchStages:
         assert render_stage_search(data) == expected
         assert search_stages("先锋") == expected
         r = render_result(data, expected, channel="both")
-        assert r.structuredContent == data
+        assert r.structured_content == data
 
     def test_by_code(self, gamedata: str) -> None:
         out = search_stages("AS-1")
@@ -454,7 +454,7 @@ class TestSearchStages:
         assert render_stage_search(data) == expected
         assert search_stages("ZZZZNOMATCH") == expected
         r = render_result(data, expected, channel="structured")
-        assert r.structuredContent == data
+        assert r.structured_content == data
 
     def test_invalid_regex(self, gamedata: str) -> None:
         out = search_stages("[invalid")

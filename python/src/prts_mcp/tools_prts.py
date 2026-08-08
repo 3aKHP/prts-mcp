@@ -1,6 +1,6 @@
 """PRTS Wiki tool registrations — search, read, sections, categories, links, template.
 
-Split from server.py. Each register_* function receives the FastMCP instance
+Split from server.py. Each register_* function receives the MCPServer instance
 and attaches the tool handlers.
 """
 from __future__ import annotations
@@ -66,7 +66,7 @@ def _render_prts_search(data: dict) -> str:
 
 
 def register_prts_tools(mcp) -> None:  # type: ignore[no-untyped-def]
-    """Register the 2 PRTS Wiki tools on the given FastMCP instance."""
+    """Register the 2 PRTS Wiki tools on the given MCPServer instance."""
 
     @mcp.tool()
     async def search_prts(

@@ -339,7 +339,7 @@ def _render_list(operator_name: str, artworks: list[dict]) -> str:
 
 
 def register_artwork_tools(mcp) -> None:  # type: ignore[no-untyped-def]
-    """Register the ``operator_artwork`` tool on the given FastMCP instance."""
+    """Register the ``operator_artwork`` tool on the given MCPServer instance."""
 
     @mcp.tool()
     @activation_snapshot

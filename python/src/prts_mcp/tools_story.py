@@ -31,7 +31,7 @@ from prts_mcp.output import render_result, text_result
 
 
 def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
-    """Register the 9 story-backed tools on the given FastMCP instance."""
+    """Register the 9 story-backed tools on the given MCPServer instance."""
 
     @mcp.tool()
     def list_story_events(

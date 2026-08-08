@@ -49,7 +49,7 @@ from prts_mcp.output import render_result, text_result
 
 
 def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
-    """Register the 12 GameData-backed tools on the given FastMCP instance."""
+    """Register the 12 GameData-backed tools on the given MCPServer instance."""
 
     @mcp.tool()
     @activation_snapshot
@@ -182,7 +182,7 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         limit: Annotated[int, Field(default=50, description="返回数量上限，默认 50。")] = 50,
         offset: Annotated[int, Field(default=0, description="分页偏移量，默认 0。")] = 0,
     ) -> object:
-        # Keep the return annotation as object: FastMCP auto-wraps -> str tools
+        # Keep the return annotation as object: MCPServer auto-wraps -> str tools
         # into outputSchema={result:string} plus duplicate structuredContent.
         # Explicit CallToolResult delivery requires bypassing that wrapper.
         """列出关卡列表，支持按章节和类型过滤。

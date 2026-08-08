@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Changed
+
+- **MCP SDK v2 and dual-era serving (#84).** Migrated to the exact
+  `mcp[cli]==2.0.0` dependency and `MCPServer` API. Legacy initialize/session
+  clients remain supported; a new stdio connection or HTTP request can instead
+  select the stateless `2026-07-28` envelope, including `server/discover`,
+  `tools/list`, and `tools/call` without initialize. Python result-model
+  construction now uses the SDK v2 snake_case API while preserving its
+  camelCase wire fields.
+
 ## [2.6.0-alpha.1] - 2026-08-08
 
 ### Added

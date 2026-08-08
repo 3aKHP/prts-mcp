@@ -7,7 +7,8 @@ import zipfile
 from pathlib import Path
 
 import pytest
-from mcp.server.fastmcp import FastMCP
+from mcp.server import MCPServer
+from mcp.server.mcpserver import Context
 
 from prts_mcp.data.story import (
     build_character_appearances,
@@ -446,16 +447,17 @@ def test_search_prts_network_failure_is_content_only(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr("prts_mcp.tools_prts._search_prts", _raising_search_prts)
-    app = FastMCP("prts-test")
+    app = MCPServer("prts-test")
     register_prts_tools(app)
 
     result = asyncio.run(
         app._tool_manager.call_tool(
-            "search_prts", {"query": "阿米娅"}, convert_result=True,
+            "search_prts", {"query": "阿米娅"}, Context(mcp_server=app),
+            convert_result=True,
         )
     )
 
-    assert result.structuredContent is None
+    assert result.structured_content is None
     assert result.content[0].text == "搜索 PRTS 失败：network down"
 
 
@@ -464,16 +466,17 @@ def test_search_stories_missing_zip_is_content_only(
     tmp_path: Path,
 ) -> None:
     monkeypatch.setenv("STORYJSON_PATH", str(tmp_path / "missing.zip"))
-    app = FastMCP("story-test")
+    app = MCPServer("story-test")
     register_story_tools(app)
 
     result = asyncio.run(
         app._tool_manager.call_tool(
-            "search_stories", {"pattern": "博士"}, convert_result=True,
+            "search_stories", {"pattern": "博士"}, Context(mcp_server=app),
+            convert_result=True,
         )
     )
 
-    assert result.structuredContent is None
+    assert result.structured_content is None
     assert result.content[0].text == (
         "剧情数据未就绪。请设置 STORYJSON_PATH 环境变量指向 zh_CN.zip，"
         "或等待服务器自动从 GitHub Release 下载完成后重试。"
@@ -485,20 +488,20 @@ def test_list_story_events_missing_zip_is_content_only(
     tmp_path: Path,
 ) -> None:
     # Regression for #42: list_story_events returned a bare str on the
-    # missing-zip path, which FastMCP then wrapped into an automatic
+    # missing-zip path, which the MCP server then wrapped into an automatic
     # structuredContent={"result": ...}. The fix routes it through
     # text_result(...) so the missing-data message stays content-only.
     monkeypatch.setenv("STORYJSON_PATH", str(tmp_path / "missing.zip"))
-    app = FastMCP("story-test")
+    app = MCPServer("story-test")
     register_story_tools(app)
 
     result = asyncio.run(
         app._tool_manager.call_tool(
-            "list_story_events", {}, convert_result=True,
+            "list_story_events", {}, Context(mcp_server=app), convert_result=True,
         )
     )
 
-    assert result.structuredContent is None
+    assert result.structured_content is None
     assert result.content[0].text == (
         "剧情数据未就绪。请设置 STORYJSON_PATH 环境变量指向 zh_CN.zip，"
         "或等待服务器自动从 GitHub Release 下载完成后重试。"

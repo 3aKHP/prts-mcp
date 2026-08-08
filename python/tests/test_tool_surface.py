@@ -4,7 +4,7 @@ import asyncio
 import ast
 from pathlib import Path
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server import MCPServer
 
 from prts_mcp.tools_gamedata import register_gamedata_tools
 from prts_mcp.tools_prts import register_prts_tools
@@ -41,8 +41,8 @@ EXPECTED_TOOL_SURFACE = {
 }
 
 
-def _build_registered_app() -> FastMCP:
-    app = FastMCP("tool-surface-test")
+def _build_registered_app() -> MCPServer:
+    app = MCPServer("tool-surface-test")
     register_prts_tools(app)
     register_gamedata_tools(app)
     register_story_tools(app)
@@ -90,7 +90,7 @@ def test_python_tool_functions_return_explicit_call_tool_results() -> None:
     for name in EXPECTED_TOOL_SURFACE:
         assert name in functions, f"Tool {name!r} not found in any tools_*.py module"
         assert _return_annotation(functions[name]) == "object", (
-            f"Tool {name!r} must stay annotated as -> object so FastMCP does "
+            f"Tool {name!r} must stay annotated as -> object so MCPServer does "
             "not derive an outputSchema that breaks explicit CallToolResult."
         )
 
@@ -107,4 +107,4 @@ def test_registered_tool_manifest_has_no_output_schema() -> None:
     assert set(tools) == expected_registered
 
     for name, tool in tools.items():
-        assert tool.outputSchema is None, f"{name} still has outputSchema"
+        assert tool.output_schema is None, f"{name} still has output_schema"

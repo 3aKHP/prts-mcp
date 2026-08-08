@@ -35,6 +35,7 @@ _has_operator_data = _op_table.is_file()
 
 _run_prts_api = os.environ.get("E2E_PRTS_API") == "1"
 _expected_version = _pkg_version("prts-mcp")
+_MODERN_VERSION = "2026-07-28"
 
 
 def _send(proc: subprocess.Popen, msg: dict) -> None:
@@ -74,6 +75,26 @@ def _tool_call(name: str, args: dict, id: int) -> dict:
         "jsonrpc": "2.0",
         "method": "tools/call",
         "params": {"name": name, "arguments": args},
+        "id": id,
+    }
+
+
+def _modern_message(method: str, params: dict, id: int) -> dict:
+    """Build a modern SDK v2 stdio request that needs no initialize step."""
+    return {
+        "jsonrpc": "2.0",
+        "method": method,
+        "params": {
+            **params,
+            "_meta": {
+                "io.modelcontextprotocol/protocolVersion": _MODERN_VERSION,
+                "io.modelcontextprotocol/clientInfo": {
+                    "name": "pytest-modern",
+                    "version": "1.0",
+                },
+                "io.modelcontextprotocol/clientCapabilities": {},
+            },
+        },
         "id": id,
     }
 
@@ -190,6 +211,54 @@ def test_tools_list(server: subprocess.Popen) -> None:
     assert len(names) == 24, f"Expected 24 tools, got {len(names)}: {sorted(names)}"
     for name in EXPECTED_TOOLS:
         assert name in names, f"Missing tool: {name}"
+
+
+def test_modern_stdio_discovery_list_and_call_need_no_initialize() -> None:
+    """A new stdio connection selects the modern era from its first request."""
+    env = os.environ.copy()
+    env["GAMEDATA_PATH"] = str(GAMEDATA_PATH)
+    env["GITHUB_MIRRORS"] = ""
+    env.setdefault("STORYJSON_PATH", str(GAMEDATA_PATH / "does-not-exist.zip"))
+    env["PYTHONPATH"] = str(Path(__file__).resolve().parents[1] / "src")
+    proc = subprocess.Popen(
+        [sys.executable, "-c", "from prts_mcp.server import main; main()"],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=env,
+    )
+    try:
+        _send(proc, _modern_message("server/discover", {}, 100))
+        discover = _recv(proc)
+        assert discover.get("id") == 100
+        assert discover.get("result")
+
+        _send(proc, _modern_message("tools/list", {}, 101))
+        listing = _recv(proc)
+        assert listing.get("id") == 101
+        names = {tool["name"] for tool in listing["result"]["tools"]}
+        assert "get_operator_basic_info" in names
+
+        if not _has_operator_data:
+            pytest.skip("No bundled operator data")
+        _send(
+            proc,
+            _modern_message(
+                "tools/call",
+                {"name": "get_operator_basic_info", "arguments": {"name": "阿米娅"}},
+                102,
+            ),
+        )
+        call = _recv(proc)
+        assert call.get("id") == 102
+        assert "阿米娅" in call["result"]["content"][0]["text"]
+    finally:
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
 
 
 @pytest.mark.skipif(not _has_operator_data, reason="No bundled operator data")
