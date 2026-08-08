@@ -6,11 +6,10 @@ _Last updated: 2026-08-09_
 
 | 实现 | 版本 | 状态 |
 |------|------|------|
-| Python | 2.5.1 | Stable |
-| TypeScript | 2.5.1 | Stable |
+| Python | 2.5.2 | Stable |
+| TypeScript | 2.5.2 | Stable |
 
-- 当前稳定发布：2.5.1（24 个 MCP 工具）
-- 当前稳定补丁候选：2.5.2（24 个 MCP 工具，待合并/发布）
+- 当前稳定发布：2.5.2（24 个 MCP 工具）
 - 当前 LTS 发布：1.7.0（32 个 MCP 工具，剧情角色追踪）
 - 下一开发目标：2.6.0（待规划）
 - 当前稳定补丁线：2.5.x
@@ -39,7 +38,7 @@ _Last updated: 2026-08-09_
 - 2.0 交付内容：工具面合并（32 → 23）+ output channel（structuredContent）；**双端协议同步（Python 上 HTTP / TS 上 stdio）已后置到 2.0 之后**。
 - 兼容性合约：1.7.x LTS 线既有 32 个工具名、必填参数、默认输出格式不变；仅接受兼容性、安全性、数据同步和关键缺陷修复
 
-## 2.5.2 待发布内容
+## 2.5.2 发布内容
 
 - [x] npm 生产依赖锁定图升级：`@modelcontextprotocol/sdk` 1.30、`adm-zip`
   0.6 及其安全传递依赖；保持 MCP SDK v1。
@@ -92,7 +91,7 @@ _Last updated: 2026-08-09_
 
 ## 当前分支
 
-- `main`：2.5.1（最新稳定发布线）
+- `main`：2.5.2（最新稳定发布线）
 - `lts/1.7`：1.7.x LTS 维护线（从 1.7.0 发布提交创建）
 - `develop`：2.6.0 开发线（待规划）
 
@@ -289,6 +288,7 @@ PRTS-MCP/
 
 | 版本 | 日期 | 亮点 |
 |------|------|------|
+| 2.5.2 | 2026-08-09 | npm 生产依赖安全更新；AKDP 直接敌人数据库；剧情标量 Decision；立绘 token 归属校验 |
 | 2.5.1 | 2026-08-07 | gamedata pair retry 修复；manifest 404 fail-open；image sha256 验证；CI Node 24 |
 | 2.5.0 | 2026-08-07 | 干员立绘工具 `operator_artwork`；数据源切换到自建 arknights-data-pipeline；TS stdio HTTP 泄漏修复 |
 | 2.4.0 | 2026-07-29 | 常驻服务 Auto-Sync；GameData excel/levels 原子成对发布；共享卷跨进程协调与锁续租 |
