@@ -11,6 +11,7 @@ import {
   registerActivationListener,
 } from "../config.js";
 import { DirectoryStore } from "./stores.js";
+import { normalizeEnemyDatabase } from "./enemyDatabase.js";
 
 const DATABASE_FILE = "enemydata/enemy_database.json";
 
@@ -161,19 +162,9 @@ function loadEnemyHandbook(): Record<string, EnemyHandbookEntry> {
 function loadEnemyDatabase(): Record<string, Record<number, EnemyData>> {
   checkActivationChange();
   if (enemyDatabase === null) {
-    const raw = levelsStore().readJson<{
-      enemies?: Array<{ Key?: string; Value?: Array<{ level?: number | string; enemyData?: EnemyData }> }>;
-    }>(DATABASE_FILE);
-    const index: Record<string, Record<number, EnemyData>> = {};
-    for (const row of Array.isArray(raw.enemies) ? raw.enemies : []) {
-      if (!row.Key) continue;
-      const levelMap: Record<number, EnemyData> = {};
-      for (const value of Array.isArray(row.Value) ? row.Value : []) {
-        if (value.enemyData) levelMap[parseLevel(value.level)] = value.enemyData;
-      }
-      index[row.Key] = levelMap;
-    }
-    enemyDatabase = index;
+    enemyDatabase = normalizeEnemyDatabase<EnemyData>(
+      levelsStore().readJson(DATABASE_FILE),
+    );
   }
   return enemyDatabase;
 }
@@ -296,7 +287,7 @@ function formatFloatLike(value: unknown): string {
 }
 
 function formatStats(enemyData: EnemyData | null): string {
-  if (!enemyData) return "战斗属性：无数据库记录";
+  if (!enemyData) return "无数据库记录";
   const attrs = enemyData.attributes ?? {};
   const hp = mValue(attrs.maxHp, 0);
   const atk = mValue(attrs.atk, 0);

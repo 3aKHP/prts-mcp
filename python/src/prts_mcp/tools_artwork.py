@@ -27,6 +27,7 @@ from prts_mcp.data.images import (
 )
 from prts_mcp.data.artwork_mediawiki import (
     VARIANT_WIDTH,
+    artwork_belongs_to_operator,
     image_cache_get,
     image_cache_put,
     label_from_filename,
@@ -122,6 +123,11 @@ async def _do_get_mediawiki(
     """LOCAL_IMAGE=false get: MediaWiki imageinfo + safe download (+ LRU)."""
     if not artwork_id:
         return text_result("action=get 时必须提供 artwork_id。请先用 action=list 获取。")
+    if not artwork_belongs_to_operator(artwork_id, operator_name):
+        return text_result(
+            f"该 artwork_id 不属于干员「{operator_name}」。"
+            "artwork_id 为不透明 token，请用 action=list 重新获取。"
+        )
     if variant == "original":
         return text_result(
             "LOCAL_IMAGE=false 模式不提供 original 变体（PRTS 原图常超 1 MiB 安全上限）。"
@@ -261,6 +267,19 @@ async def _do_get(
     if entry is None:
         return text_result(
             f"找不到 artwork_id「{artwork_id}」。该 ID 不透明，请用 action=list 重新获取。"
+        )
+    try:
+        char_id = resolve_char_id(operator_name)
+    except (OSError, AssertionError):
+        return _data_not_ready()
+    if char_id is None:
+        return text_result(
+            f"找不到干员「{operator_name}」。建议先用 search_prts 确认准确的中文名称。"
+        )
+    if _char_id_of(artwork_id) != char_id:
+        return text_result(
+            f"该 artwork_id 不属于干员「{operator_name}」。"
+            "artwork_id 为不透明 token，请用 action=list 重新获取。"
         )
     variant_meta = entry.variant(chosen)
     if variant_meta is None:

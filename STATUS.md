@@ -1,6 +1,6 @@
 # PRTS-MCP 项目状态
 
-_Last updated: 2026-08-07_
+_Last updated: 2026-08-09_
 
 ## 当前版本
 
@@ -10,6 +10,7 @@ _Last updated: 2026-08-07_
 | TypeScript | 2.5.1 | Stable |
 
 - 当前稳定发布：2.5.1（24 个 MCP 工具）
+- 当前稳定补丁候选：2.5.2（24 个 MCP 工具，待合并/发布）
 - 当前 LTS 发布：1.7.0（32 个 MCP 工具，剧情角色追踪）
 - 下一开发目标：2.6.0（待规划）
 - 当前稳定补丁线：2.5.x
@@ -37,6 +38,16 @@ _Last updated: 2026-08-07_
   `search_prts` redirect/技术页面过滤修复。Bun 在 2.0.2 仍是可选候选路径。
 - 2.0 交付内容：工具面合并（32 → 23）+ output channel（structuredContent）；**双端协议同步（Python 上 HTTP / TS 上 stdio）已后置到 2.0 之后**。
 - 兼容性合约：1.7.x LTS 线既有 32 个工具名、必填参数、默认输出格式不变；仅接受兼容性、安全性、数据同步和关键缺陷修复
+
+## 2.5.2 待发布内容
+
+- [x] npm 生产依赖锁定图升级：`@modelcontextprotocol/sdk` 1.30、`adm-zip`
+  0.6 及其安全传递依赖；保持 MCP SDK v1。
+- [x] 当前 AKDP `enemy_database.json` 直接 ID 映射兼容：关卡敌人与敌人图鉴均能
+  读取战斗属性，并保留旧 wrapper 格式。
+- [x] 剧情 `Decision.options` 标量字符串按一整行 choice 返回。
+- [x] `operator_artwork(action=get)` 严格校验 artwork token 的干员归属，拒绝跨干员
+  token，且在本地读图或 MediaWiki 网络请求之前返回 text-only 错误。
 
 ## 2.5.1 发布内容
 

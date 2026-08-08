@@ -6,6 +6,7 @@
 
 import { checkActivationChange, loadConfig, registerActivationListener } from "../config.js";
 import { DirectoryStore } from "./stores.js";
+import { normalizeEnemyDatabase } from "./enemyDatabase.js";
 
 // ---------------------------------------------------------------------------
 // Module-level caches
@@ -238,12 +239,11 @@ function getDbIndex(): Record<string, EnemyDbEntry> {
     // path handling
     const store = new DirectoryStore(dbRoot);
     if (!store.exists(DATABASE_FILE)) { _dbIndex = {}; return _dbIndex; }
-    const raw = store.readJson<EnemyDatabase>(DATABASE_FILE);
+    const levels = normalizeEnemyDatabase<EnemyDbEntry>(store.readJson(DATABASE_FILE));
     const index: Record<string, EnemyDbEntry> = {};
-    for (const row of Array.isArray(raw.enemies) ? raw.enemies : []) {
-      if (row.Key && row.Value && row.Value[0]?.enemyData) {
-        index[row.Key] = row.Value[0].enemyData;
-      }
+    for (const [enemyId, levelMap] of Object.entries(levels)) {
+      const first = levelMap[0] ?? Object.values(levelMap)[0];
+      if (first) index[enemyId] = first;
     }
     _dbIndex = index;
   }

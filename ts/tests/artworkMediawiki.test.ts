@@ -1,7 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { labelFromFilename } from "../src/data/artworkMediawiki.ts";
+import {
+  artworkBelongsToOperator,
+  labelFromFilename,
+  operatorFromFilename,
+} from "../src/data/artworkMediawiki.ts";
 import { downloadImageSafe, imageMagicOk, listAllimages } from "../src/api/prtsWiki.ts";
 
 const CHARINFO: Record<string, unknown> = {
@@ -35,6 +39,15 @@ test("labelFromFilename: fashion fallback without CharinfoV2", () => {
 test("labelFromFilename: rejects non-png and malformed", () => {
   assert.equal(labelFromFilename("立绘_阿米娅_2.jpg", CHARINFO), null);
   assert.equal(labelFromFilename("立绘阿米娅", CHARINFO), null);
+});
+
+test("artwork ownership accepts exact and base-form names only", () => {
+  assert.equal(operatorFromFilename("立绘_阿米娅(近卫)_2.png"), "阿米娅(近卫)");
+  assert.equal(artworkBelongsToOperator("立绘_阿米娅(近卫)_2.png", "阿米娅(近卫)"), true);
+  assert.equal(artworkBelongsToOperator("立绘_阿米娅（近卫）_2.png", "阿米娅"), true);
+  assert.equal(artworkBelongsToOperator("立绘_阿米娅(近卫)_2.png", "阿米"), false);
+  assert.equal(artworkBelongsToOperator("立绘_斯卡蒂_2.png", "阿米娅"), false);
+  assert.equal(artworkBelongsToOperator("立绘_阿米娅_2b.png", "阿米娅"), false);
 });
 
 test("imageMagicOk: png/jpeg/webp signatures", () => {
