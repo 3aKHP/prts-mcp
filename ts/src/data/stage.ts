@@ -1,6 +1,8 @@
 import { checkActivationChange, loadConfig, registerActivationListener } from "../config.js";
 import { DirectoryStore } from "./stores.js";
 import { getItemNameById } from "./item.js";
+import { CacheMetrics } from "./cacheMetrics.js";
+import type { CacheStat } from "../cacheStats.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -134,19 +136,25 @@ let _stageTable: StageTable | null = null;
 let _zoneTable: ZoneTable | null = null;
 let _zoneTableFailed = false;
 let _stageSearchRecords: StageSearchRecord[] | null = null;
+const stageTableMetrics = new CacheMetrics();
+const zoneTableMetrics = new CacheMetrics();
+const stageSearchRecordsMetrics = new CacheMetrics();
 
 export function clearStageCaches(): void {
+  stageTableMetrics.clear();
+  zoneTableMetrics.clear();
+  stageSearchRecordsMetrics.clear();
   _stageTable = null;
   _zoneTable = null;
   _zoneTableFailed = false;
   _stageSearchRecords = null;
 }
 
-export function getCacheStats(): Record<string, { loaded: boolean; count: number }> {
+export function getCacheStats(): Record<string, CacheStat> {
   return {
-    stage_table: { loaded: _stageTable != null, count: _stageTable ? Object.keys(_stageTable).length : 0 },
-    zone_table: { loaded: _zoneTable != null, count: _zoneTable ? Object.keys(_zoneTable).length : 0 },
-    stage_search_records: { loaded: _stageSearchRecords != null, count: _stageSearchRecords ? _stageSearchRecords.length : 0 },
+    stage_table: stageTableMetrics.snapshot(_stageTable != null, _stageTable ? Object.keys(_stageTable).length : 0),
+    zone_table: zoneTableMetrics.snapshot(_zoneTable != null, _zoneTable ? Object.keys(_zoneTable).length : 0),
+    stage_search_records: stageSearchRecordsMetrics.snapshot(_stageSearchRecords != null, _stageSearchRecords ? _stageSearchRecords.length : 0),
   };
 }
 
@@ -205,6 +213,7 @@ function formatDrops(dropInfo: Record<string, unknown> | null | undefined): stri
 
 function getStageTable(): StageTable {
   checkActivationChange();
+  stageTableMetrics.access(_stageTable !== null);
   if (_stageTable === null) {
     const cfg = loadConfig();
     if (!cfg.effectiveExcelPath) {
@@ -225,6 +234,7 @@ function getStageTable(): StageTable {
 
 function getZoneTable(): ZoneTable | null {
   checkActivationChange();
+  zoneTableMetrics.access(_zoneTable !== null || _zoneTableFailed);
   if (_zoneTable === null && !_zoneTableFailed) {
     const cfg = loadConfig();
     if (!cfg.effectiveExcelPath) {
@@ -542,6 +552,7 @@ function stageSearchEntry(record: StageSearchRecord): StageSearchPayload["result
 
 function getStageSearchRecords(): StageSearchRecord[] {
   checkActivationChange();
+  stageSearchRecordsMetrics.access(_stageSearchRecords !== null);
   if (_stageSearchRecords !== null) return _stageSearchRecords;
   _stageSearchRecords = Object.entries(getStageTable())
     .sort(([a], [b]) => a.localeCompare(b))

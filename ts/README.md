@@ -31,7 +31,7 @@ docker run -d -p 3000:3000 -v prts-mcp-ts-data:/data/gamedata -v prts-mcp-ts-lev
 docker build -f ts/Dockerfile.node -t prts-mcp-ts-node .
 ```
 
-服务启动后 MCP 端点为 `http://<host>:3000/mcp`，健康检查端点为 `http://<host>:3000/health`。
+服务启动后 MCP 端点为 `http://<host>:3000/mcp`，健康检查端点为 `http://<host>:3000/health`。部署诊断可在显式启用后使用仅聚合的 `/debug/metrics`；不要经公网代理该路径。
 
 ### 接入 MCP 客户端
 
@@ -161,6 +161,10 @@ docker run -d -p 3000:3000 -v prts-mcp-ts-data:/data/gamedata -v prts-mcp-ts-lev
 | `GITHUB_MIRRORS` | 空 | 逗号分隔的 ghproxy 风格代理前缀列表（如 `https://ghproxy.net`），依次在直连失败后尝试 |
 | `PRTS_AUTO_SYNC_INTERVAL_SECONDS` | `3600` | GitHub Release 周期检查间隔（秒）；有效范围 `60..604800`，`0` 表示只执行启动同步；非法值回落到默认值 |
 | `PRTS_OUTPUT_CHANNEL` | `content` | 2.0 输出通道：`content`（默认，仅 markdown，与 1.x 一致）/ `structured`（仅 structuredContent）/ `both`。也可经查询字符串 `?output_channel=` 或请求头 `x-prts-output-channel` 按请求覆盖。仅在客户端确认支持 `structuredContent` 时才用非默认值 |
+| `SESSION_IDLE_TIMEOUT_MS` | `86400000` | Streamable HTTP 会话空闲超时（毫秒）。设为非正数时禁用超时；会话活跃时间、有效值与淘汰计数可由已启用的 `/debug/metrics` 读取。`closed_total` 包含被空闲淘汰而关闭的会话，`evicted_total` 是其中的原因子集。 |
+| `PRTS_METRICS_ENABLED` | `false` | 设为严格的 `true` 才提供 `/debug/metrics`；响应只含进程、缓存、请求、工具和会话的聚合指标，不含 MCP 参数、结果或会话 ID。工具维度只接受内置工具名，避免把调用方输入变成指标标签。生产环境应保持服务仅监听 loopback，且不得为该路径配置公网反向代理。 |
+
+需要验证重复负载与并发会话时，只能在隔离的本机实例上执行 `PRTS_BENCH_ISOLATED=true PRTS_BENCH_ORIGIN=http://127.0.0.1:<port> npm run bench:memory`。脚本要求指标端点已启用，依次记录冷启动、同会话重复和三个并发会话的聚合快照，并在重复阶段新增缓存 miss 时失败；它拒绝非 loopback 目标，不得在生产服务器执行。
 
 ---
 

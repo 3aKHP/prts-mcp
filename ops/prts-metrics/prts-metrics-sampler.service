@@ -1,0 +1,12 @@
+[Unit]
+Description=PRTS-MCP aggregate metrics sampler
+After=prts-mcp-ts.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/prts-mcp/scripts/sample-metrics.sh
+User=root
+Group=root
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
