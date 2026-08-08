@@ -49,10 +49,12 @@ def test_label_rejects_non_png_and_malformed():
     assert label_from_filename("立绘阿米娅", _CHARINFO) is None  # no second underscore
 
 
-def test_artwork_filename_owner_accepts_exact_and_base_form_only():
+def test_artwork_filename_owner_requires_exact_form_match():
     assert operator_from_filename("立绘_阿米娅(近卫)_2.png") == "阿米娅(近卫)"
     assert artwork_belongs_to_operator("立绘_阿米娅(近卫)_2.png", "阿米娅(近卫)")
-    assert artwork_belongs_to_operator("立绘_阿米娅（近卫）_2.png", "阿米娅")
+    assert artwork_belongs_to_operator("立绘_阿米娅（近卫）_2.png", "阿米娅(近卫)")
+    assert not artwork_belongs_to_operator("立绘_阿米娅(近卫)_2.png", "阿米娅")
+    assert not artwork_belongs_to_operator("立绘_阿米娅(近卫)_2.png", "阿米娅(医疗)")
     assert not artwork_belongs_to_operator("立绘_阿米娅(近卫)_2.png", "阿米")
     assert not artwork_belongs_to_operator("立绘_斯卡蒂_2.png", "阿米娅")
     assert not artwork_belongs_to_operator("立绘_阿米娅_2b.png", "阿米娅")

@@ -8,7 +8,7 @@ import json
 import pytest
 
 from prts_mcp.data.images import SCHEMA_VERSION, build_artwork_label, parse_index
-from prts_mcp.output import _channel_var
+import prts_mcp.output as output_module
 from prts_mcp.tools_artwork import _do_get, _do_get_mediawiki, _do_list
 
 # A 1x1 transparent PNG used as a stand-in image payload.
@@ -69,6 +69,25 @@ def _sample_index(include_foreign: bool = False) -> dict:
             },
         }
     return index
+
+
+def _add_amiya_form_artworks(index: dict) -> None:
+    artworks = index["artworks"]
+    for char_id, filename in (
+        ("char_1001_amiya2", "amiya_guard.large.png"),
+        ("char_1037_amiya3", "amiya_medic.large.png"),
+    ):
+        artworks[f"{char_id}#1"] = {
+            "kind": "base",
+            "shard": "chararts",
+            "large": {
+                "file": filename,
+                "w": 1024,
+                "h": 1100,
+                "bytes": 50,
+                "sha256": char_id,
+            },
+        }
 
 
 # ---------------------------------------------------------------------------
@@ -153,8 +172,8 @@ def mock_images(monkeypatch, tmp_path):
 
 def test_list_returns_markdown_with_labels(mock_images):
     result = asyncio.run(_do_list("阿米娅"))
-    assert result.isError is False
-    assert result.structuredContent is None  # default channel = content
+    assert result.is_error is False
+    assert result.structured_content is None  # default channel = content
     text_blocks = [c for c in result.content if c.type == "text"]
     assert len(text_blocks) == 1
     body = text_blocks[0].text
@@ -166,12 +185,15 @@ def test_list_returns_markdown_with_labels(mock_images):
 
 
 def test_list_structured_channel(mock_images):
-    token = _channel_var.set("structured")
+    # test_output reloads the module when exercising import-time environment
+    # parsing, so access the current ContextVar through the module rather than
+    # retaining a stale imported instance.
+    token = output_module._channel_var.set("structured")
     try:
         result = asyncio.run(_do_list("阿米娅"))
     finally:
-        _channel_var.reset(token)
-    data = result.structuredContent
+        output_module._channel_var.reset(token)
+    data = result.structured_content
     assert data is not None
     assert data["operator_name"] == "阿米娅"
     assert data["char_id"] == "char_002_amiya"
@@ -187,12 +209,48 @@ def test_list_unknown_operator(mock_images):
     assert "找不到" in text
 
 
+@pytest.mark.parametrize(
+    ("operator_name", "expected_char_id"),
+    [
+        ("阿米娅(近卫)", "char_1001_amiya2"),
+        ("阿米娅(医疗)", "char_1037_amiya3"),
+        ("阿米娅（近卫）", "char_1001_amiya2"),
+        ("阿米娅（医疗）", "char_1037_amiya3"),
+    ],
+)
+def test_list_resolves_amiya_artwork_form_aliases(
+    mock_images, operator_name, expected_char_id,
+):
+    index = _sample_index()
+    _add_amiya_form_artworks(index)
+    (mock_images / "index.json").write_text(json.dumps(index), "utf-8")
+
+    result = asyncio.run(_do_list(operator_name))
+
+    body = result.content[0].text
+    assert expected_char_id in body
+    assert "char_002_amiya#1" not in body
+
+
+def test_get_rejects_opaque_artwork_token_from_another_amiya_form(mock_images):
+    index = _sample_index()
+    _add_amiya_form_artworks(index)
+    (mock_images / "index.json").write_text(json.dumps(index), "utf-8")
+
+    result = asyncio.run(
+        _do_get("阿米娅(医疗)", "char_1001_amiya2#1", "large")
+    )
+
+    assert "不属于" in result.content[0].text
+    assert not any(block.type == "image" for block in result.content)
+
+
 def test_get_returns_image_content(mock_images):
     result = asyncio.run(_do_get("阿米娅", "char_002_amiya#1", "large"))
-    assert result.isError is False
+    assert result.is_error is False
     image_blocks = [c for c in result.content if c.type == "image"]
     assert len(image_blocks) == 1
-    assert image_blocks[0].mimeType == "image/png"
+    assert image_blocks[0].mime_type == "image/png"
     # Pure base64 (no data: prefix) that decodes to the fixture PNG.
     assert image_blocks[0].data == _SAMPLE_PNG_B64
     text_blocks = [c for c in result.content if c.type == "text"]

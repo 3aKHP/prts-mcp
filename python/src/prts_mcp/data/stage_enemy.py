@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import Counter
 from typing import Any
 
-from prts_mcp.config import Config, activation_aware_cache, register_activation_listener
+from prts_mcp.config import Config, activation_aware_cache, cache_stat, register_activation_listener
 from prts_mcp.data.enemy_database import normalize_enemy_database
 from prts_mcp.data.stores import DirectoryStore
 
@@ -306,6 +306,17 @@ def _enemy_appearance_index() -> dict[str, list[tuple[str, int]]]:
         for enemy_id, count in _spawn_counts(level).items():
             appearances.setdefault(enemy_id, []).append((stage_id, count))
     return appearances
+
+
+def cache_stats() -> dict[str, dict]:
+    """Return ``{cache_name: {loaded, count}}`` for instrumentation (#104)."""
+    return {
+        "stage_table": cache_stat(_load_stage_table),
+        "enemy_handbook": cache_stat(_load_enemy_handbook),
+        "enemy_database": cache_stat(_load_enemy_database),
+        "enemy_name_to_id": cache_stat(_build_enemy_name_to_id),
+        "enemy_appearance_index": cache_stat(_enemy_appearance_index),
+    }
 
 
 def build_enemy_appearances(name: str, limit: int = 50, offset: int = 0) -> dict | str:

@@ -1,0 +1,41 @@
+[Unit]
+Description=PRTS MCP Server 2.6.0 canary (TypeScript / Streamable HTTP)
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/prts-mcp-canary
+ExecStart=/usr/bin/bun /opt/prts-mcp-canary/node_modules/prts-mcp-ts/dist/server-bun.js
+Restart=on-failure
+RestartSec=5s
+
+# Isolated loopback listener; the temporary authenticated Nginx location is
+# the only external ingress during acceptance.
+Environment=HOST=127.0.0.1
+Environment=PORT=5103
+Environment=PRTS_METRICS_ENABLED=true
+EnvironmentFile=/etc/prts-mcp-canary/debug.env
+
+# Reuse the active production data read-only. Explicit GAMEDATA_PATH makes
+# the canary a consumer rather than a second auto-sync publisher.
+Environment=GAMEDATA_PATH=/home/ubuntu/.local/share/prts-mcp/gamedata
+Environment=STORYJSON_PATH=/home/ubuntu/.local/share/prts-mcp/storyjson/zh_CN.zip
+Environment=PRTS_IMAGE_DIR=/home/ubuntu/.local/share/prts-mcp/images
+Environment=IMAGES_ENABLED=true
+Environment=LOCAL_IMAGE=true
+Environment=ORIGINAL_IMAGE=true
+Environment=XDG_DATA_HOME=/home/ubuntu/.local/share
+
+# Start throttling before the hard cap. The main service remains untouched
+# until canary acceptance and the explicit cutover step.
+MemoryHigh=1G
+MemoryMax=1536M
+NoNewPrivileges=true
+PrivateTmp=true
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -6,6 +6,8 @@
 
 import { checkActivationChange, loadConfig, registerActivationListener } from "../config.js";
 import { DirectoryStore } from "./stores.js";
+import { CacheMetrics } from "./cacheMetrics.js";
+import type { CacheStat } from "../cacheStats.js";
 import { normalizeEnemyDatabase } from "./enemyDatabase.js";
 
 // ---------------------------------------------------------------------------
@@ -16,15 +18,32 @@ let _handbook: EnemyHandbook | null = null;
 let _dbIndex: Record<string, EnemyDbEntry> | null = null;
 let _nameToEnemyId: Map<string, string> | null = null;
 let _enemySearchRecords: EnemySearchRecord[] | null = null;
+const handbookMetrics = new CacheMetrics();
+const databaseMetrics = new CacheMetrics();
+const nameToIdMetrics = new CacheMetrics();
+const searchRecordsMetrics = new CacheMetrics();
 
 const HANDBOOK_FILE = "enemy_handbook_table.json";
 const DATABASE_FILE = "enemy_database.json";
 
 export function clearEnemyCaches(): void {
+  handbookMetrics.clear();
+  databaseMetrics.clear();
+  nameToIdMetrics.clear();
+  searchRecordsMetrics.clear();
   _handbook = null;
   _dbIndex = null;
   _nameToEnemyId = null;
   _enemySearchRecords = null;
+}
+
+export function getCacheStats(): Record<string, CacheStat> {
+  return {
+    enemy_handbook: handbookMetrics.snapshot(_handbook != null, _handbook ? Object.keys(_handbook.enemyData ?? {}).length : 0),
+    enemy_database: databaseMetrics.snapshot(_dbIndex != null, _dbIndex ? Object.keys(_dbIndex).length : 0),
+    enemy_name_to_id: nameToIdMetrics.snapshot(_nameToEnemyId != null, _nameToEnemyId ? _nameToEnemyId.size : 0),
+    enemy_search_records: searchRecordsMetrics.snapshot(_enemySearchRecords != null, _enemySearchRecords ? _enemySearchRecords.length : 0),
+  };
 }
 
 registerActivationListener(clearEnemyCaches);
@@ -207,6 +226,7 @@ function hasEnemyData(): boolean {
 
 function getHandbook(): EnemyHandbook {
   checkActivationChange();
+  handbookMetrics.access(_handbook !== null);
   if (_handbook === null) {
     const cfg = loadConfig();
     if (cfg.effectiveExcelPath === null) throw new Error("effectiveExcelPath is null");
@@ -231,6 +251,7 @@ function mValue<T>(obj: unknown, defaultValue?: T): T | undefined {
 
 function getDbIndex(): Record<string, EnemyDbEntry> {
   checkActivationChange();
+  databaseMetrics.access(_dbIndex !== null);
   if (_dbIndex === null) {
     const cfg = loadConfig();
     const lp = cfg.effectiveLevelsPath;
@@ -256,6 +277,7 @@ function join(...parts: (string | undefined | null)[]): string {
 
 function buildNameToEnemyId(): Map<string, string> {
   checkActivationChange();
+  nameToIdMetrics.access(_nameToEnemyId !== null);
   if (_nameToEnemyId === null) {
     const raw = getHandbook();
     const ed = raw.enemyData ?? {};
@@ -669,6 +691,7 @@ function renderEnemySearchCard(entry: EnemySearchPayload["results"][number]): st
 
 function getEnemySearchRecords(): EnemySearchRecord[] {
   checkActivationChange();
+  searchRecordsMetrics.access(_enemySearchRecords !== null);
   if (_enemySearchRecords !== null) return _enemySearchRecords;
   const ed = getHandbook().enemyData ?? {};
   _enemySearchRecords = Object.entries(ed)

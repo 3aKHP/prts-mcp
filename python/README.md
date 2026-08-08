@@ -1,7 +1,6 @@
 # PRTS MCP Server — Python 实现
 
-明日方舟同人创作辅助 MCP Server，Python 版本。支持 **stdio** 与
-**Streamable HTTP**，可接入本地 MCP 客户端或作为 HTTP 服务部署。
+明日方舟同人创作辅助 MCP Server，Python 版本。支持 **stdio** 与 **Streamable HTTP**，可接入本地 MCP 客户端或作为 HTTP 服务部署。
 
 提供 23 个 MCP 工具（2.0）：PRTS 词条检索与页面结构、干员档案/语音/基础信息、剧情活动与台词、角色出场追踪、全文搜索、敌人图鉴、关卡查询、关卡敌人融合，以及物品/材料查询。完整清单见仓库根目录 [`README.md`](../README.md)。
 
@@ -67,8 +66,7 @@ GAMEDATA_PATH=/path/to/ArknightsGameData prts-mcp
 
 镜像内置 bundled 数据作为网络不可用时的离线保底。
 
-自建数据工厂的新 Release 附带 manifest（`prts-mcp-data/v1`、源 versionId、包大小和
-SHA-256）；Python 实现会在原子激活前校验它。没有 manifest 的历史 Release 仍兼容读取。
+自建数据工厂的新 Release 附带 manifest（`prts-mcp-data/v1`、源 versionId、包大小和 SHA-256）；Python 实现会在原子激活前校验它。没有 manifest 的历史 Release 仍兼容读取。
 
 周期可通过 `PRTS_AUTO_SYNC_INTERVAL_SECONDS` 调整（`60..604800` 秒）；设为 `0` 时只执行启动同步。
 

@@ -10,6 +10,8 @@ import {
   getHandbookTable,
   getCharwordTable,
 } from "./operator.js";
+import { CacheMetrics } from "./cacheMetrics.js";
+import type { CacheStat } from "../cacheStats.js";
 import { buildEnemySearch, renderEnemySearch, type EnemySearchPayload } from "./enemy.js";
 import { buildStageSearch, renderStageSearch, type StageSearchPayload } from "./stage.js";
 import { buildItemSearch, renderItemSearch, type ItemSearchPayload } from "./item.js";
@@ -59,9 +61,17 @@ type SearchPayload =
   | ItemSearchPayload;
 
 let operatorSearchRecords: OperatorSearchEntry[] | null = null;
+const operatorSearchRecordsMetrics = new CacheMetrics();
 
 export function clearSearchCaches(): void {
+  operatorSearchRecordsMetrics.clear();
   operatorSearchRecords = null;
+}
+
+export function getCacheStats(): Record<string, CacheStat> {
+  return {
+    search_records: operatorSearchRecordsMetrics.snapshot(operatorSearchRecords != null, operatorSearchRecords ? operatorSearchRecords.length : 0),
+  };
 }
 
 export function searchOperatorData(pattern: string, maxResults = 30): string {
@@ -145,6 +155,7 @@ export function renderSearch(data: SearchPayload): string {
 
 function getOperatorSearchRecords(): OperatorSearchEntry[] {
   checkActivationChange();
+  operatorSearchRecordsMetrics.access(operatorSearchRecords !== null);
   if (operatorSearchRecords !== null) return operatorSearchRecords;
 
   const ct = getCharacterTable();

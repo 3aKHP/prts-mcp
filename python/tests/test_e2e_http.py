@@ -29,6 +29,7 @@ import pytest
 
 GAMEDATA_PATH = Path(__file__).resolve().parents[2] / "data" / "gamedata"
 GAMEDATA_PATH = GAMEDATA_PATH.resolve()
+_DEBUG_HEADERS = {"Authorization": "Bearer test-debug-token"}
 
 
 def _free_port() -> int:
@@ -89,6 +90,59 @@ def _mcp_post(
     return r.status_code, payload, sid
 
 
+_MODERN_VERSION = "2026-07-28"
+
+
+def _modern_body(method: str, params: dict, request_id: int) -> dict:
+    """Build the SDK v2 stateless-request envelope for the modern era."""
+    return {
+        "jsonrpc": "2.0",
+        "method": method,
+        "params": {
+            **params,
+            "_meta": {
+                "io.modelcontextprotocol/protocolVersion": _MODERN_VERSION,
+                "io.modelcontextprotocol/clientInfo": {
+                    "name": "pytest-modern",
+                    "version": "1.0",
+                },
+                "io.modelcontextprotocol/clientCapabilities": {},
+            },
+        },
+        "id": request_id,
+    }
+
+
+def _modern_post(
+    origin: str, method: str, params: dict, request_id: int
+) -> tuple[int, dict | None, str | None]:
+    """POST one strict modern request and decode JSON or SSE output."""
+    headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json, text/event-stream",
+        "MCP-Protocol-Version": _MODERN_VERSION,
+        "Mcp-Method": method,
+    }
+    if method == "tools/call":
+        headers["Mcp-Name"] = str(params["name"])
+    response = httpx.post(
+        f"{origin}/mcp",
+        json=_modern_body(method, params, request_id),
+        headers=headers,
+        timeout=10.0,
+    )
+    payload: dict | None = None
+    if response.text:
+        try:
+            payload = _parse_sse(response.text)
+        except (ValueError, json.JSONDecodeError):
+            try:
+                payload = response.json()
+            except json.JSONDecodeError:
+                pass
+    return response.status_code, payload, response.headers.get("mcp-session-id")
+
+
 # ---------------------------------------------------------------------------
 # Server factory + fixtures
 # ---------------------------------------------------------------------------
@@ -104,6 +158,7 @@ def _start_server(extra_env: dict | None = None) -> dict:
     env["HOST"] = "127.0.0.1"
     env["GAMEDATA_PATH"] = str(GAMEDATA_PATH)
     env["GITHUB_MIRRORS"] = ""
+    env["PRTS_DEBUG_TOKEN"] = "test-debug-token"
     env.setdefault("STORYJSON_PATH", str(GAMEDATA_PATH / "does-not-exist.zip"))
     if extra_env:
         env.update(extra_env)
@@ -144,6 +199,27 @@ def test_health(server):
     r = httpx.get(f"{server['origin']}/health", timeout=5.0)
     assert r.status_code == 200
     assert r.json() == {"status": "ok"}
+
+
+def test_debug_cache(server):
+    unauthenticated = httpx.get(f"{server['origin']}/debug/cache", timeout=5.0)
+    assert unauthenticated.status_code == 404
+    r = httpx.get(f"{server['origin']}/debug/cache", headers=_DEBUG_HEADERS, timeout=5.0)
+    assert r.status_code == 200
+    data = r.json()
+    expected_modules = {
+        "operator", "enemy", "stage", "stage_enemy", "item",
+        "search", "story_search", "images", "artwork_mediawiki",
+    }
+    assert set(data.keys()) == expected_modules
+    for module_name, caches in data.items():
+        assert isinstance(caches, dict)
+        for cache_name, stat in caches.items():
+            assert "loaded" in stat and isinstance(stat["loaded"], bool)
+            assert "count" in stat and isinstance(stat["count"], int)
+    # artwork_mediawiki.image_cache includes bytes
+    am = data["artwork_mediawiki"]["image_cache"]
+    assert "bytes" in am and isinstance(am["bytes"], int)
 
 
 def test_initialize_and_tools_list(server):
@@ -191,6 +267,49 @@ def test_initialize_and_tools_list(server):
         "list_enemies",
     ]:
         assert required in names, f"missing tool {required}; got {sorted(names)[:10]}..."
+
+
+def test_modern_http_requests_are_stateless_and_strict(server):
+    """SDK v2 serves modern discovery/list/call without legacy sessions."""
+    origin = server["origin"]
+
+    status, payload, sid = _modern_post(origin, "server/discover", {}, 100)
+    assert status == 200
+    assert sid is None
+    assert payload is not None and payload.get("result")
+
+    status, payload, sid = _modern_post(origin, "tools/list", {}, 101)
+    assert status == 200
+    assert sid is None
+    assert payload is not None
+    names = {tool["name"] for tool in payload["result"]["tools"]}
+    assert "get_operator_basic_info" in names
+
+    if not (GAMEDATA_PATH / "zh_CN/gamedata/excel/character_table.json").is_file():
+        pytest.skip("GameData character_table not available; cannot verify modern tool call")
+    status, payload, sid = _modern_post(
+        origin,
+        "tools/call",
+        {"name": "get_operator_basic_info", "arguments": {"name": "阿米娅"}},
+        102,
+    )
+    assert status == 200
+    assert sid is None
+    assert payload is not None
+    assert "阿米娅" in payload["result"]["content"][0]["text"]
+
+    malformed = httpx.post(
+        f"{origin}/mcp",
+        headers={
+            "Content-Type": "application/json",
+            "MCP-Protocol-Version": _MODERN_VERSION,
+            "Mcp-Method": "tools/list",
+        },
+        json={"jsonrpc": "2.0", "method": "tools/list", "params": {}, "id": 103},
+        timeout=10.0,
+    )
+    assert malformed.status_code == 400
+    assert malformed.headers.get("mcp-session-id") is None
 
 
 def test_output_channel_env_governs_not_query():

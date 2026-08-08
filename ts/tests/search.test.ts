@@ -394,7 +394,7 @@ test("search_stories payload matches shared parity fixture", () => {
 // ---------------------------------------------------------------------------
 
 test("search modules export the expected functions", () => {
-  // Tool surface test already validates server.tool() calls, so here we
+  // Tool surface test already validates SDK v2 registrations, so here we
   // just verify the search modules export the expected functions.
   assert.equal(typeof searchOperatorData, "function");
   assert.equal(typeof buildOperatorSearch, "function");

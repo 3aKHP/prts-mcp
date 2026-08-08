@@ -143,29 +143,29 @@ def render_result(
         # Error / missing-data path: text only, regardless of channel.
         return CallToolResult(
             content=[TextContent(type="text", text=markdown)],
-            structuredContent=None,
-            isError=False,
+            structured_content=None,
+            is_error=False,
         )
 
     if channel == "content":
         return CallToolResult(
             content=[TextContent(type="text", text=markdown)],
-            structuredContent=None,
-            isError=False,
+            structured_content=None,
+            is_error=False,
         )
 
     if channel == "both":
         return CallToolResult(
             content=[TextContent(type="text", text=markdown)],
-            structuredContent=data,
-            isError=False,
+            structured_content=data,
+            is_error=False,
         )
 
     # channel == "structured": minimal content summary + structured payload.
     return CallToolResult(
         content=[TextContent(type="text", text=_summarize(data, summary))],
-        structuredContent=data,
-        isError=False,
+        structured_content=data,
+        is_error=False,
     )
 
 
@@ -205,8 +205,8 @@ def text_result(markdown: str) -> CallToolResult:
     """
     return CallToolResult(
         content=[TextContent(type="text", text=markdown)],
-        structuredContent=None,
-        isError=False,
+        structured_content=None,
+        is_error=False,
     )
 
 
@@ -234,22 +234,22 @@ def render_image_result(
     """
     if channel is None:
         channel = get_output_channel()
-    image = ImageContent(type="image", data=image_data, mimeType=image_mimetype)
+    image = ImageContent(type="image", data=image_data, mime_type=image_mimetype)
     if data is None or channel == "content":
         return CallToolResult(
             content=[TextContent(type="text", text=markdown), image],
-            structuredContent=None,
-            isError=False,
+            structured_content=None,
+            is_error=False,
         )
     if channel == "both":
         return CallToolResult(
             content=[TextContent(type="text", text=markdown), image],
-            structuredContent=data,
-            isError=False,
+            structured_content=data,
+            is_error=False,
         )
     # structured: summary text + image, plus structured payload.
     return CallToolResult(
         content=[TextContent(type="text", text=_summarize(data, summary)), image],
-        structuredContent=data,
-        isError=False,
+        structured_content=data,
+        is_error=False,
     )

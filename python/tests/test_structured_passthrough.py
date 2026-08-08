@@ -2,14 +2,14 @@
 
 The whole output-channel design rests on one assumption validated by the
 P1 spike: a tool that returns a hand-built ``CallToolResult`` reaches the
-client with ``content`` and ``structuredContent`` exactly as built — FastMCP
+client with ``content`` and ``structuredContent`` exactly as built — MCPServer
 does not rewrite content to JSON, drop structuredContent, or auto-derive
 an ``outputSchema``. That assumption lives in the SDK's ``convert_result``
 ``isinstance(result, CallToolResult)`` branch; if a future SDK version
 changes it, the failure is **silent** (structuredContent vanishes, or an
 extra serialized JSON block appears) and every other test stays green.
 
-These tests exercise the *real* FastMCP tool-call path
+These tests exercise the *real* MCPServer tool-call path
 (``ToolManager.call_tool(..., convert_result=True)`` — the same call the
 lowlevel server handler makes), not the ``render_result`` helper directly.
 A dedicated probe tool returns a fixed ``CallToolResult`` so the assertion
@@ -24,8 +24,9 @@ from __future__ import annotations
 import asyncio
 
 import pytest
-from mcp.server.fastmcp.exceptions import ToolError
-from mcp.server.fastmcp import FastMCP
+from mcp.server import MCPServer
+from mcp.server.mcpserver import Context
+from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import CallToolResult
 
 from prts_mcp.output import render_result
@@ -34,14 +35,14 @@ _PROBE_DATA = {"total": 2, "stages": [{"stage_id": "main_00-01"}, {"stage_id": "
 _PROBE_MD = "# probe\n\n- main_00-01\n- main_00-02"
 
 
-def _build_probe_app(channel: str) -> FastMCP:
-    """FastMCP app with one probe tool returning render_result(...) for a channel.
+def _build_probe_app(channel: str) -> MCPServer:
+    """MCPServer app with one probe tool returning render_result(...) for a channel.
 
     The probe fixes its inputs so only the channel (and thus the SDK
     pass-through) varies — env parsing and the data layer are out of scope.
     """
 
-    app = FastMCP("probe")
+    app = MCPServer("probe")
 
     @app.tool()
     async def probe() -> object:  # returns a CallToolResult, not a str
@@ -51,10 +52,12 @@ def _build_probe_app(channel: str) -> FastMCP:
 
 
 def _call_probe(channel: str) -> CallToolResult:
-    """Drive the probe tool through the real FastMCP tool-call path."""
+    """Drive the probe tool through the real MCPServer tool-call path."""
     app = _build_probe_app(channel)
     result = asyncio.run(
-        app._tool_manager.call_tool("probe", {}, convert_result=True)
+        app._tool_manager.call_tool(
+            "probe", {}, Context(mcp_server=app), convert_result=True
+        )
     )
     return result  # type: ignore[return-value]
 
@@ -71,16 +74,16 @@ def test_sdk_passes_through_call_tool_result_verbatim(channel: str) -> None:
     )
 
     if channel == "content":
-        assert result.structuredContent is None
+        assert result.structured_content is None
         assert len(result.content) == 1
         assert result.content[0].text == _PROBE_MD
     elif channel == "both":
-        assert result.structuredContent == _PROBE_DATA
+        assert result.structured_content == _PROBE_DATA
         # Exactly one text block — no extra serialized-JSON block appended.
         assert len(result.content) == 1, "both channel appended an extra content block"
         assert result.content[0].text == _PROBE_MD
     else:  # structured
-        assert result.structuredContent == _PROBE_DATA
+        assert result.structured_content == _PROBE_DATA
         assert result.content[0].text != _PROBE_MD  # summary, not full markdown
         assert len(result.content) == 1
 
@@ -89,7 +92,7 @@ def test_no_output_schema_pollutes_the_manifest() -> None:
     app = _build_probe_app("both")
     tools = asyncio.run(app.list_tools())
     probe = next(t for t in tools if t.name == "probe")
-    assert probe.outputSchema is None, (
+    assert probe.output_schema is None, (
         "Returning a CallToolResult derived an outputSchema; this would eat the "
         "context budget the consolidation work is trying to save."
     )
@@ -98,12 +101,12 @@ def test_no_output_schema_pollutes_the_manifest() -> None:
 def test_str_annotation_rejects_explicit_call_tool_result() -> None:
     """Guard against forgetting -> object when migrating tools in P2.
 
-    FastMCP derives outputSchema from the return annotation. If a tool keeps
-    ``-> str`` but starts returning our explicit ``CallToolResult``, FastMCP
+    MCPServer derives outputSchema from the return annotation. If a tool keeps
+    ``-> str`` but starts returning our explicit ``CallToolResult``, MCPServer
     validates that object against ``{result: string}`` and the tool call fails.
     """
 
-    app = FastMCP("bad-probe")
+    app = MCPServer("bad-probe")
 
     @app.tool()
     async def bad_probe() -> str:
@@ -112,7 +115,11 @@ def test_str_annotation_rejects_explicit_call_tool_result() -> None:
         )
 
     with pytest.raises(ToolError) as excinfo:
-        asyncio.run(app._tool_manager.call_tool("bad_probe", {}, convert_result=True))
+        asyncio.run(
+            app._tool_manager.call_tool(
+                "bad_probe", {}, Context(mcp_server=app), convert_result=True
+            )
+        )
 
     message = str(excinfo.value)
     assert "validation error" in message

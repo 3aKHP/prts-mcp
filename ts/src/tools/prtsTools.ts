@@ -5,7 +5,7 @@
  * Wiki tools to a McpServer instance.
  */
 
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import {
   searchPrts,
@@ -16,6 +16,7 @@ import {
   getTemplateData,
 } from "../api/prtsWiki.js";
 import { renderResult, textResult, type OutputChannel } from "../output.js";
+import { registerTool } from "./registerTool.js";
 
 export interface PrtsSearchPayload {
   query: string;
@@ -67,7 +68,7 @@ export function renderPrtsSearch(data: PrtsSearchPayload): string {
 }
 
 export function registerPrtsTools(server: McpServer, channel: OutputChannel = "content"): void {
-  server.tool(
+  registerTool(server,
     "search_prts",
     [
       "搜索 PRTS 明日方舟中文维基词条。",
@@ -90,7 +91,7 @@ export function registerPrtsTools(server: McpServer, channel: OutputChannel = "c
     }
   );
 
-  server.tool(
+  registerTool(server,
     "prts_page",
     [
       "读取 PRTS 维基页面的正文或元数据，按 action 分派。",

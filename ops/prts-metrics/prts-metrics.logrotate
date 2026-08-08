@@ -1,0 +1,8 @@
+/var/log/prts-mcp/metrics-samples.jsonl {
+    daily
+    rotate 14
+    compress
+    missingok
+    notifempty
+    create 0640 root root
+}

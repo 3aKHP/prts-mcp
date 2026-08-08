@@ -84,6 +84,45 @@ async function mcpPost(
   return { status: res.status, body: data as Record<string, unknown>, sessionId: sid };
 }
 
+const MODERN_VERSION = "2026-07-28";
+const DEBUG_TOKEN = "e2e-debug-token";
+const DEBUG_HEADERS = { Authorization: `Bearer ${DEBUG_TOKEN}` };
+
+function modernBody(method: string, params: Record<string, unknown>, id: number): Record<string, unknown> {
+  return {
+    jsonrpc: "2.0",
+    method,
+    params: {
+      ...params,
+      _meta: {
+        "io.modelcontextprotocol/protocolVersion": MODERN_VERSION,
+        "io.modelcontextprotocol/clientInfo": { name: "e2e-modern", version: "1.0" },
+        "io.modelcontextprotocol/clientCapabilities": {},
+      },
+    },
+    id,
+  };
+}
+
+async function modernPost(origin: string, method: string, params: Record<string, unknown>, id: number): Promise<McpResponse> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Accept: "application/json, text/event-stream",
+    "MCP-Protocol-Version": MODERN_VERSION,
+    "Mcp-Method": method,
+  };
+  if (method === "tools/call") headers["Mcp-Name"] = String(params["name"]);
+  const res = await fetch(`${origin}/mcp`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(modernBody(method, params, id)),
+  });
+  const raw = await res.text();
+  const sseMatch = raw.match(/^data:\s*(\{[\s\S]*\})/m);
+  const body = JSON.parse(sseMatch?.[1] ?? raw) as Record<string, unknown>;
+  return { status: res.status, body, sessionId: res.headers.get("mcp-session-id") };
+}
+
 function toolResultText(r: McpResponse): string {
   const content = (r.body?.result as Record<string, unknown>)?.content as Array<{ text: string }> | undefined;
   return content?.[0]?.text ?? "";
@@ -134,6 +173,8 @@ test("E2E", async (t) => {
         GITHUB_MIRRORS: "",
         IMAGES_ENABLED: "true",
         SESSION_IDLE_TIMEOUT_MS: "30000",
+        PRTS_METRICS_ENABLED: "true",
+        PRTS_DEBUG_TOKEN: DEBUG_TOKEN,
       },
       stdio: ["ignore", "pipe", "pipe"],
     },
@@ -146,6 +187,31 @@ test("E2E", async (t) => {
   await waitForHealth(origin, 15000);
 
   t.after(() => { child.kill(); });
+
+  // --- /debug/cache ---
+  await t.test("debug cache returns expected modules", async () => {
+    const unauthenticated = await fetch(`${origin}/debug/cache`);
+    assert.equal(unauthenticated.status, 404);
+    const res = await fetch(`${origin}/debug/cache`, { headers: DEBUG_HEADERS });
+    assert.equal(res.status, 200);
+    const data = await res.json() as Record<string, Record<string, { loaded: boolean; count: number; hits: number; misses: number; clears: number; bytes?: number }>>;
+    const expectedModules = new Set([
+      "operator", "enemy", "stage", "stage_enemy", "item",
+      "search", "story_search", "images", "artwork_mediawiki",
+    ]);
+    assert.deepEqual(new Set(Object.keys(data)), expectedModules, "module set mismatch");
+    for (const [mod, caches] of Object.entries(data)) {
+      for (const [cacheName, stat] of Object.entries(caches)) {
+        assert.equal(typeof stat.loaded, "boolean", `${mod}.${cacheName}.loaded should be boolean`);
+        assert.equal(typeof stat.count, "number", `${mod}.${cacheName}.count should be number`);
+        assert.equal(typeof stat.hits, "number", `${mod}.${cacheName}.hits should be number`);
+        assert.equal(typeof stat.misses, "number", `${mod}.${cacheName}.misses should be number`);
+        assert.equal(typeof stat.clears, "number", `${mod}.${cacheName}.clears should be number`);
+      }
+    }
+    // artwork_mediawiki.image_cache includes bytes
+    assert.equal(typeof data["artwork_mediawiki"]!["image_cache"]!.bytes, "number");
+  });
 
   // --- protocol handshake ---
   let sessionId: string;
@@ -168,6 +234,39 @@ test("E2E", async (t) => {
     const serverInfo = (init.body?.result as { serverInfo?: { version?: string } })?.serverInfo;
     assert.equal(serverInfo?.version, EXPECTED_VERSION, "serverInfo.version should match package.json");
     assert.ok(init.body?.result, "initialize should have result");
+  });
+
+  await t.test("modern discover, list, and tool calls are stateless", async () => {
+    const discover = await modernPost(origin, "server/discover", {}, 100);
+    assert.equal(discover.status, 200);
+    assert.equal(discover.sessionId, null, "modern discover must not create a legacy session");
+    assert.ok(discover.body["result"], "discover should return a modern result");
+
+    const list = await modernPost(origin, "tools/list", {}, 101);
+    assert.equal(list.status, 200);
+    assert.equal(list.sessionId, null, "modern tools/list must stay stateless");
+    const tools = (list.body["result"] as { tools?: Array<{ name: string }> }).tools;
+    assert.equal(tools?.length, 24);
+
+    const call = await modernPost(origin, "tools/call", {
+      name: "get_operator_basic_info",
+      arguments: { name: "阿米娅" },
+    }, 102);
+    assert.equal(call.status, 200);
+    assert.equal(call.sessionId, null, "modern tools/call must not create a legacy session");
+    assert.match(toolResultText(call), /阿米娅/);
+
+    const malformed = await fetch(`${origin}/mcp`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "MCP-Protocol-Version": MODERN_VERSION,
+        "Mcp-Method": "tools/list",
+      },
+      body: JSON.stringify({ jsonrpc: "2.0", method: "tools/list", params: {}, id: 103 }),
+    });
+    assert.equal(malformed.status, 400, "a modern header without its envelope must not fall back to legacy");
+    assert.equal(malformed.headers.get("mcp-session-id"), null);
   });
 
   // --- tools/list ---
@@ -264,6 +363,29 @@ test("E2E", async (t) => {
     );
     assert.equal(r.status, 200);
     assert.ok(r.body?.result, "reused session should work");
+  });
+
+  await t.test("debug metrics exposes aggregate runtime state only", async () => {
+    const unauthenticated = await fetch(`${origin}/debug/metrics`);
+    assert.equal(unauthenticated.status, 404);
+    const res = await fetch(`${origin}/debug/metrics`, { headers: DEBUG_HEADERS });
+    assert.equal(res.status, 200);
+    const data = await res.json() as Record<string, unknown>;
+    assert.equal(data.schema_version, "prts-mcp.metrics/v1");
+    const server = data.server as Record<string, unknown>;
+    const processMetrics = data.process as Record<string, unknown>;
+    const sessions = data.sessions as Record<string, unknown>;
+    const requests = data.requests as Record<string, unknown>;
+    const toolCalls = data.tool_calls as Record<string, unknown>;
+    assert.equal(server.version, EXPECTED_VERSION);
+    assert.equal(typeof processMetrics.rss_bytes, "number");
+    assert.equal(sessions.idle_timeout_ms, 30000);
+    assert.equal(sessions.active, 1);
+    assert.ok(Number(requests.total) >= 10);
+    const byName = toolCalls.by_name as Record<string, Record<string, unknown>>;
+    assert.ok(Number(byName.get_operator_basic_info?.total) >= 2);
+    assert.equal(typeof byName.get_operator_basic_info?.duration_ms_max, "number");
+    assert.equal(JSON.stringify(data).includes(sessionId), false, "metrics must not expose session IDs");
   });
 
   // --- PRTS API tools (opt-in) ---

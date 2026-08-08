@@ -42,6 +42,8 @@ function collectStderr(child: ChildProcess): string[] {
 }
 
 test("idle sessions are evicted after timeout", async () => {
+  const debugToken = "session-idle-debug-token";
+  const debugHeaders = { Authorization: `Bearer ${debugToken}` };
   const port = await getFreePort();
   const dataHome = mkdtempSync(join(tmpdir(), "prts-session-idle-"));
   const localAppData = join(dataHome, "LocalAppData");
@@ -61,6 +63,8 @@ test("idle sessions are evicted after timeout", async () => {
         GITHUB_MIRRORS: "",
         STORYJSON_PATH: join(dataHome, "storyjson", "missing.zip"),
         SESSION_IDLE_TIMEOUT_MS: "2000",
+        PRTS_METRICS_ENABLED: "true",
+        PRTS_DEBUG_TOKEN: debugToken,
       },
       stdio: ["ignore", "ignore", "pipe"],
     },
@@ -71,6 +75,8 @@ test("idle sessions are evicted after timeout", async () => {
   try {
     const origin = "http://127.0.0.1:" + port;
     await waitForHealth(origin, 5000);
+    const metricsEnabled = await fetch(origin + "/debug/metrics", { headers: debugHeaders });
+    assert.equal(metricsEnabled.status, 200, "metrics should be available when explicitly enabled");
 
     const initRes = await fetch(origin + "/mcp", {
       method: "POST",
@@ -88,6 +94,16 @@ test("idle sessions are evicted after timeout", async () => {
 
     // Wait for idle eviction (timeout is 2s, wait 4s)
     await new Promise((r) => setTimeout(r, 4000));
+
+    const metricsRes = await fetch(origin + "/debug/metrics", { headers: debugHeaders });
+    assert.equal(metricsRes.status, 200);
+    const metricsText = await metricsRes.text();
+    const metrics = JSON.parse(metricsText) as { sessions: Record<string, unknown> };
+    assert.equal(metrics.sessions.active, 0, "an evicted session must not stay active in metrics");
+    assert.equal(metrics.sessions.initialized_total, 1);
+    assert.equal(metrics.sessions.evicted_total, 1);
+    assert.equal(metrics.sessions.closed_total, 1, "idle eviction closes the session");
+    assert.equal(metricsText.includes(sessionId), false, "metrics must not expose session IDs");
 
     // --- non-init request with stale session → 404 JSON-RPC error ---
     const reuseRes = await fetch(origin + "/mcp", {

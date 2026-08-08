@@ -50,6 +50,11 @@ class _StorySearchIndex:
     records: tuple[_StorySearchRecord, ...]
 
 
+# Instrumentation: last-built index for cache_stats() (#104).  Single source
+# of truth for both loaded and count, avoiding a parallel bookkeeping channel.
+_last_index: _StorySearchIndex | None = None
+
+
 # ---------------------------------------------------------------------------
 # Formatting
 # ---------------------------------------------------------------------------
@@ -292,8 +297,12 @@ def story_search_index(store: JsonStore) -> _StorySearchIndex:
     """
     descriptor = _story_store_descriptor(store)
     if descriptor is None:
-        return _build_story_search_index(store)
-    return _cached_story_search_index(descriptor)
+        index = _build_story_search_index(store)
+    else:
+        index = _cached_story_search_index(descriptor)
+    global _last_index  # noqa: PLW0603 — module-level instrumentation ref
+    _last_index = index
+    return index
 
 
 def _story_store_descriptor(store: JsonStore) -> tuple[str, str, int, int] | None:
@@ -377,4 +386,13 @@ def _build_story_search_index(store: JsonStore) -> _StorySearchIndex:
 
 def clear_search_cache() -> None:
     """Clear the cached story search index."""
+    global _last_index  # noqa: PLW0603
     _cached_story_search_index.cache_clear()
+    _last_index = None
+
+
+def cache_stats() -> dict[str, dict]:
+    """Return ``{cache_name: {loaded, count}}`` for instrumentation (#104)."""
+    if _last_index is None:
+        return {"story_search_index": {"loaded": False, "count": 0}}
+    return {"story_search_index": {"loaded": True, "count": len(_last_index.chapters)}}

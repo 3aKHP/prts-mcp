@@ -1,4 +1,4 @@
-import type { CallToolResult, ImageContent } from "@modelcontextprotocol/sdk/types.js";
+import type { CallToolResult, ImageContent } from "@modelcontextprotocol/server";
 
 export type OutputChannel = "content" | "structured" | "both";
 

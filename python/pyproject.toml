@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "prts-mcp"
-version = "2.5.2"
+version = "2.6.0"
 description = "MCP Server for Arknights PRTS Wiki & game data"
 readme = "README.md"
 license = { text = "MIT" }
@@ -39,7 +39,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "mcp[cli]>=1.28,<2",
+    "mcp[cli]==2.0.0",
     "httpx",
     "pydantic",
     # HTTP transport (PRTS_TRANSPORT=http). These are also transitively

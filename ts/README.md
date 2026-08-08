@@ -1,15 +1,10 @@
 # PRTS MCP Server — TypeScript 实现
 
-明日方舟同人创作辅助 MCP Server，TypeScript 版本。支持 **Streamable HTTP**
-（单端点 `/mcp`）与 **stdio**，既可部署为 HTTP 服务，也可接入本地 MCP 客户端。
+明日方舟同人创作辅助 MCP Server，TypeScript 版本。支持 **Streamable HTTP** （单端点 `/mcp`）与 **stdio**，既可部署为 HTTP 服务，也可接入本地 MCP 客户端。
 
 提供 23 个 MCP 工具（2.0）：PRTS 词条检索与页面结构、干员档案/语音/基础信息、剧情活动与台词、角色出场追踪、全文搜索、敌人图鉴、关卡查询、关卡敌人融合，以及物品/材料查询。完整清单见仓库根目录 [`README.md`](../README.md)。
 
-TypeScript 实现正式支持 Bun 与 Node.js 双运行时。自 2.2.0 起 **Bun 是默认生产
-运行时**：默认 `ts/Dockerfile`、CI 主验证链与推荐 Docker 部署均在 Bun 下运行（最低
-验证版本 Bun `1.3.14`）。Node.js 保留为受支持的 legacy/可选运行时，通过 `prts-mcp-ts`
-npm bin、`npx prts-mcp-ts` 与 `ts/Dockerfile.node` 构建路径提供。npm 发布路径仍走 npm CLI
-（`npm publish --provenance`，与运行时无关）。
+TypeScript 实现正式支持 Bun 与 Node.js 双运行时。自 2.2.0 起 **Bun 是默认生产运行时**：默认 `ts/Dockerfile`、CI 主验证链与推荐 Docker 部署均在 Bun 下运行（最低验证版本 Bun `1.3.14`）。Node.js 保留为受支持的 legacy/可选运行时，通过 `prts-mcp-ts` npm bin、`npx prts-mcp-ts` 与 `ts/Dockerfile.node` 构建路径提供。npm 发布路径仍走 npm CLI （`npm publish --provenance`，与运行时无关）。
 
 > **2.0 变更**：工具面由 1.x 的 32 个合并为 23 个（详见 [1.x → 2.0 迁移指南](../docs/migration-1.x-to-2.0.md)）；新增可选的 output channel（查询字符串 `?output_channel=` / 请求头 `x-prts-output-channel` / `PRTS_OUTPUT_CHANNEL` 环境变量，默认 `content`，与 1.x 行为一致）。
 
@@ -36,7 +31,7 @@ docker run -d -p 3000:3000 -v prts-mcp-ts-data:/data/gamedata -v prts-mcp-ts-lev
 docker build -f ts/Dockerfile.node -t prts-mcp-ts-node .
 ```
 
-服务启动后 MCP 端点为 `http://<host>:3000/mcp`，健康检查端点为 `http://<host>:3000/health`。
+服务启动后 MCP 端点为 `http://<host>:3000/mcp`，健康检查端点为 `http://<host>:3000/health`。部署诊断可在显式启用后使用仅聚合的 `/debug/metrics`；不要经公网代理该路径。
 
 ### 接入 MCP 客户端
 
@@ -85,8 +80,7 @@ bun run start      # 运行 dist/server-bun.js
 
 ### 默认 Bun 运行路径
 
-自 2.2.0 起 Bun 是 TypeScript 实现的默认生产运行时，最低验证版本为 Bun `1.3.14`。
-默认 `ts/Dockerfile`、CI 主验证链与推荐 Docker 部署均在 Bun 下运行。
+自 2.2.0 起 Bun 是 TypeScript 实现的默认生产运行时，最低验证版本为 Bun `1.3.14`。默认 `ts/Dockerfile`、CI 主验证链与推荐 Docker 部署均在 Bun 下运行。
 
 无需克隆仓库的一次性运行：
 
@@ -112,16 +106,11 @@ bun run smoke:bun:package  # npm pack 后用 Bun 安装并验证 prts-mcp-ts-bun
 bun run start              # 运行 dist/server-bun.js（自 2.2.0 起 npm start 默认走 Bun）
 ```
 
-TypeScript 单元测试仍由 Node 的 `node:test` 路径覆盖（见下方 Node legacy 路径）；Bun
-路径使用 `bun run typecheck`、`bun run build:bun`、源码级 HTTP MCP smoke 和安装后 package
-smoke 验证运行时兼容性。
-如调整 `package.json` 或 `package-lock.json` 依赖，请同步运行 `bun install --lockfile-only`
-刷新 `bun.lock`。
+TypeScript 单元测试仍由 Node 的 `node:test` 路径覆盖（见下方 Node legacy 路径）；Bun 路径使用 `bun run typecheck`、`bun run build:bun`、源码级 HTTP MCP smoke 和安装后 package smoke 验证运行时兼容性。如调整 `package.json` 或 `package-lock.json` 依赖，请同步运行 `bun install --lockfile-only` 刷新 `bun.lock`。
 
 ### Node legacy 运行路径
 
-Node.js 仍是受支持的运行时，但自 2.2.0 起降级为 legacy/可选路径。npm bin `prts-mcp-ts`
-保持 Node 入口（`npx prts-mcp-ts` 仍零额外运行时依赖）。
+Node.js 仍是受支持的运行时，但自 2.2.0 起降级为 legacy/可选路径。npm bin `prts-mcp-ts` 保持 Node 入口（`npx prts-mcp-ts` 仍零额外运行时依赖）。
 
 ```bash
 # npm 入口（Node）
@@ -152,8 +141,7 @@ docker run -d -p 3000:3000 -v prts-mcp-ts-data:/data/gamedata -v prts-mcp-ts-lev
 
 镜像内置 bundled 数据作为网络不可用时的离线保底。
 
-自建数据工厂的新 Release 附带 manifest（`prts-mcp-data/v1`、源 versionId、包大小和
-SHA-256）；TypeScript 实现会在原子激活前校验它。没有 manifest 的历史 Release 仍兼容读取。
+自建数据工厂的新 Release 附带 manifest（`prts-mcp-data/v1`、源 versionId、包大小和 SHA-256）；TypeScript 实现会在原子激活前校验它。没有 manifest 的历史 Release 仍兼容读取。
 
 周期可通过 `PRTS_AUTO_SYNC_INTERVAL_SECONDS` 调整（`60..604800` 秒）；设为 `0` 时只执行启动同步。
 
@@ -173,6 +161,11 @@ SHA-256）；TypeScript 实现会在原子激活前校验它。没有 manifest �
 | `GITHUB_MIRRORS` | 空 | 逗号分隔的 ghproxy 风格代理前缀列表（如 `https://ghproxy.net`），依次在直连失败后尝试 |
 | `PRTS_AUTO_SYNC_INTERVAL_SECONDS` | `3600` | GitHub Release 周期检查间隔（秒）；有效范围 `60..604800`，`0` 表示只执行启动同步；非法值回落到默认值 |
 | `PRTS_OUTPUT_CHANNEL` | `content` | 2.0 输出通道：`content`（默认，仅 markdown，与 1.x 一致）/ `structured`（仅 structuredContent）/ `both`。也可经查询字符串 `?output_channel=` 或请求头 `x-prts-output-channel` 按请求覆盖。仅在客户端确认支持 `structuredContent` 时才用非默认值 |
+| `SESSION_IDLE_TIMEOUT_MS` | `86400000` | Streamable HTTP 会话空闲超时（毫秒）。设为非正数时禁用超时；会话活跃时间、有效值与淘汰计数可由已启用的 `/debug/metrics` 读取。`closed_total` 包含被空闲淘汰而关闭的会话，`evicted_total` 是其中的原因子集。 |
+| `PRTS_METRICS_ENABLED` | `false` | 设为严格的 `true` 才启用 `/debug/metrics`；仍需有效的 `PRTS_DEBUG_TOKEN` Bearer 请求头。响应只含进程、缓存、请求、工具和会话的聚合指标，不含 MCP 参数、结果或会话 ID。工具维度只接受内置工具名，避免把调用方输入变成指标标签。 |
+| `PRTS_DEBUG_TOKEN` | 未设置 | `/debug/cache` 和 `/debug/metrics` 的必需 Bearer token；未设置或不匹配时返回 404。不要公开反向代理这两个路径，也不要把 token 写入日志、请求正文或客户端配置。 |
+
+需要验证重复负载与并发会话时，只能在隔离的本机实例上执行 `PRTS_BENCH_ISOLATED=true PRTS_BENCH_ORIGIN=http://127.0.0.1:<port> PRTS_DEBUG_TOKEN=... npm run bench:memory`。脚本要求指标端点、有效诊断 token 和可读剧情/本地图片数据均已启用：它会先发现一个活动、章节和阿米娅立绘，然后以 **6 个并发会话** 执行档案、基础资料、数据搜索、剧情搜索、单章、活动分页和实际图片 get。除重复负载不能新增 cache miss 外，它还要求并发后至少 7 个会话仍在、请求已静止、RSS 不超过 1 GiB、相对冷缓存增长不超过 256 MiB（可用 `PRTS_BENCH_MAX_RSS_BYTES` / `PRTS_BENCH_MAX_RSS_GROWTH_BYTES` 调整）。它拒绝非 loopback 目标，不得在生产正式服务执行。
 
 ---
 

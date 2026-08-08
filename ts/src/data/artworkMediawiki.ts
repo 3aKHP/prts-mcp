@@ -6,14 +6,15 @@
  * matching the true-mode boundary (data/images.ts ↔ artworkTools.ts).
  */
 
+import { BASE_ILLUST_LABELS } from "./images.js";
+import { CacheMetrics } from "./cacheMetrics.js";
+import type { CacheStat } from "../cacheStats.js";
+
 const IMAGE_CACHE_MAX_BYTES = 256 * 1024 * 1024; // 256 MiB (#85 §4.2)
 const _imageCache = new Map<string, Buffer>();
 let _imageCacheTotal = 0;
+const imageCacheMetrics = new CacheMetrics();
 
-const MEDIAWIKI_BASE_LABELS: Record<string, string> = {
-  "1": "精英零立绘",
-  "2": "精英二立绘",
-};
 export const VARIANT_WIDTH: Record<string, number> = { large: 1024, preview: 256 };
 
 function imageCacheKey(artworkId: string, variant: string): string {
@@ -23,6 +24,7 @@ function imageCacheKey(artworkId: string, variant: string): string {
 export function imageCacheGet(artworkId: string, variant: string): Buffer | null {
   const key = imageCacheKey(artworkId, variant);
   const v = _imageCache.get(key);
+  imageCacheMetrics.access(v !== undefined);
   if (v === undefined) return null;
   _imageCache.delete(key);
   _imageCache.set(key, v); // move to end (LRU)
@@ -47,10 +49,16 @@ export function imageCachePut(artworkId: string, variant: string, data: Buffer):
   }
 }
 
+export function getCacheStats(): Record<string, CacheStat> {
+  return {
+    image_cache: imageCacheMetrics.snapshot(_imageCache.size > 0, _imageCache.size, _imageCacheTotal),
+  };
+}
+
 function mediawikiBaseLabel(suffix: string): string {
   const base = suffix.replace(/\+$/, "");
   const plus = suffix.endsWith("+");
-  let label = MEDIAWIKI_BASE_LABELS[base];
+  let label = BASE_ILLUST_LABELS[base];
   if (label === undefined) label = base ? `立绘 ${base}` : "立绘";
   if (plus) label += "（变体）";
   return label;
@@ -124,6 +132,7 @@ export function artworkBelongsToOperator(filename: string, operatorName: string)
   if (artworkOperator === null) return false;
   const requested = normalizedOperatorName(operatorName);
   const actual = normalizedOperatorName(artworkOperator);
-  if (requested === actual) return true;
-  return requested === actual.replace(/\([^()]*\)$/, "");
+  // artworkId is opaque and list-scoped. A base-name request must not be
+  // able to retrieve a transformed form (or vice versa) by reusing a token.
+  return requested === actual;
 }

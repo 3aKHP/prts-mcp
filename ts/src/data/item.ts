@@ -6,6 +6,8 @@
 
 import { checkActivationChange, loadConfig, registerActivationListener } from "../config.js";
 import { DirectoryStore } from "./stores.js";
+import { CacheMetrics } from "./cacheMetrics.js";
+import type { CacheStat } from "../cacheStats.js";
 
 const ITEM_FILE = "item_table.json";
 
@@ -129,11 +131,25 @@ export interface ItemSearchPayload {
 let itemTable: Record<string, ItemEntry> | null = null;
 let itemLookup: Map<string, string> | null = null;
 let itemSearchRecords: ItemSearchRecord[] | null = null;
+const itemTableMetrics = new CacheMetrics();
+const itemLookupMetrics = new CacheMetrics();
+const itemSearchRecordsMetrics = new CacheMetrics();
 
 export function clearItemCaches(): void {
+  itemTableMetrics.clear();
+  itemLookupMetrics.clear();
+  itemSearchRecordsMetrics.clear();
   itemTable = null;
   itemLookup = null;
   itemSearchRecords = null;
+}
+
+export function getCacheStats(): Record<string, CacheStat> {
+  return {
+    items: itemTableMetrics.snapshot(itemTable != null, itemTable ? Object.keys(itemTable).length : 0),
+    item_lookup: itemLookupMetrics.snapshot(itemLookup != null, itemLookup ? itemLookup.size : 0),
+    item_search_records: itemSearchRecordsMetrics.snapshot(itemSearchRecords != null, itemSearchRecords ? itemSearchRecords.length : 0),
+  };
 }
 
 registerActivationListener(clearItemCaches);
@@ -178,6 +194,7 @@ function shortText(text: string, limit = 80): string {
 
 function loadItems(): Record<string, ItemEntry> {
   checkActivationChange();
+  itemTableMetrics.access(itemTable !== null);
   if (itemTable === null) {
     const store = itemStore();
     if (!store.exists(ITEM_FILE)) {
@@ -194,6 +211,7 @@ function loadItems(): Record<string, ItemEntry> {
 
 function buildItemLookup(): Map<string, string> {
   checkActivationChange();
+  itemLookupMetrics.access(itemLookup !== null);
   if (itemLookup === null) {
     itemLookup = new Map<string, string>();
     for (const [itemId, info] of Object.entries(loadItems())) {
@@ -475,6 +493,7 @@ function itemSearchEntry(record: ItemSearchRecord): ItemSearchPayload["results"]
 
 function getItemSearchRecords(): ItemSearchRecord[] {
   checkActivationChange();
+  itemSearchRecordsMetrics.access(itemSearchRecords !== null);
   if (itemSearchRecords !== null) return itemSearchRecords;
   const entries = visibleItems();
   entries.sort((a, b) => {

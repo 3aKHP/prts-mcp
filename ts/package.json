@@ -1,6 +1,6 @@
 {
   "name": "prts-mcp-ts",
-  "version": "2.5.2",
+  "version": "2.6.0",
   "description": "MCP Server for Arknights PRTS Wiki & game data (TypeScript / Streamable HTTP + stdio)",
   "type": "module",
   "main": "dist/server.js",
@@ -32,6 +32,7 @@
     "smoke:http:fixture:node": "node scripts/smoke-http.mjs --fixture-data -- node dist/server.js",
     "smoke:bun": "bun run smoke:http:fixture",
     "smoke:bun:package": "bun scripts/smoke-package-bun.mjs",
+    "bench:memory": "node scripts/bench-memory.mjs",
     "test": "node --import tsx --test \"tests/**/*.test.ts\"",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "tsc"
@@ -62,10 +63,12 @@
     "node": "24.14.0"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@modelcontextprotocol/node": "2.0.0",
+    "@modelcontextprotocol/server": "2.0.0",
     "adm-zip": "^0.6.0",
     "express": "^5.2.1",
-    "undici": "^8.10.0"
+    "undici": "^8.10.0",
+    "zod": "4.3.6"
   },
   "devDependencies": {
     "@types/adm-zip": "^0.5.7",
@@ -73,6 +76,9 @@
     "@types/node": "^24.0.0",
     "tsx": "^4.21.0",
     "typescript": "^5.8.0"
+  },
+  "overrides": {
+    "@hono/node-server": "2.1.0"
   },
   "allowScripts": {
     "esbuild@0.28.1": true

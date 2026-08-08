@@ -6,8 +6,7 @@
  * only when IMAGES_ENABLED=true (see server.ts).
  */
 
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import type { CallToolResult, McpServer } from "@modelcontextprotocol/server";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { z } from "zod";
@@ -39,6 +38,23 @@ import {
 import { activeGenerationSync } from "../data/imagesSync.js";
 import { resolveCharId } from "../data/operator.js";
 import { renderImageResult, renderResult, textResult, type OutputChannel } from "../output.js";
+import { registerTool } from "./registerTool.js";
+
+// These IDs represent forms that deliberately share the base character's
+// display name in the game table. Keep this resolver local to artwork: other
+// operator tools retain their ordinary exact-name lookup contract.
+const ARTWORK_FORM_CHAR_IDS: Readonly<Record<string, string>> = {
+  "阿米娅(近卫)": "char_1001_amiya2",
+  "阿米娅(医疗)": "char_1037_amiya3",
+};
+
+function normalizedArtworkFormName(operatorName: string): string {
+  return operatorName.trim().replaceAll("（", "(").replaceAll("）", ")");
+}
+
+function resolveArtworkCharId(operatorName: string): string | null {
+  return ARTWORK_FORM_CHAR_IDS[normalizedArtworkFormName(operatorName)] ?? resolveCharId(operatorName);
+}
 
 // ---------------------------------------------------------------------------
 // Synchronous data access (runs inside withActivationSnapshot)
@@ -71,12 +87,13 @@ async function doListMediawiki(
   operatorName: string,
   channel: OutputChannel,
 ): Promise<CallToolResult> {
-  const prefix = `立绘_${operatorName}_`;
+  const normalizedName = normalizedArtworkFormName(operatorName);
+  const prefix = `立绘_${normalizedName}_`;
   let files: { name: string; size: number; mime: string }[];
   let templates: Record<string, Record<string, unknown>>;
   try {
     files = await listAllimages(prefix);
-    templates = await getTemplateData(operatorName);
+    templates = await getTemplateData(normalizedName);
   } catch (err) {
     return textResult(`查询 PRTS 立绘失败：${err instanceof Error ? err.message : String(err)}`);
   }
@@ -200,7 +217,7 @@ async function doGetMediawiki(
 function doList(operatorName: string, channel: OutputChannel): CallToolResult {
   let charId: string | null;
   try {
-    charId = resolveCharId(operatorName);
+    charId = resolveArtworkCharId(operatorName);
   } catch {
     // gamedata not synced yet (effectiveExcelPath null or table missing).
     return dataNotReady();
@@ -277,7 +294,7 @@ function doGet(
   }
   let charId: string | null;
   try {
-    charId = resolveCharId(operatorName);
+    charId = resolveArtworkCharId(operatorName);
   } catch {
     return dataNotReady();
   }
@@ -376,7 +393,7 @@ export function registerArtworkTools(
   server: McpServer,
   channel: OutputChannel = "content",
 ): void {
-  server.tool(
+  registerTool(server,
     "operator_artwork",
     [
       "查询干员立绘（精英化立绘、时装等）并获取图片。",

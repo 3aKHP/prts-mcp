@@ -1,12 +1,12 @@
 """PRTS-MCP server entry point.
 
-Creates the FastMCP instance, delegates tool registration to focused
+Creates the MCPServer instance, delegates tool registration to focused
 modules (tools_prts / tools_gamedata / tools_story), and starts the
 background data-sync daemon before running the MCP transport.
 
 Supports two transports selected by the ``PRTS_TRANSPORT`` env var:
 
-- ``stdio`` (default) — FastMCP stdio, for local Claude Desktop / Code.
+- ``stdio`` (default) — MCP stdio, for local Claude Desktop / Code.
 - ``http`` — Streamable HTTP via Starlette + uvicorn, for self-hosted
   remote access. Mirrors the TypeScript implementation's HTTP surface
   (``/mcp`` endpoint, ``/health`` probe). output_channel is process-level
@@ -21,9 +21,10 @@ import logging
 import os
 import sys
 import threading
+from secrets import compare_digest
 from importlib.metadata import PackageNotFoundError, version as _pkg_version
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server import MCPServer
 
 # Re-export sync orchestration symbols for backward compatibility
 # (tests access these via server._sync_needs_retry etc.)
@@ -45,13 +46,11 @@ logging.basicConfig(
 )
 _logger = logging.getLogger("prts_mcp.server")
 
-mcp = FastMCP("PRTS_Wiki_Assistant")
-# FastMCP does not expose a version parameter; set it on the internal
-# MCPServer so initialize.serverInfo reports the product version.
+mcp = MCPServer("PRTS_Wiki_Assistant")
 try:
-    mcp._mcp_server.version = _pkg_version("prts-mcp")
+    mcp._lowlevel_server.version = _pkg_version("prts-mcp")
 except PackageNotFoundError:
-    mcp._mcp_server.version = "0.0.0"
+    mcp._lowlevel_server.version = "0.0.0"
 
 
 def _register_tools() -> None:
@@ -96,7 +95,7 @@ def _build_http_app():
     because it resolves the channel at session-creation time and injects
     it into ``createMcpServer(channel)``.
     """
-    from starlette.responses import JSONResponse
+    from starlette.responses import JSONResponse, Response
     from starlette.routing import Route
 
     app = mcp.streamable_http_app()
@@ -104,8 +103,40 @@ def _build_http_app():
     async def health(_request):
         return JSONResponse({"status": "ok"})
 
-    # Prepend /health so it is matched before any catch-all.
+    def debug_authorized(request) -> bool:
+        token = os.environ.get("PRTS_DEBUG_TOKEN")
+        authorization = request.headers.get("authorization")
+        expected = f"Bearer {token}" if token else None
+        return bool(expected and authorization and compare_digest(authorization, expected))
+
+    async def debug_cache(request):
+        if not debug_authorized(request):
+            return Response(status_code=404)
+        from prts_mcp.data.artwork_mediawiki import cache_stats as _am
+        from prts_mcp.data.enemy import cache_stats as _enemy
+        from prts_mcp.data.images import cache_stats as _images
+        from prts_mcp.data.item import cache_stats as _item
+        from prts_mcp.data.operator import cache_stats as _op
+        from prts_mcp.data.search import cache_stats as _search
+        from prts_mcp.data.stage import cache_stats as _stage
+        from prts_mcp.data.stage_enemy import cache_stats as _se
+        from prts_mcp.data.story_search import cache_stats as _ss
+
+        return JSONResponse({
+            "operator": _op(),
+            "enemy": _enemy(),
+            "stage": _stage(),
+            "stage_enemy": _se(),
+            "item": _item(),
+            "search": _search(),
+            "story_search": _ss(),
+            "images": _images(),
+            "artwork_mediawiki": _am(),
+        })
+
+    # Prepend /health and /debug/cache so they are matched before any catch-all.
     app.router.routes.insert(0, Route("/health", health))
+    app.router.routes.insert(0, Route("/debug/cache", debug_cache))
 
     return app
 

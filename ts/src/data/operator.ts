@@ -15,6 +15,8 @@ import {
 import { DirectoryStore } from "./stores.js";
 import { stripWikitext } from "../utils/sanitizer.js";
 import { clearSearchCaches } from "./search.js";
+import { CacheMetrics } from "./cacheMetrics.js";
+import type { CacheStat } from "../cacheStats.js";
 
 // ---------------------------------------------------------------------------
 // Module-level lazy caches
@@ -31,14 +33,31 @@ let _characterTable: TableCache<Record<string, CharacterEntry>> = null;
 let _handbookTable: TableCache<HandbookTable> = null;
 let _charwordTable: TableCache<CharwordTable> = null;
 let _nameToId: Map<string, string> | null = null;
+const characterTableMetrics = new CacheMetrics();
+const handbookTableMetrics = new CacheMetrics();
+const charwordTableMetrics = new CacheMetrics();
+const nameToIdMetrics = new CacheMetrics();
 
 export function clearOperatorCaches(): void {
+  characterTableMetrics.clear();
+  handbookTableMetrics.clear();
+  charwordTableMetrics.clear();
+  nameToIdMetrics.clear();
   _characterTable = null;
   _handbookTable = null;
   _charwordTable = null;
   _nameToId = null;
   // Propagate to search cache; see Python operator.clear_operator_caches.
   clearSearchCaches();
+}
+
+export function getCacheStats(): Record<string, CacheStat> {
+  return {
+    character_table: characterTableMetrics.snapshot(_characterTable != null, _characterTable ? Object.keys(_characterTable).length : 0),
+    handbook_table: handbookTableMetrics.snapshot(_handbookTable != null, _handbookTable ? Object.keys(_handbookTable).length : 0),
+    charword_table: charwordTableMetrics.snapshot(_charwordTable != null, _charwordTable ? Object.keys(_charwordTable).length : 0),
+    name_to_id: nameToIdMetrics.snapshot(_nameToId != null, _nameToId ? _nameToId.size : 0),
+  };
 }
 
 registerActivationListener(clearOperatorCaches);
@@ -156,6 +175,7 @@ function operatorStore(): DirectoryStore {
 
 export function getCharacterTable(): Record<string, CharacterEntry> {
   checkActivationChange();
+  characterTableMetrics.access(_characterTable !== null);
   if (_characterTable === null) {
     _characterTable = loadJson<Record<string, CharacterEntry>>(
       "character_table.json"
@@ -167,6 +187,7 @@ export function getCharacterTable(): Record<string, CharacterEntry> {
 
 export function getHandbookTable(): HandbookTable {
   checkActivationChange();
+  handbookTableMetrics.access(_handbookTable !== null);
   if (_handbookTable === null) {
     _handbookTable = loadJson<HandbookTable>(
       "handbook_info_table.json"
@@ -178,6 +199,7 @@ export function getHandbookTable(): HandbookTable {
 
 export function getCharwordTable(): CharwordTable {
   checkActivationChange();
+  charwordTableMetrics.access(_charwordTable !== null);
   if (_charwordTable === null) {
     _charwordTable = loadJson<CharwordTable>("charword_table.json");
   }
@@ -187,6 +209,7 @@ export function getCharwordTable(): CharwordTable {
 
 export function resolveCharId(name: string): string | null {
   checkActivationChange();
+  nameToIdMetrics.access(_nameToId !== null);
   if (_nameToId === null) {
     const ct = getCharacterTable();
     _nameToId = new Map(

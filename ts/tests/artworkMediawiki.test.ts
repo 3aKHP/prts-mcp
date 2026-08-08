@@ -41,10 +41,12 @@ test("labelFromFilename: rejects non-png and malformed", () => {
   assert.equal(labelFromFilename("立绘阿米娅", CHARINFO), null);
 });
 
-test("artwork ownership accepts exact and base-form names only", () => {
+test("artwork ownership requires exact form match", () => {
   assert.equal(operatorFromFilename("立绘_阿米娅(近卫)_2.png"), "阿米娅(近卫)");
   assert.equal(artworkBelongsToOperator("立绘_阿米娅(近卫)_2.png", "阿米娅(近卫)"), true);
-  assert.equal(artworkBelongsToOperator("立绘_阿米娅（近卫）_2.png", "阿米娅"), true);
+  assert.equal(artworkBelongsToOperator("立绘_阿米娅（近卫）_2.png", "阿米娅(近卫)"), true);
+  assert.equal(artworkBelongsToOperator("立绘_阿米娅(近卫)_2.png", "阿米娅"), false);
+  assert.equal(artworkBelongsToOperator("立绘_阿米娅(近卫)_2.png", "阿米娅(医疗)"), false);
   assert.equal(artworkBelongsToOperator("立绘_阿米娅(近卫)_2.png", "阿米"), false);
   assert.equal(artworkBelongsToOperator("立绘_斯卡蒂_2.png", "阿米娅"), false);
   assert.equal(artworkBelongsToOperator("立绘_阿米娅_2b.png", "阿米娅"), false);

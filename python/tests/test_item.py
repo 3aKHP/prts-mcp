@@ -157,7 +157,7 @@ def test_list_items_empty_match_is_structured_not_error(gamedata: str) -> None:
     assert render_items_listing(data) == "没有匹配的物品（category=NONEXISTENT）。"
     # structured channel carries the empty payload
     r = render_result(data, list_items(category="NONEXISTENT"), channel="structured")
-    assert r.structuredContent == data
+    assert r.structured_content == data
 
 
 def test_get_item_info_golden(gamedata: str) -> None:
@@ -221,7 +221,7 @@ def test_search_items_structured_golden(gamedata: str) -> None:
     assert render_item_search(data) == expected
     assert search_items("公开渠道") == expected
     r = render_result(data, expected, channel="both")
-    assert r.structuredContent == data
+    assert r.structured_content == data
 
 
 def test_search_items_no_match_is_structured_empty(gamedata: str) -> None:
@@ -236,7 +236,7 @@ def test_search_items_no_match_is_structured_empty(gamedata: str) -> None:
     assert render_item_search(data) == expected
     assert search_items("绝对不存在的物品") == expected
     r = render_result(data, expected, channel="structured")
-    assert r.structuredContent == data
+    assert r.structured_content == data
     assert build_item_search("ZZZZNOMATCH") == _load_parity_fixture(
         "search_items_empty.json"
     )

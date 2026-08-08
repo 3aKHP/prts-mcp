@@ -11,6 +11,8 @@ import {
   registerActivationListener,
 } from "../config.js";
 import { DirectoryStore } from "./stores.js";
+import { CacheMetrics } from "./cacheMetrics.js";
+import type { CacheStat } from "../cacheStats.js";
 import { normalizeEnemyDatabase } from "./enemyDatabase.js";
 
 const DATABASE_FILE = "enemydata/enemy_database.json";
@@ -103,13 +105,33 @@ let enemyHandbook: Record<string, EnemyHandbookEntry> | null = null;
 let enemyDatabase: Record<string, Record<number, EnemyData>> | null = null;
 let nameToEnemyId: Map<string, string> | null = null;
 let enemyAppearanceIndex: Map<string, Array<[string, number]>> | null = null;
+const stageTableMetrics = new CacheMetrics();
+const enemyHandbookMetrics = new CacheMetrics();
+const enemyDatabaseMetrics = new CacheMetrics();
+const nameToEnemyIdMetrics = new CacheMetrics();
+const enemyAppearanceIndexMetrics = new CacheMetrics();
 
 export function clearStageEnemyCaches(): void {
+  stageTableMetrics.clear();
+  enemyHandbookMetrics.clear();
+  enemyDatabaseMetrics.clear();
+  nameToEnemyIdMetrics.clear();
+  enemyAppearanceIndexMetrics.clear();
   stageTable = null;
   enemyHandbook = null;
   enemyDatabase = null;
   nameToEnemyId = null;
   enemyAppearanceIndex = null;
+}
+
+export function getCacheStats(): Record<string, CacheStat> {
+  return {
+    stage_table: stageTableMetrics.snapshot(stageTable != null, stageTable ? Object.keys(stageTable).length : 0),
+    enemy_handbook: enemyHandbookMetrics.snapshot(enemyHandbook != null, enemyHandbook ? Object.keys(enemyHandbook).length : 0),
+    enemy_database: enemyDatabaseMetrics.snapshot(enemyDatabase != null, enemyDatabase ? Object.keys(enemyDatabase).length : 0),
+    enemy_name_to_id: nameToEnemyIdMetrics.snapshot(nameToEnemyId != null, nameToEnemyId ? nameToEnemyId.size : 0),
+    enemy_appearance_index: enemyAppearanceIndexMetrics.snapshot(enemyAppearanceIndex != null, enemyAppearanceIndex ? enemyAppearanceIndex.size : 0),
+  };
 }
 
 registerActivationListener(clearStageEnemyCaches);
@@ -137,6 +159,7 @@ function missingLevelsMessage(): string {
 
 function loadStageTable(): Record<string, StageEntry> {
   checkActivationChange();
+  stageTableMetrics.access(stageTable !== null);
   if (stageTable === null) {
     const raw = excelStore().readJson<{ stages?: Record<string, StageEntry> }>("stage_table.json");
     if (!raw || typeof raw !== "object" || !raw.stages) {
@@ -149,6 +172,7 @@ function loadStageTable(): Record<string, StageEntry> {
 
 function loadEnemyHandbook(): Record<string, EnemyHandbookEntry> {
   checkActivationChange();
+  enemyHandbookMetrics.access(enemyHandbook !== null);
   if (enemyHandbook === null) {
     const raw = excelStore().readJson<{ enemyData?: Record<string, EnemyHandbookEntry> }>("enemy_handbook_table.json");
     if (!raw || typeof raw !== "object" || !raw.enemyData) {
@@ -161,6 +185,7 @@ function loadEnemyHandbook(): Record<string, EnemyHandbookEntry> {
 
 function loadEnemyDatabase(): Record<string, Record<number, EnemyData>> {
   checkActivationChange();
+  enemyDatabaseMetrics.access(enemyDatabase !== null);
   if (enemyDatabase === null) {
     enemyDatabase = normalizeEnemyDatabase<EnemyData>(
       levelsStore().readJson(DATABASE_FILE),
@@ -171,6 +196,7 @@ function loadEnemyDatabase(): Record<string, Record<number, EnemyData>> {
 
 function buildNameToEnemyId(): Map<string, string> {
   checkActivationChange();
+  nameToEnemyIdMetrics.access(nameToEnemyId !== null);
   if (nameToEnemyId === null) {
     nameToEnemyId = new Map();
     for (const [enemyId, info] of Object.entries(loadEnemyHandbook())) {
@@ -383,6 +409,7 @@ function findEnemyAppearances(enemyId: string): Array<[string, number]> {
 
 function getEnemyAppearanceIndex(): Map<string, Array<[string, number]>> {
   checkActivationChange();
+  enemyAppearanceIndexMetrics.access(enemyAppearanceIndex !== null);
   if (enemyAppearanceIndex !== null) return enemyAppearanceIndex;
   const index = new Map<string, Array<[string, number]>>();
   const stages = loadStageTable();
