@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+## [2.6.0-alpha.2] - 2026-08-08
+
+### Added
+
+- **Aggregate runtime metrics for Issue #90.** The TypeScript Streamable HTTP server now provides an opt-in `/debug/metrics` endpoint with process memory high-water, request/tool duration and error totals, session age/idle-timeout/lifecycle totals, and nine-domain cache hit/miss/invalidation counters. Metrics are aggregate-only and retain neither MCP arguments/results nor session identifiers.
+- **Production cgroup sampler.** Added a systemd timer template that resolves the PRTS service cgroup dynamically and appends validated five-minute memory and runtime-metrics samples to JSONL, with log rotation and no public reverse-proxy route.
+- **Isolated memory benchmark.** Added a loopback-only repeat/concurrency probe that fails when an unchanged workload produces new cache misses, providing a reproducible input for Issue #90's bounded-growth decision.
+
+### Changed
+
+- Cache debug projections now include process-lifetime `hits`, `misses`, and `clears` fields while preserving the existing nine-domain shape.
+
 ## [2.6.0-alpha.1] - 2026-08-08
 
 ### Added
