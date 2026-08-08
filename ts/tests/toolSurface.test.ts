@@ -12,6 +12,7 @@ import { clearStageCaches } from "../src/data/stage.ts";
 import { clearStageEnemyCaches } from "../src/data/stageEnemy.ts";
 import { clearStoryCaches } from "../src/data/story.ts";
 import { registerGamedataTools } from "../src/tools/gamedataTools.ts";
+import { registerArtworkTools } from "../src/tools/artworkTools.ts";
 import { registerPrtsTools } from "../src/tools/prtsTools.ts";
 import { registerStoryTools } from "../src/tools/storyTools.ts";
 import { writeMinimalGamedata } from "./fixtures/operatorData.ts";
@@ -47,14 +48,13 @@ const EXPECTED_TOOLS = [
 
 test("TypeScript MCP tool names are frozen", () => {
   // The tool registrations were split into modules under src/tools/.
-  // Alpha hardening assumes tool names are registered as direct string literals.
-  // Update this parser if tool registration moves to constants or helper wrappers.
+  // Tool names remain direct literals at the SDK v2 registration boundary.
   const toolsDir = join(import.meta.dirname, "..", "src", "tools");
   const toolFiles = readdirSync(toolsDir).filter((f) => f.endsWith(".ts"));
   const source = toolFiles
     .map((f) => readFileSync(join(toolsDir, f), "utf-8"))
     .join("\n");
-  const toolNames = Array.from(source.matchAll(/server\.tool\(\s*"([^"]+)"/g), (match) => match[1]);
+  const toolNames = Array.from(source.matchAll(/registerTool\(server,\s*"([^"]+)"/g), (match) => match[1]);
 
   // Compare as sets — tool registration order is not part of the frozen surface.
   assert.deepEqual(toolNames.sort(), [...EXPECTED_TOOLS].sort());
@@ -65,11 +65,29 @@ type ToolHandler = (args: Record<string, unknown>) => unknown | Promise<unknown>
 
 class CapturingServer {
   tools = new Map<string, ToolHandler>();
+  configs = new Map<string, unknown>();
 
-  tool(name: string, _description: unknown, _schema: unknown, handler: ToolHandler): void {
+  registerTool(name: string, config: unknown, handler: ToolHandler): void {
     this.tools.set(name, handler);
+    this.configs.set(name, config);
   }
 }
+
+test("SDK v2 tool registrations publish object input schemas", () => {
+  const server = new CapturingServer();
+  registerPrtsTools(server as never);
+  registerGamedataTools(server as never);
+  registerStoryTools(server as never);
+  registerArtworkTools(server as never);
+
+  assert.deepEqual([...server.configs.keys()].sort(), [...EXPECTED_TOOLS].sort());
+  for (const [name, config] of server.configs) {
+    const inputSchema = (config as { inputSchema?: unknown }).inputSchema as {
+      safeParse?: unknown;
+    } | undefined;
+    assert.equal(typeof inputSchema?.safeParse, "function", `${name} must expose a Zod object schema`);
+  }
+});
 
 function writeJson(path: string, data: unknown): void {
   writeFileSync(path, JSON.stringify(data), "utf-8");

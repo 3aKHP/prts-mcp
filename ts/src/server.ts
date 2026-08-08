@@ -12,7 +12,7 @@
 
 import { randomUUID } from "node:crypto";
 import express from "express";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { NodeStreamableHTTPServerTransport } from "@modelcontextprotocol/node";
 import { startAutoSync } from "./startupSync.js";
 import { parseChannel, type OutputChannel } from "./output.js";
 import { createMcpServer, log, SERVER_VERSION } from "./server-core.js";
@@ -45,7 +45,7 @@ const app = express();
 // Parse JSON bodies — StreamableHTTP transport accepts req.body as parsedBody.
 app.use(express.json());
 
-const transports = new Map<string, StreamableHTTPServerTransport>();
+const transports = new Map<string, NodeStreamableHTTPServerTransport>();
 const METRICS_ENABLED = process.env["PRTS_METRICS_ENABLED"] === "true";
 const runtimeMetrics = METRICS_ENABLED ? new RuntimeMetrics() : null;
 
@@ -58,7 +58,7 @@ const SESSION_IDLE_TIMEOUT_MS = (() => {
 })();
 
 interface SessionMeta {
-  transport: StreamableHTTPServerTransport;
+  transport: NodeStreamableHTTPServerTransport;
   createdAt: number;
   lastActivity: number;
   closing?: boolean;
@@ -143,7 +143,7 @@ app.all("/mcp", async (req, res) => {
         log("INFO", `Session ${sessionId} not found; allowing re-initialization.`);
       }
 
-      const newTransport = new StreamableHTTPServerTransport({
+      const newTransport = new NodeStreamableHTTPServerTransport({
         sessionIdGenerator: () => randomUUID(),
         onsessioninitialized: (id) => {
           const now = Date.now();

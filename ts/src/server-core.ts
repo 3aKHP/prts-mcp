@@ -9,7 +9,7 @@
  */
 
 import { createRequire } from "node:module";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
 import { loadConfig } from "./config.js";
 import { registerPrtsTools } from "./tools/prtsTools.js";
 import { registerGamedataTools } from "./tools/gamedataTools.js";

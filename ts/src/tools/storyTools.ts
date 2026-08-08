@@ -6,7 +6,7 @@
  * requireStoryZip helper and line/chapter formatters.
  */
 
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { loadConfig, hasStoryData } from "../config.js";
 import {
@@ -29,6 +29,7 @@ import {
   type StoryLine,
 } from "../data/story.js";
 import { renderResult, textResult, type OutputChannel } from "../output.js";
+import { registerTool } from "./registerTool.js";
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -71,7 +72,7 @@ function formatChapter(chapter: StoryChapter): string {
 // ---------------------------------------------------------------------------
 
 export function registerStoryTools(server: McpServer, channel: OutputChannel = "content"): void {
-  server.tool(
+  registerTool(server,
     "list_story_events",
     [
       "列出明日方舟剧情活动列表。",
@@ -95,7 +96,7 @@ export function registerStoryTools(server: McpServer, channel: OutputChannel = "
     }
   );
 
-  server.tool(
+  registerTool(server,
     "list_stories",
     [
       "列出指定活动的所有剧情章节（按官方顺序排列）。",
@@ -126,7 +127,7 @@ export function registerStoryTools(server: McpServer, channel: OutputChannel = "
     }
   );
 
-  server.tool(
+  registerTool(server,
     "get_story_summary",
     [
       "获取单章剧情的梗概。",
@@ -154,7 +155,7 @@ export function registerStoryTools(server: McpServer, channel: OutputChannel = "
     }
   );
 
-  server.tool(
+  registerTool(server,
     "read_story",
     [
       "读取单章剧情的完整台词。",
@@ -184,7 +185,7 @@ export function registerStoryTools(server: McpServer, channel: OutputChannel = "
     }
   );
 
-  server.tool(
+  registerTool(server,
     "read_activity",
     [
       "读取整个活动的完整剧情台词（按官方章节顺序合并）。",
@@ -246,7 +247,7 @@ export function registerStoryTools(server: McpServer, channel: OutputChannel = "
     }
   );
 
-  server.tool(
+  registerTool(server,
     "search_stories",
     [
       "在剧情台词中执行全文正则搜索，支持角色和台词类型过滤。",
@@ -285,7 +286,7 @@ export function registerStoryTools(server: McpServer, channel: OutputChannel = "
     }
   );
 
-  server.tool(
+  registerTool(server,
     "get_operator_memoirs",
     [
       "根据干员名称查询干员密录剧情。",
@@ -320,7 +321,7 @@ export function registerStoryTools(server: McpServer, channel: OutputChannel = "
     }
   );
 
-  server.tool(
+  registerTool(server,
     "find_character_appearances",
     [
       "查找某个角色在剧情中的出场（说话或被提及）。",
@@ -352,7 +353,7 @@ export function registerStoryTools(server: McpServer, channel: OutputChannel = "
     }
   );
 
-  server.tool(
+  registerTool(server,
     "find_speakers_in",
     [
       "列出某活动中的所有发言角色及其台词数。",

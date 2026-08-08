@@ -11,7 +11,7 @@
  * Output channel is resolved purely from the PRTS_OUTPUT_CHANNEL env var
  * (stdio has no query string / headers); the default is "content".
  */
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
 import { createMcpServer, log, SERVER_VERSION } from "./server-core.js";
 import { startAutoSync } from "./startupSync.js";
 import { parseChannel } from "./output.js";
