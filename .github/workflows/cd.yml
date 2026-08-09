@@ -177,17 +177,17 @@ jobs:
         id: image
         run: |
           OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          echo "name=ghcr.io/${OWNER}/prts-mcp" >> $GITHUB_OUTPUT
+          echo "name=ghcr.io/${OWNER}/prts-mcp" >> "$GITHUB_OUTPUT"
 
       - name: Extract version from tag
         id: version
         run: |
           VERSION="${GITHUB_REF_NAME#python/v}"
-          echo "value=${VERSION}" >> $GITHUB_OUTPUT
+          echo "value=${VERSION}" >> "$GITHUB_OUTPUT"
           if [[ "${VERSION}" == *-* ]]; then
-            echo "prerelease=true" >> $GITHUB_OUTPUT
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
           else
-            echo "prerelease=false" >> $GITHUB_OUTPUT
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Build Docker image
@@ -285,6 +285,8 @@ jobs:
           IMAGE: ${{ needs.build-and-push.outputs.image }}
           VERSION: ${{ needs.build-and-push.outputs.version }}
         run: |
+          # Markdown code fences are intentionally literal.
+          # shellcheck disable=SC2016
           printf '\n---\n\n**Install**\n```bash\npip install prts-mcp==%s\n```\n\n**Docker**\n```bash\ndocker pull %s:%s\n```\n' \
             "$VERSION" "$IMAGE" "$VERSION" >> release_notes.txt
 
