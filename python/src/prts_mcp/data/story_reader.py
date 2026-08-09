@@ -113,8 +113,8 @@ class ActivityResult:
     event_name: str
     total_chapters: int
     has_more: bool
-    page_out_of_range: bool
     chapters: list[StoryChapter]
+    page_out_of_range: bool = False
 
 
 @dataclass(frozen=True)
@@ -501,6 +501,9 @@ def read_activity_from_store(
     """Read all chapters of an activity in official story order using a JSON store."""
     summaries = list_stories_from_store(store, event_id)
     total = len(summaries)
+
+    if not 1 <= page_size <= 20:
+        raise ValueError("page_size 参数必须在 1 到 20 之间")
 
     if page is not None:
         if page < 1:

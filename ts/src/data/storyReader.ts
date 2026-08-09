@@ -120,8 +120,8 @@ export interface ActivityResult {
   eventName: string;
   totalChapters: number;
   hasMore: boolean;
-  pageOutOfRange: boolean;
   chapters: StoryChapter[];
+  pageOutOfRange?: boolean;
 }
 
 export interface MemoirChapter {
@@ -522,6 +522,10 @@ export function readActivityFromStore(
 ): ActivityResult {
   const summaries = listStoriesFromStore(store, eventId);
   const total = summaries.length;
+
+  if (pageSize < 1 || pageSize > 20) {
+    throw new Error("page_size 参数必须在 1 到 20 之间");
+  }
 
   let selected: ChapterSummary[];
   let hasMore: boolean;

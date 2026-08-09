@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import AdmZip from "adm-zip";
@@ -153,10 +153,15 @@ function assertStoryStore(store: JsonStore): void {
   assert.equal(activity.pageOutOfRange, false);
   assert.deepEqual(activity.chapters.map((chapter) => chapter.storyKey), [FIRST_STORY_KEY]);
 
-  const outOfRange = readActivityFromStore(store, "act_test", true, 99, 1);
+  const outOfRange = readActivityFromStore(store, "act_test", true, 3, 1);
   assert.equal(outOfRange.totalChapters, 2);
   assert.deepEqual(outOfRange.chapters, []);
   assert.equal(outOfRange.pageOutOfRange, true);
+
+  assert.throws(
+    () => readActivityFromStore(store, "act_test", true, 1, 0),
+    /page_size 参数必须在 1 到 20 之间/,
+  );
 }
 
 test("story tools read from DirectoryStore", () => {
@@ -217,17 +222,28 @@ test("read_activity reports an out-of-range page", async () => {
     const handler = server.handlers.get("read_activity");
     assert.ok(handler);
 
-    const result = await handler({ event_id: "act_test", page: 99, page_size: 1 }) as {
+    const result = await handler({ event_id: "act_test", page: 3, page_size: 1 }) as {
       content: Array<{ type: string; text?: string }>;
     };
     assert.equal(
       result.content[0]?.text,
-      "页码超出范围：act_test 共 2 章，按 page_size=1 分页共 2 页，请求的 page=99 不存在。",
+      "页码超出范围：act_test 共 2 章，按 page_size=1 分页共 2 页，请求的 page=3 不存在。",
     );
   } finally {
     if (previousStoryjsonPath === undefined) delete process.env["STORYJSON_PATH"];
     else process.env["STORYJSON_PATH"] = previousStoryjsonPath;
   }
+});
+
+test("unreadable chapter is not an out-of-range page", () => {
+  const root = tempRoot();
+  writeStoryDir(root);
+  unlinkSync(join(root, storyPath(FIRST_STORY_KEY)));
+
+  const result = readActivityFromStore(new DirectoryStore(root), "act_test", true, 1, 1);
+  assert.equal(result.totalChapters, 2);
+  assert.deepEqual(result.chapters, []);
+  assert.equal(result.pageOutOfRange, false);
 });
 
 test("missing story raises", () => {

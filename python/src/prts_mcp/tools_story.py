@@ -147,7 +147,7 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         event_id: Annotated[str, Field(description="活动 ID，如 \"act31side\"（可从 list_story_events 获取）。")],
         include_narration: Annotated[bool, Field(default=True, description="是否包含旁白，默认 True。")] = True,
         page: Annotated[int | None, Field(default=None, description="分页页码（从 1 开始）。不填则返回全部章节。")] = None,
-        page_size: Annotated[int, Field(default=5, description="每页章节数，默认 5。")] = 5,
+        page_size: Annotated[int, Field(default=5, ge=1, le=20, description="每页章节数，默认 5。")] = 5,
     ) -> object:
         """读取整个活动的完整剧情台词（按官方章节顺序合并）。
 

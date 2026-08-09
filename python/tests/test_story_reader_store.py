@@ -143,10 +143,24 @@ def test_story_tools_read_from_store(tmp_path, store_kind):
     assert activity.page_out_of_range is False
     assert [chapter.story_key for chapter in activity.chapters] == [FIRST_STORY_KEY]
 
-    out_of_range = read_activity_from_store(store, "act_test", page=99, page_size=1)
+    out_of_range = read_activity_from_store(store, "act_test", page=3, page_size=1)
     assert out_of_range.total_chapters == 2
     assert out_of_range.chapters == []
     assert out_of_range.page_out_of_range is True
+
+    with pytest.raises(ValueError, match="page_size 参数必须在 1 到 20 之间"):
+        read_activity_from_store(store, "act_test", page=1, page_size=0)
+
+
+def test_unreadable_chapter_is_not_page_out_of_range(tmp_path: Path) -> None:
+    write_story_dir(tmp_path)
+    (tmp_path / story_path(FIRST_STORY_KEY)).unlink()
+
+    result = read_activity_from_store(DirectoryStore(tmp_path), "act_test", page=1, page_size=1)
+
+    assert result.total_chapters == 2
+    assert result.chapters == []
+    assert result.page_out_of_range is False
 
 
 def test_public_zip_path_api_still_reads_zip(tmp_path):

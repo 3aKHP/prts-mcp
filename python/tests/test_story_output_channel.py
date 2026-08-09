@@ -519,7 +519,7 @@ def test_read_activity_out_of_range_page_is_content_only(
     result = asyncio.run(
         app._tool_manager.call_tool(
             "read_activity",
-            {"event_id": "act_test", "page": 99, "page_size": 1},
+            {"event_id": "act_test", "page": 3, "page_size": 1},
             Context(mcp_server=app),
             convert_result=True,
         )
@@ -527,5 +527,5 @@ def test_read_activity_out_of_range_page_is_content_only(
 
     assert result.structured_content is None
     assert result.content[0].text == (
-        "页码超出范围：act_test 共 2 章，按 page_size=1 分页共 2 页，请求的 page=99 不存在。"
+        "页码超出范围：act_test 共 2 章，按 page_size=1 分页共 2 页，请求的 page=3 不存在。"
     )
