@@ -163,6 +163,24 @@ def test_render_template_batch_keeps_other_fields_when_one_renders_empty(
     assert result == ["", "保留字段"]
 
 
+def test_render_template_batch_rejects_reversed_markers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _ReversedClient:
+        async def post(self, _url: str, *, data: dict) -> _Response:
+            match = re.search(r"(PRTSMCP_[0-9a-f]{32}_BEGIN_0_)", data["text"])
+            assert match is not None
+            begin = match.group(1)
+            end = begin.replace("_BEGIN_", "_END_")
+            return _Response({"parse": {"text": {"*": f"{end}\n{begin}\n错误"}}})
+
+    monkeypatch.setattr(prts_wiki, "_get_client", lambda: _ReversedClient())
+    monkeypatch.setattr(prts_wiki, "_rate_limit", _no_rate_limit)
+
+    with pytest.raises(TemplateRenderError, match="模板字段渲染边界无效"):
+        asyncio.run(prts_wiki._render_template_batch("测试", ["{{color|红}}"]))
+
+
 def test_render_template_batch_does_not_mask_local_cleanup_errors(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

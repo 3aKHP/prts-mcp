@@ -363,8 +363,11 @@ async def _render_template_batch(title: str, values: list[str]) -> list[str]:
     for begin, end in markers:
         if rendered.count(begin) != 1 or rendered.count(end) != 1:
             raise TemplateRenderError("模板字段渲染边界无效。")
-        start = rendered.index(begin) + len(begin)
-        finish = rendered.index(end, start)
+        begin_index = rendered.index(begin)
+        finish = rendered.index(end)
+        if finish < begin_index + len(begin):
+            raise TemplateRenderError("模板字段渲染边界无效。")
+        start = begin_index + len(begin)
         value = rendered[start:finish].strip()
         values_out.append(value)
     return values_out

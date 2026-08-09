@@ -401,7 +401,8 @@ async function renderTemplateBatch(title: string, values: string[]): Promise<str
     typeof response.error === "object"
     && response.error !== null
     && !Array.isArray(response.error)
-    && "info" in response.error
+    && typeof (response.error as { info?: unknown }).info === "string"
+    && (response.error as { info: string }).info
   ) {
     throw new TemplateRenderError("模板字段渲染请求失败。");
   }
@@ -422,8 +423,12 @@ async function renderTemplateBatch(title: string, values: string[]): Promise<str
     if (rendered.split(begin).length !== 2 || rendered.split(end).length !== 2) {
       throw new TemplateRenderError("模板字段渲染边界无效。");
     }
-    const start = rendered.indexOf(begin) + begin.length;
-    const finish = rendered.indexOf(end, start);
+    const beginIndex = rendered.indexOf(begin);
+    const finish = rendered.indexOf(end);
+    if (finish < beginIndex + begin.length) {
+      throw new TemplateRenderError("模板字段渲染边界无效。");
+    }
+    const start = beginIndex + begin.length;
     return rendered.slice(start, finish).trim();
   });
 }

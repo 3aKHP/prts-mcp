@@ -140,3 +140,25 @@ test("getTemplateData normalizes invalid render response shapes", async () => {
     globalThis.fetch = originalFetch;
   }
 });
+
+test("getTemplateData rejects reversed render markers", async () => {
+  const originalFetch = globalThis.fetch;
+  const parsetree = "<root><template><title>Test</title><part><name>字段</name><value><template><title>Nested</title></template></value></part></template></root>";
+  globalThis.fetch = (async (_input, init) => {
+    if (init?.method !== "POST") {
+      return new Response(JSON.stringify({ parse: { parsetree: { "*": parsetree } } }));
+    }
+    const form = new URLSearchParams(String(init.body));
+    const match = (form.get("text") ?? "").match(/(PRTSMCP_[0-9a-f]{32}_BEGIN_0_)/);
+    assert.ok(match);
+    const begin = match[1]!;
+    const end = begin.replace("_BEGIN_", "_END_");
+    return new Response(JSON.stringify({ parse: { text: { "*": `${end}\n${begin}\n错误` } } }));
+  }) as typeof fetch;
+
+  try {
+    await assert.rejects(getTemplateData("测试"), TemplateRenderError);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
