@@ -3,12 +3,15 @@
  * Mirrors python/src/prts_mcp/api/prts_wiki.py.
  */
 
+import { randomUUID } from "node:crypto";
+
 import {
   PRTS_API_ENDPOINT,
   RATE_LIMIT_INTERVAL,
   USER_AGENT,
 } from "../config.js";
 import { stripWikitext } from "../utils/sanitizer.js";
+import { renderTemplateData, TemplateRenderError } from "./templateRenderer.js";
 
 // ---------------------------------------------------------------------------
 // Rate limiter
@@ -44,6 +47,18 @@ async function prtsGet(params: Record<string, string | number>): Promise<unknown
   }
   const res = await fetch(url.toString(), {
     headers: DEFAULT_HEADERS,
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!res.ok) throw new Error(`PRTS API error: HTTP ${res.status}`);
+  return res.json();
+}
+
+async function prtsPost(params: Record<string, string | number>): Promise<unknown> {
+  await rateLimit();
+  const res = await fetch(PRTS_API_ENDPOINT, {
+    method: "POST",
+    headers: { ...DEFAULT_HEADERS, "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams(Object.entries(params).map(([key, value]) => [key, String(value)])),
     signal: AbortSignal.timeout(15_000),
   });
   if (!res.ok) throw new Error(`PRTS API error: HTTP ${res.status}`);
@@ -270,104 +285,6 @@ export async function listSections(
   }));
 }
 
-// ---------------------------------------------------------------------------
-// Parsetree XML parser
-// ---------------------------------------------------------------------------
-
-function* splitTopLevelTags(xml: string, tag: string): Generator<string> {
-  const open = `<${tag}`;
-  const close = `</${tag}>`;
-
-  let depth = 0;
-  let start = 0;
-
-  for (let i = 0; i < xml.length; ) {
-    if (xml.startsWith(open, i)) {
-      if (depth === 0) start = i;
-      depth++;
-      i += open.length;
-    } else if (xml.startsWith(close, i)) {
-      depth--;
-      if (depth === 0) {
-        yield xml.substring(start, i + close.length);
-      }
-      i += close.length;
-    } else {
-      i++;
-    }
-  }
-}
-
-function stripComments(xml: string): string {
-  return xml.replace(/<comment>[\s\S]*?<\/comment>/g, "");
-}
-
-const PART_RE = /<part>([\s\S]*?)<\/part>/g;
-const NAME_RE = /<name[^>]*>([\s\S]*?)<\/name>/;
-const VALUE_RE = /<value>([\s\S]*?)<\/value>/;
-const INDEX_RE = /\bindex\s*=/;
-
-function parsePart(partXml: string): { key?: string; value: string } | null {
-  const nameMatch = partXml.match(NAME_RE);
-  const valueMatch = partXml.match(VALUE_RE);
-  if (!valueMatch?.[1]) return null;
-  // Strip nested template tags from the value
-  const raw = valueMatch[1].replace(/<template[\s\S]*?<\/template>/g, "");
-  const value = raw.trim();
-  if (!value) return null;
-  if (nameMatch) {
-    const nameText = nameMatch[1].replace(/<[^>]+>/g, "").trim();
-    if (!nameText && INDEX_RE.test(partXml)) return { value }; // positional (name index=N)
-    if (nameText) return { key: nameText, value };
-  }
-  return { value };
-}
-
-function parseParsetreeXml(xml: string): Record<string, Record<string, unknown>> {
-  const templates: Record<string, Record<string, unknown>> = {};
-
-  for (const tXml of splitTopLevelTags(xml, "template")) {
-    const titleMatch = tXml.match(/<title>([\s\S]*?)<\/title>/);
-    if (!titleMatch) continue;
-
-    const title = stripComments(titleMatch[1]).replace(/\n/g, "").trim();
-    if (!title) continue;
-
-    const commentMatch = tXml.match(/<comment>([\s\S]*?)<\/comment>/);
-    const comment = commentMatch?.[1]?.trim() ?? "";
-
-    const kv: Record<string, string> = {};
-    const positional: string[] = [];
-
-    let pMatch: RegExpExecArray | null;
-    PART_RE.lastIndex = 0;
-    while ((pMatch = PART_RE.exec(tXml)) !== null) {
-      const parsed = parsePart(pMatch[1]);
-      if (!parsed) continue;
-      if (parsed.key) {
-        kv[parsed.key] = parsed.value;
-      } else {
-        positional.push(parsed.value);
-      }
-    }
-
-    const entry: Record<string, unknown> = {};
-    if (Object.keys(kv).length > 0) Object.assign(entry, kv);
-    if (positional.length > 0) entry._positional = positional;
-    if (comment) entry._comment = comment;
-
-    if (Object.keys(entry).length > 0) {
-      templates[title] = entry;
-    }
-  }
-
-  return templates;
-}
-
-// ---------------------------------------------------------------------------
-// Public API (continued)
-// ---------------------------------------------------------------------------
-
 /** Mirrors prts_wiki.get_categories(). */
 export async function getCategories(title: string): Promise<string[]> {
   const data = (await prtsGet({
@@ -451,6 +368,47 @@ export async function getLinks(
   };
 }
 
+async function renderTemplateBatch(title: string, values: string[]): Promise<string[]> {
+  if (values.length === 0) return [];
+
+  const prefix = `PRTSMCP_${randomUUID().replaceAll("-", "")}`;
+  const markers = values.map((_, index) => [
+    `${prefix}_BEGIN_${index}_`,
+    `${prefix}_END_${index}_`,
+  ] as const);
+  const text = values.map((value, index) => {
+    const [begin, end] = markers[index]!;
+    return `${begin}\n${value}\n${end}`;
+  }).join("\n\n");
+
+  let data: { error?: { info?: string }; parse?: { text?: { "*"?: string } } };
+  try {
+    data = (await prtsPost({
+      action: "parse",
+      title,
+      text,
+      prop: "text",
+      format: "json",
+    })) as typeof data;
+  } catch (error) {
+    throw new TemplateRenderError("模板字段渲染请求失败。", { cause: error });
+  }
+  if (data.error?.info) throw new TemplateRenderError("模板字段渲染请求失败。");
+
+  const rendered = stripHtml(data.parse?.text?.["*"] ?? "");
+  if (!rendered) throw new TemplateRenderError("模板字段渲染结果为空。");
+  return markers.map(([begin, end]) => {
+    if (rendered.split(begin).length !== 2 || rendered.split(end).length !== 2) {
+      throw new TemplateRenderError("模板字段渲染边界无效。");
+    }
+    const start = rendered.indexOf(begin) + begin.length;
+    const finish = rendered.indexOf(end, start);
+    const value = rendered.slice(start, finish).trim();
+    if (!value) throw new TemplateRenderError("模板字段渲染结果为空。");
+    return value;
+  });
+}
+
 /** Mirrors prts_wiki.get_template_data(). */
 export async function getTemplateData(
   title: string,
@@ -474,7 +432,7 @@ export async function getTemplateData(
     throw new Error(`页面 '${title}' 无 parsetree 数据。`);
   }
 
-  return parseParsetreeXml(xml);
+  return renderTemplateData(title, xml, renderTemplateBatch);
 }
 
 // ---------------------------------------------------------------------------
