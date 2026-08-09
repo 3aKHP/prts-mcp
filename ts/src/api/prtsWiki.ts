@@ -397,14 +397,15 @@ async function renderTemplateBatch(title: string, values: string[]): Promise<str
     throw new TemplateRenderError("模板字段渲染响应格式无效。");
   }
   const response = data as { error?: unknown; parse?: unknown };
-  if (
-    typeof response.error === "object"
-    && response.error !== null
-    && !Array.isArray(response.error)
-    && typeof (response.error as { info?: unknown }).info === "string"
-    && (response.error as { info: string }).info
-  ) {
-    throw new TemplateRenderError("模板字段渲染请求失败。");
+  if ("error" in response) {
+    if (typeof response.error !== "object" || response.error === null || Array.isArray(response.error)) {
+      throw new TemplateRenderError("模板字段渲染响应格式无效。");
+    }
+    const info = (response.error as { info?: unknown }).info;
+    if (typeof info !== "string") {
+      throw new TemplateRenderError("模板字段渲染响应格式无效。");
+    }
+    if (info) throw new TemplateRenderError("模板字段渲染请求失败。");
   }
 
   const parse = typeof response.parse === "object" && response.parse !== null && !Array.isArray(response.parse)
@@ -419,6 +420,21 @@ async function renderTemplateBatch(title: string, values: string[]): Promise<str
 
   const rendered = stripHtml(textNode["*"]);
   if (!rendered) throw new TemplateRenderError("模板字段渲染结果为空。");
+  const markerPositions = markers.flatMap(([begin, end], index) => [
+    { position: rendered.indexOf(begin), kind: "begin" as const, index },
+    { position: rendered.indexOf(end), kind: "end" as const, index },
+  ]);
+  const expectedOrder = markers.flatMap((_, index) => [
+    { kind: "begin" as const, index },
+    { kind: "end" as const, index },
+  ]);
+  const actualOrder = [...markerPositions]
+    .sort((left, right) => left.position - right.position)
+    .map(({ kind, index }) => ({ kind, index }));
+  if (JSON.stringify(actualOrder) !== JSON.stringify(expectedOrder)) {
+    throw new TemplateRenderError("模板字段渲染边界无效。");
+  }
+
   return markers.map(([begin, end]) => {
     if (rendered.split(begin).length !== 2 || rendered.split(end).length !== 2) {
       throw new TemplateRenderError("模板字段渲染边界无效。");

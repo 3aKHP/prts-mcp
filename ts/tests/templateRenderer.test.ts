@@ -162,3 +162,49 @@ test("getTemplateData rejects reversed render markers", async () => {
     globalThis.fetch = originalFetch;
   }
 });
+
+test("getTemplateData rejects interleaved render markers", async () => {
+  const originalFetch = globalThis.fetch;
+  const parsetree = [
+    "<root><template><title>Test</title>",
+    "<part><name>A</name><value><template><title>A</title></template></value></part>",
+    "<part><name>B</name><value><template><title>B</title></template></value></part>",
+    "</template></root>",
+  ].join("");
+  globalThis.fetch = (async (_input, init) => {
+    if (init?.method !== "POST") {
+      return new Response(JSON.stringify({ parse: { parsetree: { "*": parsetree } } }));
+    }
+    const form = new URLSearchParams(String(init.body));
+    const markers = [...(form.get("text") ?? "").matchAll(/(PRTSMCP_[0-9a-f]{32}_BEGIN_(\d+)_)/g)];
+    assert.equal(markers.length, 2);
+    const begin0 = markers[0]![1]!;
+    const end0 = begin0.replace("_BEGIN_", "_END_");
+    const begin1 = markers[1]![1]!;
+    const end1 = begin1.replace("_BEGIN_", "_END_");
+    return new Response(JSON.stringify({ parse: { text: { "*": `${begin0}\n${begin1}\n值0\n${end0}\n值1\n${end1}` } } }));
+  }) as typeof fetch;
+
+  try {
+    await assert.rejects(getTemplateData("测试"), TemplateRenderError);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("getTemplateData rejects non-string MediaWiki error info", async () => {
+  const originalFetch = globalThis.fetch;
+  const parsetree = "<root><template><title>Test</title><part><name>字段</name><value><template><title>Nested</title></template></value></part></template></root>";
+  globalThis.fetch = (async (_input, init) => {
+    if (init?.method !== "POST") {
+      return new Response(JSON.stringify({ parse: { parsetree: { "*": parsetree } } }));
+    }
+    return new Response(JSON.stringify({ error: { info: 1 } }));
+  }) as typeof fetch;
+
+  try {
+    await assert.rejects(getTemplateData("测试"), TemplateRenderError);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

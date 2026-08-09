@@ -181,6 +181,27 @@ def test_render_template_batch_rejects_reversed_markers(
         asyncio.run(prts_wiki._render_template_batch("测试", ["{{color|红}}"]))
 
 
+def test_render_template_batch_rejects_interleaved_markers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _InterleavedClient:
+        async def post(self, _url: str, *, data: dict) -> _Response:
+            markers = list(re.finditer(r"(PRTSMCP_[0-9a-f]{32}_BEGIN_(\d+)_)", data["text"]))
+            assert len(markers) == 2
+            begin0 = markers[0].group(1)
+            end0 = begin0.replace("_BEGIN_", "_END_")
+            begin1 = markers[1].group(1)
+            end1 = begin1.replace("_BEGIN_", "_END_")
+            html = f"{begin0}\n{begin1}\n值0\n{end0}\n值1\n{end1}"
+            return _Response({"parse": {"text": {"*": html}}})
+
+    monkeypatch.setattr(prts_wiki, "_get_client", lambda: _InterleavedClient())
+    monkeypatch.setattr(prts_wiki, "_rate_limit", _no_rate_limit)
+
+    with pytest.raises(TemplateRenderError, match="模板字段渲染边界无效"):
+        asyncio.run(prts_wiki._render_template_batch("测试", ["{{a}}", "{{b}}"]))
+
+
 def test_render_template_batch_does_not_mask_local_cleanup_errors(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
