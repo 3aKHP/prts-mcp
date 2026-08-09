@@ -84,6 +84,35 @@ jobs:
           print("Import/config verification passed.")
           PY
 
+  package:
+    runs-on: ubuntu-latest
+    needs: verify
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Build exact release artifacts
+        run: |
+          pip install build
+          python -m build python/
+          test "$(find python/dist -maxdepth 1 -type f | wc -l)" -eq 2
+
+      - name: Upload exact release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-release-package
+          path: python/dist/
+          if-no-files-found: error
+          retention-days: 7
+
   build-and-push:
     runs-on: ubuntu-latest
     needs: verify
@@ -222,7 +251,7 @@ jobs:
 
   github-release:
     runs-on: ubuntu-latest
-    needs: [build-and-push, publish-pypi]
+    needs: [build-and-push, package, publish-pypi]
     permissions:
       contents: write
 
@@ -230,15 +259,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
 
-      - name: Set up Python
-        uses: actions/setup-python@v7
+      - name: Download exact release artifacts
+        uses: actions/download-artifact@v4
         with:
-          python-version: "3.11"
-
-      - name: Build distribution
-        run: |
-          pip install build
-          python -m build python/
+          name: python-release-package
+          path: python/dist
 
       - name: Extract changelog section
         env:
@@ -268,30 +293,24 @@ jobs:
         with:
           body_path: release_notes.txt
           files: python/dist/*
+          fail_on_unmatched_files: true
           prerelease: ${{ needs.build-and-push.outputs.prerelease }}
           make_latest: ${{ needs.build-and-push.outputs.prerelease == 'true' && 'false' || 'true' }}
 
   publish-pypi:
     runs-on: ubuntu-latest
-    needs: build-and-push
+    needs: [build-and-push, package]
     environment: pypi
     permissions:
       contents: read
       id-token: write
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Set up Python
-        uses: actions/setup-python@v7
+      - name: Download exact release artifacts
+        uses: actions/download-artifact@v4
         with:
-          python-version: "3.11"
-
-      - name: Build distribution
-        run: |
-          pip install build
-          python -m build python/
+          name: python-release-package
+          path: python/dist
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
