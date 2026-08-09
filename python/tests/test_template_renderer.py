@@ -21,13 +21,13 @@ def _fixture() -> dict:
 
 
 class _Response:
-    def __init__(self, payload: dict) -> None:
+    def __init__(self, payload: object) -> None:
         self.payload = payload
 
     def raise_for_status(self) -> None:
         pass
 
-    def json(self) -> dict:
+    def json(self) -> object:
         return self.payload
 
 
@@ -118,6 +118,105 @@ def test_render_template_batch_converts_malformed_response(
     monkeypatch.setattr(prts_wiki, "_rate_limit", _no_rate_limit)
 
     with pytest.raises(TemplateRenderError, match="模板字段渲染请求失败"):
+        asyncio.run(prts_wiki._render_template_batch("测试", ["{{color|红}}"]))
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [None, [], {"parse": []}, {"parse": {"text": {"*": None}}}],
+)
+def test_render_template_batch_rejects_invalid_response_shape(
+    monkeypatch: pytest.MonkeyPatch,
+    payload: object,
+) -> None:
+    class _InvalidClient:
+        async def post(self, _url: str, *, data: dict) -> _Response:
+            return _Response(payload)
+
+    monkeypatch.setattr(prts_wiki, "_get_client", lambda: _InvalidClient())
+    monkeypatch.setattr(prts_wiki, "_rate_limit", _no_rate_limit)
+
+    with pytest.raises(TemplateRenderError, match="模板字段渲染响应格式无效"):
+        asyncio.run(prts_wiki._render_template_batch("测试", ["{{color|红}}"]))
+
+
+def test_render_template_batch_keeps_other_fields_when_one_renders_empty(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _PartialClient:
+        async def post(self, _url: str, *, data: dict) -> _Response:
+            text = data["text"]
+            markers = list(re.finditer(r"(PRTSMCP_[0-9a-f]{32}_BEGIN_(\d+)_)", text))
+            values = ["", "保留字段"]
+            html = []
+            for marker, value in zip(markers, values, strict=True):
+                begin = marker.group(1)
+                end = begin.replace("_BEGIN_", "_END_")
+                html.append(f"<p>{begin}\n{value}\n{end}</p>")
+            return _Response({"parse": {"text": {"*": "\n".join(html)}}})
+
+    monkeypatch.setattr(prts_wiki, "_get_client", lambda: _PartialClient())
+    monkeypatch.setattr(prts_wiki, "_rate_limit", _no_rate_limit)
+
+    result = asyncio.run(prts_wiki._render_template_batch("测试", ["{{empty}}", "{{kept}}"]))
+
+    assert result == ["", "保留字段"]
+
+
+def test_render_template_batch_rejects_reversed_markers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _ReversedClient:
+        async def post(self, _url: str, *, data: dict) -> _Response:
+            match = re.search(r"(PRTSMCP_[0-9a-f]{32}_BEGIN_0_)", data["text"])
+            assert match is not None
+            begin = match.group(1)
+            end = begin.replace("_BEGIN_", "_END_")
+            return _Response({"parse": {"text": {"*": f"{end}\n{begin}\n错误"}}})
+
+    monkeypatch.setattr(prts_wiki, "_get_client", lambda: _ReversedClient())
+    monkeypatch.setattr(prts_wiki, "_rate_limit", _no_rate_limit)
+
+    with pytest.raises(TemplateRenderError, match="模板字段渲染边界无效"):
+        asyncio.run(prts_wiki._render_template_batch("测试", ["{{color|红}}"]))
+
+
+def test_render_template_batch_rejects_interleaved_markers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _InterleavedClient:
+        async def post(self, _url: str, *, data: dict) -> _Response:
+            markers = list(re.finditer(r"(PRTSMCP_[0-9a-f]{32}_BEGIN_(\d+)_)", data["text"]))
+            assert len(markers) == 2
+            begin0 = markers[0].group(1)
+            end0 = begin0.replace("_BEGIN_", "_END_")
+            begin1 = markers[1].group(1)
+            end1 = begin1.replace("_BEGIN_", "_END_")
+            html = f"{begin0}\n{begin1}\n值0\n{end0}\n值1\n{end1}"
+            return _Response({"parse": {"text": {"*": html}}})
+
+    monkeypatch.setattr(prts_wiki, "_get_client", lambda: _InterleavedClient())
+    monkeypatch.setattr(prts_wiki, "_rate_limit", _no_rate_limit)
+
+    with pytest.raises(TemplateRenderError, match="模板字段渲染边界无效"):
+        asyncio.run(prts_wiki._render_template_batch("测试", ["{{a}}", "{{b}}"]))
+
+
+def test_render_template_batch_does_not_mask_local_cleanup_errors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _ValidClient:
+        async def post(self, _url: str, *, data: dict) -> _Response:
+            return _Response({"parse": {"text": {"*": "valid"}}})
+
+    def raise_cleanup_error(_text: str) -> str:
+        raise RuntimeError("bug")
+
+    monkeypatch.setattr(prts_wiki, "_get_client", lambda: _ValidClient())
+    monkeypatch.setattr(prts_wiki, "_rate_limit", _no_rate_limit)
+    monkeypatch.setattr(prts_wiki, "_strip_html", raise_cleanup_error)
+
+    with pytest.raises(RuntimeError, match="bug"):
         asyncio.run(prts_wiki._render_template_batch("测试", ["{{color|红}}"]))
 
 

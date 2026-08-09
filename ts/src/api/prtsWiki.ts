@@ -381,31 +381,71 @@ async function renderTemplateBatch(title: string, values: string[]): Promise<str
     return `${begin}\n${value}\n${end}`;
   }).join("\n\n");
 
-  let data: { error?: { info?: string }; parse?: { text?: { "*"?: string } } };
+  let data: unknown;
   try {
-    data = (await prtsPost({
+    data = await prtsPost({
       action: "parse",
       title,
       text,
       prop: "text",
       format: "json",
-    })) as typeof data;
+    });
   } catch (error) {
     throw new TemplateRenderError("模板字段渲染请求失败。", { cause: error });
   }
-  if (data.error?.info) throw new TemplateRenderError("模板字段渲染请求失败。");
+  if (typeof data !== "object" || data === null || Array.isArray(data)) {
+    throw new TemplateRenderError("模板字段渲染响应格式无效。");
+  }
+  const response = data as { error?: unknown; parse?: unknown };
+  if ("error" in response) {
+    if (typeof response.error !== "object" || response.error === null || Array.isArray(response.error)) {
+      throw new TemplateRenderError("模板字段渲染响应格式无效。");
+    }
+    const info = (response.error as { info?: unknown }).info;
+    if (typeof info !== "string") {
+      throw new TemplateRenderError("模板字段渲染响应格式无效。");
+    }
+    if (info) throw new TemplateRenderError("模板字段渲染请求失败。");
+  }
 
-  const rendered = stripHtml(data.parse?.text?.["*"] ?? "");
+  const parse = typeof response.parse === "object" && response.parse !== null && !Array.isArray(response.parse)
+    ? response.parse as { text?: unknown }
+    : undefined;
+  const textNode = typeof parse?.text === "object" && parse.text !== null && !Array.isArray(parse.text)
+    ? parse.text as { "*"?: unknown }
+    : undefined;
+  if (typeof textNode?.["*"] !== "string") {
+    throw new TemplateRenderError("模板字段渲染响应格式无效。");
+  }
+
+  const rendered = stripHtml(textNode["*"]);
   if (!rendered) throw new TemplateRenderError("模板字段渲染结果为空。");
+  const markerPositions = markers.flatMap(([begin, end], index) => [
+    { position: rendered.indexOf(begin), kind: "begin" as const, index },
+    { position: rendered.indexOf(end), kind: "end" as const, index },
+  ]);
+  const expectedOrder = markers.flatMap((_, index) => [
+    { kind: "begin" as const, index },
+    { kind: "end" as const, index },
+  ]);
+  const actualOrder = [...markerPositions]
+    .sort((left, right) => left.position - right.position)
+    .map(({ kind, index }) => ({ kind, index }));
+  if (JSON.stringify(actualOrder) !== JSON.stringify(expectedOrder)) {
+    throw new TemplateRenderError("模板字段渲染边界无效。");
+  }
+
   return markers.map(([begin, end]) => {
     if (rendered.split(begin).length !== 2 || rendered.split(end).length !== 2) {
       throw new TemplateRenderError("模板字段渲染边界无效。");
     }
-    const start = rendered.indexOf(begin) + begin.length;
-    const finish = rendered.indexOf(end, start);
-    const value = rendered.slice(start, finish).trim();
-    if (!value) throw new TemplateRenderError("模板字段渲染结果为空。");
-    return value;
+    const beginIndex = rendered.indexOf(begin);
+    const finish = rendered.indexOf(end);
+    if (finish < beginIndex + begin.length) {
+      throw new TemplateRenderError("模板字段渲染边界无效。");
+    }
+    const start = beginIndex + begin.length;
+    return rendered.slice(start, finish).trim();
   });
 }
 

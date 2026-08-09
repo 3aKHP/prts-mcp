@@ -340,23 +340,49 @@ async def _render_template_batch(title: str, values: list[str]) -> list[str]:
 
     try:
         data = response.json()
-        rendered = _strip_html(data.get("parse", {}).get("text", {}).get("*", ""))
-    except Exception as exc:
+    except (TypeError, ValueError) as exc:
         raise TemplateRenderError("模板字段渲染请求失败。") from exc
-    if data.get("error", {}).get("info"):
-        raise TemplateRenderError("模板字段渲染请求失败。")
+    if not isinstance(data, dict):
+        raise TemplateRenderError("模板字段渲染响应格式无效。")
+
+    if "error" in data:
+        error = data["error"]
+        if not isinstance(error, dict) or "info" not in error:
+            raise TemplateRenderError("模板字段渲染响应格式无效。")
+        info = error["info"]
+        if not isinstance(info, str):
+            raise TemplateRenderError("模板字段渲染响应格式无效。")
+        if info:
+            raise TemplateRenderError("模板字段渲染请求失败。")
+
+    parse = data.get("parse")
+    text = parse.get("text") if isinstance(parse, dict) else None
+    html_text = text.get("*") if isinstance(text, dict) else None
+    if not isinstance(html_text, str):
+        raise TemplateRenderError("模板字段渲染响应格式无效。")
+
+    rendered = _strip_html(html_text)
     if not rendered:
         raise TemplateRenderError("模板字段渲染结果为空。")
 
     values_out: list[str] = []
-    for begin, end in markers:
+    marker_positions: list[tuple[int, str, int]] = []
+    for index, (begin, end) in enumerate(markers):
         if rendered.count(begin) != 1 or rendered.count(end) != 1:
             raise TemplateRenderError("模板字段渲染边界无效。")
-        start = rendered.index(begin) + len(begin)
-        finish = rendered.index(end, start)
+        marker_positions.extend(
+            [(rendered.index(begin), "begin", index), (rendered.index(end), "end", index)]
+        )
+    expected_order = [(kind, index) for index in range(len(markers)) for kind in ("begin", "end")]
+    actual_order = [(kind, index) for _, kind, index in sorted(marker_positions)]
+    if actual_order != expected_order:
+        raise TemplateRenderError("模板字段渲染边界无效。")
+
+    for begin, end in markers:
+        begin_index = rendered.index(begin)
+        finish = rendered.index(end)
+        start = begin_index + len(begin)
         value = rendered[start:finish].strip()
-        if not value:
-            raise TemplateRenderError("模板字段渲染结果为空。")
         values_out.append(value)
     return values_out
 
