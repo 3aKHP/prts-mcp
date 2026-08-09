@@ -338,10 +338,13 @@ async def _render_template_batch(title: str, values: list[str]) -> list[str]:
     except httpx.HTTPError as exc:
         raise TemplateRenderError("模板字段渲染请求失败。") from exc
 
-    data = response.json()
+    try:
+        data = response.json()
+        rendered = _strip_html(data.get("parse", {}).get("text", {}).get("*", ""))
+    except Exception as exc:
+        raise TemplateRenderError("模板字段渲染请求失败。") from exc
     if data.get("error", {}).get("info"):
         raise TemplateRenderError("模板字段渲染请求失败。")
-    rendered = _strip_html(data.get("parse", {}).get("text", {}).get("*", ""))
     if not rendered:
         raise TemplateRenderError("模板字段渲染结果为空。")
 

@@ -100,6 +100,27 @@ def test_template_renderer_skips_batch_render_for_plain_values() -> None:
     assert result == {"Test": {"数值": "12"}}
 
 
+def test_render_template_batch_converts_malformed_response(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _BadResponse:
+        def raise_for_status(self) -> None:
+            pass
+
+        def json(self) -> dict:
+            raise ValueError("malformed json")
+
+    class _BadClient:
+        async def post(self, _url: str, *, data: dict) -> _BadResponse:
+            return _BadResponse()
+
+    monkeypatch.setattr(prts_wiki, "_get_client", lambda: _BadClient())
+    monkeypatch.setattr(prts_wiki, "_rate_limit", _no_rate_limit)
+
+    with pytest.raises(TemplateRenderError, match="模板字段渲染请求失败"):
+        asyncio.run(prts_wiki._render_template_batch("测试", ["{{color|红}}"]))
+
+
 async def _unexpected_render(_title: str, _values: list[str]) -> list[str]:
     raise AssertionError("unsupported XML must not reach the renderer")
 
