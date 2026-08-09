@@ -213,6 +213,13 @@ export function registerStoryTools(server: McpServer, channel: OutputChannel = "
           page,
           page_size
         );
+        if (result.pageOutOfRange) {
+          const totalPages = Math.ceil(result.totalChapters / page_size);
+          return textResult(
+            `页码超出范围：${event_id} 共 ${result.totalChapters} 章，按 page_size=${page_size} `
+            + `分页共 ${totalPages} 页，请求的 page=${page} 不存在。`,
+          );
+        }
         const parts: string[] = [];
         if (result.eventName) {
           parts.push(

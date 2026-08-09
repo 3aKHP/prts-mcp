@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.6.1] - 2026-08-10
+
+### Fixed
+
+- `prts_page(action="template")` now renders nested template fields to complete readable text instead of silently dropping text or returning parsetree XML fragments (#125).
+- Template rendering now preserves valid fields when another nested value renders empty and normalizes malformed MediaWiki response shapes and marker boundaries to the documented content-only fallback.
+- `read_activity` now validates page inputs consistently and returns a clear content-only message when the requested page is beyond an existing activity's range (#137).
+
 ## [2.6.0] - 2026-08-09
 
 ### Added

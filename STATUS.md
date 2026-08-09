@@ -1,18 +1,19 @@
 # PRTS-MCP 项目状态
 
-_Last updated: 2026-08-09_
+_Last updated: 2026-08-10_
 
 ## 当前版本
 
 | 实现 | 版本 | 状态 |
 |------|------|------|
-| Python | 2.6.0 | Stable release |
-| TypeScript | 2.6.0 | Stable release |
+| Python | 2.6.1 | Stable release |
+| TypeScript | 2.6.1 | Stable release |
 
-- 当前稳定发布：2.6.0（24 个 MCP 工具）
+- 当前稳定发布：2.6.1（24 个 MCP 工具）
 - 当前 LTS 发布：1.7.0（32 个 MCP 工具，剧情角色追踪）
 - 下一开发目标：2.7.0（在 release branch 回合与开发版本重开后确定）
 - 当前稳定补丁线：2.6.x
+- 2.6.1 发布内容：`prts_page(action="template")` 的嵌套字段安全渲染与 malformed-response 边界；`read_activity` 页码输入和越界提示一致性。
 - 2.6.0 发布内容：MCP SDK v2 与 legacy/`2026-07-28` 双时代协议服务；`operator_artwork` 阿米娅近卫/医疗形态解析与精确 opaque token 归属；TS 聚合指标、六会话隔离内存基准及同机 canary 资产。
 - 2.5.0 发布内容：干员立绘工具 `operator_artwork`（list/get，默认 MediaWiki 在线获取 + 256 MiB LRU 缓存，`LOCAL_IMAGE=true` 时使用 AKDP 本地 PNG 资产）；数据源切换到自建 `arknights-data-pipeline` Release；TS stdio 不再泄漏 HTTP 监听器；TS JSON 空对象占位守卫。
 - 2.4.0 发布内容：常驻服务默认每小时同步 GameData excel、GameData levels 与 StoryJson；GameData 两类归档以同一代原子切换，并支持共享卷跨进程发布锁续租。
@@ -69,7 +70,7 @@ _Last updated: 2026-08-09_
 
 ## 当前分支
 
-- `main`：2.6.0（最新稳定发布线）
+- `main`：2.6.1（最新稳定发布线）
 - `lts/1.7`：1.7.x LTS 维护线（从 1.7.0 发布提交创建）
 - `develop`：release branch 回合后重开 2.7.0 开发线
 
@@ -228,6 +229,7 @@ PRTS-MCP/
 
 | 版本 | 日期 | 亮点 |
 |------|------|------|
+| 2.6.1 | 2026-08-10 | 模板嵌套字段安全渲染与 malformed-response 边界；活动剧情页码校验与越界提示 |
 | 2.6.0 | 2026-08-09 | MCP SDK v2 双时代协议；阿米娅形态立绘；聚合指标、六会话内存基准与同机 canary |
 | 2.5.2 | 2026-08-09 | npm 生产依赖安全更新；AKDP 直接敌人数据库；剧情标量 Decision；立绘 token 归属校验 |
 | 2.5.1 | 2026-08-07 | gamedata pair retry 修复；manifest 404 fail-open；image sha256 验证；CI Node 24 |

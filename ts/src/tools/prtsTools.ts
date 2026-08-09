@@ -15,6 +15,7 @@ import {
   getLinks,
   getTemplateData,
 } from "../api/prtsWiki.js";
+import { TemplateRenderError } from "../api/templateRenderer.js";
 import { renderResult, textResult, type OutputChannel } from "../output.js";
 import { registerTool } from "./registerTool.js";
 
@@ -96,11 +97,11 @@ export function registerPrtsTools(server: McpServer, channel: OutputChannel = "c
     [
       "读取 PRTS 维基页面的正文或元数据，按 action 分派。",
       "推荐流程：先用 action=\"sections\" 看目录（每行 `[编号] L层级 标题`，T- 前缀表示模板嵌入的节），再用 action=\"read\" + section_index 读特定章节，避免整页过载。",
-      "其余 action：categories 返回分类标签；links 返回相关链接（outbound 出链 / inbound 反向链接）；template 返回结构化模板数据（如干员 CharinfoV2、敌人 敌人信息/common2、物品 道具信息）。",
+      "其余 action：categories 返回分类标签；links 返回相关链接（outbound 出链 / inbound 反向链接）；template 返回顶层模板的结构化、已渲染字段数据（如干员 CharinfoV2、敌人 敌人信息/common2、物品 道具信息）。",
     ].join(" "),
     {
       page_title: z.string().describe("词条标题，需与维基页面标题完全一致，如「阿米娅」。建议先用 search_prts 获取准确标题。"),
-      action: z.enum(["read", "sections", "categories", "links", "template"]).describe("操作（必填）：read=读取正文 / sections=章节目录 / categories=分类标签 / links=相关链接 / template=结构化模板数据。"),
+      action: z.enum(["read", "sections", "categories", "links", "template"]).describe("操作（必填）：read=读取正文 / sections=章节目录 / categories=分类标签 / links=相关链接 / template=顶层模板的结构化、已渲染字段数据。"),
       section_index: z.number().int().optional().describe("仅 action=read 生效：章节编号（从 action=sections 获取）。不填返回整页。"),
       direction: z.enum(["outbound", "inbound"]).default("outbound").describe("仅 action=links 生效：outbound（出链，默认）或 inbound（入链）。"),
       limit: z.number().int().min(1).max(100).default(30).describe("仅 action=links 生效：返回链接数量上限，默认 30。"),
@@ -143,6 +144,9 @@ export function registerPrtsTools(server: McpServer, channel: OutputChannel = "c
         }
         return textResult(JSON.stringify(templates, null, 2));
       } catch (e) {
+        if (e instanceof TemplateRenderError) {
+          return textResult('模板字段渲染失败。请改用 action="read" 获取正文。');
+        }
         return textResult(e instanceof Error ? e.message : String(e));
       }
     }

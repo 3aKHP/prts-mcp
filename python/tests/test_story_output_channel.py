@@ -506,3 +506,37 @@ def test_list_story_events_missing_zip_is_content_only(
         "剧情数据未就绪。请设置 STORYJSON_PATH 环境变量指向 zh_CN.zip，"
         "或等待服务器自动从 GitHub Release 下载完成后重试。"
     )
+
+
+def test_read_activity_out_of_range_page_is_content_only(
+    monkeypatch: pytest.MonkeyPatch,
+    story_zip: Path,
+) -> None:
+    monkeypatch.setenv("STORYJSON_PATH", str(story_zip))
+    app = MCPServer("story-test")
+    register_story_tools(app)
+
+    result = asyncio.run(
+        app._tool_manager.call_tool(
+            "read_activity",
+            {"event_id": "act_test", "page": 3, "page_size": 1},
+            Context(mcp_server=app),
+            convert_result=True,
+        )
+    )
+
+    assert result.structured_content is None
+    assert result.content[0].text == (
+        "页码超出范围：act_test 共 2 章，按 page_size=1 分页共 2 页，请求的 page=3 不存在。"
+    )
+
+
+def test_read_activity_page_schema_requires_positive_integer() -> None:
+    app = MCPServer("story-test")
+    register_story_tools(app)
+
+    tools = asyncio.run(app.list_tools())
+    read_activity = next(tool for tool in tools if tool.name == "read_activity")
+    page_schema = read_activity.input_schema["properties"]["page"]
+
+    assert page_schema["anyOf"][0]["minimum"] == 1

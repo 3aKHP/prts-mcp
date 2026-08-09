@@ -114,6 +114,7 @@ class ActivityResult:
     total_chapters: int
     has_more: bool
     chapters: list[StoryChapter]
+    page_out_of_range: bool = False
 
 
 @dataclass(frozen=True)
@@ -501,6 +502,9 @@ def read_activity_from_store(
     summaries = list_stories_from_store(store, event_id)
     total = len(summaries)
 
+    if not 1 <= page_size <= 20:
+        raise ValueError("page_size 参数必须在 1 到 20 之间")
+
     if page is not None:
         if page < 1:
             raise ValueError("page 参数必须 >= 1")
@@ -508,9 +512,11 @@ def read_activity_from_store(
         end = start + page_size
         selected = summaries[start:end]
         has_more = end < total
+        page_out_of_range = total > 0 and start >= total
     else:
         selected = summaries
         has_more = False
+        page_out_of_range = False
 
     chapters = []
     event_name = ""
@@ -529,5 +535,6 @@ def read_activity_from_store(
         event_name=event_name,
         total_chapters=total,
         has_more=has_more,
+        page_out_of_range=page_out_of_range,
         chapters=chapters,
     )
