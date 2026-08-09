@@ -529,3 +529,14 @@ def test_read_activity_out_of_range_page_is_content_only(
     assert result.content[0].text == (
         "页码超出范围：act_test 共 2 章，按 page_size=1 分页共 2 页，请求的 page=3 不存在。"
     )
+
+
+def test_read_activity_page_schema_requires_positive_integer() -> None:
+    app = MCPServer("story-test")
+    register_story_tools(app)
+
+    tools = asyncio.run(app.list_tools())
+    read_activity = next(tool for tool in tools if tool.name == "read_activity")
+    page_schema = read_activity.input_schema["properties"]["page"]
+
+    assert page_schema["anyOf"][0]["minimum"] == 1
