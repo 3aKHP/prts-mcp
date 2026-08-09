@@ -146,8 +146,11 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
     def read_activity(
         event_id: Annotated[str, Field(description="活动 ID，如 \"act31side\"（可从 list_story_events 获取）。")],
         include_narration: Annotated[bool, Field(default=True, description="是否包含旁白，默认 True。")] = True,
-        page: Annotated[int | None, Field(default=None, description="分页页码（从 1 开始）。不填则返回全部章节。")] = None,
-        page_size: Annotated[int, Field(default=5, description="每页章节数，默认 5。")] = 5,
+        page: Annotated[
+            int | None,
+            Field(default=None, ge=1, description="分页页码（从 1 开始）。不填则返回全部章节。"),
+        ] = None,
+        page_size: Annotated[int, Field(default=5, ge=1, le=20, description="每页章节数，默认 5。")] = 5,
     ) -> object:
         """读取整个活动的完整剧情台词（按官方章节顺序合并）。
 
@@ -176,6 +179,13 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         chapters = result.chapters
         total = result.total_chapters
         has_more = result.has_more
+
+        if result.page_out_of_range:
+            total_pages = (total + page_size - 1) // page_size
+            return text_result(
+                f"页码超出范围：{event_id} 共 {total} 章，按 page_size={page_size} "
+                f"分页共 {total_pages} 页，请求的 page={page} 不存在。"
+            )
 
         header = f"【{result.event_name}】共 {total} 章"
         if page is not None:
