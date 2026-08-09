@@ -4,11 +4,11 @@ import asyncio
 import html as _html
 import logging
 import re
-
-import xml.etree.ElementTree as ET
+import secrets
 
 import httpx
 
+from prts_mcp.api.template_renderer import TemplateRenderError, render_template_data
 from prts_mcp.config import PRTS_API_ENDPOINT, USER_AGENT, RATE_LIMIT_INTERVAL
 from prts_mcp.utils.sanitizer import strip_wikitext
 
@@ -307,20 +307,59 @@ async def get_links(
     }
 
 
+async def _render_template_batch(title: str, values: list[str]) -> list[str]:
+    """Render nested template values in one MediaWiki POST request."""
+    if not values:
+        return []
+
+    prefix = f"PRTSMCP_{secrets.token_hex(16)}"
+    markers = [
+        (f"{prefix}_BEGIN_{index}_", f"{prefix}_END_{index}_")
+        for index in range(len(values))
+    ]
+    text = "\n\n".join(
+        f"{begin}\n{value}\n{end}"
+        for value, (begin, end) in zip(values, markers, strict=True)
+    )
+
+    await _rate_limit()
+    try:
+        response = await _get_client().post(
+            PRTS_API_ENDPOINT,
+            data={
+                "action": "parse",
+                "title": title,
+                "text": text,
+                "prop": "text",
+                "format": "json",
+            },
+        )
+        response.raise_for_status()
+    except httpx.HTTPError as exc:
+        raise TemplateRenderError("模板字段渲染请求失败。") from exc
+
+    data = response.json()
+    if data.get("error", {}).get("info"):
+        raise TemplateRenderError("模板字段渲染请求失败。")
+    rendered = _strip_html(data.get("parse", {}).get("text", {}).get("*", ""))
+    if not rendered:
+        raise TemplateRenderError("模板字段渲染结果为空。")
+
+    values_out: list[str] = []
+    for begin, end in markers:
+        if rendered.count(begin) != 1 or rendered.count(end) != 1:
+            raise TemplateRenderError("模板字段渲染边界无效。")
+        start = rendered.index(begin) + len(begin)
+        finish = rendered.index(end, start)
+        value = rendered[start:finish].strip()
+        if not value:
+            raise TemplateRenderError("模板字段渲染结果为空。")
+        values_out.append(value)
+    return values_out
+
+
 async def get_template_data(title: str) -> dict:
-    """Return structured key-value data from template calls on a wiki page.
-
-    Fetches the page's parsetree via action=parse&prop=parsetree and extracts
-    key=value parts from every TOP-LEVEL template that uses the <name>kv</name>
-    pattern (e.g. {{CharinfoV2}}, {{敌人信息/common2}}, {{道具信息}}).
-
-    Nested templates inside a value (e.g. {{color|...}} inside CharinfoV2's
-    特性 field) are stripped from the value text — they are NOT yielded as
-    separate top-level entries. This matches the TS implementation.
-
-    Named-positional (index) templates like {{Navigator}} or {{参阅}} are
-    included as positional fields in the dict value.
-    """
+    """Return top-level structured template data with readable nested values."""
     await _rate_limit()
     params = {
         "action": "parse",
@@ -340,64 +379,7 @@ async def get_template_data(title: str) -> dict:
     if not xml_str:
         raise RuntimeError(f"页面 '{title}' 无 parsetree 数据。")
 
-    root = ET.fromstring(xml_str)
-    templates: dict[str, dict] = {}
-
-    # Only iterate top-level <template> children of <root>, not nested ones.
-    for elem in root.findall("template"):
-        t_title_elem = elem.find("title")
-        if t_title_elem is None:
-            continue
-        # Strip nested <comment> tags out of title before extracting text.
-        comment_text = ""
-        for sub in list(t_title_elem):
-            if sub.tag == "comment":
-                if sub.text:
-                    comment_text = sub.text.strip()
-                if sub.tail:
-                    t_title_elem.text = (t_title_elem.text or "") + sub.tail
-                t_title_elem.remove(sub)
-        t_name = (t_title_elem.text or "").strip()
-        if not t_name:
-            continue
-
-        kv: dict[str, str] = {}
-        positional: list[str] = []
-
-        for part in elem.findall("part"):
-            name_el = part.find("name")
-            value_el = part.find("value")
-            if value_el is None:
-                continue
-
-            # Get full text of <value>, stripping any nested <template> children.
-            for nested in list(value_el.findall("template")):
-                if nested.tail:
-                    value_el.text = (value_el.text or "") + nested.tail
-                value_el.remove(nested)
-            val = (value_el.text or "").strip()
-            if not val:
-                continue
-
-            if name_el is not None and "index" in name_el.attrib:
-                positional.append(val)
-            elif name_el is not None and name_el.text:
-                key = name_el.text.strip()
-                if key:
-                    kv[key] = val
-
-        entry: dict = {}
-        if kv:
-            entry.update(kv)
-        if positional:
-            entry["_positional"] = positional
-        if comment_text:
-            entry["_comment"] = comment_text
-
-        if entry:
-            templates[t_name] = entry
-
-    return templates
+    return await render_template_data(title, xml_str, _render_template_batch)
 
 
 def _clean_snippet(snippet: str) -> str:

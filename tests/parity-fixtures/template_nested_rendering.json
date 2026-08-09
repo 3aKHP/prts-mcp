@@ -1,0 +1,23 @@
+{
+  "title": "阿米娅",
+  "parsetree": "<root><template><title>CharinfoV2<comment>主模板</comment></title><part><name>特性</name><value>攻击造成<template><title>color</title><part><name index=\"1\"/><value>#00B0FF</value></part><part><name index=\"2\"/><value>法术伤害</value></part></template>。</value></part><part><name>技能1描述</name><value>攻击力<template><title>*</title><part><name index=\"1\"/><value>100%</value></part></template></value></part><part><name>数值</name><value>12</value></part><part><name index=\"1\"/><value>导航</value></part></template><template><title>Links</title><part><name>链接</name><value>查看<link><target>阿米娅</target><part><value>阿米娅</value></part></link></value></part></template></root>",
+  "rendered_values": [
+    "攻击造成法术伤害。",
+    "攻击力100%",
+    "查看阿米娅"
+  ],
+  "expected": {
+    "CharinfoV2": {
+      "特性": "攻击造成法术伤害。",
+      "技能1描述": "攻击力100%",
+      "数值": "12",
+      "_positional": [
+        "导航"
+      ],
+      "_comment": "主模板"
+    },
+    "Links": {
+      "链接": "查看阿米娅"
+    }
+  }
+}

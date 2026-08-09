@@ -11,6 +11,7 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
+from prts_mcp.api.template_renderer import TemplateRenderError
 from prts_mcp.api.prts_wiki import (
     search_prts as _search_prts,
     read_page as _read_page,
@@ -96,7 +97,7 @@ def register_prts_tools(mcp) -> None:  # type: ignore[no-untyped-def]
     @mcp.tool()
     async def prts_page(
         page_title: Annotated[str, Field(description="词条标题，需与维基页面标题完全一致，如「阿米娅」。建议先用 search_prts 获取准确标题。")],
-        action: Annotated[Literal["read", "sections", "categories", "links", "template"], Field(description="操作（必填）：read=读取正文 / sections=章节目录 / categories=分类标签 / links=相关链接 / template=结构化模板数据。")],
+        action: Annotated[Literal["read", "sections", "categories", "links", "template"], Field(description="操作（必填）：read=读取正文 / sections=章节目录 / categories=分类标签 / links=相关链接 / template=顶层模板的结构化、已渲染字段数据。")],
         section_index: Annotated[int | None, Field(default=None, description="仅 action=read 生效：章节编号（从 action=sections 获取）。不填返回整页。")] = None,
         direction: Annotated[Literal["outbound", "inbound"], Field(default="outbound", description="仅 action=links 生效：outbound（出链，默认）或 inbound（入站）。")] = "outbound",
         limit: Annotated[int, Field(default=30, ge=1, le=100, description="仅 action=links 生效：返回链接数量上限，默认 30。")] = 30,
@@ -106,7 +107,7 @@ def register_prts_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         推荐流程：先用 action="sections" 看目录（每行 `[编号] L层级 标题`，T- 前缀表示模板
         嵌入的节），再用 action="read" + section_index 读特定章节，避免整页过载。其余 action：
         categories 返回分类标签；links 返回相关链接（outbound 出链 / inbound 反向链接）；
-        template 返回结构化模板数据（如干员 CharinfoV2、敌人 敌人信息/common2、物品 道具信息）。
+        template 返回顶层模板的结构化、已渲染字段数据（如干员 CharinfoV2、敌人 敌人信息/common2、物品 道具信息）。
         """
         try:
             if action == "read":
@@ -139,6 +140,8 @@ def register_prts_tools(mcp) -> None:  # type: ignore[no-untyped-def]
             if not templates:
                 return text_result(f"页面 '{page_title}' 未找到可提取的模板数据。")
             return text_result(json.dumps(templates, ensure_ascii=False, indent=2))
+        except TemplateRenderError:
+            return text_result('模板字段渲染失败。请改用 action="read" 获取正文。')
         except RuntimeError as e:
             return text_result(str(e))
         except Exception as e:

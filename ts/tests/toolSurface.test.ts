@@ -89,6 +89,28 @@ test("SDK v2 tool registrations publish object input schemas", () => {
   }
 });
 
+test("prts_page keeps template render failures content-only", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () => new Response(JSON.stringify({
+    parse: {
+      parsetree: {
+        "*": "<root><template><title>Test</title><part><name>字段</name><value><h>标题</h></value></part></template></root>",
+      },
+    },
+  }))) as typeof fetch;
+
+  try {
+    const server = new CapturingServer();
+    registerPrtsTools(server as never);
+    const result = await callTool(server, "prts_page", { page_title: "测试", action: "template" });
+    const content = result["content"] as Array<{ text?: string }>;
+    assert.equal(content[0]?.text, '模板字段渲染失败。请改用 action="read" 获取正文。');
+    assert.equal(result["structuredContent"], undefined);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 function writeJson(path: string, data: unknown): void {
   writeFileSync(path, JSON.stringify(data), "utf-8");
 }

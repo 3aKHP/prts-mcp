@@ -62,7 +62,7 @@ Both implementations expose the same tool set:
 | Tool | Description |
 |------|-------------|
 | `search_prts(query, limit)` | Search PRTS Wiki by keyword, returns matching article titles |
-| `prts_page(page_title, action, ...)` | Read a wiki page or its metadata; `action` ∈ read / sections / categories / links / template |
+| `prts_page(page_title, action, ...)` | Read a wiki page or metadata; `template` returns rendered fields from top-level templates |
 | `get_operator_archives(name)` | Retrieve operator archive records (Chinese name) |
 | `get_operator_voicelines(name)` | Retrieve operator voice lines (Chinese name) |
 | `get_operator_basic_info(name)` | Retrieve basic operator profile: class, rarity, faction, recruit tags, talents (Chinese name) |
@@ -186,7 +186,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and [`doc
 | 工具 | 说明 |
 |------|------|
 | `search_prts(query, limit)` | 关键词搜索 PRTS 维基词条，返回匹配标题列表 |
-| `prts_page(page_title, action, ...)` | 读取词条正文或元数据；`action` ∈ read / sections / categories / links / template |
+| `prts_page(page_title, action, ...)` | 读取词条正文或元数据；`template` 返回顶层模板的结构化、已渲染字段数据 |
 | `get_operator_archives(name)` | 获取干员档案资料（中文名） |
 | `get_operator_voicelines(name)` | 获取干员语音记录（中文名） |
 | `get_operator_basic_info(name)` | 获取干员基本信息：职业、稀有度、所属、招募标签、天赋（中文名） |
