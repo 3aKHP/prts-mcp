@@ -177,6 +177,13 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         total = result.total_chapters
         has_more = result.has_more
 
+        if result.page_out_of_range:
+            total_pages = (total + page_size - 1) // page_size
+            return text_result(
+                f"页码超出范围：{event_id} 共 {total} 章，按 page_size={page_size} "
+                f"分页共 {total_pages} 页，请求的 page={page} 不存在。"
+            )
+
         header = f"【{result.event_name}】共 {total} 章"
         if page is not None:
             header += f"，当前第 {page} 页（{len(chapters)} 章）"

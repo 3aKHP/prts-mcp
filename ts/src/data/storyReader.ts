@@ -120,6 +120,7 @@ export interface ActivityResult {
   eventName: string;
   totalChapters: number;
   hasMore: boolean;
+  pageOutOfRange: boolean;
   chapters: StoryChapter[];
 }
 
@@ -524,15 +525,18 @@ export function readActivityFromStore(
 
   let selected: ChapterSummary[];
   let hasMore: boolean;
+  let pageOutOfRange: boolean;
   if (page !== undefined) {
     if (page < 1) throw new Error("page 参数必须 >= 1");
     const start = (page - 1) * pageSize;
     const end = start + pageSize;
     selected = summaries.slice(start, end);
     hasMore = end < total;
+    pageOutOfRange = total > 0 && start >= total;
   } else {
     selected = summaries;
     hasMore = false;
+    pageOutOfRange = false;
   }
 
   const chapters: StoryChapter[] = [];
@@ -549,5 +553,5 @@ export function readActivityFromStore(
     }
   }
 
-  return { eventId, eventName, totalChapters: total, hasMore, chapters };
+  return { eventId, eventName, totalChapters: total, hasMore, pageOutOfRange, chapters };
 }

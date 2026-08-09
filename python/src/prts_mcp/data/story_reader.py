@@ -113,6 +113,7 @@ class ActivityResult:
     event_name: str
     total_chapters: int
     has_more: bool
+    page_out_of_range: bool
     chapters: list[StoryChapter]
 
 
@@ -508,9 +509,11 @@ def read_activity_from_store(
         end = start + page_size
         selected = summaries[start:end]
         has_more = end < total
+        page_out_of_range = total > 0 and start >= total
     else:
         selected = summaries
         has_more = False
+        page_out_of_range = False
 
     chapters = []
     event_name = ""
@@ -529,5 +532,6 @@ def read_activity_from_store(
         event_name=event_name,
         total_chapters=total,
         has_more=has_more,
+        page_out_of_range=page_out_of_range,
         chapters=chapters,
     )

@@ -140,7 +140,13 @@ def test_story_tools_read_from_store(tmp_path, store_kind):
     assert activity.event_name == "测试活动"
     assert activity.total_chapters == 2
     assert activity.has_more is True
+    assert activity.page_out_of_range is False
     assert [chapter.story_key for chapter in activity.chapters] == [FIRST_STORY_KEY]
+
+    out_of_range = read_activity_from_store(store, "act_test", page=99, page_size=1)
+    assert out_of_range.total_chapters == 2
+    assert out_of_range.chapters == []
+    assert out_of_range.page_out_of_range is True
 
 
 def test_public_zip_path_api_still_reads_zip(tmp_path):

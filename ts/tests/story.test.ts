@@ -12,6 +12,7 @@ import {
   readStory,
   readStoryFromStore,
 } from "../src/data/story.ts";
+import { registerStoryTools } from "../src/tools/storyTools.ts";
 
 const STORY_REVIEW_PATH = "zh_CN/gamedata/excel/story_review_table.json";
 const FIRST_STORY_KEY = "activities/act_test/level_act_test_01_beg";
@@ -97,6 +98,16 @@ function writeStoryZip(path: string): void {
   zip.writeZip(path);
 }
 
+type ToolHandler = (args: Record<string, unknown>) => unknown | Promise<unknown>;
+
+class CapturingServer {
+  handlers = new Map<string, ToolHandler>();
+
+  registerTool(name: string, _config: unknown, handler: ToolHandler): void {
+    this.handlers.set(name, handler);
+  }
+}
+
 function assertStoryStore(store: JsonStore): void {
   const events = listStoryEventsFromStore(store, "activities");
   assert.deepEqual(
@@ -139,7 +150,13 @@ function assertStoryStore(store: JsonStore): void {
   assert.equal(activity.eventName, "测试活动");
   assert.equal(activity.totalChapters, 2);
   assert.equal(activity.hasMore, true);
+  assert.equal(activity.pageOutOfRange, false);
   assert.deepEqual(activity.chapters.map((chapter) => chapter.storyKey), [FIRST_STORY_KEY]);
+
+  const outOfRange = readActivityFromStore(store, "act_test", true, 99, 1);
+  assert.equal(outOfRange.totalChapters, 2);
+  assert.deepEqual(outOfRange.chapters, []);
+  assert.equal(outOfRange.pageOutOfRange, true);
 }
 
 test("story tools read from DirectoryStore", () => {
@@ -184,6 +201,32 @@ test("public zip path API closes transient store", () => {
     assert.deepEqual(closedPaths, [zipPath]);
   } finally {
     ZipStore.prototype.close = originalClose;
+  }
+});
+
+test("read_activity reports an out-of-range page", async () => {
+  const root = tempRoot();
+  const zipPath = join(root, "zh_CN.zip");
+  writeStoryZip(zipPath);
+  const previousStoryjsonPath = process.env["STORYJSON_PATH"];
+  process.env["STORYJSON_PATH"] = zipPath;
+
+  try {
+    const server = new CapturingServer();
+    registerStoryTools(server as never);
+    const handler = server.handlers.get("read_activity");
+    assert.ok(handler);
+
+    const result = await handler({ event_id: "act_test", page: 99, page_size: 1 }) as {
+      content: Array<{ type: string; text?: string }>;
+    };
+    assert.equal(
+      result.content[0]?.text,
+      "页码超出范围：act_test 共 2 章，按 page_size=1 分页共 2 页，请求的 page=99 不存在。",
+    );
+  } finally {
+    if (previousStoryjsonPath === undefined) delete process.env["STORYJSON_PATH"];
+    else process.env["STORYJSON_PATH"] = previousStoryjsonPath;
   }
 });
 
