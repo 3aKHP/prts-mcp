@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 ### Fixed
 
 - `prts_page(action="template")` now renders nested template fields to complete readable text instead of silently dropping text or returning parsetree XML fragments (#125).
+- Template rendering now preserves valid fields when another nested value renders empty and normalizes malformed MediaWiki response shapes to the documented content-only fallback.
 
 ## [2.6.0] - 2026-08-09
 

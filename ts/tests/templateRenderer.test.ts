@@ -89,3 +89,54 @@ test("renderTemplateData trims parsetree whitespace for plain values", async () 
 
   assert.deepEqual(result, { Test: { 字段: "阿米娅" } });
 });
+
+test("getTemplateData keeps other fields when one nested value renders empty", async () => {
+  const originalFetch = globalThis.fetch;
+  const parsetree = [
+    "<root><template><title>Test</title>",
+    "<part><name>空字段</name><value><template><title>Empty</title></template></value></part>",
+    "<part><name>保留字段</name><value><template><title>Kept</title></template></value></part>",
+    "</template></root>",
+  ].join("");
+  let requestCount = 0;
+  globalThis.fetch = (async (_input, init) => {
+    requestCount += 1;
+    if (init?.method !== "POST") {
+      return new Response(JSON.stringify({ parse: { parsetree: { "*": parsetree } } }));
+    }
+
+    const form = new URLSearchParams(String(init.body));
+    const markers = [...(form.get("text") ?? "").matchAll(/(PRTSMCP_[0-9a-f]{32}_BEGIN_(\d+)_)/g)];
+    const values = ["", "保留值"];
+    const html = markers.map((marker, index) => {
+      const begin = marker[1]!;
+      const end = begin.replace("_BEGIN_", "_END_");
+      return `<p>${begin}\n${values[index]}\n${end}</p>`;
+    }).join("\n");
+    return new Response(JSON.stringify({ parse: { text: { "*": html } } }));
+  }) as typeof fetch;
+
+  try {
+    assert.deepEqual(await getTemplateData("测试"), { Test: { 保留字段: "保留值" } });
+    assert.equal(requestCount, 2);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("getTemplateData normalizes invalid render response shapes", async () => {
+  const originalFetch = globalThis.fetch;
+  const parsetree = "<root><template><title>Test</title><part><name>字段</name><value><template><title>Nested</title></template></value></part></template></root>";
+  globalThis.fetch = (async (_input, init) => {
+    if (init?.method !== "POST") {
+      return new Response(JSON.stringify({ parse: { parsetree: { "*": parsetree } } }));
+    }
+    return new Response(JSON.stringify({ parse: { text: { "*": null } } }));
+  }) as typeof fetch;
+
+  try {
+    await assert.rejects(getTemplateData("测试"), TemplateRenderError);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

@@ -340,11 +340,22 @@ async def _render_template_batch(title: str, values: list[str]) -> list[str]:
 
     try:
         data = response.json()
-        rendered = _strip_html(data.get("parse", {}).get("text", {}).get("*", ""))
-    except Exception as exc:
+    except (TypeError, ValueError) as exc:
         raise TemplateRenderError("模板字段渲染请求失败。") from exc
-    if data.get("error", {}).get("info"):
+    if not isinstance(data, dict):
+        raise TemplateRenderError("模板字段渲染响应格式无效。")
+
+    error = data.get("error")
+    if isinstance(error, dict) and error.get("info"):
         raise TemplateRenderError("模板字段渲染请求失败。")
+
+    parse = data.get("parse")
+    text = parse.get("text") if isinstance(parse, dict) else None
+    html_text = text.get("*") if isinstance(text, dict) else None
+    if not isinstance(html_text, str):
+        raise TemplateRenderError("模板字段渲染响应格式无效。")
+
+    rendered = _strip_html(html_text)
     if not rendered:
         raise TemplateRenderError("模板字段渲染结果为空。")
 
@@ -355,8 +366,6 @@ async def _render_template_batch(title: str, values: list[str]) -> list[str]:
         start = rendered.index(begin) + len(begin)
         finish = rendered.index(end, start)
         value = rendered[start:finish].strip()
-        if not value:
-            raise TemplateRenderError("模板字段渲染结果为空。")
         values_out.append(value)
     return values_out
 
