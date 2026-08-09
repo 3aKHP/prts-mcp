@@ -14,12 +14,16 @@ on:
       - 'ts/**'
       - 'scripts/test-shared-volume-sync.sh'
       - '.github/workflows/ci.yml'
+      - '.github/workflows/cd.yml'
+      - '.github/workflows/cd-ts.yml'
   pull_request:
     paths:
       - 'python/**'
       - 'ts/**'
       - 'scripts/test-shared-volume-sync.sh'
       - '.github/workflows/ci.yml'
+      - '.github/workflows/cd.yml'
+      - '.github/workflows/cd-ts.yml'
 
 jobs:
   # ---------------------------------------------------------------------------
