@@ -78,7 +78,7 @@ jobs:
           # production runtime since 2.2.0) to verify the release artifact.
           bun dist/server-bun.js &
           SERVER_PID=$!
-          for i in $(seq 1 10); do
+          for _ in $(seq 1 10); do
             if curl -sf http://localhost:3000/health; then break; fi
             sleep 1
           done
@@ -207,9 +207,9 @@ jobs:
           VERSION="${GITHUB_REF_NAME#ts/v}"
           if [[ "${VERSION}" == *-* ]]; then
             PRERELEASE="${VERSION#*-}"
-            echo "value=${PRERELEASE%%.*}" >> $GITHUB_OUTPUT
+            echo "value=${PRERELEASE%%.*}" >> "$GITHUB_OUTPUT"
           else
-            echo "value=latest" >> $GITHUB_OUTPUT
+            echo "value=latest" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Publish to npm (Trusted Publishing)
@@ -272,11 +272,11 @@ jobs:
         id: version
         run: |
           VERSION="${GITHUB_REF_NAME#ts/v}"
-          echo "value=${VERSION}" >> $GITHUB_OUTPUT
+          echo "value=${VERSION}" >> "$GITHUB_OUTPUT"
           if [[ "${VERSION}" == *-* ]]; then
-            echo "prerelease=true" >> $GITHUB_OUTPUT
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
           else
-            echo "prerelease=false" >> $GITHUB_OUTPUT
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Extract changelog section
@@ -298,6 +298,8 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.value }}
         run: |
+          # Markdown code spans are intentionally literal.
+          # shellcheck disable=SC2016
           printf '\n---\n\n**Install**\n```bash\n# Run directly with npx (Node.js entrypoint, zero extra runtime install)\nnpx prts-mcp-ts\n\n# Or install globally\nnpm install -g prts-mcp-ts@%s\n\n# Bun runtime (default production runtime since 2.2.0)\nbunx --bun -p prts-mcp-ts@%s prts-mcp-ts-bun\n```\n\nThe default Docker image (`prts-mcp-ts:latest`) runs under Bun since 2.2.0;\n`ts/Dockerfile.node` provides the legacy Node.js image.\n\nMCP endpoint: `http://localhost:3000/mcp`\n' \
             "$VERSION" \
             "$VERSION" >> release_notes.txt
