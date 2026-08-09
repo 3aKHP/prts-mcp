@@ -79,3 +79,13 @@ test("renderTemplateData skips batch rendering for plain values", async () => {
 
   assert.deepEqual(result, { Test: { 数值: "12" } });
 });
+
+test("renderTemplateData trims parsetree whitespace for plain values", async () => {
+  const xml = "<root><template><title>Test</title><part><name>字段</name><value>\n  阿米娅  \n</value></part></template></root>";
+
+  const result = await renderTemplateData("测试", xml, async () => {
+    throw new Error("plain values must not reach the renderer");
+  });
+
+  assert.deepEqual(result, { Test: { 字段: "阿米娅" } });
+});

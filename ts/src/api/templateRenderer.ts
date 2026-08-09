@@ -150,7 +150,8 @@ function parseTemplates(xml: string): TemplateEntry[] {
         (key) => key !== "#text" && key !== "#comment" && key !== "comment" && key !== ":@",
       ));
       const rawValue = needsRender ? contentToWikitext(value.content) : textWithoutComments(value.content);
-      return rawValue.trim() ? [{ name: partName, value: rawValue, needsRender }] : [];
+      const normalizedValue = rawValue.trim();
+      return normalizedValue ? [{ name: partName, value: normalizedValue, needsRender }] : [];
     });
     return [{ name, parts, comment }];
   });
