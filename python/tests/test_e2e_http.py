@@ -18,7 +18,7 @@ import socket
 import subprocess
 import sys
 import time
-from importlib.metadata import version as _pkg_version
+from importlib.metadata import PackageNotFoundError, version as _pkg_version
 from pathlib import Path
 
 import httpx
@@ -92,6 +92,10 @@ def _mcp_post(
 
 
 _MODERN_VERSION = "2026-07-28"
+try:
+    _EXPECTED_VERSION = _pkg_version("prts-mcp")
+except PackageNotFoundError:
+    _EXPECTED_VERSION = "0.0.0"
 
 
 def _modern_body(method: str, params: dict, request_id: int) -> dict:
@@ -282,7 +286,7 @@ def test_modern_http_requests_are_stateless_and_strict(server):
     assert _MODERN_VERSION in discover_result["supportedVersions"]
     server_info = discover_result["_meta"]["io.modelcontextprotocol/serverInfo"]
     assert server_info["name"] == "PRTS_Wiki_Assistant"
-    assert server_info["version"] == _pkg_version("prts-mcp")
+    assert server_info["version"] == _EXPECTED_VERSION
 
     status, payload, sid = _modern_post(origin, "tools/list", {}, 101)
     assert status == 200
