@@ -18,6 +18,7 @@ import socket
 import subprocess
 import sys
 import time
+from importlib.metadata import version as _pkg_version
 from pathlib import Path
 
 import httpx
@@ -277,6 +278,11 @@ def test_modern_http_requests_are_stateless_and_strict(server):
     assert status == 200
     assert sid is None
     assert payload is not None and payload.get("result")
+    discover_result = payload["result"]
+    assert _MODERN_VERSION in discover_result["supportedVersions"]
+    server_info = discover_result["_meta"]["io.modelcontextprotocol/serverInfo"]
+    assert server_info["name"] == "PRTS_Wiki_Assistant"
+    assert server_info["version"] == _pkg_version("prts-mcp")
 
     status, payload, sid = _modern_post(origin, "tools/list", {}, 101)
     assert status == 200

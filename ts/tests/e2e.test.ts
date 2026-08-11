@@ -241,6 +241,16 @@ test("E2E", async (t) => {
     assert.equal(discover.status, 200);
     assert.equal(discover.sessionId, null, "modern discover must not create a legacy session");
     assert.ok(discover.body["result"], "discover should return a modern result");
+    const discoverResult = discover.body["result"] as {
+      supportedVersions?: string[];
+      _meta?: {
+        "io.modelcontextprotocol/serverInfo"?: { name?: string; version?: string };
+      };
+    };
+    assert.ok(discoverResult.supportedVersions?.includes(MODERN_VERSION));
+    const modernServerInfo = discoverResult._meta?.["io.modelcontextprotocol/serverInfo"];
+    assert.equal(modernServerInfo?.name, "PRTS_Wiki_Assistant");
+    assert.equal(modernServerInfo?.version, EXPECTED_VERSION);
 
     const list = await modernPost(origin, "tools/list", {}, 101);
     assert.equal(list.status, 200);
