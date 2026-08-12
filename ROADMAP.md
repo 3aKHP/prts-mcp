@@ -23,9 +23,7 @@ PRTS-MCP is past 1.0. Version 1.7.0 is the final 1.x feature release and the 1.7
 
 ### Protocol Compatibility Policy
 
-- Legacy initialize/session MCP and the modern `2026-07-28` path are both first-class compatibility targets.
-- There is no version-based plan to remove legacy MCP protocol support. Future releases must continue to test the protocol eras and transports they claim to support against real consumers.
-- Do not implement a repository-specific deferred-tool-loading protocol. Adopt a standardized MCP mechanism only after the specification and supported SDKs provide a portable path.
+The authoritative protocol compatibility contract is [the 2.5 → 2.6 migration guide](docs/migration-2.5-to-2.6.md). As of this roadmap update, legacy initialize/session MCP and modern `2026-07-28` are both first-class targets; there is no version-based plan to remove legacy support, and no repository-specific deferred-tool-loading scheme is planned.
 
 ### SQLite Evaluation Gate
 

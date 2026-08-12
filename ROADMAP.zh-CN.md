@@ -23,9 +23,7 @@ PRTS-MCP 已进入 1.x 稳定期。1.7.0 是最后一个 1.x 功能版本和 1.7
 
 ### 协议兼容政策
 
-- Legacy initialize/session MCP 与 modern `2026-07-28` 路径都是一等兼容目标。
-- 当前没有按版本移除 legacy MCP 协议支持的计划。后续版本必须继续使用真实消费者验证其声称支持的协议时代与传输组合。
-- 不实现仓库私有的 deferred tool loading 协议；只有 MCP 规范和受支持 SDK 提供可移植的标准路径后才予以采用。
+权威的协议兼容合约见[2.5 → 2.6 迁移说明](docs/migration-2.5-to-2.6.md)。截至本路线图更新，Legacy initialize/session MCP 与 modern `2026-07-28` 都是一等兼容目标；当前没有按版本移除 legacy 支持的计划，也不规划仓库私有的 deferred tool loading 方案。
 
 ### SQLite 评估门槛
 
