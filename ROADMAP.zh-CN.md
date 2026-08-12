@@ -15,9 +15,27 @@ PRTS-MCP 已进入 1.x 稳定期。1.7.0 是最后一个 1.x 功能版本和 1.7
 
 ## 2.6.x 稳定维护
 
-- 仅处理安全性、兼容性、数据同步、发布流水线和文档修复。
+- 仅处理安全性、兼容性、数据同步、发布流水线、文档以及关键正确性/运维修复。
 - Patch 版本不新增 MCP 工具、必填参数或数据域。
 - 在下一次真实发布中实际验证精确构建产物提升流程，并保持 Python/TypeScript 包产物来源一致。
+
+## 跨版本政策
+
+### 协议兼容政策
+
+- Legacy initialize/session MCP 与 modern `2026-07-28` 路径都是一等兼容目标。
+- 当前没有按版本移除 legacy MCP 协议支持的计划。后续版本必须继续使用真实消费者验证其声称支持的协议时代与传输组合。
+- 不实现仓库私有的 deferred tool loading 协议；只有 MCP 规范和受支持 SDK 提供可移植的标准路径后才予以采用。
+
+### SQLite 评估门槛
+
+SQLite 迁移不分配给任何版本。根据 2026 年 8 月的只读评估，当前工作立场是不使用 SQLite 替换权威 JSON/ZIP store：稳态缓存查询已经足够快，现有 Release/manifest/SHA/原子激活/offline fallback 模型较成熟，而全量迁移会新增 Python、Bun、Node 三端 reader parity、schema migration、打包、部署和回滚责任。
+
+第一优先级是修复 [#152](https://github.com/3aKHP/prts-mcp/issues/152)：未变化的 `up_to_date` GameData pair 仍可能替换激活 metadata 并清空缓存。应在修复后重新取得生产环境的冷调用、RSS 高水位和 cache clear 基线，再判断剩余成本是否来自存储格式。
+
+对于派生倒查，当前工作立场是优先选择能够满足查询的最小可重建产物。敌人出场实验更支持紧凑的派生 JSON 索引，而不是 SQLite。既有剧情按 key 读取不需要数据库；`search_stories` 仍须保留当前 Python/JavaScript 正则语义。`find_character_appearances` 已经属于倒查；如果未来倒查接口的数量或调用量增长，可以让它共享派生的角色/发言者索引，但对于精确且有界的查询，紧凑 JSON 仍是第一选择。
+
+只有生产证据表明派生 JSON 与针对性的内存索引仍不足时，才重新评估 SQLite，例如冷构建延迟持续不可接受、RSS 超出部署预算、数据规模显著增长，或组合倒查不断增加并确实需要索引过滤、分页、聚合和排序。任何方案都必须能从 AKDP Release 产物重建，并证明实测收益高于跨运行时 parity 与运维成本。
 
 ## 2.7+ 非约束性工作草案
 
@@ -48,22 +66,6 @@ PRTS-MCP 已进入 1.x 稳定期。1.7.0 是最后一个 1.x 功能版本和 1.7
 
 - 为 `prts_page` 增加返回有界 MediaWiki 图片元数据的 `images` action，而不是再增加顶层工具。当前不规划独立的重定向解析 action，因为 `search_prts` 已能跟随类似重定向的结果。
 - 接受 AKDP 提供的、带版本和来源标识的可选剧情摘要产物。LLM 生成内容不得成为运行时强依赖。
-
-### 协议兼容政策
-
-- Legacy initialize/session MCP 与 modern `2026-07-28` 路径都是一等兼容目标。
-- 当前没有按版本移除 legacy MCP 协议支持的计划。后续版本必须继续使用真实消费者验证其声称支持的协议时代与传输组合。
-- 不实现仓库私有的 deferred tool loading 协议；只有 MCP 规范和受支持 SDK 提供可移植的标准路径后才予以采用。
-
-### SQLite 评估门槛
-
-SQLite 迁移不分配给任何版本。2026 年 8 月的评估不支持使用 SQLite 替换权威 JSON/ZIP store：稳态缓存查询已经足够快，现有 Release/manifest/SHA/原子激活/offline fallback 模型较成熟，而全量迁移会新增 Python、Bun、Node 三端 reader parity、schema migration、打包、部署和回滚责任。
-
-第一优先级是修复 [#152](https://github.com/3aKHP/prts-mcp/issues/152)：未变化的 `up_to_date` GameData pair 仍可能替换激活 metadata 并清空缓存。应在修复后重新取得生产环境的冷调用、RSS 高水位和 cache clear 基线，再判断剩余成本是否来自存储格式。
-
-对于派生倒查，应优先选择能够满足查询的最小可重建产物。敌人出场实验更支持紧凑的派生 JSON 索引，而不是 SQLite。既有剧情按 key 读取不需要数据库；`search_stories` 仍须保留当前 Python/JavaScript 正则语义。`find_character_appearances` 已经属于倒查；如果未来倒查接口的数量或调用量增长，可以让它共享派生的角色/发言者索引，但对于精确且有界的查询，紧凑 JSON 仍是第一选择。
-
-只有生产证据表明派生 JSON 与针对性的内存索引仍不足时，才重新评估 SQLite，例如冷构建延迟持续不可接受、RSS 超出部署预算、数据规模显著增长，或组合倒查不断增加并确实需要索引过滤、分页、聚合和排序。任何方案都必须能从 AKDP Release 产物重建，并证明实测收益高于跨运行时 parity 与运维成本。
 
 ## 1.x 兼容合约
 

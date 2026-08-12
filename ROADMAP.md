@@ -15,9 +15,27 @@ PRTS-MCP is past 1.0. Version 1.7.0 is the final 1.x feature release and the 1.7
 
 ## 2.6.x Stable Maintenance
 
-- Security, compatibility, data-sync, release-pipeline, and documentation fixes only.
+- Security, compatibility, data-sync, release-pipeline, documentation, and critical correctness/operational fixes only.
 - No new MCP tools, required parameters, or data domains in patch releases.
 - Exercise the exact-artifact promotion path on the next real release and keep Python/TypeScript package provenance aligned.
+
+## Cross-Version Policies
+
+### Protocol Compatibility Policy
+
+- Legacy initialize/session MCP and the modern `2026-07-28` path are both first-class compatibility targets.
+- There is no version-based plan to remove legacy MCP protocol support. Future releases must continue to test the protocol eras and transports they claim to support against real consumers.
+- Do not implement a repository-specific deferred-tool-loading protocol. Adopt a standardized MCP mechanism only after the specification and supported SDKs provide a portable path.
+
+### SQLite Evaluation Gate
+
+SQLite migration is not assigned to a release. The current working position, based on the August 2026 read-only evaluation, is not to replace the authoritative JSON/ZIP stores with SQLite: steady-state cached queries are already fast, the Release/manifest/SHA/atomic-activation/offline-fallback model is mature, and a full migration would add Python, Bun, and Node reader parity, schema migration, packaging, deployment, and rollback ownership.
+
+The first priority is to fix [#152](https://github.com/3aKHP/prts-mcp/issues/152), where an unchanged `up_to_date` GameData pair can still replace activation metadata and clear caches. Re-establish the production cold-call, RSS high-water, and cache-clear baseline after that fix before attributing the remaining cost to the storage format.
+
+For derived reverse lookups, the current working position is to prefer the smallest rebuildable artifact that fits the query. The enemy-appearance experiment favours a compact derived JSON index over SQLite. Existing story key reads do not need a database, while `search_stories` must retain its current Python/JavaScript regular-expression semantics. `find_character_appearances` is already a reverse lookup and may share a derived character/speaker index if reverse-query volume or breadth grows; compact JSON remains the first option for exact and bounded lookups.
+
+Reopen the SQLite decision only if production evidence shows that derived JSON and targeted in-memory indexing are insufficient, such as sustained cold-build latency, unacceptable RSS under the deployment budget, materially larger datasets, or a growing set of compound reverse queries requiring indexed filtering, pagination, aggregation, and sorting. Any proposal must remain rebuildable from AKDP Release artifacts and prove that its measured benefit outweighs cross-runtime parity and operational cost.
 
 ## 2.7+ Non-Binding Working Draft
 
@@ -48,22 +66,6 @@ Where a candidate remains useful, the default is to preserve the current 24-tool
 
 - Add an `images` action to `prts_page` for bounded MediaWiki image metadata rather than introducing another top-level tool. A standalone redirect-resolution action is not currently planned because `search_prts` already follows redirect-like results.
 - Accept versioned, source-attributed story summaries from AKDP as an optional artifact. LLM-generated content must not become a required runtime dependency.
-
-### Protocol Compatibility Policy
-
-- Legacy initialize/session MCP and the modern `2026-07-28` path are both first-class compatibility targets.
-- There is no version-based plan to remove legacy MCP protocol support. Future releases must continue to test the protocol eras and transports they claim to support against real consumers.
-- Do not implement a repository-specific deferred-tool-loading protocol. Adopt a standardized MCP mechanism only after the specification and supported SDKs provide a portable path.
-
-### SQLite Evaluation Gate
-
-SQLite migration is not assigned to a release. The August 2026 evaluation does not support replacing the authoritative JSON/ZIP stores with SQLite: steady-state cached queries are already fast, the Release/manifest/SHA/atomic-activation/offline-fallback model is mature, and a full migration would add Python, Bun, and Node reader parity, schema migration, packaging, deployment, and rollback ownership.
-
-The first priority is to fix [#152](https://github.com/3aKHP/prts-mcp/issues/152), where an unchanged `up_to_date` GameData pair can still replace activation metadata and clear caches. Re-establish the production cold-call, RSS high-water, and cache-clear baseline after that fix before attributing the remaining cost to the storage format.
-
-For derived reverse lookups, prefer the smallest rebuildable artifact that fits the query. The enemy-appearance experiment favours a compact derived JSON index over SQLite. Existing story key reads do not need a database, while `search_stories` must retain its current Python/JavaScript regular-expression semantics. `find_character_appearances` is already a reverse lookup and may share a derived character/speaker index if reverse-query volume or breadth grows; compact JSON remains the first option for exact and bounded lookups.
-
-Reopen the SQLite decision only if production evidence shows that derived JSON and targeted in-memory indexing are insufficient, such as sustained cold-build latency, unacceptable RSS under the deployment budget, materially larger datasets, or a growing set of compound reverse queries requiring indexed filtering, pagination, aggregation, and sorting. Any proposal must remain rebuildable from AKDP Release artifacts and prove that its measured benefit outweighs cross-runtime parity and operational cost.
 
 ## 1.x Compatibility Contract
 
