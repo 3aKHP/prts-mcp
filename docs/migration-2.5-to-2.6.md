@@ -4,7 +4,7 @@ PRTS-MCP 2.6.0 upgrades both implementations to MCP SDK v2 and adds support for 
 
 ## Choose one protocol era per connection
 
-Legacy clients continue to send `initialize`, receive and reuse `Mcp-Session-Id` on Streamable HTTP, then use the normal tools protocol. This is the compatibility path and remains supported throughout the 2.x line.
+Legacy clients continue to send `initialize`, receive and reuse `Mcp-Session-Id` on Streamable HTTP, then use the normal tools protocol. This is a first-class compatibility path and remains supported alongside the modern protocol path.
 
 Modern clients may opt into the `2026-07-28` envelope. On HTTP this path is stateless: use the modern request envelope for `server/discover`, `tools/list`, and `tools/call`; do not send `Mcp-Session-Id`, and do not rely on an initialize handshake. A request that claims the modern protocol but omits its required modern envelope is rejected instead of being silently routed as legacy.
 
@@ -26,6 +26,6 @@ The wire field names remain MCP-standard camelCase, including `structuredContent
 
 Run the six-session memory benchmark only against an isolated loopback canary, with that canary's `PRTS_DEBUG_TOKEN`, never the stable production service. The documented canary assets set a soft cgroup pressure limit of 1 GiB and a hard limit of 1.5 GiB; a failed benchmark or consumer acceptance gate means remove the temporary route and stop the canary while leaving the stable service untouched.
 
-## Removal horizon
+## Compatibility policy
 
-2.x retains the legacy protocol path. Any 3.x removal decision requires a documented deprecation period, telemetry that demonstrates client migration, and successful real-consumer modern acceptance. Version 2.6.0 is an additive compatibility release, not a forced protocol cutover.
+PRTS-MCP supports both the established legacy protocol path and the modern `2026-07-28` path. There is no version-based plan to remove legacy protocol support. Version 2.6.0 is an additive compatibility release, not a forced protocol cutover; clients should choose the protocol era that best matches their ecosystem and interoperability requirements.

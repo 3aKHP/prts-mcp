@@ -1,6 +1,6 @@
 # PRTS-MCP Roadmap
 
-_Last updated: 2026-08-10_ · [中文版](ROADMAP.zh-CN.md)
+_Last updated: 2026-08-12_ · [中文版](ROADMAP.zh-CN.md)
 
 PRTS-MCP is past 1.0. Version 1.7.0 is the final 1.x feature release and the 1.7 LTS baseline. This document tracks **what comes next** — not what has shipped. For shipped features, see the Python and TypeScript CHANGELOGs.
 
@@ -12,6 +12,58 @@ PRTS-MCP is past 1.0. Version 1.7.0 is the final 1.x feature release and the 1.7
 - 24 public MCP tools on the 2.x line (CI-enforced); 32 public MCP tools frozen on the 1.7 LTS line.
 - See [migration guide 0.x → 1.0](docs/migration-0.x-to-1.0.md) and [migration guide 1.x → 2.0](docs/migration-1.x-to-2.0.md).
 - 2.6.0 retains legacy MCP clients while adding opt-in `2026-07-28` support; see [2.5 → 2.6](docs/migration-2.5-to-2.6.md) before changing client protocol configuration.
+
+## 2.6.x Stable Maintenance
+
+- Security, compatibility, data-sync, release-pipeline, documentation, and critical correctness/operational fixes only.
+- No new MCP tools, required parameters, or data domains in patch releases.
+- Exercise the exact-artifact promotion path on the next real release and keep Python/TypeScript package provenance aligned.
+
+## Cross-Version Policies
+
+### Protocol Compatibility Policy
+
+The authoritative protocol compatibility contract is [the 2.5 → 2.6 migration guide](docs/migration-2.5-to-2.6.md). As of this roadmap update, legacy initialize/session MCP and modern `2026-07-28` are both first-class targets; there is no version-based plan to remove legacy support, and no repository-specific deferred-tool-loading scheme is planned.
+
+### SQLite Evaluation Gate
+
+SQLite migration is not assigned to a release. The current working position, based on the August 2026 read-only evaluation, is not to replace the authoritative JSON/ZIP stores with SQLite: steady-state cached queries are already fast, the Release/manifest/SHA/atomic-activation/offline-fallback model is mature, and a full migration would add Python, Bun, and Node reader parity, schema migration, packaging, deployment, and rollback ownership.
+
+The first priority is to fix [#152](https://github.com/3aKHP/prts-mcp/issues/152), where an unchanged `up_to_date` GameData pair can still replace activation metadata and clear caches. Re-establish the production cold-call, RSS high-water, and cache-clear baseline after that fix before attributing the remaining cost to the storage format.
+
+For derived reverse lookups, the current working position is to prefer the smallest rebuildable artifact that fits the query. The enemy-appearance experiment favours a compact derived JSON index over SQLite. Existing story key reads do not need a database, while `search_stories` must retain its current Python/JavaScript regular-expression semantics. `find_character_appearances` is already a reverse lookup and may share a derived character/speaker index if reverse-query volume or breadth grows; compact JSON remains the first option for exact and bounded lookups.
+
+Reopen the SQLite decision only if production evidence shows that derived JSON and targeted in-memory indexing are insufficient, such as sustained cold-build latency, unacceptable RSS under the deployment budget, materially larger datasets, or a growing set of compound reverse queries requiring indexed filtering, pagination, aggregation, and sorting. Any proposal must remain rebuildable from AKDP Release artifacts and prove that its measured benefit outweighs cross-runtime parity and operational cost.
+
+## 2.7+ Non-Binding Working Draft
+
+> **Draft status:** Everything in this 2.7+ section is a candidate direction only. The version numbers, ordering, scope, tool shape, and inclusion of individual items are planning placeholders. The project does not commit to releasing later versions according to this draft. Items may be reordered, merged, split, deferred, replaced, or dropped as source contracts, implementation review, maintenance capacity, ecosystem changes, and real-consumer evidence evolve.
+
+Where a candidate remains useful, the default is to preserve the current 24-tool surface by extending existing tools and enums when their schema remains coherent. A candidate becomes release scope only through a separate implementation and release decision.
+
+### 2.7.0 Candidate — Operator Base Skills
+
+- Add base-skill information to the existing operator capability surface where it remains readable and bounded.
+- Extend `search(scope, pattern, max_results)` with a `building_skills` scope for facility, effect, skill-name, and cross-operator lookup instead of adding a list/get/search triplet.
+- Promote `building_data.json` into the validated AKDP dataset contract before the MCP reader depends on it.
+- Split the oversized sync modules by responsibility before or alongside the dataset-contract work, but keep structural refactoring separate from the feature diff.
+
+### 2.8.0 Candidate — Skin and Artwork Metadata
+
+- Enrich `operator_artwork(action="list")` with bounded metadata such as skin description, collection/theme, and acquisition information when the source fields are stable.
+- Reuse the existing opaque `artwork_id` and image retrieval path; do not add a separate skin list/get tool pair.
+- Promote `skin_table.json` into the validated dataset contract before local metadata becomes required.
+
+### 2.9.0 Candidate — Recruitment Lookup
+
+- Evaluate a structured reverse lookup from recruitment tag combinations to eligible operators.
+- Treat tag-combination semantics as distinct from regex full-text search; add a dedicated tool only if an existing schema cannot express the result clearly.
+- Promote `gacha_table.json` into the validated dataset contract and verify recruitment rules against current game data before assigning delivery scope.
+
+### Lower-Priority Candidates
+
+- Add an `images` action to `prts_page` for bounded MediaWiki image metadata rather than introducing another top-level tool. A standalone redirect-resolution action is not currently planned because `search_prts` already follows redirect-like results.
+- Accept versioned, source-attributed story summaries from AKDP as an optional artifact. LLM-generated content must not become a required runtime dependency.
 
 ## 1.x Compatibility Contract
 
@@ -69,20 +121,7 @@ Shipped 2026-05-28. See the Python and TypeScript CHANGELOGs for release details
 
 ### Deferred Beyond 1.7 LTS
 
-The following feature ideas remain useful but are no longer scheduled as 1.x minor releases. They should be reconsidered under the 2.0 tool model:
-
-**Operator depth**
-- Base skills and cross-operator building-skill search.
-- Skin list and skin descriptions.
-
-**Wiki enhancements + recruitment**
-
-**Main: PRTS Wiki enhancements (group B in one release)**
-- `get_prts_images(page_title)` — image list via `prop=images`.
-- `resolve_prts_redirect(title)` — redirect resolution; addresses the long-standing 1.1.1 "Known remaining issues" item.
-
-**Recruitment**
-- `query_recruit_tags(tags)` — reverse lookup: which operators a given tag combination can produce.
+The former 1.x ideas for operator base skills, skin metadata, Wiki images, and recruitment lookup remain outside the LTS line. Their current draft placement and revised tool-surface shape are recorded in the 2.7+ working draft above.
 
 ---
 
