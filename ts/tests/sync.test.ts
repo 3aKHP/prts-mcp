@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   existsSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -275,6 +276,53 @@ test("pair manifest is rebuilt when missing or invalid", async () => {
   writeFileSync(pairPath, "not json", "utf-8");
   await syncReleaseArchivePair(...specs);
   assert.equal(JSON.parse(readFileSync(pairPath, "utf-8")).commit_sha, "same");
+});
+
+test("pair manifest rebuild rejects mixed generations", async () => {
+  const root = mkdtempSync(join(tmpdir(), "prts-sync-pair-mixed-test-"));
+  const specs = pairSpecs(root);
+  activatePairGeneration(specs, "old");
+  const excelRoot = join(specs[0].localRoot, ".releases", "new");
+  const excelFile = join(excelRoot, specs[0].requiredFiles[0]);
+  mkdirSync(dirname(excelFile), { recursive: true });
+  writeFileSync(excelFile, "new", "utf-8");
+  writeFileSync(join(dirname(specs[0].localZip), "extract_meta.json"), JSON.stringify({
+    commit_sha: "new",
+    data_root: ".releases/new",
+  }), "utf-8");
+  for (const spec of specs) unlinkSync(spec.localZip);
+
+  await withFetchMock((async () => {
+    throw new Error("network down");
+  }) as typeof fetch, async () => {
+    const results = await syncReleaseArchivePair(...specs);
+    assert.deepEqual(results.map((result) => result.status), [
+      "offline_fallback",
+      "offline_fallback",
+    ]);
+  });
+
+  assert.equal(existsSync(join(root, ".gamedata_pair.json")), false);
+});
+
+test("pair manifest symlink is replaced", async () => {
+  const root = mkdtempSync(join(tmpdir(), "prts-sync-pair-symlink-test-"));
+  const specs = pairSpecs(root);
+  activatePairGeneration(specs, "same");
+  const pairPath = join(root, ".gamedata_pair.json");
+  await syncReleaseArchivePair(...specs);
+  const external = join(root, "external-pair.json");
+  writeFileSync(external, readFileSync(pairPath));
+  unlinkSync(pairPath);
+  symlinkSync(external, pairPath);
+
+  await syncReleaseArchivePair(...specs);
+
+  const info = lstatSync(pairPath);
+  assert.equal(info.isFile(), true);
+  assert.equal(info.isSymbolicLink(), false);
+  assert.equal(readFileSync(external, "utf-8"), readFileSync(pairPath, "utf-8"));
+  assert.notEqual(statSync(external).ino, statSync(pairPath).ino);
 });
 
 test("syncRelease returns offline_fallback when network fails but zip exists", async () => {

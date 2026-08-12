@@ -547,6 +547,47 @@ class TestSyncReleaseArchive:
         sync_release_archive_pair(excel_spec, levels_spec)
         assert json.loads(pair_path.read_text(encoding="utf-8"))["commit_sha"] == "same"
 
+    def test_pair_manifest_rebuild_rejects_mixed_generations(self, tmp_path):
+        excel_spec, levels_spec = self._pair_specs(tmp_path)
+        self._activate_pair_generation(excel_spec, levels_spec, "old")
+        excel_root = excel_spec.local_root / ".releases" / "new"
+        excel_file = excel_root / excel_spec.required_files[0]
+        excel_file.parent.mkdir(parents=True)
+        excel_file.write_text("new", encoding="utf-8")
+        (excel_spec.local_zip.parent / "extract_meta.json").write_text(
+            json.dumps({
+                "commit_sha": "new",
+                "data_root": ".releases/new",
+            }),
+            encoding="utf-8",
+        )
+        pair_path = tmp_path / ".gamedata_pair.json"
+
+        fallback = lambda spec: SyncResult(spec, "offline_fallback", None, "offline")
+        with patch(
+            "prts_mcp.data.sync.sync_release_archive",
+            side_effect=lambda spec, force_check=False: fallback(spec),
+        ):
+            sync_release_archive_pair(excel_spec, levels_spec)
+
+        assert not pair_path.exists()
+
+    def test_pair_manifest_symlink_is_replaced(self, tmp_path):
+        excel_spec, levels_spec = self._pair_specs(tmp_path)
+        self._activate_pair_generation(excel_spec, levels_spec, "same")
+        pair_path = tmp_path / ".gamedata_pair.json"
+        sync_release_archive_pair(excel_spec, levels_spec)
+        external = tmp_path / "external-pair.json"
+        external.write_bytes(pair_path.read_bytes())
+        pair_path.unlink()
+        pair_path.symlink_to(external)
+
+        sync_release_archive_pair(excel_spec, levels_spec)
+
+        assert pair_path.is_file()
+        assert not pair_path.is_symlink()
+        assert external.read_bytes() == pair_path.read_bytes()
+
     def test_reclaims_abandoned_ownerless_lock(self, tmp_path):
         archive_dir = tmp_path / "archives"
         archive_dir.mkdir()
