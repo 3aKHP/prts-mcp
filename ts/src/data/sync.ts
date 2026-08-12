@@ -1062,8 +1062,11 @@ async function loadGamedataPair(
   levelsSpec: ReleaseArchiveSpec,
 ): Promise<GamedataPairMeta | null> {
   try {
+    const path = gamedataPairPath(excelSpec, levelsSpec);
+    const pathInfo = await lstat(path);
+    if (!pathInfo.isFile() || pathInfo.isSymbolicLink()) return null;
     const value = JSON.parse(
-      await readFile(gamedataPairPath(excelSpec, levelsSpec), "utf-8"),
+      await readFile(path, "utf-8"),
     ) as {
       commit_sha?: unknown;
       excel_data_root?: unknown;

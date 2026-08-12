@@ -574,19 +574,42 @@ class TestSyncReleaseArchive:
 
     def test_pair_manifest_symlink_is_replaced(self, tmp_path):
         excel_spec, levels_spec = self._pair_specs(tmp_path)
-        self._activate_pair_generation(excel_spec, levels_spec, "same")
+        for spec in (excel_spec, levels_spec):
+            required = spec.local_root / spec.required_files[0]
+            required.parent.mkdir(parents=True)
+            required.write_text("legacy", encoding="utf-8")
         pair_path = tmp_path / ".gamedata_pair.json"
-        sync_release_archive_pair(excel_spec, levels_spec)
         external = tmp_path / "external-pair.json"
-        external.write_bytes(pair_path.read_bytes())
-        pair_path.unlink()
+        external.write_text(
+            json.dumps({
+                "commit_sha": "legacy",
+                "excel_data_root": ".",
+                "levels_data_root": ".",
+            }),
+            encoding="utf-8",
+        )
         pair_path.symlink_to(external)
 
-        sync_release_archive_pair(excel_spec, levels_spec)
+        with patch(
+            "prts_mcp.data.sync.sync_release_archive",
+            side_effect=lambda spec, force_check=False: SyncResult(
+                spec,
+                "offline_fallback",
+                None,
+                "offline",
+            ),
+        ):
+            results = sync_release_archive_pair(excel_spec, levels_spec)
 
+        assert [result.status for result in results] == [
+            "offline_fallback",
+            "offline_fallback",
+        ]
         assert pair_path.is_file()
         assert not pair_path.is_symlink()
-        assert external.read_bytes() == pair_path.read_bytes()
+        assert json.loads(external.read_text(encoding="utf-8")) == json.loads(
+            pair_path.read_text(encoding="utf-8")
+        )
 
     def test_reclaims_abandoned_ownerless_lock(self, tmp_path):
         archive_dir = tmp_path / "archives"

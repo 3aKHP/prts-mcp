@@ -308,20 +308,37 @@ test("pair manifest rebuild rejects mixed generations", async () => {
 test("pair manifest symlink is replaced", async () => {
   const root = mkdtempSync(join(tmpdir(), "prts-sync-pair-symlink-test-"));
   const specs = pairSpecs(root);
-  activatePairGeneration(specs, "same");
+  for (const spec of specs) {
+    const required = join(spec.localRoot, spec.requiredFiles[0]);
+    mkdirSync(dirname(required), { recursive: true });
+    writeFileSync(required, "legacy", "utf-8");
+  }
   const pairPath = join(root, ".gamedata_pair.json");
-  await syncReleaseArchivePair(...specs);
   const external = join(root, "external-pair.json");
-  writeFileSync(external, readFileSync(pairPath));
-  unlinkSync(pairPath);
+  writeFileSync(external, JSON.stringify({
+    commit_sha: "legacy",
+    excel_data_root: ".",
+    levels_data_root: ".",
+  }), "utf-8");
   symlinkSync(external, pairPath);
 
-  await syncReleaseArchivePair(...specs);
+  await withFetchMock((async () => {
+    throw new Error("network down");
+  }) as typeof fetch, async () => {
+    const results = await syncReleaseArchivePair(...specs);
+    assert.deepEqual(results.map((result) => result.status), [
+      "offline_fallback",
+      "offline_fallback",
+    ]);
+  });
 
   const info = lstatSync(pairPath);
   assert.equal(info.isFile(), true);
   assert.equal(info.isSymbolicLink(), false);
-  assert.equal(readFileSync(external, "utf-8"), readFileSync(pairPath, "utf-8"));
+  assert.deepEqual(
+    JSON.parse(readFileSync(external, "utf-8")),
+    JSON.parse(readFileSync(pairPath, "utf-8")),
+  );
   assert.notEqual(statSync(external).ino, statSync(pairPath).ino);
 });
 

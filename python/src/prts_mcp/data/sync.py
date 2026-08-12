@@ -939,9 +939,10 @@ def _load_gamedata_pair(
     levels_spec: ReleaseArchiveSpec,
 ) -> tuple[str, Path, Path] | None:
     try:
-        value = json.loads(
-            _gamedata_pair_path(excel_spec, levels_spec).read_text(encoding="utf-8")
-        )
+        path = _gamedata_pair_path(excel_spec, levels_spec)
+        if not path.is_file() or path.is_symlink():
+            return None
+        value = json.loads(path.read_text(encoding="utf-8"))
         commit_sha = value.get("commit_sha")
         excel_data_root = value.get("excel_data_root")
         levels_data_root = value.get("levels_data_root")
