@@ -1062,8 +1062,11 @@ async function loadGamedataPair(
   levelsSpec: ReleaseArchiveSpec,
 ): Promise<GamedataPairMeta | null> {
   try {
+    const path = gamedataPairPath(excelSpec, levelsSpec);
+    const pathInfo = await lstat(path);
+    if (!pathInfo.isFile() || pathInfo.isSymbolicLink()) return null;
     const value = JSON.parse(
-      await readFile(gamedataPairPath(excelSpec, levelsSpec), "utf-8"),
+      await readFile(path, "utf-8"),
     ) as {
       commit_sha?: unknown;
       excel_data_root?: unknown;
@@ -1096,6 +1099,15 @@ async function saveGamedataPair(
   levelsRoot: string,
 ): Promise<void> {
   const path = gamedataPairPath(excelSpec, levelsSpec);
+  const pathInfo = await lstat(path).catch(() => null);
+  const current = pathInfo?.isFile() && !pathInfo.isSymbolicLink()
+    ? await loadGamedataPair(excelSpec, levelsSpec)
+    : null;
+  if (
+    current?.commitSha === commitSha
+    && current.excelRoot === realpathSync(excelRoot)
+    && current.levelsRoot === realpathSync(levelsRoot)
+  ) return;
   const tmp = join(dirname(path), `.${basename(path)}.${randomUUID().replaceAll("-", "")}.tmp`);
   await mkdir(dirname(path), { recursive: true });
   await writeFile(tmp, JSON.stringify({
@@ -1113,13 +1125,26 @@ async function initializeGamedataPair(
   if (await loadGamedataPair(excelSpec, levelsSpec) !== null) return;
   const excelMeta = await loadExtractMeta(excelSpec);
   const levelsMeta = await loadExtractMeta(levelsSpec);
-  const excelRoot = excelMeta?.dataRoot ?? excelSpec.localRoot;
-  const levelsRoot = levelsMeta?.dataRoot ?? levelsSpec.localRoot;
+  let commitSha: string;
+  let excelRoot: string;
+  let levelsRoot: string;
+  if (excelMeta === null && levelsMeta === null) {
+    commitSha = "legacy";
+    excelRoot = excelSpec.localRoot;
+    levelsRoot = levelsSpec.localRoot;
+  } else if (
+    excelMeta !== null
+    && levelsMeta !== null
+    && excelMeta.commitSha === levelsMeta.commitSha
+  ) {
+    commitSha = excelMeta.commitSha;
+    excelRoot = excelMeta.dataRoot;
+    levelsRoot = levelsMeta.dataRoot;
+  } else {
+    return;
+  }
   if (!archiveFilesPresent(excelSpec, excelRoot)) return;
   if (!archiveFilesPresent(levelsSpec, levelsRoot)) return;
-  const commitSha = excelMeta?.commitSha === levelsMeta?.commitSha
-    ? (excelMeta?.commitSha ?? "legacy")
-    : "legacy-pair";
   await saveGamedataPair(
     excelSpec,
     levelsSpec,

@@ -939,9 +939,10 @@ def _load_gamedata_pair(
     levels_spec: ReleaseArchiveSpec,
 ) -> tuple[str, Path, Path] | None:
     try:
-        value = json.loads(
-            _gamedata_pair_path(excel_spec, levels_spec).read_text(encoding="utf-8")
-        )
+        path = _gamedata_pair_path(excel_spec, levels_spec)
+        if not path.is_file() or path.is_symlink():
+            return None
+        value = json.loads(path.read_text(encoding="utf-8"))
         commit_sha = value.get("commit_sha")
         excel_data_root = value.get("excel_data_root")
         levels_data_root = value.get("levels_data_root")
@@ -973,6 +974,13 @@ def _save_gamedata_pair(
     levels_root: Path,
 ) -> None:
     path = _gamedata_pair_path(excel_spec, levels_spec)
+    current = (
+        _load_gamedata_pair(excel_spec, levels_spec)
+        if path.is_file() and not path.is_symlink()
+        else None
+    )
+    if current == (commit_sha, excel_root.resolve(), levels_root.resolve()):
+        return
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
     tmp.write_text(
@@ -1001,17 +1009,24 @@ def _initialize_gamedata_pair(
         return
     excel_meta = _load_extract_meta(excel_spec)
     levels_meta = _load_extract_meta(levels_spec)
-    excel_root = excel_meta[1] if excel_meta is not None else excel_spec.local_root
-    levels_root = levels_meta[1] if levels_meta is not None else levels_spec.local_root
+    if excel_meta is None and levels_meta is None:
+        commit_sha = "legacy"
+        excel_root = excel_spec.local_root
+        levels_root = levels_spec.local_root
+    elif (
+        excel_meta is not None
+        and levels_meta is not None
+        and excel_meta[0] == levels_meta[0]
+    ):
+        commit_sha = excel_meta[0]
+        excel_root = excel_meta[1]
+        levels_root = levels_meta[1]
+    else:
+        return
     if not all((excel_root / path).is_file() for path in excel_spec.required_files):
         return
     if not all((levels_root / path).is_file() for path in levels_spec.required_files):
         return
-    sha_parts = (
-        excel_meta[0] if excel_meta is not None else "legacy",
-        levels_meta[0] if levels_meta is not None else "legacy",
-    )
-    commit_sha = sha_parts[0] if sha_parts[0] == sha_parts[1] else "legacy-pair"
     _save_gamedata_pair(
         excel_spec,
         levels_spec,
