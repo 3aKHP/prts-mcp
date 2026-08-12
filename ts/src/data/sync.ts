@@ -1096,6 +1096,12 @@ async function saveGamedataPair(
   levelsRoot: string,
 ): Promise<void> {
   const path = gamedataPairPath(excelSpec, levelsSpec);
+  const current = await loadGamedataPair(excelSpec, levelsSpec);
+  if (
+    current?.commitSha === commitSha
+    && current.excelRoot === realpathSync(excelRoot)
+    && current.levelsRoot === realpathSync(levelsRoot)
+  ) return;
   const tmp = join(dirname(path), `.${basename(path)}.${randomUUID().replaceAll("-", "")}.tmp`);
   await mkdir(dirname(path), { recursive: true });
   await writeFile(tmp, JSON.stringify({

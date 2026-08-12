@@ -15,6 +15,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+import prts_mcp.config as config_module
 from prts_mcp.data.sync import (
     ReleaseSpec,
     ReleaseArchiveSpec,
@@ -434,6 +435,118 @@ class TestSyncRelease:
 # ---------------------------------------------------------------------------
 
 class TestSyncReleaseArchive:
+    @staticmethod
+    def _activate_pair_generation(
+        excel_spec: ReleaseArchiveSpec,
+        levels_spec: ReleaseArchiveSpec,
+        generation: str,
+    ) -> None:
+        for spec in (excel_spec, levels_spec):
+            required = spec.required_files[0]
+            root = spec.local_root / ".releases" / generation
+            path = root / required
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(generation, encoding="utf-8")
+            spec.local_zip.parent.mkdir(parents=True, exist_ok=True)
+            with zipfile.ZipFile(spec.local_zip, "w") as zf:
+                zf.writestr(required, generation)
+            (spec.local_zip.parent / "release_meta.json").write_text(
+                json.dumps({
+                    "repo": f"{spec.owner}/{spec.repo}",
+                    "branch": "releases",
+                    "commit_sha": generation,
+                    "fetched_at": "2099-01-01T00:00:00Z",
+                    "files": [spec.asset_name],
+                }),
+                encoding="utf-8",
+            )
+            (spec.local_zip.parent / "extract_meta.json").write_text(
+                json.dumps({
+                    "commit_sha": generation,
+                    "data_root": f".releases/{generation}",
+                }),
+                encoding="utf-8",
+            )
+
+    @staticmethod
+    def _pair_specs(tmp_path: Path) -> tuple[ReleaseArchiveSpec, ReleaseArchiveSpec]:
+        return (
+            ReleaseArchiveSpec(
+                owner="3aKHP",
+                repo="arknights-data-pipeline",
+                asset_name="zh_CN-excel.zip",
+                local_zip=tmp_path / "gamedata" / "archives" / "zh_CN-excel.zip",
+                local_root=tmp_path / "gamedata",
+                required_files=("zh_CN/gamedata/excel/character_table.json",),
+            ),
+            ReleaseArchiveSpec(
+                owner="3aKHP",
+                repo="arknights-data-pipeline",
+                asset_name="zh_CN-levels.zip",
+                local_zip=tmp_path / "gamedata-levels" / "archives" / "zh_CN-levels.zip",
+                local_root=tmp_path / "gamedata-levels",
+                required_files=(
+                    "zh_CN/gamedata/levels/enemydata/enemy_database.json",
+                ),
+            ),
+        )
+
+    def test_pair_manifest_is_stable_until_generation_changes(self, tmp_path):
+        excel_spec, levels_spec = self._pair_specs(tmp_path)
+        self._activate_pair_generation(excel_spec, levels_spec, "same")
+        pair_path = tmp_path / ".gamedata_pair.json"
+
+        with (
+            patch.dict(os.environ, {"GAMEDATA_PATH": str(excel_spec.local_root)}),
+            patch.object(config_module, "_activation_signature", None),
+            patch.object(config_module, "_activation_listeners", []),
+        ):
+            first = sync_release_archive_pair(excel_spec, levels_spec)
+            assert [result.status for result in first] == ["up_to_date", "up_to_date"]
+            config_module.check_activation_change()
+            clears = 0
+
+            def record_clear() -> None:
+                nonlocal clears
+                clears += 1
+
+            config_module.register_activation_listener(record_clear)
+            before = pair_path.stat()
+            second = sync_release_archive_pair(excel_spec, levels_spec)
+            after = pair_path.stat()
+            config_module.check_activation_change()
+
+            assert [result.status for result in second] == ["up_to_date", "up_to_date"]
+            assert (after.st_ino, after.st_mtime_ns, after.st_ctime_ns) == (
+                before.st_ino,
+                before.st_mtime_ns,
+                before.st_ctime_ns,
+            )
+            assert clears == 0
+
+            self._activate_pair_generation(excel_spec, levels_spec, "next")
+            sync_release_archive_pair(excel_spec, levels_spec)
+            changed = pair_path.stat()
+            config_module.check_activation_change()
+
+            assert json.loads(pair_path.read_text(encoding="utf-8"))["commit_sha"] == "next"
+            assert changed.st_ino != after.st_ino
+            assert clears == 1
+
+    def test_pair_manifest_is_rebuilt_when_missing_or_invalid(self, tmp_path):
+        excel_spec, levels_spec = self._pair_specs(tmp_path)
+        self._activate_pair_generation(excel_spec, levels_spec, "same")
+        pair_path = tmp_path / ".gamedata_pair.json"
+
+        sync_release_archive_pair(excel_spec, levels_spec)
+        pair_path.unlink()
+        sync_release_archive_pair(excel_spec, levels_spec)
+        assert json.loads(pair_path.read_text(encoding="utf-8"))["commit_sha"] == "same"
+
+        pair_path.write_text("not json", encoding="utf-8")
+        sync_release_archive_pair(excel_spec, levels_spec)
+        assert json.loads(pair_path.read_text(encoding="utf-8"))["commit_sha"] == "same"
+
     def test_reclaims_abandoned_ownerless_lock(self, tmp_path):
         archive_dir = tmp_path / "archives"
         archive_dir.mkdir()

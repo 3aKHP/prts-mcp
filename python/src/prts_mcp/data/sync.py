@@ -973,6 +973,9 @@ def _save_gamedata_pair(
     levels_root: Path,
 ) -> None:
     path = _gamedata_pair_path(excel_spec, levels_spec)
+    current = _load_gamedata_pair(excel_spec, levels_spec)
+    if current == (commit_sha, excel_root.resolve(), levels_root.resolve()):
+        return
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
     tmp.write_text(

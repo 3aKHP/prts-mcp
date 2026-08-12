@@ -5,6 +5,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  statSync,
   symlinkSync,
   unlinkSync,
   utimesSync,
@@ -178,6 +179,103 @@ function withFetchMock(
     else process.env["GITHUB_MIRRORS"] = originalMirrors;
   });
 }
+
+function pairSpecs(root: string): readonly [ReleaseArchiveSpec, ReleaseArchiveSpec] {
+  return [{
+    owner: "3aKHP",
+    repo: "arknights-data-pipeline",
+    assetName: "zh_CN-excel.zip",
+    localZip: join(root, "gamedata", "archives", "zh_CN-excel.zip"),
+    localRoot: join(root, "gamedata"),
+    requiredFiles: ["zh_CN/gamedata/excel/character_table.json"],
+  }, {
+    owner: "3aKHP",
+    repo: "arknights-data-pipeline",
+    assetName: "zh_CN-levels.zip",
+    localZip: join(root, "gamedata-levels", "archives", "zh_CN-levels.zip"),
+    localRoot: join(root, "gamedata-levels"),
+    requiredFiles: ["zh_CN/gamedata/levels/enemydata/enemy_database.json"],
+  }] as const;
+}
+
+function activatePairGeneration(
+  specs: readonly [ReleaseArchiveSpec, ReleaseArchiveSpec],
+  generation: string,
+): void {
+  for (const spec of specs) {
+    const required = spec.requiredFiles[0];
+    const dataRoot = join(spec.localRoot, ".releases", generation);
+    mkdirSync(dirname(join(dataRoot, required)), { recursive: true });
+    writeFileSync(join(dataRoot, required), generation, "utf-8");
+    writeZip(spec.localZip, { [required]: generation });
+    writeFileSync(join(dirname(spec.localZip), "release_meta.json"), JSON.stringify({
+      repo: `${spec.owner}/${spec.repo}`,
+      branch: "releases",
+      commit_sha: generation,
+      fetched_at: "2099-01-01T00:00:00.000Z",
+      files: [spec.assetName],
+    }), "utf-8");
+    writeFileSync(join(dirname(spec.localZip), "extract_meta.json"), JSON.stringify({
+      commit_sha: generation,
+      data_root: `.releases/${generation}`,
+    }), "utf-8");
+  }
+}
+
+test("pair manifest is stable until the generation changes", async () => {
+  const root = mkdtempSync(join(tmpdir(), "prts-sync-pair-stability-test-"));
+  const specs = pairSpecs(root);
+  activatePairGeneration(specs, "same");
+  const pairPath = join(root, ".gamedata_pair.json");
+  process.env["GAMEDATA_PATH"] = specs[0].localRoot;
+  try {
+    const config = await import(`../src/config.ts?pairStability=${Date.now()}-${Math.random()}`);
+    const first = await syncReleaseArchivePair(...specs);
+    assert.deepEqual(first.map((result) => result.status), ["up_to_date", "up_to_date"]);
+    config.checkActivationChange();
+    let clears = 0;
+    config.registerActivationListener(() => { clears += 1; });
+    const before = statSync(pairPath);
+
+    const second = await syncReleaseArchivePair(...specs);
+    const after = statSync(pairPath);
+    config.checkActivationChange();
+
+    assert.deepEqual(second.map((result) => result.status), ["up_to_date", "up_to_date"]);
+    assert.deepEqual(
+      [after.ino, after.mtimeMs, after.ctimeMs],
+      [before.ino, before.mtimeMs, before.ctimeMs],
+    );
+    assert.equal(clears, 0);
+
+    activatePairGeneration(specs, "next");
+    await syncReleaseArchivePair(...specs);
+    const changed = statSync(pairPath);
+    config.checkActivationChange();
+
+    assert.equal(JSON.parse(readFileSync(pairPath, "utf-8")).commit_sha, "next");
+    assert.notEqual(changed.ino, after.ino);
+    assert.equal(clears, 1);
+  } finally {
+    delete process.env["GAMEDATA_PATH"];
+  }
+});
+
+test("pair manifest is rebuilt when missing or invalid", async () => {
+  const root = mkdtempSync(join(tmpdir(), "prts-sync-pair-rebuild-test-"));
+  const specs = pairSpecs(root);
+  activatePairGeneration(specs, "same");
+  const pairPath = join(root, ".gamedata_pair.json");
+
+  await syncReleaseArchivePair(...specs);
+  unlinkSync(pairPath);
+  await syncReleaseArchivePair(...specs);
+  assert.equal(JSON.parse(readFileSync(pairPath, "utf-8")).commit_sha, "same");
+
+  writeFileSync(pairPath, "not json", "utf-8");
+  await syncReleaseArchivePair(...specs);
+  assert.equal(JSON.parse(readFileSync(pairPath, "utf-8")).commit_sha, "same");
+});
 
 test("syncRelease returns offline_fallback when network fails but zip exists", async () => {
   const spec = tempSpec();
