@@ -131,6 +131,81 @@ if [[ ! (
   exit 1
 fi
 
+PAIR_PATH="${SHARED_ROOT}/.gamedata_pair.json"
+PAIR_IDENTITY_BEFORE="$(stat -c '%i:%s:%Y:%Z' "${PAIR_PATH}")"
+
+uv run --directory "${REPO_ROOT}/python" --frozen --no-sync python - \
+  "${EXCEL_ROOT}" "${LEVELS_ROOT}" "${EXCEL_ARCHIVE}" "${LEVELS_ARCHIVE}" \
+  "${EXCEL_REQUIRED}" "${LEVELS_REQUIRED}" <<'PY'
+import sys
+from pathlib import Path
+
+from prts_mcp.data.sync import ReleaseArchiveSpec, sync_release_archive_pair
+
+results = sync_release_archive_pair(
+    ReleaseArchiveSpec(
+        owner="3aKHP",
+        repo="arknights-data-pipeline",
+        asset_name=Path(sys.argv[3]).name,
+        local_zip=Path(sys.argv[3]),
+        local_root=Path(sys.argv[1]),
+        required_files=(sys.argv[5],),
+    ),
+    ReleaseArchiveSpec(
+        owner="3aKHP",
+        repo="arknights-data-pipeline",
+        asset_name=Path(sys.argv[4]).name,
+        local_zip=Path(sys.argv[4]),
+        local_root=Path(sys.argv[2]),
+        required_files=(sys.argv[6],),
+    ),
+)
+assert [result.status for result in results] == ["up_to_date", "up_to_date"]
+PY
+
+PAIR_IDENTITY_AFTER_PYTHON="$(stat -c '%i:%s:%Y:%Z' "${PAIR_PATH}")"
+if [[ "${PAIR_IDENTITY_AFTER_PYTHON}" != "${PAIR_IDENTITY_BEFORE}" ]]; then
+  echo "Python rewrote unchanged TypeScript-compatible pair metadata" >&2
+  exit 1
+fi
+
+(cd "${REPO_ROOT}/ts" && node --import tsx \
+  --input-type=module - \
+  "${EXCEL_ROOT}" "${LEVELS_ROOT}" "${EXCEL_ARCHIVE}" "${LEVELS_ARCHIVE}" \
+  "${EXCEL_REQUIRED}" "${LEVELS_REQUIRED}") <<'TS'
+import { basename } from "node:path";
+import { syncReleaseArchivePair } from "./src/data/sync.ts";
+
+const [, , excelRoot, levelsRoot, excelArchive, levelsArchive, excelRequired, levelsRequired] = process.argv;
+const results = await syncReleaseArchivePair(
+  {
+    owner: "3aKHP",
+    repo: "arknights-data-pipeline",
+    assetName: basename(excelArchive),
+    localZip: excelArchive,
+    localRoot: excelRoot,
+    requiredFiles: [excelRequired],
+  },
+  {
+    owner: "3aKHP",
+    repo: "arknights-data-pipeline",
+    assetName: basename(levelsArchive),
+    localZip: levelsArchive,
+    localRoot: levelsRoot,
+    requiredFiles: [levelsRequired],
+  },
+);
+if (results.some((result) => result.status !== "up_to_date")) {
+  throw new Error(`Unexpected unchanged sync status: ${results.map((result) => result.status).join(",")}`);
+}
+TS
+
+PAIR_IDENTITY_AFTER_TYPESCRIPT="$(stat -c '%i:%s:%Y:%Z' "${PAIR_PATH}")"
+if [[ "${PAIR_IDENTITY_AFTER_TYPESCRIPT}" != "${PAIR_IDENTITY_BEFORE}" ]]; then
+  echo "TypeScript rewrote unchanged Python-compatible pair metadata" >&2
+  exit 1
+fi
+
 uv run --directory "${REPO_ROOT}/python" --frozen --no-sync python - \
   "${SHARED_ROOT}" "${EXCEL_ROOT}" "${LEVELS_ROOT}" \
   "${EXCEL_REQUIRED}" "${LEVELS_REQUIRED}" <<'PY'
