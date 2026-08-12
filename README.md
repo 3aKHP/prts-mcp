@@ -29,7 +29,7 @@ Two release lines ship in parallel:
 
 | Line | Version | Tools | Status |
 |------|---------|-------|--------|
-| **2.6** (`main`) | `2.6.1` | 24 | Nested template rendering and malformed-response hardening; activity page-range validation. |
+| **2.6** (`main`) | `2.6.2` | 24 | Idempotent GameData pair activation prevents unchanged Auto-Sync cycles from clearing caches. |
 | **1.7 LTS** (`lts/1.7`) | `1.7.0` | 32 | Stable maintenance line. 1.7.x accepts only compatibility, security, data-sync, and critical bug fixes. |
 
 The `main` and `develop` lines use the self-built `arknights-data-pipeline` Release exclusively for default Auto-Sync. The 1.7 LTS line retains its legacy upstream compatibility until a separate, backwards-compatible migration; changes to the new factory path must not be backported to LTS as an implicit source switch.
@@ -155,7 +155,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and [`doc
 
 | 版本线 | 版本 | 工具数 | 状态 |
 |--------|------|--------|------|
-| **2.6**（`main`） | `2.6.1` | 24 | 模板嵌套字段安全渲染与 malformed-response 加固；活动剧情页码校验。 |
+| **2.6**（`main`） | `2.6.2` | 24 | GameData pair 激活幂等化，避免无变化 Auto-Sync 周期误清缓存。 |
 | **1.7 LTS**（`lts/1.7`） | `1.7.0` | 32 | 稳定维护线。1.7.x 仅接受兼容性、安全性、数据同步和关键缺陷修复。 |
 
 | 范围 | Python | TypeScript |
