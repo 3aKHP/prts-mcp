@@ -1,0 +1,32 @@
+{
+  "list_enemies": {
+    "limit": { "min": 1, "max": 200, "default": 50 },
+    "offset": { "min": 0, "max": null, "default": 0 }
+  },
+  "get_enemy_appearances": {
+    "limit": { "min": 1, "max": 200, "default": 50 },
+    "offset": { "min": 0, "max": null, "default": 0 }
+  },
+  "list_stages": {
+    "limit": { "min": 1, "max": 200, "default": 50 },
+    "offset": { "min": 0, "max": null, "default": 0 }
+  },
+  "list_items": {
+    "limit": { "min": 1, "max": 200, "default": 50 },
+    "offset": { "min": 0, "max": null, "default": 0 }
+  },
+  "search": {
+    "max_results": { "min": 1, "max": 100, "default": 30 }
+  },
+  "read_activity": {
+    "page": { "min": 1, "max": null, "default": null },
+    "page_size": { "min": 1, "max": 20, "default": 5 }
+  },
+  "search_stories": {
+    "context_lines": { "min": 0, "max": 5, "default": 1 },
+    "max_results": { "min": 1, "max": 100, "default": 30 }
+  },
+  "find_character_appearances": {
+    "max_events": { "min": 1, "max": 200, "default": 50 }
+  }
+}

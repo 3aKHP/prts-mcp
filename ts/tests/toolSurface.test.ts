@@ -89,6 +89,60 @@ test("SDK v2 tool registrations publish object input schemas", () => {
   }
 });
 
+test("TS numeric fields match the parity contract", () => {
+  // Shared source of truth with python/tests/test_tool_surface.py — unilateral
+  // drift on either side fails its own test. zod@4 stores bounds opaquely
+  // ($ZodCheck* under _zod.checks), so probe behaviorally via safeParse instead
+  // of introspecting _def (which is Zod-3 syntax and fragile across versions).
+  const contract = JSON.parse(
+    readFileSync(
+      join(import.meta.dirname, "..", "..", "tests", "parity-fixtures", "tool-bounds.json"),
+      "utf-8",
+    ),
+  ) as Record<string, Record<string, { min: number | null; max: number | null; default: number | null }>>;
+
+  const server = new CapturingServer();
+  registerPrtsTools(server as never);
+  registerGamedataTools(server as never);
+  registerStoryTools(server as never);
+  registerArtworkTools(server as never);
+
+  type Field = { safeParse: (x: unknown) => { success: boolean; data?: unknown } };
+  for (const [tool, params] of Object.entries(contract)) {
+    const cfg = server.configs.get(tool) as
+      | { inputSchema?: { shape: Record<string, Field> } }
+      | undefined;
+    assert.ok(cfg, `${tool} not captured`);
+    const shape = cfg!.inputSchema!.shape;
+    for (const [param, expected] of Object.entries(params)) {
+      const field = shape[param];
+      assert.ok(field, `${tool}.${param} not in Zod shape`);
+      // default: ZodDefault returns its value; ZodOptional yields undefined -> null.
+      const parsed = field.safeParse(undefined);
+      const defaultVal = parsed.success ? ((parsed.data as number | undefined) ?? null) : null;
+      assert.equal(defaultVal, expected.default, `${tool}.${param} default`);
+      if (expected.min !== null) {
+        assert.equal(field.safeParse(expected.min - 1).success, false, `${tool}.${param} should reject ${expected.min - 1}`);
+        assert.equal(field.safeParse(expected.min).success, true, `${tool}.${param} should accept ${expected.min}`);
+      }
+      if (expected.max !== null) {
+        assert.equal(field.safeParse(expected.max).success, true, `${tool}.${param} should accept ${expected.max}`);
+        assert.equal(field.safeParse(expected.max + 1).success, false, `${tool}.${param} should reject ${expected.max + 1}`);
+      } else {
+        assert.equal(field.safeParse(1_000_000).success, true, `${tool}.${param} should have no upper bound`);
+      }
+    }
+  }
+});
+
+test("user-pattern regexes handle astral codepoints (Unicode flag)", () => {
+  // With /u, JS . matches a whole astral code point — matching Python's
+  // Unicode-default re. Without /u, U+1D49C is two UTF-16 surrogates so ^.$
+  // fails. (Residual gap: JS \w stays ASCII-only even with /u vs Python's CJK
+  // \w — fundamental, not flag-fixable, tracked as a known limitation.)
+  assert.equal(new RegExp("^.$", "iu").test("\u{1D49C}"), true);
+});
+
 test("prts_page keeps template render failures content-only", async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = (async () => new Response(JSON.stringify({
