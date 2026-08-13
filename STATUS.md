@@ -102,7 +102,7 @@ PRTS-MCP/
 │   │   │   ├── items.py         # 物品/材料数据
 │   │   │   ├── stores.py        # 存储抽象 (Directory/Zip/Fallback)
 │   │   │   └── sync.py          # 同步状态机（release/archive/pair 编排；P2.B 迁出中）
-│   │   ├── sync/            # GitHub Release 传输+发现（HTTP 归此层；P2.A 抽出）
+│   │   ├── sync/            # GitHub Release 传输+发现（数据同步 HTTP 归此层；P2.A 抽出）
 │   │   └── utils/          # wikitext 清洗等工具
 │   ├── tests/              # pytest 测试
 │   ├── pyproject.toml      # 包元数据、依赖
@@ -122,7 +122,7 @@ PRTS-MCP/
 │   │       ├── operators.ts / enemies.ts / stages.ts / items.ts
 │   │       ├── stores.ts / sync.ts
 │   │       └── ...
-│   │   └── sync/           # GitHub Release 传输+发现（HTTP 归此层）
+│   │   └── sync/           # GitHub Release 传输+发现（数据同步 HTTP 归此层）
 │   ├── tests/              # node --test 测试
 │   ├── package.json
 │   └── CHANGELOG.md

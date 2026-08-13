@@ -132,6 +132,10 @@ class TestSyncRelease:
                 },
             },
         }
+        # check_latest_release moved to release_discovery (P2.A), so its
+        # _get_cascading call resolves there, not in data.sync. One shared mock
+        # patches both namespaces; side_effect is consumed in call order:
+        # release list (discovery) -> asset download -> manifest (state machine).
         with patch(
             "prts_mcp.data.sync._get_cascading",
             side_effect=[release, asset, manifest],

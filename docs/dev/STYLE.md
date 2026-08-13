@@ -23,12 +23,12 @@ server.py/ts          ←  MCP 工具注册、启动同步编排
 api/                  ←  PRTS Wiki MediaWiki API 客户端
 data/                 ←  干员/剧情/搜索/store 抽象
 data/stores           ←  DirectoryStore / ZipStore 底层读写
-sync/                 ←  GitHub Release 数据同步（传输：HTTP/镜像/级联 fetch；发现：release 列表）；仓库唯一允许发 HTTP 的层
+sync/                 ←  GitHub Release 数据同步（传输：HTTP/镜像/级联 fetch；发现：release 列表）；数据同步 HTTP 归此层（PRTS Wiki HTTP 归 api/）
 utils/                ←  跨领域纯函数（wikitext 清洗等）
 config.py/ts          ←  路径解析、环境变量
 ```
 
-**允许的依赖方向**：`server → api, data, sync, config` / `data → stores, utils, config` / `sync → stores, utils, config` / `api → utils`。 **禁止**：`stores` 依赖 `data`；`utils` 依赖 `api` 或 `data`；`config` 依赖任何其他模块；`data` 的数据读取模块直接发 HTTP（HTTP 只归 `sync/`）。
+**允许的依赖方向**：`server → api, data, sync, config` / `data → stores, utils, config` / `sync → stores, utils, config` / `api → utils`。 **禁止**：`stores` 依赖 `data`；`utils` 依赖 `api` 或 `data`；`config` 依赖任何其他模块；`data` 的数据读取模块直接发 HTTP（数据同步 HTTP 归 `sync/`、PRTS Wiki HTTP 归 `api/`）。
 
 > 迁移期注记：`data/sync.*` 的状态机在 P2.A→P2.B 期间临时 `data → sync` 反向依赖新抽出的 `sync/transport`、`sync/release_discovery`（经 re-export shim），状态机迁出 `data/` 后该过渡边消失。`data/images_sync.py` 仍直接发 HTTP（`_download_large`），是 sync 层模块暂居 `data/` 的历史残留，随 images_sync 迁入 `sync/` 层时清除（P3.B）。
 
