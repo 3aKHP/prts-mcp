@@ -216,31 +216,17 @@ jobs:
         run: |
           TARBALL=$(find . -maxdepth 1 -name 'prts-mcp-ts-*.tgz' -type f -print -quit)
           test -n "$TARBALL"
-          npm publish "$TARBALL" --provenance --access public --tag "${{ steps.dist_tag.outputs.value }}"
-        working-directory: ts
-
-      - name: Verify npm published bytes
-        working-directory: ts
-        run: |
-          TARBALL=$(find . -maxdepth 1 -name 'prts-mcp-ts-*.tgz' -type f -print -quit)
-          EXPECTED=$(sha256sum "$TARBALL" | awk '{print $1}')
           VERSION="${GITHUB_REF_NAME#ts/v}"
-          TMP=$(mktemp)
-          trap 'rm -f "$TMP"' EXIT
-          for attempt in $(seq 1 18); do
-            URL=$(npm view "prts-mcp-ts@${VERSION}" dist.tarball 2>/dev/null || true)
-            if [ -n "$URL" ] && curl -fsSL "$URL" -o "$TMP"; then
-              ACTUAL=$(sha256sum "$TMP" | awk '{print $1}')
-              if [ "$ACTUAL" = "$EXPECTED" ]; then
-                echo "npm tarball SHA-256 verified: $ACTUAL"
-                exit 0
-              fi
-            fi
-            echo "Waiting for npm tarball propagation (attempt $attempt/18)..."
-            sleep 10
-          done
-          echo "::error::Published npm tarball bytes differ from the exact release artifact"
-          exit 1
+          # Idempotent: re-running this job (a full rerun, not just --failed)
+          # must not re-attempt publishing an immutable version that already
+          # landed. npm publish on an existing version fails with
+          # EPUBLISHCONFLICT; skip instead and let verification confirm bytes.
+          if npm view "prts-mcp-ts@${VERSION}" version >/dev/null 2>&1; then
+            echo "prts-mcp-ts@${VERSION} already published; skipping npm publish."
+          else
+            npm publish "$TARBALL" --provenance --access public --tag "${{ steps.dist_tag.outputs.value }}"
+          fi
+        working-directory: ts
 
   github-release:
     runs-on: ubuntu-latest
@@ -267,6 +253,16 @@ jobs:
         with:
           name: ts-release-package
           path: ts
+
+      - name: Verify npm published bytes
+        # Lives in github-release (not publish-npm) so a propagation timeout
+        # fails this job alone: re-run with `gh run rerun <run-id> --failed`
+        # re-verifies the now-propagated immutable tarball and creates the
+        # release without re-attempting npm publish. The logic is extracted to
+        # ts/scripts/verify-npm-published.sh (shellcheck + unit-tested). See
+        # docs/admin/release-cd-recovery.md.
+        working-directory: ts
+        run: bash scripts/verify-npm-published.sh
 
       - name: Extract version from tag
         id: version
