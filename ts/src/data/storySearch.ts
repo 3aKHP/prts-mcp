@@ -187,7 +187,7 @@ export function buildStorySearchFromStore(
 
   let regex: RegExp;
   try {
-    regex = new RegExp(pattern, "i");
+    regex = new RegExp(pattern, "iu");
   } catch (exc) {
     return `正则表达式无效：${exc instanceof Error ? exc.message : String(exc)}`;
   }
