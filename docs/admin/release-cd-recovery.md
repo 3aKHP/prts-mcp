@@ -24,7 +24,9 @@ gh run rerun <run-id> --failed
 
 ### 为什么优先 `--failed` 而非全量重跑
 
-`publish-npm` 已加幂等 guard：若版本已存在则跳过 `npm publish`，因此**全量重跑（`gh run rerun <run-id>`，不带 `--failed`）现在也是安全的**——但全量重跑会重新走完整条流水线（verify/build/test/dist-tag 解析等），耗时更长，且会再次触发 `environment: npm` 审批门。除非有其他 job 也失败，否则用 `--failed`。
+`publish-npm` 已加幂等 guard：若版本已存在则跳过 `npm publish`。**一旦传播完成**，全量重跑（`gh run rerun <run-id>`，不带 `--failed`）也是安全的——但它会重新走完整条流水线（verify/build/test/dist-tag 解析等），耗时更长，且会再次触发 `environment: npm` 审批门。
+
+注意一个窄边角：在版本已落地但**尚未对 CDN 可见**的传播窗口内全量重跑，guard 的 `npm view` 可能仍拿到 404 而重新 `npm publish`，命中 EPUBLISHCONFLICT（无害，不会双发，但会让该 job 失败）。恢复场景下通常已在传播完成之后操作，故优先 `--failed`；确需在传播窗口内重跑时，等几分钟再试。
 
 ## 手动校验回退
 
@@ -40,10 +42,10 @@ curl -fsSL "$(npm view prts-mcp-ts@${VERSION} dist.tarball)?ts=$(date +%s)" | sh
 
 ## 报错信息如何区分两种失败
 
-Verify 步骤的终止报错刻意区分两类情况：
+区分依据是错误里**是否给出 expected 与 actual 两组 sha256**（错误串的权威来源是 `cd-ts.yml` 的 Verify 步骤；此处只描述区分要点，避免与工作流措辞同步漂移）：
 
-- **传播延迟（非字节不符）**：`npm publish succeeded but the tarball was not retrievable after N attempts ... This is a registry propagation delay, not a byte mismatch.` → 按上面“主恢复路径”重跑即可。
-- **可检索但字节不符（硬失败）**：`tarball is retrievable but its bytes differ from the exact release artifact`，并附 expected/actual sha256、registry `dist.shasum` / `dist.integrity`。**不要创建 GitHub Release**，先排查 workflow artifact 与 registry 制品的差异（极罕见，通常是流水线非确定性或中途篡改）。
+- **只声明 "not retrievable" / 传播延迟，没有 expected-vs-actual sha256** → 传播延迟，按上面“主恢复路径”重跑即可。
+- **声明 "bytes differ" 并附 expected/actual sha256 及 registry `dist.shasum` / `dist.integrity`** → 可检索但字节不符（硬失败）。**不要创建 GitHub Release**，先排查 workflow artifact 与 registry 制品的差异（极罕见，通常是流水线非确定性或中途篡改）。
 
 ## 范围说明
 
