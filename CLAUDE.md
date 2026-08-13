@@ -143,7 +143,7 @@ fix/*（最新稳定 hotfix）────────→ main ──→ develop
 2. 在 release 分支确认 `[Unreleased]` 段内容齐全
 3. 去掉版本号 `-dev` 后缀（更新 `python/pyproject.toml` 后运行 `uv lock --directory python`，并同步 `ts/package.json` + `ts/package-lock.json`）
 4. CHANGELOG：`[Unreleased]` → `[X.Y.Z] - YYYY-MM-DD`，release PR 到 `main` 时不保留空 `[Unreleased]`
-5. 同步 `STATUS.md` / `ROADMAP.md` / `ROADMAP.zh-CN.md` / `README.md` 的当前稳定版本口径
+5. 同步 `STATUS.md` / `ROADMAP.md` / `ROADMAP.zh-CN.md` / `README.md` / `CLAUDE.md` / `AGENTS.md` 的当前稳定版本口径
 6. 跑 `./scripts/check-runtime.sh --full`
 7. PR：`release/vX.Y.Z` → `main`
 8. **双轨 CR** → **应对 CR** → **人类 merge** 到 `main`
@@ -158,7 +158,7 @@ fix/*（最新稳定 hotfix）────────→ main ──→ develop
 1. 从 `develop` 拉 `release/v1.7.0-lts`
 2. 去掉版本号 `-dev` 后缀（`pyproject.toml` + `package.json` + `package-lock.json`）
 3. CHANGELOG：`[Unreleased]` → `[1.7.0] - YYYY-MM-DD`，声明 1.7 LTS 基线
-4. 同步 `STATUS.md` / `ROADMAP.md` / `ROADMAP.zh-CN.md` / `README.md` / `docs/dev/LTS.md`
+4. 同步 `STATUS.md` / `ROADMAP.md` / `ROADMAP.zh-CN.md` / `README.md` / `CLAUDE.md` / `AGENTS.md` / `docs/dev/LTS.md`
 5. 跑 `./scripts/check-runtime.sh --full`
 6. PR：`release/v1.7.0-lts` → `main`
 7. **双轨 CR** → **应对 CR** → **人类 merge**
@@ -287,6 +287,9 @@ KHPilot 也可能在公开 Issue 中提供自动回复。这些回复只作为�
 | `ts/package-lock.json` | npm lockfile 顶层版本 |
 | `ROADMAP.md` | 当前版本号 |
 | `ROADMAP.zh-CN.md` | 当前版本号（与 `ROADMAP.md` 成对同步，勿漏） |
+| `STATUS.md` | 当前版本表、分支线版本与最近发布表 |
+| `CLAUDE.md` | 分支模型表的当前版本（main 稳定版 + develop 目标 `.dev0`） |
+| `AGENTS.md` | 分支模型表口径（与 `CLAUDE.md` 成对同步） |
 
 涉及用户可见行为变化时，顺手更新 `README.md`。
 
