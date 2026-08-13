@@ -154,6 +154,24 @@ def _extract_field_bounds(
     return bounds
 
 
+def _signature_defaults(
+    fn: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> dict[str, object]:
+    """Map each positional arg name to its literal signature default (or None).
+
+    Closes an asymmetry with the TS probe (which reads the real default via
+    safeParse): a ``Field(default=50)`` that drifts from the signature ``= 100``
+    would otherwise pass the contract check while changing the runtime schema.
+    """
+    args = fn.args.args
+    defaults = fn.args.defaults  # tail-aligned positional defaults
+    offset = len(args) - len(defaults)
+    out: dict[str, object] = {}
+    for i, arg in enumerate(args):
+        out[arg.arg] = ast.literal_eval(defaults[i - offset]) if i >= offset else None
+    return out
+
+
 def test_python_numeric_fields_match_parity_contract() -> None:
     """Every bounded numeric ``Field`` must match the shared cross-impl contract.
 
@@ -170,7 +188,9 @@ def test_python_numeric_fields_match_parity_contract() -> None:
 
     for tool, params in contract.items():
         assert tool in functions, f"{tool!r} missing from tools_*.py"
-        actual = _extract_field_bounds(functions[tool])
+        fn = functions[tool]
+        actual = _extract_field_bounds(fn)
+        sig_defaults = _signature_defaults(fn)
         for param, expected in params.items():
             assert param in actual, (
                 f"{tool}.{param} has no Field bounds (ge/le); "
@@ -179,6 +199,10 @@ def test_python_numeric_fields_match_parity_contract() -> None:
             assert actual[param] == expected, (
                 f"{tool}.{param} bounds mismatch: "
                 f"py={actual[param]}, contract={expected}"
+            )
+            assert sig_defaults.get(param) == expected["default"], (
+                f"{tool}.{param} signature default {sig_defaults.get(param)!r} "
+                f"differs from Field/contract default {expected['default']!r}"
             )
 
 
@@ -192,3 +216,18 @@ def test_user_pattern_regex_handles_astral_codepoints() -> None:
     fundamental, not flag-fixable, tracked as a known limitation.)
     """
     assert re.compile(r"^.$", re.IGNORECASE).search("\U0001D49C") is not None
+
+
+def test_user_pattern_search_stays_unicode_aware() -> None:
+    """Guard the Python half of the /u parity.
+
+    Python ``re`` is Unicode-default, so the property holds unless a search
+    surface actively restricts to ASCII. Assert none of the five user-pattern
+    search files opt into ``re.ASCII`` / ``(?a)``; paired with the TypeScript
+    source-flag scan this makes unilateral drift on either side fail CI.
+    """
+    data_dir = Path(__file__).parents[1] / "src" / "prts_mcp" / "data"
+    for name in ("search.py", "story_search.py", "enemy.py", "stage.py", "item.py"):
+        text = (data_dir / name).read_text(encoding="utf-8")
+        assert "re.ASCII" not in text, f"{name} must not restrict user-pattern matching to ASCII"
+        assert "(?a)" not in text, f"{name} must not use the (?a) ASCII inline flag"

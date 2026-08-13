@@ -28,5 +28,8 @@
   },
   "find_character_appearances": {
     "max_events": { "min": 1, "max": 200, "default": 50 }
+  },
+  "prts_page": {
+    "limit": { "min": 1, "max": 100, "default": 30 }
   }
 }

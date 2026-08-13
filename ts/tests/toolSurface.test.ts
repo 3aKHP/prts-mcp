@@ -129,7 +129,7 @@ test("TS numeric fields match the parity contract", () => {
         assert.equal(field.safeParse(expected.max).success, true, `${tool}.${param} should accept ${expected.max}`);
         assert.equal(field.safeParse(expected.max + 1).success, false, `${tool}.${param} should reject ${expected.max + 1}`);
       } else {
-        assert.equal(field.safeParse(1_000_000).success, true, `${tool}.${param} should have no upper bound`);
+        assert.equal(field.safeParse(Number.MAX_SAFE_INTEGER).success, true, `${tool}.${param} should have no upper bound`);
       }
     }
   }
@@ -141,6 +141,20 @@ test("user-pattern regexes handle astral codepoints (Unicode flag)", () => {
   // fails. (Residual gap: JS \w stays ASCII-only even with /u vs Python's CJK
   // \w — fundamental, not flag-fixable, tracked as a known limitation.)
   assert.equal(new RegExp("^.$", "iu").test("\u{1D49C}"), true);
+});
+
+test("user-pattern search sites use the Unicode flag (source guard)", () => {
+  // Anchors the /u parity to the actual production call sites: reverting any of
+  // the five `new RegExp(pattern, "iu")` sites back to "i" fails this test. The
+  // astral test above documents RegExp semantics; this one guards the code.
+  const files = ["search.ts", "storySearch.ts", "enemy.ts", "stage.ts", "item.ts"];
+  for (const f of files) {
+    const src = readFileSync(join(import.meta.dirname, "..", "src", "data", f), "utf-8");
+    assert.ok(
+      src.includes('new RegExp(pattern, "iu")'),
+      `${f} must compile user patterns with new RegExp(pattern, "iu")`,
+    );
+  }
 });
 
 test("prts_page keeps template render failures content-only", async () => {
