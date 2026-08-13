@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 ### Changed
 
 - Internal activation symbols (`withActivationSnapshot`/`checkActivationChange`/`registerActivationListener`) moved from `config.js` into a dedicated `activation.js` module — import them from `activation.js` instead of `config.js`. The MCP tool surface is unchanged (#162).
+- HTTP transport and release-discovery leaves extracted from `data/sync.ts` into a new `sync/` tier (`sync/transport.ts`, `sync/releaseDiscovery.ts`) — the repository's only HTTP-issuing layer. `data/sync.ts` re-exports them during the P2.A→P2.B migration, so existing `./sync.js` import paths keep working; the release/archive/pair state machine remains in `data/sync.ts` until P2.B. The MCP tool surface is unchanged.
 
 ### Fixed
 

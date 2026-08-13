@@ -18,10 +18,8 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Callable, Iterator, Literal
+from typing import Iterator, Literal
 from uuid import uuid4
-
-import httpx
 
 _logger = logging.getLogger(__name__)
 
@@ -44,73 +42,18 @@ GAMEDATA_FILES: tuple[str, ...] = (
 # remain readable during the migration to the self-built pipeline.
 DATA_CONTRACT_VERSION = "prts-mcp-data/v1"
 
-_GITHUB_UA = "PRTS-MCP-Bot/0.1 (Arknights fan-creation helper)"
-
-
-def _github_headers() -> dict[str, str]:
-    headers: dict[str, str] = {"User-Agent": _GITHUB_UA}
-    token = os.environ.get("GITHUB_TOKEN")
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
-    return headers
-
-
-def _parse_mirrors() -> list[str]:
-    """Parse GITHUB_MIRRORS env var into a list of proxy base URLs (trailing slash stripped).
-
-    Unset / empty → [] (direct only, no cascade)
-    "https://ghproxy.net" → ["https://ghproxy.net"]
-    "https://a.example,https://b.example" → ["https://a.example", "https://b.example"]
-
-    Mirror URL format (ghproxy-style): <mirror>/<original_url>
-    e.g. "https://ghproxy.net/https://raw.githubusercontent.com/..."
-    """
-    raw = os.environ.get("GITHUB_MIRRORS", "")
-    return [m.rstrip("/") for m in raw.split(",") if m.strip()]
-
-
-def _url_candidates(url: str) -> list[str]:
-    """Return [url, mirror1/url, mirror2/url, ...]."""
-    return [url] + [f"{m}/{url}" for m in _parse_mirrors()]
-
-
-class _AssetNotFoundError(Exception):
-    """Direct release URL returned 404 — asset confirmed absent.
-
-    Distinguished from a mirror 404 (mirror lacks the asset; the release
-    may still exist upstream) so manifest verification skips only on a
-    confirmed upstream 404 and stays fail-closed otherwise (#100).
-    """
-
-
-def _get_cascading(url: str, *, timeout: float, **kwargs: object) -> httpx.Response:
-    """httpx.get() wrapper that cascades through URL candidates on failure.
-
-    - HTTP 4xx from the direct URL propagates immediately (resource missing).
-    - Network error or HTTP 5xx from any candidate → try the next one.
-    """
-    candidates = _url_candidates(url)
-    last_exc: BaseException = RuntimeError("All URL candidates failed")
-    for i, candidate in enumerate(candidates):
-        try:
-            response = httpx.get(candidate, timeout=timeout, **kwargs)  # type: ignore[arg-type]
-            if response.is_success:
-                return response
-            # Direct 404 → asset confirmed absent; record the typed error and
-            # stop without trying mirrors. last_exc + break (not raise) so the
-            # typed error survives to the caller even with GITHUB_MIRRORS (#100).
-            if i == 0 and response.status_code == 404:
-                last_exc = _AssetNotFoundError(f"HTTP 404: {candidate}")
-                break
-            last_exc = Exception(f"HTTP {response.status_code}")
-            # Other direct 4xx → resource genuinely missing; mirrors cannot help.
-            if i == 0 and 400 <= response.status_code < 500:
-                break
-        except httpx.HTTPStatusError:
-            raise  # only reached for direct 4xx via raise_for_status(); propagate as-is
-        except Exception as exc:  # noqa: BLE001
-            last_exc = exc
-    raise last_exc
+# HTTP transport (mirrors / headers / cascading fetch) lives in the sync/
+# transport tier — the only layer allowed to issue HTTP. Re-imported here so
+# the state machine below and existing ``prts_mcp.data.sync.*`` references
+# keep resolving during the P2.A→P2.B migration.
+from prts_mcp.sync.transport import (  # noqa: F401  (re-exported to preserve the data/sync namespace)
+    _AssetNotFoundError,
+    _GITHUB_UA,
+    _get_cascading,
+    _github_headers,
+    _parse_mirrors,
+    _url_candidates,
+)
 
 
 # Skip the upstream SHA check if cached data is fresher than this many seconds.
@@ -220,75 +163,18 @@ def _cache_is_fresh(cache: CacheMeta) -> bool:
 # Release-based sync (for storyjson zip)
 # ---------------------------------------------------------------------------
 
-_TAG_PREFIX = "data-"
-
-
-# ---------------------------------------------------------------------------
-# Release discovery (tag-prefix filtered)
-#
-# The arknights-data-pipeline repo hosts both ``data-*`` and ``images-*``
-# GitHub Releases.  ``/releases/latest`` may point at an ``images-*`` release
-# if GitHub auto-promotes it, so data sync must filter by tag prefix instead.
-# (images_sync reuses these helpers for its own prefix filtering.)
-# ---------------------------------------------------------------------------
-
-
-def _list_releases(owner: str, repo: str, *, timeout: float = 10.0) -> list[dict] | None:
-    """List all non-draft releases. Returns None on any network/API failure."""
-    url = f"https://api.github.com/repos/{owner}/{repo}/releases?per_page=100"
-    try:
-        response = _get_cascading(url, timeout=timeout, headers=_github_headers())
-        data = response.json()
-        return data if isinstance(data, list) else None
-    except Exception:  # noqa: BLE001
-        return None
-
-
-def _latest_release_by_prefix(
-    releases: list[dict],
-    prefix: str,
-    *,
-    exclude_prefix: str | None = None,
-) -> dict | None:
-    """Pick the newest release whose tag starts with *prefix*.
-
-    Sorts by ``created_at`` (GitHub release creation timestamp) descending,
-    which is robust across baseline/delta tag formats.
-    """
-    candidates: list[dict] = []
-    for release in releases:
-        tag = release.get("tag_name")
-        if not isinstance(tag, str) or not tag.startswith(prefix):
-            continue
-        if exclude_prefix and tag.startswith(exclude_prefix):
-            continue
-        candidates.append(release)
-    if not candidates:
-        return None
-    candidates.sort(key=lambda r: str(r.get("created_at", "")), reverse=True)
-    return candidates[0]
-
-
-def _asset_url(release: dict, asset_name: str) -> str | None:
-    """Extract the ``browser_download_url`` for *asset_name* from a release dict."""
-    for asset in release.get("assets", []):
-        if isinstance(asset, dict) and asset.get("name") == asset_name:
-            url = asset.get("browser_download_url")
-            if isinstance(url, str):
-                return url
-    return None
-
-
-@dataclass(frozen=True)
-class ReleaseSpec:
-    """Describes a GitHub Release asset to download as a local zip."""
-
-    owner: str
-    repo: str
-    asset_name: str   # e.g. "zh_CN.zip"
-    local_zip: Path   # destination path on disk
-    validate_zip: Callable[[Path], list[str]] | None = None
-    verify_manifest: bool = False
+# Release discovery (tag-prefix-filtered list / latest / asset_url /
+# check_latest) + the ReleaseSpec type live in the sync/release_discovery
+# tier. Re-imported here so the state machine below and existing
+# ``prts_mcp.data.sync.*`` references keep resolving during P2.A→P2.B.
+from prts_mcp.sync.release_discovery import (  # noqa: F401  (re-exported to preserve the data/sync namespace)
+    ReleaseSpec,
+    _TAG_PREFIX,
+    _asset_url,
+    _latest_release_by_prefix,
+    _list_releases,
+    check_latest_release,
+)
 
 
 @dataclass(frozen=True)
@@ -310,29 +196,6 @@ def _release_cache_path(spec: ReleaseSpec) -> Path:
 
 def _release_cache_is_fresh(cache: CacheMeta) -> bool:
     return _cache_is_fresh(cache)
-
-
-def check_latest_release(spec: ReleaseSpec, timeout: float = 10.0) -> tuple[str, str] | None:
-    """Return ``(tag_name, asset_download_url)`` for the latest ``data-*`` release.
-
-    Uses the releases list API with tag-prefix filtering instead of
-    ``/releases/latest``, because the data-pipeline repo also hosts
-    ``images-*`` releases that may be promoted to "Latest" on GitHub.
-    Returns ``None`` on network failure or when no matching release/asset is found.
-    """
-    releases = _list_releases(spec.owner, spec.repo, timeout=timeout)
-    if releases is None:
-        return None
-    latest = _latest_release_by_prefix(releases, _TAG_PREFIX)
-    if latest is None:
-        _logger.debug("No release with prefix %s in %s/%s", _TAG_PREFIX, spec.owner, spec.repo)
-        return None
-    tag = latest["tag_name"]
-    url = _asset_url(latest, spec.asset_name)
-    if url is None:
-        _logger.debug("Asset %s not found in release %s", spec.asset_name, tag)
-        return None
-    return tag, url
 
 
 def download_release_asset(spec: ReleaseSpec, tag: str, url: str, timeout: float = 120.0) -> None:

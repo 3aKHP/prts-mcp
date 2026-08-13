@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 ### Changed
 
 - Internal activation and cache-instrumentation symbols moved out of `prts_mcp.config` into dedicated modules — a visible import-path change for anyone importing these internals from `prts_mcp.config`: `activation_aware_cache`/`cache_stat` → `prts_mcp.cache_stats`; `activation_snapshot`/`check_activation_change`/`register_activation_listener` → `prts_mcp.activation`. The MCP tool surface (names/params/output) is unchanged (#162).
+- HTTP transport and release-discovery leaves extracted from `prts_mcp.data.sync` into a new `prts_mcp.sync` tier (`sync.transport`, `sync.release_discovery`) — the repository's only HTTP-issuing layer. `data/sync` re-exports them during the P2.A→P2.B migration, so existing `prts_mcp.data.sync.*` import paths keep working; the release/archive/pair state machine remains in `data/sync` until P2.B. `check_latest_release` log lines now originate from `prts_mcp.sync.release_discovery`. The MCP tool surface is unchanged.
 
 ### Fixed
 
