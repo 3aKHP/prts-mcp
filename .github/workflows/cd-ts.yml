@@ -216,31 +216,17 @@ jobs:
         run: |
           TARBALL=$(find . -maxdepth 1 -name 'prts-mcp-ts-*.tgz' -type f -print -quit)
           test -n "$TARBALL"
-          npm publish "$TARBALL" --provenance --access public --tag "${{ steps.dist_tag.outputs.value }}"
-        working-directory: ts
-
-      - name: Verify npm published bytes
-        working-directory: ts
-        run: |
-          TARBALL=$(find . -maxdepth 1 -name 'prts-mcp-ts-*.tgz' -type f -print -quit)
-          EXPECTED=$(sha256sum "$TARBALL" | awk '{print $1}')
           VERSION="${GITHUB_REF_NAME#ts/v}"
-          TMP=$(mktemp)
-          trap 'rm -f "$TMP"' EXIT
-          for attempt in $(seq 1 18); do
-            URL=$(npm view "prts-mcp-ts@${VERSION}" dist.tarball 2>/dev/null || true)
-            if [ -n "$URL" ] && curl -fsSL "$URL" -o "$TMP"; then
-              ACTUAL=$(sha256sum "$TMP" | awk '{print $1}')
-              if [ "$ACTUAL" = "$EXPECTED" ]; then
-                echo "npm tarball SHA-256 verified: $ACTUAL"
-                exit 0
-              fi
-            fi
-            echo "Waiting for npm tarball propagation (attempt $attempt/18)..."
-            sleep 10
-          done
-          echo "::error::Published npm tarball bytes differ from the exact release artifact"
-          exit 1
+          # Idempotent: re-running this job (a full rerun, not just --failed)
+          # must not re-attempt publishing an immutable version that already
+          # landed. npm publish on an existing version fails with
+          # EPUBLISHCONFLICT; skip instead and let verification confirm bytes.
+          if npm view "prts-mcp-ts@${VERSION}" version >/dev/null 2>&1; then
+            echo "prts-mcp-ts@${VERSION} already published; skipping npm publish."
+          else
+            npm publish "$TARBALL" --provenance --access public --tag "${{ steps.dist_tag.outputs.value }}"
+          fi
+        working-directory: ts
 
   github-release:
     runs-on: ubuntu-latest
@@ -267,6 +253,72 @@ jobs:
         with:
           name: ts-release-package
           path: ts
+
+      - name: Verify npm published bytes
+        # Lives in github-release (not publish-npm) so a propagation timeout
+        # fails this job alone: re-run with `gh run rerun <run-id> --failed`
+        # re-verifies the now-propagated immutable tarball and creates the
+        # release without re-attempting npm publish. See
+        # docs/admin/release-cd-recovery.md.
+        working-directory: ts
+        run: |
+          TARBALL=$(find . -maxdepth 1 -name 'prts-mcp-ts-*.tgz' -type f -print -quit)
+          test -n "$TARBALL"
+          EXPECTED=$(sha256sum "$TARBALL" | awk '{print $1}')
+          VERSION="${GITHUB_REF_NAME#ts/v}"
+          TMP=$(mktemp); META=$(mktemp)
+          trap 'rm -f "$TMP" "$META"' EXIT
+
+          # 40 x 15s ~= 10 min, ~2.5x the observed ~4 min npm propagation.
+          ATTEMPTS=40
+          SLEEP=15
+          LAST_HTTP="000"
+          URL=""
+
+          for attempt in $(seq 1 "$ATTEMPTS"); do
+            TS=$(date +%s)
+            URL=""; SHASUM=""; INTEGRITY=""
+            # Cache-bust the per-version packument so a stale CDN 404 cannot
+            # mask a publish that already landed on the registry. ?ts= is
+            # ignored by the registry as an unknown query param.
+            if curl -fsSL "https://registry.npmjs.org/prts-mcp-ts/${VERSION}?ts=${TS}" -o "$META" 2>/dev/null; then
+              read -r URL SHASUM INTEGRITY < <(node -e 'const m=JSON.parse(require("fs").readFileSync(0,"utf8"));const d=m.dist||{};console.log(d.tarball||"",d.shasum||"",d.integrity||"")' < "$META") || true
+            fi
+
+            if [ -n "$URL" ]; then
+              # No -f: capture the HTTP status so the terminal error can tell
+              # 404 (not propagated) from 500. A 404 writes no body, so the
+              # 80 MB tarball is only fetched on a real 200.
+              HTTP=$(curl -sSL -o "$TMP" -w '%{http_code}' "${URL}?ts=${TS}" || true)
+              LAST_HTTP="$HTTP"
+              if [ "$HTTP" = "200" ]; then
+                ACTUAL=$(sha256sum "$TMP" | awk '{print $1}')
+                if [ "$ACTUAL" = "$EXPECTED" ]; then
+                  echo "npm tarball SHA-256 verified: $ACTUAL"
+                  exit 0
+                fi
+                # npm versions are immutable post-publish: a retrievable byte
+                # mismatch is permanent, so fail fast instead of redownloading.
+                echo "::error::prts-mcp-ts@${VERSION} tarball is retrievable but its bytes differ from the exact release artifact."
+                echo "::error::expected sha256 (local artifact): ${EXPECTED}"
+                echo "::error::actual sha256   (registry tarball): ${ACTUAL}"
+                echo "::error::registry dist.shasum: ${SHASUM}"
+                echo "::error::registry dist.integrity: ${INTEGRITY}"
+                echo "::error::Do NOT create the GitHub Release; investigate first."
+                exit 1
+              fi
+            fi
+            echo "Waiting for npm tarball propagation (attempt ${attempt}/${ATTEMPTS}, last HTTP ${LAST_HTTP})..."
+            sleep "$SLEEP"
+          done
+
+          echo "::error::npm publish succeeded but the tarball was not retrievable after ${ATTEMPTS} attempts (~$((ATTEMPTS*SLEEP/60)) min); last tarball HTTP status ${LAST_HTTP}."
+          echo "::error::This is a registry propagation delay, not a byte mismatch."
+          echo "::error::expected sha256: ${EXPECTED}"
+          echo "::error::tarball URL: ${URL:-<version document not visible yet>}"
+          echo "::error::Recovery: wait for propagation, then re-run this github-release job (gh run rerun <run-id> --failed), or verify manually:"
+          echo "::error::  curl -fsSL \"${URL:-<url>}?ts=\$(date +%s)\" | sha256sum"
+          exit 1
 
       - name: Extract version from tag
         id: version

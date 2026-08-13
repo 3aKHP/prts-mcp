@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Fixed
+
+- **npm tarball verification tolerates propagation delay (#156).** The TypeScript CD `Verify npm published bytes` step now cache-busts the registry/CDN URL, retries for ~10 min, distinguishes a propagation timeout from a real byte mismatch, and fails fast on a permanent mismatch. The step moved from `publish-npm` into `github-release` so a propagation timeout no longer skips release creation (recover with `gh run rerun <run-id> --failed`); `npm publish` is skipped if the version already exists, making job re-runs safe.
+
 ## [2.6.1] - 2026-08-10
 
 ### Fixed
