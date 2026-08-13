@@ -128,7 +128,7 @@ def _run_startup_sync(*, force_check: bool = False) -> None:
     in that case the user is managing their own data and we must not
     overwrite it.
     """
-    from prts_mcp.config import Config, _DEFAULT_GAMEDATA_PATH
+    from prts_mcp.config import Config, DEFAULT_GAMEDATA_PATH
     from prts_mcp.data.datasets import GAMEDATA_EXCEL, GAMEDATA_LEVELS, STORY_ZH_CN
     from prts_mcp.data.sync import sync_release, sync_release_archive_pair
 
@@ -140,8 +140,8 @@ def _run_startup_sync(*, force_check: bool = False) -> None:
         )
     else:
         archive_spec = GAMEDATA_EXCEL.archive_spec(
-            local_zip=_DEFAULT_GAMEDATA_PATH / "archives" / "zh_CN-excel.zip",
-            local_root=_DEFAULT_GAMEDATA_PATH,
+            local_zip=DEFAULT_GAMEDATA_PATH / "archives" / "zh_CN-excel.zip",
+            local_root=DEFAULT_GAMEDATA_PATH,
         )
         levels_spec = GAMEDATA_LEVELS.archive_spec(
             local_zip=cfg.levels_path / "archives" / "zh_CN-levels.zip",

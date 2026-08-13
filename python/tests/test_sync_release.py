@@ -15,7 +15,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-import prts_mcp.config as config_module
+import prts_mcp.activation as activation_module
 from prts_mcp.data.sync import (
     ReleaseSpec,
     ReleaseArchiveSpec,
@@ -498,23 +498,23 @@ class TestSyncReleaseArchive:
 
         with (
             patch.dict(os.environ, {"GAMEDATA_PATH": str(excel_spec.local_root)}),
-            patch.object(config_module, "_activation_signature", None),
-            patch.object(config_module, "_activation_listeners", []),
+            patch.object(activation_module, "_activation_signature", None),
+            patch.object(activation_module, "_activation_listeners", []),
         ):
             first = sync_release_archive_pair(excel_spec, levels_spec)
             assert [result.status for result in first] == ["up_to_date", "up_to_date"]
-            config_module.check_activation_change()
+            activation_module.check_activation_change()
             clears = 0
 
             def record_clear() -> None:
                 nonlocal clears
                 clears += 1
 
-            config_module.register_activation_listener(record_clear)
+            activation_module.register_activation_listener(record_clear)
             before = pair_path.stat()
             second = sync_release_archive_pair(excel_spec, levels_spec)
             after = pair_path.stat()
-            config_module.check_activation_change()
+            activation_module.check_activation_change()
 
             assert [result.status for result in second] == ["up_to_date", "up_to_date"]
             assert (after.st_ino, after.st_mtime_ns, after.st_ctime_ns) == (
@@ -527,7 +527,7 @@ class TestSyncReleaseArchive:
             self._activate_pair_generation(excel_spec, levels_spec, "next")
             sync_release_archive_pair(excel_spec, levels_spec)
             changed = pair_path.stat()
-            config_module.check_activation_change()
+            activation_module.check_activation_change()
 
             assert json.loads(pair_path.read_text(encoding="utf-8"))["commit_sha"] == "next"
             assert changed.st_ino != after.st_ino

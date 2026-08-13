@@ -17,6 +17,11 @@ import { dirname, join } from "node:path";
 import { createHash } from "node:crypto";
 import AdmZip from "adm-zip";
 import {
+  __resetActivationForTesting,
+  checkActivationChange,
+  registerActivationListener,
+} from "../src/activation.js";
+import {
   syncRelease,
   downloadReleaseAsset,
   syncReleaseArchive,
@@ -230,17 +235,17 @@ test("pair manifest is stable until the generation changes", async () => {
   const pairPath = join(root, ".gamedata_pair.json");
   process.env["GAMEDATA_PATH"] = specs[0].localRoot;
   try {
-    const config = await import(`../src/config.ts?pairStability=${Date.now()}-${Math.random()}`);
+    __resetActivationForTesting();
     const first = await syncReleaseArchivePair(...specs);
     assert.deepEqual(first.map((result) => result.status), ["up_to_date", "up_to_date"]);
-    config.checkActivationChange();
+    checkActivationChange();
     let clears = 0;
-    config.registerActivationListener(() => { clears += 1; });
+    registerActivationListener(() => { clears += 1; });
     const before = statSync(pairPath);
 
     const second = await syncReleaseArchivePair(...specs);
     const after = statSync(pairPath);
-    config.checkActivationChange();
+    checkActivationChange();
 
     assert.deepEqual(second.map((result) => result.status), ["up_to_date", "up_to_date"]);
     assert.deepEqual(
@@ -252,7 +257,7 @@ test("pair manifest is stable until the generation changes", async () => {
     activatePairGeneration(specs, "next");
     await syncReleaseArchivePair(...specs);
     const changed = statSync(pairPath);
-    config.checkActivationChange();
+    checkActivationChange();
 
     assert.equal(JSON.parse(readFileSync(pairPath, "utf-8")).commit_sha, "next");
     assert.notEqual(changed.ino, after.ino);

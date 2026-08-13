@@ -12,13 +12,14 @@ from typing import Annotated, Literal, Mapping
 
 from pydantic import Field
 
+from prts_mcp.activation import activation_snapshot
 from prts_mcp.api.prts_wiki import (
     download_image_safe as _download_image_safe,
     get_imageinfo as _get_imageinfo,
     get_template_data as _get_template_data,
     list_allimages as _list_allimages,
 )
-from prts_mcp.config import Config, activation_snapshot
+from prts_mcp.config import Config
 from prts_mcp.data.images import (
     DEFAULT_VARIANT,
     load_char_skins,

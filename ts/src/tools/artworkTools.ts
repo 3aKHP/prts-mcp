@@ -10,7 +10,8 @@ import type { CallToolResult, McpServer } from "@modelcontextprotocol/server";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { z } from "zod";
-import { loadConfig, withActivationSnapshot, type Config } from "../config.js";
+import { withActivationSnapshot } from "../activation.js";
+import { loadConfig, type Config } from "../config.js";
 import {
   buildArtworkLabel,
   getCharSkins,

@@ -1,98 +1,14 @@
 from __future__ import annotations
 
-import inspect
 import json
-import logging
 import os
-import threading
 from dataclasses import dataclass, field
-from contextvars import ContextVar
-from functools import lru_cache, wraps
 from pathlib import Path
-from typing import Any, Callable
-
-_logger = logging.getLogger(__name__)
-_activation_lock = threading.RLock()
-_activation_signature: tuple[object, ...] | None = None
-_activation_listeners: list[Callable[[], None]] = []
-_activation_snapshot: ContextVar[tuple[Any, tuple[object, ...]] | None] = (
-    ContextVar("prts_activation_snapshot", default=None)
-)
-
-
-def register_activation_listener(listener: Callable[[], None]) -> None:
-    """Register a cache invalidator for activated GameData generation changes."""
-    with _activation_lock:
-        if listener not in _activation_listeners:
-            _activation_listeners.append(listener)
-
-
-def _activation_meta_token(root: Path) -> tuple[object, ...]:
-    return _activation_path_token(root / "archives" / "extract_meta.json")
-
-
-def _activation_path_token(path: Path) -> tuple[object, ...]:
-    try:
-        info = path.stat()
-        return (
-            str(path),
-            info.st_ino,
-            info.st_size,
-            info.st_mtime_ns,
-            info.st_ctime_ns,
-        )
-    except OSError:
-        return (str(path), None)
-
-
-def check_activation_change() -> None:
-    """Invalidate GameData caches when either activation pointer is replaced."""
-    global _activation_signature
-
-    if _activation_snapshot.get() is not None:
-        return
-
-    custom = "GAMEDATA_PATH" in os.environ
-    gamedata = Path(os.environ["GAMEDATA_PATH"]) if custom else _DEFAULT_GAMEDATA_PATH
-    levels = _resolve_levels_path(gamedata)
-    signature = (
-        _activation_path_token(_gamedata_pair_path(gamedata, levels))
-        + _activation_meta_token(gamedata)
-        + _activation_meta_token(levels)
-    )
-    with _activation_lock:
-        previous = _activation_signature
-        _activation_signature = signature
-        if previous is None or previous == signature:
-            return
-        for listener in tuple(_activation_listeners):
-            try:
-                listener()
-            except Exception:  # noqa: BLE001
-                _logger.exception("Failed to invalidate a GameData cache")
-
-
-def _current_activation_signature() -> tuple[object, ...]:
-    snapshot = _activation_snapshot.get()
-    if snapshot is not None:
-        return snapshot[1]
-    check_activation_change()
-    with _activation_lock:
-        return _activation_signature or ()
-
-
-def _load_activation_snapshot() -> tuple[Config, tuple[object, ...]]:
-    while True:
-        before = _current_activation_signature()
-        config = Config.load()
-        after = _current_activation_signature()
-        if before == after:
-            return config, after
 
 # ---------------------------------------------------------------------------
 # Path design (two separate roots, never mixed up)
 #
-# _DEFAULT_GAMEDATA_PATH — where auto-sync writes data at runtime.
+# DEFAULT_GAMEDATA_PATH — where auto-sync writes data at runtime.
 #   Priority (highest to lowest):
 #   1. GAMEDATA_PATH env var  — set by user when mounting a custom volume;
 #                               auto-sync is DISABLED in this case.
@@ -153,13 +69,13 @@ def _resolve_default_gamedata_path() -> Path:
     return base / "prts-mcp" / "gamedata"
 
 
-_DEFAULT_GAMEDATA_PATH = _resolve_default_gamedata_path()
+DEFAULT_GAMEDATA_PATH = _resolve_default_gamedata_path()
 
 # storyjson zip alongside gamedata in the user data directory.
-_DEFAULT_STORYJSON_ZIP = _DEFAULT_GAMEDATA_PATH.parent / "storyjson" / "zh_CN.zip"
+_DEFAULT_STORYJSON_ZIP = DEFAULT_GAMEDATA_PATH.parent / "storyjson" / "zh_CN.zip"
 
 # Image artwork assets (2.5.0) sit alongside gamedata under the data root.
-_DEFAULT_IMAGES_PATH = _DEFAULT_GAMEDATA_PATH.parent / "images"
+_DEFAULT_IMAGES_PATH = DEFAULT_GAMEDATA_PATH.parent / "images"
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -191,7 +107,7 @@ def _activated_root(root: Path) -> Path:
     return root
 
 
-def _gamedata_pair_path(gamedata_root: Path, levels_root: Path) -> Path:
+def gamedata_pair_path(gamedata_root: Path, levels_root: Path) -> Path:
     gamedata_parent = gamedata_root.resolve().parent
     levels_parent = levels_root.resolve().parent
     if gamedata_parent != levels_parent:
@@ -205,7 +121,7 @@ def _activated_pair(
 ) -> tuple[Path, Path] | None:
     try:
         value = json.loads(
-            _gamedata_pair_path(gamedata_root, levels_root).read_text(
+            gamedata_pair_path(gamedata_root, levels_root).read_text(
                 encoding="utf-8"
             )
         )
@@ -234,7 +150,7 @@ def _levels_path(gamedata_root: Path) -> Path:
     return gamedata_root.parent / "gamedata-levels"
 
 
-def _resolve_levels_path(gamedata_root: Path) -> Path:
+def resolve_levels_path(gamedata_root: Path) -> Path:
     if "GAMEDATA_PATH" in os.environ and _levels_complete(gamedata_root):
         return gamedata_root
     if "GAMEDATA_PATH" in os.environ:
@@ -276,7 +192,7 @@ class Config:
         ep = _excel_path(self.gamedata_path)
         object.__setattr__(self, "excel_path", ep)
 
-        lp = _resolve_levels_path(self.gamedata_path)
+        lp = resolve_levels_path(self.gamedata_path)
         object.__setattr__(self, "levels_path", lp)
         active_pair = _activated_pair(self.gamedata_path, lp)
         active_gamedata_root = (
@@ -360,12 +276,14 @@ class Config:
 
     @classmethod
     def load(cls) -> Config:
-        snapshot = _activation_snapshot.get()
-        if snapshot is not None:
-            return snapshot[0]
-        check_activation_change()
+        from prts_mcp import activation
+
+        pinned = activation.peek_pinned_config()
+        if pinned is not None:
+            return pinned
+        activation.check_activation_change()
         custom = "GAMEDATA_PATH" in os.environ
-        gamedata = Path(os.environ["GAMEDATA_PATH"]) if custom else _DEFAULT_GAMEDATA_PATH
+        gamedata = Path(os.environ["GAMEDATA_PATH"]) if custom else DEFAULT_GAMEDATA_PATH
         storyjson_zip = (
             Path(os.environ["STORYJSON_PATH"])
             if "STORYJSON_PATH" in os.environ
@@ -387,87 +305,3 @@ class Config:
             images_path=images_path,
         )
         return config
-
-
-def activation_snapshot(func: Callable[..., Any]) -> Callable[..., Any]:
-    """Keep one activated generation stable for a complete tool invocation."""
-    if inspect.iscoroutinefunction(func):
-        @wraps(func)
-        async def async_wrapped(*args: Any, **kwargs: Any) -> Any:
-            if _activation_snapshot.get() is not None:
-                return await func(*args, **kwargs)
-            config, generation = _load_activation_snapshot()
-            token = _activation_snapshot.set((config, generation))
-            try:
-                return await func(*args, **kwargs)
-            finally:
-                _activation_snapshot.reset(token)
-
-        return async_wrapped
-
-    @wraps(func)
-    def wrapped(*args: Any, **kwargs: Any) -> Any:
-        if _activation_snapshot.get() is not None:
-            return func(*args, **kwargs)
-        config, generation = _load_activation_snapshot()
-        token = _activation_snapshot.set((config, generation))
-        try:
-            return func(*args, **kwargs)
-        finally:
-            _activation_snapshot.reset(token)
-
-    return wrapped
-
-
-def activation_aware_cache(maxsize: int = 1) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
-    """Cache GameData reads while checking the active generation on every access."""
-    def decorate(func: Callable[..., Any]) -> Callable[..., Any]:
-        @lru_cache(maxsize=maxsize)
-        def cached(
-            _generation: tuple[object, ...],
-            *args: Any,
-            **kwargs: Any,
-        ) -> Any:
-            return func(*args, **kwargs)
-
-        @wraps(func)
-        def wrapped(*args: Any, **kwargs: Any) -> Any:
-            generation = _current_activation_signature()
-            return cached(generation, *args, **kwargs)
-
-        wrapped.cache_clear = cached.cache_clear  # type: ignore[attr-defined]
-        wrapped.cache_info = cached.cache_info  # type: ignore[attr-defined]
-        return wrapped
-
-    return decorate
-
-
-def cache_stat(
-    cached_func: Callable[..., Any],
-    count_fn: Callable[[Any], int] | None = None,
-) -> dict[str, Any]:
-    """Best-effort ``{loaded, count}`` for an activation_aware_cache function.
-
-    Uses ``cache_info().currsize`` to determine whether the cache is populated.
-    When populated, calling the function hits the lru_cache in steady state so
-    ``len(result)`` (or *count_fn*) gives the record count.  If the activation
-    signature changed between the check and the call, the try/except catches
-    any reload failure.
-
-    *count_fn* overrides the default ``len()`` for caches whose top-level
-    structure is nested (e.g. a JSON wrapper whose record count lives in a
-    sub-dict).
-    """
-    info = cached_func.cache_info()
-    if info.currsize == 0:
-        return {"loaded": False, "count": 0}
-    try:
-        result = cached_func()
-        if result is None:
-            return {"loaded": False, "count": 0}
-        if count_fn is not None:
-            return {"loaded": True, "count": count_fn(result)}
-        return {"loaded": True, "count": len(result) if hasattr(result, "__len__") else 1}
-    except Exception:  # noqa: BLE001
-        _logger.debug("cache_stat: failed to read cached value", exc_info=True)
-        return {"loaded": False, "count": 0}

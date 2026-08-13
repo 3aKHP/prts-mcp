@@ -6,12 +6,8 @@
  * lazily on first call and cached in module-level variables.
  */
 
-import {
-  checkActivationChange,
-  hasOperatorData,
-  loadConfig,
-  registerActivationListener,
-} from "../config.js";
+import { checkActivationChange, registerActivationListener } from "../activation.js";
+import { hasOperatorData, loadConfig } from "../config.js";
 import { DirectoryStore } from "./stores.js";
 import { stripWikitext } from "../utils/sanitizer.js";
 import { clearSearchCaches } from "./search.js";

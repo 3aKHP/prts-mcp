@@ -1,4 +1,5 @@
-import { checkActivationChange, loadConfig, registerActivationListener } from "../config.js";
+import { checkActivationChange, registerActivationListener } from "../activation.js";
+import { loadConfig } from "../config.js";
 import { DirectoryStore } from "./stores.js";
 import { getItemNameById } from "./item.js";
 import { CacheMetrics } from "./cacheMetrics.js";
