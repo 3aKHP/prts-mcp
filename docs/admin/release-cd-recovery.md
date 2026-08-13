@@ -58,12 +58,13 @@ curl -fsSL "$(npm view prts-mcp-ts@${VERSION} dist.tarball)?ts=$(date +%s)" | sh
 
 - **"PyPI JSON not visible … propagation delay"** → PyPI 尚未完成索引，按主恢复路径重跑。
 - **"sha256 mismatch"** → 本地制品与 PyPI 已记录的 digest 不符，通常是全量重跑后本地漂移（PyPI 文件不可变，已发布的才是正确内容）。恢复：以 PyPI 上的文件重建 release，或对**最初发布该版本的 run** 做 `--failed`。
+- **"local artifact(s) not present in PyPI JSON" / "PyPI JSON lists file(s) absent from local dist"** → 本地与 PyPI 的文件集合不一致（同样是全量重跑后本地漂移的典型表现）。已发布的 PyPI 文件才是正确内容；以 PyPI 文件重建 release，或对最初发布的 run 做 `--failed`。
 
-手动回退：
+手动回退（`VERSION` 用 PEP 440 形式：预发布写成 `2.7.0a1` 而非 git tag `2.7.0-alpha.1`——脚本会自动归一化）：
 
 ```bash
-VERSION=2.6.2
-curl -fsSL "https://pypi.org/pypi/prts-mcp/${VERSION}/json" | jq -r '.urls[] | "\(.filename)  \(.digests.sha256)"'
+VERSION=2.6.2   # 预发布示例：2.7.0a1
+python3 -c "import json,urllib.request as u; d=json.load(u.urlopen('https://pypi.org/pypi/prts-mcp/$VERSION/json')); [print(x['filename'], x['digests']['sha256']) for x in d['urls']]"
 # 与本地 python/dist/*.whl、*.tar.gz 的 sha256sum 比对
 ```
 

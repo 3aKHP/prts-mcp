@@ -118,8 +118,7 @@ def main() -> int:
             err(f"{name} {version}: sha256 mismatch for {fn}")
             err(f"  local (built):        {got}")
             err(f"  PyPI digests.sha256:  {want}")
-        if mismatches:
-            err("Recovery: the published files are the verified content; re-run the ORIGINAL run that published this version with `gh run rerun <run-id> --failed`, or rebuild the GitHub Release from the PyPI assets. A mismatch usually means the local dist drifted on a full rerun.")
+        err("Recovery: the published PyPI files are the verified content; re-run the ORIGINAL run that published this version with `gh run rerun <run-id> --failed`, or rebuild the GitHub Release from the PyPI assets. A difference here usually means the local dist drifted on a full rerun.")
         return 1
 
     err(f"{name} {version}: PyPI JSON not visible after {attempts} attempts (~{attempts*sleep//60} min); last HTTP {last}.")

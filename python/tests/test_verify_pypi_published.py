@@ -134,6 +134,46 @@ def test_propagation_then_ok(pypi, tmp_path):
     assert "PyPI digests verified" in r.stdout
 
 
+def test_missing_on_pypi(pypi, tmp_path):
+    # local has a file PyPI's JSON omits -> fail-fast, not propagation delay
+    dist = _write_dist(tmp_path, {WHL: GOOD_WHL, SDIST: GOOD_SDIST})
+    scenario["digests"] = {WHL: hashlib.sha256(GOOD_WHL).hexdigest()}  # sdist missing
+    r = _run(dist, pypi)
+    assert r.returncode == 1
+    assert "not present in PyPI JSON" in r.stdout
+    assert SDIST in r.stdout
+    assert "propagation delay" not in r.stdout
+
+
+def test_extra_on_pypi(pypi, tmp_path):
+    # PyPI JSON lists a file absent from local dist -> fail-fast
+    extra = "prts_mcp-9.9.9-other.tar.gz"
+    dist = _write_dist(tmp_path, {WHL: GOOD_WHL, SDIST: GOOD_SDIST})
+    scenario["digests"] = {
+        WHL: hashlib.sha256(GOOD_WHL).hexdigest(),
+        SDIST: hashlib.sha256(GOOD_SDIST).hexdigest(),
+        extra: hashlib.sha256(b"an extra file on pypi").hexdigest(),
+    }
+    r = _run(dist, pypi)
+    assert r.returncode == 1
+    assert "absent from local dist" in r.stdout
+    assert extra in r.stdout
+
+
+def test_propagation_timeout(pypi, tmp_path):
+    # PyPI JSON never becomes visible -> timeout, classified as propagation delay
+    dist = _write_dist(tmp_path, {WHL: GOOD_WHL, SDIST: GOOD_SDIST})
+    scenario["first_404"] = 99  # always 404
+    scenario["digests"] = {
+        WHL: hashlib.sha256(GOOD_WHL).hexdigest(),
+        SDIST: hashlib.sha256(GOOD_SDIST).hexdigest(),
+    }
+    r = _run(dist, pypi)
+    assert r.returncode == 1
+    assert "PyPI JSON not visible" in r.stdout
+    assert "propagation delay" in r.stdout
+
+
 def test_normalize_version():
     sys.path.insert(0, str(SCRIPT.parent))
     from verify_pypi_published import normalize_version

@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Added
+
+- **PyPI artifact verification in CD (#157).** The Python CD `github-release` job now verifies the published wheel and sdist sha256 against the digests PyPI recorded at upload (via the PyPI JSON API), polling through indexing delay, before creating the GitHub Release. Parity with the TypeScript npm-tarball verification added in #156.
+
 ## [2.6.1] - 2026-08-10
 
 ### Fixed
