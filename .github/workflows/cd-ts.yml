@@ -286,33 +286,41 @@ jobs:
             fi
 
             if [ -n "$URL" ]; then
-              # No -f: capture the HTTP status so the terminal error can tell
-              # 404 (not propagated) from 500. A 404 writes no body, so the
-              # 80 MB tarball is only fetched on a real 200.
-              HTTP=$(curl -sSL -o "$TMP" -w '%{http_code}' "${URL}?ts=${TS}" || true)
-              LAST_HTTP="$HTTP"
-              if [ "$HTTP" = "200" ]; then
-                ACTUAL=$(sha256sum "$TMP" | awk '{print $1}')
-                if [ "$ACTUAL" = "$EXPECTED" ]; then
-                  echo "npm tarball SHA-256 verified: $ACTUAL"
-                  exit 0
+              # Fetch without -f so %{http_code} is captured even on 4xx/5xx.
+              # The body is only hashed when curl exited 0 (no interrupted
+              # transfer) AND the status is 200; any other case is treated as
+              # transient and retried, so a partial download is not misread
+              # as a permanent byte mismatch. A non-200 carries only a small
+              # error payload, not the 80 MB tarball.
+              if HTTP=$(curl -sSL -o "$TMP" -w '%{http_code}' "${URL}?ts=${TS}" 2>/dev/null); then
+                LAST_HTTP="$HTTP"
+                if [ "$HTTP" = "200" ]; then
+                  ACTUAL=$(sha256sum "$TMP" | awk '{print $1}')
+                  if [ "$ACTUAL" = "$EXPECTED" ]; then
+                    echo "npm tarball SHA-256 verified: $ACTUAL"
+                    exit 0
+                  fi
+                  # npm versions are immutable post-publish: a retrievable byte
+                  # mismatch is permanent, so fail fast instead of redownloading.
+                  echo "::error::prts-mcp-ts@${VERSION} tarball is retrievable but its bytes differ from the exact release artifact."
+                  echo "::error::expected sha256 (local artifact): ${EXPECTED}"
+                  echo "::error::actual sha256   (registry tarball): ${ACTUAL}"
+                  echo "::error::registry dist.shasum: ${SHASUM}"
+                  echo "::error::registry dist.integrity: ${INTEGRITY}"
+                  echo "::error::Do NOT create the GitHub Release; investigate first."
+                  exit 1
                 fi
-                # npm versions are immutable post-publish: a retrievable byte
-                # mismatch is permanent, so fail fast instead of redownloading.
-                echo "::error::prts-mcp-ts@${VERSION} tarball is retrievable but its bytes differ from the exact release artifact."
-                echo "::error::expected sha256 (local artifact): ${EXPECTED}"
-                echo "::error::actual sha256   (registry tarball): ${ACTUAL}"
-                echo "::error::registry dist.shasum: ${SHASUM}"
-                echo "::error::registry dist.integrity: ${INTEGRITY}"
-                echo "::error::Do NOT create the GitHub Release; investigate first."
-                exit 1
+              else
+                # curl non-zero: connection failure or interrupted transfer
+                # (e.g. partial body). Retry on the next iteration.
+                LAST_HTTP="${HTTP:-000}"
               fi
             fi
             echo "Waiting for npm tarball propagation (attempt ${attempt}/${ATTEMPTS}, last HTTP ${LAST_HTTP})..."
             sleep "$SLEEP"
           done
 
-          echo "::error::npm publish succeeded but the tarball was not retrievable after ${ATTEMPTS} attempts (~$((ATTEMPTS*SLEEP/60)) min); last tarball HTTP status ${LAST_HTTP}."
+          echo "::error::prts-mcp-ts@${VERSION} is published but the tarball was not retrievable after ${ATTEMPTS} attempts (~$((ATTEMPTS*SLEEP/60)) min); last tarball HTTP status ${LAST_HTTP}."
           echo "::error::This is a registry propagation delay, not a byte mismatch."
           echo "::error::expected sha256: ${EXPECTED}"
           echo "::error::tarball URL: ${URL:-<version document not visible yet>}"
