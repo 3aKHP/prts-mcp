@@ -31,6 +31,8 @@ import { homedir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { checkActivationChange, peekPinnedConfig } from "./activation.js";
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
@@ -39,53 +41,6 @@ export const PRTS_API_ENDPOINT = "https://prts.wiki/api.php";
 export const USER_AGENT = "PRTS-MCP-Bot/0.1 (Arknights fan-creation helper)";
 /** Minimum seconds between PRTS API requests. */
 export const RATE_LIMIT_INTERVAL = 1.5;
-
-const activationListeners = new Set<() => void>();
-let activationSignature: string | null = null;
-let activationSnapshot: { config: Config; signature: string } | null = null;
-
-/** Register a cache invalidator for activated GameData generation changes. */
-export function registerActivationListener(listener: () => void): void {
-  activationListeners.add(listener);
-}
-
-function activationMetaToken(root: string): readonly unknown[] {
-  return activationPathToken(join(root, "archives", "extract_meta.json"));
-}
-
-function activationPathToken(path: string): readonly unknown[] {
-  try {
-    const info = statSync(path);
-    return [path, info.ino, info.size, info.mtimeMs, info.ctimeMs];
-  } catch {
-    return [path, null];
-  }
-}
-
-/** Invalidate GameData caches when either activation pointer is replaced. */
-export function checkActivationChange(): void {
-  if (activationSnapshot !== null) return;
-  const isCustom = "GAMEDATA_PATH" in process.env;
-  const gamedata = isCustom
-    ? process.env["GAMEDATA_PATH"]!
-    : DEFAULT_GAMEDATA_PATH;
-  const levels = resolveLevelsPath(gamedata);
-  const signature = JSON.stringify([
-    ...activationPathToken(gamedataPairPath(gamedata, levels)),
-    ...activationMetaToken(gamedata),
-    ...activationMetaToken(levels),
-  ]);
-  const previous = activationSignature;
-  activationSignature = signature;
-  if (previous === null || previous === signature) return;
-  for (const listener of activationListeners) {
-    try {
-      listener();
-    } catch (err) {
-      console.error("Failed to invalidate a GameData cache", err);
-    }
-  }
-}
 
 const REQUIRED_OPERATOR_FILES = [
   "character_table.json",
@@ -168,7 +123,7 @@ function activatedRoot(root: string): string {
   }
 }
 
-function gamedataPairPath(gamedataRoot: string, levelsRoot: string): string {
+export function gamedataPairPath(gamedataRoot: string, levelsRoot: string): string {
   const gamedataParent = dirname(resolve(gamedataRoot));
   const levelsParent = dirname(resolve(levelsRoot));
   if (gamedataParent !== levelsParent) {
@@ -212,7 +167,7 @@ function levelsPath(gamedataRoot: string): string {
   return join(dirname(gamedataRoot), "gamedata-levels");
 }
 
-function resolveLevelsPath(gamedataRoot: string): string {
+export function resolveLevelsPath(gamedataRoot: string): string {
   if ("GAMEDATA_PATH" in process.env && levelsComplete(gamedataRoot)) {
     return gamedataRoot;
   }
@@ -293,7 +248,8 @@ export function hasLevelsData(cfg: Config): boolean {
 }
 
 export function loadConfig(): Config {
-  if (activationSnapshot !== null) return activationSnapshot.config;
+  const pinned = peekPinnedConfig();
+  if (pinned !== null) return pinned;
   checkActivationChange();
   const isCustomGamedata = "GAMEDATA_PATH" in process.env;
   const gamedataPath = isCustomGamedata
@@ -353,25 +309,4 @@ export function loadConfig(): Config {
     imagesPath,
   };
   return config;
-}
-
-/** Keep one activated generation stable for a complete synchronous tool call. */
-export function withActivationSnapshot<T>(run: () => T): T {
-  if (activationSnapshot !== null) return run();
-  let config: Config;
-  let signature: string;
-  for (;;) {
-    checkActivationChange();
-    signature = activationSignature ?? "";
-    config = loadConfig();
-    checkActivationChange();
-    if (signature === (activationSignature ?? "")) break;
-  }
-  const snapshot = { config, signature };
-  activationSnapshot = snapshot;
-  try {
-    return run();
-  } finally {
-    if (activationSnapshot === snapshot) activationSnapshot = null;
-  }
 }

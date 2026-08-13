@@ -8,11 +8,8 @@
  * display names, keeping the schema stable across game versions.
  */
 
-import {
-  checkActivationChange,
-  loadConfig,
-  registerActivationListener,
-} from "../config.js";
+import { checkActivationChange, registerActivationListener } from "../activation.js";
+import { loadConfig } from "../config.js";
 import { DirectoryStore } from "./stores.js";
 import { CacheMetrics } from "./cacheMetrics.js";
 import type { CacheStat } from "../cacheStats.js";

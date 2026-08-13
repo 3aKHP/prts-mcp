@@ -1,4 +1,4 @@
-import test from "node:test";
+import { beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
 import {
   copyFileSync,
@@ -11,6 +11,19 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+
+import {
+  __resetActivationForTesting,
+  checkActivationChange,
+  registerActivationListener,
+  withActivationSnapshot,
+} from "../src/activation.js";
+import { loadConfig } from "../src/config.js";
+
+// Activation state now lives in its own canonical module (shared across any
+// cacheBusted config instances via config.ts's static import), so reset it
+// before every test for isolation.
+beforeEach(() => __resetActivationForTesting());
 
 async function loadConfigModule(): Promise<typeof import("../src/config.js")> {
   return import(`../src/config.ts?cacheBust=${Date.now()}-${Math.random()}`);
@@ -99,6 +112,10 @@ test("bundled fallback uses activated release trees", async () => {
   const copiedSource = join(packageRoot, "src", "config.ts");
   mkdirSync(join(packageRoot, "src"), { recursive: true });
   copyFileSync(fileURLToPath(new URL("../src/config.ts", import.meta.url)), copiedSource);
+  // config.ts now imports ./activation.js (extracted from config), so the
+  // isolated package root must also contain activation.ts; activation.ts
+  // imports ./config.js, which resolves back to the copied config.ts.
+  copyFileSync(fileURLToPath(new URL("../src/activation.ts", import.meta.url)), join(packageRoot, "src", "activation.ts"));
 
   const bundledGamedata = join(packageRoot, "data", "gamedata");
   const bundledLevels = join(packageRoot, "data", "gamedata-levels");
@@ -226,7 +243,6 @@ test("activation snapshot keeps a tool call on one generation", async () => {
   activate("first");
   process.env["GAMEDATA_PATH"] = custom;
   try {
-    const { loadConfig, withActivationSnapshot } = await loadConfigModule();
     const roots = withActivationSnapshot(() => {
       const first = loadConfig().effectiveExcelPath;
       activate("second");
@@ -253,8 +269,6 @@ test("one failing activation listener does not block the rest", async () => {
   const originalError = console.error;
   console.error = () => {};
   try {
-    const { checkActivationChange, registerActivationListener } =
-      await loadConfigModule();
     checkActivationChange();
     let completed = 0;
     registerActivationListener(() => {

@@ -9,7 +9,7 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
-from prts_mcp.config import activation_snapshot
+from prts_mcp.activation import activation_snapshot
 from prts_mcp.data.operator import (
     get_operator_archives as _get_archives,
     get_operator_voicelines as _get_voicelines,

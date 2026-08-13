@@ -7,7 +7,7 @@
 
 import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
-import { withActivationSnapshot } from "../config.js";
+import { withActivationSnapshot } from "../activation.js";
 import {
   buildOperatorBasicInfo,
   getOperatorArchives,

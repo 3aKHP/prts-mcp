@@ -4,7 +4,9 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-from prts_mcp.config import Config, activation_aware_cache, cache_stat, register_activation_listener
+from prts_mcp.activation import register_activation_listener
+from prts_mcp.cache_lib import activation_aware_cache, cache_stat
+from prts_mcp.config import Config
 from prts_mcp.data.enemy_database import normalize_enemy_database
 from prts_mcp.data.stores import DirectoryStore
 

@@ -3,7 +3,8 @@
  * Mirrors python/src/prts_mcp/data/search.py.
  */
 
-import { checkActivationChange, loadConfig, hasOperatorData } from "../config.js";
+import { checkActivationChange } from "../activation.js";
+import { hasOperatorData, loadConfig } from "../config.js";
 import { stripWikitext } from "../utils/sanitizer.js";
 import {
   getCharacterTable,

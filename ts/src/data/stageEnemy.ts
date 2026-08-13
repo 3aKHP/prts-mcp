@@ -4,12 +4,8 @@
  * Mirrors python/src/prts_mcp/data/stage_enemy.py.
  */
 
-import {
-  checkActivationChange,
-  hasLevelsData,
-  loadConfig,
-  registerActivationListener,
-} from "../config.js";
+import { checkActivationChange, registerActivationListener } from "../activation.js";
+import { hasLevelsData, loadConfig } from "../config.js";
 import { DirectoryStore } from "./stores.js";
 import { CacheMetrics } from "./cacheMetrics.js";
 import type { CacheStat } from "../cacheStats.js";

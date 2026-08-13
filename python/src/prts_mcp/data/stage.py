@@ -4,12 +4,12 @@ import re as _re
 from dataclasses import dataclass as _dataclass
 from typing import Any
 
-from prts_mcp.config import (
-    Config as _Config,
+from prts_mcp.activation import register_activation_listener
+from prts_mcp.cache_lib import (
     activation_aware_cache as _activation_aware_cache,
     cache_stat as _cache_stat,
-    register_activation_listener,
 )
+from prts_mcp.config import Config as _Config
 from prts_mcp.data.item import get_item_name_by_id as _get_item_name_by_id
 from prts_mcp.data.stores import DirectoryStore as _DirectoryStore
 
