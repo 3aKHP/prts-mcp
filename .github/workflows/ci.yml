@@ -45,7 +45,10 @@ jobs:
         run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
 
       - name: Shellcheck CD helper scripts
-        run: docker run --rm -v "$PWD":/mnt:ro koalaman/shellcheck:stable $(printf '/mnt/%s ' ts/scripts/*.sh)
+        run: |
+          for f in ts/scripts/*.sh; do
+            docker run --rm -v "$PWD":/mnt:ro koalaman/shellcheck:stable "/mnt/$f"
+          done
 
   # ---------------------------------------------------------------------------
   # Python implementation
