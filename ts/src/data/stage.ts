@@ -481,7 +481,7 @@ export function buildStageSearch(pattern: string, maxResults: number = 30): Stag
 
   let regex: RegExp;
   try {
-    regex = new RegExp(pattern, "i");
+    regex = new RegExp(pattern, "iu");
   } catch (e) {
     return `正则表达式无效：${e instanceof Error ? e.message : String(e)}`;
   }

@@ -98,8 +98,8 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
     @activation_snapshot
     def list_enemies(
         threat_level: Annotated[str | None, Field(default=None, description="按威胁等级过滤：boss（领袖）、elite（精英）、normal（普通）。不填则返回全部。")] = None,
-        limit: Annotated[int, Field(default=50, description="返回数量上限，默认 50。")] = 50,
-        offset: Annotated[int, Field(default=0, description="分页偏移量，默认 0。")] = 0,
+        limit: Annotated[int, Field(default=50, ge=1, le=200, description="返回数量上限，默认 50。")] = 50,
+        offset: Annotated[int, Field(default=0, ge=0, description="分页偏移量，默认 0。")] = 0,
         full: Annotated[bool, Field(default=False, description="返回全部敌人（忽略 limit/offset）。不推荐常规使用，密集输出极易污染上下文。仅在需要完整扫描时使用。")] = False,
     ) -> object:
         """列出敌方图鉴，支持按威胁等级过滤和分页。
@@ -162,8 +162,8 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
     @activation_snapshot
     def get_enemy_appearances(
         name: Annotated[str, Field(description="敌人的游戏内中文名或 enemyId，如「源石虫」或 enemy_1007_slime。")],
-        limit: Annotated[int, Field(default=50, description="返回数量上限，默认 50。")] = 50,
-        offset: Annotated[int, Field(default=0, description="分页偏移量，默认 0。")] = 0,
+        limit: Annotated[int, Field(default=50, ge=1, le=200, description="返回数量上限，默认 50。")] = 50,
+        offset: Annotated[int, Field(default=0, ge=0, description="分页偏移量，默认 0。")] = 0,
     ) -> object:
         """反向查询指定敌人实际出现在哪些关卡。
 
@@ -179,8 +179,8 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
     def list_stages(
         chapter: Annotated[str | None, Field(default=None, description="按所属章节（zoneId）过滤，如 'main_0'。不填则返回全部。")] = None,
         type: Annotated[str | None, Field(default=None, description="按关卡类型过滤：MAIN（主线）/ ACTIVITY（活动）/ SUB（支线）/ DAILY（每日）/ CAMPAIGN（剿灭）/ CLIMB_TOWER（爬塔）/ SPECIAL_STORY（特殊故事）/ GUIDE（教程）。不填则返回全部。")] = None,
-        limit: Annotated[int, Field(default=50, description="返回数量上限，默认 50。")] = 50,
-        offset: Annotated[int, Field(default=0, description="分页偏移量，默认 0。")] = 0,
+        limit: Annotated[int, Field(default=50, ge=1, le=200, description="返回数量上限，默认 50。")] = 50,
+        offset: Annotated[int, Field(default=0, ge=0, description="分页偏移量，默认 0。")] = 0,
     ) -> object:
         # Keep the return annotation as object: MCPServer auto-wraps -> str tools
         # into outputSchema={result:string} plus duplicate structuredContent.
@@ -219,8 +219,8 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
     @activation_snapshot
     def list_items(
         category: Annotated[str | None, Field(default=None, description="按物品分类过滤，如 MATERIAL（材料）、NORMAL（普通）、CONSUME（消耗品）。不填则返回全部可见物品。")] = None,
-        limit: Annotated[int, Field(default=50, description="返回数量上限，默认 50。")] = 50,
-        offset: Annotated[int, Field(default=0, description="分页偏移量，默认 0。")] = 0,
+        limit: Annotated[int, Field(default=50, ge=1, le=200, description="返回数量上限，默认 50。")] = 50,
+        offset: Annotated[int, Field(default=0, ge=0, description="分页偏移量，默认 0。")] = 0,
     ) -> object:
         """列出物品/材料列表，支持按分类过滤和分页。
 
