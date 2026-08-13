@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from prts_mcp.cache_lib import activation_aware_cache, cache_stat
+from prts_mcp.cache_stats import activation_aware_cache, cache_stat
 from prts_mcp.config import Config
 from prts_mcp.data.operator import (
     _build_name_to_id,

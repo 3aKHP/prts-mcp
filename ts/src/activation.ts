@@ -18,6 +18,14 @@ import { join } from "node:path";
 // DAG is unavailable here. Safe ONLY because each module reads the other
 // exclusively inside function bodies (never at module top-level). Do NOT add a
 // top-level use of the other module's exports here -- that is a TDZ hazard.
+// Why not extract the activation *state* into a 3rd module to break the cycle?
+// That only relocates the mutable vars -- the cycle is between the LOGIC:
+// config.loadConfig() calls activation.checkActivationChange(), and
+// activation.withActivationSnapshot() calls config.loadConfig(). They are
+// mutually recursive by design (loadConfig auto-detects generation changes;
+// the snapshot loader builds the pinned config via loadConfig). Breaking it
+// would require loadConfig to stop auto-checking -- a behavior change. Hence
+// this invariant, not a structural split.
 import {
   DEFAULT_GAMEDATA_PATH,
   gamedataPairPath,

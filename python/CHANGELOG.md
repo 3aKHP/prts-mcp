@@ -10,6 +10,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 - **PyPI artifact verification in CD (#157).** The Python CD `github-release` job now verifies the published wheel and sdist sha256 against the digests PyPI recorded at upload (via the PyPI JSON API), polling through indexing delay, before creating the GitHub Release. Parity with the TypeScript npm-tarball verification added in #156.
 
+### Changed
+
+- Internal activation and cache-instrumentation symbols moved out of `prts_mcp.config` into dedicated modules — a visible import-path change for anyone importing these internals from `prts_mcp.config`: `activation_aware_cache`/`cache_stat` → `prts_mcp.cache_stats`; `activation_snapshot`/`check_activation_change`/`register_activation_listener` → `prts_mcp.activation`. The MCP tool surface (names/params/output) is unchanged (#162).
+
 ### Fixed
 
 - Gamedata listing tools (`list_enemies`/`get_enemy_appearances`/`list_stages`/`list_items`) now enforce `limit` (`1–200`) and `offset` (`≥ 0`) bounds at the framework layer via `Field(ge=, le=)`, matching the TypeScript Zod schema so out-of-range pagination is rejected consistently across implementations (#161).

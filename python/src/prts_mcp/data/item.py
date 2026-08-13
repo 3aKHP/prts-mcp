@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from prts_mcp.activation import register_activation_listener
-from prts_mcp.cache_lib import activation_aware_cache, cache_stat
+from prts_mcp.cache_stats import activation_aware_cache, cache_stat
 from prts_mcp.config import Config
 from prts_mcp.data.stores import DirectoryStore
 
