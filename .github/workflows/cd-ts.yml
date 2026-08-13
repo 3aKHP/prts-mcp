@@ -262,10 +262,7 @@ jobs:
         # ts/scripts/verify-npm-published.sh (shellcheck + unit-tested). See
         # docs/admin/release-cd-recovery.md.
         working-directory: ts
-        run: |
-          TARBALL=$(find . -maxdepth 1 -name 'prts-mcp-ts-*.tgz' -type f -print -quit)
-          test -n "$TARBALL"
-          bash scripts/verify-npm-published.sh "$TARBALL"
+        run: bash scripts/verify-npm-published.sh
 
       - name: Extract version from tag
         id: version

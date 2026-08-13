@@ -6,7 +6,10 @@
 # script so the release error contract is shellcheck-able and unit-tested
 # (ts/scripts/verify-npm-published.test.mjs) rather than living only in YAML.
 #
-# Usage: verify-npm-published.sh <tarball>
+# Usage: verify-npm-published.sh [<tarball>]
+#        If <tarball> is omitted, the script discovers the packed artifact in
+#        the current directory (cd-ts.yml runs it with working-directory: ts),
+#        so the release-artifact glob has a single owner instead of three.
 # Env (optional unless noted):
 #   VERSION          required if GITHUB_REF_NAME is unset; e.g. 2.7.0 / 2.7.0-alpha.1
 #   NPM_PACKAGE      default prts-mcp-ts  (the published name; mirrors ts/package.json)
@@ -20,7 +23,13 @@
 #         ::error:: lines for the cause and recovery.
 set -euo pipefail
 
-TARBALL="${1:?usage: verify-npm-published.sh <tarball>}"
+PACKAGE="${NPM_PACKAGE:-prts-mcp-ts}"
+REGISTRY="${NPM_REGISTRY:-https://registry.npmjs.org}"
+
+# Take the tarball explicitly, or discover the packed artifact in the cwd so
+# the release-artifact glob lives here rather than being re-derived in YAML.
+TARBALL="${1:-$(find . -maxdepth 1 -name "${PACKAGE}-*.tgz" -type f -print -quit)}"
+test -n "$TARBALL"
 test -f "$TARBALL"
 
 if [ -z "${VERSION:-}" ]; then
@@ -30,8 +39,6 @@ if [ -z "${VERSION:-}" ]; then
 fi
 : "${VERSION:?VERSION could not be determined (set VERSION or run under a ts/v* tag)}"
 
-PACKAGE="${NPM_PACKAGE:-prts-mcp-ts}"
-REGISTRY="${NPM_REGISTRY:-https://registry.npmjs.org}"
 ATTEMPTS="${VERIFY_ATTEMPTS:-40}"
 SLEEP="${VERIFY_SLEEP:-15}"
 
@@ -91,7 +98,7 @@ for attempt in $(seq 1 "$ATTEMPTS"); do
         DL_SHA1=$(sha1sum "$TMP" | awk '{print $1}')
         if [ -n "$SHASUM" ] && [ "$DL_SHA1" = "$SHASUM" ]; then
           echo "::error::${PACKAGE}@${VERSION}: registry tarball is intact (matches its declared dist.shasum) but differs from the local artifact — the local artifact drifted (expected on a full rerun after bundled data changed). The published tarball is the verified release content."
-          echo "::error::Recovery: re-run with 'gh run rerun <run-id> --failed' (reuses the original artifact), or create the release from the registry tarball above."
+          echo "::error::Recovery: create the GitHub Release from the registry tarball above, or re-run the ORIGINAL run that published this version with 'gh run rerun <run-id> --failed' (only its artifact is byte-identical). A --failed rerun of THIS run re-uses the drifted artifact and will fail again."
           print_diag
         else
           echo "::error::${PACKAGE}@${VERSION}: downloaded tarball does NOT match the registry's own declared hashes — possible CDN/registry anomaly or tampering."

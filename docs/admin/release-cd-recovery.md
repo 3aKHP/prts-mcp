@@ -28,7 +28,7 @@ gh run rerun <run-id> --failed
 
 注意一个窄边角：在版本已落地但**尚未对 CDN 可见**的传播窗口内全量重跑，guard 的 `npm view` 可能仍拿到 404 而重新 `npm publish`，命中 EPUBLISHCONFLICT（无害，不会双发，但会让该 job 失败）。恢复场景下通常已在传播完成之后操作，故优先 `--failed`；确需在传播窗口内重跑时，等几分钟再试。
 
-全量重跑还有一个更隐蔽的问题：它会重跑 `package` job，而 `package` 会重新 `fetch_gamedata.py` 并下载最新的 storyjson。若 arknights-data-pipeline 在两次运行之间发布了新数据，重建出的 tarball 就会与 npm 上已落地的不可变字节不同，Verify 会判定为“本地制品漂移”（见下节）。`--failed` 不重跑 `package`、复用原始 artifact，因此不受影响——这是优先 `--failed` 的更主要原因。
+全量重跑还有一个更隐蔽的问题：它会重跑 `package` job，重新 `fetch_gamedata.py` 并下载最新的 storyjson；若 arknights-data-pipeline 在两次运行之间发布了新数据，重建出的 tarball 会与 npm 上已落地的不可变字节不同，Verify 会判定为“本地制品漂移”（见下节）。**注意：一旦漂移进入某个 run 的 artifact，对这个 run 做 `--failed` 也会重新下载同一个漂移 artifact 而再次失败**——`--failed` 只在重跑**最初发布该版本的 run**（其 artifact 与已发布字节一致）时才能恢复漂移。所以优先在原始 run 上用 `--failed`；若原始 run 已不可用，按下一节的漂移路径用 registry tarball 建 release。
 
 ## 手动校验回退
 
@@ -47,7 +47,7 @@ curl -fsSL "$(npm view prts-mcp-ts@${VERSION} dist.tarball)?ts=$(date +%s)" | sh
 错误串的权威来源是 `ts/scripts/verify-npm-published.sh`；此处只描述区分要点，避免与脚本措辞同步漂移。注意打印的哈希算法不同：`expected/actual sha256` 是 SHA-256，`dist.shasum` 是 SHA-1，`dist.integrity` 是 base64 的 SHA-512 SRI——**不要跨算法直接比对**。
 
 - **只声明 "not retrievable" / 传播延迟，没有 expected-vs-actual sha256** → npm 传播未完成或传输被中断，按上面“主恢复路径”重跑即可。
-- **声明 "registry tarball is intact … drifted"** → registry 制品完好（与它自报的 `dist.shasum` 一致），但与本地 artifact 不符：本地制品漂移（典型于 bundled 数据变化后的全量重跑）。npm 上的 tarball 才是正确的发布内容。恢复：用 `--failed` 复用原始 artifact 重验，或直接以 registry tarball 创建 release。
+- **声明 "registry tarball is intact … drifted"** → registry 制品完好（与它自报的 `dist.shasum` 一致），但与本地 artifact 不符：本地制品漂移（典型于 bundled 数据变化后的全量重跑）。npm 上的 tarball 才是正确的发布内容。恢复：直接以 registry tarball 创建 release；或对**最初发布该版本的 run** 做 `gh run rerun <id> --failed`（其 artifact 字节一致）。对当前（已漂移的）run 做 `--failed` 会重新下载漂移 artifact 而再次失败。
 - **声明 "does NOT match the registry's own declared hashes" 并附 downloaded sha1** → 下载到的字节与 registry 自己声明的哈希都不符（CDN/registry 异常或篡改）。**不要创建 GitHub Release**，先排查。
 
 ## 范围说明
