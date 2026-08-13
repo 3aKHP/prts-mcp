@@ -44,6 +44,9 @@ jobs:
       - name: Lint GitHub Actions workflows
         run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
 
+      - name: Shellcheck CD helper scripts
+        run: docker run --rm -v "$PWD":/mnt:ro koalaman/shellcheck:stable /mnt/ts/scripts/verify-npm-published.sh
+
   # ---------------------------------------------------------------------------
   # Python implementation
   # ---------------------------------------------------------------------------
@@ -241,6 +244,10 @@ jobs:
 
       - name: Run tests
         run: npm test
+        working-directory: ts
+
+      - name: Verify npm tarball helper script tests
+        run: node scripts/verify-npm-published.test.mjs
         working-directory: ts
 
   verify-ts:
