@@ -101,7 +101,8 @@ PRTS-MCP/
 │   │   │   ├── stages.py        # 关卡数据
 │   │   │   ├── items.py         # 物品/材料数据
 │   │   │   ├── stores.py        # 存储抽象 (Directory/Zip/Fallback)
-│   │   │   └── sync.py          # GitHub Release 同步
+│   │   │   └── sync.py          # 同步状态机（release/archive/pair 编排；P2.B 迁出中）
+│   │   ├── sync/            # GitHub Release 传输+发现（数据同步 HTTP 归此层；P2.A 抽出）
 │   │   └── utils/          # wikitext 清洗等工具
 │   ├── tests/              # pytest 测试
 │   ├── pyproject.toml      # 包元数据、依赖
@@ -115,12 +116,13 @@ PRTS-MCP/
 │   │   │   ├── prtsTools.ts
 │   │   │   ├── gamedataTools.ts
 │   │   │   └── storyTools.ts
-│   │   └── data/           # 数据抽象层（对齐 python/src/prts_mcp/data/）
+│   │   ├── data/           # 数据抽象层（对齐 python/src/prts_mcp/data/）
 │   │       ├── story.ts        # 兼容性垫片
 │   │       ├── storyReader.ts / storySearch.ts / storyMemoir.ts / storySummary.ts
 │   │       ├── operators.ts / enemies.ts / stages.ts / items.ts
 │   │       ├── stores.ts / sync.ts
 │   │       └── ...
+│   │   └── sync/           # GitHub Release 传输+发现（数据同步 HTTP 归此层）
 │   ├── tests/              # node --test 测试
 │   ├── package.json
 │   └── CHANGELOG.md

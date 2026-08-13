@@ -132,9 +132,16 @@ class TestSyncRelease:
                 },
             },
         }
+        # check_latest_release moved to release_discovery (P2.A), so its
+        # _get_cascading call resolves there, not in data.sync. One shared mock
+        # patches both namespaces; side_effect is consumed in call order:
+        # release list (discovery) -> asset download -> manifest (state machine).
         with patch(
             "prts_mcp.data.sync._get_cascading",
             side_effect=[release, asset, manifest],
+        ) as cascading, patch(
+            "prts_mcp.sync.release_discovery._get_cascading",
+            cascading,
         ):
             result = sync_release(spec, force_check=True)
         assert result.status == "updated"
@@ -161,6 +168,9 @@ class TestSyncRelease:
         with patch(
             "prts_mcp.data.sync._get_cascading",
             side_effect=[release, asset, manifest],
+        ) as cascading, patch(
+            "prts_mcp.sync.release_discovery._get_cascading",
+            cascading,
         ):
             result = sync_release(spec, force_check=True)
         assert result.status == "offline_fallback"
@@ -179,6 +189,9 @@ class TestSyncRelease:
         with patch(
             "prts_mcp.data.sync._get_cascading",
             side_effect=[release, asset, _AssetNotFoundError("HTTP 404")],
+        ) as cascading, patch(
+            "prts_mcp.sync.release_discovery._get_cascading",
+            cascading,
         ):
             result = sync_release(spec, force_check=True)
         assert result.status == "updated"
@@ -203,6 +216,9 @@ class TestSyncRelease:
                 _mock_asset_response(b"new"),
                 manifest,
             ],
+        ) as cascading, patch(
+            "prts_mcp.sync.release_discovery._get_cascading",
+            cascading,
         ):
             result = sync_release(spec, force_check=True)
         assert result.status == "offline_fallback"

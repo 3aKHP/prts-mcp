@@ -14,20 +14,23 @@
 
 - **单一职责**：一个文件只干一件事。`operator.py` 只负责干员数据读取，不混进搜索逻辑；`sanitizer.py` 只管 wikitext 清洗，不放 API 调用
 - **文件长度预警线**：源文件超过 ~300 行就要问"这能不能拆"
-- **模块边界**：`data/` 只做数据读写和格式化，不混进 HTTP 请求；`api/` 只做 PRTS Wiki API 调用；`server.py` 只做工具注册和启动编排
+- **模块边界**：`data/` 的数据读取模块只做数据读写和格式化，不混进 HTTP 请求；HTTP 传输统一收敛到 `sync/` 层；`api/` 只做 PRTS Wiki API 调用；`server.py` 只做工具注册和启动编排
 
 ### 分层纪律
 
 ```
 server.py/ts          ←  MCP 工具注册、启动同步编排
 api/                  ←  PRTS Wiki MediaWiki API 客户端
-data/                 ←  干员/剧情/搜索/同步/store 抽象
+data/                 ←  干员/剧情/搜索/store 抽象
 data/stores           ←  DirectoryStore / ZipStore 底层读写
+sync/                 ←  GitHub Release 数据同步（传输：HTTP/镜像/级联 fetch；发现：release 列表）；数据同步 HTTP 归此层（PRTS Wiki HTTP 归 api/）
 utils/                ←  跨领域纯函数（wikitext 清洗等）
 config.py/ts          ←  路径解析、环境变量
 ```
 
-**允许的依赖方向**：`server → api, data, config` / `data → stores, utils, config` / `api → utils`。 **禁止**：`stores` 依赖 `data`；`utils` 依赖 `api` 或 `data`；`config` 依赖任何其他模块。
+**允许的依赖方向**：`server → api, data, sync, config` / `data → stores, utils, config` / `sync → stores, utils, config` / `api → utils`。 **禁止**：`stores` 依赖 `data`；`utils` 依赖 `api` 或 `data`；`config` 依赖任何其他模块；`data` 的数据读取模块直接发 HTTP（数据同步 HTTP 归 `sync/`、PRTS Wiki HTTP 归 `api/`）。
+
+> 迁移期注记：`data/sync.*` 的状态机在 P2.A→P2.B 期间临时 `data → sync` 反向依赖新抽出的 `sync/transport`、`sync/release_discovery`（经 re-export shim），状态机迁出 `data/` 后该过渡边消失。`data/images_sync.py` 仍直接发 HTTP（`_download_large`），是 sync 层模块暂居 `data/` 的历史残留，随 images_sync 迁入 `sync/` 层时清除（P3.B）。
 
 ### 抽象层
 
@@ -104,7 +107,7 @@ MCP 工具描述（Python `@mcp.tool()` 的 docstring / TS `server.tool()` 的�
 - 工具函数里直接读文件（绕过 store 抽象）
 - `Utils.py` / `helpers.ts` 杂物堆——按主题拆专用模块
 - 同一份常量在多个文件散落（必须走 config 或顶层常量）
-- 跨层调用（data 模块里直接发起 HTTP 请求）
+- 跨层调用（data 数据读取模块里直接发起 HTTP 请求；HTTP 传输只归 `sync/` 层）
 - 两套实现的行为不一致（工具名、参数、输出格式）
 - 为每个新数据域机械复制 `list_X` / `get_X` / `search_X` 三件套——优先扩 `search(scope)` 等统一入口的 enum（见 ROADMAP 决策原则 7）
 
@@ -238,7 +241,9 @@ Python 和 TypeScript 不是翻译关系，但文件结构和模块职责应保�
 | `data/operator.py` | `data/operator.ts` | 干员数据读取和格式化 |
 | `data/story.py` | `data/story.ts` | 剧情数据读取和格式化 |
 | `data/search.py` | `data/search.ts` | 全文搜索 |
-| `data/sync.py` | `data/sync.ts` | GitHub Release 同步 |
+| `data/sync.py` | `data/sync.ts` | 同步状态机（release/archive/pair 编排；P2.B 迁出中） |
+| `sync/transport.py` | `sync/transport.ts` | GitHub Release HTTP 传输（镜像/级联 fetch） |
+| `sync/release_discovery.py` | `sync/releaseDiscovery.ts` | Release 发现（list/latest-by-prefix/asset_url/check_latest） |
 | `data/datasets.py` | `data/datasets.ts` | 数据集 spec 定义 |
 | `api/prts_wiki.py` | `api/prtsWiki.ts` | PRTS MediaWiki API 客户端 |
 | `utils/sanitizer.py` | `utils/sanitizer.ts` | Wikitext 清洗 |
