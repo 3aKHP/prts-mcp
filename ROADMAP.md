@@ -1,13 +1,13 @@
 # PRTS-MCP Roadmap
 
-_Last updated: 2026-08-12_ · [中文版](ROADMAP.zh-CN.md)
+_Last updated: 2026-08-13_ · [中文版](ROADMAP.zh-CN.md)
 
 PRTS-MCP is past 1.0. Version 1.7.0 is the final 1.x feature release and the 1.7 LTS baseline. This document tracks **what comes next** — not what has shipped. For shipped features, see the Python and TypeScript CHANGELOGs.
 
 ## Current Release
 
-- Python: `2.6.1` _(latest stable)_
-- TypeScript: `2.6.1` _(latest stable)_
+- Python: `2.6.2` _(latest stable)_
+- TypeScript: `2.6.2` _(latest stable)_
 - `1.7.0` LTS remains the maintenance line — compatibility, security, data-sync, and critical fixes only.
 - 24 public MCP tools on the 2.x line (CI-enforced); 32 public MCP tools frozen on the 1.7 LTS line.
 - See [migration guide 0.x → 1.0](docs/migration-0.x-to-1.0.md) and [migration guide 1.x → 2.0](docs/migration-1.x-to-2.0.md).
@@ -29,7 +29,7 @@ The authoritative protocol compatibility contract is [the 2.5 → 2.6 migration 
 
 SQLite migration is not assigned to a release. The current working position, based on the August 2026 read-only evaluation, is not to replace the authoritative JSON/ZIP stores with SQLite: steady-state cached queries are already fast, the Release/manifest/SHA/atomic-activation/offline-fallback model is mature, and a full migration would add Python, Bun, and Node reader parity, schema migration, packaging, deployment, and rollback ownership.
 
-The first priority is to fix [#152](https://github.com/3aKHP/prts-mcp/issues/152), where an unchanged `up_to_date` GameData pair can still replace activation metadata and clear caches. Re-establish the production cold-call, RSS high-water, and cache-clear baseline after that fix before attributing the remaining cost to the storage format.
+Issue [#152](https://github.com/3aKHP/prts-mcp/issues/152) — where an unchanged `up_to_date` GameData pair could still replace activation metadata and clear caches — is resolved (2.6.2 / #154 on `main`, forward-ported to `develop` via #155). The production baseline has been re-established on the fix: an unchanged Auto-Sync cycle leaves `.gamedata_pair.json` byte-identical with zero cache clears, and RSS high-water returned to ~223 MB (down from an ~844 MB thrashing peak). At that baseline the remaining steady-state cost is attributable to the sync and cache machinery rather than the storage format, reinforcing the no-migrate position above.
 
 For derived reverse lookups, the current working position is to prefer the smallest rebuildable artifact that fits the query. The enemy-appearance experiment favours a compact derived JSON index over SQLite. Existing story key reads do not need a database, while `search_stories` must retain its current Python/JavaScript regular-expression semantics. `find_character_appearances` is already a reverse lookup and may share a derived character/speaker index if reverse-query volume or breadth grows; compact JSON remains the first option for exact and bounded lookups.
 

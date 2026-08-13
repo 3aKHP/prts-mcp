@@ -1,13 +1,13 @@
 # PRTS-MCP 路线图
 
-_最近更新：2026-08-12_ · [English](ROADMAP.md)
+_最近更新：2026-08-13_ · [English](ROADMAP.md)
 
 PRTS-MCP 已进入 1.x 稳定期。1.7.0 是最后一个 1.x 功能版本和 1.7 LTS 基线。本文档记录**接下来要做什么**——已发布的内容请查看 Python 和 TypeScript 各自的 CHANGELOG。
 
 ## 当前发布
 
-- Python：`2.6.1` _（最新稳定版）_
-- TypeScript：`2.6.1` _（最新稳定版）_
+- Python：`2.6.2` _（最新稳定版）_
+- TypeScript：`2.6.2` _（最新稳定版）_
 - `1.7.0` LTS 仍为维护线——仅兼容性、安全性、数据同步和关键缺陷修复。
 - 2.x 线为 24 个公共 MCP 工具（CI 强制检查）；1.7 LTS 线冻结 32 个公共 MCP 工具。
 - 迁移说明：[0.x → 1.0](docs/migration-0.x-to-1.0.md)、[1.x → 2.0](docs/migration-1.x-to-2.0.md)。
@@ -29,7 +29,7 @@ PRTS-MCP 已进入 1.x 稳定期。1.7.0 是最后一个 1.x 功能版本和 1.7
 
 SQLite 迁移不分配给任何版本。根据 2026 年 8 月的只读评估，当前工作立场是不使用 SQLite 替换权威 JSON/ZIP store：稳态缓存查询已经足够快，现有 Release/manifest/SHA/原子激活/offline fallback 模型较成熟，而全量迁移会新增 Python、Bun、Node 三端 reader parity、schema migration、打包、部署和回滚责任。
 
-第一优先级是修复 [#152](https://github.com/3aKHP/prts-mcp/issues/152)：未变化的 `up_to_date` GameData pair 仍可能替换激活 metadata 并清空缓存。应在修复后重新取得生产环境的冷调用、RSS 高水位和 cache clear 基线，再判断剩余成本是否来自存储格式。
+[#152](https://github.com/3aKHP/prts-mcp/issues/152)——未变化的 `up_to_date` GameData pair 仍可能替换激活 metadata 并清空缓存——已修复（2.6.2 / `main` 上 #154，经 #155 forward-port 到 `develop`）。生产基线已在修复后重建：未变化的 Auto-Sync 周期里 `.gamedata_pair.json` 字节不变、cache clears 为 0，RSS 高水位回到约 223 MB（此前抖动峰值约 844 MB）。在该基线下，稳态剩余成本应归因于同步与缓存机制，而非存储格式，进一步支撑上方不迁移的立场。
 
 对于派生倒查，当前工作立场是优先选择能够满足查询的最小可重建产物。敌人出场实验更支持紧凑的派生 JSON 索引，而不是 SQLite。既有剧情按 key 读取不需要数据库；`search_stories` 仍须保留当前 Python/JavaScript 正则语义。`find_character_appearances` 已经属于倒查；如果未来倒查接口的数量或调用量增长，可以让它共享派生的角色/发言者索引，但对于精确且有界的查询，紧凑 JSON 仍是第一选择。
 

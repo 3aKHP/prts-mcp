@@ -10,6 +10,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 - **PyPI artifact verification in CD (#157).** The Python CD `github-release` job now verifies the published wheel and sdist sha256 against the digests PyPI recorded at upload (via the PyPI JSON API), polling through indexing delay, before creating the GitHub Release. Parity with the TypeScript npm-tarball verification added in #156.
 
+## [2.6.2] - 2026-08-12
+
+### Fixed
+
+- Unchanged GameData Excel/Levels Auto-Sync cycles no longer replace `.gamedata_pair.json`, preventing false activation changes and periodic cache invalidation (#152).
+- Real generation changes and missing or invalid pair metadata still rebuild the pair atomically and invalidate GameData caches.
+
 ## [2.6.1] - 2026-08-10
 
 ### Fixed
