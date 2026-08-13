@@ -10,6 +10,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 - **PyPI artifact verification in CD (#157).** The Python CD `github-release` job now verifies the published wheel and sdist sha256 against the digests PyPI recorded at upload (via the PyPI JSON API), polling through indexing delay, before creating the GitHub Release. Parity with the TypeScript npm-tarball verification added in #156.
 
+### Fixed
+
+- Gamedata listing tools (`list_enemies`/`get_enemy_appearances`/`list_stages`/`list_items`) now enforce `limit` (`1–200`) and `offset` (`≥ 0`) bounds at the framework layer via `Field(ge=, le=)`, matching the TypeScript Zod schema so out-of-range pagination is rejected consistently across implementations (#161).
+
 ## [2.6.2] - 2026-08-12
 
 ### Fixed

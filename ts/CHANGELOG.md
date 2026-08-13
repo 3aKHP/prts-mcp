@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 ### Fixed
 
 - **npm tarball verification tolerates propagation delay (#156).** The TypeScript CD `Verify npm published bytes` step now cache-busts the registry/CDN URL, retries for ~10 min, distinguishes a propagation timeout from a real byte mismatch, and fails fast on a permanent mismatch. The step moved from `publish-npm` into `github-release` so a propagation timeout no longer skips release creation (recover with `gh run rerun <run-id> --failed`); `npm publish` is skipped if the version already exists, making job re-runs safe.
+- User-pattern search regexes (`search`, `search_stories`, and the enemy/stage/item scopes) now compile with the Unicode (`/u`) flag, aligning astral-codepoint handling (e.g. emoji, extended characters) with Python's Unicode-default `re` (#161). Note: JS `\w` remains ASCII-only even with `/u` (Python `\w` matches CJK) — that residual gap is fundamental and not flag-fixable.
 
 ## [2.6.2] - 2026-08-12
 
