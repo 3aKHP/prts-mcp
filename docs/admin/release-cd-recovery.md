@@ -50,7 +50,24 @@ curl -fsSL "$(npm view prts-mcp-ts@${VERSION} dist.tarball)?ts=$(date +%s)" | sh
 - **声明 "registry tarball is intact … drifted"** → registry 制品完好（与它自报的 `dist.shasum` 一致），但与本地 artifact 不符：本地制品漂移（典型于 bundled 数据变化后的全量重跑）。npm 上的 tarball 才是正确的发布内容。恢复：直接以 registry tarball 创建 release；或对**最初发布该版本的 run** 做 `gh run rerun <id> --failed`（其 artifact 字节一致）。对当前（已漂移的）run 做 `--failed` 会重新下载漂移 artifact 而再次失败。
 - **声明 "does NOT match the registry's own declared hashes" 并附 downloaded sha1** → 下载到的字节与 registry 自己声明的哈希都不符（CDN/registry 异常或篡改）。**不要创建 GitHub Release**，先排查。
 
+## Python (PyPI) 校验
+
+`cd.yml` 的 `github-release` 同样有一个 Verify 步骤（`python/scripts/verify_pypi_published.py`），与 TS 版同构：传播/索引超时只失败 `github-release`，用 `gh run rerun <run-id> --failed` 恢复（不重发 PyPI）。
+
+差异：Python 版是**最小校验**——轮询 PyPI JSON API（`pypi.org/pypi/prts-mcp/<ver>/json`）直到版本可见，把本地 wheel/sdist 的 sha256 与 PyPI 自报的 `digests.sha256` 比对；**不下载文件**（PyPI 的 JSON digest 即“已索引内容”的权威来源，且制品本身很小）。
+
+- **"PyPI JSON not visible … propagation delay"** → PyPI 尚未完成索引，按主恢复路径重跑。
+- **"sha256 mismatch"** → 本地制品与 PyPI 已记录的 digest 不符，通常是全量重跑后本地漂移（PyPI 文件不可变，已发布的才是正确内容）。恢复：以 PyPI 上的文件重建 release，或对**最初发布该版本的 run** 做 `--failed`。
+
+手动回退：
+
+```bash
+VERSION=2.6.2
+curl -fsSL "https://pypi.org/pypi/prts-mcp/${VERSION}/json" | jq -r '.urls[] | "\(.filename)  \(.digests.sha256)"'
+# 与本地 python/dist/*.whl、*.tar.gz 的 sha256sum 比对
+```
+
 ## 范围说明
 
-- 本文目前仅覆盖 TypeScript CD。Python CD（`cd.yml` 的 `publish-pypi`）尚无对应的发布后字节校验步骤；parity 跟踪见 #157。
-- `environment: npm` 审批门挂在 `publish-npm`；任何让 `publish-npm` 重新运行的重跑都会再次要求审批。
+- 两套 CD（TypeScript `cd-ts.yml` 与 Python `cd.yml`）的 `github-release` 各有一个 Verify 步骤；TS 版下载 tarball 比对字节，Python 版比对 PyPI JSON 的 declared digest（最小校验，见上节）。
+- `environment: npm` / `environment: pypi` 审批门分别挂在 `publish-npm` / `publish-pypi`；任何让这两个 job 重新运行的重跑都会再次要求审批。
