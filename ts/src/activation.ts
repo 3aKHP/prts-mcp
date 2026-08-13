@@ -13,6 +13,11 @@
 import { statSync } from "node:fs";
 import { join } from "node:path";
 
+// CYCLE INVARIANT: config.ts <-> activation.ts import each other. Forced --
+// loadConfig is synchronous and cannot `await import()`, so Python's late-import
+// DAG is unavailable here. Safe ONLY because each module reads the other
+// exclusively inside function bodies (never at module top-level). Do NOT add a
+// top-level use of the other module's exports here -- that is a TDZ hazard.
 import {
   DEFAULT_GAMEDATA_PATH,
   gamedataPairPath,

@@ -8,7 +8,7 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 # Path design (two separate roots, never mixed up)
 #
-# _DEFAULT_GAMEDATA_PATH — where auto-sync writes data at runtime.
+# DEFAULT_GAMEDATA_PATH — where auto-sync writes data at runtime.
 #   Priority (highest to lowest):
 #   1. GAMEDATA_PATH env var  — set by user when mounting a custom volume;
 #                               auto-sync is DISABLED in this case.
@@ -69,13 +69,13 @@ def _resolve_default_gamedata_path() -> Path:
     return base / "prts-mcp" / "gamedata"
 
 
-_DEFAULT_GAMEDATA_PATH = _resolve_default_gamedata_path()
+DEFAULT_GAMEDATA_PATH = _resolve_default_gamedata_path()
 
 # storyjson zip alongside gamedata in the user data directory.
-_DEFAULT_STORYJSON_ZIP = _DEFAULT_GAMEDATA_PATH.parent / "storyjson" / "zh_CN.zip"
+_DEFAULT_STORYJSON_ZIP = DEFAULT_GAMEDATA_PATH.parent / "storyjson" / "zh_CN.zip"
 
 # Image artwork assets (2.5.0) sit alongside gamedata under the data root.
-_DEFAULT_IMAGES_PATH = _DEFAULT_GAMEDATA_PATH.parent / "images"
+_DEFAULT_IMAGES_PATH = DEFAULT_GAMEDATA_PATH.parent / "images"
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -107,7 +107,7 @@ def _activated_root(root: Path) -> Path:
     return root
 
 
-def _gamedata_pair_path(gamedata_root: Path, levels_root: Path) -> Path:
+def gamedata_pair_path(gamedata_root: Path, levels_root: Path) -> Path:
     gamedata_parent = gamedata_root.resolve().parent
     levels_parent = levels_root.resolve().parent
     if gamedata_parent != levels_parent:
@@ -121,7 +121,7 @@ def _activated_pair(
 ) -> tuple[Path, Path] | None:
     try:
         value = json.loads(
-            _gamedata_pair_path(gamedata_root, levels_root).read_text(
+            gamedata_pair_path(gamedata_root, levels_root).read_text(
                 encoding="utf-8"
             )
         )
@@ -150,7 +150,7 @@ def _levels_path(gamedata_root: Path) -> Path:
     return gamedata_root.parent / "gamedata-levels"
 
 
-def _resolve_levels_path(gamedata_root: Path) -> Path:
+def resolve_levels_path(gamedata_root: Path) -> Path:
     if "GAMEDATA_PATH" in os.environ and _levels_complete(gamedata_root):
         return gamedata_root
     if "GAMEDATA_PATH" in os.environ:
@@ -192,7 +192,7 @@ class Config:
         ep = _excel_path(self.gamedata_path)
         object.__setattr__(self, "excel_path", ep)
 
-        lp = _resolve_levels_path(self.gamedata_path)
+        lp = resolve_levels_path(self.gamedata_path)
         object.__setattr__(self, "levels_path", lp)
         active_pair = _activated_pair(self.gamedata_path, lp)
         active_gamedata_root = (
@@ -283,7 +283,7 @@ class Config:
             return pinned
         activation.check_activation_change()
         custom = "GAMEDATA_PATH" in os.environ
-        gamedata = Path(os.environ["GAMEDATA_PATH"]) if custom else _DEFAULT_GAMEDATA_PATH
+        gamedata = Path(os.environ["GAMEDATA_PATH"]) if custom else DEFAULT_GAMEDATA_PATH
         storyjson_zip = (
             Path(os.environ["STORYJSON_PATH"])
             if "STORYJSON_PATH" in os.environ

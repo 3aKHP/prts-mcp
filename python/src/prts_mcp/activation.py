@@ -68,10 +68,10 @@ def check_activation_change() -> None:
         return
 
     custom = "GAMEDATA_PATH" in os.environ
-    gamedata = Path(os.environ["GAMEDATA_PATH"]) if custom else config._DEFAULT_GAMEDATA_PATH
-    levels = config._resolve_levels_path(gamedata)
+    gamedata = Path(os.environ["GAMEDATA_PATH"]) if custom else config.DEFAULT_GAMEDATA_PATH
+    levels = config.resolve_levels_path(gamedata)
     signature = (
-        _activation_path_token(config._gamedata_pair_path(gamedata, levels))
+        _activation_path_token(config.gamedata_pair_path(gamedata, levels))
         + _activation_meta_token(gamedata)
         + _activation_meta_token(levels)
     )

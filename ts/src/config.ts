@@ -31,6 +31,11 @@ import { homedir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
+// CYCLE INVARIANT: config.ts <-> activation.ts import each other. Forced --
+// loadConfig is synchronous and cannot `await import()`, so Python's late-import
+// DAG is unavailable here. Safe ONLY because each module reads the other
+// exclusively inside function bodies (never at module top-level). Do NOT add a
+// top-level use of the other module's exports here -- that is a TDZ hazard.
 import { checkActivationChange, peekPinnedConfig } from "./activation.js";
 
 // ---------------------------------------------------------------------------
