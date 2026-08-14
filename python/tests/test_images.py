@@ -7,9 +7,10 @@ import json
 
 import pytest
 
+from prts_mcp.data.artwork_mediawiki import get_artwork_mediawiki
 from prts_mcp.data.images import SCHEMA_VERSION, build_artwork_label, parse_index
 import prts_mcp.output as output_module
-from prts_mcp.tools_artwork import _do_get, _do_get_mediawiki, _do_list
+from prts_mcp.tools_artwork import _do_get, _do_list
 
 # A 1x1 transparent PNG used as a stand-in image payload.
 _SAMPLE_PNG_B64 = (
@@ -160,12 +161,21 @@ def mock_images(monkeypatch, tmp_path):
         "prts_mcp.tools_artwork._images_generation", lambda: gen,
     )
     monkeypatch.setattr(
-        "prts_mcp.tools_artwork.resolve_char_id",
+        "prts_mcp.data.artwork_local.resolve_char_id",
         lambda name: "char_002_amiya" if name == "阿米娅" else None,
     )
     monkeypatch.setattr(
-        "prts_mcp.tools_artwork.load_char_skins",
-        lambda: {"char_002_amiya@winter#1": {"displaySkin": {"skinName": "报童"}}},
+        "prts_mcp.data.artwork_local.load_char_skins",
+        lambda: {
+            "char_002_amiya@winter#1": {
+                "displaySkin": {
+                    "skinName": "报童",
+                    "skinGroupName": "忒斯特收藏/I",
+                    "obtainApproach": "任务奖励",
+                    "description": "伦蒂尼姆的天空总是灰色的。",
+                },
+            },
+        },
     )
     return gen
 
@@ -180,6 +190,7 @@ def test_list_returns_markdown_with_labels(mock_images):
     assert "阿米娅" in body
     assert "精英零立绘" in body
     assert "报童" in body
+    assert "忒斯特收藏/I" in body
     # No image content in list.
     assert not any(c.type == "image" for c in result.content)
 
@@ -201,12 +212,37 @@ def test_list_structured_channel(mock_images):
     labels = {a["label"] for a in data["artworks"]}
     assert "精英零立绘" in labels
     assert "报童" in labels
+    by_id = {a["artwork_id"]: a for a in data["artworks"]}
+    assert by_id["char_002_amiya@winter#1"]["skin_group"] == "忒斯特收藏/I"
+    assert by_id["char_002_amiya@winter#1"]["acquisition"] == "任务奖励"
+    assert by_id["char_002_amiya@winter#1"]["description"] == "伦蒂尼姆的天空总是灰色的。"
+    # Base illusts without a charSkins entry carry explicit nulls.
+    assert by_id["char_002_amiya#1"]["skin_group"] is None
+    assert by_id["char_002_amiya#1"]["acquisition"] is None
+    assert by_id["char_002_amiya#1"]["description"] is None
 
 
 def test_list_unknown_operator(mock_images):
     result = asyncio.run(_do_list("不存在"))
     text = result.content[0].text
     assert "找不到" in text
+
+
+def test_list_without_gamedata_degrades_to_not_ready(monkeypatch, tmp_path):
+    # Regression: excel_store() raises RuntimeError (not the AssertionError
+    # the old catch listed) when gamedata is absent — the degrade path must
+    # keep returning the friendly not-ready message instead of crashing.
+    monkeypatch.setenv("LOCAL_IMAGE", "true")
+    monkeypatch.setenv("GAMEDATA_PATH", str(tmp_path / "empty"))
+    from prts_mcp.data import operator as operator_module
+
+    operator_module.clear_operator_caches()
+    try:
+        result = asyncio.run(_do_list("阿米娅"))
+        assert result.is_error is False
+        assert "立绘数据未就绪" in result.content[0].text
+    finally:
+        operator_module.clear_operator_caches()
 
 
 @pytest.mark.parametrize(
@@ -280,7 +316,7 @@ def test_get_rejects_artwork_owned_by_another_operator(mock_images):
 
 
 def test_mediawiki_get_rejects_mismatched_filename_before_network(monkeypatch):
-    import prts_mcp.tools_artwork as artwork
+    import prts_mcp.data.artwork_mediawiki as artwork_mediawiki
     from prts_mcp.config import Config
 
     monkeypatch.setenv("LOCAL_IMAGE", "false")
@@ -288,12 +324,12 @@ def test_mediawiki_get_rejects_mismatched_filename_before_network(monkeypatch):
     async def unexpected_imageinfo(*_args, **_kwargs):
         raise AssertionError("ownership validation must run before imageinfo")
 
-    monkeypatch.setattr(artwork, "_get_imageinfo", unexpected_imageinfo)
-    result = asyncio.run(_do_get_mediawiki(
+    monkeypatch.setattr(artwork_mediawiki, "get_imageinfo", unexpected_imageinfo)
+    outcome = asyncio.run(get_artwork_mediawiki(
         "阿米娅", "立绘_斯卡蒂_2.png", "large", Config.load(),
     ))
-    assert "不属于" in result.content[0].text
-    assert not any(c.type == "image" for c in result.content)
+    assert isinstance(outcome, str)
+    assert "不属于" in outcome
 
 
 def test_get_unavailable_variant(mock_images):

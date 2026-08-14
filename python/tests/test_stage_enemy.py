@@ -286,3 +286,17 @@ def test_missing_levels_data_message(tmp_path: Path) -> None:
         clear_stage_enemy_caches()
         out = get_stage_enemies("main_00-01")
     assert "关卡战斗数据暂不可用" in out
+
+
+def test_absent_database_renders_no_record(gamedata: Path) -> None:
+    """Malformed-sync edge (P3.A convergence): levels gate passes but the
+    enemy_database accessor reports the file absent — stage tools render
+    无数据库记录 instead of raising a wrapped read error."""
+    from prts_mcp.data import stage_enemy as stage_enemy_module
+
+    # Patch the binding stage_enemy resolves (from-import copies the name).
+    with patch.object(stage_enemy_module, "load_enemy_levels", return_value=None):
+        clear_stage_enemy_caches()
+        out = get_stage_enemies("main_00-01")
+    assert "无数据库记录" in out
+    assert "读取关卡敌人失败" not in out

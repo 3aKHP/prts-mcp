@@ -17,16 +17,23 @@ import { dirname, join } from "node:path";
 import { createHash } from "node:crypto";
 import AdmZip from "adm-zip";
 import {
+  __resetActivationForTesting,
+  checkActivationChange,
+  registerActivationListener,
+} from "../src/activation.js";
+import {
   syncRelease,
   downloadReleaseAsset,
   syncReleaseArchive,
   syncReleaseArchivePair,
   withArchiveActivationLock,
+  ActivationLockTimeoutError,
   fetchCascading,
   AssetNotFoundError,
   type ReleaseArchiveSpec,
   type ReleaseSpec,
 } from "../src/data/sync.ts";
+import { parseMirrors } from "../src/sync/transport.js";
 
 test("fetchCascading raises AssetNotFoundError on a direct 404 (#100)", async () => {
   await withFetchMock((async () => new Response("missing", { status: 404 })) as typeof fetch, async () => {
@@ -181,6 +188,49 @@ function withFetchMock(
   });
 }
 
+function withMirrors(mirrors: string | undefined, run: () => void): void {
+  const originalMirrors = process.env["GITHUB_MIRRORS"];
+  if (mirrors === undefined) delete process.env["GITHUB_MIRRORS"];
+  else process.env["GITHUB_MIRRORS"] = mirrors;
+  try {
+    run();
+  } finally {
+    if (originalMirrors === undefined) delete process.env["GITHUB_MIRRORS"];
+    else process.env["GITHUB_MIRRORS"] = originalMirrors;
+  }
+}
+
+test("parseMirrors returns [] when GITHUB_MIRRORS is unset or empty", () => {
+  withMirrors(undefined, () => assert.deepEqual(parseMirrors(), []));
+  withMirrors("", () => assert.deepEqual(parseMirrors(), []));
+});
+
+test("parseMirrors strips all trailing slashes", () => {
+  withMirrors("https://ghproxy.net/", () =>
+    assert.deepEqual(parseMirrors(), ["https://ghproxy.net"]));
+  withMirrors("https://ghproxy.net//", () =>
+    assert.deepEqual(parseMirrors(), ["https://ghproxy.net"]));
+});
+
+test("parseMirrors trims surrounding whitespace", () => {
+  withMirrors(" https://a.example , https://b.example ", () =>
+    assert.deepEqual(parseMirrors(), ["https://a.example", "https://b.example"]));
+});
+
+test("parseMirrors trims whitespace and strips slashes together", () => {
+  withMirrors(" https://a.example/ , https://b.example// ", () =>
+    assert.deepEqual(parseMirrors(), ["https://a.example", "https://b.example"]));
+});
+
+test("parseMirrors drops blank and slash-only entries", () => {
+  withMirrors("https://a, ,https://b", () =>
+    assert.deepEqual(parseMirrors(), ["https://a", "https://b"]));
+  withMirrors("https://a,,https://b", () =>
+    assert.deepEqual(parseMirrors(), ["https://a", "https://b"]));
+  withMirrors("https://a,///,https://b", () =>
+    assert.deepEqual(parseMirrors(), ["https://a", "https://b"]));
+});
+
 function pairSpecs(root: string): readonly [ReleaseArchiveSpec, ReleaseArchiveSpec] {
   return [{
     owner: "3aKHP",
@@ -230,17 +280,17 @@ test("pair manifest is stable until the generation changes", async () => {
   const pairPath = join(root, ".gamedata_pair.json");
   process.env["GAMEDATA_PATH"] = specs[0].localRoot;
   try {
-    const config = await import(`../src/config.ts?pairStability=${Date.now()}-${Math.random()}`);
+    __resetActivationForTesting();
     const first = await syncReleaseArchivePair(...specs);
     assert.deepEqual(first.map((result) => result.status), ["up_to_date", "up_to_date"]);
-    config.checkActivationChange();
+    checkActivationChange();
     let clears = 0;
-    config.registerActivationListener(() => { clears += 1; });
+    registerActivationListener(() => { clears += 1; });
     const before = statSync(pairPath);
 
     const second = await syncReleaseArchivePair(...specs);
     const after = statSync(pairPath);
-    config.checkActivationChange();
+    checkActivationChange();
 
     assert.deepEqual(second.map((result) => result.status), ["up_to_date", "up_to_date"]);
     assert.deepEqual(
@@ -252,7 +302,7 @@ test("pair manifest is stable until the generation changes", async () => {
     activatePairGeneration(specs, "next");
     await syncReleaseArchivePair(...specs);
     const changed = statSync(pairPath);
-    config.checkActivationChange();
+    checkActivationChange();
 
     assert.equal(JSON.parse(readFileSync(pairPath, "utf-8")).commit_sha, "next");
     assert.notEqual(changed.ino, after.ino);
@@ -789,6 +839,40 @@ test("live owner heartbeat prevents stale lock takeover", async () => {
   releaseFirst?.();
   await Promise.all([first, second]);
   assert.equal(secondEntered, true);
+});
+
+test("activation lock wait times out with ActivationLockTimeoutError", async () => {
+  const spec = tempArchiveSpec();
+  mkdirSync(dirname(spec.localZip), { recursive: true });
+  let releaseFirst: (() => void) | undefined;
+  let resolveEntered: (() => void) | undefined;
+  const firstEntered = new Promise<void>((resolve) => { resolveEntered = resolve; });
+  const first = withArchiveActivationLock(
+    spec,
+    () => new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+      resolveEntered?.();
+    }),
+    ".activation.lock",
+    { timeoutMs: 60_000, staleMs: 60_000, ownerGraceMs: 60_000, heartbeatMs: 1_000 },
+  );
+  await firstEntered;
+  // Fresh lock held by the first contender → never stale-reclaimed; the
+  // zero budget makes the deadline check fire on the first EEXIST iteration.
+  await assert.rejects(
+    withArchiveActivationLock(
+      spec,
+      async () => {},
+      ".activation.lock",
+      { timeoutMs: 0, staleMs: 60_000, ownerGraceMs: 60_000, heartbeatMs: 1_000 },
+    ),
+    (err: unknown) => err instanceof ActivationLockTimeoutError
+      && /Timed out waiting for archive activation lock/.test((err as Error).message),
+  );
+  // The contender must not have reclaimed or removed the live lock.
+  assert.equal(existsSync(join(dirname(spec.localZip), ".activation.lock")), true);
+  releaseFirst?.();
+  await first;
 });
 
 test("pair manifest switches only after both archives share one SHA", async () => {

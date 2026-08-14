@@ -13,6 +13,7 @@ PRTS-MCP 是面向明日方舟同人创作的 MCP Server，包含 Python 和 Typ
 |---|---|
 | 项目现状、版本状态、仓库结构 | [`STATUS.md`](STATUS.md) |
 | 代码规范、反模式、已知陷阱 | [`docs/dev/STYLE.md`](docs/dev/STYLE.md) |
+| 全量 E2E 真机测试流程（高风险改动后必跑） | [`docs/dev/E2E.md`](docs/dev/E2E.md) |
 | 路线图与未来规划 | [`ROADMAP.md`](ROADMAP.md) |
 | 1.x → 2.0 迁移（破坏性变更） | [`docs/migration-1.x-to-2.0.md`](docs/migration-1.x-to-2.0.md) |
 | 1.7 LTS 维护规则 | [`docs/dev/LTS.md`](docs/dev/LTS.md) |
@@ -56,7 +57,7 @@ PRTS-MCP 是面向明日方舟同人创作的 MCP Server，包含 Python 和 Typ
 
 | 分支 | 用途 | 版本号后缀 |
 |------|------|-----------|
-| `main` | 最新稳定发布。当前为 2.6.2 | （无） |
+| `main` | 最新稳定发布。当前为 2.7.0 | （无） |
 | `lts/1.7` | 1.7.x 长期维护线，从 1.7.0 发布提交创建 | （无） |
 | `develop` | 开发集成线。所有非 LTS 改动 PR 到这里 | `.dev0`（当前目标为 `2.7.0.dev0`） |
 
@@ -143,7 +144,7 @@ fix/*（最新稳定 hotfix）────────→ main ──→ develop
 2. 在 release 分支确认 `[Unreleased]` 段内容齐全
 3. 去掉版本号 `-dev` 后缀（更新 `python/pyproject.toml` 后运行 `uv lock --directory python`，并同步 `ts/package.json` + `ts/package-lock.json`）
 4. CHANGELOG：`[Unreleased]` → `[X.Y.Z] - YYYY-MM-DD`，release PR 到 `main` 时不保留空 `[Unreleased]`
-5. 同步 `STATUS.md` / `ROADMAP.md` / `ROADMAP.zh-CN.md` / `README.md` 的当前稳定版本口径
+5. 同步 `STATUS.md` / `ROADMAP.md` / `ROADMAP.zh-CN.md` / `README.md` / `CLAUDE.md` / `AGENTS.md` 的当前稳定版本口径
 6. 跑 `./scripts/check-runtime.sh --full`
 7. PR：`release/vX.Y.Z` → `main`
 8. **双轨 CR** → **应对 CR** → **人类 merge** 到 `main`
@@ -158,7 +159,7 @@ fix/*（最新稳定 hotfix）────────→ main ──→ develop
 1. 从 `develop` 拉 `release/v1.7.0-lts`
 2. 去掉版本号 `-dev` 后缀（`pyproject.toml` + `package.json` + `package-lock.json`）
 3. CHANGELOG：`[Unreleased]` → `[1.7.0] - YYYY-MM-DD`，声明 1.7 LTS 基线
-4. 同步 `STATUS.md` / `ROADMAP.md` / `ROADMAP.zh-CN.md` / `README.md` / `docs/dev/LTS.md`
+4. 同步 `STATUS.md` / `ROADMAP.md` / `ROADMAP.zh-CN.md` / `README.md` / `CLAUDE.md` / `AGENTS.md` / `docs/dev/LTS.md`
 5. 跑 `./scripts/check-runtime.sh --full`
 6. PR：`release/v1.7.0-lts` → `main`
 7. **双轨 CR** → **应对 CR** → **人类 merge**
@@ -193,6 +194,7 @@ fix/*（最新稳定 hotfix）────────→ main ──→ develop
 | 仅文档 | 术语 / 链接 targeted grep；引用代码时按需 `uv run --directory python --locked python -m pytest tests -k <topic>` |
 | 小代码（单实现） | 按"路径 A 步骤 4"的对应实现命令（Python 或 TS，含 `typecheck`） |
 | 工具面 / 数据 / sync 运行时 | "路径 A 步骤 4"双实现全量 + `./scripts/check-runtime.sh --full` |
+| **大规模高风险跨模块改动**（程序级重构、`sync/`/`api/` 层行为改动、artwork/images 域、MCP 传输层；以及发布里程碑） | **必须**走全量 E2E 真机测试（[`docs/dev/E2E.md`](docs/dev/E2E.md)）：双实现生产式部署 + 真实 MCP Client 全工具组 + 图像双数据源，**缺此环节不得视为验证完成** |
 | release / `main` 快照 | "路径 A 步骤 4"全量 + 双实现 parity 测试 + CHANGELOG / 版本号 / STATUS 口径核对 |
 
 ## 文档扫描
@@ -287,6 +289,9 @@ KHPilot 也可能在公开 Issue 中提供自动回复。这些回复只作为�
 | `ts/package-lock.json` | npm lockfile 顶层版本 |
 | `ROADMAP.md` | 当前版本号 |
 | `ROADMAP.zh-CN.md` | 当前版本号（与 `ROADMAP.md` 成对同步，勿漏） |
+| `STATUS.md` | 当前版本表、分支线版本与最近发布表 |
+| `CLAUDE.md` | 分支模型表的当前版本（main 稳定版 + develop 目标 `.dev0`） |
+| `AGENTS.md` | 分支模型表口径（与 `CLAUDE.md` 成对同步） |
 
 涉及用户可见行为变化时，顺手更新 `README.md`。
 
@@ -322,6 +327,6 @@ git push origin python/v2.6.0-alpha.1 ts/v2.6.0-alpha.1
 - PRTS 的 `/spine`、`/data` 等技术页面在主命名空间，需客户端过滤
 - story_review_table.json 顶层直接是 `{event_id: entry}`，不是嵌套在某个 key 下
 - ArknightsStoryJson zip 内所有路径以 `zh_CN/` 为前缀
-- `GITHUB_MIRRORS` 配置的代理 URL 不要带尾部斜杠
+- `GITHUB_MIRRORS` 条目的首尾空白与尾部斜杠会被双实现一致地自动归一化，但镜像格式本身仍是 `<mirror>/<original_url>`
 - Python 的 `httpx` 和 TS 的 `fetch` 行为不完全一致（重试、超时），sync 逻辑不要假设相同
 - **`pyproject.toml` 的预发布版本号必须用 PEP 440，不能用连字符**：写 `2.6.0a1`（不是 `2.6.0-alpha.1`）。`-alpha.1` 是 **git tag 和 `package.json`** 的格式；`pyproject.toml` 里写连字符形式会导致 `uv` / `pip` / PyPI 拒绝或误解析。CD 的 version check（`cd.yml`）会自动归一化 tag 的 `-alpha.` → PEP 440 `a` 再比对，但 `pyproject.toml` 本身必须原生合规

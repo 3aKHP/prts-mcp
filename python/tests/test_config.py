@@ -7,7 +7,9 @@ import threading
 from unittest.mock import patch
 
 import prts_mcp.config as config_module
-from prts_mcp.config import Config, activation_aware_cache, activation_snapshot
+from prts_mcp.activation import activation_snapshot
+from prts_mcp.cache_stats import activation_aware_cache
+from prts_mcp.config import Config
 
 
 class TestEffectiveStoryjsonZip:

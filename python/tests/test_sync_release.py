@@ -15,7 +15,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-import prts_mcp.config as config_module
+import prts_mcp.activation as activation_module
 from prts_mcp.data.sync import (
     ReleaseSpec,
     ReleaseArchiveSpec,
@@ -24,8 +24,9 @@ from prts_mcp.data.sync import (
     sync_release_archive,
     sync_release_archive_pair,
     sync_release,
+    _ActivationLockTimeoutError,
     _AssetNotFoundError,
-    _archive_activation_lock,
+    with_archive_activation_lock,
     _verify_release_manifest,
 )
 
@@ -132,9 +133,16 @@ class TestSyncRelease:
                 },
             },
         }
+        # check_latest_release moved to release_discovery (P2.A), so its
+        # _get_cascading call resolves there, not in data.sync. One shared mock
+        # patches both namespaces; side_effect is consumed in call order:
+        # release list (discovery) -> asset download -> manifest (state machine).
         with patch(
-            "prts_mcp.data.sync._get_cascading",
+            "prts_mcp.sync.release.get_cascading",
             side_effect=[release, asset, manifest],
+        ) as cascading, patch(
+            "prts_mcp.sync.release_discovery.get_cascading",
+            cascading,
         ):
             result = sync_release(spec, force_check=True)
         assert result.status == "updated"
@@ -159,8 +167,11 @@ class TestSyncRelease:
             "assets": {"zh_CN.zip": {"size": 3, "sha256": "bad"}},
         }
         with patch(
-            "prts_mcp.data.sync._get_cascading",
+            "prts_mcp.sync.release.get_cascading",
             side_effect=[release, asset, manifest],
+        ) as cascading, patch(
+            "prts_mcp.sync.release_discovery.get_cascading",
+            cascading,
         ):
             result = sync_release(spec, force_check=True)
         assert result.status == "offline_fallback"
@@ -177,8 +188,11 @@ class TestSyncRelease:
         release = _mock_release_response("data-legacy", "zh_CN.zip", "https://example/asset")
         asset = _mock_asset_response(b"legacy")
         with patch(
-            "prts_mcp.data.sync._get_cascading",
+            "prts_mcp.sync.release.get_cascading",
             side_effect=[release, asset, _AssetNotFoundError("HTTP 404")],
+        ) as cascading, patch(
+            "prts_mcp.sync.release_discovery.get_cascading",
+            cascading,
         ):
             result = sync_release(spec, force_check=True)
         assert result.status == "updated"
@@ -197,12 +211,15 @@ class TestSyncRelease:
         manifest = _mock_asset_response()
         manifest.json.return_value = {"contractVersion": "unknown", "assets": {}}
         with patch(
-            "prts_mcp.data.sync._get_cascading",
+            "prts_mcp.sync.release.get_cascading",
             side_effect=[
                 _mock_release_response("data-new", "zh_CN.zip", "https://example/asset"),
                 _mock_asset_response(b"new"),
                 manifest,
             ],
+        ) as cascading, patch(
+            "prts_mcp.sync.release_discovery.get_cascading",
+            cascading,
         ):
             result = sync_release(spec, force_check=True)
         assert result.status == "offline_fallback"
@@ -226,7 +243,7 @@ class TestSyncRelease:
             return None
 
         with patch(
-            "prts_mcp.data.sync.check_latest_release",
+            "prts_mcp.sync.release.check_latest_release",
             side_effect=check_release,
         ):
             with ThreadPoolExecutor(max_workers=2) as pool:
@@ -254,7 +271,7 @@ class TestSyncRelease:
             encoding="utf-8",
         )
 
-        with patch("prts_mcp.data.sync.check_latest_release") as check:
+        with patch("prts_mcp.sync.release.check_latest_release") as check:
             result = sync_release(spec)
 
         check.assert_not_called()
@@ -288,7 +305,7 @@ class TestSyncRelease:
         )
 
         with patch(
-            "prts_mcp.data.sync.check_latest_release",
+            "prts_mcp.sync.release.check_latest_release",
             return_value=None,
         ) as check:
             result = sync_release(spec)
@@ -303,8 +320,8 @@ class TestSyncRelease:
         asset_url = "https://example.com/zh_CN.zip"
 
         with (
-            patch("prts_mcp.data.sync.check_latest_release", return_value=(tag, asset_url)),
-            patch("prts_mcp.data.sync.download_release_asset") as mock_dl,
+            patch("prts_mcp.sync.release.check_latest_release", return_value=(tag, asset_url)),
+            patch("prts_mcp.sync.release.download_release_asset") as mock_dl,
         ):
             mock_dl.return_value = None
             result = sync_release(spec)
@@ -330,7 +347,7 @@ class TestSyncRelease:
             files=["zh_CN.zip"],
         ).save(spec.local_zip.parent / "release_meta.json")
 
-        with patch("prts_mcp.data.sync.check_latest_release", return_value=(tag, "http://x")):
+        with patch("prts_mcp.sync.release.check_latest_release", return_value=(tag, "http://x")):
             result = sync_release(spec)
 
         assert result.status == "up_to_date"
@@ -340,7 +357,7 @@ class TestSyncRelease:
         spec = _make_spec(tmp_path)
         _write_zip(spec.local_zip)
 
-        with patch("prts_mcp.data.sync.check_latest_release", return_value=None):
+        with patch("prts_mcp.sync.release.check_latest_release", return_value=None):
             result = sync_release(spec)
 
         assert result.status == "offline_fallback"
@@ -356,7 +373,7 @@ class TestSyncRelease:
             validate_zip=lambda _path: (_ for _ in ()).throw(ValueError("bad zip")),
         )
 
-        with patch("prts_mcp.data.sync.check_latest_release", return_value=None):
+        with patch("prts_mcp.sync.release.check_latest_release", return_value=None):
             result = sync_release(spec)
 
         assert result.status == "no_data"
@@ -365,7 +382,7 @@ class TestSyncRelease:
     def test_no_data_when_network_fails_and_no_zip(self, tmp_path):
         spec = _make_spec(tmp_path)
 
-        with patch("prts_mcp.data.sync.check_latest_release", return_value=None):
+        with patch("prts_mcp.sync.release.check_latest_release", return_value=None):
             result = sync_release(spec)
 
         assert result.status == "no_data"
@@ -376,8 +393,8 @@ class TestSyncRelease:
         tag = f"data-{sha}"
 
         with (
-            patch("prts_mcp.data.sync.check_latest_release", return_value=(tag, "http://x")),
-            patch("prts_mcp.data.sync.download_release_asset"),
+            patch("prts_mcp.sync.release.check_latest_release", return_value=(tag, "http://x")),
+            patch("prts_mcp.sync.release.download_release_asset"),
         ):
             result = sync_release(spec)
 
@@ -398,7 +415,7 @@ class TestSyncRelease:
             files=["zh_CN.zip"],
         ).save(spec.local_zip.parent / "release_meta.json")
 
-        with patch("prts_mcp.data.sync.check_latest_release") as mock_check:
+        with patch("prts_mcp.sync.release.check_latest_release") as mock_check:
             result = sync_release(spec)
 
         mock_check.assert_not_called()
@@ -420,7 +437,7 @@ class TestSyncRelease:
         ).save(spec.local_zip.parent / "release_meta.json")
 
         with patch(
-            "prts_mcp.data.sync.check_latest_release",
+            "prts_mcp.sync.release.check_latest_release",
             return_value=(f"data-{sha}", "http://x"),
         ) as mock_check:
             result = sync_release(spec, force_check=True)
@@ -498,23 +515,23 @@ class TestSyncReleaseArchive:
 
         with (
             patch.dict(os.environ, {"GAMEDATA_PATH": str(excel_spec.local_root)}),
-            patch.object(config_module, "_activation_signature", None),
-            patch.object(config_module, "_activation_listeners", []),
+            patch.object(activation_module, "_activation_signature", None),
+            patch.object(activation_module, "_activation_listeners", []),
         ):
             first = sync_release_archive_pair(excel_spec, levels_spec)
             assert [result.status for result in first] == ["up_to_date", "up_to_date"]
-            config_module.check_activation_change()
+            activation_module.check_activation_change()
             clears = 0
 
             def record_clear() -> None:
                 nonlocal clears
                 clears += 1
 
-            config_module.register_activation_listener(record_clear)
+            activation_module.register_activation_listener(record_clear)
             before = pair_path.stat()
             second = sync_release_archive_pair(excel_spec, levels_spec)
             after = pair_path.stat()
-            config_module.check_activation_change()
+            activation_module.check_activation_change()
 
             assert [result.status for result in second] == ["up_to_date", "up_to_date"]
             assert (after.st_ino, after.st_mtime_ns, after.st_ctime_ns) == (
@@ -527,7 +544,7 @@ class TestSyncReleaseArchive:
             self._activate_pair_generation(excel_spec, levels_spec, "next")
             sync_release_archive_pair(excel_spec, levels_spec)
             changed = pair_path.stat()
-            config_module.check_activation_change()
+            activation_module.check_activation_change()
 
             assert json.loads(pair_path.read_text(encoding="utf-8"))["commit_sha"] == "next"
             assert changed.st_ino != after.st_ino
@@ -565,7 +582,7 @@ class TestSyncReleaseArchive:
 
         fallback = lambda spec: SyncResult(spec, "offline_fallback", None, "offline")
         with patch(
-            "prts_mcp.data.sync.sync_release_archive",
+            "prts_mcp.sync.gamedata_pair.sync_release_archive",
             side_effect=lambda spec, force_check=False: fallback(spec),
         ):
             sync_release_archive_pair(excel_spec, levels_spec)
@@ -591,7 +608,7 @@ class TestSyncReleaseArchive:
         pair_path.symlink_to(external)
 
         with patch(
-            "prts_mcp.data.sync.sync_release_archive",
+            "prts_mcp.sync.gamedata_pair.sync_release_archive",
             side_effect=lambda spec, force_check=False: SyncResult(
                 spec,
                 "offline_fallback",
@@ -627,7 +644,7 @@ class TestSyncReleaseArchive:
         abandoned = time.time() - 11
         os.utime(lock, (abandoned, abandoned))
 
-        with _archive_activation_lock(spec):
+        with with_archive_activation_lock(spec):
             assert (lock / "owner").is_file()
 
         assert not lock.exists()
@@ -643,13 +660,13 @@ class TestSyncReleaseArchive:
             local_root=tmp_path / "gamedata",
             required_files=(),
         )
-        first = _archive_activation_lock(spec)
+        first = with_archive_activation_lock(spec)
         first.__enter__()
         lock = archive_dir / ".activation.lock"
         old = time.time() - 31 * 60
         os.utime(lock, (old, old))
         os.utime(lock / "owner", (old, old))
-        second = _archive_activation_lock(spec)
+        second = with_archive_activation_lock(spec)
         second.__enter__()
         try:
             first.__exit__(None, None, None)
@@ -673,15 +690,15 @@ class TestSyncReleaseArchive:
         release = threading.Event()
 
         def wait_for_lock() -> None:
-            with _archive_activation_lock(spec):
+            with with_archive_activation_lock(spec):
                 acquired.set()
                 release.wait(timeout=2)
 
         with (
-            patch("prts_mcp.data.sync._ACTIVATION_LOCK_STALE_SECONDS", 0.05),
-            patch("prts_mcp.data.sync._ACTIVATION_LOCK_HEARTBEAT_SECONDS", 0.01),
+            patch("prts_mcp.sync.release_activation._ACTIVATION_LOCK_STALE_SECONDS", 0.05),
+            patch("prts_mcp.sync.release_activation._ACTIVATION_LOCK_HEARTBEAT_SECONDS", 0.01),
         ):
-            first = _archive_activation_lock(spec)
+            first = with_archive_activation_lock(spec)
             first.__enter__()
             thread = threading.Thread(target=wait_for_lock)
             thread.start()
@@ -693,6 +710,33 @@ class TestSyncReleaseArchive:
             thread.join(timeout=2)
 
         assert not thread.is_alive()
+
+    def test_activation_lock_wait_times_out_with_named_error(self, tmp_path):
+        archive_dir = tmp_path / "archives"
+        archive_dir.mkdir()
+        spec = ReleaseArchiveSpec(
+            owner="3aKHP",
+            repo="arknights-data-pipeline",
+            asset_name="zh_CN-excel.zip",
+            local_zip=archive_dir / "zh_CN-excel.zip",
+            local_root=tmp_path / "gamedata",
+            required_files=(),
+        )
+        # A live lock held by someone else (fresh owner → never stale-reclaimed).
+        lock = archive_dir / ".activation.lock"
+        lock.mkdir()
+        (lock / "owner").write_text("other", encoding="utf-8")
+
+        with patch("prts_mcp.sync.release_activation._ACTIVATION_LOCK_TIMEOUT_SECONDS", 0):
+            with pytest.raises(TimeoutError, match="Timed out waiting for archive activation lock") as excinfo:
+                with with_archive_activation_lock(spec):
+                    pass
+
+        assert isinstance(excinfo.value, _ActivationLockTimeoutError)
+        assert type(excinfo.value) is _ActivationLockTimeoutError
+        # The contender must not have reclaimed or removed the live lock.
+        assert lock.is_dir()
+        assert (lock / "owner").read_text(encoding="utf-8") == "other"
 
     def test_extracts_updated_archive(self, tmp_path):
         zip_path = tmp_path / "archives" / "zh_CN-excel.zip"
@@ -714,7 +758,7 @@ class TestSyncReleaseArchive:
         )
 
         with patch(
-            "prts_mcp.data.sync.sync_release",
+            "prts_mcp.sync.gamedata_pair.sync_release",
             return_value=SyncResult(
                 spec=ReleaseSpec(
                     owner=spec.owner,
@@ -754,7 +798,7 @@ class TestSyncReleaseArchive:
         )
 
         with patch(
-            "prts_mcp.data.sync.sync_release",
+            "prts_mcp.sync.gamedata_pair.sync_release",
             return_value=SyncResult(
                 spec=ReleaseSpec(
                     owner=spec.owner,
@@ -806,9 +850,9 @@ class TestSyncReleaseArchive:
         )
 
         with (
-            patch("prts_mcp.data.sync.sync_release", return_value=release_result),
+            patch("prts_mcp.sync.gamedata_pair.sync_release", return_value=release_result),
             patch(
-                "prts_mcp.data.sync._safe_extract_zip",
+                "prts_mcp.sync.release_activation.safe_extract_zip",
                 side_effect=RuntimeError("interrupted extraction"),
             ),
         ):
@@ -817,7 +861,7 @@ class TestSyncReleaseArchive:
         assert first.status == "offline_fallback"
         assert not (spec.local_zip.parent / "extract_meta.json").exists()
 
-        with patch("prts_mcp.data.sync.sync_release", return_value=release_result):
+        with patch("prts_mcp.sync.gamedata_pair.sync_release", return_value=release_result):
             second = sync_release_archive(spec)
 
         assert second.status == "updated"
@@ -858,7 +902,7 @@ class TestSyncReleaseArchive:
             error="network down",
         )
 
-        with patch("prts_mcp.data.sync.sync_release", return_value=release_result):
+        with patch("prts_mcp.sync.gamedata_pair.sync_release", return_value=release_result):
             result = sync_release_archive(spec)
 
         assert result.status == "updated"
@@ -883,7 +927,7 @@ class TestSyncReleaseArchive:
         )
 
         with patch(
-            "prts_mcp.data.sync.check_latest_release",
+            "prts_mcp.sync.release.check_latest_release",
             return_value=None,
         ):
             result = sync_release_archive(spec)
@@ -907,7 +951,7 @@ class TestSyncReleaseArchive:
         )
 
         with patch(
-            "prts_mcp.data.sync.sync_release",
+            "prts_mcp.sync.gamedata_pair.sync_release",
             return_value=SyncResult(
                 spec=ReleaseSpec(
                     owner=spec.owner,
@@ -951,7 +995,7 @@ class TestSyncReleaseArchive:
             error=None,
         )
 
-        with patch("prts_mcp.data.sync.sync_release", return_value=release_result):
+        with patch("prts_mcp.sync.gamedata_pair.sync_release", return_value=release_result):
             result = sync_release_archive(spec)
 
         assert result.status == "no_data"
@@ -995,7 +1039,7 @@ class TestSyncReleaseArchive:
                 active_publications -= 1
             return release_result
 
-        with patch("prts_mcp.data.sync.sync_release", side_effect=publish_release):
+        with patch("prts_mcp.sync.gamedata_pair.sync_release", side_effect=publish_release):
             with ThreadPoolExecutor(max_workers=2) as pool:
                 results = list(pool.map(lambda _: sync_release_archive(spec), range(2)))
 
@@ -1016,6 +1060,7 @@ class TestSyncReleaseArchive:
 import sys
 from pathlib import Path
 import prts_mcp.data.sync as sync
+import prts_mcp.sync.gamedata_pair as gpair
 
 zip_path = Path(sys.argv[1])
 local_root = Path(sys.argv[2])
@@ -1028,19 +1073,26 @@ spec = sync.ReleaseArchiveSpec(
     local_root=local_root,
     required_files=(required,),
 )
-sync.sync_release = lambda *args, **kwargs: sync.SyncResult(
-    spec=sync.RepoSpec(
-        owner=spec.owner,
-        repo=spec.repo,
-        branch="releases",
-        files=spec.required_files,
-        local_root=spec.local_root,
-    ),
-    status="updated",
-    commit_sha="abc123",
-    error=None,
-)
+# sync_release_archive lives in sync.gamedata_pair (P2.B.2) and resolves
+# sync_release in that namespace, so patch gamedata_pair -- NOT data.sync.
+calls = []
+def stub(*args, **kwargs):
+    calls.append(1)
+    return sync.SyncResult(
+        spec=sync.RepoSpec(
+            owner=spec.owner,
+            repo=spec.repo,
+            branch="releases",
+            files=spec.required_files,
+            local_root=spec.local_root,
+        ),
+        status="updated",
+        commit_sha="abc123",
+        error=None,
+    )
+gpair.sync_release = stub
 print(sync.sync_release_archive(spec).status)
+print("CALLED" if calls else "NOT_CALLED")
 """
         processes = [
             subprocess.Popen(
@@ -1054,7 +1106,17 @@ print(sync.sync_release_archive(spec).status)
         outputs = [process.communicate(timeout=20) for process in processes]
 
         assert all(process.returncode == 0 for process in processes), outputs
-        assert {stdout.strip() for stdout, _ in outputs} == {"updated", "up_to_date"}
+        statuses = []
+        for stdout, _ in outputs:
+            lines = stdout.strip().splitlines()
+            # Sentinel: the stub MUST have fired -- guards against silent
+            # non-interception if sync_release_archive's lookup namespace
+            # ever changes again.
+            assert len(lines) > 1 and lines[1] == "CALLED", (
+                f"sync_release stub was not invoked; stdout={stdout!r}"
+            )
+            statuses.append(lines[0])
+        assert set(statuses) == {"updated", "up_to_date"}
         spec = ReleaseArchiveSpec(
             owner="3aKHP",
             repo="arknights-data-pipeline",
@@ -1088,7 +1150,7 @@ print(sync.sync_release_archive(spec).status)
                 error=None,
             )
 
-        with patch("prts_mcp.data.sync.sync_release", return_value=release_result("one")):
+        with patch("prts_mcp.sync.gamedata_pair.sync_release", return_value=release_result("one")):
             assert sync_release_archive(spec).status == "updated"
         previous = _active_archive_root(spec)
         old = time.time() - 25 * 60 * 60
@@ -1098,7 +1160,7 @@ print(sync.sync_release_archive(spec).status)
         os.utime(orphan, (old, old))
 
         with patch(
-            "prts_mcp.data.sync.sync_release",
+            "prts_mcp.sync.gamedata_pair.sync_release",
             return_value=SyncResult(
                 spec=spec,
                 status="offline_fallback",
@@ -1109,7 +1171,7 @@ print(sync.sync_release_archive(spec).status)
             assert sync_release_archive(spec).status == "offline_fallback"
         assert not orphan.exists()
 
-        with patch("prts_mcp.data.sync.sync_release", return_value=release_result("two")):
+        with patch("prts_mcp.sync.gamedata_pair.sync_release", return_value=release_result("two")):
             assert sync_release_archive(spec).status == "updated"
 
         assert previous.is_dir()
@@ -1161,7 +1223,7 @@ print(sync.sync_release_archive(spec).status)
             return SyncResult(levels_spec, "offline_fallback", "old", "offline")
 
         with patch(
-            "prts_mcp.data.sync.sync_release_archive",
+            "prts_mcp.sync.gamedata_pair.sync_release_archive",
             side_effect=partial_sync,
         ):
             sync_release_archive_pair(excel_spec, levels_spec)
@@ -1179,7 +1241,7 @@ print(sync.sync_release_archive(spec).status)
             return SyncResult(spec, "updated", "new", None)
 
         with patch(
-            "prts_mcp.data.sync.sync_release_archive",
+            "prts_mcp.sync.gamedata_pair.sync_release_archive",
             side_effect=complete_sync,
         ):
             sync_release_archive_pair(excel_spec, levels_spec)
@@ -1205,7 +1267,7 @@ class TestManifestAbsenceSemantics:
         asset_path = tmp_path / "asset.zip"
         asset_path.write_bytes(b"PK\x03\x04")
         with patch(
-            "prts_mcp.data.sync._get_cascading",
+            "prts_mcp.sync.release.get_cascading",
             side_effect=_AssetNotFoundError("HTTP 404"),
         ):
             # Must return without raising — release predates the manifest.
@@ -1223,7 +1285,7 @@ class TestManifestAbsenceSemantics:
         # A mirror 404 surfaces as a plain Exception carrying "HTTP 404" —
         # NOT _AssetNotFoundError. Must fail closed (#100 regression).
         with patch(
-            "prts_mcp.data.sync._get_cascading",
+            "prts_mcp.sync.release.get_cascading",
             side_effect=Exception("HTTP 404 from mirror"),
         ):
             with pytest.raises(ValueError, match="manifest unavailable"):

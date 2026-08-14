@@ -29,7 +29,7 @@ Two release lines ship in parallel:
 
 | Line | Version | Tools | Status |
 |------|---------|-------|--------|
-| **2.6** (`main`) | `2.6.2` | 24 | Idempotent GameData pair activation prevents unchanged Auto-Sync cycles from clearing caches. |
+| **2.7** (`main`) | `2.7.0` | 24 | Operator base skills (basic_info section + `search` building_skills scope), local artwork skin metadata, and the 2.7 internal refactor program. |
 | **1.7 LTS** (`lts/1.7`) | `1.7.0` | 32 | Stable maintenance line. 1.7.x accepts only compatibility, security, data-sync, and critical bug fixes. |
 
 The `main` and `develop` lines use the self-built `arknights-data-pipeline` Release exclusively for default Auto-Sync. The 1.7 LTS line retains its legacy upstream compatibility until a separate, backwards-compatible migration; changes to the new factory path must not be backported to LTS as an implicit source switch.
@@ -47,7 +47,7 @@ The `main` and `develop` lines use the self-built `arknights-data-pipeline` Rele
 
 Both implementations consume the self-built [`arknights-data-pipeline`](https://github.com/3aKHP/arknights-data-pipeline) Release. New releases carry a `manifest.json` with the `prts-mcp-data/v1` contract, source `versionId`, and SHA-256/size for each archive; a mismatch is rejected before activation, while pre-manifest releases remain readable during the transition. The last activated generation stays in place on download, schema, or manifest failure.
 
-`GITHUB_MIRRORS` is an explicit fallback for GitHub URL access. In Node deployments, standard `HTTP_PROXY`/`HTTPS_PROXY` (including lowercase spellings) are honored via Undici; Bun keeps its native `fetch` path. Proxy support does not weaken manifest or ZIP validation.
+`GITHUB_MIRRORS` is an explicit fallback for GitHub URL access. Mirror entries have surrounding whitespace and trailing slashes normalized automatically in both implementations. In Node deployments, standard `HTTP_PROXY`/`HTTPS_PROXY` (including lowercase spellings) are honored via Undici; Bun keeps its native `fetch` path. Proxy support does not weaken manifest or ZIP validation.
 
 See [`docs/migration-1.x-to-2.0.md`](docs/migration-1.x-to-2.0.md) for the 1.x → 2.0 breaking changes (tool consolidation, `operator_name` → `name`, output channel), and [`docs/migration-0.x-to-1.0.md`](docs/migration-0.x-to-1.0.md) for the 0.x → 1.0 transition.
 
@@ -65,13 +65,13 @@ Both implementations expose the same tool set:
 | `prts_page(page_title, action, ...)` | Read a wiki page or metadata; `template` returns rendered fields from top-level templates |
 | `get_operator_archives(name)` | Retrieve operator archive records (Chinese name) |
 | `get_operator_voicelines(name)` | Retrieve operator voice lines (Chinese name) |
-| `get_operator_basic_info(name)` | Retrieve basic operator profile: class, rarity, faction, recruit tags, talents (Chinese name) |
+| `get_operator_basic_info(name)` | Retrieve basic operator profile: class, rarity, faction, recruit tags, talents, base skills (Chinese name) |
 | `list_story_events(category?)` | List story events; optional filter: `main` (main story) or `activities` |
 | `list_stories(event_id, include_summaries?)` | List chapters of an event in official order; `include_summaries` adds the event-level overview + per-chapter summaries |
 | `get_story_summary(story_key)` | Single-chapter summary (LLM long summary or official one-liner) |
 | `read_story(story_key, include_narration)` | Read full dialogue for a single chapter |
 | `read_activity(event_id, include_narration, page, page_size)` | Read a complete activity's transcript, with pagination |
-| `search(scope, pattern, max_results)` | Full-text regex search within a data domain: `scope` ∈ operators / enemies / stages / items |
+| `search(scope, pattern, max_results)` | Full-text regex search within a data domain: `scope` ∈ operators / enemies / stages / items / building_skills |
 | `search_stories(pattern, character?, line_type?, context_lines?, max_results?, event_id?)` | Full-text regex search across story dialogue, narration, and choice lines with filtering |
 | `list_enemies()` | List all enemies in the handbook with threat level and description |
 | `get_enemy_info(name, stage_id?)` | Retrieve full enemy handbook entry by name, or stage-specific stats when `stage_id` is provided |
@@ -84,7 +84,7 @@ Both implementations expose the same tool set:
 | `get_operator_memoirs(name)` | Resolve an operator's memoir (干员密录) story keys for follow-up `read_story` calls |
 | `find_character_appearances(name, scope?, max_events?)` | Find chapters/events where a character speaks (dialog) or is mentioned (name substring) |
 | `find_speakers_in(event_id)` | List every speaker in an event with dialog line counts |
-| `operator_artwork(operator_name, action, artwork_id?, variant?)` | List operator illustrations/skins and retrieve image variants (base64); MediaWiki by default, AKDP local assets when `LOCAL_IMAGE=true` |
+| `operator_artwork(operator_name, action, artwork_id?, variant?)` | List operator illustrations/skins (local list carries skin collection/acquisition metadata) and retrieve image variants (base64); MediaWiki by default, AKDP local assets when `LOCAL_IMAGE=true` |
 
 ### Output Channel
 
@@ -155,7 +155,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and [`doc
 
 | 版本线 | 版本 | 工具数 | 状态 |
 |--------|------|--------|------|
-| **2.6**（`main`） | `2.6.2` | 24 | GameData pair 激活幂等化，避免无变化 Auto-Sync 周期误清缓存。 |
+| **2.7**（`main`） | `2.7.0` | 24 | 干员基建技能（basic_info 新段 + `search` 新 scope）、本地立绘皮肤元数据、2.7 内部重构程序。 |
 | **1.7 LTS**（`lts/1.7`） | `1.7.0` | 32 | 稳定维护线。1.7.x 仅接受兼容性、安全性、数据同步和关键缺陷修复。 |
 
 | 范围 | Python | TypeScript |
@@ -171,7 +171,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and [`doc
 
 两套实现都消费自建 [`arknights-data-pipeline`](https://github.com/3aKHP/arknights-data-pipeline) Release。新 Release 附带 `manifest.json`，声明 `prts-mcp-data/v1` 契约、源 `versionId` 以及每个压缩包的大小/SHA-256；不匹配会在激活前拒绝，迁移期间仍兼容没有 manifest 的旧 Release。下载、结构或 manifest 校验失败时，服务继续使用上一代已激活数据。
 
-`GITHUB_MIRRORS` 是显式的 GitHub 访问备用路径；Node 部署会通过 Undici 使用标准 `HTTP_PROXY`/`HTTPS_PROXY`（也识别小写变量），Bun 保持原生 `fetch` 路径。代理不会绕过 manifest 或 ZIP 校验。
+`GITHUB_MIRRORS` 是显式的 GitHub 访问备用路径；条目的首尾空白与尾部斜杠在两种实现中都会自动归一化。Node 部署会通过 Undici 使用标准 `HTTP_PROXY`/`HTTPS_PROXY`（也识别小写变量），Bun 保持原生 `fetch` 路径。代理不会绕过 manifest 或 ZIP 校验。
 
 1.x → 2.0 的破坏性变更（工具面合并、`operator_name` → `name`、output channel）见 [`docs/migration-1.x-to-2.0.md`](docs/migration-1.x-to-2.0.md)；0.x → 1.0 迁移见 [`docs/migration-0.x-to-1.0.md`](docs/migration-0.x-to-1.0.md)。
 
@@ -189,13 +189,13 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and [`doc
 | `prts_page(page_title, action, ...)` | 读取词条正文或元数据；`template` 返回顶层模板的结构化、已渲染字段数据 |
 | `get_operator_archives(name)` | 获取干员档案资料（中文名） |
 | `get_operator_voicelines(name)` | 获取干员语音记录（中文名） |
-| `get_operator_basic_info(name)` | 获取干员基本信息：职业、稀有度、所属、招募标签、天赋（中文名） |
+| `get_operator_basic_info(name)` | 获取干员基本信息：职业、稀有度、所属、招募标签、天赋、基建技能（中文名） |
 | `list_story_events(category?)` | 列出剧情活动，可选过滤：`main`（主线）或 `activities`（活动） |
 | `list_stories(event_id, include_summaries?)` | 列出指定活动的章节（按官方顺序）；`include_summaries` 附活动级概览 + 每章梗概 |
 | `get_story_summary(story_key)` | 获取单章梗概（LLM 长摘要或官方一句话简介） |
 | `read_story(story_key, include_narration)` | 读取单章完整台词 |
 | `read_activity(event_id, include_narration, page, page_size)` | 读取整个活动的完整剧情，支持分页 |
-| `search(scope, pattern, max_results)` | 在指定数据域执行全文正则搜索：`scope` ∈ operators / enemies / stages / items |
+| `search(scope, pattern, max_results)` | 在指定数据域执行全文正则搜索：`scope` ∈ operators / enemies / stages / items / building_skills（基建技能跨干员反查） |
 | `search_stories(pattern, character?, line_type?, context_lines?, max_results?, event_id?)` | 在剧情台词中执行全文正则搜索，支持按角色和台词类型过滤 |
 | `list_enemies()` | 列出敌方图鉴中所有敌人及其威胁等级和描述 |
 | `get_enemy_info(name, stage_id?)` | 获取指定敌人的详细图鉴资料；传入 `stage_id` 时返回关卡级数值 |
@@ -208,7 +208,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and [`doc
 | `get_operator_memoirs(name)` | 解析干员密录的 story_key，便于后续 `read_story` 调用 |
 | `find_character_appearances(name, scope?, max_events?)` | 查找角色在哪些章节/活动中开口（对话）或被提及（名字子串） |
 | `find_speakers_in(event_id)` | 列出指定活动中所有发言角色及其对话行数 |
-| `operator_artwork(operator_name, action, artwork_id?, variant?)` | 列出干员立绘/时装并获取图片变体（base64）；默认走 MediaWiki，`LOCAL_IMAGE=true` 时使用 AKDP 本地资产 |
+| `operator_artwork(operator_name, action, artwork_id?, variant?)` | 列出干员立绘/时装（本地模式附带皮肤系列/获取方式等元数据）并获取图片变体（base64）；默认走 MediaWiki，`LOCAL_IMAGE=true` 时使用 AKDP 本地资产 |
 
 ### 输出通道
 

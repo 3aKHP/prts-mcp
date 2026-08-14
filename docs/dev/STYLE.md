@@ -14,20 +14,34 @@
 
 - **单一职责**：一个文件只干一件事。`operator.py` 只负责干员数据读取，不混进搜索逻辑；`sanitizer.py` 只管 wikitext 清洗，不放 API 调用
 - **文件长度预警线**：源文件超过 ~300 行就要问"这能不能拆"
-- **模块边界**：`data/` 只做数据读写和格式化，不混进 HTTP 请求；`api/` 只做 PRTS Wiki API 调用；`server.py` 只做工具注册和启动编排
+- **模块边界**：`data/` 的数据读取模块只做数据读写和格式化，不混进 HTTP 请求；HTTP 传输统一收敛到 `sync/` 层；`api/` 只做 PRTS Wiki API 调用；`server.py` 只做工具注册和启动编排
+
+> **已审健康的大文件（2.7.0 上帝文件审计归档，P5.1）**：预警线以耦合度为准，不是行数。以下单元在 2.7.0 周期审计中按 STYLE 耦合规则逐个判为单一职责/抽取得当（story_reader 为临界），**不要为行数机械拆分**；表中行数是归档时的快照，结论以耦合度为准；"可选辅助"是审计记录的文件内抽取候选，仅在利于测试/复用时再做，不欠账：
+
+| 模块（PY / TS 行数@2026-08） | 审计结论 | 可选辅助（非必须） |
+|---|---|---|
+| `data/operator`（311 / 402） | 🟢 单一职责（干员数据读+格式化）；TS 大 ~90 行是 JSON-shape interface + per-cache CacheMetrics 的结构不对称，非上帝文件 | `resolve_operator_or_error`（收 3 处重复前置解析） |
+| `data/item`（475 / 496） | 🟢 镜像 operator 的 build/render/entry 形态 | `itemLabels`（纯 label 表 + 格式化，无 IO 可单测） |
+| `data/stage`（526 / 554） | 🟢 validate→load→filter→paginate→shape 线性管线，最大嵌套 2 | `stage_render`（纯 markdown；`stage_search` 契合 ROADMAP 决策原则 7 的统一 search 入口） |
+| `data/story_search`（398 / 356） | 🟢 内聚 | `_validate_search_params`（集中 6 个参数 guard） |
+| `data/story_reader`（540 / 561） | 🟡 临界：默认不拆，仅在利于测试时抽取 | `story_types`（纯数据形状）+ `story_format`（payload+markdown） |
+| `data/images`（227 / 233） | 🟢 免检：单域、抽取得当（sync 在 `sync/images_sync`、缓存生命周期合惯例） | — |
 
 ### 分层纪律
 
 ```
 server.py/ts          ←  MCP 工具注册、启动同步编排
 api/                  ←  PRTS Wiki MediaWiki API 客户端
-data/                 ←  干员/剧情/搜索/同步/store 抽象
+data/                 ←  干员/剧情/搜索/store 抽象
 data/stores           ←  DirectoryStore / ZipStore 底层读写
+sync/                 ←  GitHub Release 数据同步（传输：HTTP/镜像/级联 fetch；发现：release 列表）；数据同步 HTTP 归此层（PRTS Wiki HTTP 归 api/）
 utils/                ←  跨领域纯函数（wikitext 清洗等）
 config.py/ts          ←  路径解析、环境变量
 ```
 
-**允许的依赖方向**：`server → api, data, config` / `data → stores, utils, config` / `api → utils`。 **禁止**：`stores` 依赖 `data`；`utils` 依赖 `api` 或 `data`；`config` 依赖任何其他模块。
+**允许的依赖方向**：`server → api, data, sync, config` / `data → stores, utils, config` / `sync → stores, utils, config` / `api → utils`。 **禁止**：`stores` 依赖 `data`；`utils` 依赖 `api` 或 `data`；`config` 依赖任何其他模块；`data` 的数据读取模块直接发 HTTP（数据同步 HTTP 归 `sync/`、PRTS Wiki HTTP 归 `api/`）。
+
+> 三个注定的例外：① `data/artwork_mediawiki` 是 wiki-backed 数据源，允许**经 `api/` 客户端**取 PRTS 数据（自身仍不发裸 HTTP、不 import sync）；② `data/artwork_local` 对本地图片代际目录的 PNG 直读豁免 store 抽象——`stores` 是 JSON 文本契约，代际目录是绝对宿主路径而非 store root 相对模型，且读取自带 realpath 遏制守卫（#169）；③ `sync/images_sync` 消费 `data/images` 的 AKDP index 契约（`parse_index`/`ImagesIndex`/`SCHEMA_VERSION`）——index 是 sync 写出、data 读入的对接契约，schema 归 data 域持有，反向搬迁会制造更糟的 `data → sync` 边。
 
 ### 抽象层
 
@@ -104,7 +118,7 @@ MCP 工具描述（Python `@mcp.tool()` 的 docstring / TS `server.tool()` 的�
 - 工具函数里直接读文件（绕过 store 抽象）
 - `Utils.py` / `helpers.ts` 杂物堆——按主题拆专用模块
 - 同一份常量在多个文件散落（必须走 config 或顶层常量）
-- 跨层调用（data 模块里直接发起 HTTP 请求）
+- 跨层调用（data 数据读取模块里直接发起 HTTP 请求；HTTP 传输只归 `sync/` 层）
 - 两套实现的行为不一致（工具名、参数、输出格式）
 - 为每个新数据域机械复制 `list_X` / `get_X` / `search_X` 三件套——优先扩 `search(scope)` 等统一入口的 enum（见 ROADMAP 决策原则 7）
 
@@ -138,8 +152,9 @@ def get_operator(name: str | None) -> dict[str, Any] | None: ...
 
 ### 缓存
 
-- 只读数据表用 `@lru_cache(maxsize=1)` 惰性加载
-- 数据被 sync 更新后，调用 `clear_operator_caches()` 清缓存
+- gamedata 域模块经 `data/dataset_access`（TS `data/datasetAccess.ts`）声明缓存：`define_dataset(spec)` 返回 access 对象，loader 默认 `onError: "throw"`（异常传播、下次重试——保住"进程中途数据出现"语义）；缺数据当空/None 由 load 函数自行返回
+- 缓存引擎仍是 activation-aware（generation key），代际变更经各模块唯一一条 `register_activation_listener(clearX_caches)` 触发清除；operator 的清除会经 `on_clear` rider 级联清 search
+- 注意失效机制的不对称：Python 的 generation-key 缓存即使忘注册 listener 也会自愈；TS 的契约层不注册 listener，失效完全依赖各模块的 `registerActivationListener(clearXCaches)`——迁移新域时这条注册不可省
 - 不要缓存 `Config`，它需要反映 sync 后的路径变化
 
 ### MCP 工具注册
@@ -190,16 +205,15 @@ interface CharacterEntry {
   // ...
 }
 
-// 好：module-level 惰性缓存
-let _characterTable: TableCache<Record<string, CharacterEntry>> = null;
 ```
 
 - 只定义实际使用的字段，不要为整个 JSON 定义完整类型
-- `null` = 未加载，`undefined` = 加载失败
 
 ### 缓存
 
-- 模块级 `let` 变量 + `clearXxxCaches()` 函数
+- gamedata 域经 `data/datasetAccess.ts` 的 `defineDataset` 声明缓存（loader 状态机），不再手搓模块级 `let` + `checkActivationChange()` 脚手架；每个域保留恰好一条 `registerActivationListener(clearXCaches)`
+- 不要用 `Map` 做简单缓存（除非需要 LRU 或多 key）
+- Config 不缓存：`loadConfig()` 每次调用重新读取
 - 不要用 `Map` 做简单缓存（除非需要 LRU 或多 key）
 - Config 不缓存：`loadConfig()` 每次调用重新读取
 
@@ -236,10 +250,33 @@ Python 和 TypeScript 不是翻译关系，但文件结构和模块职责应保�
 | `config.py` | `config.ts` | 路径解析、环境变量 |
 | `data/stores.py` | `data/stores.ts` | DirectoryStore / ZipStore 抽象 |
 | `data/operator.py` | `data/operator.ts` | 干员数据读取和格式化 |
+| `data/enemy.py` | `data/enemy.ts` | 敌人图鉴/数据库读取编排 + payload/render（消费下方纯模块） |
+| `data/enemy_database.py` | `data/enemyDatabase.ts` | enemy_database.json 归一化 + level0_index 投影（纯） |
+| `data/enemy_stats.py` | `data/enemyStats.ts` | 战斗属性抽取 + m_defined 覆盖合并（纯；TS 侧另持 pythonFloatString/formatNumber 格式化 shim，无 PY 对应） |
+| `data/enemy_render.py` | `data/enemyRender.ts` | 敌人图鉴卡片 + 战斗属性块渲染（首个 render 模块范式：纯 dict → markdown lines） |
+| `data/level_parser.py` | `data/levelParser.ts` | zh_CN-levels 关卡 JSON 纯解析（level_path/spawn_counts/enemy_refs/parse_level） |
+| `data/stage.py` | `data/stage.ts` | 关卡数据读取和格式化（导出共享 load_stage_table/getStageTable） |
+| `data/stage_enemy.py` | `data/stageEnemy.ts` | 关卡×敌人融合编排（消费 enemy/stage 共享访问器，own dataset 仅 enemy_appearance_index） |
+| `data/artwork_local.py` | `data/artworkLocal.ts` | 本地 AKDP 立绘后端（char-id 别名解析、index 加载、受守卫 PNG 读取；接收已解析 gen_dir，不 import sync/api/output） |
+| `data/artwork_mediawiki.py` | `data/artworkMediawiki.ts` | MediaWiki 立绘后端（list/get 编排 + LRU + label/ownership；经 api 客户端取数） |
+| `data/artwork_format.py` | `data/artworkFormat.ts` | artwork 结果形状（ListOutcome/GetOutcome）+ 共享列表 markdown 渲染 |
+| `data/building.py` | `data/building.ts` | 基建技能读取（building_data.json：按 buff 槽位取最高相位 + building_skills 搜索记录。与 operator 存在受控回边：PY 在记录构建函数内 lazy import operator 的 `_build_name_to_id`，TS 为静态 import 但仅在函数体内使用其绑定——两种形式都保证环引用不在模块求值期触碰对方绑定；operator/search 单向消费本模块的其余部分） |
 | `data/story.py` | `data/story.ts` | 剧情数据读取和格式化 |
 | `data/search.py` | `data/search.ts` | 全文搜索 |
-| `data/sync.py` | `data/sync.ts` | GitHub Release 同步 |
+| `data/sync.py` | `data/sync.ts` | re-export barrel（全 sync 状态机已迁入 `sync/`） |
+| `sync/transport.py` | `sync/transport.ts` | GitHub Release HTTP 传输（镜像/级联 fetch） |
+| `sync/release_discovery.py` | `sync/releaseDiscovery.ts` | Release 发现（list/latest-by-prefix/asset_url/check_latest） |
+| `sync/_types.py` | `sync/types.ts` | 共享 spec/result 类型（RepoSpec/ReleaseArchiveSpec/SyncResult） |
+| `sync/gamedata_pair.py` | `sync/gamedataPair.ts` | GameData pair 状态机（archive 激活 + pair 协调，含 #152 幂等双守卫） |
+| `sync/images_sync.py` | `sync/imagesSync.ts` | AKDP 图片资产同步状态机（shard/delta 下载 + 代际激活） |
+| `sync/generation_store.py` | `sync/generationStore.ts` | 图片代际文件系统 store（.images_meta 指针 + active 代际解析 + prune） |
+| `sync/primitives.py` | `sync/primitives.ts` | sync 层共享原语（atomic_write_json + prune_old_trees） |
+| `sync/release_activation.py` | `sync/releaseActivation.ts` | 跨进程锁 + 代际树 + staging + extract-meta + zip 校验/解压 |
+| `sync/release.py` | `sync/release.ts` | Release 下载 + manifest 校验 + sync_release 状态机 |
 | `data/datasets.py` | `data/datasets.ts` | 数据集 spec 定义 |
+| `data/dataset_access.py` | `data/datasetAccess.ts` | DatasetAccess 契约（define_dataset/defineDataset 工厂 + 具名注册表 + excel/levels store 工厂） |
+| `data/gamedata_attrs.py` | `data/gamedataAttrs.ts` | 共享 gamedata 属性 unwrap（m_value/mValue） |
+| `data/messages.py` | `data/messages.ts` | canonical 缺数据/边界校验/正则错误文案（两侧符号 1:1） |
 | `api/prts_wiki.py` | `api/prtsWiki.ts` | PRTS MediaWiki API 客户端 |
 | `utils/sanitizer.py` | `utils/sanitizer.ts` | Wikitext 清洗 |
 
@@ -355,7 +392,7 @@ npm --prefix ts run typecheck                       # 类型检查
 
 ### 网络与同步
 
-- `GITHUB_MIRRORS` 代理 URL 不要带尾部斜杠
+- `GITHUB_MIRRORS` 条目的首尾空白与尾部斜杠已由双实现一致地自动归一化，无需用户手动处理
 - Python `httpx` 和 TS `fetch` 行为不完全一致（重试、超时策略），sync 逻辑不要假设相同
 - TS `adm-zip` 和 Python `zipfile` 对损坏 zip 的容错不同，sync 里的完整性检查两边都要有
 - GitHub API 匿名请求有严格限速，建议配置 `GITHUB_TOKEN`

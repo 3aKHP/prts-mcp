@@ -8,9 +8,9 @@ Long-lived branches after the 1.7.0 LTS release:
 
 | Branch | Purpose | Version suffix |
 |--------|---------|---------------|
-| `main` | Latest stable release. Currently `2.5.1`. | (none) |
+| `main` | Latest stable release. Currently `2.7.0`. | (none) |
 | `lts/1.7` | 1.7.x long-term maintenance. Created from the 1.7.0 release commit. | (none) |
-| `develop` | Development integration. All non-LTS changes land here. | `.dev0` (current target: `2.6.0.dev0`) |
+| `develop` | Development integration. All non-LTS changes land here. | `.dev0` (current target: `2.7.0.dev0`) |
 
 - Feature / refactor / perf / non-urgent fix / general docs / chore -> branch from `develop`, PR to `develop`.
 - 1.7.x LTS fix -> branch from `lts/1.7`, PR to `lts/1.7`, then cherry-pick or reimplement on `develop` if applicable.
@@ -48,6 +48,8 @@ Run the full validation set before merging runtime-sensitive changes:
 ```bash
 ./scripts/check-runtime.sh --full
 ```
+
+**After large-scale high-risk cross-module changes** (program-level refactors, `sync/`/`api/` behavior changes, the artwork/images domain, MCP transport changes, and release milestones), the full E2E real-machine pass is **mandatory** — production-style deployment of both implementations plus a real MCP client exercising every tool group. Procedure: [`docs/dev/E2E.md`](docs/dev/E2E.md).
 
 Equivalent manual commands:
 

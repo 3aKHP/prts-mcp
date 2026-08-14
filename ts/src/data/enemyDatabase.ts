@@ -4,6 +4,7 @@
  * The legacy archive wraps rows in ``{ enemies: [{ Key, Value }] }`` while
  * AKDP releases the equivalent ``{ enemyId: Value[] }`` mapping directly.
  */
+import { parseLevel } from "./levelParser.js";
 
 interface EnemyDatabaseValue<T> {
   level?: number | string;
@@ -13,11 +14,6 @@ interface EnemyDatabaseValue<T> {
 type LegacyEnemyDatabase<T> = {
   enemies?: Array<{ Key?: string; Value?: EnemyDatabaseValue<T>[] }>;
 };
-
-function parseLevel(value: unknown): number {
-  const parsed = Number(value ?? 0);
-  return Number.isFinite(parsed) ? Math.trunc(parsed) : 0;
-}
 
 function addRow<T>(
   index: Record<string, Record<number, T>>,
@@ -57,6 +53,24 @@ export function normalizeEnemyDatabase<T>(raw: unknown): Record<string, Record<n
   }
   if (Object.keys(index).length === 0) {
     throw new Error("enemy_database.json 格式异常：未找到敌人等级数据。");
+  }
+  return index;
+}
+
+/**
+ * Project the raw level map onto the default (level-0) entry per enemy.
+ *
+ * Selection semantics replicate enemy.ts's historical projection verbatim
+ * (nullish ``??``); the Python mirror uses truthy ``or`` instead — a known,
+ * deliberate cross-implementation divergence, do not unify.
+ */
+export function level0Index<T>(
+  levels: Record<string, Record<number, T>>,
+): Record<string, T> {
+  const index: Record<string, T> = {};
+  for (const [enemyId, levelMap] of Object.entries(levels)) {
+    const first = levelMap[0] ?? Object.values(levelMap)[0];
+    if (first) index[enemyId] = first;
   }
   return index;
 }

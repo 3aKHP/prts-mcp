@@ -1,38 +1,43 @@
 /**
  * AKDP image asset sync for LOCAL_IMAGE=true mode.
- * Mirrors python/src/prts_mcp/data/images_sync.py.
+ * Mirrors python/src/prts_mcp/sync/images_sync.py.
  *
  * Discovers ``images-*`` GitHub Releases from the arknights-data-pipeline
  * factory, downloads baseline shard zips + delta zips, and atomically
  * activates a generation directory of PNG files indexed by ``index.json``.
  *
- * Reuses the JSON sync's reliability primitives (cascading mirrors, atomic
- * activation, cross-process locking, offline fallback) from sync.ts, but
- * uses an images-specific discovery path: images Releases are tag-isolated
- * from ``data-*`` Releases and cannot use ``/releases/latest`` (see
+ * Moved from data/imagesSync into the sync/ tier in P3.B (it is a sync
+ * state machine, not a data reader). Reuses the shared sync primitives —
+ * cascading transport, atomic activation, cross-process locking, offline
+ * fallback — but keeps an images-specific discovery path: images Releases
+ * are tag-isolated from ``data-*`` Releases and cannot use the
+ * ``/releases/latest`` endpoint (see
  * arknights-data-pipeline/docs/image-index-schema.md §6).
  */
 
 import { createHash, randomUUID } from "node:crypto";
-import { createWriteStream, existsSync, readFileSync, statSync } from "node:fs";
-import { cp, mkdir, readFile, readdir, rename, rm, stat, unlink, writeFile } from "node:fs/promises";
-import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
-import { Readable } from "node:stream";
-import { pipeline } from "node:stream/promises";
-import { SCHEMA_VERSION, parseIndex, type ImagesIndex } from "./images.js";
+import { existsSync } from "node:fs";
+import { cp, mkdir, readFile, rename, rm, unlink, writeFile } from "node:fs/promises";
+import { join, relative } from "node:path";
+import { SCHEMA_VERSION, parseIndex, type ImagesIndex } from "../data/images.js";
+import { withArchiveActivationLock, safeExtractZip } from "./releaseActivation.js";
 import {
   assetUrl,
-  fetchCascading,
-  githubHeaders,
   latestReleaseByPrefix,
   listReleases,
-  safeExtractZip,
-  withArchiveActivationLock,
-  type GithubRelease,
   type ReleaseSpec,
-  type RepoSpec,
-  type SyncResult,
-} from "./sync.js";
+} from "./releaseDiscovery.js";
+import { type RepoSpec, type SyncResult } from "./types.js";
+import { fetchCascading, githubHeaders, streamCascading } from "./transport.js";
+import {
+  IMAGES_META,
+  activeGeneration,
+  loadMeta,
+  pruneGenerations,
+  releasesDir,
+  saveMeta,
+  versionHash,
+} from "./generationStore.js";
 
 export const IMAGES_REPO_OWNER = "3aKHP";
 export const IMAGES_REPO = "arknights-data-pipeline";
@@ -51,8 +56,6 @@ const ORIGINAL_SHARD_KEYS = [
   "chararts-original",
   "skinpack-original",
 ] as const;
-const RETENTION_MS = 24 * 60 * 60 * 1000;
-export const IMAGES_META = ".images_meta.json";
 const IMAGES_LOCK = ".images.lock";
 
 export function neededShardKeys(includeOriginal: boolean): readonly string[] {
@@ -68,7 +71,7 @@ function log(level: "INFO" | "WARN" | "ERROR", msg: string): void {
 
 // ---------------------------------------------------------------------------
 // Discovery helpers (listReleases, latestReleaseByPrefix, assetUrl) are
-// imported from sync — data and images releases share the same pattern.
+// imported from the sync tier — data and images releases share the pattern.
 // ---------------------------------------------------------------------------
 
 function releaseDownloadUrl(tag: string, assetName: string): string {
@@ -92,134 +95,6 @@ async function downloadSmall(url: string, timeoutMs = 30_000): Promise<Buffer | 
     return Buffer.from(await res.arrayBuffer());
   } catch {
     return null;
-  }
-}
-
-// TS uses a single total deadline (AbortSignal.timeout) whereas Python's
-// httpx.stream uses a per-socket timeout; 30 min covers the largest
-// ORIGINAL_IMAGE shard (~3.6 GB) on slow links. A per-chunk AbortSignal
-// refresh would be ideal but needs a custom read loop.
-async function downloadLarge(url: string, dest: string, timeoutMs = 1_800_000): Promise<void> {
-  const tmp = join(
-    dirname(dest),
-    `.${basename(dest)}.${randomUUID().replaceAll("-", "")}.tmp`,
-  );
-  await mkdir(dirname(dest), { recursive: true });
-  try {
-    const res = await fetchCascading(
-      url,
-      { headers: githubHeaders(), redirect: "follow" },
-      timeoutMs,
-    );
-    // Stream the shard to disk so multi-hundred-MB baseline zips do not stay
-    // resident; mirrors python's httpx.stream chunked write. fetchCascading
-    // returns a real Response at runtime but FetchResponse omits body to stay
-    // decoupled from DOM, so narrow res via unknown instead of `any` (#100).
-    // Readable.fromWeb expects a DOM ReadableStream whose generic variance is
-    // incompatible with Node 22's global ReadableStream at compile time; derive
-    // the exact parameter type to avoid bare `any`.
-    const body = (res as unknown as { body: ReadableStream | null }).body;
-    if (body === null) throw new Error("download response body is null");
-    await pipeline(
-      Readable.fromWeb(body as unknown as Parameters<typeof Readable.fromWeb>[0]),
-      createWriteStream(tmp),
-    );
-    await rename(tmp, dest);
-  } finally {
-    await unlink(tmp).catch(() => undefined);
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Generation state (.images_meta.json + .releases/<gen>/)
-// ---------------------------------------------------------------------------
-
-function metaPath(root: string): string {
-  return join(root, IMAGES_META);
-}
-
-async function loadMeta(root: string): Promise<Record<string, unknown> | null> {
-  try {
-    const data = JSON.parse(await readFile(metaPath(root), "utf-8"));
-    return typeof data === "object" && data !== null && !Array.isArray(data)
-      ? (data as Record<string, unknown>)
-      : null;
-  } catch {
-    return null;
-  }
-}
-
-async function saveMeta(root: string, meta: Record<string, unknown>): Promise<void> {
-  const path = metaPath(root);
-  const tmp = join(
-    dirname(path),
-    `.${basename(path)}.${randomUUID().replaceAll("-", "")}.tmp`,
-  );
-  await mkdir(dirname(path), { recursive: true });
-  await writeFile(tmp, JSON.stringify(meta, null, 2), "utf-8");
-  await rename(tmp, path);
-}
-
-/** Synchronous active-generation resolver — shared by sync and tool layers. */
-export function activeGenerationSync(imageDir: string): string | null {
-  let meta: Record<string, unknown>;
-  try {
-    meta = JSON.parse(readFileSync(join(imageDir, IMAGES_META), "utf-8"));
-  } catch {
-    return null;
-  }
-  const rel = meta["generation_root"];
-  if (typeof rel !== "string" || rel.length === 0) return null;
-  const base = resolve(imageDir);
-  const gen = resolve(base, rel);
-  const relCheck = relative(base, gen);
-  if (relCheck === ".." || relCheck.startsWith(`..${sep}`) || isAbsolute(relCheck)) {
-    return null;
-  }
-  try {
-    if (!statSync(gen).isDirectory()) return null;
-    statSync(join(gen, "index.json"));
-    return gen;
-  } catch {
-    return null;
-  }
-}
-
-async function activeGeneration(imageDir: string): Promise<string | null> {
-  return activeGenerationSync(imageDir);
-}
-
-async function releasesDir(imageDir: string): Promise<string> {
-  const dir = join(imageDir, ".releases");
-  await mkdir(dir, { recursive: true });
-  return dir;
-}
-
-function versionHash(version: string): string {
-  return createHash("sha256").update(version).digest("hex").slice(0, 16);
-}
-
-async function pruneGenerations(releasesDir: string, keep: string): Promise<void> {
-  const cutoff = Date.now() - RETENTION_MS;
-  let entries: string[];
-  try {
-    entries = await readdir(releasesDir);
-  } catch {
-    return;
-  }
-  for (const name of entries) {
-    if (name.startsWith(".")) continue;
-    const candidate = join(releasesDir, name);
-    if (candidate === keep) continue;
-    try {
-      const info = await stat(candidate);
-      if (info.mtimeMs >= cutoff) continue;
-      if (info.isDirectory()) {
-        await rm(candidate, { recursive: true, force: true });
-      }
-    } catch {
-      // best-effort retention cleanup
-    }
   }
 }
 
@@ -327,7 +202,7 @@ async function syncImagesLocked(
   // set already match the active generation, skip the ~1.1 MB index.json
   // download. baselineVersion rides in index.json but cannot change without
   // a new delta tag, so tag equality implies baseline equality. force_check
-  // still drives a real API call here; a TTL freshness skip is deferred.
+  // still drives a real GitHub API call here; a TTL freshness skip is deferred.
   if (
     meta !== null
     && genDir !== null
@@ -384,7 +259,7 @@ async function syncImagesLocked(
         const shardFile = index.shards[shardKey] ?? "";
         if (!shardFile) continue;
         const shardZip = join(staging, `.${shardKey}.zip`);
-        await downloadLarge(releaseDownloadUrl(baselineTag, shardFile), shardZip);
+        await streamCascading(releaseDownloadUrl(baselineTag, shardFile), shardZip);
         await safeExtractZip(shardZip, staging);
         await unlink(shardZip).catch(() => undefined);
       }
@@ -399,7 +274,7 @@ async function syncImagesLocked(
     const deltaUrl = assetUrl(deltaRelease, deltaAsset);
     if (deltaUrl !== null) {
       const deltaZip = join(staging, ".delta.zip");
-      await downloadLarge(deltaUrl, deltaZip);
+      await streamCascading(deltaUrl, deltaZip);
       await safeExtractZip(deltaZip, staging);
       await unlink(deltaZip).catch(() => undefined);
     }

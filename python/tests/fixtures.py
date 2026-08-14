@@ -4,6 +4,15 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+# Mirrors config._REQUIRED_OPERATOR_FILES (the _files_complete gate) and
+# ts/tests/fixtures/operatorData.ts REQUIRED_OPERATOR_FILES.
+REQUIRED_OPERATOR_FILES = (
+    "character_table.json",
+    "handbook_info_table.json",
+    "charword_table.json",
+    "story_review_table.json",
+)
+
 
 def write_minimal_gamedata(root: Path) -> Path:
     """Write the smallest operator dataset needed by tool behavior tests."""
@@ -79,5 +88,62 @@ def write_minimal_gamedata(root: Path) -> Path:
     (excel / "story_review_table.json").write_text("{}", encoding="utf-8")
     (excel / "item_table.json").write_text(
         json.dumps({"items": {}}, ensure_ascii=False), encoding="utf-8"
+    )
+    (excel / "building_data.json").write_text(
+        json.dumps(
+            {
+                "chars": {
+                    "char_002_amiya": {
+                        "buffChar": [
+                            {
+                                "buffData": [
+                                    {
+                                        "buffId": "control_tra_spd[000]",
+                                        "cond": {"phase": "PHASE_0", "level": 1},
+                                    }
+                                ]
+                            },
+                            {
+                                "buffData": [
+                                    {
+                                        "buffId": "dorm_rec_all[000]",
+                                        "cond": {"phase": "PHASE_0", "level": 1},
+                                    },
+                                    {
+                                        "buffId": "dorm_rec_all[010]",
+                                        "cond": {"phase": "PHASE_2", "level": 1},
+                                    },
+                                ]
+                            },
+                        ]
+                    }
+                },
+                "buffs": {
+                    "control_tra_spd[000]": {
+                        "buffId": "control_tra_spd[000]",
+                        "buffName": "合作协议",
+                        "roomType": "CONTROL",
+                        "description": (
+                            "进驻控制中枢时，所有贸易站订单效率"
+                            "<@cc.vup>+7%</>（同种效果取最高）"
+                        ),
+                    },
+                    "dorm_rec_all[000]": {
+                        "buffId": "dorm_rec_all[000]",
+                        "buffName": "热情",
+                        "roomType": "DORMITORY",
+                        "description": "进驻宿舍时，恢复<@cc.vup>+0.1</>",
+                    },
+                    "dorm_rec_all[010]": {
+                        "buffId": "dorm_rec_all[010]",
+                        "buffName": "热情",
+                        "roomType": "DORMITORY",
+                        "description": "进驻宿舍时，恢复<@cc.vup>+0.25</>",
+                    },
+                },
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
     )
     return excel

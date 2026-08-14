@@ -268,6 +268,14 @@ jobs:
           name: python-release-package
           path: python/dist
 
+      - name: Verify PyPI published digests
+        # Lives in github-release (not publish-pypi) so an indexing/propagation
+        # timeout fails only this job: re-run with `gh run rerun <run-id>
+        # --failed` re-checks the now-visible digests without re-publishing.
+        # Logic in python/scripts/verify_pypi_published.py (unit-tested in the
+        # verify-python pytest suite). See docs/admin/release-cd-recovery.md.
+        run: python3 python/scripts/verify_pypi_published.py python/dist
+
       - name: Extract changelog section
         env:
           VERSION: ${{ needs.build-and-push.outputs.version }}

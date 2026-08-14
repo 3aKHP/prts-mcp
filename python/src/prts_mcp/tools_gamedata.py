@@ -9,7 +9,7 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
-from prts_mcp.config import activation_snapshot
+from prts_mcp.activation import activation_snapshot
 from prts_mcp.data.operator import (
     get_operator_archives as _get_archives,
     get_operator_voicelines as _get_voicelines,
@@ -82,8 +82,9 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
     ) -> object:
         """获取指定干员的基本数值信息。
 
-        返回干员的职业、子职业、稀有度（星级）、所属阵营、招募标签、天赋名称及描述等
-        结构化信息，适合快速了解干员定位。完整背景故事见 get_operator_archives。
+        返回干员的职业、子职业、稀有度（星级）、所属阵营、招募标签、天赋名称及描述、
+        基建技能（设施/精英阶段解锁/效果）等结构化信息，适合快速了解干员定位。
+        完整背景故事见 get_operator_archives。
         """
         data = _build_basic_info(name)
         if isinstance(data, str):
@@ -98,8 +99,8 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
     @activation_snapshot
     def list_enemies(
         threat_level: Annotated[str | None, Field(default=None, description="按威胁等级过滤：boss（领袖）、elite（精英）、normal（普通）。不填则返回全部。")] = None,
-        limit: Annotated[int, Field(default=50, description="返回数量上限，默认 50。")] = 50,
-        offset: Annotated[int, Field(default=0, description="分页偏移量，默认 0。")] = 0,
+        limit: Annotated[int, Field(default=50, ge=1, le=200, description="返回数量上限，默认 50。")] = 50,
+        offset: Annotated[int, Field(default=0, ge=0, description="分页偏移量，默认 0。")] = 0,
         full: Annotated[bool, Field(default=False, description="返回全部敌人（忽略 limit/offset）。不推荐常规使用，密集输出极易污染上下文。仅在需要完整扫描时使用。")] = False,
     ) -> object:
         """列出敌方图鉴，支持按威胁等级过滤和分页。
@@ -162,8 +163,8 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
     @activation_snapshot
     def get_enemy_appearances(
         name: Annotated[str, Field(description="敌人的游戏内中文名或 enemyId，如「源石虫」或 enemy_1007_slime。")],
-        limit: Annotated[int, Field(default=50, description="返回数量上限，默认 50。")] = 50,
-        offset: Annotated[int, Field(default=0, description="分页偏移量，默认 0。")] = 0,
+        limit: Annotated[int, Field(default=50, ge=1, le=200, description="返回数量上限，默认 50。")] = 50,
+        offset: Annotated[int, Field(default=0, ge=0, description="分页偏移量，默认 0。")] = 0,
     ) -> object:
         """反向查询指定敌人实际出现在哪些关卡。
 
@@ -179,8 +180,8 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
     def list_stages(
         chapter: Annotated[str | None, Field(default=None, description="按所属章节（zoneId）过滤，如 'main_0'。不填则返回全部。")] = None,
         type: Annotated[str | None, Field(default=None, description="按关卡类型过滤：MAIN（主线）/ ACTIVITY（活动）/ SUB（支线）/ DAILY（每日）/ CAMPAIGN（剿灭）/ CLIMB_TOWER（爬塔）/ SPECIAL_STORY（特殊故事）/ GUIDE（教程）。不填则返回全部。")] = None,
-        limit: Annotated[int, Field(default=50, description="返回数量上限，默认 50。")] = 50,
-        offset: Annotated[int, Field(default=0, description="分页偏移量，默认 0。")] = 0,
+        limit: Annotated[int, Field(default=50, ge=1, le=200, description="返回数量上限，默认 50。")] = 50,
+        offset: Annotated[int, Field(default=0, ge=0, description="分页偏移量，默认 0。")] = 0,
     ) -> object:
         # Keep the return annotation as object: MCPServer auto-wraps -> str tools
         # into outputSchema={result:string} plus duplicate structuredContent.
@@ -219,8 +220,8 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
     @activation_snapshot
     def list_items(
         category: Annotated[str | None, Field(default=None, description="按物品分类过滤，如 MATERIAL（材料）、NORMAL（普通）、CONSUME（消耗品）。不填则返回全部可见物品。")] = None,
-        limit: Annotated[int, Field(default=50, description="返回数量上限，默认 50。")] = 50,
-        offset: Annotated[int, Field(default=0, description="分页偏移量，默认 0。")] = 0,
+        limit: Annotated[int, Field(default=50, ge=1, le=200, description="返回数量上限，默认 50。")] = 50,
+        offset: Annotated[int, Field(default=0, ge=0, description="分页偏移量，默认 0。")] = 0,
     ) -> object:
         """列出物品/材料列表，支持按分类过滤和分页。
 
@@ -252,14 +253,15 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
     @mcp.tool()
     @activation_snapshot
     def search(
-        scope: Annotated[Literal["operators", "enemies", "stages", "items"], Field(description="搜索域（必填）：operators（干员）/ enemies（敌人）/ stages（关卡）/ items（物品）。")],
+        scope: Annotated[Literal["operators", "enemies", "stages", "items", "building_skills"], Field(description="搜索域（必填）：operators（干员）/ enemies（敌人）/ stages（关卡）/ items（物品）/ building_skills（基建技能）。")],
         pattern: Annotated[str, Field(description="正则表达式搜索模式，大小写不敏感。")],
         max_results: Annotated[int, Field(default=30, ge=1, le=100, description="返回结果数量上限，默认 30。")] = 30,
     ) -> object:
         """在指定数据域中执行全文正则搜索。
 
         scope 选择搜索域：operators（名称/属性/档案/语音）、enemies（图鉴）、
-        stages（关卡）、items（物品/材料）。返回带域标签的匹配结果。
+        stages（关卡）、items（物品/材料）、building_skills（干员基建技能，
+        可按设施/效果/技能名跨干员反查）。返回带域标签的匹配结果。
         剧情台词搜索见 search_stories。
         """
         data = _build_search(scope, pattern, max_results=max_results)

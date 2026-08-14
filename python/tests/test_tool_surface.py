@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import ast
+import json
+import re
 from pathlib import Path
 
 from mcp.server import MCPServer
@@ -108,3 +110,124 @@ def test_registered_tool_manifest_has_no_output_schema() -> None:
 
     for name, tool in tools.items():
         assert tool.output_schema is None, f"{name} still has output_schema"
+
+
+def _extract_field_bounds(
+    fn: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> dict[str, dict[str, int | None]]:
+    """Read ge/le/default off each parameter's ``Annotated[..., Field(...)]``.
+
+    Function parameters carry the annotation on ``arg.annotation`` (an
+    ``ast.Subscript`` on ``Annotated`` whose tuple's second element is the
+    ``Field(...)`` call), not on ``ast.AnnAssign``. Values are literal ints or
+    ``None`` everywhere in the codebase, so ``ast.literal_eval`` is safe.
+    """
+    bounds: dict[str, dict[str, int | None]] = {}
+    for arg in fn.args.args:
+        ann = arg.annotation
+        if not (
+            isinstance(ann, ast.Subscript)
+            and isinstance(ann.value, ast.Name)
+            and ann.value.id == "Annotated"
+        ):
+            continue
+        sl = ann.slice
+        if not isinstance(sl, ast.Tuple) or len(sl.elts) < 2:
+            continue
+        field_call = sl.elts[1]
+        if not (
+            isinstance(field_call, ast.Call)
+            and isinstance(field_call.func, ast.Name)
+            and field_call.func.id == "Field"
+        ):
+            continue
+        kw: dict[str, int | None] = {}
+        for k in field_call.keywords:
+            if k.arg in ("ge", "le", "default"):
+                kw[k.arg] = ast.literal_eval(k.value)
+        if "ge" in kw or "le" in kw:
+            bounds[arg.arg] = {
+                "min": kw.get("ge"),
+                "max": kw.get("le"),
+                "default": kw.get("default"),
+            }
+    return bounds
+
+
+def _signature_defaults(
+    fn: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> dict[str, object]:
+    """Map each positional arg name to its literal signature default (or None).
+
+    Closes an asymmetry with the TS probe (which reads the real default via
+    safeParse): a ``Field(default=50)`` that drifts from the signature ``= 100``
+    would otherwise pass the contract check while changing the runtime schema.
+    """
+    args = fn.args.args
+    defaults = fn.args.defaults  # tail-aligned positional defaults
+    offset = len(args) - len(defaults)
+    out: dict[str, object] = {}
+    for i, arg in enumerate(args):
+        out[arg.arg] = ast.literal_eval(defaults[i - offset]) if i >= offset else None
+    return out
+
+
+def test_python_numeric_fields_match_parity_contract() -> None:
+    """Every bounded numeric ``Field`` must match the shared cross-impl contract.
+
+    The contract (tests/parity-fixtures/tool-bounds.json) is the single source
+    of truth both suites assert against, so unilateral drift on either side
+    fails its own test. Closes the names-only blind spot of the frozen-surface
+    test above.
+    """
+    contract_path = (
+        Path(__file__).parents[2] / "tests" / "parity-fixtures" / "tool-bounds.json"
+    )
+    contract = json.loads(contract_path.read_text(encoding="utf-8"))
+    functions = _collect_tool_functions()
+
+    for tool, params in contract.items():
+        assert tool in functions, f"{tool!r} missing from tools_*.py"
+        fn = functions[tool]
+        actual = _extract_field_bounds(fn)
+        sig_defaults = _signature_defaults(fn)
+        for param, expected in params.items():
+            assert param in actual, (
+                f"{tool}.{param} has no Field bounds (ge/le); "
+                f"contract expects {expected}"
+            )
+            assert actual[param] == expected, (
+                f"{tool}.{param} bounds mismatch: "
+                f"py={actual[param]}, contract={expected}"
+            )
+            assert sig_defaults.get(param) == expected["default"], (
+                f"{tool}.{param} signature default {sig_defaults.get(param)!r} "
+                f"differs from Field/contract default {expected['default']!r}"
+            )
+
+
+def test_user_pattern_regex_handles_astral_codepoints() -> None:
+    """Python re is Unicode-default: ``.`` matches a whole astral code point.
+
+    This is the parity property the TS /u flag change aligns to: without /u,
+    JS ``.`` treats an astral char as two UTF-16 surrogates so ``^.$`` fails;
+    with /u it matches the whole code point like Python. (Residual gap: JS
+    ``\\w`` stays ASCII-only even with /u whereas Python ``\\w`` matches CJK —
+    fundamental, not flag-fixable, tracked as a known limitation.)
+    """
+    assert re.compile(r"^.$", re.IGNORECASE).search("\U0001D49C") is not None
+
+
+def test_user_pattern_search_stays_unicode_aware() -> None:
+    """Guard the Python half of the /u parity.
+
+    Python ``re`` is Unicode-default, so the property holds unless a search
+    surface actively restricts to ASCII. Assert none of the five user-pattern
+    search files opt into ``re.ASCII`` / ``(?a)``; paired with the TypeScript
+    source-flag scan this makes unilateral drift on either side fail CI.
+    """
+    data_dir = Path(__file__).parents[1] / "src" / "prts_mcp" / "data"
+    for name in ("search.py", "story_search.py", "enemy.py", "stage.py", "item.py"):
+        text = (data_dir / name).read_text(encoding="utf-8")
+        assert "re.ASCII" not in text, f"{name} must not restrict user-pattern matching to ASCII"
+        assert "(?a)" not in text, f"{name} must not use the (?a) ASCII inline flag"

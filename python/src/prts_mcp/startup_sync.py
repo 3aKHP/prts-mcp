@@ -128,7 +128,7 @@ def _run_startup_sync(*, force_check: bool = False) -> None:
     in that case the user is managing their own data and we must not
     overwrite it.
     """
-    from prts_mcp.config import Config, _DEFAULT_GAMEDATA_PATH
+    from prts_mcp.config import Config, DEFAULT_GAMEDATA_PATH
     from prts_mcp.data.datasets import GAMEDATA_EXCEL, GAMEDATA_LEVELS, STORY_ZH_CN
     from prts_mcp.data.sync import sync_release, sync_release_archive_pair
 
@@ -140,8 +140,8 @@ def _run_startup_sync(*, force_check: bool = False) -> None:
         )
     else:
         archive_spec = GAMEDATA_EXCEL.archive_spec(
-            local_zip=_DEFAULT_GAMEDATA_PATH / "archives" / "zh_CN-excel.zip",
-            local_root=_DEFAULT_GAMEDATA_PATH,
+            local_zip=DEFAULT_GAMEDATA_PATH / "archives" / "zh_CN-excel.zip",
+            local_root=DEFAULT_GAMEDATA_PATH,
         )
         levels_spec = GAMEDATA_LEVELS.archive_spec(
             local_zip=cfg.levels_path / "archives" / "zh_CN-levels.zip",
@@ -164,17 +164,22 @@ def _run_startup_sync(*, force_check: bool = False) -> None:
                 excel_result.status == "updated"
                 or levels_result.status == "updated"
             ):
-                from prts_mcp.data.operator import clear_operator_caches
-                from prts_mcp.data.enemy import clear_enemy_caches
-                from prts_mcp.data.item import clear_item_caches
-                from prts_mcp.data.stage_enemy import clear_stage_enemy_caches
+                # Import for the registration side effect, then clear via the
+                # dataset registry (single source for the gamedata domain list).
+                from prts_mcp.data import (  # noqa: F401
+                    building,
+                    enemy,
+                    item,
+                    operator,
+                    stage,
+                    stage_enemy,
+                )
+                from prts_mcp.data.dataset_access import dataset_registry
 
-                clear_operator_caches()
-                clear_enemy_caches()
-                clear_item_caches()
-                clear_stage_enemy_caches()
-                from prts_mcp.data.stage import clear_stage_caches as _clear_stages
-                _clear_stages()
+                for domain in (
+                    "operator", "enemy", "item", "stage_enemy", "stage", "building",
+                ):
+                    dataset_registry()[domain].clear()
             return _gamedata_pair_needs_retry(
                 excel_result.status, levels_result.status
             )
@@ -208,7 +213,7 @@ def _run_startup_sync(*, force_check: bool = False) -> None:
 
     # Images artwork sync (2.5.0) — LOCAL_IMAGE mode consumes AKDP assets.
     if cfg.images_enabled and cfg.local_image:
-        from prts_mcp.data.images_sync import sync_images as _sync_images_release
+        from prts_mcp.sync.images_sync import sync_images as _sync_images_release
 
         def _sync_images() -> bool:
             r = _sync_images_release(

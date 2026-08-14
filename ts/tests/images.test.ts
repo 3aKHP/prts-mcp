@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -11,6 +11,7 @@ import {
   buildArtworkLabel,
 } from "../src/data/images.ts";
 import { registerArtworkTools } from "../src/tools/artworkTools.ts";
+import { listArtworksLocal } from "../src/data/artworkLocal.ts";
 
 type ToolHandler = (args: Record<string, unknown>) => unknown | Promise<unknown>;
 
@@ -42,6 +43,77 @@ function sampleIndex(): unknown {
       },
     },
   };
+}
+
+interface ArtworkFixture {
+  root: string;
+  imageRoot: string;
+  generation: string;
+}
+
+/** Builds the gamedata + images-meta + generation-dir fixture shared by the
+ * handler tests; `files` are written into the generation dir. */
+function buildArtworkFixture(
+  artworks: Record<string, unknown>,
+  files: Array<[string, string]> = [],
+): ArtworkFixture {
+  const root = mkdtempSync(join(tmpdir(), "prts-artwork-"));
+  const excel = join(root, "gamedata", "zh_CN", "gamedata", "excel");
+  const imageRoot = join(root, "images");
+  const generation = join(imageRoot, ".releases", "test");
+  mkdirSync(excel, { recursive: true });
+  mkdirSync(generation, { recursive: true });
+  for (const file of [
+    "handbook_info_table.json",
+    "charword_table.json",
+    "story_review_table.json",
+  ]) {
+    writeFileSync(join(excel, file), "{}", "utf-8");
+  }
+  writeFileSync(join(excel, "character_table.json"), JSON.stringify({
+    char_002_amiya: { name: "阿米娅" },
+  }), "utf-8");
+  writeFileSync(join(imageRoot, ".images_meta.json"), JSON.stringify({
+    generation_root: ".releases/test",
+  }), "utf-8");
+  writeFileSync(join(generation, "index.json"), JSON.stringify({
+    schemaVersion: SCHEMA_VERSION,
+    baselineVersion: "b1",
+    currentVersion: "c1",
+    shards: {},
+    artworks,
+  }), "utf-8");
+  for (const [rel, content] of files) {
+    writeFileSync(join(generation, rel), content, "utf-8");
+  }
+  return { root, imageRoot, generation };
+}
+
+/** Runs `fn` with the LOCAL_IMAGE=true artwork env pointed at the fixture,
+ * restoring env and operator caches afterwards. */
+async function withArtworkEnv<T>(fx: ArtworkFixture, fn: () => Promise<T> | T): Promise<T> {
+  const savedEnv = {
+    gamedata: process.env["GAMEDATA_PATH"],
+    imageDir: process.env["PRTS_IMAGE_DIR"],
+    localImage: process.env["LOCAL_IMAGE"],
+  };
+  process.env["GAMEDATA_PATH"] = join(fx.root, "gamedata");
+  process.env["PRTS_IMAGE_DIR"] = fx.imageRoot;
+  process.env["LOCAL_IMAGE"] = "true";
+  clearOperatorCaches();
+  try {
+    return await fn();
+  } finally {
+    for (const [key, value] of Object.entries({
+      GAMEDATA_PATH: savedEnv.gamedata,
+      PRTS_IMAGE_DIR: savedEnv.imageDir,
+      LOCAL_IMAGE: savedEnv.localImage,
+    })) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    clearOperatorCaches();
+  }
 }
 
 test("parseIndex accepts valid schema", () => {
@@ -88,52 +160,74 @@ test("buildArtworkLabel covers base, plus, fashion and unknown shapes", () => {
   assert.equal(buildArtworkLabel("char_002_amiya#5", charSkins), "立绘 5");
 });
 
-test("operator_artwork rejects cross-operator tokens before local reads or MediaWiki requests", async () => {
-  const root = mkdtempSync(join(tmpdir(), "prts-artwork-owner-"));
-  const excel = join(root, "gamedata", "zh_CN", "gamedata", "excel");
-  const imageRoot = join(root, "images");
-  const generation = join(imageRoot, ".releases", "test");
-  mkdirSync(excel, { recursive: true });
-  mkdirSync(generation, { recursive: true });
-  for (const file of [
-    "handbook_info_table.json",
-    "charword_table.json",
-    "story_review_table.json",
-  ]) {
-    writeFileSync(join(excel, file), "{}", "utf-8");
-  }
-  writeFileSync(join(excel, "character_table.json"), JSON.stringify({
-    char_002_amiya: { name: "阿米娅" },
-  }), "utf-8");
-  writeFileSync(join(imageRoot, ".images_meta.json"), JSON.stringify({
-    generation_root: ".releases/test",
-  }), "utf-8");
-  writeFileSync(join(generation, "index.json"), JSON.stringify({
-    schemaVersion: SCHEMA_VERSION,
-    baselineVersion: "b1",
-    currentVersion: "c1",
-    shards: {},
-    artworks: {
-      "char_263_skadi#1": {
-        kind: "base",
-        shard: "chararts",
-        large: { file: "not-read.png", w: 1, h: 1, bytes: 1, sha256: "x" },
+test("operator_artwork local list enriches with bounded skin metadata", async () => {
+  const fx = buildArtworkFixture({
+    "char_002_amiya#1": {
+      kind: "base",
+      shard: "chararts",
+      large: { file: "amiya_1.large.png", w: 1, h: 1, bytes: 1, sha256: "x" },
+    },
+    "char_002_amiya@winter#1": {
+      kind: "skin",
+      shard: "skinpack",
+      large: { file: "amiya_winter.large.png", w: 1, h: 1, bytes: 1, sha256: "y" },
+    },
+  });
+  writeFileSync(join(fx.root, "gamedata", "zh_CN", "gamedata", "excel", "skin_table.json"), JSON.stringify({
+    charSkins: {
+      "char_002_amiya@winter#1": {
+        displaySkin: {
+          skinName: "报童",
+          skinGroupName: "忒斯特收藏/I",
+          obtainApproach: "任务奖励",
+          description: "伦蒂尼姆的天空总是灰色的。",
+        },
       },
     },
   }), "utf-8");
 
-  const savedEnv = {
-    gamedata: process.env["GAMEDATA_PATH"],
-    imageDir: process.env["PRTS_IMAGE_DIR"],
-    localImage: process.env["LOCAL_IMAGE"],
-  };
-  const originalFetch = globalThis.fetch;
-  process.env["GAMEDATA_PATH"] = join(root, "gamedata");
-  process.env["PRTS_IMAGE_DIR"] = imageRoot;
-  process.env["LOCAL_IMAGE"] = "true";
-  clearOperatorCaches();
+  await withArtworkEnv(fx, async () => {
+    const server = new CapturingServer();
+    registerArtworkTools(server as never);
+    assert.ok(server.handler);
 
-  try {
+    const result = await server.handler({
+      operator_name: "阿米娅",
+      action: "list",
+    }) as { content: Array<{ type: string; text?: string }> };
+    const text = result.content[0]?.text ?? "";
+    assert.match(text, /报童/);
+    assert.match(text, /忒斯特收藏\/I/);
+
+    const outcome = listArtworksLocal("阿米娅", fx.generation);
+    assert.ok(typeof outcome !== "string");
+    if (typeof outcome === "string") return;
+    const byId = new Map(
+      (outcome.data["artworks"] as Array<Record<string, unknown>>).map(
+        (a) => [a["artwork_id"] as string, a],
+      ),
+    );
+    assert.equal(byId.get("char_002_amiya@winter#1")?.["skin_group"], "忒斯特收藏/I");
+    assert.equal(byId.get("char_002_amiya@winter#1")?.["acquisition"], "任务奖励");
+    assert.equal(byId.get("char_002_amiya@winter#1")?.["description"], "伦蒂尼姆的天空总是灰色的。");
+    // Base illusts without a charSkins entry carry explicit nulls.
+    assert.equal(byId.get("char_002_amiya#1")?.["skin_group"], null);
+    assert.equal(byId.get("char_002_amiya#1")?.["acquisition"], null);
+    assert.equal(byId.get("char_002_amiya#1")?.["description"], null);
+  });
+});
+
+test("operator_artwork rejects cross-operator tokens before local reads or MediaWiki requests", async () => {
+  const fx = buildArtworkFixture({
+    "char_263_skadi#1": {
+      kind: "base",
+      shard: "chararts",
+      large: { file: "not-read.png", w: 1, h: 1, bytes: 1, sha256: "x" },
+    },
+  });
+  const originalFetch = globalThis.fetch;
+
+  await withArtworkEnv(fx, async () => {
     const server = new CapturingServer();
     registerArtworkTools(server as never);
     assert.ok(server.handler);
@@ -152,81 +246,81 @@ test("operator_artwork rejects cross-operator tokens before local reads or Media
       throw new Error("MediaWiki request must not be made");
     }) as typeof fetch;
     process.env["LOCAL_IMAGE"] = "false";
-    const mediawiki = await server.handler({
+    try {
+      const mediawiki = await server.handler({
+        operator_name: "阿米娅",
+        action: "get",
+        artwork_id: "立绘_斯卡蒂_2.png",
+        variant: "large",
+      }) as { content: Array<{ type: string; text?: string }> };
+      assert.match(mediawiki.content[0]?.text ?? "", /不属于/);
+      assert.equal(mediawiki.content.some((block) => block.type === "image"), false);
+      assert.equal(fetched, false);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
+test("operator_artwork local get rejects symlink escapes and serves contained files", async () => {
+  const fx = buildArtworkFixture({
+    "char_002_amiya#1": {
+      kind: "base",
+      shard: "chararts",
+      large: { file: "amiya_1.large.png", w: 1, h: 1, bytes: 1, sha256: "x" },
+      preview: { file: "escape.png", w: 1, h: 1, bytes: 1, sha256: "y" },
+    },
+  }, [["amiya_1.large.png", "png-bytes"]]);
+  const secret = join(fx.root, "secret.png");
+  writeFileSync(secret, "host-secret", "utf-8");
+  // The escape entry is lexically inside the generation dir but resolves
+  // outside it via a symlink — the containment check must reject it.
+  symlinkSync(secret, join(fx.generation, "escape.png"));
+
+  await withArtworkEnv(fx, async () => {
+    const server = new CapturingServer();
+    registerArtworkTools(server as never);
+    assert.ok(server.handler);
+
+    const escaped = await server.handler({
       operator_name: "阿米娅",
       action: "get",
-      artwork_id: "立绘_斯卡蒂_2.png",
-      variant: "large",
+      artwork_id: "char_002_amiya#1",
+      variant: "preview",
     }) as { content: Array<{ type: string; text?: string }> };
-    assert.match(mediawiki.content[0]?.text ?? "", /不属于/);
-    assert.equal(mediawiki.content.some((block) => block.type === "image"), false);
-    assert.equal(fetched, false);
-  } finally {
-    globalThis.fetch = originalFetch;
-    for (const [key, value] of Object.entries({
-      GAMEDATA_PATH: savedEnv.gamedata,
-      PRTS_IMAGE_DIR: savedEnv.imageDir,
-      LOCAL_IMAGE: savedEnv.localImage,
-    })) {
-      if (value === undefined) delete process.env[key];
-      else process.env[key] = value;
-    }
-    clearOperatorCaches();
-  }
+    assert.match(escaped.content[0]?.text ?? "", /图片文件缺失/);
+    assert.equal(escaped.content.some((block) => block.type === "image"), false);
+
+    const served = await server.handler({
+      operator_name: "阿米娅",
+      action: "get",
+      artwork_id: "char_002_amiya#1",
+      variant: "large",
+    }) as { content: Array<{ type: string; data?: string }> };
+    assert.equal(
+      served.content.some((block) => block.type === "image" && block.data === Buffer.from("png-bytes").toString("base64")),
+      true,
+    );
+  });
 });
 
 test("operator_artwork resolves Amiya form aliases and rejects cross-form tokens", async () => {
-  const root = mkdtempSync(join(tmpdir(), "prts-artwork-amiya-forms-"));
-  const excel = join(root, "gamedata", "zh_CN", "gamedata", "excel");
-  const imageRoot = join(root, "images");
-  const generation = join(imageRoot, ".releases", "test");
-  mkdirSync(excel, { recursive: true });
-  mkdirSync(generation, { recursive: true });
-  for (const file of [
-    "handbook_info_table.json",
-    "charword_table.json",
-    "story_review_table.json",
-  ]) {
-    writeFileSync(join(excel, file), "{}", "utf-8");
-  }
   // The production character table intentionally retains only the base name;
   // the artwork-specific aliases must supply the two transformed char IDs.
-  writeFileSync(join(excel, "character_table.json"), JSON.stringify({
-    char_002_amiya: { name: "阿米娅" },
-  }), "utf-8");
-  writeFileSync(join(imageRoot, ".images_meta.json"), JSON.stringify({
-    generation_root: ".releases/test",
-  }), "utf-8");
-  writeFileSync(join(generation, "index.json"), JSON.stringify({
-    schemaVersion: SCHEMA_VERSION,
-    baselineVersion: "b1",
-    currentVersion: "c1",
-    shards: {},
-    artworks: {
-      "char_1001_amiya2#1": {
-        kind: "base",
-        shard: "chararts",
-        large: { file: "guard.png", w: 1, h: 1, bytes: 1, sha256: "guard" },
-      },
-      "char_1037_amiya3#1": {
-        kind: "base",
-        shard: "chararts",
-        large: { file: "medic.png", w: 1, h: 1, bytes: 1, sha256: "medic" },
-      },
+  const fx = buildArtworkFixture({
+    "char_1001_amiya2#1": {
+      kind: "base",
+      shard: "chararts",
+      large: { file: "guard.png", w: 1, h: 1, bytes: 1, sha256: "guard" },
     },
-  }), "utf-8");
+    "char_1037_amiya3#1": {
+      kind: "base",
+      shard: "chararts",
+      large: { file: "medic.png", w: 1, h: 1, bytes: 1, sha256: "medic" },
+    },
+  });
 
-  const savedEnv = {
-    gamedata: process.env["GAMEDATA_PATH"],
-    imageDir: process.env["PRTS_IMAGE_DIR"],
-    localImage: process.env["LOCAL_IMAGE"],
-  };
-  process.env["GAMEDATA_PATH"] = join(root, "gamedata");
-  process.env["PRTS_IMAGE_DIR"] = imageRoot;
-  process.env["LOCAL_IMAGE"] = "true";
-  clearOperatorCaches();
-
-  try {
+  await withArtworkEnv(fx, async () => {
     const server = new CapturingServer();
     registerArtworkTools(server as never);
     assert.ok(server.handler);
@@ -252,15 +346,5 @@ test("operator_artwork resolves Amiya form aliases and rejects cross-form tokens
     }) as { content: Array<{ type: string; text?: string }> };
     assert.match(crossForm.content[0]?.text ?? "", /不属于/);
     assert.equal(crossForm.content.some((block) => block.type === "image"), false);
-  } finally {
-    for (const [key, value] of Object.entries({
-      GAMEDATA_PATH: savedEnv.gamedata,
-      PRTS_IMAGE_DIR: savedEnv.imageDir,
-      LOCAL_IMAGE: savedEnv.localImage,
-    })) {
-      if (value === undefined) delete process.env[key];
-      else process.env[key] = value;
-    }
-    clearOperatorCaches();
-  }
+  });
 });

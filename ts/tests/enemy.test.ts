@@ -179,8 +179,8 @@ test("list_enemies invalid limit/offset", async () => {
   process.env["GAMEDATA_PATH"] = root;
   writeFixtures(root);
   const enemy = await loadEnemyModule();
-  assert.match(enemy.listEnemies(null, 0), /无效的 limit/);
-  assert.match(enemy.listEnemies(null, 50, -1), /无效的 offset/);
+  assert.match(enemy.listEnemies(null, 0), /limit 必须 >= 1/);
+  assert.match(enemy.listEnemies(null, 50, -1), /offset 必须 >= 0/);
 });
 
 test("list_enemies full=true returns all without pagination hint", async () => {

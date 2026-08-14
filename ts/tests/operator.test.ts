@@ -83,6 +83,10 @@ test("core operator tools read the shared minimal fixture", async () => {
       "",
       "## 天赋",
       "- **情绪吸收**：攻击回复技力",
+      "",
+      "## 基建技能",
+      "- **合作协议**（控制中枢，精英0解锁）：进驻控制中枢时，所有贸易站订单效率+7%（同种效果取最高）",
+      "- **热情**（宿舍，精英2解锁）：进驻宿舍时，恢复+0.25",
     ].join("\n"),
   );
   assert.deepStrictEqual(

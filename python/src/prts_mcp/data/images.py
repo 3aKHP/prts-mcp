@@ -11,13 +11,14 @@ import logging
 from dataclasses import dataclass
 from typing import Any, Mapping
 
-from prts_mcp.config import (
-    Config,
-    activation_aware_cache,
-    cache_stat,
-    register_activation_listener,
+from prts_mcp.activation import register_activation_listener
+from prts_mcp.config import Config
+from prts_mcp.data.dataset_access import (
+    DatasetSpec,
+    LoaderSpec,
+    define_dataset,
+    excel_store,
 )
-from prts_mcp.data.stores import DirectoryStore
 
 _logger = logging.getLogger(__name__)
 
@@ -134,19 +135,17 @@ def parse_index(data: Mapping[str, Any]) -> ImagesIndex | None:
 # ---------------------------------------------------------------------------
 
 
-@activation_aware_cache(maxsize=1)
-def load_char_skins() -> dict[str, Any]:
+def _load_char_skins_impl() -> dict[str, Any]:
     """Load the ``charSkins`` mapping from ``skin_table.json``.
 
     Returns an empty mapping when excel data is unavailable or the file is
     absent (the bundled fallback does not ship skin_table); callers fall
     back to skinId-derived labels in that case.
     """
-    cfg = Config.load()
-    excel = cfg.effective_excel_path
+    excel = Config.load().effective_excel_path
     if excel is None:
         return {}
-    store = DirectoryStore(excel)
+    store = excel_store()
     if not store.exists("skin_table.json"):
         return {}
     try:
@@ -157,9 +156,19 @@ def load_char_skins() -> dict[str, Any]:
     return char_skins if isinstance(char_skins, dict) else {}
 
 
+_access = define_dataset(DatasetSpec(
+    name="images",
+    loaders={
+        "char_skins": LoaderSpec(load=_load_char_skins_impl, on_error="empty"),
+    },
+))
+
+load_char_skins = _access.cached("char_skins")
+
+
 def clear_image_caches() -> None:
     """Clear image-related caches after synced game data changes on disk."""
-    load_char_skins.cache_clear()
+    _access.clear()
 
 
 register_activation_listener(clear_image_caches)
@@ -167,9 +176,7 @@ register_activation_listener(clear_image_caches)
 
 def cache_stats() -> dict[str, dict]:
     """Return ``{cache_name: {loaded, count}}`` for instrumentation (#104)."""
-    return {
-        "char_skins": cache_stat(load_char_skins),
-    }
+    return _access.stats()
 
 
 # ---------------------------------------------------------------------------

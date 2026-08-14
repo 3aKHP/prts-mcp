@@ -277,7 +277,7 @@ Remove-Item "$env:LOCALAPPDATA\prts-mcp\gamedata-levels\archives\extract_meta.js
 | `GAMEDATA_PATH` | 未设置（使用 `/data/gamedata`） | 设置后指向自定义游戏数据目录，**GameData excel/levels auto-sync 被禁用**；若该路径是完整 ArknightsGameData 仓库根目录，`zh_CN/gamedata/levels` 会直接用于关卡战斗数据 |
 | `STORYJSON_PATH` | 未设置（使用 `/data/storyjson/zh_CN.zip`） | 设置后指向本地 `zh_CN.zip`，**剧情 auto-sync 被禁用** |
 | `GITHUB_TOKEN` | 空 | 用于提高 GitHub API 限额，降低限流风险 |
-| `GITHUB_MIRRORS` | 空 | 逗号分隔的 ghproxy 风格代理前缀列表（如 `https://ghproxy.net`），依次在直连失败后尝试；适用于 GitHub 被 GFW 封锁的服务器 |
+| `GITHUB_MIRRORS` | 空 | 逗号分隔的 ghproxy 风格代理前缀列表（如 `https://ghproxy.net`），依次在直连失败后尝试；首尾空白与尾部斜杠自动归一化；适用于 GitHub 被 GFW 封锁的服务器 |
 | `PRTS_AUTO_SYNC_INTERVAL_SECONDS` | `3600` | GitHub Release 周期检查间隔（秒）；有效范围 `60..604800`，`0` 表示只执行启动同步；非法值回落到默认值 |
 | `IMAGES_ENABLED` | `true` | 立绘工具主开关；`false` 隐藏 `operator_artwork` |
 | `LOCAL_IMAGE` | `false` | `true` = 同步 AKDP 本地 PNG 资产（~1.5 GB，需挂载 `/data/images` 卷）；`false` = 从 PRTS MediaWiki 按需获取（零下载） |
