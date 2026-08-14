@@ -201,7 +201,7 @@ def build_stages_listing(
         return f"无效的 type：{type!r}。可选值：{allowed}。"
 
     try:
-        stages = _load_stage_table()
+        stages = load_stage_table()
     except (FileNotFoundError, TypeError) as e:
         return _missing_data_message() + f"（{e}）"
 
@@ -304,7 +304,7 @@ def build_stage_info(stage_id: str) -> dict | str:
     that ``render_stage_info`` consumes.
     """
     try:
-        stages = _load_stage_table()
+        stages = load_stage_table()
     except (FileNotFoundError, TypeError) as e:
         return _missing_data_message() + f"（{e}）"
 
@@ -488,7 +488,7 @@ def _stage_search_entry(record: _StageSearchRecord) -> dict[str, Any]:
 
 def _stage_search_records_impl() -> tuple[_StageSearchRecord, ...]:
     records: list[_StageSearchRecord] = []
-    for sid, entry in sorted(_load_stage_table().items()):
+    for sid, entry in sorted(load_stage_table().items()):
         search_text = " ".join([
             entry.get("name") or "",
             entry.get("code") or "",
@@ -516,7 +516,7 @@ _access = _define_dataset(_DatasetSpec(
     missing_message=_excel_missing_message("关卡"),
 ))
 
-_load_stage_table = _access.cached("stage_table")
+load_stage_table = _access.cached("stage_table")
 _load_zone_table = _access.cached("zone_table")
 _stage_search_records = _access.cached("stage_search_records")
 

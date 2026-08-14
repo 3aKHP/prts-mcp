@@ -239,6 +239,13 @@ Python 和 TypeScript 不是翻译关系，但文件结构和模块职责应保�
 | `config.py` | `config.ts` | 路径解析、环境变量 |
 | `data/stores.py` | `data/stores.ts` | DirectoryStore / ZipStore 抽象 |
 | `data/operator.py` | `data/operator.ts` | 干员数据读取和格式化 |
+| `data/enemy.py` | `data/enemy.ts` | 敌人图鉴/数据库读取编排 + payload/render（消费下方纯模块） |
+| `data/enemy_database.py` | `data/enemyDatabase.ts` | enemy_database.json 归一化 + level0_index 投影（纯） |
+| `data/enemy_stats.py` | `data/enemyStats.ts` | 战斗属性抽取 + m_defined 覆盖合并（纯；TS 侧另持 pythonFloatString/formatNumber 格式化 shim，无 PY 对应） |
+| `data/enemy_render.py` | `data/enemyRender.ts` | 敌人图鉴卡片 + 战斗属性块渲染（首个 render 模块范式：纯 dict → markdown lines） |
+| `data/level_parser.py` | `data/levelParser.ts` | zh_CN-levels 关卡 JSON 纯解析（level_path/spawn_counts/enemy_refs/parse_level） |
+| `data/stage.py` | `data/stage.ts` | 关卡数据读取和格式化（导出共享 load_stage_table/getStageTable） |
+| `data/stage_enemy.py` | `data/stageEnemy.ts` | 关卡×敌人融合编排（消费 enemy/stage 共享访问器，own dataset 仅 enemy_appearance_index） |
 | `data/story.py` | `data/story.ts` | 剧情数据读取和格式化 |
 | `data/search.py` | `data/search.ts` | 全文搜索 |
 | `data/sync.py` | `data/sync.ts` | re-export barrel（全 sync 状态机已迁入 `sync/`） |

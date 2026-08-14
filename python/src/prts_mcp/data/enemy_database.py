@@ -43,3 +43,18 @@ def normalize_enemy_database(raw: Any) -> dict[str, dict[int, dict[str, Any]]]:
     if not index:
         raise TypeError("enemy_database.json 格式异常：未找到敌人等级数据。")
     return index
+
+
+def level0_index(levels: dict[str, dict[int, dict[str, Any]]]) -> dict[str, dict[str, Any]]:
+    """Project the raw level map onto the default (level-0) entry per enemy.
+
+    Selection semantics replicate enemy.py's historical projection verbatim
+    (truthy-``or``: an empty-dict level-0 entry falls through to the first
+    available level); the TS mirror uses nullish ``??`` instead — a known,
+    deliberate cross-implementation divergence, do not unify.
+    """
+    return {
+        enemy_id: level_map.get(0) or next(iter(level_map.values()))
+        for enemy_id, level_map in levels.items()
+        if level_map
+    }

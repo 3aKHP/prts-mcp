@@ -255,7 +255,7 @@ const stageAccess: DatasetAccess = defineDataset({
   missingMessage: excelMissingMessage("关卡"),
 });
 
-const getStageTable = stageAccess.loader<StageTable>("stage_table");
+export const getStageTable = stageAccess.loader<StageTable>("stage_table");
 const getZoneTable = stageAccess.loader<ZoneTable | null>("zone_table");
 const getStageSearchRecords = stageAccess.loader<StageSearchRecord[]>("stage_search_records");
 
