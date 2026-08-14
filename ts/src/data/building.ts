@@ -211,9 +211,16 @@ export function buildBuildingSkillSearch(pattern: string, maxResults = 30): Buil
   }
 
   const results: BuildingSkillRecord[] = [];
+  let records: BuildingSkillRecord[];
+  try {
+    records = getBuildingSkillRecords();
+  } catch (err) {
+    // Same degrade-to-message contract as the sibling scopes.
+    return err instanceof Error ? err.message : String(err);
+  }
   // Haystack = skill name + room + description; the unlock phase is
   // deliberately not searchable (it is a display attribute, not content).
-  for (const record of getBuildingSkillRecords()) {
+  for (const record of records) {
     if (regex.test(`${record.skill} ${record.room} ${record.text}`)) {
       results.push(record);
       if (results.length >= maxResults) break;

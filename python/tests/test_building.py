@@ -14,7 +14,7 @@ from prts_mcp.data.building import (
 )
 from prts_mcp.data.search import build_search
 
-from tests.fixtures import write_minimal_gamedata
+from tests.fixtures import REQUIRED_OPERATOR_FILES, write_minimal_gamedata
 
 
 def _load_parity_fixture(name: str) -> dict:
@@ -25,12 +25,7 @@ def _load_parity_fixture(name: str) -> dict:
 def _write_building(excel: Path, data: dict) -> None:
     excel.mkdir(parents=True, exist_ok=True)
     # Sentinel tables for config's _files_complete gate.
-    for sentinel in (
-        "character_table.json",
-        "handbook_info_table.json",
-        "charword_table.json",
-        "story_review_table.json",
-    ):
+    for sentinel in REQUIRED_OPERATOR_FILES:
         (excel / sentinel).write_text("{}", encoding="utf-8")
     (excel / "building_data.json").write_text(
         json.dumps(data, ensure_ascii=False), encoding="utf-8"
@@ -156,12 +151,7 @@ def test_unknown_char_and_room_passthrough(tmp_path: Path) -> None:
 def test_missing_table_raises_file_not_found(tmp_path: Path) -> None:
     excel = tmp_path / "zh_CN" / "gamedata" / "excel"
     excel.mkdir(parents=True)
-    for sentinel in (
-        "character_table.json",
-        "handbook_info_table.json",
-        "charword_table.json",
-        "story_review_table.json",
-    ):
+    for sentinel in REQUIRED_OPERATOR_FILES:
         (excel / sentinel).write_text("{}", encoding="utf-8")
     with patch.dict(os.environ, {"GAMEDATA_PATH": str(tmp_path)}, clear=False):
         try:

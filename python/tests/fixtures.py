@@ -4,6 +4,15 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+# Mirrors config._REQUIRED_OPERATOR_FILES (the _files_complete gate) and
+# ts/tests/fixtures/operatorData.ts REQUIRED_OPERATOR_FILES.
+REQUIRED_OPERATOR_FILES = (
+    "character_table.json",
+    "handbook_info_table.json",
+    "charword_table.json",
+    "story_review_table.json",
+)
+
 
 def write_minimal_gamedata(root: Path) -> Path:
     """Write the smallest operator dataset needed by tool behavior tests."""
