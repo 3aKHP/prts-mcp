@@ -111,6 +111,10 @@ def building_skills_for(char_id: str) -> list[dict[str, str]]:
     user-supplied data roots); callers degrade gracefully.
     """
     table = _load_building_table()
+    if not isinstance(table, dict):
+        # Valid JSON with a wrong shape (list/null/scalar) must surface as
+        # the same degrade-family error the callers catch.
+        raise ValueError("building_data.json 顶层不是 JSON 对象")
     chars = table.get("chars") or {}
     buffs = table.get("buffs") or {}
     entry = chars.get(char_id) or {}
@@ -191,8 +195,10 @@ def build_building_skill_search(pattern: str, max_results: int = 30) -> dict | s
     results: list[_BuildingSkillRecord] = []
     try:
         records = _building_skill_records()
-    except (FileNotFoundError, RuntimeError, TypeError) as exc:
-        # Same degrade-to-message contract as the sibling scopes (item.py).
+    except (FileNotFoundError, RuntimeError, TypeError, ValueError) as exc:
+        # Same degrade-to-message contract as the sibling scopes (item.py),
+        # plus ValueError: corrupt JSON / wrong-shape building tables
+        # degrade here too rather than crashing the whole search tool.
         return _access.missing_message() + f"（{exc}）"
     # Haystack = skill name + room + description; the unlock phase is
     # deliberately not searchable (it is a display attribute, not content).

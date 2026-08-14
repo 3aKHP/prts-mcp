@@ -218,3 +218,25 @@ def test_corrupt_building_table_degrades_basic_info(tmp_path: Path) -> None:
             assert data["name"] == "阿米娅"
         finally:
             clear_operator_caches()
+
+
+def test_wrong_shape_building_table_degrades_basic_info(tmp_path: Path) -> None:
+    write_minimal_gamedata(tmp_path)
+    excel = tmp_path / "zh_CN" / "gamedata" / "excel"
+    # Valid JSON, wrong shape: the guard must convert this to the same
+    # ValueError family the callers catch (TS bare-catches everything).
+    (excel / "building_data.json").write_text("[]", encoding="utf-8")
+    with patch.dict(os.environ, {"GAMEDATA_PATH": str(tmp_path)}, clear=False):
+        os.environ.pop("STORYJSON_PATH", None)
+        from prts_mcp.data.operator import (
+            build_operator_basic_info,
+            clear_operator_caches,
+        )
+
+        clear_operator_caches()
+        try:
+            data = build_operator_basic_info("阿米娅")
+            assert isinstance(data, dict)
+            assert "building_skills" not in data
+        finally:
+            clear_operator_caches()
