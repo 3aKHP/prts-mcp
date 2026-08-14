@@ -617,6 +617,12 @@ def test_story_not_found_messages_double_quoted(
     assert _call_story_tool(
         app, "find_speakers_in", {"event_id": "no-such-event"},
     ) == '未找到匹配的活动："no-such-event"。'
+    assert _call_story_tool(
+        app, "read_activity", {"event_id": "no-such-event"},
+    ) == '未找到活动："no-such-event"。请先调用 list_story_events 确认活动 ID。'
+    assert _call_story_tool(
+        app, "find_character_appearances", {"name": "阿米娅", "scope": "no-such-event"},
+    ) == '未找到匹配的活动："no-such-event"。'
 
 
 def test_operator_memoirs_no_data_message_is_bare(
