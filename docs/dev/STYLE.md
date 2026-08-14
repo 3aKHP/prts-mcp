@@ -241,9 +241,12 @@ Python 和 TypeScript 不是翻译关系，但文件结构和模块职责应保�
 | `data/operator.py` | `data/operator.ts` | 干员数据读取和格式化 |
 | `data/story.py` | `data/story.ts` | 剧情数据读取和格式化 |
 | `data/search.py` | `data/search.ts` | 全文搜索 |
-| `data/sync.py` | `data/sync.ts` | 同步状态机（release/archive/pair 编排；P2.B 迁出中） |
+| `data/sync.py` | `data/sync.ts` | pair 状态机（release/archive/activation 已迁出 sync/；pair 待 P2.B.2） |
 | `sync/transport.py` | `sync/transport.ts` | GitHub Release HTTP 传输（镜像/级联 fetch） |
 | `sync/release_discovery.py` | `sync/releaseDiscovery.ts` | Release 发现（list/latest-by-prefix/asset_url/check_latest） |
+| `sync/_types.py` | `sync/types.ts` | 共享 spec/result 类型（RepoSpec/ReleaseArchiveSpec/SyncResult） |
+| `sync/release_activation.py` | `sync/releaseActivation.ts` | 跨进程锁 + 代际树 + staging + extract-meta + zip 校验/解压 |
+| `sync/release.py` | `sync/release.ts` | Release 下载 + manifest 校验 + sync_release 状态机 |
 | `data/datasets.py` | `data/datasets.ts` | 数据集 spec 定义 |
 | `api/prts_wiki.py` | `api/prtsWiki.ts` | PRTS MediaWiki API 客户端 |
 | `utils/sanitizer.py` | `utils/sanitizer.ts` | Wikitext 清洗 |
