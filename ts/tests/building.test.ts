@@ -190,3 +190,21 @@ test("corrupt building table degrades basic info", async () => {
   assert.equal("building_skills" in (data as object), false);
   assert.equal((data as { name: string }).name, "阿米娅");
 });
+
+test("wrong-shape building table degrades basic info", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  delete process.env["STORYJSON_PATH"];
+  writeMinimalGamedata(root);
+  // Valid JSON, wrong shape — must degrade like the corrupt case.
+  writeFileSync(
+    join(root, "zh_CN", "gamedata", "excel", "building_data.json"),
+    "[]",
+    "utf-8",
+  );
+  const operator = await import(`../src/data/operator.ts?cacheBust=${Date.now()}-${Math.random()}`);
+
+  const data = operator.buildOperatorBasicInfo("阿米娅");
+  assert.equal(typeof data, "object");
+  assert.equal("building_skills" in (data as object), false);
+});
