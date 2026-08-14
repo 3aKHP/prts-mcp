@@ -4,11 +4,10 @@
  * Mirrors python/src/prts_mcp/data/item.py.
  */
 
-import { checkActivationChange, registerActivationListener } from "../activation.js";
-import { loadConfig } from "../config.js";
-import { DirectoryStore } from "./stores.js";
-import { CacheMetrics } from "./cacheMetrics.js";
+import { registerActivationListener } from "../activation.js";
 import type { CacheStat } from "../cacheStats.js";
+import { defineDataset, excelStore, type DatasetAccess } from "./datasetAccess.js";
+import { excelMissingMessage, regexErrorMessage, validateBounds } from "./messages.js";
 
 const ITEM_FILE = "item_table.json";
 
@@ -129,45 +128,16 @@ export interface ItemSearchPayload {
   }>;
 }
 
-let itemTable: Record<string, ItemEntry> | null = null;
-let itemLookup: Map<string, string> | null = null;
-let itemSearchRecords: ItemSearchRecord[] | null = null;
-const itemTableMetrics = new CacheMetrics();
-const itemLookupMetrics = new CacheMetrics();
-const itemSearchRecordsMetrics = new CacheMetrics();
+function missingDataMessage(): string {
+  return itemAccess.missingMessage();
+}
 
 export function clearItemCaches(): void {
-  itemTableMetrics.clear();
-  itemLookupMetrics.clear();
-  itemSearchRecordsMetrics.clear();
-  itemTable = null;
-  itemLookup = null;
-  itemSearchRecords = null;
+  itemAccess.clear();
 }
 
 export function getCacheStats(): Record<string, CacheStat> {
-  return {
-    items: itemTableMetrics.snapshot(itemTable != null, itemTable ? Object.keys(itemTable).length : 0),
-    item_lookup: itemLookupMetrics.snapshot(itemLookup != null, itemLookup ? itemLookup.size : 0),
-    item_search_records: itemSearchRecordsMetrics.snapshot(itemSearchRecords != null, itemSearchRecords ? itemSearchRecords.length : 0),
-  };
-}
-
-registerActivationListener(clearItemCaches);
-
-function itemStore(): DirectoryStore {
-  const ep = loadConfig().effectiveExcelPath;
-  if (ep === null) throw new Error("effectiveExcelPath is null");
-  return new DirectoryStore(ep);
-}
-
-function missingDataMessage(): string {
-  const cfg = loadConfig();
-  return (
-    "物品数据暂不可用。请检查 GAMEDATA_PATH 配置，" +
-    "或等待服务器自动从 GitHub Release 同步数据完成后重试。" +
-    `（当前同步目标路径：${cfg.excelPath}）`
-  );
+  return itemAccess.stats();
 }
 
 function normalizeCategory(category: string): string {
@@ -193,34 +163,25 @@ function shortText(text: string, limit = 80): string {
   return cleaned.length > limit ? cleaned.slice(0, limit) + "..." : cleaned;
 }
 
-function loadItems(): Record<string, ItemEntry> {
-  checkActivationChange();
-  itemTableMetrics.access(itemTable !== null);
-  if (itemTable === null) {
-    const store = itemStore();
-    if (!store.exists(ITEM_FILE)) {
-      throw new Error(`物品数据文件不存在：${store.resolveForDiagnostics(ITEM_FILE)}。`);
-    }
-    const raw = store.readJson<ItemTable>(ITEM_FILE);
-    if (!raw || typeof raw !== "object" || !raw.items || typeof raw.items !== "object") {
-      throw new Error(`${ITEM_FILE} missing 'items' dict`);
-    }
-    itemTable = raw.items;
+function loadItemsImpl(): Record<string, ItemEntry> {
+  const store = excelStore();
+  if (!store.exists(ITEM_FILE)) {
+    throw new Error(`物品数据文件不存在：${store.resolveForDiagnostics(ITEM_FILE)}。`);
   }
-  return itemTable;
+  const raw = store.readJson<ItemTable>(ITEM_FILE);
+  if (!raw || typeof raw !== "object" || !raw.items || typeof raw.items !== "object") {
+    throw new Error(`${ITEM_FILE} missing 'items' dict`);
+  }
+  return raw.items;
 }
 
-function buildItemLookup(): Map<string, string> {
-  checkActivationChange();
-  itemLookupMetrics.access(itemLookup !== null);
-  if (itemLookup === null) {
-    itemLookup = new Map<string, string>();
-    for (const [itemId, info] of Object.entries(loadItems())) {
-      itemLookup.set(itemId, itemId);
-      if (info.name && !itemLookup.has(info.name)) itemLookup.set(info.name, itemId);
-    }
+function buildItemLookupImpl(): Map<string, string> {
+  const lookup = new Map<string, string>();
+  for (const [itemId, info] of Object.entries(loadItems())) {
+    lookup.set(itemId, itemId);
+    if (info.name && !lookup.has(info.name)) lookup.set(info.name, itemId);
   }
-  return itemLookup;
+  return lookup;
 }
 
 export function getItemNameById(itemId: string): string | null {
@@ -281,9 +242,9 @@ export function buildItemsListing(
   limit = 50,
   offset = 0,
 ): ItemsListingPayload | string {
-  if (limit < 1) return "limit 必须 >= 1。";
-  if (limit > 200) return "limit 必须 <= 200。";
-  if (offset < 0) return "offset 必须 >= 0。";
+  const boundsError = validateBounds("limit", limit, { minimum: 1, maximum: 200 })
+    ?? validateBounds("offset", offset, { minimum: 0 });
+  if (boundsError !== null) return boundsError;
 
   let entries: Array<[string, ItemEntry]>;
   try {
@@ -429,14 +390,14 @@ export function searchItems(pattern: string, maxResults = 30): string {
 }
 
 export function buildItemSearch(pattern: string, maxResults = 30): ItemSearchPayload | string {
-  if (maxResults < 1) return "max_results 必须 >= 1。";
-  if (maxResults > 100) return "max_results 必须 <= 100。";
+  const boundsError = validateBounds("max_results", maxResults, { minimum: 1, maximum: 100 });
+  if (boundsError !== null) return boundsError;
 
   let regex: RegExp;
   try {
     regex = new RegExp(pattern, "iu");
   } catch (err) {
-    return `正则表达式无效：${err instanceof Error ? err.message : String(err)}`;
+    return regexErrorMessage(err);
   }
 
   let records: ItemSearchRecord[];
@@ -492,17 +453,14 @@ function itemSearchEntry(record: ItemSearchRecord): ItemSearchPayload["results"]
   };
 }
 
-function getItemSearchRecords(): ItemSearchRecord[] {
-  checkActivationChange();
-  itemSearchRecordsMetrics.access(itemSearchRecords !== null);
-  if (itemSearchRecords !== null) return itemSearchRecords;
+function getItemSearchRecordsImpl(): ItemSearchRecord[] {
   const entries = visibleItems();
   entries.sort((a, b) => {
     const sa = a[1].sortId ?? 999999;
     const sb = b[1].sortId ?? 999999;
     return sa !== sb ? sa - sb : a[0].localeCompare(b[0]);
   });
-  itemSearchRecords = entries.map(([itemId, info]) => ({
+  return entries.map(([itemId, info]) => ({
     itemId,
     info,
     searchText: [
@@ -515,5 +473,24 @@ function getItemSearchRecords(): ItemSearchRecord[] {
       itemId,
     ].filter(Boolean).join(" "),
   }));
-  return itemSearchRecords;
 }
+
+const itemAccess: DatasetAccess = defineDataset({
+  name: "item",
+  loaders: {
+    items: { load: loadItemsImpl },
+    item_lookup: {
+      load: buildItemLookupImpl,
+      count: (m) => (m as Map<string, string>).size,
+    },
+    item_search_records: { load: getItemSearchRecordsImpl },
+  },
+  store: excelStore,
+  missingMessage: excelMissingMessage("物品"),
+});
+
+const loadItems = itemAccess.loader<Record<string, ItemEntry>>("items");
+const buildItemLookup = itemAccess.loader<Map<string, string>>("item_lookup");
+const getItemSearchRecords = itemAccess.loader<ItemSearchRecord[]>("item_search_records");
+
+registerActivationListener(clearItemCaches);
