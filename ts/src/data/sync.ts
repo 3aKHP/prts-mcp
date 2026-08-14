@@ -43,4 +43,6 @@ export const GAMEDATA_FILES: readonly string[] = [
   "zh_CN/gamedata/excel/stage_table.json",
   "zh_CN/gamedata/excel/zone_table.json",
   "zh_CN/gamedata/excel/item_table.json",
+  "zh_CN/gamedata/excel/building_data.json",
+  "zh_CN/gamedata/excel/skin_table.json",
 ];
