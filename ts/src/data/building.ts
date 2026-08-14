@@ -120,6 +120,11 @@ function phaseRank(buffData: BuffData): number {
 /** Return an operator's base skills, highest phase per buff slot. */
 export function buildingSkillsFor(charId: string): BuildingSkillPayload[] {
   const table = getBuildingTable();
+  if (typeof table !== "object" || table === null || Array.isArray(table)) {
+    // Valid JSON with a wrong shape (list/null/scalar) must surface as
+    // the same error family the callers catch.
+    throw new Error("building_data.json 顶层不是 JSON 对象");
+  }
   const chars = table.chars ?? {};
   const buffs = table.buffs ?? {};
   const entry = chars[charId];
