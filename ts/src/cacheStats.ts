@@ -41,7 +41,7 @@ const DOMAIN_ORDER = [
   "building",
 ] as const;
 
-/** Return the stable nine-domain cache projection used by debug endpoints. */
+/** Return the stable ten-domain cache projection used by debug endpoints. */
 export function getCacheStats(): CacheStats {
   const registry = datasetRegistry();
   const out: CacheStats = {};

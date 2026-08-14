@@ -41,18 +41,15 @@ Reopen the SQLite decision only if production evidence shows that derived JSON a
 
 Where a candidate remains useful, the default is to preserve the current 24-tool surface by extending existing tools and enums when their schema remains coherent. A candidate becomes release scope only through a separate implementation and release decision.
 
-### 2.7.0 Candidate — Operator Base Skills
+### 2.7.0 — Operator Base Skills + Skin and Artwork Metadata
 
-- Add base-skill information to the existing operator capability surface where it remains readable and bounded.
-- Extend `search(scope, pattern, max_results)` with a `building_skills` scope for facility, effect, skill-name, and cross-operator lookup instead of adding a list/get/search triplet.
-- Promote `building_data.json` into the validated AKDP dataset contract before the MCP reader depends on it.
-- Split the oversized sync modules by responsibility before or alongside the dataset-contract work, but keep structural refactoring separate from the feature diff.
+Delivered on `develop` for 2.7.0:
 
-### 2.8.0 Candidate — Skin and Artwork Metadata
-
-- Enrich `operator_artwork(action="list")` with bounded metadata such as skin description, collection/theme, and acquisition information when the source fields are stable.
-- Reuse the existing opaque `artwork_id` and image retrieval path; do not add a separate skin list/get tool pair.
-- Promote `skin_table.json` into the validated dataset contract before local metadata becomes required.
+- `get_operator_basic_info` carries base-skill information (name, facility, elite-phase unlock, effect description) as a bounded `building_skills` section; the field is omitted when `building_data.json` is absent.
+- `search(scope, pattern, max_results)` gained a `building_skills` scope for facility, effect, skill-name, and cross-operator lookup — no list/get/search triplet was added (tool surface stays at 24).
+- `building_data.json` and `skin_table.json` were promoted into the validated AKDP dataset contract.
+- The oversized sync modules were split by responsibility ahead of the feature work (the 2.7 god-file refactor program), kept in separate PRs from the feature diff.
+- Pulled forward from the former 2.8.0 candidate: `operator_artwork(action="list")` under `LOCAL_IMAGE=true` is enriched with bounded skin metadata (collection/theme, acquisition, description) via the existing opaque `artwork_id`; the MediaWiki backend is not enriched (no skin_table join key).
 
 ### 2.9.0 Candidate — Recruitment Lookup
 

@@ -110,7 +110,7 @@ du -sh ~/prts-e2e/data-ts/xdg/prts-mcp/*
 - list（不透明 token + 变体清单）→ get large/preview（真 PNG，尺寸与变体一致）。
 - `variant=original`（未同步）→ `图片文件缺失：…` 优雅拒绝。
 - 表单别名 `阿米娅(近卫)` 独立解析；跨 form token → `不属于` 拒绝。
-- `/debug/cache` 九模块齐全（Bearer debug token）。
+- `/debug/cache` 十模块齐全（Bearer debug token）。
 
 ## 阶段 6 — 清空缓存后复测 Python
 

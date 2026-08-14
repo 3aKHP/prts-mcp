@@ -65,13 +65,13 @@ Both implementations expose the same tool set:
 | `prts_page(page_title, action, ...)` | Read a wiki page or metadata; `template` returns rendered fields from top-level templates |
 | `get_operator_archives(name)` | Retrieve operator archive records (Chinese name) |
 | `get_operator_voicelines(name)` | Retrieve operator voice lines (Chinese name) |
-| `get_operator_basic_info(name)` | Retrieve basic operator profile: class, rarity, faction, recruit tags, talents (Chinese name) |
+| `get_operator_basic_info(name)` | Retrieve basic operator profile: class, rarity, faction, recruit tags, talents, base skills (Chinese name) |
 | `list_story_events(category?)` | List story events; optional filter: `main` (main story) or `activities` |
 | `list_stories(event_id, include_summaries?)` | List chapters of an event in official order; `include_summaries` adds the event-level overview + per-chapter summaries |
 | `get_story_summary(story_key)` | Single-chapter summary (LLM long summary or official one-liner) |
 | `read_story(story_key, include_narration)` | Read full dialogue for a single chapter |
 | `read_activity(event_id, include_narration, page, page_size)` | Read a complete activity's transcript, with pagination |
-| `search(scope, pattern, max_results)` | Full-text regex search within a data domain: `scope` ∈ operators / enemies / stages / items |
+| `search(scope, pattern, max_results)` | Full-text regex search within a data domain: `scope` ∈ operators / enemies / stages / items / building_skills |
 | `search_stories(pattern, character?, line_type?, context_lines?, max_results?, event_id?)` | Full-text regex search across story dialogue, narration, and choice lines with filtering |
 | `list_enemies()` | List all enemies in the handbook with threat level and description |
 | `get_enemy_info(name, stage_id?)` | Retrieve full enemy handbook entry by name, or stage-specific stats when `stage_id` is provided |
@@ -84,7 +84,7 @@ Both implementations expose the same tool set:
 | `get_operator_memoirs(name)` | Resolve an operator's memoir (干员密录) story keys for follow-up `read_story` calls |
 | `find_character_appearances(name, scope?, max_events?)` | Find chapters/events where a character speaks (dialog) or is mentioned (name substring) |
 | `find_speakers_in(event_id)` | List every speaker in an event with dialog line counts |
-| `operator_artwork(operator_name, action, artwork_id?, variant?)` | List operator illustrations/skins and retrieve image variants (base64); MediaWiki by default, AKDP local assets when `LOCAL_IMAGE=true` |
+| `operator_artwork(operator_name, action, artwork_id?, variant?)` | List operator illustrations/skins (local list carries skin collection/acquisition metadata) and retrieve image variants (base64); MediaWiki by default, AKDP local assets when `LOCAL_IMAGE=true` |
 
 ### Output Channel
 
@@ -189,13 +189,13 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and [`doc
 | `prts_page(page_title, action, ...)` | 读取词条正文或元数据；`template` 返回顶层模板的结构化、已渲染字段数据 |
 | `get_operator_archives(name)` | 获取干员档案资料（中文名） |
 | `get_operator_voicelines(name)` | 获取干员语音记录（中文名） |
-| `get_operator_basic_info(name)` | 获取干员基本信息：职业、稀有度、所属、招募标签、天赋（中文名） |
+| `get_operator_basic_info(name)` | 获取干员基本信息：职业、稀有度、所属、招募标签、天赋、基建技能（中文名） |
 | `list_story_events(category?)` | 列出剧情活动，可选过滤：`main`（主线）或 `activities`（活动） |
 | `list_stories(event_id, include_summaries?)` | 列出指定活动的章节（按官方顺序）；`include_summaries` 附活动级概览 + 每章梗概 |
 | `get_story_summary(story_key)` | 获取单章梗概（LLM 长摘要或官方一句话简介） |
 | `read_story(story_key, include_narration)` | 读取单章完整台词 |
 | `read_activity(event_id, include_narration, page, page_size)` | 读取整个活动的完整剧情，支持分页 |
-| `search(scope, pattern, max_results)` | 在指定数据域执行全文正则搜索：`scope` ∈ operators / enemies / stages / items |
+| `search(scope, pattern, max_results)` | 在指定数据域执行全文正则搜索：`scope` ∈ operators / enemies / stages / items / building_skills（基建技能跨干员反查） |
 | `search_stories(pattern, character?, line_type?, context_lines?, max_results?, event_id?)` | 在剧情台词中执行全文正则搜索，支持按角色和台词类型过滤 |
 | `list_enemies()` | 列出敌方图鉴中所有敌人及其威胁等级和描述 |
 | `get_enemy_info(name, stage_id?)` | 获取指定敌人的详细图鉴资料；传入 `stage_id` 时返回关卡级数值 |
@@ -208,7 +208,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and [`doc
 | `get_operator_memoirs(name)` | 解析干员密录的 story_key，便于后续 `read_story` 调用 |
 | `find_character_appearances(name, scope?, max_events?)` | 查找角色在哪些章节/活动中开口（对话）或被提及（名字子串） |
 | `find_speakers_in(event_id)` | 列出指定活动中所有发言角色及其对话行数 |
-| `operator_artwork(operator_name, action, artwork_id?, variant?)` | 列出干员立绘/时装并获取图片变体（base64）；默认走 MediaWiki，`LOCAL_IMAGE=true` 时使用 AKDP 本地资产 |
+| `operator_artwork(operator_name, action, artwork_id?, variant?)` | 列出干员立绘/时装（本地模式附带皮肤系列/获取方式等元数据）并获取图片变体（base64）；默认走 MediaWiki，`LOCAL_IMAGE=true` 时使用 AKDP 本地资产 |
 
 ### 输出通道
 
