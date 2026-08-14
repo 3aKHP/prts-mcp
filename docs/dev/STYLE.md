@@ -30,7 +30,7 @@ config.py/ts          ←  路径解析、环境变量
 
 **允许的依赖方向**：`server → api, data, sync, config` / `data → stores, utils, config` / `sync → stores, utils, config` / `api → utils`。 **禁止**：`stores` 依赖 `data`；`utils` 依赖 `api` 或 `data`；`config` 依赖任何其他模块；`data` 的数据读取模块直接发 HTTP（数据同步 HTTP 归 `sync/`、PRTS Wiki HTTP 归 `api/`）。
 
-> 迁移期注记：`data/sync.*` 的状态机在 P2.A→P2.B 期间临时 `data → sync` 反向依赖新抽出的 `sync/transport`、`sync/release_discovery`（经 re-export shim），状态机迁出 `data/` 后该过渡边消失。`data/images_sync.py` 仍直接发 HTTP（`_download_large`），是 sync 层模块暂居 `data/` 的历史残留，随 images_sync 迁入 `sync/` 层时清除（P3.B）。
+> 两个注定的例外：① `data/artwork_mediawiki` 是 wiki-backed 数据源，允许**经 `api/` 客户端**取 PRTS 数据（自身仍不发裸 HTTP、不 import sync）；② `data/artwork_local` 对本地图片代际目录的 PNG 直读豁免 store 抽象——`stores` 是 JSON 文本契约，代际目录是绝对宿主路径而非 store root 相对模型，且读取自带 realpath 遏制守卫（#169）。
 
 ### 抽象层
 
@@ -246,6 +246,9 @@ Python 和 TypeScript 不是翻译关系，但文件结构和模块职责应保�
 | `data/level_parser.py` | `data/levelParser.ts` | zh_CN-levels 关卡 JSON 纯解析（level_path/spawn_counts/enemy_refs/parse_level） |
 | `data/stage.py` | `data/stage.ts` | 关卡数据读取和格式化（导出共享 load_stage_table/getStageTable） |
 | `data/stage_enemy.py` | `data/stageEnemy.ts` | 关卡×敌人融合编排（消费 enemy/stage 共享访问器，own dataset 仅 enemy_appearance_index） |
+| `data/artwork_local.py` | `data/artworkLocal.ts` | 本地 AKDP 立绘后端（char-id 别名解析、index 加载、受守卫 PNG 读取；接收已解析 gen_dir，不 import sync/api/output） |
+| `data/artwork_mediawiki.py` | `data/artworkMediawiki.ts` | MediaWiki 立绘后端（list/get 编排 + LRU + label/ownership；经 api 客户端取数） |
+| `data/artwork_format.py` | `data/artworkFormat.ts` | artwork 结果形状（ListOutcome/GetOutcome）+ 共享列表 markdown 渲染 |
 | `data/story.py` | `data/story.ts` | 剧情数据读取和格式化 |
 | `data/search.py` | `data/search.ts` | 全文搜索 |
 | `data/sync.py` | `data/sync.ts` | re-export barrel（全 sync 状态机已迁入 `sync/`） |
@@ -253,6 +256,9 @@ Python 和 TypeScript 不是翻译关系，但文件结构和模块职责应保�
 | `sync/release_discovery.py` | `sync/releaseDiscovery.ts` | Release 发现（list/latest-by-prefix/asset_url/check_latest） |
 | `sync/_types.py` | `sync/types.ts` | 共享 spec/result 类型（RepoSpec/ReleaseArchiveSpec/SyncResult） |
 | `sync/gamedata_pair.py` | `sync/gamedataPair.ts` | GameData pair 状态机（archive 激活 + pair 协调，含 #152 幂等双守卫） |
+| `sync/images_sync.py` | `sync/imagesSync.ts` | AKDP 图片资产同步状态机（shard/delta 下载 + 代际激活） |
+| `sync/generation_store.py` | `sync/generationStore.ts` | 图片代际文件系统 store（.images_meta 指针 + active 代际解析 + prune） |
+| `sync/primitives.py` | `sync/primitives.ts` | sync 层共享原语（atomic_write_json + prune_old_trees） |
 | `sync/release_activation.py` | `sync/releaseActivation.ts` | 跨进程锁 + 代际树 + staging + extract-meta + zip 校验/解压 |
 | `sync/release.py` | `sync/release.ts` | Release 下载 + manifest 校验 + sync_release 状态机 |
 | `data/datasets.py` | `data/datasets.ts` | 数据集 spec 定义 |
