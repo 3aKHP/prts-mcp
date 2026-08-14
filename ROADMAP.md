@@ -37,7 +37,7 @@ Reopen the SQLite decision only if production evidence shows that derived JSON a
 
 ## 2.8+ Non-Binding Working Draft
 
-> **Draft status:** Everything in this 2.7+ section is a candidate direction only. The version numbers, ordering, scope, tool shape, and inclusion of individual items are planning placeholders. The project does not commit to releasing later versions according to this draft. Items may be reordered, merged, split, deferred, replaced, or dropped as source contracts, implementation review, maintenance capacity, ecosystem changes, and real-consumer evidence evolve.
+> **Draft status:** Everything in this 2.8+ section is a candidate direction only. The version numbers, ordering, scope, tool shape, and inclusion of individual items are planning placeholders. The project does not commit to releasing later versions according to this draft. Items may be reordered, merged, split, deferred, replaced, or dropped as source contracts, implementation review, maintenance capacity, ecosystem changes, and real-consumer evidence evolve.
 
 Where a candidate remains useful, the default is to preserve the current 24-tool surface by extending existing tools and enums when their schema remains coherent. A candidate becomes release scope only through a separate implementation and release decision.
 
@@ -118,7 +118,7 @@ Shipped 2026-05-28. See the Python and TypeScript CHANGELOGs for release details
 
 ### Deferred Beyond 1.7 LTS
 
-The former 1.x ideas for operator base skills, skin metadata, Wiki images, and recruitment lookup remain outside the LTS line. Their current draft placement and revised tool-surface shape are recorded in the 2.7+ working draft above.
+The former 1.x ideas for operator base skills, skin metadata, Wiki images, and recruitment lookup remain outside the LTS line. Their current draft placement and revised tool-surface shape are recorded in the 2.8+ working draft above.
 
 ---
 
