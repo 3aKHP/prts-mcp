@@ -16,6 +16,19 @@
 - **文件长度预警线**：源文件超过 ~300 行就要问"这能不能拆"
 - **模块边界**：`data/` 的数据读取模块只做数据读写和格式化，不混进 HTTP 请求；HTTP 传输统一收敛到 `sync/` 层；`api/` 只做 PRTS Wiki API 调用；`server.py` 只做工具注册和启动编排
 
+**已审健康的大文件（2.7.0 上帝文件审计归档，P5.1）**：预警线以耦合度为准，不是行数。以下单元在 2.7.0 周期审计中按 STYLE 耦合规则逐个判为单一职责/抽取得当，**不要为行数机械拆分**；表中"可选辅助"是审计记录的文件内抽取候选，仅在利于测试/复用时再做，不欠账：
+
+| 模块（PY / TS 行数@2026-08） | 审计结论 | 可选辅助（非必须） |
+|---|---|---|
+| `data/operator`（311 / 402） | 🟢 单一职责（干员数据读+格式化）；TS 大 ~90 行是 JSON-shape interface + per-cache CacheMetrics 的结构不对称，非上帝文件 | `resolve_operator_or_error`（收 3 处重复前置解析） |
+| `data/item`（475 / 496） | 🟢 镜像 operator 的 build/render/entry 形态 | `itemLabels`（纯 label 表 + 格式化，无 IO 可单测） |
+| `data/stage`（526 / 554） | 🟢 validate→load→filter→paginate→shape 线性管线，最大嵌套 2 | `stage_render`（纯 markdown；`stage_search` 契合 ROADMAP 决策原则 7 的统一 search 入口） |
+| `data/story_search`（398 / 356） | 🟢 内聚 | `_validate_search_params`（集中 6 个参数 guard） |
+| `data/story_reader`（540 / 561） | 🟡 临界：默认不拆，可选 `story_types`（纯数据形状）+ `story_format`（payload+markdown），仅在利于测试时 | 同左 |
+| `data/images`（227 / 233） | 🟢 免检：单域、抽取得当（sync 在 `sync/images_sync`、缓存生命周期合惯例） | — |
+
+
+
 ### 分层纪律
 
 ```
