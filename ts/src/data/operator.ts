@@ -356,9 +356,17 @@ export function buildOperatorBasicInfo(name: string): OperatorBasicInfoPayload |
     }
   }
 
-  const buildingSkills: BuildingSkillPayload[] | undefined = hasBuildingData()
-    ? buildingSkillsFor(charId)
-    : undefined;
+  let buildingSkills: BuildingSkillPayload[] | undefined;
+  if (hasBuildingData()) {
+    try {
+      buildingSkills = buildingSkillsFor(charId);
+    } catch {
+      // Missing or corrupt building_data.json degrades to the
+      // pre-2.7.0 payload shape (mirrors getCharSkins' tolerance for
+      // skin_table.json).
+      buildingSkills = undefined;
+    }
+  }
 
   return {
     name,

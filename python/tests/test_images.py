@@ -228,6 +228,23 @@ def test_list_unknown_operator(mock_images):
     assert "找不到" in text
 
 
+def test_list_without_gamedata_degrades_to_not_ready(monkeypatch, tmp_path):
+    # Regression: excel_store() raises RuntimeError (not the AssertionError
+    # the old catch listed) when gamedata is absent — the degrade path must
+    # keep returning the friendly not-ready message instead of crashing.
+    monkeypatch.setenv("LOCAL_IMAGE", "true")
+    monkeypatch.setenv("GAMEDATA_PATH", str(tmp_path / "empty"))
+    from prts_mcp.data import operator as operator_module
+
+    operator_module.clear_operator_caches()
+    try:
+        result = asyncio.run(_do_list("阿米娅"))
+        assert result.is_error is False
+        assert "立绘数据未就绪" in result.content[0].text
+    finally:
+        operator_module.clear_operator_caches()
+
+
 @pytest.mark.parametrize(
     ("operator_name", "expected_char_id"),
     [
