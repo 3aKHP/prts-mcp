@@ -13,6 +13,7 @@ PRTS-MCP 是面向明日方舟同人创作的 MCP Server，包含 Python 和 Typ
 |---|---|
 | 项目现状、版本状态、仓库结构 | [`STATUS.md`](STATUS.md) |
 | 代码规范、反模式、已知陷阱 | [`docs/dev/STYLE.md`](docs/dev/STYLE.md) |
+| 全量 E2E 真机测试流程（高风险改动后必跑） | [`docs/dev/E2E.md`](docs/dev/E2E.md) |
 | 路线图与未来规划 | [`ROADMAP.md`](ROADMAP.md) |
 | 1.x → 2.0 迁移（破坏性变更） | [`docs/migration-1.x-to-2.0.md`](docs/migration-1.x-to-2.0.md) |
 | 1.7 LTS 维护规则 | [`docs/dev/LTS.md`](docs/dev/LTS.md) |
@@ -193,6 +194,7 @@ fix/*（最新稳定 hotfix）────────→ main ──→ develop
 | 仅文档 | 术语 / 链接 targeted grep；引用代码时按需 `uv run --directory python --locked python -m pytest tests -k <topic>` |
 | 小代码（单实现） | 按"路径 A 步骤 4"的对应实现命令（Python 或 TS，含 `typecheck`） |
 | 工具面 / 数据 / sync 运行时 | "路径 A 步骤 4"双实现全量 + `./scripts/check-runtime.sh --full` |
+| **大规模高风险跨模块改动**（程序级重构、`sync/`/`api/` 层行为改动、artwork/images 域、MCP 传输层；以及发布里程碑） | **必须**走全量 E2E 真机测试（[`docs/dev/E2E.md`](docs/dev/E2E.md)）：双实现生产式部署 + 真实 MCP Client 全工具组 + 图像双数据源，**缺此环节不得视为验证完成** |
 | release / `main` 快照 | "路径 A 步骤 4"全量 + 双实现 parity 测试 + CHANGELOG / 版本号 / STATUS 口径核对 |
 
 ## 文档扫描

@@ -49,6 +49,8 @@ Run the full validation set before merging runtime-sensitive changes:
 ./scripts/check-runtime.sh --full
 ```
 
+**After large-scale high-risk cross-module changes** (program-level refactors, `sync/`/`api/` behavior changes, the artwork/images domain, MCP transport changes, and release milestones), the full E2E real-machine pass is **mandatory** — production-style deployment of both implementations plus a real MCP client exercising every tool group. Procedure: [`docs/dev/E2E.md`](docs/dev/E2E.md).
+
 Equivalent manual commands:
 
 ```bash
