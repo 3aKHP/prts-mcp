@@ -8,11 +8,10 @@
  * display names, keeping the schema stable across game versions.
  */
 
-import { checkActivationChange, registerActivationListener } from "../activation.js";
+import { registerActivationListener } from "../activation.js";
 import { loadConfig } from "../config.js";
-import { DirectoryStore } from "./stores.js";
-import { CacheMetrics } from "./cacheMetrics.js";
 import type { CacheStat } from "../cacheStats.js";
+import { defineDataset, excelStore, type DatasetAccess } from "./datasetAccess.js";
 
 export const SCHEMA_VERSION = "akdp-images/v1";
 export const VARIANT_ORDER = ["original", "large", "preview"] as const;
@@ -138,11 +137,25 @@ export interface CharSkinLike {
   displaySkin?: { skinName?: unknown };
 }
 
-type CharSkinsCache = Record<string, CharSkinLike> | null;
-// null = not yet loaded; the cache is reset by clearImageCaches on activation
-// changes, mirroring operator.ts's lazy-cache pattern.
-let _charSkins: CharSkinsCache = null;
-const charSkinsMetrics = new CacheMetrics();
+function getCharSkinsImpl(): Record<string, CharSkinLike> {
+  const ep = loadConfig().effectiveExcelPath;
+  if (ep === null) return {};
+  const store = excelStore();
+  if (!store.exists("skin_table.json")) return {};
+  const table = store.readJson<{ charSkins?: unknown }>("skin_table.json");
+  return table.charSkins && typeof table.charSkins === "object"
+    ? (table.charSkins as Record<string, CharSkinLike>)
+    : {};
+}
+
+const imagesAccess: DatasetAccess = defineDataset({
+  name: "images",
+  loaders: {
+    char_skins: { load: getCharSkinsImpl, onError: "empty" },
+  },
+});
+
+const _getCharSkins = imagesAccess.loader<Record<string, CharSkinLike>>("char_skins");
 
 /**
  * Load the ``charSkins`` mapping from ``skin_table.json``.
@@ -152,43 +165,15 @@ const charSkinsMetrics = new CacheMetrics();
  * to skinId-derived labels in that case.
  */
 export function getCharSkins(): Record<string, CharSkinLike> {
-  checkActivationChange();
-  charSkinsMetrics.access(_charSkins !== null);
-  if (_charSkins === null) {
-    const ep = loadConfig().effectiveExcelPath;
-    if (ep === null) {
-      _charSkins = {};
-    } else {
-      const store = new DirectoryStore(ep);
-      if (!store.exists("skin_table.json")) {
-        _charSkins = {};
-      } else {
-        try {
-          const table = store.readJson<{ charSkins?: unknown }>(
-            "skin_table.json",
-          );
-          _charSkins =
-            table.charSkins && typeof table.charSkins === "object"
-              ? (table.charSkins as Record<string, CharSkinLike>)
-              : {};
-        } catch {
-          _charSkins = {};
-        }
-      }
-    }
-  }
-  return _charSkins;
+  return _getCharSkins();
 }
 
 export function clearImageCaches(): void {
-  charSkinsMetrics.clear();
-  _charSkins = null;
+  imagesAccess.clear();
 }
 
 export function getCacheStats(): Record<string, CacheStat> {
-  return {
-    char_skins: charSkinsMetrics.snapshot(_charSkins != null, _charSkins ? Object.keys(_charSkins).length : 0),
-  };
+  return imagesAccess.stats();
 }
 
 registerActivationListener(clearImageCaches);

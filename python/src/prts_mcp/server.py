@@ -112,25 +112,26 @@ def _build_http_app():
     async def debug_cache(request):
         if not debug_authorized(request):
             return Response(status_code=404)
+        # The data-module imports populate the dataset registry (registration
+        # side effect); their order preserves the historical key order.
+        # story_search and artwork_mediawiki are not on the contract yet and
+        # are read directly.
+        from prts_mcp.data import (  # noqa: F401
+            operator,
+            enemy,
+            stage,
+            stage_enemy,
+            item,
+            search,
+            images,
+        )
         from prts_mcp.data.artwork_mediawiki import cache_stats as _am
-        from prts_mcp.data.enemy import cache_stats as _enemy
-        from prts_mcp.data.images import cache_stats as _images
-        from prts_mcp.data.item import cache_stats as _item
-        from prts_mcp.data.operator import cache_stats as _op
-        from prts_mcp.data.search import cache_stats as _search
-        from prts_mcp.data.stage import cache_stats as _stage
-        from prts_mcp.data.stage_enemy import cache_stats as _se
         from prts_mcp.data.story_search import cache_stats as _ss
+        from prts_mcp.data.dataset_access import dataset_cache_stats
 
         return JSONResponse({
-            "operator": _op(),
-            "enemy": _enemy(),
-            "stage": _stage(),
-            "stage_enemy": _se(),
-            "item": _item(),
-            "search": _search(),
+            **dataset_cache_stats(),
             "story_search": _ss(),
-            "images": _images(),
             "artwork_mediawiki": _am(),
         })
 

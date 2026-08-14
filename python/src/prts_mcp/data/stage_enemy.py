@@ -4,10 +4,17 @@ from collections import Counter
 from typing import Any
 
 from prts_mcp.activation import register_activation_listener
-from prts_mcp.cache_stats import activation_aware_cache, cache_stat
 from prts_mcp.config import Config
+from prts_mcp.data.dataset_access import (
+    DatasetSpec,
+    LoaderSpec,
+    define_dataset,
+    excel_store,
+    levels_store,
+)
 from prts_mcp.data.enemy_database import normalize_enemy_database
-from prts_mcp.data.stores import DirectoryStore
+from prts_mcp.data.gamedata_attrs import m_value as _m_value
+from prts_mcp.data.messages import levels_missing_message, validate_bounds
 
 
 _DATABASE_FILE = "enemydata/enemy_database.json"
@@ -17,65 +24,38 @@ def _get_config() -> Config:
     return Config.load()
 
 
-def _excel_store() -> DirectoryStore:
-    ep = _get_config().effective_excel_path
-    if ep is None:
-        raise RuntimeError("effective_excel_path is None — GAMEDATA_PATH may be unset")
-    return DirectoryStore(ep)
-
-
-def _levels_store() -> DirectoryStore:
-    lp = _get_config().effective_levels_path
-    if lp is None:
-        raise RuntimeError("effective_levels_path is None — levels data may be unsynced")
-    return DirectoryStore(lp / "zh_CN" / "gamedata" / "levels")
-
-
 def _missing_levels_message() -> str:
-    config = _get_config()
-    return (
-        "关卡战斗数据暂不可用。请等待服务器自动从 GitHub Release 同步 "
-        "zh_CN-levels.zip 完成后重试。"
-        f"（当前同步目标路径：{config.levels_path}）"
-    )
+    return _access.missing_message()
 
 
 def clear_stage_enemy_caches() -> None:
-    _load_stage_table.cache_clear()
-    _load_enemy_handbook.cache_clear()
-    _load_enemy_database.cache_clear()
-    _build_enemy_name_to_id.cache_clear()
-    _enemy_appearance_index.cache_clear()
+    _access.clear()
 
 
 register_activation_listener(clear_stage_enemy_caches)
 
 
-@activation_aware_cache(maxsize=1)
-def _load_stage_table() -> dict[str, dict[str, Any]]:
-    raw = _excel_store().read_json("stage_table.json")
+def _load_stage_table_impl() -> dict[str, dict[str, Any]]:
+    raw = excel_store().read_json("stage_table.json")
     stages = raw.get("stages") if isinstance(raw, dict) else None
     if not isinstance(stages, dict):
         raise TypeError("stage_table.json missing 'stages' dict")
     return stages
 
 
-@activation_aware_cache(maxsize=1)
-def _load_enemy_handbook() -> dict[str, dict[str, Any]]:
-    raw = _excel_store().read_json("enemy_handbook_table.json")
+def _load_enemy_handbook_impl() -> dict[str, dict[str, Any]]:
+    raw = excel_store().read_json("enemy_handbook_table.json")
     data = raw.get("enemyData") if isinstance(raw, dict) else None
     if not isinstance(data, dict):
         raise TypeError("enemy_handbook_table.json missing 'enemyData' dict")
     return data
 
 
-@activation_aware_cache(maxsize=1)
-def _load_enemy_database() -> dict[str, dict[int, dict[str, Any]]]:
-    return normalize_enemy_database(_levels_store().read_json(_DATABASE_FILE))
+def _load_enemy_database_impl() -> dict[str, dict[int, dict[str, Any]]]:
+    return normalize_enemy_database(levels_store().read_json(_DATABASE_FILE))
 
 
-@activation_aware_cache(maxsize=1)
-def _build_enemy_name_to_id() -> dict[str, str]:
+def _build_enemy_name_to_id_impl() -> dict[str, str]:
     return {
         str(info["name"]): enemy_id
         for enemy_id, info in _load_enemy_handbook().items()
@@ -92,19 +72,13 @@ def _load_level_json(stage: dict[str, Any]) -> dict[str, Any] | str:
     if not level_id:
         return "该关卡没有 levelId，可能是非战斗/特殊关卡。"
     path = _level_path(str(level_id))
-    store = _levels_store()
+    store = levels_store()
     if not store.exists(path):
         return f"未找到关卡战斗文件：{path}。"
     raw = store.read_json(path)
     if not isinstance(raw, dict):
         return f"关卡战斗文件格式异常：{path}。"
     return raw
-
-
-def _m_value(obj: Any, default: Any = None) -> Any:
-    if isinstance(obj, dict) and "m_value" in obj:
-        return obj["m_value"]
-    return obj if obj is not None else default
 
 
 def _merge_defined(base: Any, override: Any) -> Any:
@@ -291,10 +265,9 @@ def _find_enemy_appearances(enemy_id: str) -> list[tuple[str, int]]:
     return _enemy_appearance_index().get(enemy_id, [])
 
 
-@activation_aware_cache(maxsize=1)
-def _enemy_appearance_index() -> dict[str, list[tuple[str, int]]]:
+def _enemy_appearance_index_impl() -> dict[str, list[tuple[str, int]]]:
     appearances: dict[str, list[tuple[str, int]]] = {}
-    store = _levels_store()
+    store = levels_store()
     for stage_id, stage in _load_stage_table().items():
         level_id = stage.get("levelId")
         if not level_id:
@@ -310,15 +283,30 @@ def _enemy_appearance_index() -> dict[str, list[tuple[str, int]]]:
     return appearances
 
 
+_access = define_dataset(DatasetSpec(
+    name="stage_enemy",
+    loaders={
+        "stage_table": LoaderSpec(load=_load_stage_table_impl),
+        "enemy_handbook": LoaderSpec(load=_load_enemy_handbook_impl),
+        "enemy_database": LoaderSpec(load=_load_enemy_database_impl),
+        "enemy_name_to_id": LoaderSpec(load=_build_enemy_name_to_id_impl),
+        "enemy_appearance_index": LoaderSpec(load=_enemy_appearance_index_impl),
+    },
+    store=excel_store,
+    available=lambda: _get_config().has_levels_data,
+    missing_message=levels_missing_message("关卡战斗"),
+))
+
+_load_stage_table = _access.cached("stage_table")
+_load_enemy_handbook = _access.cached("enemy_handbook")
+_load_enemy_database = _access.cached("enemy_database")
+_build_enemy_name_to_id = _access.cached("enemy_name_to_id")
+_enemy_appearance_index = _access.cached("enemy_appearance_index")
+
+
 def cache_stats() -> dict[str, dict]:
     """Return ``{cache_name: {loaded, count}}`` for instrumentation (#104)."""
-    return {
-        "stage_table": cache_stat(_load_stage_table),
-        "enemy_handbook": cache_stat(_load_enemy_handbook),
-        "enemy_database": cache_stat(_load_enemy_database),
-        "enemy_name_to_id": cache_stat(_build_enemy_name_to_id),
-        "enemy_appearance_index": cache_stat(_enemy_appearance_index),
-    }
+    return _access.stats()
 
 
 def build_enemy_appearances(name: str, limit: int = 50, offset: int = 0) -> dict | str:
@@ -327,12 +315,10 @@ def build_enemy_appearances(name: str, limit: int = 50, offset: int = 0) -> dict
     Returns the dict payload on success, or a markdown error string on a
     validation / missing-data / not-found / empty path.
     """
-    if limit < 1:
-        return "limit 必须 >= 1。"
-    if limit > 200:
-        return "limit 必须 <= 200。"
-    if offset < 0:
-        return "offset 必须 >= 0。"
+    if message := validate_bounds("limit", limit, minimum=1, maximum=200):
+        return message
+    if message := validate_bounds("offset", offset, minimum=0):
+        return message
     if not _get_config().has_levels_data:
         return _missing_levels_message()
 
