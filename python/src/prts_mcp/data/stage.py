@@ -5,13 +5,19 @@ from dataclasses import dataclass as _dataclass
 from typing import Any
 
 from prts_mcp.activation import register_activation_listener
-from prts_mcp.cache_stats import (
-    activation_aware_cache as _activation_aware_cache,
-    cache_stat as _cache_stat,
-)
 from prts_mcp.config import Config as _Config
+from prts_mcp.data.dataset_access import (
+    DatasetSpec as _DatasetSpec,
+    LoaderSpec as _LoaderSpec,
+    define_dataset as _define_dataset,
+    excel_store as _excel_store,
+)
 from prts_mcp.data.item import get_item_name_by_id as _get_item_name_by_id
-from prts_mcp.data.stores import DirectoryStore as _DirectoryStore
+from prts_mcp.data.messages import (
+    excel_missing_message as _excel_missing_message,
+    regex_error_message as _regex_error_message,
+    validate_bounds as _validate_bounds,
+)
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -53,25 +59,15 @@ def _get_config() -> _Config:
     return _Config.load()
 
 
-def _store() -> _DirectoryStore:
-    ep = _get_config().effective_excel_path
-    if ep is None:
-        raise RuntimeError("effective_excel_path is None — GAMEDATA_PATH may be unset")
-    return _DirectoryStore(ep)
-
-
 def _has_stage_data() -> bool:
     cfg = _get_config()
     if cfg.effective_excel_path is None:
         return False
-    return _store().exists(_STAGE_FILE)
+    return _excel_store().exists(_STAGE_FILE)
 
 
 def _missing_data_message() -> str:
-    return (
-        "关卡数据暂不可用。请检查 GAMEDATA_PATH 配置，"
-        "或等待服务器自动从 GitHub Release 同步数据完成后重试。"
-    )
+    return _access.missing_message()
 
 
 def _stage_type_label(t: str) -> str:
@@ -133,11 +129,10 @@ def _format_drops(drop_info: dict | None) -> str:
 # ---------------------------------------------------------------------------
 
 
-@_activation_aware_cache(maxsize=1)
-def _load_stage_table() -> dict[str, dict]:
+def _load_stage_table_impl() -> dict[str, dict]:
     if not _has_stage_data():
         raise FileNotFoundError(_STAGE_FILE)
-    raw = _store().read_json(_STAGE_FILE)
+    raw = _excel_store().read_json(_STAGE_FILE)
     if not isinstance(raw, dict):
         raise TypeError(f"{_STAGE_FILE} top-level shape mismatch")
     stages = raw.get("stages")
@@ -146,9 +141,8 @@ def _load_stage_table() -> dict[str, dict]:
     return stages
 
 
-@_activation_aware_cache(maxsize=1)
-def _load_zone_table() -> dict[str, dict] | None:
-    store = _store()
+def _load_zone_table_impl() -> dict[str, dict] | None:
+    store = _excel_store()
     if not store.exists(_ZONE_FILE):
         return None
     raw = store.read_json(_ZONE_FILE)
@@ -175,9 +169,7 @@ def _zone_display(zone_id: str) -> str:
 
 
 def clear_stage_caches() -> None:
-    _load_stage_table.cache_clear()
-    _load_zone_table.cache_clear()
-    _stage_search_records.cache_clear()
+    _access.clear()
 
 
 register_activation_listener(clear_stage_caches)
@@ -200,12 +192,10 @@ def build_stages_listing(
     or a markdown error string on user-input / missing-data paths. The dict is
     the single source of truth that ``render_stages_listing`` consumes.
     """
-    if limit < 1:
-        return "limit 必须 >= 1。"
-    if limit > 200:
-        return "limit 必须 <= 200。"
-    if offset < 0:
-        return "offset 必须 >= 0。"
+    if message := _validate_bounds("limit", limit, minimum=1, maximum=200):
+        return message
+    if message := _validate_bounds("offset", offset, minimum=0):
+        return message
     if type is not None and type.upper() not in _STAGE_TYPE_LABELS:
         allowed = "、".join(_STAGE_TYPE_LABELS)
         return f"无效的 type：{type!r}。可选值：{allowed}。"
@@ -425,15 +415,13 @@ def search_stages(pattern: str, max_results: int = 30) -> str:
 
 def build_stage_search(pattern: str, max_results: int = 30) -> dict | str:
     """Build the structured payload for stage search."""
-    if max_results < 1:
-        return "max_results 必须 >= 1。"
-    if max_results > 100:
-        return "max_results 必须 <= 100。"
+    if message := _validate_bounds("max_results", max_results, minimum=1, maximum=100):
+        return message
 
     try:
         regex = _re.compile(pattern, _re.IGNORECASE)
     except _re.error as e:
-        return f"正则表达式无效：{e}"
+        return _regex_error_message(e)
 
     matched: list[_StageSearchRecord] = []
     try:
@@ -498,8 +486,7 @@ def _stage_search_entry(record: _StageSearchRecord) -> dict[str, Any]:
     }
 
 
-@_activation_aware_cache(maxsize=1)
-def _stage_search_records() -> tuple[_StageSearchRecord, ...]:
+def _stage_search_records_impl() -> tuple[_StageSearchRecord, ...]:
     records: list[_StageSearchRecord] = []
     for sid, entry in sorted(_load_stage_table().items()):
         search_text = " ".join([
@@ -517,10 +504,23 @@ def _stage_search_records() -> tuple[_StageSearchRecord, ...]:
     return tuple(records)
 
 
+_access = _define_dataset(_DatasetSpec(
+    name="stage",
+    loaders={
+        "stage_table": _LoaderSpec(load=_load_stage_table_impl),
+        "zone_table": _LoaderSpec(load=_load_zone_table_impl),
+        "stage_search_records": _LoaderSpec(load=_stage_search_records_impl),
+    },
+    store=_excel_store,
+    available=_has_stage_data,
+    missing_message=_excel_missing_message("关卡"),
+))
+
+_load_stage_table = _access.cached("stage_table")
+_load_zone_table = _access.cached("zone_table")
+_stage_search_records = _access.cached("stage_search_records")
+
+
 def cache_stats() -> dict[str, dict]:
     """Return ``{cache_name: {loaded, count}}`` for instrumentation (#104)."""
-    return {
-        "stage_table": _cache_stat(_load_stage_table),
-        "zone_table": _cache_stat(_load_zone_table),
-        "stage_search_records": _cache_stat(_stage_search_records),
-    }
+    return _access.stats()

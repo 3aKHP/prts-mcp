@@ -5,9 +5,17 @@ from dataclasses import dataclass
 from typing import Any
 
 from prts_mcp.activation import register_activation_listener
-from prts_mcp.cache_stats import activation_aware_cache, cache_stat
-from prts_mcp.config import Config
-from prts_mcp.data.stores import DirectoryStore
+from prts_mcp.data.dataset_access import (
+    DatasetSpec,
+    LoaderSpec,
+    define_dataset,
+    excel_store,
+)
+from prts_mcp.data.messages import (
+    excel_missing_message,
+    regex_error_message,
+    validate_bounds,
+)
 
 
 _ITEM_FILE = "item_table.json"
@@ -47,24 +55,8 @@ class _ItemSearchRecord:
     search_text: str
 
 
-def _get_config() -> Config:
-    return Config.load()
-
-
-def _store() -> DirectoryStore:
-    ep = _get_config().effective_excel_path
-    if ep is None:
-        raise RuntimeError("effective_excel_path is None — GAMEDATA_PATH may be unset")
-    return DirectoryStore(ep)
-
-
 def _missing_data_message() -> str:
-    config = _get_config()
-    return (
-        "物品数据暂不可用。请检查 GAMEDATA_PATH 配置，"
-        "或等待服务器自动从 GitHub Release 同步数据完成后重试。"
-        f"（当前同步目标路径：{config.excel_path}）"
-    )
+    return _access.missing_message()
 
 
 def _normalize_category(category: str) -> str:
@@ -89,9 +81,8 @@ def _short_text(text: str, limit: int = 80) -> str:
     return text[:limit] + ("..." if len(text) > limit else "")
 
 
-@activation_aware_cache(maxsize=1)
-def _load_items() -> dict[str, dict[str, Any]]:
-    store = _store()
+def _load_items_impl() -> dict[str, dict[str, Any]]:
+    store = excel_store()
     if not store.exists(_ITEM_FILE):
         raise FileNotFoundError(f"物品数据文件不存在：{store.root / _ITEM_FILE}。")
     raw = store.read_json(_ITEM_FILE)
@@ -103,8 +94,7 @@ def _load_items() -> dict[str, dict[str, Any]]:
     return items
 
 
-@activation_aware_cache(maxsize=1)
-def _build_item_lookup() -> dict[str, str]:
+def _build_item_lookup_impl() -> dict[str, str]:
     mapping: dict[str, str] = {}
     for item_id, info in _load_items().items():
         mapping[str(item_id)] = str(item_id)
@@ -114,10 +104,41 @@ def _build_item_lookup() -> dict[str, str]:
     return mapping
 
 
+def _item_search_records_impl() -> tuple[_ItemSearchRecord, ...]:
+    records: list[_ItemSearchRecord] = []
+    entries = sorted(_visible_items(), key=lambda kv: (kv[1].get("sortId", 999999), kv[0]))
+    for item_id, info in entries:
+        search_text = " ".join(
+            str(info.get(field) or "")
+            for field in ("name", "description", "usage", "obtainApproach", "classifyType", "itemType")
+        )
+        records.append(_ItemSearchRecord(
+            item_id=item_id,
+            info=info,
+            search_text=f"{search_text} {item_id}",
+        ))
+    return tuple(records)
+
+
+_access = define_dataset(DatasetSpec(
+    name="item",
+    loaders={
+        "items": LoaderSpec(load=_load_items_impl),
+        "item_lookup": LoaderSpec(load=_build_item_lookup_impl),
+        "item_search_records": LoaderSpec(load=_item_search_records_impl),
+    },
+    store=excel_store,
+    missing_message=excel_missing_message("物品"),
+))
+
+_load_items = _access.cached("items")
+_build_item_lookup = _access.cached("item_lookup")
+_item_search_records = _access.cached("item_search_records")
+
+
 def clear_item_caches() -> None:
-    _load_items.cache_clear()
-    _build_item_lookup.cache_clear()
-    _item_search_records.cache_clear()
+    """Clear lazy table caches after synced game data changes on disk."""
+    _access.clear()
 
 
 register_activation_listener(clear_item_caches)
@@ -187,12 +208,10 @@ def build_items_listing(
     Returns the dict payload on success, or a markdown error string on a
     validation / missing-data / empty-result path.
     """
-    if limit < 1:
-        return "limit 必须 >= 1。"
-    if limit > 200:
-        return "limit 必须 <= 200。"
-    if offset < 0:
-        return "offset 必须 >= 0。"
+    if message := validate_bounds("limit", limit, minimum=1, maximum=200):
+        return message
+    if message := validate_bounds("offset", offset, minimum=0):
+        return message
 
     try:
         entries = _visible_items()
@@ -387,15 +406,13 @@ def search_items(pattern: str, max_results: int = 30) -> str:
 
 def build_item_search(pattern: str, max_results: int = 30) -> dict | str:
     """Build the structured payload for item search."""
-    if max_results < 1:
-        return "max_results 必须 >= 1。"
-    if max_results > 100:
-        return "max_results 必须 <= 100。"
+    if message := validate_bounds("max_results", max_results, minimum=1, maximum=100):
+        return message
 
     try:
         regex = re.compile(pattern, re.IGNORECASE)
     except re.error as exc:
-        return f"正则表达式无效：{exc}"
+        return regex_error_message(exc)
 
     results: list[_ItemSearchRecord] = []
     try:
@@ -453,27 +470,6 @@ def _item_search_entry(record: _ItemSearchRecord) -> dict[str, Any]:
     }
 
 
-@activation_aware_cache(maxsize=1)
-def _item_search_records() -> tuple[_ItemSearchRecord, ...]:
-    records: list[_ItemSearchRecord] = []
-    entries = sorted(_visible_items(), key=lambda kv: (kv[1].get("sortId", 999999), kv[0]))
-    for item_id, info in entries:
-        search_text = " ".join(
-            str(info.get(field) or "")
-            for field in ("name", "description", "usage", "obtainApproach", "classifyType", "itemType")
-        )
-        records.append(_ItemSearchRecord(
-            item_id=item_id,
-            info=info,
-            search_text=f"{search_text} {item_id}",
-        ))
-    return tuple(records)
-
-
 def cache_stats() -> dict[str, dict]:
     """Return ``{cache_name: {loaded, count}}`` for instrumentation (#104)."""
-    return {
-        "items": cache_stat(_load_items),
-        "item_lookup": cache_stat(_build_item_lookup),
-        "item_search_records": cache_stat(_item_search_records),
-    }
+    return _access.stats()

@@ -1,9 +1,9 @@
-import { checkActivationChange, registerActivationListener } from "../activation.js";
+import { registerActivationListener } from "../activation.js";
 import { loadConfig } from "../config.js";
-import { DirectoryStore } from "./stores.js";
 import { getItemNameById } from "./item.js";
-import { CacheMetrics } from "./cacheMetrics.js";
 import type { CacheStat } from "../cacheStats.js";
+import { defineDataset, excelStore, type DatasetAccess } from "./datasetAccess.js";
+import { excelMissingMessage, regexErrorMessage, validateBounds } from "./messages.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -130,36 +130,16 @@ const DIFFICULTY_LABELS: Record<string, string> = {
 };
 
 // ---------------------------------------------------------------------------
-// Module-level caches
+// Module-level caches (dataset access contract)
 // ---------------------------------------------------------------------------
 
-let _stageTable: StageTable | null = null;
-let _zoneTable: ZoneTable | null = null;
-let _zoneTableFailed = false;
-let _stageSearchRecords: StageSearchRecord[] | null = null;
-const stageTableMetrics = new CacheMetrics();
-const zoneTableMetrics = new CacheMetrics();
-const stageSearchRecordsMetrics = new CacheMetrics();
-
 export function clearStageCaches(): void {
-  stageTableMetrics.clear();
-  zoneTableMetrics.clear();
-  stageSearchRecordsMetrics.clear();
-  _stageTable = null;
-  _zoneTable = null;
-  _zoneTableFailed = false;
-  _stageSearchRecords = null;
+  stageAccess.clear();
 }
 
 export function getCacheStats(): Record<string, CacheStat> {
-  return {
-    stage_table: stageTableMetrics.snapshot(_stageTable != null, _stageTable ? Object.keys(_stageTable).length : 0),
-    zone_table: zoneTableMetrics.snapshot(_zoneTable != null, _zoneTable ? Object.keys(_zoneTable).length : 0),
-    stage_search_records: stageSearchRecordsMetrics.snapshot(_stageSearchRecords != null, _stageSearchRecords ? _stageSearchRecords.length : 0),
-  };
+  return stageAccess.stats();
 }
-
-registerActivationListener(clearStageCaches);
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -212,50 +192,74 @@ function formatDrops(dropInfo: Record<string, unknown> | null | undefined): stri
 // Lazy loaders
 // ---------------------------------------------------------------------------
 
-function getStageTable(): StageTable {
-  checkActivationChange();
-  stageTableMetrics.access(_stageTable !== null);
-  if (_stageTable === null) {
-    const cfg = loadConfig();
-    if (!cfg.effectiveExcelPath) {
-      throw new Error("关卡数据暂不可用。请检查 GAMEDATA_PATH 配置。");
-    }
-    const store = new DirectoryStore(cfg.effectiveExcelPath);
-    if (!store.exists(STAGE_FILE)) {
-      throw new Error(`关卡数据文件不存在：${STAGE_FILE}`);
-    }
-    const raw = store.readJson<{ stages?: StageTable }>(STAGE_FILE);
-    if (!raw || typeof raw !== "object" || !raw.stages || typeof raw.stages !== "object") {
-      throw new Error(`${STAGE_FILE} 格式异常`);
-    }
-    _stageTable = raw.stages;
-  }
-  return _stageTable;
+function hasStageData(): boolean {
+  const cfg = loadConfig();
+  if (cfg.effectiveExcelPath === null) return false;
+  return excelStore().exists(STAGE_FILE);
 }
 
-function getZoneTable(): ZoneTable | null {
-  checkActivationChange();
-  zoneTableMetrics.access(_zoneTable !== null || _zoneTableFailed);
-  if (_zoneTable === null && !_zoneTableFailed) {
-    const cfg = loadConfig();
-    if (!cfg.effectiveExcelPath) {
-      _zoneTableFailed = true;
-      return null;
-    }
-    const store = new DirectoryStore(cfg.effectiveExcelPath);
-    if (!store.exists(ZONE_FILE)) {
-      _zoneTableFailed = true;
-      return null;
-    }
-    const raw = store.readJson<{ zones?: ZoneTable }>(ZONE_FILE);
-    if (!raw || typeof raw !== "object" || !raw.zones || typeof raw.zones !== "object") {
-      _zoneTableFailed = true;
-      return null;
-    }
-    _zoneTable = raw.zones;
+function getStageTableImpl(): StageTable {
+  if (!hasStageData()) {
+    throw new Error(`关卡数据文件不存在：${STAGE_FILE}`);
   }
-  return _zoneTable;
+  const store = excelStore();
+  const raw = store.readJson<{ stages?: StageTable }>(STAGE_FILE);
+  if (!raw || typeof raw !== "object" || !raw.stages || typeof raw.stages !== "object") {
+    throw new Error(`${STAGE_FILE} 格式异常`);
+  }
+  return raw.stages;
 }
+
+// Absence is expressed as a loaded null (replaces the old negative-cache
+// companion boolean); the stats count mirrors the old snapshot numbers.
+function getZoneTableImpl(): ZoneTable | null {
+  const cfg = loadConfig();
+  if (cfg.effectiveExcelPath === null) return null;
+  const store = excelStore();
+  if (!store.exists(ZONE_FILE)) return null;
+  const raw = store.readJson<{ zones?: ZoneTable }>(ZONE_FILE);
+  if (!raw || typeof raw !== "object" || !raw.zones || typeof raw.zones !== "object") {
+    return null;
+  }
+  return raw.zones;
+}
+
+function getStageSearchRecordsImpl(): StageSearchRecord[] {
+  return Object.entries(getStageTable())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([stageId, entry]) => ({
+      stageId,
+      entry,
+      searchText: [
+        entry.name ?? "",
+        entry.code ?? "",
+        cleanDescription(entry.description ?? ""),
+        entry.stageType ?? "",
+        stageId,
+      ].join(" "),
+    }));
+}
+
+const stageAccess: DatasetAccess = defineDataset({
+  name: "stage",
+  loaders: {
+    stage_table: { load: getStageTableImpl },
+    zone_table: {
+      load: getZoneTableImpl,
+      count: (z) => (z ? Object.keys(z).length : 0),
+    },
+    stage_search_records: { load: getStageSearchRecordsImpl },
+  },
+  store: excelStore,
+  available: hasStageData,
+  missingMessage: excelMissingMessage("关卡"),
+});
+
+const getStageTable = stageAccess.loader<StageTable>("stage_table");
+const getZoneTable = stageAccess.loader<ZoneTable | null>("zone_table");
+const getStageSearchRecords = stageAccess.loader<StageSearchRecord[]>("stage_search_records");
+
+registerActivationListener(clearStageCaches);
 
 function zoneDisplay(zoneId: string): string {
   const zones = getZoneTable();
@@ -270,10 +274,7 @@ function zoneDisplay(zoneId: string): string {
 }
 
 function missingDataMessage(): string {
-  return (
-    "关卡数据暂不可用。请检查 GAMEDATA_PATH 配置，" +
-    "或等待服务器自动从 GitHub Release 同步数据完成后重试。"
-  );
+  return stageAccess.missingMessage();
 }
 
 // ---------------------------------------------------------------------------
@@ -297,9 +298,9 @@ export function buildStagesListing(
   limit: number = 50,
   offset: number = 0,
 ): StagesListingPayload | string {
-  if (limit < 1) return "limit 必须 >= 1。";
-  if (limit > 200) return "limit 必须 <= 200。";
-  if (offset < 0) return "offset 必须 >= 0。";
+  const boundsError = validateBounds("limit", limit, { minimum: 1, maximum: 200 })
+    ?? validateBounds("offset", offset, { minimum: 0 });
+  if (boundsError !== null) return boundsError;
   if (type != null && !(type.toUpperCase() in STAGE_TYPE_LABELS)) {
     const allowed = Object.keys(STAGE_TYPE_LABELS).join("、");
     return `无效的 type：${JSON.stringify(type)}。可选值：${allowed}。`;
@@ -477,14 +478,14 @@ export function searchStages(pattern: string, maxResults: number = 30): string {
 }
 
 export function buildStageSearch(pattern: string, maxResults: number = 30): StageSearchPayload | string {
-  if (maxResults < 1) return "max_results 必须 >= 1。";
-  if (maxResults > 100) return "max_results 必须 <= 100。";
+  const boundsError = validateBounds("max_results", maxResults, { minimum: 1, maximum: 100 });
+  if (boundsError !== null) return boundsError;
 
   let regex: RegExp;
   try {
     regex = new RegExp(pattern, "iu");
   } catch (e) {
-    return `正则表达式无效：${e instanceof Error ? e.message : String(e)}`;
+    return regexErrorMessage(e);
   }
 
   let records: StageSearchRecord[];
@@ -551,22 +552,3 @@ function stageSearchEntry(record: StageSearchRecord): StageSearchPayload["result
   };
 }
 
-function getStageSearchRecords(): StageSearchRecord[] {
-  checkActivationChange();
-  stageSearchRecordsMetrics.access(_stageSearchRecords !== null);
-  if (_stageSearchRecords !== null) return _stageSearchRecords;
-  _stageSearchRecords = Object.entries(getStageTable())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([stageId, entry]) => ({
-      stageId,
-      entry,
-      searchText: [
-        entry.name ?? "",
-        entry.code ?? "",
-        cleanDescription(entry.description ?? ""),
-        entry.stageType ?? "",
-        stageId,
-      ].join(" "),
-    }));
-  return _stageSearchRecords;
-}

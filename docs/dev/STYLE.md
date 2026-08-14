@@ -141,8 +141,9 @@ def get_operator(name: str | None) -> dict[str, Any] | None: ...
 
 ### 缓存
 
-- 只读数据表用 `@lru_cache(maxsize=1)` 惰性加载
-- 数据被 sync 更新后，调用 `clear_operator_caches()` 清缓存
+- gamedata 域模块经 `data/dataset_access`（TS `data/datasetAccess.ts`）声明缓存：`define_dataset(spec)` 返回 access 对象，loader 默认 `onError: "throw"`（异常传播、下次重试——保住"进程中途数据出现"语义）；缺数据当空/None 由 load 函数自行返回
+- 缓存引擎仍是 activation-aware（generation key），代际变更经各模块唯一一条 `register_activation_listener(clearX_caches)` 触发清除；operator 的清除会经 `on_clear` rider 级联清 search
+- 注意失效机制的不对称：Python 的 generation-key 缓存即使忘注册 listener 也会自愈；TS 的契约层不注册 listener，失效完全依赖各模块的 `registerActivationListener(clearXCaches)`——迁移新域时这条注册不可省
 - 不要缓存 `Config`，它需要反映 sync 后的路径变化
 
 ### MCP 工具注册
@@ -193,16 +194,15 @@ interface CharacterEntry {
   // ...
 }
 
-// 好：module-level 惰性缓存
-let _characterTable: TableCache<Record<string, CharacterEntry>> = null;
 ```
 
 - 只定义实际使用的字段，不要为整个 JSON 定义完整类型
-- `null` = 未加载，`undefined` = 加载失败
 
 ### 缓存
 
-- 模块级 `let` 变量 + `clearXxxCaches()` 函数
+- gamedata 域经 `data/datasetAccess.ts` 的 `defineDataset` 声明缓存（loader 状态机），不再手搓模块级 `let` + `checkActivationChange()` 脚手架；每个域保留恰好一条 `registerActivationListener(clearXCaches)`
+- 不要用 `Map` 做简单缓存（除非需要 LRU 或多 key）
+- Config 不缓存：`loadConfig()` 每次调用重新读取
 - 不要用 `Map` 做简单缓存（除非需要 LRU 或多 key）
 - Config 不缓存：`loadConfig()` 每次调用重新读取
 
@@ -249,6 +249,9 @@ Python 和 TypeScript 不是翻译关系，但文件结构和模块职责应保�
 | `sync/release_activation.py` | `sync/releaseActivation.ts` | 跨进程锁 + 代际树 + staging + extract-meta + zip 校验/解压 |
 | `sync/release.py` | `sync/release.ts` | Release 下载 + manifest 校验 + sync_release 状态机 |
 | `data/datasets.py` | `data/datasets.ts` | 数据集 spec 定义 |
+| `data/dataset_access.py` | `data/datasetAccess.ts` | DatasetAccess 契约（define_dataset/defineDataset 工厂 + 具名注册表 + excel/levels store 工厂） |
+| `data/gamedata_attrs.py` | `data/gamedataAttrs.ts` | 共享 gamedata 属性 unwrap（m_value/mValue） |
+| `data/messages.py` | `data/messages.ts` | canonical 缺数据/边界校验/正则错误文案（两侧符号 1:1） |
 | `api/prts_wiki.py` | `api/prtsWiki.ts` | PRTS MediaWiki API 客户端 |
 | `utils/sanitizer.py` | `utils/sanitizer.ts` | Wikitext 清洗 |
 

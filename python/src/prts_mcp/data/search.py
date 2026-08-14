@@ -5,8 +5,17 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from prts_mcp.cache_stats import activation_aware_cache, cache_stat
 from prts_mcp.config import Config
+from prts_mcp.data.dataset_access import (
+    DatasetSpec,
+    LoaderSpec,
+    define_dataset,
+)
+from prts_mcp.data.messages import (
+    excel_missing_message,
+    regex_error_message,
+    validate_bounds,
+)
 from prts_mcp.data.operator import (
     _build_name_to_id,
     _load_character_table,
@@ -26,7 +35,7 @@ class _OperatorSearchRecord:
 
 def clear_search_caches() -> None:
     """Clear cached cross-table search records."""
-    _operator_search_records.cache_clear()
+    _access.clear()
 
 
 def search_operator_data(pattern: str, max_results: int = 30) -> str:
@@ -42,24 +51,16 @@ def search_operator_data(pattern: str, max_results: int = 30) -> str:
 
 def build_operator_search(pattern: str, max_results: int = 30) -> dict | str:
     """Build the structured payload for operator-data search."""
-    if max_results < 1:
-        return "max_results 必须 >= 1。"
-    if max_results > 100:
-        return "max_results 必须 <= 100。"
+    if message := validate_bounds("max_results", max_results, minimum=1, maximum=100):
+        return message
 
-    config = Config.load()
-    if not config.has_operator_data:
-        return (
-            "干员数据暂不可用。"
-            "容器启动时的 auto-sync 可能仍在进行中，请稍后重试；"
-            "若持续出现此提示，请检查网络连接或提供 GITHUB_TOKEN 以降低限速风险。"
-            f"（当前同步目标路径：{config.excel_path}）"
-        )
+    if not Config.load().has_operator_data:
+        return _access.missing_message()
 
     try:
         regex = re.compile(pattern, re.IGNORECASE)
     except re.error as exc:
-        return f"正则表达式无效：{exc}"
+        return regex_error_message(exc)
 
     results: list[_OperatorSearchRecord] = []
     for record in _operator_search_records():
@@ -141,8 +142,7 @@ def render_search(data: dict) -> str:
     raise ValueError(f"不支持的搜索域：{scope!r}。")
 
 
-@activation_aware_cache(maxsize=1)
-def _operator_search_records() -> tuple[_OperatorSearchRecord, ...]:
+def _operator_search_records_impl() -> tuple[_OperatorSearchRecord, ...]:
     ct = _load_character_table()
     handbook = _load_handbook_table().get("handbookDict", {})
     charwords = _load_charword_table().get("charWords", {})
@@ -201,8 +201,17 @@ def _operator_search_records() -> tuple[_OperatorSearchRecord, ...]:
     return tuple(records)
 
 
+_access = define_dataset(DatasetSpec(
+    name="search",
+    loaders={
+        "search_records": LoaderSpec(load=_operator_search_records_impl),
+    },
+    missing_message=excel_missing_message("干员"),
+))
+
+_operator_search_records = _access.cached("search_records")
+
+
 def cache_stats() -> dict[str, dict]:
     """Return ``{cache_name: {loaded, count}}`` for instrumentation (#104)."""
-    return {
-        "search_records": cache_stat(_operator_search_records),
-    }
+    return _access.stats()

@@ -164,17 +164,13 @@ def _run_startup_sync(*, force_check: bool = False) -> None:
                 excel_result.status == "updated"
                 or levels_result.status == "updated"
             ):
-                from prts_mcp.data.operator import clear_operator_caches
-                from prts_mcp.data.enemy import clear_enemy_caches
-                from prts_mcp.data.item import clear_item_caches
-                from prts_mcp.data.stage_enemy import clear_stage_enemy_caches
+                # Import for the registration side effect, then clear via the
+                # dataset registry (single source for the gamedata domain list).
+                from prts_mcp.data import enemy, item, operator, stage, stage_enemy  # noqa: F401
+                from prts_mcp.data.dataset_access import dataset_registry
 
-                clear_operator_caches()
-                clear_enemy_caches()
-                clear_item_caches()
-                clear_stage_enemy_caches()
-                from prts_mcp.data.stage import clear_stage_caches as _clear_stages
-                _clear_stages()
+                for domain in ("operator", "enemy", "item", "stage_enemy", "stage"):
+                    dataset_registry()[domain].clear()
             return _gamedata_pair_needs_retry(
                 excel_result.status, levels_result.status
             )

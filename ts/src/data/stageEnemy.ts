@@ -4,12 +4,18 @@
  * Mirrors python/src/prts_mcp/data/stage_enemy.py.
  */
 
-import { checkActivationChange, registerActivationListener } from "../activation.js";
+import { registerActivationListener } from "../activation.js";
 import { hasLevelsData, loadConfig } from "../config.js";
-import { DirectoryStore } from "./stores.js";
-import { CacheMetrics } from "./cacheMetrics.js";
 import type { CacheStat } from "../cacheStats.js";
 import { normalizeEnemyDatabase } from "./enemyDatabase.js";
+import {
+  defineDataset,
+  excelStore,
+  levelsStore,
+  type DatasetAccess,
+} from "./datasetAccess.js";
+import { mValue, type MValue } from "./gamedataAttrs.js";
+import { levelsMissingMessage, validateBounds } from "./messages.js";
 
 const DATABASE_FILE = "enemydata/enemy_database.json";
 
@@ -23,11 +29,6 @@ interface StageEntry {
 interface EnemyHandbookEntry {
   name?: string;
   hideInHandbook?: boolean;
-}
-
-interface MValue {
-  m_defined?: boolean;
-  m_value?: unknown;
 }
 
 interface EnemyAttributes {
@@ -96,110 +97,46 @@ export interface EnemyAppearancesPayload {
   empty_reason?: "no_match" | "offset_out_of_range";
 }
 
-let stageTable: Record<string, StageEntry> | null = null;
-let enemyHandbook: Record<string, EnemyHandbookEntry> | null = null;
-let enemyDatabase: Record<string, Record<number, EnemyData>> | null = null;
-let nameToEnemyId: Map<string, string> | null = null;
-let enemyAppearanceIndex: Map<string, Array<[string, number]>> | null = null;
-const stageTableMetrics = new CacheMetrics();
-const enemyHandbookMetrics = new CacheMetrics();
-const enemyDatabaseMetrics = new CacheMetrics();
-const nameToEnemyIdMetrics = new CacheMetrics();
-const enemyAppearanceIndexMetrics = new CacheMetrics();
-
 export function clearStageEnemyCaches(): void {
-  stageTableMetrics.clear();
-  enemyHandbookMetrics.clear();
-  enemyDatabaseMetrics.clear();
-  nameToEnemyIdMetrics.clear();
-  enemyAppearanceIndexMetrics.clear();
-  stageTable = null;
-  enemyHandbook = null;
-  enemyDatabase = null;
-  nameToEnemyId = null;
-  enemyAppearanceIndex = null;
+  stageEnemyAccess.clear();
 }
 
 export function getCacheStats(): Record<string, CacheStat> {
-  return {
-    stage_table: stageTableMetrics.snapshot(stageTable != null, stageTable ? Object.keys(stageTable).length : 0),
-    enemy_handbook: enemyHandbookMetrics.snapshot(enemyHandbook != null, enemyHandbook ? Object.keys(enemyHandbook).length : 0),
-    enemy_database: enemyDatabaseMetrics.snapshot(enemyDatabase != null, enemyDatabase ? Object.keys(enemyDatabase).length : 0),
-    enemy_name_to_id: nameToEnemyIdMetrics.snapshot(nameToEnemyId != null, nameToEnemyId ? nameToEnemyId.size : 0),
-    enemy_appearance_index: enemyAppearanceIndexMetrics.snapshot(enemyAppearanceIndex != null, enemyAppearanceIndex ? enemyAppearanceIndex.size : 0),
-  };
-}
-
-registerActivationListener(clearStageEnemyCaches);
-
-function excelStore(): DirectoryStore {
-  const ep = loadConfig().effectiveExcelPath;
-  if (ep === null) throw new Error("effectiveExcelPath is null");
-  return new DirectoryStore(ep);
-}
-
-function levelsStore(): DirectoryStore {
-  const lp = loadConfig().effectiveLevelsPath;
-  if (lp === null) throw new Error("effectiveLevelsPath is null");
-  return new DirectoryStore(`${lp}/zh_CN/gamedata/levels`);
+  return stageEnemyAccess.stats();
 }
 
 function missingLevelsMessage(): string {
-  const cfg = loadConfig();
-  return (
-    "关卡战斗数据暂不可用。请等待服务器自动从 GitHub Release 同步 " +
-    "zh_CN-levels.zip 完成后重试。" +
-    `（当前同步目标路径：${cfg.levelsPath}）`
+  return stageEnemyAccess.missingMessage();
+}
+
+function loadStageTableImpl(): Record<string, StageEntry> {
+  const raw = excelStore().readJson<{ stages?: Record<string, StageEntry> }>("stage_table.json");
+  if (!raw || typeof raw !== "object" || !raw.stages) {
+    throw new Error("stage_table.json missing 'stages' dict");
+  }
+  return raw.stages;
+}
+
+function loadEnemyHandbookImpl(): Record<string, EnemyHandbookEntry> {
+  const raw = excelStore().readJson<{ enemyData?: Record<string, EnemyHandbookEntry> }>("enemy_handbook_table.json");
+  if (!raw || typeof raw !== "object" || !raw.enemyData) {
+    throw new Error("enemy_handbook_table.json missing 'enemyData' dict");
+  }
+  return raw.enemyData;
+}
+
+function loadEnemyDatabaseImpl(): Record<string, Record<number, EnemyData>> {
+  return normalizeEnemyDatabase<EnemyData>(
+    levelsStore().readJson(DATABASE_FILE),
   );
 }
 
-function loadStageTable(): Record<string, StageEntry> {
-  checkActivationChange();
-  stageTableMetrics.access(stageTable !== null);
-  if (stageTable === null) {
-    const raw = excelStore().readJson<{ stages?: Record<string, StageEntry> }>("stage_table.json");
-    if (!raw || typeof raw !== "object" || !raw.stages) {
-      throw new Error("stage_table.json missing 'stages' dict");
-    }
-    stageTable = raw.stages;
+function buildNameToEnemyIdImpl(): Map<string, string> {
+  const mapping = new Map<string, string>();
+  for (const [enemyId, info] of Object.entries(loadEnemyHandbook())) {
+    if (info.name) mapping.set(info.name, enemyId);
   }
-  return stageTable;
-}
-
-function loadEnemyHandbook(): Record<string, EnemyHandbookEntry> {
-  checkActivationChange();
-  enemyHandbookMetrics.access(enemyHandbook !== null);
-  if (enemyHandbook === null) {
-    const raw = excelStore().readJson<{ enemyData?: Record<string, EnemyHandbookEntry> }>("enemy_handbook_table.json");
-    if (!raw || typeof raw !== "object" || !raw.enemyData) {
-      throw new Error("enemy_handbook_table.json missing 'enemyData' dict");
-    }
-    enemyHandbook = raw.enemyData;
-  }
-  return enemyHandbook;
-}
-
-function loadEnemyDatabase(): Record<string, Record<number, EnemyData>> {
-  checkActivationChange();
-  enemyDatabaseMetrics.access(enemyDatabase !== null);
-  if (enemyDatabase === null) {
-    enemyDatabase = normalizeEnemyDatabase<EnemyData>(
-      levelsStore().readJson(DATABASE_FILE),
-    );
-  }
-  return enemyDatabase;
-}
-
-function buildNameToEnemyId(): Map<string, string> {
-  checkActivationChange();
-  nameToEnemyIdMetrics.access(nameToEnemyId !== null);
-  if (nameToEnemyId === null) {
-    nameToEnemyId = new Map();
-    for (const [enemyId, info] of Object.entries(loadEnemyHandbook())) {
-      if (info.name) nameToEnemyId.set(info.name, enemyId);
-    }
-  }
-  return nameToEnemyId;
+  return mapping;
 }
 
 function levelPath(levelId: string): string {
@@ -215,13 +152,6 @@ function loadLevelJson(stage: StageEntry): LevelJson | string {
   const raw = store.readJson<LevelJson>(path);
   if (!raw || typeof raw !== "object") return `关卡战斗文件格式异常：${path}。`;
   return raw;
-}
-
-function mValue<T>(obj: unknown, defaultValue?: T): T | unknown {
-  if (obj && typeof obj === "object" && "m_value" in obj) {
-    return (obj as MValue).m_value;
-  }
-  return obj ?? defaultValue;
 }
 
 function parseLevel(value: unknown): number {
@@ -403,10 +333,7 @@ function findEnemyAppearances(enemyId: string): Array<[string, number]> {
   return getEnemyAppearanceIndex().get(enemyId) ?? [];
 }
 
-function getEnemyAppearanceIndex(): Map<string, Array<[string, number]>> {
-  checkActivationChange();
-  enemyAppearanceIndexMetrics.access(enemyAppearanceIndex !== null);
-  if (enemyAppearanceIndex !== null) return enemyAppearanceIndex;
+function getEnemyAppearanceIndexImpl(): Map<string, Array<[string, number]>> {
   const index = new Map<string, Array<[string, number]>>();
   const stages = loadStageTable();
   const store = levelsStore();
@@ -422,9 +349,36 @@ function getEnemyAppearanceIndex(): Map<string, Array<[string, number]>> {
       else index.set(enemyId, [[stageId, count]]);
     }
   }
-  enemyAppearanceIndex = index;
-  return enemyAppearanceIndex;
+  return index;
 }
+
+const stageEnemyAccess: DatasetAccess = defineDataset({
+  name: "stage_enemy",
+  loaders: {
+    stage_table: { load: loadStageTableImpl },
+    enemy_handbook: { load: loadEnemyHandbookImpl },
+    enemy_database: { load: loadEnemyDatabaseImpl },
+    enemy_name_to_id: {
+      load: buildNameToEnemyIdImpl,
+      count: (m) => (m as Map<string, string>).size,
+    },
+    enemy_appearance_index: {
+      load: getEnemyAppearanceIndexImpl,
+      count: (m) => (m as Map<string, Array<[string, number]>>).size,
+    },
+  },
+  store: excelStore,
+  available: () => hasLevelsData(loadConfig()),
+  missingMessage: levelsMissingMessage("关卡战斗"),
+});
+
+const loadStageTable = stageEnemyAccess.loader<Record<string, StageEntry>>("stage_table");
+const loadEnemyHandbook = stageEnemyAccess.loader<Record<string, EnemyHandbookEntry>>("enemy_handbook");
+const loadEnemyDatabase = stageEnemyAccess.loader<Record<string, Record<number, EnemyData>>>("enemy_database");
+const buildNameToEnemyId = stageEnemyAccess.loader<Map<string, string>>("enemy_name_to_id");
+const getEnemyAppearanceIndex = stageEnemyAccess.loader<Map<string, Array<[string, number]>>>("enemy_appearance_index");
+
+registerActivationListener(clearStageEnemyCaches);
 
 function resolveEnemyId(name: string): string | null {
   return buildNameToEnemyId().get(name) ?? (loadEnemyHandbook()[name] ? name : null);
@@ -437,9 +391,9 @@ export function getEnemyAppearances(name: string, limit = 50, offset = 0): strin
 }
 
 export function buildEnemyAppearances(name: string, limit = 50, offset = 0): EnemyAppearancesPayload | string {
-  if (limit < 1) return "limit 必须 >= 1。";
-  if (limit > 200) return "limit 必须 <= 200。";
-  if (offset < 0) return "offset 必须 >= 0。";
+  const boundsError = validateBounds("limit", limit, { minimum: 1, maximum: 200 })
+    ?? validateBounds("offset", offset, { minimum: 0 });
+  if (boundsError !== null) return boundsError;
   if (!hasLevelsData(loadConfig())) return missingLevelsMessage();
 
   let enemyId: string | null;

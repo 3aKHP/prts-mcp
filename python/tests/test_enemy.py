@@ -203,11 +203,11 @@ class TestListEnemies:
 
     def test_invalid_limit(self, gamedata):
         out = list_enemies(limit=0)
-        assert "无效的 limit" in out
+        assert "limit 必须 >= 1" in out
 
     def test_invalid_offset(self, gamedata):
         out = list_enemies(offset=-1)
-        assert "无效的 offset" in out
+        assert "offset 必须 >= 0" in out
 
     def test_full_returns_all_no_pagination_hint(self, gamedata):
         out = list_enemies(full=True)

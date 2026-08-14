@@ -3,7 +3,6 @@
  * Mirrors python/src/prts_mcp/data/search.py.
  */
 
-import { checkActivationChange } from "../activation.js";
 import { hasOperatorData, loadConfig } from "../config.js";
 import { stripWikitext } from "../utils/sanitizer.js";
 import {
@@ -11,8 +10,9 @@ import {
   getHandbookTable,
   getCharwordTable,
 } from "./operator.js";
-import { CacheMetrics } from "./cacheMetrics.js";
 import type { CacheStat } from "../cacheStats.js";
+import { defineDataset, type DatasetAccess } from "./datasetAccess.js";
+import { excelMissingMessage, regexErrorMessage, validateBounds } from "./messages.js";
 import { buildEnemySearch, renderEnemySearch, type EnemySearchPayload } from "./enemy.js";
 import { buildStageSearch, renderStageSearch, type StageSearchPayload } from "./stage.js";
 import { buildItemSearch, renderItemSearch, type ItemSearchPayload } from "./item.js";
@@ -61,18 +61,12 @@ type SearchPayload =
   | StageSearchPayload
   | ItemSearchPayload;
 
-let operatorSearchRecords: OperatorSearchEntry[] | null = null;
-const operatorSearchRecordsMetrics = new CacheMetrics();
-
 export function clearSearchCaches(): void {
-  operatorSearchRecordsMetrics.clear();
-  operatorSearchRecords = null;
+  searchAccess.clear();
 }
 
 export function getCacheStats(): Record<string, CacheStat> {
-  return {
-    search_records: operatorSearchRecordsMetrics.snapshot(operatorSearchRecords != null, operatorSearchRecords ? operatorSearchRecords.length : 0),
-  };
+  return searchAccess.stats();
 }
 
 export function searchOperatorData(pattern: string, maxResults = 30): string {
@@ -82,24 +76,17 @@ export function searchOperatorData(pattern: string, maxResults = 30): string {
 }
 
 export function buildOperatorSearch(pattern: string, maxResults = 30): OperatorSearchPayload | string {
-  if (maxResults < 1) return "max_results 必须 >= 1。";
-  if (maxResults > 100) return "max_results 必须 <= 100。";
+  const boundsError = validateBounds("max_results", maxResults, { minimum: 1, maximum: 100 });
+  if (boundsError !== null) return boundsError;
 
   const cfg = loadConfig();
-  if (!hasOperatorData(cfg)) {
-    return (
-      "干员数据暂不可用。" +
-      "容器启动时的 auto-sync 可能仍在进行中，请稍后重试；" +
-      "若持续出现此提示，请检查网络连接或提供 GITHUB_TOKEN 以降低限速风险。" +
-      `（当前同步目标路径：${cfg.excelPath}）`
-    );
-  }
+  if (!hasOperatorData(cfg)) return searchAccess.missingMessage();
 
   let regex: RegExp;
   try {
     regex = new RegExp(pattern, "iu");
   } catch (exc) {
-    return `正则表达式无效：${exc instanceof Error ? exc.message : String(exc)}`;
+    return regexErrorMessage(exc);
   }
 
   const results: OperatorSearchEntry[] = [];
@@ -154,11 +141,7 @@ export function renderSearch(data: SearchPayload): string {
   throw new Error(`不支持的搜索域：${JSON.stringify((data as { scope?: unknown }).scope)}。`);
 }
 
-function getOperatorSearchRecords(): OperatorSearchEntry[] {
-  checkActivationChange();
-  operatorSearchRecordsMetrics.access(operatorSearchRecords !== null);
-  if (operatorSearchRecords !== null) return operatorSearchRecords;
-
+function getOperatorSearchRecordsImpl(): OperatorSearchEntry[] {
   const ct = getCharacterTable();
   const handbook = getHandbookTable();
   const charwords = getCharwordTable();
@@ -210,6 +193,15 @@ function getOperatorSearchRecords(): OperatorSearchEntry[] {
     }
   }
 
-  operatorSearchRecords = records;
   return records;
 }
+
+const searchAccess: DatasetAccess = defineDataset({
+  name: "search",
+  loaders: {
+    search_records: { load: getOperatorSearchRecordsImpl },
+  },
+  missingMessage: excelMissingMessage("干员"),
+});
+
+const getOperatorSearchRecords = searchAccess.loader<OperatorSearchEntry[]>("search_records");
