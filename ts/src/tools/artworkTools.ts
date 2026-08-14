@@ -7,7 +7,7 @@
  */
 
 import type { CallToolResult, McpServer } from "@modelcontextprotocol/server";
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { z } from "zod";
 import { withActivationSnapshot } from "../activation.js";
@@ -318,15 +318,29 @@ function doGet(
   }
   // The file field comes from the network-downloaded index; contain it to
   // the generation dir so a malformed upstream cannot read an arbitrary host
-  // file and exfiltrate it base64-encoded.
+  // file and exfiltrate it base64-encoded. Lexical containment alone is not
+  // enough — a symlink inside the generation dir could point outside and be
+  // followed by readFileSync — so both paths are realpath-resolved before
+  // the check (mirrors Python's Path.resolve()).
   const pngPath = resolve(genDir, variantMeta.file);
-  const relCheck = relative(genDir, pngPath);
+  let pngReal: string | null = null;
+  let contained = false;
+  try {
+    const genReal = realpathSync(genDir);
+    pngReal = realpathSync(pngPath);
+    const relCheck = relative(genReal, pngReal);
+    contained = relCheck !== ".." && !relCheck.startsWith(`..${sep}`) && !isAbsolute(relCheck);
+  } catch {
+    contained = false;
+  }
+  // Existence/stat/read operate on the resolved path — the same one the
+  // containment check verified — so a symlink swap between check and read
+  // cannot divert the read (mirrors Python, which reads the resolved path).
   if (
-    relCheck === ".."
-    || relCheck.startsWith(`..${sep}`)
-    || isAbsolute(relCheck)
-    || !existsSync(pngPath)
-    || !statSync(pngPath).isFile()
+    !contained
+    || pngReal === null
+    || !existsSync(pngReal)
+    || !statSync(pngReal).isFile()
   ) {
     return textResult(
       `图片文件缺失：${variantMeta.file}。同步可能不完整，请稍后重试。`,
@@ -334,7 +348,7 @@ function doGet(
   }
   let imageBytes: Buffer;
   try {
-    imageBytes = readFileSync(pngPath);
+    imageBytes = readFileSync(pngReal);
   } catch (err) {
     return textResult(
       `读取图片文件失败：${err instanceof Error ? err.message : String(err)}`,
