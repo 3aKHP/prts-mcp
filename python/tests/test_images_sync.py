@@ -255,3 +255,49 @@ def test_download_large_enforces_total_deadline(tmp_path, monkeypatch):
         )
     assert not dest.exists()
     assert list(tmp_path.glob(".*.tmp")) == []
+
+
+def test_download_large_cascades_to_mirror_with_fresh_budget(tmp_path, monkeypatch):
+    """Core C2 semantics: a candidate that blows its deadline cascades, and
+    the next mirror attempt gets a fresh budget and can succeed."""
+    import prts_mcp.data.images_sync as images_sync_module
+
+    class _FakeResponse:
+        is_success = True
+        status_code = 200
+
+        def __init__(self, chunk_source):
+            self._chunk_source = chunk_source
+
+        def iter_bytes(self, chunk_size: int):
+            return self._chunk_source
+
+    class _FakeStream:
+        def __init__(self, response):
+            self._response = response
+
+        def __enter__(self):
+            return self._response
+
+        def __exit__(self, *exc_info):
+            return False
+
+    def fake_stream(method: str, url: str, **kwargs):
+        if "ghproxy.net" in url:
+            return _FakeStream(_FakeResponse(iter([b"mirror-bytes"])))
+
+        def infinite():
+            while True:
+                yield b"x"
+
+        return _FakeStream(_FakeResponse(infinite()))
+
+    monkeypatch.setattr(images_sync_module.httpx, "stream", fake_stream)
+    # Double trailing slash doubles as a C1 normalization exercise.
+    monkeypatch.setenv("GITHUB_MIRRORS", "https://ghproxy.net//")
+    dest = tmp_path / "shard.zip"
+    images_sync_module._download_large(
+        "https://example.com/shard.zip", dest, timeout=0.05
+    )
+    assert dest.read_bytes() == b"mirror-bytes"
+    assert list(tmp_path.glob(".*.tmp")) == []

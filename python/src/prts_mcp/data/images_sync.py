@@ -163,10 +163,14 @@ def _download_large(url: str, dest: Path, *, timeout: float = 1800.0) -> None:
 
     Cascades through mirrors on failure, mirroring :func:`_get_cascading`
     but with chunked writes so multi-hundred-MB shards do not stay resident.
-    ``timeout`` is a total wall-clock deadline per URL candidate (each mirror
-    attempt gets a fresh budget), matching the TS twin's per-attempt
-    ``AbortSignal.timeout`` in ``ts/src/data/imagesSync.ts``. The 30-min
-    default covers the largest ORIGINAL_IMAGE shard (~3.6 GB) on slow links.
+    ``timeout`` bounds each URL candidate with a fresh budget per mirror
+    attempt. It plays a dual role: a progressing download is capped by a
+    total-deadline check in the chunk loop, while a connect/read stall is
+    bounded by the httpx per-operation timeout of the same value — so a
+    mirror that stalls mid-read after a long period of progress can hold the
+    attempt for up to ~2× ``timeout`` in total (the TS twin aborts hard at
+    its ``AbortSignal.timeout`` deadline instead). The 30-min default covers
+    the largest ORIGINAL_IMAGE shard (~3.6 GB) on slow links.
     Raises on total failure; the caller decides whether to fall back.
     """
     dest.parent.mkdir(parents=True, exist_ok=True)

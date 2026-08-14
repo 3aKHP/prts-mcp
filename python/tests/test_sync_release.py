@@ -24,7 +24,7 @@ from prts_mcp.data.sync import (
     sync_release_archive,
     sync_release_archive_pair,
     sync_release,
-    _ActivationLockTimeout,
+    _ActivationLockTimeoutError,
     _AssetNotFoundError,
     _archive_activation_lock,
     _verify_release_manifest,
@@ -732,8 +732,8 @@ class TestSyncReleaseArchive:
                 with _archive_activation_lock(spec):
                     pass
 
-        assert isinstance(excinfo.value, _ActivationLockTimeout)
-        assert type(excinfo.value) is _ActivationLockTimeout
+        assert isinstance(excinfo.value, _ActivationLockTimeoutError)
+        assert type(excinfo.value) is _ActivationLockTimeoutError
         # The contender must not have reclaimed or removed the live lock.
         assert lock.is_dir()
         assert (lock / "owner").read_text(encoding="utf-8") == "other"
