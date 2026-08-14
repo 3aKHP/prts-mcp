@@ -6,57 +6,30 @@
  * lazily on first call and cached in module-level variables.
  */
 
-import { checkActivationChange, registerActivationListener } from "../activation.js";
+import { registerActivationListener } from "../activation.js";
 import { hasOperatorData, loadConfig } from "../config.js";
-import { DirectoryStore } from "./stores.js";
 import { stripWikitext } from "../utils/sanitizer.js";
 import { clearSearchCaches } from "./search.js";
-import { CacheMetrics } from "./cacheMetrics.js";
 import type { CacheStat } from "../cacheStats.js";
+import { defineDataset, excelStore, type DatasetAccess } from "./datasetAccess.js";
+import { excelMissingMessage } from "./messages.js";
 
 // ---------------------------------------------------------------------------
-// Module-level lazy caches
+// Module-level lazy caches (dataset access contract)
 // ---------------------------------------------------------------------------
 
 // Config is NOT cached here: loadConfig() re-checks file existence on each
 // call, so effectiveExcelPath correctly reflects data written by auto-sync
 // after startup. The cost is negligible (env-var reads + existsSync calls).
 
-// Raw table caches — null means "not yet loaded", undefined means "failed".
-type TableCache<T> = T | null | undefined;
-
-let _characterTable: TableCache<Record<string, CharacterEntry>> = null;
-let _handbookTable: TableCache<HandbookTable> = null;
-let _charwordTable: TableCache<CharwordTable> = null;
-let _nameToId: Map<string, string> | null = null;
-const characterTableMetrics = new CacheMetrics();
-const handbookTableMetrics = new CacheMetrics();
-const charwordTableMetrics = new CacheMetrics();
-const nameToIdMetrics = new CacheMetrics();
-
 export function clearOperatorCaches(): void {
-  characterTableMetrics.clear();
-  handbookTableMetrics.clear();
-  charwordTableMetrics.clear();
-  nameToIdMetrics.clear();
-  _characterTable = null;
-  _handbookTable = null;
-  _charwordTable = null;
-  _nameToId = null;
-  // Propagate to search cache; see Python operator.clear_operator_caches.
-  clearSearchCaches();
+  operatorAccess.clear();
+  // The search-cache propagation rider lives in the dataset's onClear hook.
 }
 
 export function getCacheStats(): Record<string, CacheStat> {
-  return {
-    character_table: characterTableMetrics.snapshot(_characterTable != null, _characterTable ? Object.keys(_characterTable).length : 0),
-    handbook_table: handbookTableMetrics.snapshot(_handbookTable != null, _handbookTable ? Object.keys(_handbookTable).length : 0),
-    charword_table: charwordTableMetrics.snapshot(_charwordTable != null, _charwordTable ? Object.keys(_charwordTable).length : 0),
-    name_to_id: nameToIdMetrics.snapshot(_nameToId != null, _nameToId ? _nameToId.size : 0),
-  };
+  return operatorAccess.stats();
 }
-
-registerActivationListener(clearOperatorCaches);
 
 // ---------------------------------------------------------------------------
 // JSON shape types (only the fields we actually use)
@@ -143,17 +116,11 @@ export interface OperatorBasicInfoPayload {
 // ---------------------------------------------------------------------------
 
 function missingDataMessage(): string {
-  const cfg = loadConfig();
-  return (
-    "干员数据暂不可用。" +
-    "容器启动时的 auto-sync 可能仍在进行中，请稍后重试；" +
-    "若持续出现此提示，请检查网络连接或提供 GITHUB_TOKEN 以降低限速风险。" +
-    `（当前同步目标路径：${cfg.excelPath}）`
-  );
+  return operatorAccess.missingMessage();
 }
 
 function loadJson<T>(filePath: string): T {
-  const store = operatorStore();
+  const store = excelStore();
   if (!store.exists(filePath)) {
     throw new Error(
       `干员数据文件不存在：${store.resolveForDiagnostics(filePath)}。` +
@@ -163,59 +130,63 @@ function loadJson<T>(filePath: string): T {
   return store.readJson<T>(filePath);
 }
 
-function operatorStore(): DirectoryStore {
-  const ep = loadConfig().effectiveExcelPath;
-  if (ep === null) throw new Error("effectiveExcelPath is null");
-  return new DirectoryStore(ep);
+function getCharacterTableImpl(): Record<string, CharacterEntry> {
+  return loadJson<Record<string, CharacterEntry>>("character_table.json");
 }
 
-export function getCharacterTable(): Record<string, CharacterEntry> {
-  checkActivationChange();
-  characterTableMetrics.access(_characterTable !== null);
-  if (_characterTable === null) {
-    _characterTable = loadJson<Record<string, CharacterEntry>>(
-      "character_table.json"
-    );
-  }
-  if (_characterTable === undefined) throw new Error("character_table failed");
-  return _characterTable;
+function getHandbookTableImpl(): HandbookTable {
+  return loadJson<HandbookTable>("handbook_info_table.json");
 }
 
-export function getHandbookTable(): HandbookTable {
-  checkActivationChange();
-  handbookTableMetrics.access(_handbookTable !== null);
-  if (_handbookTable === null) {
-    _handbookTable = loadJson<HandbookTable>(
-      "handbook_info_table.json"
-    );
-  }
-  if (_handbookTable === undefined) throw new Error("handbook_table failed");
-  return _handbookTable;
+function getCharwordTableImpl(): CharwordTable {
+  return loadJson<CharwordTable>("charword_table.json");
 }
 
-export function getCharwordTable(): CharwordTable {
-  checkActivationChange();
-  charwordTableMetrics.access(_charwordTable !== null);
-  if (_charwordTable === null) {
-    _charwordTable = loadJson<CharwordTable>("charword_table.json");
-  }
-  if (_charwordTable === undefined) throw new Error("charword_table failed");
-  return _charwordTable;
+function buildNameToIdImpl(): Map<string, string> {
+  const ct = getCharacterTable();
+  return new Map(
+    Object.entries(ct)
+      .filter(([cid, info]) => info.name && cid.startsWith("char_"))
+      .map(([cid, info]) => [info.name!, cid])
+  );
 }
+
+const operatorAccess: DatasetAccess = defineDataset({
+  name: "operator",
+  loaders: {
+    character_table: { load: getCharacterTableImpl },
+    handbook_table: {
+      load: getHandbookTableImpl,
+      count: (r) => Object.keys((r as HandbookTable).handbookDict ?? {}).length,
+    },
+    charword_table: {
+      load: getCharwordTableImpl,
+      count: (r) => Object.keys((r as CharwordTable).charWords ?? {}).length,
+    },
+    name_to_id: {
+      load: buildNameToIdImpl,
+      count: (m) => (m as Map<string, string>).size,
+    },
+  },
+  store: excelStore,
+  available: () => hasOperatorData(loadConfig()),
+  missingMessage: excelMissingMessage("干员"),
+  // Lambda defers the operator↔search cycle to call time.
+  onClear: () => clearSearchCaches(),
+});
+
+const getCharacterTable = operatorAccess.loader<Record<string, CharacterEntry>>("character_table");
+const getHandbookTable = operatorAccess.loader<HandbookTable>("handbook_table");
+const getCharwordTable = operatorAccess.loader<CharwordTable>("charword_table");
+const buildNameToId = operatorAccess.loader<Map<string, string>>("name_to_id");
+
+export { getCharacterTable, getHandbookTable, getCharwordTable };
 
 export function resolveCharId(name: string): string | null {
-  checkActivationChange();
-  nameToIdMetrics.access(_nameToId !== null);
-  if (_nameToId === null) {
-    const ct = getCharacterTable();
-    _nameToId = new Map(
-      Object.entries(ct)
-        .filter(([cid, info]) => info.name && cid.startsWith("char_"))
-        .map(([cid, info]) => [info.name!, cid])
-    );
-  }
-  return _nameToId.get(name) ?? null;
+  return buildNameToId().get(name) ?? null;
 }
+
+registerActivationListener(clearOperatorCaches);
 
 // ---------------------------------------------------------------------------
 // Public API

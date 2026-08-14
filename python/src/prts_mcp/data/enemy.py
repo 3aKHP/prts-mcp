@@ -5,28 +5,29 @@ from dataclasses import dataclass
 from typing import Any
 
 from prts_mcp.activation import register_activation_listener
-from prts_mcp.cache_stats import activation_aware_cache, cache_stat
 from prts_mcp.config import Config
+from prts_mcp.data.dataset_access import (
+    DatasetSpec,
+    LoaderSpec,
+    define_dataset,
+    excel_store,
+    levels_store,
+)
 from prts_mcp.data.enemy_database import normalize_enemy_database
-from prts_mcp.data.stores import DirectoryStore
+from prts_mcp.data.gamedata_attrs import m_value as _m_value
+from prts_mcp.data.messages import (
+    excel_missing_message,
+    regex_error_message,
+    validate_bounds,
+)
 
 
 def _get_config() -> Config:
     return Config.load()
 
 
-def clear_enemy_caches() -> None:
-    _load_enemy_handbook.cache_clear()
-    _load_enemy_database.cache_clear()
-    _build_enemy_name_to_id.cache_clear()
-    _enemy_search_records.cache_clear()
-
-
-register_activation_listener(clear_enemy_caches)
-
-
 _HANDBOOK_FILE = "enemy_handbook_table.json"
-_DATABASE_FILE = "enemy_database.json"
+_DATABASE_FILE = "enemydata/enemy_database.json"
 
 
 @dataclass(frozen=True)
@@ -36,54 +37,22 @@ class _EnemySearchRecord:
     search_text: str
 
 
-def _missing_data_message() -> str:
-    config = _get_config()
-    return (
-        "敌人图鉴数据暂不可用。"
-        "容器启动时的 auto-sync 可能仍在进行中，请稍后重试；"
-        "若持续出现此提示，请检查网络连接或提供 GITHUB_TOKEN 以降低限速风险。"
-        f"（当前同步目标路径：{config.excel_path}）"
-    )
-
-
-def _store() -> DirectoryStore:
-    ep = _get_config().effective_excel_path
-    assert ep is not None
-    return DirectoryStore(ep)
-
-
 def _has_enemy_data() -> bool:
     cfg = _get_config()
     if cfg.effective_excel_path is None:
         return False
-    return _store().exists(_HANDBOOK_FILE)
-
-
-def _database_store() -> DirectoryStore:
-    """Return a store rooted at levels/enemydata/ for enemy_database.json."""
-    lp = _get_config().effective_levels_path
-    assert lp is not None
-    db_root = lp / "zh_CN" / "gamedata" / "levels" / "enemydata"
-    return DirectoryStore(db_root)
+    return excel_store().exists(_HANDBOOK_FILE)
 
 
 def _has_database() -> bool:
     cfg = _get_config()
     if cfg.effective_levels_path is None:
         return False
-    return _database_store().exists(_DATABASE_FILE)
+    return levels_store().exists(_DATABASE_FILE)
 
 
-def _m_value(obj: Any, default: Any = None) -> Any:
-    """Unwrap {m_defined, m_value} if present, else return as-is."""
-    if isinstance(obj, dict) and "m_value" in obj:
-        return obj["m_value"]
-    return obj if obj is not None else default
-
-
-@activation_aware_cache(maxsize=1)
-def _load_enemy_handbook() -> dict[str, Any]:
-    store = _store()
+def _load_enemy_handbook_impl() -> dict[str, Any]:
+    store = excel_store()
     if not store.exists(_HANDBOOK_FILE):
         raise FileNotFoundError(
             f"敌人图鉴数据文件不存在：{store.root / _HANDBOOK_FILE}。"
@@ -91,17 +60,16 @@ def _load_enemy_handbook() -> dict[str, Any]:
     return store.read_json(_HANDBOOK_FILE)
 
 
-@activation_aware_cache(maxsize=1)
-def _load_enemy_database() -> dict[str, Any] | None:
+def _load_enemy_database_impl() -> dict[str, Any] | None:
     """Load enemy_database.json. Returns None when the file is absent.
 
-    Note: lru_cache is acceptable here because the sync hook in server.py
-    calls clear_enemy_caches() after a successful sync, invalidating both
-    the None and the populated cache.
+    Caching the None result is fine because the sync hook in server.py calls
+    clear_enemy_caches() after a successful sync, invalidating both the None
+    and the populated cache.
     """
     if not _has_database():
         return None
-    store = _database_store()
+    store = levels_store()
     levels = normalize_enemy_database(store.read_json(_DATABASE_FILE))
     index = {
         enemy_id: level_map.get(0) or next(iter(level_map.values()))
@@ -111,11 +79,67 @@ def _load_enemy_database() -> dict[str, Any] | None:
     return {"_index": index}
 
 
-@activation_aware_cache(maxsize=1)
-def _build_enemy_name_to_id() -> dict[str, str]:
+def _build_enemy_name_to_id_impl() -> dict[str, str]:
     raw = _load_enemy_handbook()
     ed = raw.get("enemyData", {})
     return {info["name"]: eid for eid, info in ed.items() if info.get("name")}
+
+
+def _enemy_search_records_impl() -> tuple[_EnemySearchRecord, ...]:
+    raw = _load_enemy_handbook()
+    ed = raw.get("enemyData", {})
+    records: list[_EnemySearchRecord] = []
+    for _eid, info in ed.items():
+        if info.get("hideInHandbook"):
+            continue
+        search_text = " ".join([
+            info.get("name") or "",
+            info.get("description") or "",
+            info.get("ability") or "",
+            " ".join(info.get("enemyTags") or []),
+        ])
+        records.append(_EnemySearchRecord(
+            enemy_id=_eid,
+            info=info,
+            search_text=search_text,
+        ))
+    return tuple(records)
+
+
+_access = define_dataset(DatasetSpec(
+    name="enemy",
+    loaders={
+        "enemy_handbook": LoaderSpec(
+            load=_load_enemy_handbook_impl,
+            count=lambda r: len(r.get("enemyData") or {}),
+        ),
+        "enemy_database": LoaderSpec(
+            load=_load_enemy_database_impl,
+            count=lambda r: len(r.get("_index") or {}) if r else 0,
+        ),
+        "enemy_name_to_id": LoaderSpec(load=_build_enemy_name_to_id_impl),
+        "enemy_search_records": LoaderSpec(load=_enemy_search_records_impl),
+    },
+    store=excel_store,
+    available=_has_enemy_data,
+    missing_message=excel_missing_message("敌人图鉴"),
+))
+
+_load_enemy_handbook = _access.cached("enemy_handbook")
+_load_enemy_database = _access.cached("enemy_database")
+_build_enemy_name_to_id = _access.cached("enemy_name_to_id")
+_enemy_search_records = _access.cached("enemy_search_records")
+
+
+def clear_enemy_caches() -> None:
+    _access.clear()
+
+
+register_activation_listener(clear_enemy_caches)
+
+
+def _missing_data_message() -> str:
+    return _access.missing_message()
 
 
 def _resolve_enemy_id(name: str) -> str | None:
@@ -125,16 +149,7 @@ def _resolve_enemy_id(name: str) -> str | None:
 
 def cache_stats() -> dict[str, dict]:
     """Return ``{cache_name: {loaded, count}}`` for instrumentation (#104)."""
-    return {
-        "enemy_handbook": cache_stat(
-            _load_enemy_handbook, lambda r: len(r.get("enemyData") or {})
-        ),
-        "enemy_database": cache_stat(
-            _load_enemy_database, lambda r: len(r.get("_index") or {})
-        ),
-        "enemy_name_to_id": cache_stat(_build_enemy_name_to_id),
-        "enemy_search_records": cache_stat(_enemy_search_records),
-    }
+    return _access.stats()
 
 
 # ---------------------------------------------------------------------------
@@ -193,10 +208,10 @@ def build_enemies_listing(
     if not _has_enemy_data():
         return _missing_data_message()
 
-    if limit < 1:
-        return f"无效的 limit 参数：{limit}，需 ≥ 1。"
-    if offset < 0:
-        return f"无效的 offset 参数：{offset}，需 ≥ 0。"
+    if message := validate_bounds("limit", limit, minimum=1, maximum=200):
+        return message
+    if message := validate_bounds("offset", offset, minimum=0):
+        return message
 
     try:
         raw = _load_enemy_handbook()
@@ -548,15 +563,13 @@ def build_enemy_search(pattern: str, max_results: int = 30) -> dict | str:
     """Build the structured payload for enemy handbook search."""
     if not _has_enemy_data():
         return _missing_data_message()
-    if max_results < 1:
-        return "max_results 必须 >= 1。"
-    if max_results > 100:
-        return "max_results 必须 <= 100。"
+    if message := validate_bounds("max_results", max_results, minimum=1, maximum=100):
+        return message
 
     try:
         regex = re.compile(pattern, re.IGNORECASE)
     except re.error as exc:
-        return f"正则表达式无效：{exc}"
+        return regex_error_message(exc)
 
     matches: list[_EnemySearchRecord] = []
     try:
@@ -647,25 +660,3 @@ def _render_enemy_search_card(entry: dict) -> str:
         lines.append(f"- **标签**：{'、'.join(enemy_tags)}")
 
     return "\n".join(lines)
-
-
-@activation_aware_cache(maxsize=1)
-def _enemy_search_records() -> tuple[_EnemySearchRecord, ...]:
-    raw = _load_enemy_handbook()
-    ed = raw.get("enemyData", {})
-    records: list[_EnemySearchRecord] = []
-    for _eid, info in ed.items():
-        if info.get("hideInHandbook"):
-            continue
-        search_text = " ".join([
-            info.get("name") or "",
-            info.get("description") or "",
-            info.get("ability") or "",
-            " ".join(info.get("enemyTags") or []),
-        ])
-        records.append(_EnemySearchRecord(
-            enemy_id=_eid,
-            info=info,
-            search_text=search_text,
-        ))
-    return tuple(records)

@@ -3,21 +3,21 @@ from __future__ import annotations
 from typing import Any
 
 from prts_mcp.activation import register_activation_listener
-from prts_mcp.cache_stats import activation_aware_cache, cache_stat
 from prts_mcp.config import Config
-from prts_mcp.data.stores import DirectoryStore
+from prts_mcp.data.dataset_access import (
+    DatasetSpec,
+    LoaderSpec,
+    define_dataset,
+    excel_store,
+)
+from prts_mcp.data.messages import excel_missing_message
 from prts_mcp.utils.sanitizer import strip_wikitext
 
 def _get_config() -> Config:
     return Config.load()
 
 
-def clear_operator_caches() -> None:
-    """Clear lazy table caches after synced game data changes on disk."""
-    _load_character_table.cache_clear()
-    _load_handbook_table.cache_clear()
-    _load_charword_table.cache_clear()
-    _build_name_to_id.cache_clear()
+def _clear_search_rider() -> None:
     # Lazy import to break circular dependency (search imports from operator).
     try:
         from prts_mcp.data.search import clear_search_caches
@@ -27,28 +27,8 @@ def clear_operator_caches() -> None:
         pass
 
 
-register_activation_listener(clear_operator_caches)
-
-
-def _missing_operator_data_message() -> str:
-    config = _get_config()
-    searched = str(config.excel_path)
-    return (
-        "干员数据暂不可用。"
-        "容器启动时的 auto-sync 可能仍在进行中，请稍后重试；"
-        "若持续出现此提示，请检查网络连接或提供 GITHUB_TOKEN 以降低限速风险。"
-        f"（当前同步目标路径：{searched}）"
-    )
-
-
-def _operator_store() -> DirectoryStore:
-    ep = _get_config().effective_excel_path
-    assert ep is not None
-    return DirectoryStore(ep)
-
-
 def _load_json(filename: str) -> dict[str, Any]:
-    store = _operator_store()
+    store = excel_store()
     if not store.exists(filename):
         raise FileNotFoundError(
             f"干员数据文件不存在：{store.root / filename}。"
@@ -57,27 +37,49 @@ def _load_json(filename: str) -> dict[str, Any]:
     return store.read_json(filename)
 
 
-@activation_aware_cache(maxsize=1)
-def _load_character_table() -> dict[str, Any]:
-    return _load_json("character_table.json")
-
-
-@activation_aware_cache(maxsize=1)
-def _load_handbook_table() -> dict[str, Any]:
-    return _load_json("handbook_info_table.json")
-
-
-@activation_aware_cache(maxsize=1)
-def _load_charword_table() -> dict[str, Any]:
-    return _load_json("charword_table.json")
-
-
-@activation_aware_cache(maxsize=1)
-def _build_name_to_id() -> dict[str, str]:
+def _build_name_to_id_impl() -> dict[str, str]:
     """Map operator Chinese name -> charId."""
     ct = _load_character_table()
     return {info["name"]: cid for cid, info in ct.items()
             if info.get("name") and cid.startswith("char_")}
+
+
+_access = define_dataset(DatasetSpec(
+    name="operator",
+    loaders={
+        "character_table": LoaderSpec(load=lambda: _load_json("character_table.json")),
+        "handbook_table": LoaderSpec(
+            load=lambda: _load_json("handbook_info_table.json"),
+            count=lambda r: len(r.get("handbookDict") or {}),
+        ),
+        "charword_table": LoaderSpec(
+            load=lambda: _load_json("charword_table.json"),
+            count=lambda r: len(r.get("charWords") or {}),
+        ),
+        "name_to_id": LoaderSpec(load=_build_name_to_id_impl),
+    },
+    store=excel_store,
+    available=lambda: _get_config().has_operator_data,
+    missing_message=excel_missing_message("干员"),
+    on_clear=_clear_search_rider,
+))
+
+_load_character_table = _access.cached("character_table")
+_load_handbook_table = _access.cached("handbook_table")
+_load_charword_table = _access.cached("charword_table")
+_build_name_to_id = _access.cached("name_to_id")
+
+
+def clear_operator_caches() -> None:
+    """Clear lazy table caches after synced game data changes on disk."""
+    _access.clear()
+
+
+register_activation_listener(clear_operator_caches)
+
+
+def _missing_operator_data_message() -> str:
+    return _access.missing_message()
 
 
 def resolve_char_id(name: str) -> str | None:
@@ -87,16 +89,7 @@ def resolve_char_id(name: str) -> str | None:
 
 def cache_stats() -> dict[str, dict]:
     """Return ``{cache_name: {loaded, count}}`` for instrumentation (#104)."""
-    return {
-        "character_table": cache_stat(_load_character_table),
-        "handbook_table": cache_stat(
-            _load_handbook_table, lambda r: len(r.get("handbookDict") or {})
-        ),
-        "charword_table": cache_stat(
-            _load_charword_table, lambda r: len(r.get("charWords") or {})
-        ),
-        "name_to_id": cache_stat(_build_name_to_id),
-    }
+    return _access.stats()
 
 
 # ---------------------------------------------------------------------------
