@@ -137,7 +137,7 @@ class TestSyncRelease:
         # patches both namespaces; side_effect is consumed in call order:
         # release list (discovery) -> asset download -> manifest (state machine).
         with patch(
-            "prts_mcp.data.sync._get_cascading",
+            "prts_mcp.sync.release._get_cascading",
             side_effect=[release, asset, manifest],
         ) as cascading, patch(
             "prts_mcp.sync.release_discovery._get_cascading",
@@ -166,7 +166,7 @@ class TestSyncRelease:
             "assets": {"zh_CN.zip": {"size": 3, "sha256": "bad"}},
         }
         with patch(
-            "prts_mcp.data.sync._get_cascading",
+            "prts_mcp.sync.release._get_cascading",
             side_effect=[release, asset, manifest],
         ) as cascading, patch(
             "prts_mcp.sync.release_discovery._get_cascading",
@@ -187,7 +187,7 @@ class TestSyncRelease:
         release = _mock_release_response("data-legacy", "zh_CN.zip", "https://example/asset")
         asset = _mock_asset_response(b"legacy")
         with patch(
-            "prts_mcp.data.sync._get_cascading",
+            "prts_mcp.sync.release._get_cascading",
             side_effect=[release, asset, _AssetNotFoundError("HTTP 404")],
         ) as cascading, patch(
             "prts_mcp.sync.release_discovery._get_cascading",
@@ -210,7 +210,7 @@ class TestSyncRelease:
         manifest = _mock_asset_response()
         manifest.json.return_value = {"contractVersion": "unknown", "assets": {}}
         with patch(
-            "prts_mcp.data.sync._get_cascading",
+            "prts_mcp.sync.release._get_cascading",
             side_effect=[
                 _mock_release_response("data-new", "zh_CN.zip", "https://example/asset"),
                 _mock_asset_response(b"new"),
@@ -242,7 +242,7 @@ class TestSyncRelease:
             return None
 
         with patch(
-            "prts_mcp.data.sync.check_latest_release",
+            "prts_mcp.sync.release.check_latest_release",
             side_effect=check_release,
         ):
             with ThreadPoolExecutor(max_workers=2) as pool:
@@ -270,7 +270,7 @@ class TestSyncRelease:
             encoding="utf-8",
         )
 
-        with patch("prts_mcp.data.sync.check_latest_release") as check:
+        with patch("prts_mcp.sync.release.check_latest_release") as check:
             result = sync_release(spec)
 
         check.assert_not_called()
@@ -304,7 +304,7 @@ class TestSyncRelease:
         )
 
         with patch(
-            "prts_mcp.data.sync.check_latest_release",
+            "prts_mcp.sync.release.check_latest_release",
             return_value=None,
         ) as check:
             result = sync_release(spec)
@@ -319,8 +319,8 @@ class TestSyncRelease:
         asset_url = "https://example.com/zh_CN.zip"
 
         with (
-            patch("prts_mcp.data.sync.check_latest_release", return_value=(tag, asset_url)),
-            patch("prts_mcp.data.sync.download_release_asset") as mock_dl,
+            patch("prts_mcp.sync.release.check_latest_release", return_value=(tag, asset_url)),
+            patch("prts_mcp.sync.release.download_release_asset") as mock_dl,
         ):
             mock_dl.return_value = None
             result = sync_release(spec)
@@ -346,7 +346,7 @@ class TestSyncRelease:
             files=["zh_CN.zip"],
         ).save(spec.local_zip.parent / "release_meta.json")
 
-        with patch("prts_mcp.data.sync.check_latest_release", return_value=(tag, "http://x")):
+        with patch("prts_mcp.sync.release.check_latest_release", return_value=(tag, "http://x")):
             result = sync_release(spec)
 
         assert result.status == "up_to_date"
@@ -356,7 +356,7 @@ class TestSyncRelease:
         spec = _make_spec(tmp_path)
         _write_zip(spec.local_zip)
 
-        with patch("prts_mcp.data.sync.check_latest_release", return_value=None):
+        with patch("prts_mcp.sync.release.check_latest_release", return_value=None):
             result = sync_release(spec)
 
         assert result.status == "offline_fallback"
@@ -372,7 +372,7 @@ class TestSyncRelease:
             validate_zip=lambda _path: (_ for _ in ()).throw(ValueError("bad zip")),
         )
 
-        with patch("prts_mcp.data.sync.check_latest_release", return_value=None):
+        with patch("prts_mcp.sync.release.check_latest_release", return_value=None):
             result = sync_release(spec)
 
         assert result.status == "no_data"
@@ -381,7 +381,7 @@ class TestSyncRelease:
     def test_no_data_when_network_fails_and_no_zip(self, tmp_path):
         spec = _make_spec(tmp_path)
 
-        with patch("prts_mcp.data.sync.check_latest_release", return_value=None):
+        with patch("prts_mcp.sync.release.check_latest_release", return_value=None):
             result = sync_release(spec)
 
         assert result.status == "no_data"
@@ -392,8 +392,8 @@ class TestSyncRelease:
         tag = f"data-{sha}"
 
         with (
-            patch("prts_mcp.data.sync.check_latest_release", return_value=(tag, "http://x")),
-            patch("prts_mcp.data.sync.download_release_asset"),
+            patch("prts_mcp.sync.release.check_latest_release", return_value=(tag, "http://x")),
+            patch("prts_mcp.sync.release.download_release_asset"),
         ):
             result = sync_release(spec)
 
@@ -414,7 +414,7 @@ class TestSyncRelease:
             files=["zh_CN.zip"],
         ).save(spec.local_zip.parent / "release_meta.json")
 
-        with patch("prts_mcp.data.sync.check_latest_release") as mock_check:
+        with patch("prts_mcp.sync.release.check_latest_release") as mock_check:
             result = sync_release(spec)
 
         mock_check.assert_not_called()
@@ -436,7 +436,7 @@ class TestSyncRelease:
         ).save(spec.local_zip.parent / "release_meta.json")
 
         with patch(
-            "prts_mcp.data.sync.check_latest_release",
+            "prts_mcp.sync.release.check_latest_release",
             return_value=(f"data-{sha}", "http://x"),
         ) as mock_check:
             result = sync_release(spec, force_check=True)
@@ -694,8 +694,8 @@ class TestSyncReleaseArchive:
                 release.wait(timeout=2)
 
         with (
-            patch("prts_mcp.data.sync._ACTIVATION_LOCK_STALE_SECONDS", 0.05),
-            patch("prts_mcp.data.sync._ACTIVATION_LOCK_HEARTBEAT_SECONDS", 0.01),
+            patch("prts_mcp.sync.release_activation._ACTIVATION_LOCK_STALE_SECONDS", 0.05),
+            patch("prts_mcp.sync.release_activation._ACTIVATION_LOCK_HEARTBEAT_SECONDS", 0.01),
         ):
             first = _archive_activation_lock(spec)
             first.__enter__()
@@ -824,7 +824,7 @@ class TestSyncReleaseArchive:
         with (
             patch("prts_mcp.data.sync.sync_release", return_value=release_result),
             patch(
-                "prts_mcp.data.sync._safe_extract_zip",
+                "prts_mcp.sync.release_activation._safe_extract_zip",
                 side_effect=RuntimeError("interrupted extraction"),
             ),
         ):
@@ -899,7 +899,7 @@ class TestSyncReleaseArchive:
         )
 
         with patch(
-            "prts_mcp.data.sync.check_latest_release",
+            "prts_mcp.sync.release.check_latest_release",
             return_value=None,
         ):
             result = sync_release_archive(spec)
@@ -1221,7 +1221,7 @@ class TestManifestAbsenceSemantics:
         asset_path = tmp_path / "asset.zip"
         asset_path.write_bytes(b"PK\x03\x04")
         with patch(
-            "prts_mcp.data.sync._get_cascading",
+            "prts_mcp.sync.release._get_cascading",
             side_effect=_AssetNotFoundError("HTTP 404"),
         ):
             # Must return without raising — release predates the manifest.
@@ -1239,7 +1239,7 @@ class TestManifestAbsenceSemantics:
         # A mirror 404 surfaces as a plain Exception carrying "HTTP 404" —
         # NOT _AssetNotFoundError. Must fail closed (#100 regression).
         with patch(
-            "prts_mcp.data.sync._get_cascading",
+            "prts_mcp.sync.release._get_cascading",
             side_effect=Exception("HTTP 404 from mirror"),
         ):
             with pytest.raises(ValueError, match="manifest unavailable"):
