@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Fixed
 
+- `GITHUB_MIRRORS` entries are now normalized identically in both implementations: surrounding whitespace is trimmed and all trailing slashes are stripped (previously Python kept whitespace inside an entry and TypeScript stripped only one trailing slash, so `https://ghproxy.net//` produced a broken `...//https://...` candidate that proxies reject). Entries left empty after normalization (e.g. `///`) are dropped by both sides.
 - Gamedata listing tools (`list_enemies`/`get_enemy_appearances`/`list_stages`/`list_items`) now enforce `limit` (`1–200`) and `offset` (`≥ 0`) bounds at the framework layer via `Field(ge=, le=)`, matching the TypeScript Zod schema so out-of-range pagination is rejected consistently across implementations (#161).
 
 ## [2.6.2] - 2026-08-12

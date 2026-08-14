@@ -32,6 +32,7 @@ import {
   type ReleaseArchiveSpec,
   type ReleaseSpec,
 } from "../src/data/sync.ts";
+import { parseMirrors } from "../src/sync/transport.js";
 
 test("fetchCascading raises AssetNotFoundError on a direct 404 (#100)", async () => {
   await withFetchMock((async () => new Response("missing", { status: 404 })) as typeof fetch, async () => {
@@ -185,6 +186,49 @@ function withFetchMock(
     else process.env["GITHUB_MIRRORS"] = originalMirrors;
   });
 }
+
+function withMirrors(mirrors: string | undefined, run: () => void): void {
+  const originalMirrors = process.env["GITHUB_MIRRORS"];
+  if (mirrors === undefined) delete process.env["GITHUB_MIRRORS"];
+  else process.env["GITHUB_MIRRORS"] = mirrors;
+  try {
+    run();
+  } finally {
+    if (originalMirrors === undefined) delete process.env["GITHUB_MIRRORS"];
+    else process.env["GITHUB_MIRRORS"] = originalMirrors;
+  }
+}
+
+test("parseMirrors returns [] when GITHUB_MIRRORS is unset or empty", () => {
+  withMirrors(undefined, () => assert.deepEqual(parseMirrors(), []));
+  withMirrors("", () => assert.deepEqual(parseMirrors(), []));
+});
+
+test("parseMirrors strips all trailing slashes", () => {
+  withMirrors("https://ghproxy.net/", () =>
+    assert.deepEqual(parseMirrors(), ["https://ghproxy.net"]));
+  withMirrors("https://ghproxy.net//", () =>
+    assert.deepEqual(parseMirrors(), ["https://ghproxy.net"]));
+});
+
+test("parseMirrors trims surrounding whitespace", () => {
+  withMirrors(" https://a.example , https://b.example ", () =>
+    assert.deepEqual(parseMirrors(), ["https://a.example", "https://b.example"]));
+});
+
+test("parseMirrors trims whitespace and strips slashes together", () => {
+  withMirrors(" https://a.example/ , https://b.example// ", () =>
+    assert.deepEqual(parseMirrors(), ["https://a.example", "https://b.example"]));
+});
+
+test("parseMirrors drops blank and slash-only entries", () => {
+  withMirrors("https://a, ,https://b", () =>
+    assert.deepEqual(parseMirrors(), ["https://a", "https://b"]));
+  withMirrors("https://a,,https://b", () =>
+    assert.deepEqual(parseMirrors(), ["https://a", "https://b"]));
+  withMirrors("https://a,///,https://b", () =>
+    assert.deepEqual(parseMirrors(), ["https://a", "https://b"]));
+});
 
 function pairSpecs(root: string): readonly [ReleaseArchiveSpec, ReleaseArchiveSpec] {
   return [{

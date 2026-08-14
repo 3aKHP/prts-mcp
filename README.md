@@ -47,7 +47,7 @@ The `main` and `develop` lines use the self-built `arknights-data-pipeline` Rele
 
 Both implementations consume the self-built [`arknights-data-pipeline`](https://github.com/3aKHP/arknights-data-pipeline) Release. New releases carry a `manifest.json` with the `prts-mcp-data/v1` contract, source `versionId`, and SHA-256/size for each archive; a mismatch is rejected before activation, while pre-manifest releases remain readable during the transition. The last activated generation stays in place on download, schema, or manifest failure.
 
-`GITHUB_MIRRORS` is an explicit fallback for GitHub URL access. In Node deployments, standard `HTTP_PROXY`/`HTTPS_PROXY` (including lowercase spellings) are honored via Undici; Bun keeps its native `fetch` path. Proxy support does not weaken manifest or ZIP validation.
+`GITHUB_MIRRORS` is an explicit fallback for GitHub URL access. Mirror entries have surrounding whitespace and trailing slashes normalized automatically in both implementations. In Node deployments, standard `HTTP_PROXY`/`HTTPS_PROXY` (including lowercase spellings) are honored via Undici; Bun keeps its native `fetch` path. Proxy support does not weaken manifest or ZIP validation.
 
 See [`docs/migration-1.x-to-2.0.md`](docs/migration-1.x-to-2.0.md) for the 1.x → 2.0 breaking changes (tool consolidation, `operator_name` → `name`, output channel), and [`docs/migration-0.x-to-1.0.md`](docs/migration-0.x-to-1.0.md) for the 0.x → 1.0 transition.
 
@@ -171,7 +171,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and [`doc
 
 两套实现都消费自建 [`arknights-data-pipeline`](https://github.com/3aKHP/arknights-data-pipeline) Release。新 Release 附带 `manifest.json`，声明 `prts-mcp-data/v1` 契约、源 `versionId` 以及每个压缩包的大小/SHA-256；不匹配会在激活前拒绝，迁移期间仍兼容没有 manifest 的旧 Release。下载、结构或 manifest 校验失败时，服务继续使用上一代已激活数据。
 
-`GITHUB_MIRRORS` 是显式的 GitHub 访问备用路径；Node 部署会通过 Undici 使用标准 `HTTP_PROXY`/`HTTPS_PROXY`（也识别小写变量），Bun 保持原生 `fetch` 路径。代理不会绕过 manifest 或 ZIP 校验。
+`GITHUB_MIRRORS` 是显式的 GitHub 访问备用路径；条目的首尾空白与尾部斜杠在两种实现中都会自动归一化。Node 部署会通过 Undici 使用标准 `HTTP_PROXY`/`HTTPS_PROXY`（也识别小写变量），Bun 保持原生 `fetch` 路径。代理不会绕过 manifest 或 ZIP 校验。
 
 1.x → 2.0 的破坏性变更（工具面合并、`operator_name` → `name`、output channel）见 [`docs/migration-1.x-to-2.0.md`](docs/migration-1.x-to-2.0.md)；0.x → 1.0 迁移见 [`docs/migration-0.x-to-1.0.md`](docs/migration-0.x-to-1.0.md)。
 
