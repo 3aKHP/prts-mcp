@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -163,6 +163,95 @@ test("operator_artwork rejects cross-operator tokens before local reads or Media
     assert.equal(fetched, false);
   } finally {
     globalThis.fetch = originalFetch;
+    for (const [key, value] of Object.entries({
+      GAMEDATA_PATH: savedEnv.gamedata,
+      PRTS_IMAGE_DIR: savedEnv.imageDir,
+      LOCAL_IMAGE: savedEnv.localImage,
+    })) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    clearOperatorCaches();
+  }
+});
+
+test("operator_artwork local get rejects symlink escapes and serves contained files", async () => {
+  const root = mkdtempSync(join(tmpdir(), "prts-artwork-symlink-"));
+  const excel = join(root, "gamedata", "zh_CN", "gamedata", "excel");
+  const imageRoot = join(root, "images");
+  const generation = join(imageRoot, ".releases", "test");
+  mkdirSync(excel, { recursive: true });
+  mkdirSync(generation, { recursive: true });
+  for (const file of [
+    "handbook_info_table.json",
+    "charword_table.json",
+    "story_review_table.json",
+  ]) {
+    writeFileSync(join(excel, file), "{}", "utf-8");
+  }
+  writeFileSync(join(excel, "character_table.json"), JSON.stringify({
+    char_002_amiya: { name: "阿米娅" },
+  }), "utf-8");
+  writeFileSync(join(imageRoot, ".images_meta.json"), JSON.stringify({
+    generation_root: ".releases/test",
+  }), "utf-8");
+
+  const secret = join(root, "secret.png");
+  writeFileSync(secret, "host-secret", "utf-8");
+  writeFileSync(join(generation, "amiya_1.large.png"), "png-bytes", "utf-8");
+  // The escape entry is lexically inside the generation dir but resolves
+  // outside it via a symlink — the containment check must reject it.
+  symlinkSync(secret, join(generation, "escape.png"));
+  writeFileSync(join(generation, "index.json"), JSON.stringify({
+    schemaVersion: SCHEMA_VERSION,
+    baselineVersion: "b1",
+    currentVersion: "c1",
+    shards: {},
+    artworks: {
+      "char_002_amiya#1": {
+        kind: "base",
+        shard: "chararts",
+        large: { file: "amiya_1.large.png", w: 1, h: 1, bytes: 1, sha256: "x" },
+        preview: { file: "escape.png", w: 1, h: 1, bytes: 1, sha256: "y" },
+      },
+    },
+  }), "utf-8");
+
+  const savedEnv = {
+    gamedata: process.env["GAMEDATA_PATH"],
+    imageDir: process.env["PRTS_IMAGE_DIR"],
+    localImage: process.env["LOCAL_IMAGE"],
+  };
+  process.env["GAMEDATA_PATH"] = join(root, "gamedata");
+  process.env["PRTS_IMAGE_DIR"] = imageRoot;
+  process.env["LOCAL_IMAGE"] = "true";
+  clearOperatorCaches();
+
+  try {
+    const server = new CapturingServer();
+    registerArtworkTools(server as never);
+    assert.ok(server.handler);
+
+    const escaped = await server.handler({
+      operator_name: "阿米娅",
+      action: "get",
+      artwork_id: "char_002_amiya#1",
+      variant: "preview",
+    }) as { content: Array<{ type: string; text?: string }> };
+    assert.match(escaped.content[0]?.text ?? "", /图片文件缺失/);
+    assert.equal(escaped.content.some((block) => block.type === "image"), false);
+
+    const served = await server.handler({
+      operator_name: "阿米娅",
+      action: "get",
+      artwork_id: "char_002_amiya#1",
+      variant: "large",
+    }) as { content: Array<{ type: string; data?: string }> };
+    assert.equal(
+      served.content.some((block) => block.type === "image" && block.data === Buffer.from("png-bytes").toString("base64")),
+      true,
+    );
+  } finally {
     for (const [key, value] of Object.entries({
       GAMEDATA_PATH: savedEnv.gamedata,
       PRTS_IMAGE_DIR: savedEnv.imageDir,

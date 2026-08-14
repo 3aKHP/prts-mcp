@@ -7,7 +7,7 @@
  */
 
 import type { CallToolResult, McpServer } from "@modelcontextprotocol/server";
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { z } from "zod";
 import { withActivationSnapshot } from "../activation.js";
@@ -318,13 +318,22 @@ function doGet(
   }
   // The file field comes from the network-downloaded index; contain it to
   // the generation dir so a malformed upstream cannot read an arbitrary host
-  // file and exfiltrate it base64-encoded.
+  // file and exfiltrate it base64-encoded. Lexical containment alone is not
+  // enough — a symlink inside the generation dir could point outside and be
+  // followed by readFileSync — so both paths are realpath-resolved before
+  // the check (mirrors Python's Path.resolve()).
   const pngPath = resolve(genDir, variantMeta.file);
-  const relCheck = relative(genDir, pngPath);
+  let contained = false;
+  try {
+    const genReal = realpathSync(genDir);
+    const pngReal = realpathSync(pngPath);
+    const relCheck = relative(genReal, pngReal);
+    contained = relCheck !== ".." && !relCheck.startsWith(`..${sep}`) && !isAbsolute(relCheck);
+  } catch {
+    contained = false;
+  }
   if (
-    relCheck === ".."
-    || relCheck.startsWith(`..${sep}`)
-    || isAbsolute(relCheck)
+    !contained
     || !existsSync(pngPath)
     || !statSync(pngPath).isFile()
   ) {
