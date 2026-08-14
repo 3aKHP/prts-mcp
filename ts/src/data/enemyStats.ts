@@ -85,10 +85,21 @@ export function pythonFloatString(value: unknown): string {
   return String(value ?? 0);
 }
 
-/** Mimic Python f"{n:,}": locale-independent thousands separator for ints. */
+/**
+ * Locale-independent thousands separator for ANY number, mirroring Python's
+ * unconditional `f"{n:,}"` (the extract path's maxHp formatting).
+ */
+function withThousands(n: number): string {
+  return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+/**
+ * Int-gated thousands separator for unknown values, mirroring Python
+ * format_stats's `isinstance(hp, int)` gate (the stage-enemies compact path).
+ */
 export function formatNumber(value: unknown): string {
   if (typeof value === "number" && Number.isInteger(value)) {
-    return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    return withThousands(value);
   }
   return String(value ?? 0);
 }
@@ -151,7 +162,7 @@ export function extractEnemyStats(dbEntry: EnemyDbEntry): EnemyStatsPayload {
   });
 
   return {
-    max_hp: hp ? formatNumber(hp) : null,
+    max_hp: hp ? withThousands(hp) : null,
     atk: atk ? String(atk) : null,
     def: def ? String(def) : null,
     resistance: res !== undefined && res !== null ? pythonFloatString(res) : null,

@@ -48,7 +48,8 @@ register_activation_listener(clear_stage_enemy_caches)
 
 def _load_enemy_handbook() -> dict[str, dict[str, Any]]:
     """Inner ``enemyData`` view over enemy.py's cached whole-JSON handbook."""
-    data = load_enemy_handbook().get("enemyData")
+    raw = load_enemy_handbook()
+    data = raw.get("enemyData") if isinstance(raw, dict) else None
     if not isinstance(data, dict):
         raise TypeError("enemy_handbook_table.json missing 'enemyData' dict")
     return data

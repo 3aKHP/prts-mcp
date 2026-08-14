@@ -74,6 +74,15 @@ test("formatting shims (TS-only, python-parity)", () => {
   assert.equal(pythonFloatString(1234.5), "1234.5");
   assert.equal(formatNumber(1234567), "1,234,567");
   assert.equal(formatNumber(999), "999");
+  // formatNumber is int-gated (stage-enemies compact path, mirrors PY
+  // format_stats's isinstance check); extract's maxHp path applies the
+  // separator to ANY number (mirrors PY's unconditional f"{hp:,}").
+  assert.equal(formatNumber(1234.5), "1234.5");
+});
+
+test("extractEnemyStats: float maxHp gets the unconditional thousands separator", () => {
+  const stats = extractEnemyStats({ attributes: { maxHp: { m_defined: true, m_value: 1234.5 } } });
+  assert.equal(stats.max_hp, "1,234.5");
 });
 
 test("mergeDefined: override pair applies only when defined", () => {
