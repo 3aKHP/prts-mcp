@@ -214,7 +214,7 @@ def test_debug_cache(server):
     data = r.json()
     expected_modules = {
         "operator", "enemy", "stage", "stage_enemy", "item",
-        "search", "story_search", "images", "artwork_mediawiki",
+        "search", "story_search", "images", "artwork_mediawiki", "building",
     }
     assert set(data.keys()) == expected_modules
     for module_name, caches in data.items():

@@ -4,6 +4,7 @@ from typing import Any
 
 from prts_mcp.activation import register_activation_listener
 from prts_mcp.config import Config
+from prts_mcp.data.building import building_skills_for
 from prts_mcp.data.dataset_access import (
     DatasetSpec,
     LoaderSpec,
@@ -238,6 +239,11 @@ def build_operator_basic_info(name: str) -> dict | str:
                 }
             )
 
+    try:
+        building_skills: list[dict[str, str]] | None = building_skills_for(char_id)
+    except FileNotFoundError:
+        building_skills = None
+
     return {
         "name": name,
         "display_number": info.get("displayNumber", ""),
@@ -264,6 +270,13 @@ def build_operator_basic_info(name: str) -> dict | str:
         "item_desc": info.get("itemDesc", "") or None,
         "item_obtain": info.get("itemObtainApproach", "") or None,
         "talents": chosen_talents,
+        # Omitted (not []) when building_data.json is absent so older
+        # user-supplied data roots keep the pre-2.7.0 payload shape.
+        **(
+            {"building_skills": building_skills}
+            if building_skills is not None
+            else {}
+        ),
     }
 
 
@@ -299,6 +312,14 @@ def render_operator_basic_info(data: dict) -> str:
         lines.append("\n## 天赋")
         for t in talents:
             lines.append(f"- **{t['name']}**：{t['description']}")
+
+    building_skills = data.get("building_skills")
+    if building_skills:
+        lines.append("\n## 基建技能")
+        for s in building_skills:
+            lines.append(
+                f"- **{s['name']}**（{s['room']}，{s['unlock']}解锁）：{s['description']}"
+            )
 
     return "\n".join(lines)
 

@@ -118,6 +118,7 @@ def _build_http_app():
         # not leak into the output. story_search and artwork_mediawiki are not
         # on the contract yet and are read directly. Mirrors ts cacheStats.ts.
         from prts_mcp.data import (  # noqa: F401
+            building,
             enemy,
             images,
             item,
@@ -133,7 +134,10 @@ def _build_http_app():
         registry = dataset_registry()
         projection = {
             name: registry[name].stats()
-            for name in ("operator", "enemy", "stage", "stage_enemy", "item", "search")
+            for name in (
+                "operator", "enemy", "stage", "stage_enemy", "item", "search",
+                "building",
+            )
         }
         return JSONResponse({
             **projection,
