@@ -3,8 +3,7 @@
  *
  * Mirrors python/src/prts_mcp/sync/release.py. Owns CacheMeta, the
  * release-asset download, the optional factory-manifest verification, and
- * syncRelease. data/sync re-exports these during the P2.B migration; the
- * archive/pair state machine still lives there until P2.B.2.
+ * syncRelease. data/sync re-exports it as a barrel.
  */
 import { createHash, randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";

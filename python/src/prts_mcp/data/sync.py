@@ -3,8 +3,8 @@
 The full sync state machine — HTTP transport, release discovery,
 release-archive activation, the release state machine, and the GameData-pair
 state machine — now lives in the ``sync/`` tier. This module is a re-export
-barrel that preserves the ``prts_mcp.data.sync.*`` import paths and
-``mock.patch("prts_mcp.data.sync.*")`` targets during the P2.B migration.
+barrel that preserves the ``prts_mcp.data.sync.*`` import paths for callers
+that have not yet migrated to importing from ``prts_mcp.sync.*`` directly.
 """
 from __future__ import annotations
 
@@ -63,10 +63,6 @@ from prts_mcp.sync.release import (  # noqa: F401
     sync_release,
 )
 from prts_mcp.sync.gamedata_pair import (  # noqa: F401
-    _GAMEDATA_PAIR_META,
-    _initialize_gamedata_pair,
-    _load_gamedata_pair,
-    _save_gamedata_pair,
     sync_release_archive,
     sync_release_archive_pair,
 )

@@ -14,7 +14,6 @@ import { lstat, mkdir, readFile, rename, rm, utimes, writeFile } from "node:fs/p
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 
 import { type ReleaseArchiveSpec, type RepoSpec, type SyncResult, errorMessage } from "./types.js";
-import type { ReleaseSpec } from "./releaseDiscovery.js";
 import { syncRelease } from "./release.js";
 import {
   archiveActivationSha,
