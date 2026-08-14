@@ -170,3 +170,23 @@ test("unified search dispatches building_skills", async () => {
     "不支持的搜索域：'no_such_scope'。可选：operators、enemies、stages、items、building_skills。",
   );
 });
+
+test("corrupt building table degrades basic info", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  delete process.env["STORYJSON_PATH"];
+  writeMinimalGamedata(root);
+  writeFileSync(
+    join(root, "zh_CN", "gamedata", "excel", "building_data.json"),
+    "{not json",
+    "utf-8",
+  );
+  const operator = await import(`../src/data/operator.ts?cacheBust=${Date.now()}-${Math.random()}`);
+
+  // Corrupt building_data.json omits the field instead of crashing the
+  // whole tool (pre-2.7.0 payload shape).
+  const data = operator.buildOperatorBasicInfo("阿米娅");
+  assert.equal(typeof data, "object");
+  assert.equal("building_skills" in (data as object), false);
+  assert.equal((data as { name: string }).name, "阿米娅");
+});

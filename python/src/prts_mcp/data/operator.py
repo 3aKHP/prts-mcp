@@ -241,7 +241,10 @@ def build_operator_basic_info(name: str) -> dict | str:
 
     try:
         building_skills: list[dict[str, str]] | None = building_skills_for(char_id)
-    except FileNotFoundError:
+    except (FileNotFoundError, OSError, ValueError):
+        # Missing or corrupt building_data.json degrades to the
+        # pre-2.7.0 payload shape (mirrors load_char_skins' tolerance
+        # for skin_table.json).
         building_skills = None
 
     return {

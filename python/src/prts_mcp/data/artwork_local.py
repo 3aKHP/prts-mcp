@@ -76,7 +76,7 @@ def list_artworks_local(operator_name: str, gen_dir: Path | None) -> ListOutcome
     """LOCAL_IMAGE=true list: filter the index by the operator's char_id."""
     try:
         char_id = resolve_artwork_char_id(operator_name)
-    except (OSError, AssertionError):
+    except (OSError, RuntimeError, AssertionError):
         # gamedata not synced yet (effective_excel_path None or table missing).
         return data_not_ready_message()
     if char_id is None:
@@ -160,7 +160,7 @@ def get_artwork_local(
         return f"找不到 artwork_id「{artwork_id}」。该 ID 不透明，请用 action=list 重新获取。"
     try:
         char_id = resolve_artwork_char_id(operator_name)
-    except (OSError, AssertionError):
+    except (OSError, RuntimeError, AssertionError):
         return data_not_ready_message()
     if char_id is None:
         return f"找不到干员「{operator_name}」。建议先用 search_prts 确认准确的中文名称。"
