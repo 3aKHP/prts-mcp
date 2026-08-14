@@ -35,6 +35,7 @@ from prts_mcp.sync.release_activation import (  # noqa: F401
     _ACTIVATION_LOCK_STALE_SECONDS,
     _ACTIVATION_LOCK_TIMEOUT_SECONDS,
     _RELEASE_RETENTION_SECONDS,
+    _ActivationLockTimeout,
     _active_archive_root,
     _archive_activation_lock,
     _archive_activation_sha,

@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Fixed
 
+- Activation-lock wait timeouts now throw a named `ActivationLockTimeoutError` (exported from `./data/sync.js`) instead of a plain `Error`, parity with the Python `_ActivationLockTimeout`. The error message is unchanged.
 - Large-shard image downloads: the Python implementation's default timeout was aligned to this one's 30-min total deadline per mirror attempt (no TypeScript behavior change; comment updated to document the now-matched semantics).
 - `GITHUB_MIRRORS` entries are now normalized identically in both implementations: surrounding whitespace is trimmed and all trailing slashes are stripped (previously TypeScript stripped only one trailing slash, so `https://ghproxy.net//` produced a broken `...//https://...` candidate that proxies reject). Entries left empty after normalization (e.g. `///`) are dropped by both sides.
 - **npm tarball verification tolerates propagation delay (#156).** The TypeScript CD `Verify npm published bytes` step now cache-busts the registry/CDN URL, retries for ~10 min, distinguishes a propagation timeout from a real byte mismatch, and fails fast on a permanent mismatch. The step moved from `publish-npm` into `github-release` so a propagation timeout no longer skips release creation (recover with `gh run rerun <run-id> --failed`); `npm publish` is skipped if the version already exists, making job re-runs safe.

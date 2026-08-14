@@ -27,6 +27,7 @@ import {
   syncReleaseArchive,
   syncReleaseArchivePair,
   withArchiveActivationLock,
+  ActivationLockTimeoutError,
   fetchCascading,
   AssetNotFoundError,
   type ReleaseArchiveSpec,
@@ -838,6 +839,40 @@ test("live owner heartbeat prevents stale lock takeover", async () => {
   releaseFirst?.();
   await Promise.all([first, second]);
   assert.equal(secondEntered, true);
+});
+
+test("activation lock wait times out with ActivationLockTimeoutError", async () => {
+  const spec = tempArchiveSpec();
+  mkdirSync(dirname(spec.localZip), { recursive: true });
+  let releaseFirst: (() => void) | undefined;
+  let resolveEntered: (() => void) | undefined;
+  const firstEntered = new Promise<void>((resolve) => { resolveEntered = resolve; });
+  const first = withArchiveActivationLock(
+    spec,
+    () => new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+      resolveEntered?.();
+    }),
+    ".activation.lock",
+    { timeoutMs: 60_000, staleMs: 60_000, ownerGraceMs: 60_000, heartbeatMs: 1_000 },
+  );
+  await firstEntered;
+  // Fresh lock held by the first contender → never stale-reclaimed; the
+  // zero budget makes the deadline check fire on the first EEXIST iteration.
+  await assert.rejects(
+    withArchiveActivationLock(
+      spec,
+      async () => {},
+      ".activation.lock",
+      { timeoutMs: 0, staleMs: 60_000, ownerGraceMs: 60_000, heartbeatMs: 1_000 },
+    ),
+    (err: unknown) => err instanceof ActivationLockTimeoutError
+      && /Timed out waiting for archive activation lock/.test((err as Error).message),
+  );
+  // The contender must not have reclaimed or removed the live lock.
+  assert.equal(existsSync(join(dirname(spec.localZip), ".activation.lock")), true);
+  releaseFirst?.();
+  await first;
 });
 
 test("pair manifest switches only after both archives share one SHA", async () => {
