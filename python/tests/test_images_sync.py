@@ -6,6 +6,7 @@ invariants that a single-shot E2E cannot exercise.
 from __future__ import annotations
 
 import hashlib
+import inspect
 import json
 from pathlib import Path
 from zipfile import ZipFile
@@ -58,7 +59,7 @@ def _setup_mocks(monkeypatch, *, current: str = "c1", baseline: str = "b1",
         if "index.json" in url else None,
     )
 
-    def mock_download_large(url: str, dest: Path, *, timeout: float = 300.0) -> None:
+    def mock_download_large(url: str, dest: Path, *, timeout: float = 1800.0) -> None:
         calls["large"] += 1
         if delta_fails and "delta" in url:
             raise RuntimeError("delta download failed")
@@ -212,3 +213,91 @@ def test_verify_variant_hashes_rejects_missing_file(tmp_path):
     # No PNG created — the wanted variant's file is absent (incomplete shard).
     with pytest.raises(ValueError, match="sha256 verification failed"):
         _verify_variant_hashes(tmp_path, index, ("chararts-large",))
+
+
+def test_download_large_default_timeout_is_30_minutes():
+    """Default must stay aligned with the TS twin's 1_800_000 ms (parity)."""
+    from prts_mcp.data.images_sync import _download_large
+
+    default = inspect.signature(_download_large).parameters["timeout"].default
+    assert default == 1800.0
+
+
+def test_download_large_enforces_total_deadline(tmp_path, monkeypatch):
+    """A stream that never finishes must hit the per-candidate total deadline.
+
+    Fakes httpx.stream with an infinite chunk generator; the deadline check
+    inside the chunk loop must abort the attempt as a TimeoutError.
+    """
+    import prts_mcp.data.images_sync as images_sync_module
+
+    class _FakeResponse:
+        is_success = True
+        status_code = 200
+
+        def iter_bytes(self, chunk_size: int):
+            while True:
+                yield b"x" * chunk_size
+
+    class _FakeStream:
+        def __enter__(self):
+            return _FakeResponse()
+
+        def __exit__(self, *exc_info):
+            return False
+
+    monkeypatch.setattr(images_sync_module.httpx, "stream", lambda *a, **kw: _FakeStream())
+    monkeypatch.delenv("GITHUB_MIRRORS", raising=False)  # direct candidate only
+    dest = tmp_path / "shard.zip"
+    with pytest.raises(TimeoutError, match="total deadline"):
+        images_sync_module._download_large(
+            "https://example.com/shard.zip", dest, timeout=0.0
+        )
+    assert not dest.exists()
+    assert list(tmp_path.glob(".*.tmp")) == []
+
+
+def test_download_large_cascades_to_mirror_with_fresh_budget(tmp_path, monkeypatch):
+    """Core C2 semantics: a candidate that blows its deadline cascades, and
+    the next mirror attempt gets a fresh budget and can succeed."""
+    import prts_mcp.data.images_sync as images_sync_module
+
+    class _FakeResponse:
+        is_success = True
+        status_code = 200
+
+        def __init__(self, chunk_source):
+            self._chunk_source = chunk_source
+
+        def iter_bytes(self, chunk_size: int):
+            return self._chunk_source
+
+    class _FakeStream:
+        def __init__(self, response):
+            self._response = response
+
+        def __enter__(self):
+            return self._response
+
+        def __exit__(self, *exc_info):
+            return False
+
+    def fake_stream(method: str, url: str, **kwargs):
+        if "ghproxy.net" in url:
+            return _FakeStream(_FakeResponse(iter([b"mirror-bytes"])))
+
+        def infinite():
+            while True:
+                yield b"x"
+
+        return _FakeStream(_FakeResponse(infinite()))
+
+    monkeypatch.setattr(images_sync_module.httpx, "stream", fake_stream)
+    # Double trailing slash doubles as a C1 normalization exercise.
+    monkeypatch.setenv("GITHUB_MIRRORS", "https://ghproxy.net//")
+    dest = tmp_path / "shard.zip"
+    images_sync_module._download_large(
+        "https://example.com/shard.zip", dest, timeout=0.05
+    )
+    assert dest.read_bytes() == b"mirror-bytes"
+    assert list(tmp_path.glob(".*.tmp")) == []

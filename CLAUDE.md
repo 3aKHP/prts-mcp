@@ -325,6 +325,6 @@ git push origin python/v2.6.0-alpha.1 ts/v2.6.0-alpha.1
 - PRTS 的 `/spine`、`/data` 等技术页面在主命名空间，需客户端过滤
 - story_review_table.json 顶层直接是 `{event_id: entry}`，不是嵌套在某个 key 下
 - ArknightsStoryJson zip 内所有路径以 `zh_CN/` 为前缀
-- `GITHUB_MIRRORS` 配置的代理 URL 不要带尾部斜杠
+- `GITHUB_MIRRORS` 条目的首尾空白与尾部斜杠会被双实现一致地自动归一化，但镜像格式本身仍是 `<mirror>/<original_url>`
 - Python 的 `httpx` 和 TS 的 `fetch` 行为不完全一致（重试、超时），sync 逻辑不要假设相同
 - **`pyproject.toml` 的预发布版本号必须用 PEP 440，不能用连字符**：写 `2.6.0a1`（不是 `2.6.0-alpha.1`）。`-alpha.1` 是 **git tag 和 `package.json`** 的格式；`pyproject.toml` 里写连字符形式会导致 `uv` / `pip` / PyPI 拒绝或误解析。CD 的 version check（`cd.yml`）会自动归一化 tag 的 `-alpha.` → PEP 440 `a` 再比对，但 `pyproject.toml` 本身必须原生合规

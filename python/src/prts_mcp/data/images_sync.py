@@ -158,11 +158,19 @@ def _download_small(url: str, *, timeout: float = 30.0) -> bytes | None:
         return None
 
 
-def _download_large(url: str, dest: Path, *, timeout: float = 300.0) -> None:
+def _download_large(url: str, dest: Path, *, timeout: float = 1800.0) -> None:
     """Stream-download a large asset (shard zip) to ``dest`` atomically.
 
     Cascades through mirrors on failure, mirroring :func:`_get_cascading`
     but with chunked writes so multi-hundred-MB shards do not stay resident.
+    ``timeout`` bounds each URL candidate with a fresh budget per mirror
+    attempt. It plays a dual role: a progressing download is capped by a
+    total-deadline check in the chunk loop, while a connect/read stall is
+    bounded by the httpx per-operation timeout of the same value — so a
+    mirror that stalls mid-read after a long period of progress can hold the
+    attempt for up to ~2× ``timeout`` in total (the TS twin aborts hard at
+    its ``AbortSignal.timeout`` deadline instead). The 30-min default covers
+    the largest ORIGINAL_IMAGE shard (~3.6 GB) on slow links.
     Raises on total failure; the caller decides whether to fall back.
     """
     dest.parent.mkdir(parents=True, exist_ok=True)
@@ -170,6 +178,7 @@ def _download_large(url: str, dest: Path, *, timeout: float = 300.0) -> None:
     last_exc: BaseException = RuntimeError(f"All URL candidates failed for {url}")
     try:
         for i, candidate in enumerate(_url_candidates(url)):
+            deadline = time.monotonic() + timeout
             try:
                 with httpx.stream(
                     "GET",
@@ -186,6 +195,11 @@ def _download_large(url: str, dest: Path, *, timeout: float = 300.0) -> None:
                         continue
                     with tmp.open("wb") as dst:
                         for chunk in response.iter_bytes(chunk_size=1024 * 1024):
+                            if time.monotonic() >= deadline:
+                                raise TimeoutError(
+                                    f"Download exceeded {timeout:.0f}s total "
+                                    f"deadline: {candidate}"
+                                )
                             dst.write(chunk)
                 tmp.replace(dest)
                 return

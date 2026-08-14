@@ -33,6 +33,14 @@ const ACTIVATION_LOCK_OWNER_GRACE_MS = 10_000;
 const ACTIVATION_LOCK_HEARTBEAT_MS = 60_000;
 const RELEASE_RETENTION_MS = 24 * 60 * 60_000;
 
+/** Activation lock not acquired within the wait budget (parity with PY). */
+export class ActivationLockTimeoutError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ActivationLockTimeoutError";
+  }
+}
+
 function archiveFilesPresent(spec: ReleaseArchiveSpec, root = spec.localRoot): boolean {
   return spec.requiredFiles.every((f) => {
     const p = join(root, f);
@@ -245,7 +253,7 @@ export async function withArchiveActivationLock<T>(
         continue;
       }
       if (Date.now() >= deadline) {
-        throw new Error(`Timed out waiting for archive activation lock: ${lock}`);
+        throw new ActivationLockTimeoutError(`Timed out waiting for archive activation lock: ${lock}`);
       }
       await delay(50);
     }

@@ -22,7 +22,11 @@ export {
   type SyncResult,
   errorMessage,
 } from "../sync/types.js";
-export { safeExtractZip, withArchiveActivationLock } from "../sync/releaseActivation.js";
+export {
+  ActivationLockTimeoutError,
+  safeExtractZip,
+  withArchiveActivationLock,
+} from "../sync/releaseActivation.js";
 export {
   DATA_CONTRACT_VERSION,
   downloadReleaseAsset,

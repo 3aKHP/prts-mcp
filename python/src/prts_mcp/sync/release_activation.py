@@ -32,6 +32,15 @@ _ACTIVATION_LOCK_HEARTBEAT_SECONDS = 60
 _RELEASE_RETENTION_SECONDS = 24 * 60 * 60
 
 
+class _ActivationLockTimeoutError(TimeoutError):
+    """Activation lock not acquired within the wait budget.
+
+    Subclasses the builtin ``TimeoutError`` (itself an ``OSError``) so
+    existing ``except TimeoutError`` consumers keep working; introduced for
+    parity with TS ``ActivationLockTimeoutError``.
+    """
+
+
 def _archive_files_present(spec: ReleaseArchiveSpec) -> bool:
     root = _active_archive_root(spec)
     return all((root / f).is_file() for f in spec.required_files)
@@ -211,7 +220,7 @@ def _archive_activation_lock(
                 shutil.rmtree(quarantine, ignore_errors=True)
                 continue
             if time.monotonic() >= deadline:
-                raise TimeoutError(f"Timed out waiting for archive activation lock: {lock}")
+                raise _ActivationLockTimeoutError(f"Timed out waiting for archive activation lock: {lock}")
             time.sleep(0.05)
     try:
         owner_path = lock / "owner"

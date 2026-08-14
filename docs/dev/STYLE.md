@@ -364,7 +364,7 @@ npm --prefix ts run typecheck                       # 类型检查
 
 ### 网络与同步
 
-- `GITHUB_MIRRORS` 代理 URL 不要带尾部斜杠
+- `GITHUB_MIRRORS` 条目的首尾空白与尾部斜杠已由双实现一致地自动归一化，无需用户手动处理
 - Python `httpx` 和 TS `fetch` 行为不完全一致（重试、超时策略），sync 逻辑不要假设相同
 - TS `adm-zip` 和 Python `zipfile` 对损坏 zip 的容错不同，sync 里的完整性检查两边都要有
 - GitHub API 匿名请求有严格限速，建议配置 `GITHUB_TOKEN`

@@ -24,6 +24,7 @@ from prts_mcp.data.sync import (
     sync_release_archive,
     sync_release_archive_pair,
     sync_release,
+    _ActivationLockTimeoutError,
     _AssetNotFoundError,
     _archive_activation_lock,
     _verify_release_manifest,
@@ -709,6 +710,33 @@ class TestSyncReleaseArchive:
             thread.join(timeout=2)
 
         assert not thread.is_alive()
+
+    def test_activation_lock_wait_times_out_with_named_error(self, tmp_path):
+        archive_dir = tmp_path / "archives"
+        archive_dir.mkdir()
+        spec = ReleaseArchiveSpec(
+            owner="3aKHP",
+            repo="arknights-data-pipeline",
+            asset_name="zh_CN-excel.zip",
+            local_zip=archive_dir / "zh_CN-excel.zip",
+            local_root=tmp_path / "gamedata",
+            required_files=(),
+        )
+        # A live lock held by someone else (fresh owner → never stale-reclaimed).
+        lock = archive_dir / ".activation.lock"
+        lock.mkdir()
+        (lock / "owner").write_text("other", encoding="utf-8")
+
+        with patch("prts_mcp.sync.release_activation._ACTIVATION_LOCK_TIMEOUT_SECONDS", 0):
+            with pytest.raises(TimeoutError, match="Timed out waiting for archive activation lock") as excinfo:
+                with _archive_activation_lock(spec):
+                    pass
+
+        assert isinstance(excinfo.value, _ActivationLockTimeoutError)
+        assert type(excinfo.value) is _ActivationLockTimeoutError
+        # The contender must not have reclaimed or removed the live lock.
+        assert lock.is_dir()
+        assert (lock / "owner").read_text(encoding="utf-8") == "other"
 
     def test_extracts_updated_archive(self, tmp_path):
         zip_path = tmp_path / "archives" / "zh_CN-excel.zip"
