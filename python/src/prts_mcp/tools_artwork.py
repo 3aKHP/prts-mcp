@@ -23,7 +23,7 @@ from prts_mcp.data.artwork_mediawiki import (
     get_artwork_mediawiki,
     list_artworks_mediawiki,
 )
-from prts_mcp.data.images_sync import active_generation
+from prts_mcp.sync.generation_store import active_generation
 from prts_mcp.output import render_image_result, render_result, text_result
 
 

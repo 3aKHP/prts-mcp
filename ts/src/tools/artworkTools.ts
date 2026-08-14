@@ -15,7 +15,7 @@ import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { withActivationSnapshot } from "../activation.js";
 import { loadConfig, type Config } from "../config.js";
-import { activeGenerationSync } from "../data/imagesSync.js";
+import { activeGenerationSync } from "../sync/generationStore.js";
 import {
   getArtworkLocal,
   listArtworksLocal,

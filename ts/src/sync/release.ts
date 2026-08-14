@@ -11,6 +11,7 @@ import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 
 import { type RepoSpec, type SyncResult, errorMessage } from "./types.js";
+import { atomicWriteJson } from "./primitives.js";
 import { type ReleaseSpec, TAG_PREFIX, checkLatestRelease } from "./releaseDiscovery.js";
 import {
   AssetNotFoundError,
@@ -100,17 +101,13 @@ async function saveReleaseMeta(
   spec: ReleaseSpec,
   meta: CacheMeta
 ): Promise<void> {
-  const p = releaseCachePath(spec);
-  const tmp = join(dirname(p), `.${basename(p)}.${randomUUID().replaceAll("-", "")}.tmp`);
-  await mkdir(dirname(p), { recursive: true });
-  await writeFile(tmp, JSON.stringify({
+  await atomicWriteJson(releaseCachePath(spec), {
     repo: meta.repo,
     branch: meta.branch,
     commit_sha: meta.commitSha,
     fetched_at: meta.fetchedAt,
     files: meta.files,
-  }, null, 2), "utf-8");
-  await rename(tmp, p);
+  });
 }
 
 /**

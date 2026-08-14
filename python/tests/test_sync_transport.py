@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from prts_mcp.sync.transport import _parse_mirrors, _url_candidates
+from prts_mcp.sync.transport import _parse_mirrors, url_candidates
 
 
 class TestParseMirrors:
@@ -52,7 +52,7 @@ class TestParseMirrors:
 def test_url_candidates_contain_no_doubled_slash(monkeypatch):
     monkeypatch.setenv("GITHUB_MIRRORS", "https://ghproxy.net//")
     url = "https://github.com/3aKHP/arknights-data-pipeline/releases/download/data-1/zh_CN.zip"
-    candidates = _url_candidates(url)
+    candidates = url_candidates(url)
     assert candidates == [
         url,
         f"https://ghproxy.net/{url}",

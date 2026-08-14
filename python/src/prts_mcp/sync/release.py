@@ -15,7 +15,8 @@ from pathlib import Path
 from uuid import uuid4
 
 from prts_mcp.sync._types import RepoSpec, SyncResult
-from prts_mcp.sync.release_activation import _archive_activation_lock
+from prts_mcp.sync.release_activation import with_archive_activation_lock
+from prts_mcp.sync.primitives import atomic_write_json
 from prts_mcp.sync.release_discovery import (
     ReleaseSpec,
     _TAG_PREFIX,
@@ -23,9 +24,9 @@ from prts_mcp.sync.release_discovery import (
 )
 from prts_mcp.sync.transport import (
     _AssetNotFoundError,
-    _get_cascading,
-    _github_headers,
     _parse_mirrors,
+    get_cascading,
+    github_headers,
 )
 
 _logger = logging.getLogger(__name__)
@@ -77,19 +78,13 @@ class CacheMeta:
             return None
 
     def save(self, path: Path) -> None:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
-        tmp.write_text(
-            json.dumps({
-                "repo": self.repo,
-                "branch": self.branch,
-                "commit_sha": self.commit_sha,
-                "fetched_at": self.fetched_at,
-                "files": self.files,
-            }, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
-        tmp.replace(path)
+        atomic_write_json(path, {
+            "repo": self.repo,
+            "branch": self.branch,
+            "commit_sha": self.commit_sha,
+            "fetched_at": self.fetched_at,
+            "files": self.files,
+        }, ensure_ascii=False)
 
 
 def _cache_is_fresh(cache: CacheMeta) -> bool:
@@ -118,7 +113,7 @@ def download_release_asset(spec: ReleaseSpec, tag: str, url: str, timeout: float
     )
     try:
         _logger.debug("Downloading release asset %s", url)
-        response = _get_cascading(url, timeout=timeout, headers=_github_headers(), follow_redirects=True)
+        response = get_cascading(url, timeout=timeout, headers=github_headers(), follow_redirects=True)
         tmp.write_bytes(response.content)
         if spec.validate_zip is not None:
             missing = spec.validate_zip(tmp)
@@ -162,8 +157,8 @@ def _verify_release_manifest(
             f"https://github.com/{spec.owner}/{spec.repo}/releases/download/{tag}/manifest.json"
         )
     try:
-        response = _get_cascading(
-            manifest_url, timeout=timeout, headers=_github_headers(), follow_redirects=True,
+        response = get_cascading(
+            manifest_url, timeout=timeout, headers=github_headers(), follow_redirects=True,
         )
     except _AssetNotFoundError:
         # Direct URL confirmed 404 → release predates the manifest asset.
@@ -308,7 +303,7 @@ def sync_release(spec: ReleaseSpec, *, force_check: bool = False) -> SyncResult:
     )
     try:
         spec.local_zip.parent.mkdir(parents=True, exist_ok=True)
-        with _archive_activation_lock(spec, ".release.lock"):
+        with with_archive_activation_lock(spec, ".release.lock"):
             return _sync_release_locked(spec, force_check=force_check)
     except Exception as exc:  # noqa: BLE001
         cache = CacheMeta.load(_release_cache_path(spec))

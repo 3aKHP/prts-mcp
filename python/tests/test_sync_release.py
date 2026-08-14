@@ -26,7 +26,7 @@ from prts_mcp.data.sync import (
     sync_release,
     _ActivationLockTimeoutError,
     _AssetNotFoundError,
-    _archive_activation_lock,
+    with_archive_activation_lock,
     _verify_release_manifest,
 )
 
@@ -138,10 +138,10 @@ class TestSyncRelease:
         # patches both namespaces; side_effect is consumed in call order:
         # release list (discovery) -> asset download -> manifest (state machine).
         with patch(
-            "prts_mcp.sync.release._get_cascading",
+            "prts_mcp.sync.release.get_cascading",
             side_effect=[release, asset, manifest],
         ) as cascading, patch(
-            "prts_mcp.sync.release_discovery._get_cascading",
+            "prts_mcp.sync.release_discovery.get_cascading",
             cascading,
         ):
             result = sync_release(spec, force_check=True)
@@ -167,10 +167,10 @@ class TestSyncRelease:
             "assets": {"zh_CN.zip": {"size": 3, "sha256": "bad"}},
         }
         with patch(
-            "prts_mcp.sync.release._get_cascading",
+            "prts_mcp.sync.release.get_cascading",
             side_effect=[release, asset, manifest],
         ) as cascading, patch(
-            "prts_mcp.sync.release_discovery._get_cascading",
+            "prts_mcp.sync.release_discovery.get_cascading",
             cascading,
         ):
             result = sync_release(spec, force_check=True)
@@ -188,10 +188,10 @@ class TestSyncRelease:
         release = _mock_release_response("data-legacy", "zh_CN.zip", "https://example/asset")
         asset = _mock_asset_response(b"legacy")
         with patch(
-            "prts_mcp.sync.release._get_cascading",
+            "prts_mcp.sync.release.get_cascading",
             side_effect=[release, asset, _AssetNotFoundError("HTTP 404")],
         ) as cascading, patch(
-            "prts_mcp.sync.release_discovery._get_cascading",
+            "prts_mcp.sync.release_discovery.get_cascading",
             cascading,
         ):
             result = sync_release(spec, force_check=True)
@@ -211,14 +211,14 @@ class TestSyncRelease:
         manifest = _mock_asset_response()
         manifest.json.return_value = {"contractVersion": "unknown", "assets": {}}
         with patch(
-            "prts_mcp.sync.release._get_cascading",
+            "prts_mcp.sync.release.get_cascading",
             side_effect=[
                 _mock_release_response("data-new", "zh_CN.zip", "https://example/asset"),
                 _mock_asset_response(b"new"),
                 manifest,
             ],
         ) as cascading, patch(
-            "prts_mcp.sync.release_discovery._get_cascading",
+            "prts_mcp.sync.release_discovery.get_cascading",
             cascading,
         ):
             result = sync_release(spec, force_check=True)
@@ -644,7 +644,7 @@ class TestSyncReleaseArchive:
         abandoned = time.time() - 11
         os.utime(lock, (abandoned, abandoned))
 
-        with _archive_activation_lock(spec):
+        with with_archive_activation_lock(spec):
             assert (lock / "owner").is_file()
 
         assert not lock.exists()
@@ -660,13 +660,13 @@ class TestSyncReleaseArchive:
             local_root=tmp_path / "gamedata",
             required_files=(),
         )
-        first = _archive_activation_lock(spec)
+        first = with_archive_activation_lock(spec)
         first.__enter__()
         lock = archive_dir / ".activation.lock"
         old = time.time() - 31 * 60
         os.utime(lock, (old, old))
         os.utime(lock / "owner", (old, old))
-        second = _archive_activation_lock(spec)
+        second = with_archive_activation_lock(spec)
         second.__enter__()
         try:
             first.__exit__(None, None, None)
@@ -690,7 +690,7 @@ class TestSyncReleaseArchive:
         release = threading.Event()
 
         def wait_for_lock() -> None:
-            with _archive_activation_lock(spec):
+            with with_archive_activation_lock(spec):
                 acquired.set()
                 release.wait(timeout=2)
 
@@ -698,7 +698,7 @@ class TestSyncReleaseArchive:
             patch("prts_mcp.sync.release_activation._ACTIVATION_LOCK_STALE_SECONDS", 0.05),
             patch("prts_mcp.sync.release_activation._ACTIVATION_LOCK_HEARTBEAT_SECONDS", 0.01),
         ):
-            first = _archive_activation_lock(spec)
+            first = with_archive_activation_lock(spec)
             first.__enter__()
             thread = threading.Thread(target=wait_for_lock)
             thread.start()
@@ -729,7 +729,7 @@ class TestSyncReleaseArchive:
 
         with patch("prts_mcp.sync.release_activation._ACTIVATION_LOCK_TIMEOUT_SECONDS", 0):
             with pytest.raises(TimeoutError, match="Timed out waiting for archive activation lock") as excinfo:
-                with _archive_activation_lock(spec):
+                with with_archive_activation_lock(spec):
                     pass
 
         assert isinstance(excinfo.value, _ActivationLockTimeoutError)
@@ -852,7 +852,7 @@ class TestSyncReleaseArchive:
         with (
             patch("prts_mcp.sync.gamedata_pair.sync_release", return_value=release_result),
             patch(
-                "prts_mcp.sync.release_activation._safe_extract_zip",
+                "prts_mcp.sync.release_activation.safe_extract_zip",
                 side_effect=RuntimeError("interrupted extraction"),
             ),
         ):
@@ -1267,7 +1267,7 @@ class TestManifestAbsenceSemantics:
         asset_path = tmp_path / "asset.zip"
         asset_path.write_bytes(b"PK\x03\x04")
         with patch(
-            "prts_mcp.sync.release._get_cascading",
+            "prts_mcp.sync.release.get_cascading",
             side_effect=_AssetNotFoundError("HTTP 404"),
         ):
             # Must return without raising — release predates the manifest.
@@ -1285,7 +1285,7 @@ class TestManifestAbsenceSemantics:
         # A mirror 404 surfaces as a plain Exception carrying "HTTP 404" —
         # NOT _AssetNotFoundError. Must fail closed (#100 regression).
         with patch(
-            "prts_mcp.sync.release._get_cascading",
+            "prts_mcp.sync.release.get_cascading",
             side_effect=Exception("HTTP 404 from mirror"),
         ):
             with pytest.raises(ValueError, match="manifest unavailable"):

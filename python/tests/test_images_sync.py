@@ -14,12 +14,12 @@ from zipfile import ZipFile
 import pytest
 
 from prts_mcp.data.images import SCHEMA_VERSION, parse_index
-from prts_mcp.data.images_sync import (
+from prts_mcp.sync.images_sync import (
     _verify_variant_hashes,
-    active_generation,
     needed_shard_keys,
     sync_images,
 )
+from prts_mcp.sync.generation_store import active_generation
 
 
 def _make_index(baseline: str = "b1", current: str = "c1") -> dict:
@@ -50,16 +50,16 @@ def _setup_mocks(monkeypatch, *, current: str = "c1", baseline: str = "b1",
     }]
 
     monkeypatch.setattr(
-        "prts_mcp.data.images_sync._list_releases",
+        "prts_mcp.sync.images_sync.list_releases",
         lambda owner, repo, *, timeout=10.0: releases,
     )
     monkeypatch.setattr(
-        "prts_mcp.data.images_sync._download_small",
+        "prts_mcp.sync.images_sync._download_small",
         lambda url, *, timeout=30.0: json.dumps(_make_index(baseline, current)).encode("utf-8")
         if "index.json" in url else None,
     )
 
-    def mock_download_large(url: str, dest: Path, *, timeout: float = 1800.0) -> None:
+    def mock_stream_cascading(url: str, dest: Path, *, timeout: float = 1800.0) -> None:
         calls["large"] += 1
         if delta_fails and "delta" in url:
             raise RuntimeError("delta download failed")
@@ -67,7 +67,7 @@ def _setup_mocks(monkeypatch, *, current: str = "c1", baseline: str = "b1",
         with ZipFile(dest, "w"):  # empty zip — extracts nothing
             pass
 
-    monkeypatch.setattr("prts_mcp.data.images_sync._download_large", mock_download_large)
+    monkeypatch.setattr("prts_mcp.sync.images_sync.stream_cascading", mock_stream_cascading)
     return calls
 
 
@@ -122,7 +122,7 @@ def test_sync_offline_falls_back_to_existing(tmp_path, monkeypatch):
 
     # Simulate network loss on the next cycle.
     monkeypatch.setattr(
-        "prts_mcp.data.images_sync._list_releases",
+        "prts_mcp.sync.images_sync.list_releases",
         lambda owner, repo, *, timeout=10.0: None,
     )
     r = sync_images(image_dir, include_original=False, force_check=True)
@@ -215,11 +215,11 @@ def test_verify_variant_hashes_rejects_missing_file(tmp_path):
         _verify_variant_hashes(tmp_path, index, ("chararts-large",))
 
 
-def test_download_large_default_timeout_is_30_minutes():
+def test_stream_cascading_default_timeout_is_30_minutes():
     """Default must stay aligned with the TS twin's 1_800_000 ms (parity)."""
-    from prts_mcp.data.images_sync import _download_large
+    from prts_mcp.sync.transport import stream_cascading
 
-    default = inspect.signature(_download_large).parameters["timeout"].default
+    default = inspect.signature(stream_cascading).parameters["timeout"].default
     assert default == 1800.0
 
 
@@ -229,7 +229,7 @@ def test_download_large_enforces_total_deadline(tmp_path, monkeypatch):
     Fakes httpx.stream with an infinite chunk generator; the deadline check
     inside the chunk loop must abort the attempt as a TimeoutError.
     """
-    import prts_mcp.data.images_sync as images_sync_module
+    import prts_mcp.sync.transport as transport_module
 
     class _FakeResponse:
         is_success = True
@@ -246,11 +246,11 @@ def test_download_large_enforces_total_deadline(tmp_path, monkeypatch):
         def __exit__(self, *exc_info):
             return False
 
-    monkeypatch.setattr(images_sync_module.httpx, "stream", lambda *a, **kw: _FakeStream())
+    monkeypatch.setattr(transport_module.httpx, "stream", lambda *a, **kw: _FakeStream())
     monkeypatch.delenv("GITHUB_MIRRORS", raising=False)  # direct candidate only
     dest = tmp_path / "shard.zip"
     with pytest.raises(TimeoutError, match="total deadline"):
-        images_sync_module._download_large(
+        transport_module.stream_cascading(
             "https://example.com/shard.zip", dest, timeout=0.0
         )
     assert not dest.exists()
@@ -260,7 +260,7 @@ def test_download_large_enforces_total_deadline(tmp_path, monkeypatch):
 def test_download_large_cascades_to_mirror_with_fresh_budget(tmp_path, monkeypatch):
     """Core C2 semantics: a candidate that blows its deadline cascades, and
     the next mirror attempt gets a fresh budget and can succeed."""
-    import prts_mcp.data.images_sync as images_sync_module
+    import prts_mcp.sync.transport as transport_module
 
     class _FakeResponse:
         is_success = True
@@ -292,11 +292,11 @@ def test_download_large_cascades_to_mirror_with_fresh_budget(tmp_path, monkeypat
 
         return _FakeStream(_FakeResponse(infinite()))
 
-    monkeypatch.setattr(images_sync_module.httpx, "stream", fake_stream)
+    monkeypatch.setattr(transport_module.httpx, "stream", fake_stream)
     # Double trailing slash doubles as a C1 normalization exercise.
     monkeypatch.setenv("GITHUB_MIRRORS", "https://ghproxy.net//")
     dest = tmp_path / "shard.zip"
-    images_sync_module._download_large(
+    transport_module.stream_cascading(
         "https://example.com/shard.zip", dest, timeout=0.05
     )
     assert dest.read_bytes() == b"mirror-bytes"

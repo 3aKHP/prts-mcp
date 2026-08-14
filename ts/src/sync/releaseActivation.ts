@@ -25,6 +25,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import AdmZip from "adm-zip";
 
 import { type ReleaseArchiveSpec, errorMessage } from "./types.js";
+import { atomicWriteJson, pruneOldTrees } from "./primitives.js";
 import type { ReleaseSpec } from "./releaseDiscovery.js";
 
 const ACTIVATION_LOCK_TIMEOUT_MS = 120_000;
@@ -88,17 +89,10 @@ async function saveExtractMeta(
   commitSha: string,
   dataRoot: string,
 ): Promise<void> {
-  const path = extractMetaPath(spec);
-  const tmp = join(
-    dirname(path),
-    `.${basename(path)}.${randomUUID().replaceAll("-", "")}.tmp`,
-  );
-  await mkdir(dirname(path), { recursive: true });
-  await writeFile(tmp, JSON.stringify({
+  await atomicWriteJson(extractMetaPath(spec), {
     commit_sha: commitSha,
     data_root: relative(spec.localRoot, dataRoot).replaceAll("\\", "/"),
-  }, null, 2), "utf-8");
-  await rename(tmp, path);
+  });
 }
 
 function validateArchiveZip(zipPath: string, requiredFiles: readonly string[]): string[] {
@@ -296,17 +290,7 @@ async function pruneReleaseTrees(
   keep: Set<string>,
 ): Promise<void> {
   try {
-    const releases = await releasesPath(spec);
-    const cutoff = Date.now() - RELEASE_RETENTION_MS;
-    for (const name of await readdir(releases)) {
-      const candidate = join(releases, name);
-      if (keep.has(candidate)) continue;
-      const info = await lstat(candidate);
-      if (info.mtimeMs >= cutoff) continue;
-      if (info.isDirectory() || info.isSymbolicLink()) {
-        await rm(candidate, { recursive: true, force: true });
-      }
-    }
+    await pruneOldTrees(await releasesPath(spec), keep, RELEASE_RETENTION_MS);
   } catch {
     // Best-effort retention cleanup must not roll back an activated release.
   }

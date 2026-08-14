@@ -14,6 +14,7 @@ import { lstat, mkdir, readFile, rename, rm, utimes, writeFile } from "node:fs/p
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 
 import { type ReleaseArchiveSpec, type RepoSpec, type SyncResult, errorMessage } from "./types.js";
+import { atomicWriteJson } from "./primitives.js";
 import { syncRelease } from "./release.js";
 import {
   archiveActivationSha,
@@ -98,14 +99,11 @@ async function saveGamedataPair(
     && current.excelRoot === realpathSync(excelRoot)
     && current.levelsRoot === realpathSync(levelsRoot)
   ) return;
-  const tmp = join(dirname(path), `.${basename(path)}.${randomUUID().replaceAll("-", "")}.tmp`);
-  await mkdir(dirname(path), { recursive: true });
-  await writeFile(tmp, JSON.stringify({
+  await atomicWriteJson(path, {
     commit_sha: commitSha,
     excel_data_root: relative(excelSpec.localRoot, excelRoot).replaceAll("\\", "/") || ".",
     levels_data_root: relative(levelsSpec.localRoot, levelsRoot).replaceAll("\\", "/") || ".",
-  }, null, 2), "utf-8");
-  await rename(tmp, path);
+  });
 }
 
 async function initializeGamedataPair(
