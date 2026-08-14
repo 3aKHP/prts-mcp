@@ -2,9 +2,16 @@
  * HTTP transport for GitHub Release sync: mirrors, headers, cascading fetch.
  *
  * Mirrors python/src/prts_mcp/sync/transport.py. Extracted from data/sync
- * (P2.A): this is the repo's only HTTP-issuing tier. data/sync re-exports
- * these symbols during the P2.A→P2.B migration.
+ * (P2.A): this is the repo's only HTTP-issuing tier. The streaming variant
+ * (streamCascading) was lifted out of data/imagesSync in P3.B so the
+ * codebase's only streaming download lives with the rest of the transport.
  */
+import { randomUUID } from "node:crypto";
+import { createWriteStream } from "node:fs";
+import { mkdir, rename, unlink } from "node:fs/promises";
+import { basename, dirname, join } from "node:path";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import type { Dispatcher } from "undici";
 
 const NATIVE_FETCH = globalThis.fetch;
@@ -130,5 +137,46 @@ export class AssetNotFoundError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "AssetNotFoundError";
+  }
+}
+
+
+// Both implementations use a 30-min total deadline per mirror attempt (here
+// via AbortSignal.timeout, in Python via a time.monotonic() check inside the
+// chunk loop); it covers the largest ORIGINAL_IMAGE shard (~3.6 GB) on slow
+// links. A per-chunk AbortSignal refresh would be ideal but needs a custom
+// read loop.
+export async function streamCascading(
+  url: string,
+  dest: string,
+  timeoutMs = 1_800_000,
+): Promise<void> {
+  const tmp = join(
+    dirname(dest),
+    `.${basename(dest)}.${randomUUID().replaceAll("-", "")}.tmp`,
+  );
+  await mkdir(dirname(dest), { recursive: true });
+  try {
+    const res = await fetchCascading(
+      url,
+      { headers: githubHeaders(), redirect: "follow" },
+      timeoutMs,
+    );
+    // Stream the shard to disk so multi-hundred-MB baseline zips do not stay
+    // resident; mirrors python's httpx.stream chunked write. fetchCascading
+    // returns a real Response at runtime but FetchResponse omits body to stay
+    // decoupled from DOM, so narrow res via unknown instead of `any` (#100).
+    // Readable.fromWeb expects a DOM ReadableStream whose generic variance is
+    // incompatible with Node 22's global ReadableStream at compile time; derive
+    // the exact parameter type to avoid bare `any`.
+    const body = (res as unknown as { body: ReadableStream | null }).body;
+    if (body === null) throw new Error("download response body is null");
+    await pipeline(
+      Readable.fromWeb(body as unknown as Parameters<typeof Readable.fromWeb>[0]),
+      createWriteStream(tmp),
+    );
+    await rename(tmp, dest);
+  } finally {
+    await unlink(tmp).catch(() => undefined);
   }
 }

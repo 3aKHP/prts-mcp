@@ -204,7 +204,7 @@ def _run_startup_sync(*, force_check: bool = False) -> None:
 
     # Images artwork sync (2.5.0) — LOCAL_IMAGE mode consumes AKDP assets.
     if cfg.images_enabled and cfg.local_image:
-        from prts_mcp.data.images_sync import sync_images as _sync_images_release
+        from prts_mcp.sync.images_sync import sync_images as _sync_images_release
 
         def _sync_images() -> bool:
             r = _sync_images_release(

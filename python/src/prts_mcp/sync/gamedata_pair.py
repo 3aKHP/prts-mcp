@@ -15,11 +15,11 @@ import os
 import shutil
 import time
 from pathlib import Path
-from uuid import uuid4
 
 from prts_mcp.sync._types import ReleaseArchiveSpec, RepoSpec, SyncResult
+from prts_mcp.sync.primitives import atomic_write_json
 from prts_mcp.sync.release_activation import (
-    _archive_activation_lock,
+    with_archive_activation_lock,
     _archive_activation_sha,
     _archive_files_present,
     _load_extract_meta,
@@ -165,7 +165,7 @@ def sync_release_archive(
     )
     try:
         spec.local_zip.parent.mkdir(parents=True, exist_ok=True)
-        with _archive_activation_lock(spec):
+        with with_archive_activation_lock(spec):
             return _sync_release_archive_locked(spec, force_check=force_check)
     except Exception as exc:  # noqa: BLE001
         return SyncResult(
@@ -234,24 +234,18 @@ def _save_gamedata_pair(
     )
     if current == (commit_sha, excel_root.resolve(), levels_root.resolve()):
         return
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
-    tmp.write_text(
-        json.dumps(
-            {
-                "commit_sha": commit_sha,
-                "excel_data_root": excel_root.relative_to(
-                    excel_spec.local_root.resolve()
-                ).as_posix(),
-                "levels_data_root": levels_root.relative_to(
-                    levels_spec.local_root.resolve()
-                ).as_posix(),
-            },
-            indent=2,
-        ),
-        encoding="utf-8",
+    atomic_write_json(
+        path,
+        {
+            "commit_sha": commit_sha,
+            "excel_data_root": excel_root.relative_to(
+                excel_spec.local_root.resolve()
+            ).as_posix(),
+            "levels_data_root": levels_root.relative_to(
+                levels_spec.local_root.resolve()
+            ).as_posix(),
+        },
     )
-    tmp.replace(path)
 
 
 def _initialize_gamedata_pair(
@@ -304,7 +298,7 @@ def sync_release_archive_pair(
         asset_name="gamedata-pair",
         local_zip=pair_path.parent / "gamedata-pair",
     )
-    with _archive_activation_lock(lock_spec, ".gamedata-pair.lock"):
+    with with_archive_activation_lock(lock_spec, ".gamedata-pair.lock"):
         _initialize_gamedata_pair(excel_spec, levels_spec)
         current_pair = _load_gamedata_pair(excel_spec, levels_spec)
         if current_pair is not None:

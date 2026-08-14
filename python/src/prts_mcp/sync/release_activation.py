@@ -22,6 +22,7 @@ from uuid import uuid4
 
 from prts_mcp.sync._types import ReleaseArchiveSpec
 from prts_mcp.sync.release_discovery import ReleaseSpec
+from prts_mcp.sync.primitives import atomic_write_json, prune_old_trees
 
 _logger = logging.getLogger(__name__)
 
@@ -82,17 +83,8 @@ def _save_extract_meta(
     data_root: Path,
 ) -> None:
     path = _extract_meta_path(spec)
-    tmp = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
-    path.parent.mkdir(parents=True, exist_ok=True)
     relative_root = data_root.relative_to(spec.local_root).as_posix()
-    tmp.write_text(
-        json.dumps(
-            {"commit_sha": commit_sha, "data_root": relative_root},
-            indent=2,
-        ),
-        encoding="utf-8",
-    )
-    tmp.replace(path)
+    atomic_write_json(path, {"commit_sha": commit_sha, "data_root": relative_root})
 
 
 def _validate_archive_zip(zip_path: Path, required_files: tuple[str, ...]) -> list[str]:
@@ -104,7 +96,7 @@ def _validate_archive_zip(zip_path: Path, required_files: tuple[str, ...]) -> li
         return [f"{zip_path.name} is not a valid zip: {exc}"]
 
 
-def _safe_extract_zip(zip_path: Path, local_root: Path) -> None:
+def safe_extract_zip(zip_path: Path, local_root: Path) -> None:
     """Extract zip entries under local_root with a write-to-tmp-then-replace pattern."""
     root = local_root.resolve()
     tmp_paths: list[Path] = []
@@ -159,7 +151,7 @@ def _stage_release_tree(
     staging = releases / f".{generation}.tmp"
     activated = releases / generation
     try:
-        _safe_extract_zip(spec.local_zip, staging)
+        safe_extract_zip(spec.local_zip, staging)
         missing = _archive_missing_files(spec, staging)
         if missing:
             raise ValueError(
@@ -183,7 +175,7 @@ def _archive_activation_sha(spec: ReleaseArchiveSpec, release_sha: str | None) -
 
 
 @contextmanager
-def _archive_activation_lock(
+def with_archive_activation_lock(
     spec: ReleaseSpec | ReleaseArchiveSpec,
     lock_name: str = ".activation.lock",
 ) -> Iterator[None]:
@@ -255,20 +247,4 @@ def _archive_activation_lock(
 
 
 def _prune_release_trees(spec: ReleaseArchiveSpec, keep: set[Path]) -> None:
-    try:
-        releases = _releases_path(spec)
-        cutoff = time.time() - _RELEASE_RETENTION_SECONDS
-        for candidate in releases.iterdir():
-            if candidate in keep:
-                continue
-            try:
-                if candidate.stat().st_mtime >= cutoff:
-                    continue
-            except OSError:
-                continue
-            if candidate.is_symlink():
-                candidate.unlink(missing_ok=True)
-            elif candidate.is_dir():
-                shutil.rmtree(candidate, ignore_errors=True)
-    except OSError:
-        pass
+    prune_old_trees(_releases_path(spec), keep, _RELEASE_RETENTION_SECONDS)

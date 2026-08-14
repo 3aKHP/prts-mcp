@@ -11,18 +11,19 @@ from __future__ import annotations
 from prts_mcp.sync.transport import (  # noqa: F401  (re-exported to preserve the data/sync namespace)
     _AssetNotFoundError,
     _GITHUB_UA,
-    _get_cascading,
-    _github_headers,
     _parse_mirrors,
-    _url_candidates,
+    get_cascading,
+    github_headers,
+    stream_cascading,
+    url_candidates,
 )
 from prts_mcp.sync.release_discovery import (  # noqa: F401
     ReleaseSpec,
     _TAG_PREFIX,
-    _asset_url,
-    _latest_release_by_prefix,
-    _list_releases,
+    asset_url,
     check_latest_release,
+    latest_release_by_prefix,
+    list_releases,
 )
 from prts_mcp.sync._types import (  # noqa: F401
     ReleaseArchiveSpec,
@@ -37,7 +38,6 @@ from prts_mcp.sync.release_activation import (  # noqa: F401
     _ActivationLockTimeoutError,
     _RELEASE_RETENTION_SECONDS,
     _active_archive_root,
-    _archive_activation_lock,
     _archive_activation_sha,
     _archive_files_present,
     _archive_missing_files,
@@ -45,10 +45,11 @@ from prts_mcp.sync.release_activation import (  # noqa: F401
     _load_extract_meta,
     _prune_release_trees,
     _releases_path,
-    _safe_extract_zip,
     _save_extract_meta,
     _stage_release_tree,
     _validate_archive_zip,
+    safe_extract_zip,
+    with_archive_activation_lock,
 )
 from prts_mcp.sync.release import (  # noqa: F401
     DATA_CONTRACT_VERSION,

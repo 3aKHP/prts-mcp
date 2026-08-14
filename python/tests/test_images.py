@@ -7,9 +7,10 @@ import json
 
 import pytest
 
+from prts_mcp.data.artwork_mediawiki import get_artwork_mediawiki
 from prts_mcp.data.images import SCHEMA_VERSION, build_artwork_label, parse_index
 import prts_mcp.output as output_module
-from prts_mcp.tools_artwork import _do_get, _do_get_mediawiki, _do_list
+from prts_mcp.tools_artwork import _do_get, _do_list
 
 # A 1x1 transparent PNG used as a stand-in image payload.
 _SAMPLE_PNG_B64 = (
@@ -160,11 +161,11 @@ def mock_images(monkeypatch, tmp_path):
         "prts_mcp.tools_artwork._images_generation", lambda: gen,
     )
     monkeypatch.setattr(
-        "prts_mcp.tools_artwork.resolve_char_id",
+        "prts_mcp.data.artwork_local.resolve_char_id",
         lambda name: "char_002_amiya" if name == "阿米娅" else None,
     )
     monkeypatch.setattr(
-        "prts_mcp.tools_artwork.load_char_skins",
+        "prts_mcp.data.artwork_local.load_char_skins",
         lambda: {"char_002_amiya@winter#1": {"displaySkin": {"skinName": "报童"}}},
     )
     return gen
@@ -280,7 +281,7 @@ def test_get_rejects_artwork_owned_by_another_operator(mock_images):
 
 
 def test_mediawiki_get_rejects_mismatched_filename_before_network(monkeypatch):
-    import prts_mcp.tools_artwork as artwork
+    import prts_mcp.data.artwork_mediawiki as artwork_mediawiki
     from prts_mcp.config import Config
 
     monkeypatch.setenv("LOCAL_IMAGE", "false")
@@ -288,12 +289,12 @@ def test_mediawiki_get_rejects_mismatched_filename_before_network(monkeypatch):
     async def unexpected_imageinfo(*_args, **_kwargs):
         raise AssertionError("ownership validation must run before imageinfo")
 
-    monkeypatch.setattr(artwork, "_get_imageinfo", unexpected_imageinfo)
-    result = asyncio.run(_do_get_mediawiki(
+    monkeypatch.setattr(artwork_mediawiki, "get_imageinfo", unexpected_imageinfo)
+    outcome = asyncio.run(get_artwork_mediawiki(
         "阿米娅", "立绘_斯卡蒂_2.png", "large", Config.load(),
     ))
-    assert "不属于" in result.content[0].text
-    assert not any(c.type == "image" for c in result.content)
+    assert isinstance(outcome, str)
+    assert "不属于" in outcome
 
 
 def test_get_unavailable_variant(mock_images):
