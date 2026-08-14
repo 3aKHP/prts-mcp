@@ -10,6 +10,7 @@ import {
   registryStats,
   excelStore,
   levelsStore,
+  __unregisterDatasetForTesting,
   type DatasetSpec,
 } from "../src/data/datasetAccess.ts";
 import { mValue } from "../src/data/gamedataAttrs.ts";
@@ -39,25 +40,44 @@ function makeSpec(name: string, load: () => unknown, onError?: "cacheFailure" | 
 }
 
 test("registry: re-registration replaces and keeps position", () => {
-  const first = defineDataset(makeSpec("test_registry_domain", () => 1));
-  assert.equal(datasetRegistry().get("test_registry_domain"), first);
-  const names = [...datasetRegistry().keys()];
-  const position = names.indexOf("test_registry_domain");
-  const second = defineDataset(makeSpec("test_registry_domain", () => 2));
-  assert.equal(datasetRegistry().get("test_registry_domain"), second);
-  assert.equal([...datasetRegistry().keys()].indexOf("test_registry_domain"), position);
+  try {
+    const first = defineDataset(makeSpec("test_registry_domain", () => 1));
+    assert.equal(datasetRegistry().get("test_registry_domain"), first);
+    const names = [...datasetRegistry().keys()];
+    const position = names.indexOf("test_registry_domain");
+    const second = defineDataset(makeSpec("test_registry_domain", () => 2));
+    assert.equal(datasetRegistry().get("test_registry_domain"), second);
+    assert.equal([...datasetRegistry().keys()].indexOf("test_registry_domain"), position);
+  } finally {
+    __unregisterDatasetForTesting("test_registry_domain");
+  }
+});
+
+test("unknown onError mode is rejected at definition time", () => {
+  assert.throws(
+    () => defineDataset({
+      name: "test_bad_mode_domain",
+      loaders: { value: { load: () => 1, onError: "empt" as never } },
+    }),
+    /unknown onError mode/,
+  );
+  assert.equal(datasetRegistry().has("test_bad_mode_domain"), false);
 });
 
 test("registry: registryStats reflects replacement", () => {
-  defineDataset({
-    name: "test_stats_domain",
-    loaders: { value: { load: (): Record<string, number> => ({ a: 1, b: 2 }) } },
-  });
-  const access = datasetRegistry().get("test_stats_domain")!;
-  access.loader("value")();
-  assert.deepEqual(registryStats()["test_stats_domain"].value, {
-    loaded: true, count: 2, hits: 0, misses: 1, clears: 0,
-  });
+  try {
+    defineDataset({
+      name: "test_stats_domain",
+      loaders: { value: { load: (): Record<string, number> => ({ a: 1, b: 2 }) } },
+    });
+    const access = datasetRegistry().get("test_stats_domain")!;
+    access.loader("value")();
+    assert.deepEqual(registryStats()["test_stats_domain"].value, {
+      loaded: true, count: 2, hits: 0, misses: 1, clears: 0,
+    });
+  } finally {
+    __unregisterDatasetForTesting("test_stats_domain");
+  }
 });
 
 test("onError throw retries after failure (data appears mid-process)", async () => {

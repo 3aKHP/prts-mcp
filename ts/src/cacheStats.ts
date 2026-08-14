@@ -43,13 +43,21 @@ const DOMAIN_ORDER = [
 export function getCacheStats(): CacheStats {
   const registry = datasetRegistry();
   const out: CacheStats = {};
+  // Fail loudly on an unregistered domain (mirrors PY's KeyError): a silently
+  // missing key would hide a dropped registration side-effect import.
   for (const name of DOMAIN_ORDER) {
     const access = registry.get(name);
-    if (access !== undefined) out[name] = access.stats();
+    if (access === undefined) {
+      throw new Error(`dataset ${name} not registered in the dataset registry`);
+    }
+    out[name] = access.stats();
   }
   out["story_search"] = getStorySearchCacheStats();
   const images = registry.get("images");
-  if (images !== undefined) out["images"] = images.stats();
+  if (images === undefined) {
+    throw new Error("dataset images not registered in the dataset registry");
+  }
+  out["images"] = images.stats();
   out["artwork_mediawiki"] = getArtworkMediawikiCacheStats();
   return out;
 }

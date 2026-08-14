@@ -28,13 +28,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from functools import wraps
 from types import MappingProxyType
-from typing import Any, Callable, Mapping
+from typing import Any, Callable, Literal, Mapping
 
 from prts_mcp.cache_stats import activation_aware_cache, cache_stat
 from prts_mcp.config import Config
 from prts_mcp.data.stores import DirectoryStore
 
-OnErrorMode = str  # "throw" | "cacheFailure" | "null" | "empty"
+OnErrorMode = Literal["throw", "cacheFailure", "null", "empty"]
+_VALID_ON_ERROR: tuple[str, ...] = ("throw", "cacheFailure", "null", "empty")
 
 
 @dataclass(frozen=True)
@@ -55,6 +56,12 @@ class LoaderSpec:
     load: Callable[[], Any]
     count: Callable[[Any], int] | None = None
     on_error: OnErrorMode = "throw"
+
+    def __post_init__(self) -> None:
+        if self.on_error not in _VALID_ON_ERROR:
+            raise ValueError(
+                f"unknown on_error mode {self.on_error!r}; expected one of {_VALID_ON_ERROR}"
+            )
 
 
 @dataclass(frozen=True)
@@ -99,7 +106,13 @@ class DatasetAccess:
                     raise
                 if loader.on_error == "null":
                     return None
-                return {}
+                if loader.on_error == "empty":
+                    return {}
+                # Defensive: __post_init__ already rejects unknown modes, but
+                # never treat a misspelled mode as "empty" (silent swallow).
+                raise RuntimeError(
+                    f"unknown on_error mode {loader.on_error!r}"
+                ) from exc
 
         wrapped = activation_aware_cache(maxsize=1)(guarded)
         if loader.on_error == "cacheFailure":

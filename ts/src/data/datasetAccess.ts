@@ -27,6 +27,8 @@ import type { CacheStat } from "../cacheStats.js";
 
 export type OnErrorMode = "throw" | "cacheFailure" | "null" | "empty";
 
+const ON_ERROR_MODES: readonly string[] = ["throw", "cacheFailure", "null", "empty"];
+
 export interface LoaderSpec<T = unknown> {
   /** Zero-arg; derived loaders call other cached accessors inside. */
   load: () => T;
@@ -104,6 +106,14 @@ function countValue(spec: LoaderSpec<unknown>, entry: LoaderEntry): number {
 }
 
 function wireLoader(spec: LoaderSpec<unknown>): WiredLoader {
+  // Runtime validation mirrors PY's LoaderSpec.__post_init__: the type system
+  // cannot see through `as OnErrorMode` casts, and an unknown mode must fail
+  // at definition time — never degrade to a swallow-on-error behavior.
+  if (spec.onError !== undefined && !ON_ERROR_MODES.includes(spec.onError)) {
+    throw new Error(
+      `unknown onError mode ${String(spec.onError)}; expected one of ${ON_ERROR_MODES.join(", ")}`,
+    );
+  }
   return { spec, entry: { status: "empty" }, metrics: new CacheMetrics() };
 }
 
@@ -207,4 +217,9 @@ export function levelsStore(): DirectoryStore {
   const lp = loadConfig().effectiveLevelsPath;
   if (lp === null) throw new Error("effectiveLevelsPath is null — levels data may be unsynced");
   return new DirectoryStore(`${lp}/zh_CN/gamedata/levels`);
+}
+
+/** Test-only: remove a dataset from the registry (mirrors activation's __reset*ForTesting). */
+export function __unregisterDatasetForTesting(name: string): void {
+  REGISTRY.delete(name);
 }

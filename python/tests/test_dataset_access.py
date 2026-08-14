@@ -29,6 +29,22 @@ def _define(name: str, **loader_kwargs) -> object:
     return define_dataset(DatasetSpec(name=name, loaders={"value": LoaderSpec(**loader_kwargs)}))
 
 
+@pytest.fixture(autouse=True)
+def _clean_registry():
+    """Remove test-registered domains so registry-wide helpers stay clean."""
+    import prts_mcp.data.dataset_access as _da
+
+    before = set(_da._REGISTRY)
+    yield
+    for name in set(_da._REGISTRY) - before:
+        _da._REGISTRY.pop(name, None)
+
+
+def test_unknown_on_error_mode_is_rejected():
+    with pytest.raises(ValueError, match="unknown on_error mode"):
+        LoaderSpec(load=lambda: 1, on_error="empt")  # type: ignore[arg-type]
+
+
 class TestRegistry:
     def test_re_registration_replaces_and_keeps_position(self):
         first = _define("test_registry_domain", load=lambda: 1)
