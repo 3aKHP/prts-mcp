@@ -95,10 +95,11 @@ async function downloadSmall(url: string, timeoutMs = 30_000): Promise<Buffer | 
   }
 }
 
-// TS uses a single total deadline (AbortSignal.timeout) whereas Python's
-// httpx.stream uses a per-socket timeout; 30 min covers the largest
-// ORIGINAL_IMAGE shard (~3.6 GB) on slow links. A per-chunk AbortSignal
-// refresh would be ideal but needs a custom read loop.
+// Both implementations use a 30-min total deadline per mirror attempt (here
+// via AbortSignal.timeout, in Python via a time.monotonic() check inside the
+// chunk loop); it covers the largest ORIGINAL_IMAGE shard (~3.6 GB) on slow
+// links. A per-chunk AbortSignal refresh would be ideal but needs a custom
+// read loop.
 async function downloadLarge(url: string, dest: string, timeoutMs = 1_800_000): Promise<void> {
   const tmp = join(
     dirname(dest),
