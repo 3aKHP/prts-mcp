@@ -10,9 +10,9 @@ import {
   charIdOf,
   getArtworkLocal,
   listArtworksLocal,
-  normalizedArtworkFormName,
   resolveArtworkCharId,
 } from "../src/data/artworkLocal.ts";
+import { normalizedArtworkFormName } from "../src/data/artworkFormat.ts";
 
 interface Fixture {
   root: string;

@@ -12,7 +12,6 @@ import { createHash, randomUUID } from "node:crypto";
 import {
   mkdir,
   lstat,
-  readdir,
   rename,
   rm,
   unlink,

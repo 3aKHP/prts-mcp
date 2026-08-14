@@ -9,9 +9,8 @@
  * "only save when excel/levels shas match". data/sync re-exports these.
  */
 import { realpathSync } from "node:fs";
-import { randomUUID } from "node:crypto";
-import { lstat, mkdir, readFile, rename, rm, utimes, writeFile } from "node:fs/promises";
-import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { lstat, mkdir, readFile, rename, rm, utimes } from "node:fs/promises";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 
 import { type ReleaseArchiveSpec, type RepoSpec, type SyncResult, errorMessage } from "./types.js";
 import { atomicWriteJson } from "./primitives.js";

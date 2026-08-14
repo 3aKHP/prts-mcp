@@ -30,7 +30,7 @@ config.py/ts          ←  路径解析、环境变量
 
 **允许的依赖方向**：`server → api, data, sync, config` / `data → stores, utils, config` / `sync → stores, utils, config` / `api → utils`。 **禁止**：`stores` 依赖 `data`；`utils` 依赖 `api` 或 `data`；`config` 依赖任何其他模块；`data` 的数据读取模块直接发 HTTP（数据同步 HTTP 归 `sync/`、PRTS Wiki HTTP 归 `api/`）。
 
-> 两个注定的例外：① `data/artwork_mediawiki` 是 wiki-backed 数据源，允许**经 `api/` 客户端**取 PRTS 数据（自身仍不发裸 HTTP、不 import sync）；② `data/artwork_local` 对本地图片代际目录的 PNG 直读豁免 store 抽象——`stores` 是 JSON 文本契约，代际目录是绝对宿主路径而非 store root 相对模型，且读取自带 realpath 遏制守卫（#169）。
+> 三个注定的例外：① `data/artwork_mediawiki` 是 wiki-backed 数据源，允许**经 `api/` 客户端**取 PRTS 数据（自身仍不发裸 HTTP、不 import sync）；② `data/artwork_local` 对本地图片代际目录的 PNG 直读豁免 store 抽象——`stores` 是 JSON 文本契约，代际目录是绝对宿主路径而非 store root 相对模型，且读取自带 realpath 遏制守卫（#169）；③ `sync/images_sync` 消费 `data/images` 的 AKDP index 契约（`parse_index`/`ImagesIndex`/`SCHEMA_VERSION`）——index 是 sync 写出、data 读入的对接契约，schema 归 data 域持有，反向搬迁会制造更糟的 `data → sync` 边。
 
 ### 抽象层
 

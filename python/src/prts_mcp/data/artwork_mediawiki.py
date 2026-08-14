@@ -23,8 +23,12 @@ from prts_mcp.api.prts_wiki import (
     list_allimages,
 )
 from prts_mcp.config import Config
-from prts_mcp.data.artwork_format import GetOutcome, ListOutcome, render_list
-from prts_mcp.data.artwork_local import normalized_artwork_form_name
+from prts_mcp.data.artwork_format import (
+    GetOutcome,
+    ListOutcome,
+    normalized_artwork_form_name,
+    render_list,
+)
 from prts_mcp.data.images import (
     BASE_ILLUST_LABELS,
     DEFAULT_VARIANT,

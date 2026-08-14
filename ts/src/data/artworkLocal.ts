@@ -22,7 +22,12 @@ import {
   type ImagesIndex,
   type VariantName,
 } from "./images.js";
-import { renderList, type GetOutcome, type ListOutcome } from "./artworkFormat.js";
+import {
+  normalizedArtworkFormName,
+  renderList,
+  type GetOutcome,
+  type ListOutcome,
+} from "./artworkFormat.js";
 
 // These IDs represent forms that deliberately share the base character's
 // display name in the game table. Keep this resolver local to artwork: other
@@ -31,10 +36,6 @@ export const ARTWORK_FORM_CHAR_IDS: Readonly<Record<string, string>> = {
   "阿米娅(近卫)": "char_1001_amiya2",
   "阿米娅(医疗)": "char_1037_amiya3",
 };
-
-export function normalizedArtworkFormName(operatorName: string): string {
-  return operatorName.trim().replaceAll("（", "(").replaceAll("）", ")");
-}
 
 export function resolveArtworkCharId(operatorName: string): string | null {
   return ARTWORK_FORM_CHAR_IDS[normalizedArtworkFormName(operatorName)] ?? resolveCharId(operatorName);

@@ -16,7 +16,12 @@ import json
 from pathlib import Path
 from typing import Mapping
 
-from prts_mcp.data.artwork_format import GetOutcome, ListOutcome, render_list
+from prts_mcp.data.artwork_format import (
+    GetOutcome,
+    ListOutcome,
+    normalized_artwork_form_name,
+    render_list,
+)
 from prts_mcp.data.images import (
     DEFAULT_VARIANT,
     build_artwork_label,
@@ -32,11 +37,6 @@ ARTWORK_FORM_CHAR_IDS: Mapping[str, str] = {
     "阿米娅(近卫)": "char_1001_amiya2",
     "阿米娅(医疗)": "char_1037_amiya3",
 }
-
-
-def normalized_artwork_form_name(operator_name: str) -> str:
-    """Normalize only the punctuation accepted by artwork form aliases."""
-    return operator_name.strip().replace("（", "(").replace("）", ")")
 
 
 def resolve_artwork_char_id(operator_name: str) -> str | None:

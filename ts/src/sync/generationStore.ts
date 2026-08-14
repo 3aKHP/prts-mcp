@@ -74,6 +74,6 @@ export function versionHash(version: string): string {
   return createHash("sha256").update(version).digest("hex").slice(0, 16);
 }
 
-export async function pruneGenerations(releasesDir: string, keep: string): Promise<void> {
-  await pruneOldTrees(releasesDir, new Set([keep]), RETENTION_MS, { skipHidden: true });
+export async function pruneGenerations(treeRoot: string, keep: string): Promise<void> {
+  await pruneOldTrees(treeRoot, new Set([keep]), RETENTION_MS, { skipHidden: true });
 }

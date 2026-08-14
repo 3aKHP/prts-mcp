@@ -29,6 +29,11 @@ class GetOutcome(NamedTuple):
     summary: str
 
 
+def normalized_artwork_form_name(operator_name: str) -> str:
+    """Normalize only the punctuation accepted by artwork form aliases."""
+    return operator_name.strip().replace("（", "(").replace("）", ")")
+
+
 def render_list(operator_name: str, artworks: list[dict]) -> str:
     """Render the shared artwork list markdown (used by both backends)."""
     header = f"# 「{operator_name}」的立绘（共 {len(artworks)} 张）\n"

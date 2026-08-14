@@ -65,10 +65,10 @@ def version_hash(version: str) -> str:
     return hashlib.sha256(version.encode("utf-8")).hexdigest()[:16]
 
 
-def prune_generations(releases_dir: Path, keep: Path) -> None:
+def prune_generations(tree_root: Path, keep: Path) -> None:
     """Delete superseded generation trees older than the retention window.
 
     Hidden (dot-prefixed) entries are skipped so a concurrent sync's staging
     dir is never pruned mid-flight.
     """
-    prune_old_trees(releases_dir, {keep}, _RETENTION_SECONDS, skip_hidden=True)
+    prune_old_trees(tree_root, {keep}, _RETENTION_SECONDS, skip_hidden=True)

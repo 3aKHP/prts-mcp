@@ -31,6 +31,10 @@ export interface GetOutcome {
   summary: string;
 }
 
+export function normalizedArtworkFormName(operatorName: string): string {
+  return operatorName.trim().replaceAll("（", "(").replaceAll("）", ")");
+}
+
 /** Render the shared artwork list markdown (used by both backends). */
 export function renderList(operatorName: string, artworks: ArtworkListItem[]): string {
   const header = `# 「${operatorName}」的立绘（共 ${artworks.length} 张）\n`;

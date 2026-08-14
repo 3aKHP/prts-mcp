@@ -19,8 +19,12 @@ import {
   getTemplateData,
   listAllimages,
 } from "../api/prtsWiki.js";
-import { normalizedArtworkFormName } from "./artworkLocal.js";
-import { renderList, type GetOutcome, type ListOutcome } from "./artworkFormat.js";
+import {
+  normalizedArtworkFormName,
+  renderList,
+  type GetOutcome,
+  type ListOutcome,
+} from "./artworkFormat.js";
 
 const IMAGE_CACHE_MAX_BYTES = 256 * 1024 * 1024; // 256 MiB (#85 §4.2)
 const _imageCache = new Map<string, Buffer>();
