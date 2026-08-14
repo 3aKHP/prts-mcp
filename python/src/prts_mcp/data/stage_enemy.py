@@ -11,7 +11,11 @@ from prts_mcp.data.dataset_access import (
     excel_store,
     levels_store,
 )
-from prts_mcp.data.enemy_database import normalize_enemy_database
+from prts_mcp.data.enemy import (
+    build_enemy_name_to_id,
+    load_enemy_handbook,
+    load_enemy_levels,
+)
 from prts_mcp.data.enemy_stats import (
     format_stats as _format_stats,
     overwritten_enemy_name as _overwritten_enemy_name,
@@ -24,9 +28,7 @@ from prts_mcp.data.level_parser import (
     spawn_counts as _spawn_counts,
 )
 from prts_mcp.data.messages import levels_missing_message, validate_bounds
-
-
-_DATABASE_FILE = "enemydata/enemy_database.json"
+from prts_mcp.data.stage import load_stage_table
 
 
 def _get_config() -> Config:
@@ -44,32 +46,12 @@ def clear_stage_enemy_caches() -> None:
 register_activation_listener(clear_stage_enemy_caches)
 
 
-def _load_stage_table_impl() -> dict[str, dict[str, Any]]:
-    raw = excel_store().read_json("stage_table.json")
-    stages = raw.get("stages") if isinstance(raw, dict) else None
-    if not isinstance(stages, dict):
-        raise TypeError("stage_table.json missing 'stages' dict")
-    return stages
-
-
-def _load_enemy_handbook_impl() -> dict[str, dict[str, Any]]:
-    raw = excel_store().read_json("enemy_handbook_table.json")
-    data = raw.get("enemyData") if isinstance(raw, dict) else None
+def _load_enemy_handbook() -> dict[str, dict[str, Any]]:
+    """Inner ``enemyData`` view over enemy.py's cached whole-JSON handbook."""
+    data = load_enemy_handbook().get("enemyData")
     if not isinstance(data, dict):
         raise TypeError("enemy_handbook_table.json missing 'enemyData' dict")
     return data
-
-
-def _load_enemy_database_impl() -> dict[str, dict[int, dict[str, Any]]]:
-    return normalize_enemy_database(levels_store().read_json(_DATABASE_FILE))
-
-
-def _build_enemy_name_to_id_impl() -> dict[str, str]:
-    return {
-        str(info["name"]): enemy_id
-        for enemy_id, info in _load_enemy_handbook().items()
-        if info.get("name")
-    }
 
 
 def _load_level_json(stage: dict[str, Any]) -> dict[str, Any] | str:
@@ -106,7 +88,7 @@ def build_stage_enemies(stage_id: str) -> dict | str:
     if not _get_config().has_levels_data:
         return _missing_levels_message()
     try:
-        stages = _load_stage_table()
+        stages = load_stage_table()
         stage = stages.get(stage_id)
         if not stage:
             return f"未找到关卡：{stage_id!r}。"
@@ -133,7 +115,7 @@ def build_stage_enemies(stage_id: str) -> dict | str:
         ref = refs.get(enemy_id, {})
         level_no = parse_level(ref.get("level", 0))
         overwritten = ref.get("overwrittenData")
-        data = _stage_specific_enemy_data(_load_enemy_database(), enemy_id, level_no, overwritten)
+        data = _stage_specific_enemy_data(load_enemy_levels(), enemy_id, level_no, overwritten)
         name = _overwritten_enemy_name(overwritten) or _handbook_name(enemy_id)
         enemy_entries.append({
             "enemy_id": enemy_id,
@@ -188,7 +170,7 @@ def _find_enemy_appearances(enemy_id: str) -> list[tuple[str, int]]:
 def _enemy_appearance_index_impl() -> dict[str, list[tuple[str, int]]]:
     appearances: dict[str, list[tuple[str, int]]] = {}
     store = levels_store()
-    for stage_id, stage in _load_stage_table().items():
+    for stage_id, stage in load_stage_table().items():
         level_id = stage.get("levelId")
         if not level_id:
             continue
@@ -206,10 +188,6 @@ def _enemy_appearance_index_impl() -> dict[str, list[tuple[str, int]]]:
 _access = define_dataset(DatasetSpec(
     name="stage_enemy",
     loaders={
-        "stage_table": LoaderSpec(load=_load_stage_table_impl),
-        "enemy_handbook": LoaderSpec(load=_load_enemy_handbook_impl),
-        "enemy_database": LoaderSpec(load=_load_enemy_database_impl),
-        "enemy_name_to_id": LoaderSpec(load=_build_enemy_name_to_id_impl),
         "enemy_appearance_index": LoaderSpec(load=_enemy_appearance_index_impl),
     },
     store=excel_store,
@@ -217,10 +195,6 @@ _access = define_dataset(DatasetSpec(
     missing_message=levels_missing_message("关卡战斗"),
 ))
 
-_load_stage_table = _access.cached("stage_table")
-_load_enemy_handbook = _access.cached("enemy_handbook")
-_load_enemy_database = _access.cached("enemy_database")
-_build_enemy_name_to_id = _access.cached("enemy_name_to_id")
 _enemy_appearance_index = _access.cached("enemy_appearance_index")
 
 
@@ -243,11 +217,11 @@ def build_enemy_appearances(name: str, limit: int = 50, offset: int = 0) -> dict
         return _missing_levels_message()
 
     try:
-        enemy_id = _build_enemy_name_to_id().get(name) or (name if name in _load_enemy_handbook() else None)
+        enemy_id = build_enemy_name_to_id().get(name) or (name if name in _load_enemy_handbook() else None)
         if enemy_id is None:
             return f"未找到敌人：{name!r}。"
         appearances = _find_enemy_appearances(enemy_id)
-        stages = _load_stage_table()
+        stages = load_stage_table()
     except Exception as exc:  # noqa: BLE001
         return f"读取敌人出场关卡失败：{exc}"
 
@@ -328,10 +302,10 @@ def get_enemy_stage_info(name: str, stage_id: str) -> str:
     if not _get_config().has_levels_data:
         return _missing_levels_message()
     try:
-        enemy_id = _build_enemy_name_to_id().get(name) or (name if name in _load_enemy_handbook() else None)
+        enemy_id = build_enemy_name_to_id().get(name) or (name if name in _load_enemy_handbook() else None)
         if enemy_id is None:
             return f"未找到敌人：{name!r}。"
-        stages = _load_stage_table()
+        stages = load_stage_table()
         stage = stages.get(stage_id)
         if not stage:
             return f"未找到关卡：{stage_id!r}。"
@@ -350,7 +324,7 @@ def get_enemy_stage_info(name: str, stage_id: str) -> str:
         return f"关卡 {stage_id!r} 缺少 {enemy_id} 的 enemyDbRefs。"
 
     level_no = parse_level(ref.get("level", 0))
-    data = _stage_specific_enemy_data(_load_enemy_database(), enemy_id, level_no, ref.get("overwrittenData"))
+    data = _stage_specific_enemy_data(load_enemy_levels(), enemy_id, level_no, ref.get("overwrittenData"))
     enemy_name = _overwritten_enemy_name(ref.get("overwrittenData")) or _handbook_name(enemy_id)
     lines = [f"# {enemy_name}（{enemy_id}）@ {_stage_label(stage, stage_id)}"]
     lines.append(f"- **出场数量**：{counts[enemy_id]}")

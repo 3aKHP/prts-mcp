@@ -13,7 +13,7 @@ from prts_mcp.data.dataset_access import (
     excel_store,
     levels_store,
 )
-from prts_mcp.data.enemy_database import normalize_enemy_database
+from prts_mcp.data.enemy_database import level0_index, normalize_enemy_database
 from prts_mcp.data.enemy_render import (
     render_handbook_card,
     render_stats_block,
@@ -64,33 +64,28 @@ def _load_enemy_handbook_impl() -> dict[str, Any]:
     return store.read_json(_HANDBOOK_FILE)
 
 
-def _load_enemy_database_impl() -> dict[str, Any] | None:
-    """Load enemy_database.json. Returns None when the file is absent.
+def _load_enemy_levels_impl() -> dict[str, dict[int, dict[str, Any]]] | None:
+    """Load the raw normalized enemy_database levels map (None if absent).
 
     Caching the None result is fine because the sync hook in server.py calls
     clear_enemy_caches() after a successful sync, invalidating both the None
-    and the populated cache.
+    and the populated cache. The level-0 projection (level0_index) is applied
+    at use sites — stage_enemy consumes the raw map directly.
     """
     if not _has_database():
         return None
     store = levels_store()
-    levels = normalize_enemy_database(store.read_json(_DATABASE_FILE))
-    index = {
-        enemy_id: level_map.get(0) or next(iter(level_map.values()))
-        for enemy_id, level_map in levels.items()
-        if level_map
-    }
-    return {"_index": index}
+    return normalize_enemy_database(store.read_json(_DATABASE_FILE))
 
 
 def _build_enemy_name_to_id_impl() -> dict[str, str]:
-    raw = _load_enemy_handbook()
+    raw = load_enemy_handbook()
     ed = raw.get("enemyData", {})
     return {info["name"]: eid for eid, info in ed.items() if info.get("name")}
 
 
 def _enemy_search_records_impl() -> tuple[_EnemySearchRecord, ...]:
-    raw = _load_enemy_handbook()
+    raw = load_enemy_handbook()
     ed = raw.get("enemyData", {})
     records: list[_EnemySearchRecord] = []
     for _eid, info in ed.items():
@@ -118,8 +113,10 @@ _access = define_dataset(DatasetSpec(
             count=lambda r: len(r.get("enemyData") or {}),
         ),
         "enemy_database": LoaderSpec(
-            load=_load_enemy_database_impl,
-            count=lambda r: len(r.get("_index") or {}) if r else 0,
+            load=_load_enemy_levels_impl,
+            # len(levels) == len(level0_index(levels)) always: normalize only
+            # registers non-empty level maps.
+            count=lambda r: len(r) if r else 0,
         ),
         "enemy_name_to_id": LoaderSpec(load=_build_enemy_name_to_id_impl),
         "enemy_search_records": LoaderSpec(load=_enemy_search_records_impl),
@@ -129,9 +126,9 @@ _access = define_dataset(DatasetSpec(
     missing_message=excel_missing_message("敌人图鉴"),
 ))
 
-_load_enemy_handbook = _access.cached("enemy_handbook")
-_load_enemy_database = _access.cached("enemy_database")
-_build_enemy_name_to_id = _access.cached("enemy_name_to_id")
+load_enemy_handbook = _access.cached("enemy_handbook")
+load_enemy_levels = _access.cached("enemy_database")
+build_enemy_name_to_id = _access.cached("enemy_name_to_id")
 _enemy_search_records = _access.cached("enemy_search_records")
 
 
@@ -147,7 +144,7 @@ def _missing_data_message() -> str:
 
 
 def _resolve_enemy_id(name: str) -> str | None:
-    mapping = _build_enemy_name_to_id()
+    mapping = build_enemy_name_to_id()
     return mapping.get(name)
 
 
@@ -206,7 +203,7 @@ def build_enemies_listing(
         return message
 
     try:
-        raw = _load_enemy_handbook()
+        raw = load_enemy_handbook()
     except FileNotFoundError as exc:
         return str(exc)
 
@@ -346,7 +343,7 @@ def build_enemy_info(name: str) -> dict | str:
         return f"未找到敌人 '{name}'。请使用游戏内名称。"
 
     try:
-        raw = _load_enemy_handbook()
+        raw = load_enemy_handbook()
     except FileNotFoundError as exc:
         return str(exc)
 
@@ -377,8 +374,8 @@ def build_enemy_info(name: str) -> dict | str:
     }
 
     # Combat stats from enemy_database.json
-    db = _load_enemy_database()
-    db_entry = db["_index"].get(eid) if db else None
+    levels = load_enemy_levels()
+    db_entry = level0_index(levels).get(eid) if levels else None
     if db_entry:
         payload["stats"] = extract_enemy_stats(db_entry)
 

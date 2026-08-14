@@ -7,7 +7,7 @@
 import { registerActivationListener } from "../activation.js";
 import { loadConfig } from "../config.js";
 import type { CacheStat } from "../cacheStats.js";
-import { normalizeEnemyDatabase } from "./enemyDatabase.js";
+import { level0Index, normalizeEnemyDatabase } from "./enemyDatabase.js";
 import { defineDataset, excelStore, levelsStore, type DatasetAccess } from "./datasetAccess.js";
 import {
   extractEnemyStats,
@@ -161,16 +161,12 @@ function getHandbookImpl(): EnemyHandbook {
   return store.readJson<EnemyHandbook>(HANDBOOK_FILE);
 }
 
-function getDbIndexImpl(): Record<string, EnemyDbEntry> {
+function getDbLevelsImpl(): Record<string, Record<number, EnemyDbEntry>> {
+  // Raw normalized levels map ({} if absent); the level-0 projection
+  // (level0Index) is applied at use sites — stageEnemy consumes the raw map.
   if (!hasDatabase()) return {};
   const store = levelsStore();
-  const levels = normalizeEnemyDatabase<EnemyDbEntry>(store.readJson(DATABASE_FILE));
-  const index: Record<string, EnemyDbEntry> = {};
-  for (const [enemyId, levelMap] of Object.entries(levels)) {
-    const first = levelMap[0] ?? Object.values(levelMap)[0];
-    if (first) index[enemyId] = first;
-  }
-  return index;
+  return normalizeEnemyDatabase<EnemyDbEntry>(store.readJson(DATABASE_FILE));
 }
 
 function buildNameToEnemyIdImpl(): Map<string, string> {
@@ -206,7 +202,7 @@ const enemyAccess: DatasetAccess = defineDataset({
       load: getHandbookImpl,
       count: (r) => Object.keys((r as EnemyHandbook).enemyData ?? {}).length,
     },
-    enemy_database: { load: getDbIndexImpl },
+    enemy_database: { load: getDbLevelsImpl },
     enemy_name_to_id: {
       load: buildNameToEnemyIdImpl,
       count: (m) => (m as Map<string, string>).size,
@@ -218,9 +214,9 @@ const enemyAccess: DatasetAccess = defineDataset({
   missingMessage: excelMissingMessage("敌人图鉴"),
 });
 
-const getHandbook = enemyAccess.loader<EnemyHandbook>("enemy_handbook");
-const getDbIndex = enemyAccess.loader<Record<string, EnemyDbEntry>>("enemy_database");
-const buildNameToEnemyId = enemyAccess.loader<Map<string, string>>("enemy_name_to_id");
+export const getHandbook = enemyAccess.loader<EnemyHandbook>("enemy_handbook");
+export const getDbLevels = enemyAccess.loader<Record<string, Record<number, EnemyDbEntry>>>("enemy_database");
+export const buildNameToEnemyId = enemyAccess.loader<Map<string, string>>("enemy_name_to_id");
 const getEnemySearchRecords = enemyAccess.loader<EnemySearchRecord[]>("enemy_search_records");
 
 registerActivationListener(clearEnemyCaches);
@@ -396,8 +392,7 @@ export function buildEnemyInfo(name: string): EnemyInfoPayload | string {
     stats: null,
   };
 
-  const dbIndex = getDbIndex();
-  const dbEntry = dbIndex[eid];
+  const dbEntry = level0Index(getDbLevels())[eid];
   if (dbEntry) payload.stats = extractEnemyStats(dbEntry);
 
   return payload;

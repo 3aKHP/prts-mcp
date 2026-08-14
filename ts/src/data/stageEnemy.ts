@@ -7,7 +7,11 @@
 import { registerActivationListener } from "../activation.js";
 import { hasLevelsData, loadConfig } from "../config.js";
 import type { CacheStat } from "../cacheStats.js";
-import { normalizeEnemyDatabase } from "./enemyDatabase.js";
+import {
+  buildNameToEnemyId,
+  getDbLevels,
+  getHandbook,
+} from "./enemy.js";
 import {
   defineDataset,
   excelStore,
@@ -28,8 +32,7 @@ import {
   type LevelJson,
 } from "./levelParser.js";
 import { levelsMissingMessage, validateBounds } from "./messages.js";
-
-const DATABASE_FILE = "enemydata/enemy_database.json";
+import { getStageTable } from "./stage.js";
 
 interface StageEntry {
   stageId?: string;
@@ -90,36 +93,6 @@ function missingLevelsMessage(): string {
   return stageEnemyAccess.missingMessage();
 }
 
-function loadStageTableImpl(): Record<string, StageEntry> {
-  const raw = excelStore().readJson<{ stages?: Record<string, StageEntry> }>("stage_table.json");
-  if (!raw || typeof raw !== "object" || !raw.stages) {
-    throw new Error("stage_table.json missing 'stages' dict");
-  }
-  return raw.stages;
-}
-
-function loadEnemyHandbookImpl(): Record<string, EnemyHandbookEntry> {
-  const raw = excelStore().readJson<{ enemyData?: Record<string, EnemyHandbookEntry> }>("enemy_handbook_table.json");
-  if (!raw || typeof raw !== "object" || !raw.enemyData) {
-    throw new Error("enemy_handbook_table.json missing 'enemyData' dict");
-  }
-  return raw.enemyData;
-}
-
-function loadEnemyDatabaseImpl(): Record<string, Record<number, EnemyData>> {
-  return normalizeEnemyDatabase<EnemyData>(
-    levelsStore().readJson(DATABASE_FILE),
-  );
-}
-
-function buildNameToEnemyIdImpl(): Map<string, string> {
-  const mapping = new Map<string, string>();
-  for (const [enemyId, info] of Object.entries(loadEnemyHandbook())) {
-    if (info.name) mapping.set(info.name, enemyId);
-  }
-  return mapping;
-}
-
 function loadLevelJson(stage: StageEntry): LevelJson | string {
   const levelId = stage.levelId;
   if (!levelId) return "该关卡没有 levelId，可能是非战斗/特殊关卡。";
@@ -129,6 +102,15 @@ function loadLevelJson(stage: StageEntry): LevelJson | string {
   const raw = store.readJson<LevelJson>(path);
   if (!raw || typeof raw !== "object") return `关卡战斗文件格式异常：${path}。`;
   return raw;
+}
+
+function loadEnemyHandbook(): Record<string, EnemyHandbookEntry> {
+  // Inner enemyData view over enemy.ts's cached whole-JSON handbook.
+  const data = getHandbook().enemyData;
+  if (!data || typeof data !== "object") {
+    throw new Error("enemy_handbook_table.json missing 'enemyData' dict");
+  }
+  return data;
 }
 
 function handbookName(enemyId: string): string {
@@ -158,7 +140,7 @@ export function buildStageEnemies(stageId: string): StageEnemiesPayload | string
   let counts: Map<string, number>;
   let refs: Map<string, EnemyRef>;
   try {
-    stage = loadStageTable()[stageId];
+    stage = getStageTable()[stageId];
     if (!stage) return `未找到关卡：${JSON.stringify(stageId)}。`;
     level = loadLevelJson(stage);
     if (typeof level === "string") return level;
@@ -181,7 +163,7 @@ export function buildStageEnemies(stageId: string): StageEnemiesPayload | string
   const enemies = sortedCounts(counts).map(([enemyId, count]) => {
     const ref = refs.get(enemyId);
     const levelNo = parseLevel(ref?.level);
-    const data = stageSpecificEnemyData(loadEnemyDatabase(), enemyId, levelNo, ref?.overwrittenData);
+    const data = stageSpecificEnemyData(getDbLevels(), enemyId, levelNo, ref?.overwrittenData);
     const name = overwrittenEnemyName(ref?.overwrittenData) ?? handbookName(enemyId);
     return {
       enemy_id: enemyId,
@@ -223,7 +205,7 @@ function findEnemyAppearances(enemyId: string): Array<[string, number]> {
 
 function getEnemyAppearanceIndexImpl(): Map<string, Array<[string, number]>> {
   const index = new Map<string, Array<[string, number]>>();
-  const stages = loadStageTable();
+  const stages = getStageTable();
   const store = levelsStore();
   for (const [stageId, stage] of Object.entries(stages)) {
     if (!stage.levelId) continue;
@@ -243,13 +225,6 @@ function getEnemyAppearanceIndexImpl(): Map<string, Array<[string, number]>> {
 const stageEnemyAccess: DatasetAccess = defineDataset({
   name: "stage_enemy",
   loaders: {
-    stage_table: { load: loadStageTableImpl },
-    enemy_handbook: { load: loadEnemyHandbookImpl },
-    enemy_database: { load: loadEnemyDatabaseImpl },
-    enemy_name_to_id: {
-      load: buildNameToEnemyIdImpl,
-      count: (m) => (m as Map<string, string>).size,
-    },
     enemy_appearance_index: {
       load: getEnemyAppearanceIndexImpl,
       count: (m) => (m as Map<string, Array<[string, number]>>).size,
@@ -260,10 +235,6 @@ const stageEnemyAccess: DatasetAccess = defineDataset({
   missingMessage: levelsMissingMessage("关卡战斗"),
 });
 
-const loadStageTable = stageEnemyAccess.loader<Record<string, StageEntry>>("stage_table");
-const loadEnemyHandbook = stageEnemyAccess.loader<Record<string, EnemyHandbookEntry>>("enemy_handbook");
-const loadEnemyDatabase = stageEnemyAccess.loader<Record<string, Record<number, EnemyData>>>("enemy_database");
-const buildNameToEnemyId = stageEnemyAccess.loader<Map<string, string>>("enemy_name_to_id");
 const getEnemyAppearanceIndex = stageEnemyAccess.loader<Map<string, Array<[string, number]>>>("enemy_appearance_index");
 
 registerActivationListener(clearStageEnemyCaches);
@@ -291,7 +262,7 @@ export function buildEnemyAppearances(name: string, limit = 50, offset = 0): Ene
     enemyId = resolveEnemyId(name);
     if (enemyId === null) return `未找到敌人：${JSON.stringify(name)}。`;
     appearances = findEnemyAppearances(enemyId);
-    stages = loadStageTable();
+    stages = getStageTable();
   } catch (err) {
     return `读取敌人出场关卡失败：${err instanceof Error ? err.message : String(err)}`;
   }
@@ -360,7 +331,7 @@ export function getEnemyStageInfo(name: string, stageId: string): string {
   try {
     enemyId = resolveEnemyId(name);
     if (enemyId === null) return `未找到敌人：${JSON.stringify(name)}。`;
-    stage = loadStageTable()[stageId];
+    stage = getStageTable()[stageId];
     if (!stage) return `未找到关卡：${JSON.stringify(stageId)}。`;
     level = loadLevelJson(stage);
     if (typeof level === "string") return level;
@@ -377,7 +348,7 @@ export function getEnemyStageInfo(name: string, stageId: string): string {
   if (!ref) return `关卡 ${JSON.stringify(stageId)} 缺少 ${enemyId} 的 enemyDbRefs。`;
 
   const levelNo = parseLevel(ref.level);
-  const data = stageSpecificEnemyData(loadEnemyDatabase(), enemyId, levelNo, ref.overwrittenData);
+  const data = stageSpecificEnemyData(getDbLevels(), enemyId, levelNo, ref.overwrittenData);
   const enemyName = overwrittenEnemyName(ref.overwrittenData) ?? handbookName(enemyId);
   const lines = [`# ${enemyName}（${enemyId}）@ ${stageLabel(stage, stageId)}`];
   lines.push(`- **出场数量**：${counts.get(enemyId) ?? 0}`);
