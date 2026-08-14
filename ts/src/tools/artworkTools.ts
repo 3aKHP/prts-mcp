@@ -323,19 +323,24 @@ function doGet(
   // followed by readFileSync — so both paths are realpath-resolved before
   // the check (mirrors Python's Path.resolve()).
   const pngPath = resolve(genDir, variantMeta.file);
+  let pngReal: string | null = null;
   let contained = false;
   try {
     const genReal = realpathSync(genDir);
-    const pngReal = realpathSync(pngPath);
+    pngReal = realpathSync(pngPath);
     const relCheck = relative(genReal, pngReal);
     contained = relCheck !== ".." && !relCheck.startsWith(`..${sep}`) && !isAbsolute(relCheck);
   } catch {
     contained = false;
   }
+  // Existence/stat/read operate on the resolved path — the same one the
+  // containment check verified — so a symlink swap between check and read
+  // cannot divert the read (mirrors Python, which reads the resolved path).
   if (
     !contained
-    || !existsSync(pngPath)
-    || !statSync(pngPath).isFile()
+    || pngReal === null
+    || !existsSync(pngReal)
+    || !statSync(pngReal).isFile()
   ) {
     return textResult(
       `图片文件缺失：${variantMeta.file}。同步可能不完整，请稍后重试。`,
@@ -343,7 +348,7 @@ function doGet(
   }
   let imageBytes: Buffer;
   try {
-    imageBytes = readFileSync(pngPath);
+    imageBytes = readFileSync(pngReal);
   } catch (err) {
     return textResult(
       `读取图片文件失败：${err instanceof Error ? err.message : String(err)}`,

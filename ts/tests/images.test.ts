@@ -44,6 +44,77 @@ function sampleIndex(): unknown {
   };
 }
 
+interface ArtworkFixture {
+  root: string;
+  imageRoot: string;
+  generation: string;
+}
+
+/** Builds the gamedata + images-meta + generation-dir fixture shared by the
+ * handler tests; `files` are written into the generation dir. */
+function buildArtworkFixture(
+  artworks: Record<string, unknown>,
+  files: Array<[string, string]> = [],
+): ArtworkFixture {
+  const root = mkdtempSync(join(tmpdir(), "prts-artwork-"));
+  const excel = join(root, "gamedata", "zh_CN", "gamedata", "excel");
+  const imageRoot = join(root, "images");
+  const generation = join(imageRoot, ".releases", "test");
+  mkdirSync(excel, { recursive: true });
+  mkdirSync(generation, { recursive: true });
+  for (const file of [
+    "handbook_info_table.json",
+    "charword_table.json",
+    "story_review_table.json",
+  ]) {
+    writeFileSync(join(excel, file), "{}", "utf-8");
+  }
+  writeFileSync(join(excel, "character_table.json"), JSON.stringify({
+    char_002_amiya: { name: "阿米娅" },
+  }), "utf-8");
+  writeFileSync(join(imageRoot, ".images_meta.json"), JSON.stringify({
+    generation_root: ".releases/test",
+  }), "utf-8");
+  writeFileSync(join(generation, "index.json"), JSON.stringify({
+    schemaVersion: SCHEMA_VERSION,
+    baselineVersion: "b1",
+    currentVersion: "c1",
+    shards: {},
+    artworks,
+  }), "utf-8");
+  for (const [rel, content] of files) {
+    writeFileSync(join(generation, rel), content, "utf-8");
+  }
+  return { root, imageRoot, generation };
+}
+
+/** Runs `fn` with the LOCAL_IMAGE=true artwork env pointed at the fixture,
+ * restoring env and operator caches afterwards. */
+async function withArtworkEnv<T>(fx: ArtworkFixture, fn: () => Promise<T> | T): Promise<T> {
+  const savedEnv = {
+    gamedata: process.env["GAMEDATA_PATH"],
+    imageDir: process.env["PRTS_IMAGE_DIR"],
+    localImage: process.env["LOCAL_IMAGE"],
+  };
+  process.env["GAMEDATA_PATH"] = join(fx.root, "gamedata");
+  process.env["PRTS_IMAGE_DIR"] = fx.imageRoot;
+  process.env["LOCAL_IMAGE"] = "true";
+  clearOperatorCaches();
+  try {
+    return await fn();
+  } finally {
+    for (const [key, value] of Object.entries({
+      GAMEDATA_PATH: savedEnv.gamedata,
+      PRTS_IMAGE_DIR: savedEnv.imageDir,
+      LOCAL_IMAGE: savedEnv.localImage,
+    })) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    clearOperatorCaches();
+  }
+}
+
 test("parseIndex accepts valid schema", () => {
   const idx = parseIndex(sampleIndex());
   assert.ok(idx !== null);
@@ -89,51 +160,16 @@ test("buildArtworkLabel covers base, plus, fashion and unknown shapes", () => {
 });
 
 test("operator_artwork rejects cross-operator tokens before local reads or MediaWiki requests", async () => {
-  const root = mkdtempSync(join(tmpdir(), "prts-artwork-owner-"));
-  const excel = join(root, "gamedata", "zh_CN", "gamedata", "excel");
-  const imageRoot = join(root, "images");
-  const generation = join(imageRoot, ".releases", "test");
-  mkdirSync(excel, { recursive: true });
-  mkdirSync(generation, { recursive: true });
-  for (const file of [
-    "handbook_info_table.json",
-    "charword_table.json",
-    "story_review_table.json",
-  ]) {
-    writeFileSync(join(excel, file), "{}", "utf-8");
-  }
-  writeFileSync(join(excel, "character_table.json"), JSON.stringify({
-    char_002_amiya: { name: "阿米娅" },
-  }), "utf-8");
-  writeFileSync(join(imageRoot, ".images_meta.json"), JSON.stringify({
-    generation_root: ".releases/test",
-  }), "utf-8");
-  writeFileSync(join(generation, "index.json"), JSON.stringify({
-    schemaVersion: SCHEMA_VERSION,
-    baselineVersion: "b1",
-    currentVersion: "c1",
-    shards: {},
-    artworks: {
-      "char_263_skadi#1": {
-        kind: "base",
-        shard: "chararts",
-        large: { file: "not-read.png", w: 1, h: 1, bytes: 1, sha256: "x" },
-      },
+  const fx = buildArtworkFixture({
+    "char_263_skadi#1": {
+      kind: "base",
+      shard: "chararts",
+      large: { file: "not-read.png", w: 1, h: 1, bytes: 1, sha256: "x" },
     },
-  }), "utf-8");
-
-  const savedEnv = {
-    gamedata: process.env["GAMEDATA_PATH"],
-    imageDir: process.env["PRTS_IMAGE_DIR"],
-    localImage: process.env["LOCAL_IMAGE"],
-  };
+  });
   const originalFetch = globalThis.fetch;
-  process.env["GAMEDATA_PATH"] = join(root, "gamedata");
-  process.env["PRTS_IMAGE_DIR"] = imageRoot;
-  process.env["LOCAL_IMAGE"] = "true";
-  clearOperatorCaches();
 
-  try {
+  await withArtworkEnv(fx, async () => {
     const server = new CapturingServer();
     registerArtworkTools(server as never);
     assert.ok(server.handler);
@@ -152,82 +188,38 @@ test("operator_artwork rejects cross-operator tokens before local reads or Media
       throw new Error("MediaWiki request must not be made");
     }) as typeof fetch;
     process.env["LOCAL_IMAGE"] = "false";
-    const mediawiki = await server.handler({
-      operator_name: "阿米娅",
-      action: "get",
-      artwork_id: "立绘_斯卡蒂_2.png",
-      variant: "large",
-    }) as { content: Array<{ type: string; text?: string }> };
-    assert.match(mediawiki.content[0]?.text ?? "", /不属于/);
-    assert.equal(mediawiki.content.some((block) => block.type === "image"), false);
-    assert.equal(fetched, false);
-  } finally {
-    globalThis.fetch = originalFetch;
-    for (const [key, value] of Object.entries({
-      GAMEDATA_PATH: savedEnv.gamedata,
-      PRTS_IMAGE_DIR: savedEnv.imageDir,
-      LOCAL_IMAGE: savedEnv.localImage,
-    })) {
-      if (value === undefined) delete process.env[key];
-      else process.env[key] = value;
+    try {
+      const mediawiki = await server.handler({
+        operator_name: "阿米娅",
+        action: "get",
+        artwork_id: "立绘_斯卡蒂_2.png",
+        variant: "large",
+      }) as { content: Array<{ type: string; text?: string }> };
+      assert.match(mediawiki.content[0]?.text ?? "", /不属于/);
+      assert.equal(mediawiki.content.some((block) => block.type === "image"), false);
+      assert.equal(fetched, false);
+    } finally {
+      globalThis.fetch = originalFetch;
     }
-    clearOperatorCaches();
-  }
+  });
 });
 
 test("operator_artwork local get rejects symlink escapes and serves contained files", async () => {
-  const root = mkdtempSync(join(tmpdir(), "prts-artwork-symlink-"));
-  const excel = join(root, "gamedata", "zh_CN", "gamedata", "excel");
-  const imageRoot = join(root, "images");
-  const generation = join(imageRoot, ".releases", "test");
-  mkdirSync(excel, { recursive: true });
-  mkdirSync(generation, { recursive: true });
-  for (const file of [
-    "handbook_info_table.json",
-    "charword_table.json",
-    "story_review_table.json",
-  ]) {
-    writeFileSync(join(excel, file), "{}", "utf-8");
-  }
-  writeFileSync(join(excel, "character_table.json"), JSON.stringify({
-    char_002_amiya: { name: "阿米娅" },
-  }), "utf-8");
-  writeFileSync(join(imageRoot, ".images_meta.json"), JSON.stringify({
-    generation_root: ".releases/test",
-  }), "utf-8");
-
-  const secret = join(root, "secret.png");
+  const fx = buildArtworkFixture({
+    "char_002_amiya#1": {
+      kind: "base",
+      shard: "chararts",
+      large: { file: "amiya_1.large.png", w: 1, h: 1, bytes: 1, sha256: "x" },
+      preview: { file: "escape.png", w: 1, h: 1, bytes: 1, sha256: "y" },
+    },
+  }, [["amiya_1.large.png", "png-bytes"]]);
+  const secret = join(fx.root, "secret.png");
   writeFileSync(secret, "host-secret", "utf-8");
-  writeFileSync(join(generation, "amiya_1.large.png"), "png-bytes", "utf-8");
   // The escape entry is lexically inside the generation dir but resolves
   // outside it via a symlink — the containment check must reject it.
-  symlinkSync(secret, join(generation, "escape.png"));
-  writeFileSync(join(generation, "index.json"), JSON.stringify({
-    schemaVersion: SCHEMA_VERSION,
-    baselineVersion: "b1",
-    currentVersion: "c1",
-    shards: {},
-    artworks: {
-      "char_002_amiya#1": {
-        kind: "base",
-        shard: "chararts",
-        large: { file: "amiya_1.large.png", w: 1, h: 1, bytes: 1, sha256: "x" },
-        preview: { file: "escape.png", w: 1, h: 1, bytes: 1, sha256: "y" },
-      },
-    },
-  }), "utf-8");
+  symlinkSync(secret, join(fx.generation, "escape.png"));
 
-  const savedEnv = {
-    gamedata: process.env["GAMEDATA_PATH"],
-    imageDir: process.env["PRTS_IMAGE_DIR"],
-    localImage: process.env["LOCAL_IMAGE"],
-  };
-  process.env["GAMEDATA_PATH"] = join(root, "gamedata");
-  process.env["PRTS_IMAGE_DIR"] = imageRoot;
-  process.env["LOCAL_IMAGE"] = "true";
-  clearOperatorCaches();
-
-  try {
+  await withArtworkEnv(fx, async () => {
     const server = new CapturingServer();
     registerArtworkTools(server as never);
     assert.ok(server.handler);
@@ -251,71 +243,26 @@ test("operator_artwork local get rejects symlink escapes and serves contained fi
       served.content.some((block) => block.type === "image" && block.data === Buffer.from("png-bytes").toString("base64")),
       true,
     );
-  } finally {
-    for (const [key, value] of Object.entries({
-      GAMEDATA_PATH: savedEnv.gamedata,
-      PRTS_IMAGE_DIR: savedEnv.imageDir,
-      LOCAL_IMAGE: savedEnv.localImage,
-    })) {
-      if (value === undefined) delete process.env[key];
-      else process.env[key] = value;
-    }
-    clearOperatorCaches();
-  }
+  });
 });
 
 test("operator_artwork resolves Amiya form aliases and rejects cross-form tokens", async () => {
-  const root = mkdtempSync(join(tmpdir(), "prts-artwork-amiya-forms-"));
-  const excel = join(root, "gamedata", "zh_CN", "gamedata", "excel");
-  const imageRoot = join(root, "images");
-  const generation = join(imageRoot, ".releases", "test");
-  mkdirSync(excel, { recursive: true });
-  mkdirSync(generation, { recursive: true });
-  for (const file of [
-    "handbook_info_table.json",
-    "charword_table.json",
-    "story_review_table.json",
-  ]) {
-    writeFileSync(join(excel, file), "{}", "utf-8");
-  }
   // The production character table intentionally retains only the base name;
   // the artwork-specific aliases must supply the two transformed char IDs.
-  writeFileSync(join(excel, "character_table.json"), JSON.stringify({
-    char_002_amiya: { name: "阿米娅" },
-  }), "utf-8");
-  writeFileSync(join(imageRoot, ".images_meta.json"), JSON.stringify({
-    generation_root: ".releases/test",
-  }), "utf-8");
-  writeFileSync(join(generation, "index.json"), JSON.stringify({
-    schemaVersion: SCHEMA_VERSION,
-    baselineVersion: "b1",
-    currentVersion: "c1",
-    shards: {},
-    artworks: {
-      "char_1001_amiya2#1": {
-        kind: "base",
-        shard: "chararts",
-        large: { file: "guard.png", w: 1, h: 1, bytes: 1, sha256: "guard" },
-      },
-      "char_1037_amiya3#1": {
-        kind: "base",
-        shard: "chararts",
-        large: { file: "medic.png", w: 1, h: 1, bytes: 1, sha256: "medic" },
-      },
+  const fx = buildArtworkFixture({
+    "char_1001_amiya2#1": {
+      kind: "base",
+      shard: "chararts",
+      large: { file: "guard.png", w: 1, h: 1, bytes: 1, sha256: "guard" },
     },
-  }), "utf-8");
+    "char_1037_amiya3#1": {
+      kind: "base",
+      shard: "chararts",
+      large: { file: "medic.png", w: 1, h: 1, bytes: 1, sha256: "medic" },
+    },
+  });
 
-  const savedEnv = {
-    gamedata: process.env["GAMEDATA_PATH"],
-    imageDir: process.env["PRTS_IMAGE_DIR"],
-    localImage: process.env["LOCAL_IMAGE"],
-  };
-  process.env["GAMEDATA_PATH"] = join(root, "gamedata");
-  process.env["PRTS_IMAGE_DIR"] = imageRoot;
-  process.env["LOCAL_IMAGE"] = "true";
-  clearOperatorCaches();
-
-  try {
+  await withArtworkEnv(fx, async () => {
     const server = new CapturingServer();
     registerArtworkTools(server as never);
     assert.ok(server.handler);
@@ -341,15 +288,5 @@ test("operator_artwork resolves Amiya form aliases and rejects cross-form tokens
     }) as { content: Array<{ type: string; text?: string }> };
     assert.match(crossForm.content[0]?.text ?? "", /不属于/);
     assert.equal(crossForm.content.some((block) => block.type === "image"), false);
-  } finally {
-    for (const [key, value] of Object.entries({
-      GAMEDATA_PATH: savedEnv.gamedata,
-      PRTS_IMAGE_DIR: savedEnv.imageDir,
-      LOCAL_IMAGE: savedEnv.localImage,
-    })) {
-      if (value === undefined) delete process.env[key];
-      else process.env[key] = value;
-    }
-    clearOperatorCaches();
-  }
+  });
 });
