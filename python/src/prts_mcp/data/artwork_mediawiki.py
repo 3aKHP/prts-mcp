@@ -1,16 +1,34 @@
-"""LOCAL_IMAGE=false path: filename→label parsing and LRU image cache.
+"""LOCAL_IMAGE=false path: MediaWiki artwork backend.
 
-Mirrors ts/src/data/artworkMediawiki.ts. Lives in the data layer so
-tools_artwork.py stays orchestration-only, matching the true-mode boundary
-(data/images.py ↔ tools_artwork.py).
+Owns filename→label parsing, the LRU image cache, and the two MediaWiki
+orchestrations (list via allimages + CharinfoV2, get via imageinfo +
+safe download). Fetches exclusively through the ``api`` client
+(:mod:`prts_mcp.api.prts_wiki`); returns ``str`` messages or
+:class:`artwork_format.ListOutcome` / :class:`artwork_format.GetOutcome`
+for the tool layer to wrap.
+
+Mirrors ts/src/data/artworkMediawiki.ts.
 """
 from __future__ import annotations
 
+import base64
 import threading
 from collections import OrderedDict
 from typing import Any, Mapping
 
-from prts_mcp.data.images import BASE_ILLUST_LABELS
+from prts_mcp.api.prts_wiki import (
+    download_image_safe,
+    get_imageinfo,
+    get_template_data,
+    list_allimages,
+)
+from prts_mcp.config import Config
+from prts_mcp.data.artwork_format import GetOutcome, ListOutcome, render_list
+from prts_mcp.data.artwork_local import normalized_artwork_form_name
+from prts_mcp.data.images import (
+    BASE_ILLUST_LABELS,
+    DEFAULT_VARIANT,
+)
 
 _IMAGE_CACHE_LOCK = threading.Lock()
 _image_cache: "OrderedDict[str, bytes]" = OrderedDict()
@@ -131,7 +149,9 @@ def operator_from_filename(filename: str) -> str | None:
 
 
 def _normalized_operator_name(name: str) -> str:
-    return name.strip().replace("（", "(").replace("）", ")")
+    # Identical normalization to artwork_local.normalized_artwork_form_name;
+    # kept as a thin alias so ownership checks read locally.
+    return normalized_artwork_form_name(name)
 
 
 def artwork_belongs_to_operator(filename: str, operator_name: str) -> bool:
@@ -144,3 +164,113 @@ def artwork_belongs_to_operator(filename: str, operator_name: str) -> bool:
     # artwork_id is opaque and list-scoped. A base-name request must not be
     # able to retrieve a transformed form (or vice versa) by reusing a token.
     return requested == actual
+
+
+async def list_artworks_mediawiki(operator_name: str) -> ListOutcome | str:
+    """LOCAL_IMAGE=false list: discover PRTS File: titles + CharinfoV2 labels."""
+    normalized_name = normalized_artwork_form_name(operator_name)
+    prefix = f"立绘_{normalized_name}_"
+    try:
+        files = await list_allimages(prefix)
+        templates = await get_template_data(normalized_name)
+    except Exception as exc:  # noqa: BLE001
+        return f"查询 PRTS 立绘失败：{exc}"
+    charinfo = templates.get("CharinfoV2")
+    if not isinstance(charinfo, Mapping):
+        charinfo = {}
+    artworks: list[dict] = []
+    for f in files:
+        name = f.get("name", "")
+        label = label_from_filename(name, charinfo)
+        if label is None:
+            continue
+        artworks.append({
+            "artwork_id": name,
+            "label": label,
+            "kind": "skin" if "skin" in name else "base",
+            "variants": {"large": {}, "preview": {}},
+        })
+    artworks.sort(key=lambda a: a["artwork_id"])
+    if not artworks:
+        return f"未找到「{operator_name}」的立绘。建议先用 search_prts 确认名称。"
+    data = {
+        "operator_name": operator_name,
+        "source": "mediawiki",
+        "total": len(artworks),
+        "artworks": artworks,
+    }
+    markdown = render_list(operator_name, artworks)
+    return ListOutcome(
+        data=data,
+        markdown=markdown,
+        summary=f"「{operator_name}」共 {len(artworks)} 张立绘（PRTS MediaWiki），详见 structuredContent",
+    )
+
+
+async def get_artwork_mediawiki(
+    operator_name: str,
+    artwork_id: str | None,
+    variant: str | None,
+    cfg: Config,
+) -> GetOutcome | str:
+    """LOCAL_IMAGE=false get: MediaWiki imageinfo + safe download (+ LRU)."""
+    if not artwork_id:
+        return "action=get 时必须提供 artwork_id。请先用 action=list 获取。"
+    if not artwork_belongs_to_operator(artwork_id, operator_name):
+        return (
+            f"该 artwork_id 不属于干员「{operator_name}」。"
+            "artwork_id 为不透明 token，请用 action=list 重新获取。"
+        )
+    if variant == "original":
+        return (
+            "LOCAL_IMAGE=false 模式不提供 original 变体（PRTS 原图常超 1 MiB 安全上限）。"
+            "请使用 large 或 preview。"
+        )
+    chosen = variant or DEFAULT_VARIANT
+    width = VARIANT_WIDTH.get(chosen)
+    if width is None:
+        return f"不支持的变体：{chosen}。false 模式可选 large / preview。"
+    try:
+        info = await get_imageinfo(artwork_id, width=width)
+    except Exception as exc:  # noqa: BLE001
+        return f"查询 PRTS 图片信息失败：{exc}"
+    if not info:
+        return f"找不到文件「{artwork_id}」。请用 action=list 重新获取。"
+    img_url = info.get("thumburl") or info.get("url")
+    if not img_url:
+        return f"「{artwork_id}」无 {chosen} 变体。"
+    image_bytes = image_cache_get(artwork_id, chosen) if cfg.prts_image_cache else None
+    if image_bytes is None:
+        try:
+            image_bytes = await download_image_safe(img_url)
+        except Exception as exc:  # noqa: BLE001 — ValueError (boundary) or httpx.HTTPError (network)
+            return f"下载图片失败：{exc}"
+        if cfg.prts_image_cache:
+            image_cache_put(artwork_id, chosen, image_bytes)
+    image_b64 = base64.b64encode(image_bytes).decode("ascii")
+    # CharinfoV2 is not re-fetched in get (list already provided the precise
+    # label); derive a best-effort label from the filename.
+    label = label_from_filename(artwork_id, {}) or artwork_id
+    mime = info.get("mime") or "image/png"
+    markdown = (
+        f"**{label}**（{operator_name}）\n"
+        f"变体：{chosen}｜来源：PRTS MediaWiki\n"
+        f"artwork_id：`{artwork_id}`"
+    )
+    data = {
+        "operator_name": operator_name,
+        "artwork_id": artwork_id,
+        "label": label,
+        "variant": chosen,
+        "source": "mediawiki",
+        "width": info.get("width"),
+        "height": info.get("height"),
+        "bytes": len(image_bytes),
+    }
+    return GetOutcome(
+        markdown=markdown,
+        image_b64=image_b64,
+        mime=mime,
+        data=data,
+        summary=f"{operator_name} 的「{label}」（{chosen}，PRTS MediaWiki）",
+    )
