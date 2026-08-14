@@ -15,6 +15,7 @@ import "./data/stageEnemy.js";
 import "./data/item.js";
 import "./data/search.js";
 import "./data/images.js";
+import "./data/building.js";
 import { getCacheStats as getStorySearchCacheStats } from "./data/storySearch.js";
 import { getCacheStats as getArtworkMediawikiCacheStats } from "./data/artworkMediawiki.js";
 import { datasetRegistry } from "./data/datasetAccess.js";
@@ -37,9 +38,10 @@ const DOMAIN_ORDER = [
   "stage_enemy",
   "item",
   "search",
+  "building",
 ] as const;
 
-/** Return the stable nine-domain cache projection used by debug endpoints. */
+/** Return the stable ten-domain cache projection used by debug endpoints. */
 export function getCacheStats(): CacheStats {
   const registry = datasetRegistry();
   const out: CacheStats = {};

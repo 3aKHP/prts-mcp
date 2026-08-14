@@ -40,5 +40,9 @@ def render_list(operator_name: str, artworks: list[dict]) -> str:
     lines = []
     for art in artworks:
         variants = "/".join(art["variants"].keys())
-        lines.append(f"- **{art['label']}**｜`{art['artwork_id']}`｜变体：{variants}")
+        group = art.get("skin_group")
+        suffix = f"｜{group}" if group else ""
+        lines.append(
+            f"- **{art['label']}**｜`{art['artwork_id']}`｜变体：{variants}{suffix}"
+        )
     return header + "\n".join(lines)

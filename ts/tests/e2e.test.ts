@@ -197,7 +197,7 @@ test("E2E", async (t) => {
     const data = await res.json() as Record<string, Record<string, { loaded: boolean; count: number; hits: number; misses: number; clears: number; bytes?: number }>>;
     const expectedModules = new Set([
       "operator", "enemy", "stage", "stage_enemy", "item",
-      "search", "story_search", "images", "artwork_mediawiki",
+      "search", "story_search", "images", "artwork_mediawiki", "building",
     ]);
     assert.deepEqual(new Set(Object.keys(data)), expectedModules, "module set mismatch");
     for (const [mod, caches] of Object.entries(data)) {

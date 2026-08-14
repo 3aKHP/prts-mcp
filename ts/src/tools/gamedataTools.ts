@@ -76,7 +76,7 @@ export function registerGamedataTools(server: McpServer, channel: OutputChannel 
     "get_operator_basic_info",
     [
       "获取指定干员的基本数值信息。",
-      "返回干员的职业、子职业、稀有度（星级）、所属阵营、招募标签、天赋名称及描述等结构化信息，适合快速了解干员定位。",
+      "返回干员的职业、子职业、稀有度（星级）、所属阵营、招募标签、天赋名称及描述、基建技能（设施/精英阶段解锁/效果）等结构化信息，适合快速了解干员定位。",
       "完整背景故事见 get_operator_archives。",
     ].join(" "),
     { name: z.string().describe("干员的游戏内中文名，如「阿米娅」、「能天使」。") },
@@ -264,11 +264,11 @@ export function registerGamedataTools(server: McpServer, channel: OutputChannel 
     "search",
     [
       "在指定数据域中执行全文正则搜索。",
-      "scope 选择搜索域：operators（名称/属性/档案/语音）、enemies（图鉴）、stages（关卡）、items（物品/材料）。",
+      "scope 选择搜索域：operators（名称/属性/档案/语音）、enemies（图鉴）、stages（关卡）、items（物品/材料）、building_skills（干员基建技能，可按设施/效果/技能名跨干员反查）。",
       "返回带域标签的匹配结果。剧情台词搜索见 search_stories。",
     ].join(" "),
     {
-      scope: z.enum(["operators", "enemies", "stages", "items"]).describe("搜索域（必填）：operators / enemies / stages / items。"),
+      scope: z.enum(["operators", "enemies", "stages", "items", "building_skills"]).describe("搜索域（必填）：operators / enemies / stages / items / building_skills。"),
       pattern: z.string().describe("正则表达式搜索模式，大小写不敏感。"),
       max_results: z.number().int().min(1).max(100).default(30).describe("返回结果数量上限，默认 30。"),
     },

@@ -16,6 +16,11 @@ import { excelMissingMessage, regexErrorMessage, validateBounds } from "./messag
 import { buildEnemySearch, renderEnemySearch, type EnemySearchPayload } from "./enemy.js";
 import { buildStageSearch, renderStageSearch, type StageSearchPayload } from "./stage.js";
 import { buildItemSearch, renderItemSearch, type ItemSearchPayload } from "./item.js";
+import {
+  buildBuildingSkillSearch,
+  renderBuildingSkillSearch,
+  type BuildingSkillSearchPayload,
+} from "./building.js";
 
 // Reuse types from operator.ts
 interface StoryEntry {
@@ -59,7 +64,8 @@ type SearchPayload =
   | OperatorSearchPayload
   | EnemySearchPayload
   | StageSearchPayload
-  | ItemSearchPayload;
+  | ItemSearchPayload
+  | BuildingSkillSearchPayload;
 
 export function clearSearchCaches(): void {
   searchAccess.clear();
@@ -130,7 +136,8 @@ export function buildSearch(scope: string, pattern: string, maxResults = 30): Se
   if (scope === "enemies") return buildEnemySearch(pattern, maxResults);
   if (scope === "stages") return buildStageSearch(pattern, maxResults);
   if (scope === "items") return buildItemSearch(pattern, maxResults);
-  return `不支持的搜索域：'${scope}'。可选：operators、enemies、stages、items。`;
+  if (scope === "building_skills") return buildBuildingSkillSearch(pattern, maxResults);
+  return `不支持的搜索域：'${scope}'。可选：operators、enemies、stages、items、building_skills。`;
 }
 
 export function renderSearch(data: SearchPayload): string {
@@ -138,6 +145,7 @@ export function renderSearch(data: SearchPayload): string {
   if (data.scope === "enemies") return renderEnemySearch(data);
   if (data.scope === "stages") return renderStageSearch(data);
   if (data.scope === "items") return renderItemSearch(data);
+  if (data.scope === "building_skills") return renderBuildingSkillSearch(data);
   throw new Error(`不支持的搜索域：${JSON.stringify((data as { scope?: unknown }).scope)}。`);
 }
 

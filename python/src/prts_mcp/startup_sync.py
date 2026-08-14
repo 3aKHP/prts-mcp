@@ -166,10 +166,19 @@ def _run_startup_sync(*, force_check: bool = False) -> None:
             ):
                 # Import for the registration side effect, then clear via the
                 # dataset registry (single source for the gamedata domain list).
-                from prts_mcp.data import enemy, item, operator, stage, stage_enemy  # noqa: F401
+                from prts_mcp.data import (  # noqa: F401
+                    building,
+                    enemy,
+                    item,
+                    operator,
+                    stage,
+                    stage_enemy,
+                )
                 from prts_mcp.data.dataset_access import dataset_registry
 
-                for domain in ("operator", "enemy", "item", "stage_enemy", "stage"):
+                for domain in (
+                    "operator", "enemy", "item", "stage_enemy", "stage", "building",
+                ):
                     dataset_registry()[domain].clear()
             return _gamedata_pair_needs_retry(
                 excel_result.status, levels_result.status

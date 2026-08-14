@@ -78,7 +78,12 @@ class TestOperatorDataRefresh:
                 "**获取方式**：主线获得\n"
                 "\n"
                 "## 天赋\n"
-                "- **情绪吸收**：攻击回复技力"
+                "- **情绪吸收**：攻击回复技力\n"
+                "\n"
+                "## 基建技能\n"
+                "- **合作协议**（控制中枢，精英0解锁）："
+                "进驻控制中枢时，所有贸易站订单效率+7%（同种效果取最高）\n"
+                "- **热情**（宿舍，精英2解锁）：进驻宿舍时，恢复+0.25"
             )
             assert build_operator_basic_info("阿米娅") == _load_parity_fixture(
                 "operator_basic_info.json"

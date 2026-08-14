@@ -11,6 +11,7 @@ import {
   buildArtworkLabel,
 } from "../src/data/images.ts";
 import { registerArtworkTools } from "../src/tools/artworkTools.ts";
+import { listArtworksLocal } from "../src/data/artworkLocal.ts";
 
 type ToolHandler = (args: Record<string, unknown>) => unknown | Promise<unknown>;
 
@@ -157,6 +158,63 @@ test("buildArtworkLabel covers base, plus, fashion and unknown shapes", () => {
   assert.equal(buildArtworkLabel("char_002_amiya@unknown#1", charSkins), "时装（unknown）");
   // Unknown base illust number gets a tolerant label.
   assert.equal(buildArtworkLabel("char_002_amiya#5", charSkins), "立绘 5");
+});
+
+test("operator_artwork local list enriches with bounded skin metadata", async () => {
+  const fx = buildArtworkFixture({
+    "char_002_amiya#1": {
+      kind: "base",
+      shard: "chararts",
+      large: { file: "amiya_1.large.png", w: 1, h: 1, bytes: 1, sha256: "x" },
+    },
+    "char_002_amiya@winter#1": {
+      kind: "skin",
+      shard: "skinpack",
+      large: { file: "amiya_winter.large.png", w: 1, h: 1, bytes: 1, sha256: "y" },
+    },
+  });
+  writeFileSync(join(fx.root, "gamedata", "zh_CN", "gamedata", "excel", "skin_table.json"), JSON.stringify({
+    charSkins: {
+      "char_002_amiya@winter#1": {
+        displaySkin: {
+          skinName: "报童",
+          skinGroupName: "忒斯特收藏/I",
+          obtainApproach: "任务奖励",
+          description: "伦蒂尼姆的天空总是灰色的。",
+        },
+      },
+    },
+  }), "utf-8");
+
+  await withArtworkEnv(fx, async () => {
+    const server = new CapturingServer();
+    registerArtworkTools(server as never);
+    assert.ok(server.handler);
+
+    const result = await server.handler({
+      operator_name: "阿米娅",
+      action: "list",
+    }) as { content: Array<{ type: string; text?: string }> };
+    const text = result.content[0]?.text ?? "";
+    assert.match(text, /报童/);
+    assert.match(text, /忒斯特收藏\/I/);
+
+    const outcome = listArtworksLocal("阿米娅", fx.generation);
+    assert.ok(typeof outcome !== "string");
+    if (typeof outcome === "string") return;
+    const byId = new Map(
+      (outcome.data["artworks"] as Array<Record<string, unknown>>).map(
+        (a) => [a["artwork_id"] as string, a],
+      ),
+    );
+    assert.equal(byId.get("char_002_amiya@winter#1")?.["skin_group"], "忒斯特收藏/I");
+    assert.equal(byId.get("char_002_amiya@winter#1")?.["acquisition"], "任务奖励");
+    assert.equal(byId.get("char_002_amiya@winter#1")?.["description"], "伦蒂尼姆的天空总是灰色的。");
+    // Base illusts without a charSkins entry carry explicit nulls.
+    assert.equal(byId.get("char_002_amiya#1")?.["skin_group"], null);
+    assert.equal(byId.get("char_002_amiya#1")?.["acquisition"], null);
+    assert.equal(byId.get("char_002_amiya#1")?.["description"], null);
+  });
 });
 
 test("operator_artwork rejects cross-operator tokens before local reads or MediaWiki requests", async () => {

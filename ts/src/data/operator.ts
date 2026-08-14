@@ -9,6 +9,11 @@
 import { registerActivationListener } from "../activation.js";
 import { hasOperatorData, loadConfig } from "../config.js";
 import { stripWikitext } from "../utils/sanitizer.js";
+import {
+  buildingSkillsFor,
+  hasBuildingData,
+  type BuildingSkillPayload,
+} from "./building.js";
 import { clearSearchCaches } from "./search.js";
 import type { CacheStat } from "../cacheStats.js";
 import { defineDataset, excelStore, type DatasetAccess } from "./datasetAccess.js";
@@ -109,6 +114,9 @@ export interface OperatorBasicInfoPayload {
   item_desc: string | null;
   item_obtain: string | null;
   talents: OperatorTalentPayload[];
+  // Omitted (not []) when building_data.json is absent so older
+  // user-supplied data roots keep the pre-2.7.0 payload shape.
+  building_skills?: BuildingSkillPayload[];
 }
 
 // ---------------------------------------------------------------------------
@@ -348,6 +356,10 @@ export function buildOperatorBasicInfo(name: string): OperatorBasicInfoPayload |
     }
   }
 
+  const buildingSkills: BuildingSkillPayload[] | undefined = hasBuildingData()
+    ? buildingSkillsFor(charId)
+    : undefined;
+
   return {
     name,
     display_number: info.displayNumber ?? "",
@@ -366,6 +378,7 @@ export function buildOperatorBasicInfo(name: string): OperatorBasicInfoPayload |
     item_desc: info.itemDesc || null,
     item_obtain: info.itemObtainApproach || null,
     talents,
+    ...(buildingSkills !== undefined ? { building_skills: buildingSkills } : {}),
   };
 }
 
@@ -396,6 +409,15 @@ export function renderOperatorBasicInfo(data: OperatorBasicInfoPayload): string 
     lines.push("\n## 天赋");
     for (const talent of data.talents) {
       lines.push(`- **${talent.name}**：${talent.description}`);
+    }
+  }
+  const buildingSkills = data.building_skills;
+  if (buildingSkills !== undefined && buildingSkills.length > 0) {
+    lines.push("\n## 基建技能");
+    for (const skill of buildingSkills) {
+      lines.push(
+        `- **${skill.name}**（${skill.room}，${skill.unlock}解锁）：${skill.description}`,
+      );
     }
   }
   return lines.join("\n");

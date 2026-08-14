@@ -166,7 +166,16 @@ def mock_images(monkeypatch, tmp_path):
     )
     monkeypatch.setattr(
         "prts_mcp.data.artwork_local.load_char_skins",
-        lambda: {"char_002_amiya@winter#1": {"displaySkin": {"skinName": "报童"}}},
+        lambda: {
+            "char_002_amiya@winter#1": {
+                "displaySkin": {
+                    "skinName": "报童",
+                    "skinGroupName": "忒斯特收藏/I",
+                    "obtainApproach": "任务奖励",
+                    "description": "伦蒂尼姆的天空总是灰色的。",
+                },
+            },
+        },
     )
     return gen
 
@@ -181,6 +190,7 @@ def test_list_returns_markdown_with_labels(mock_images):
     assert "阿米娅" in body
     assert "精英零立绘" in body
     assert "报童" in body
+    assert "忒斯特收藏/I" in body
     # No image content in list.
     assert not any(c.type == "image" for c in result.content)
 
@@ -202,6 +212,14 @@ def test_list_structured_channel(mock_images):
     labels = {a["label"] for a in data["artworks"]}
     assert "精英零立绘" in labels
     assert "报童" in labels
+    by_id = {a["artwork_id"]: a for a in data["artworks"]}
+    assert by_id["char_002_amiya@winter#1"]["skin_group"] == "忒斯特收藏/I"
+    assert by_id["char_002_amiya@winter#1"]["acquisition"] == "任务奖励"
+    assert by_id["char_002_amiya@winter#1"]["description"] == "伦蒂尼姆的天空总是灰色的。"
+    # Base illusts without a charSkins entry carry explicit nulls.
+    assert by_id["char_002_amiya#1"]["skin_group"] is None
+    assert by_id["char_002_amiya#1"]["acquisition"] is None
+    assert by_id["char_002_amiya#1"]["description"] is None
 
 
 def test_list_unknown_operator(mock_images):

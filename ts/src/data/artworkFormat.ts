@@ -13,6 +13,11 @@ export interface ArtworkListItem {
   label: string;
   kind: string;
   variants: Record<string, unknown>;
+  // Bounded skin metadata from skin_table.json's displaySkin. Absent on
+  // the MediaWiki backend, which has no skin_table join key.
+  skin_group?: string | null;
+  acquisition?: string | null;
+  description?: string | null;
 }
 
 /** A successful list action: structured payload + markdown + summary. */
@@ -40,7 +45,8 @@ export function renderList(operatorName: string, artworks: ArtworkListItem[]): s
   const header = `# 「${operatorName}」的立绘（共 ${artworks.length} 张）\n`;
   const lines = artworks.map((art) => {
     const variants = Object.keys(art.variants).join("/");
-    return `- **${art.label}**｜\`${art.artwork_id}\`｜变体：${variants}`;
+    const suffix = art.skin_group ? `｜${art.skin_group}` : "";
+    return `- **${art.label}**｜\`${art.artwork_id}\`｜变体：${variants}${suffix}`;
   });
   return header + lines.join("\n");
 }
