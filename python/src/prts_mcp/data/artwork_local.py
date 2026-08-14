@@ -99,6 +99,12 @@ def list_artworks_local(operator_name: str, gen_dir: Path | None) -> ListOutcome
         return f"未找到「{operator_name}」的立绘数据。"
 
     char_skins = load_char_skins()
+
+    def _display_text(display: dict, field: str) -> str | None:
+        """Coerce a displaySkin field to a non-empty string or None."""
+        value = display.get(field)
+        return value if isinstance(value, str) and value else None
+
     artworks = []
     for sid, entry in matched:
         display = (char_skins.get(sid) or {}).get("displaySkin") or {}
@@ -117,9 +123,9 @@ def list_artworks_local(operator_name: str, gen_dir: Path | None) -> ListOutcome
             # Bounded skin metadata from skin_table.json's displaySkin
             # (ROADMAP 2.7.0). Absent for base illusts without entries and
             # for the MediaWiki backend, which has no skin_table join key.
-            "skin_group": display.get("skinGroupName") or None,
-            "acquisition": display.get("obtainApproach") or None,
-            "description": display.get("description") or None,
+            "skin_group": _display_text(display, "skinGroupName"),
+            "acquisition": _display_text(display, "obtainApproach"),
+            "description": _display_text(display, "description"),
         })
     data = {
         "operator_name": operator_name,

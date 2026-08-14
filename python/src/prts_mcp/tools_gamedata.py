@@ -82,8 +82,9 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
     ) -> object:
         """获取指定干员的基本数值信息。
 
-        返回干员的职业、子职业、稀有度（星级）、所属阵营、招募标签、天赋名称及描述等
-        结构化信息，适合快速了解干员定位。完整背景故事见 get_operator_archives。
+        返回干员的职业、子职业、稀有度（星级）、所属阵营、招募标签、天赋名称及描述、
+        基建技能（设施/精英阶段解锁/效果）等结构化信息，适合快速了解干员定位。
+        完整背景故事见 get_operator_archives。
         """
         data = _build_basic_info(name)
         if isinstance(data, str):

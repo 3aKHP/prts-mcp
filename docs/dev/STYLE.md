@@ -260,7 +260,7 @@ Python 和 TypeScript 不是翻译关系，但文件结构和模块职责应保�
 | `data/artwork_local.py` | `data/artworkLocal.ts` | 本地 AKDP 立绘后端（char-id 别名解析、index 加载、受守卫 PNG 读取；接收已解析 gen_dir，不 import sync/api/output） |
 | `data/artwork_mediawiki.py` | `data/artworkMediawiki.ts` | MediaWiki 立绘后端（list/get 编排 + LRU + label/ownership；经 api 客户端取数） |
 | `data/artwork_format.py` | `data/artworkFormat.ts` | artwork 结果形状（ListOutcome/GetOutcome）+ 共享列表 markdown 渲染 |
-| `data/building.py` | `data/building.ts` | 基建技能读取（building_data.json：按 buff 槽位取最高相位 + building_skills 搜索记录；不 import operator/search —— operator 单向消费本模块，TS 侧 ESM 环引用靠函数体内使用解耦） |
+| `data/building.py` | `data/building.ts` | 基建技能读取（building_data.json：按 buff 槽位取最高相位 + building_skills 搜索记录；PY 不 import operator/search，operator 单向消费本模块。TS 侧对 operator 是静态 import 但仅在函数体内使用其绑定——ESM 环引用在此约束下安全） |
 | `data/story.py` | `data/story.ts` | 剧情数据读取和格式化 |
 | `data/search.py` | `data/search.ts` | 全文搜索 |
 | `data/sync.py` | `data/sync.ts` | re-export barrel（全 sync 状态机已迁入 `sync/`） |

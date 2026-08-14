@@ -157,20 +157,21 @@ def _building_skill_records_impl() -> tuple[_BuildingSkillRecord, ...]:
     from prts_mcp.data.operator import _build_name_to_id
 
     records: list[_BuildingSkillRecord] = []
-    try:
-        for name, char_id in _build_name_to_id().items():
-            for s in building_skills_for(char_id):
-                records.append(_BuildingSkillRecord(
-                    operator=name,
-                    skill=s["name"],
-                    room=s["room"],
-                    unlock=s["unlock"],
-                    text=s["description"],
-                ))
-    except FileNotFoundError:
-        # Older user-supplied data roots may lack building_data.json; the
-        # scope then reports no matches rather than a data error.
-        return ()
+    for name, char_id in _build_name_to_id().items():
+        try:
+            skills = building_skills_for(char_id)
+        except FileNotFoundError:
+            # Older user-supplied data roots may lack building_data.json;
+            # the scope then reports no matches rather than a data error.
+            return ()
+        for s in skills:
+            records.append(_BuildingSkillRecord(
+                operator=name,
+                skill=s["name"],
+                room=s["room"],
+                unlock=s["unlock"],
+                text=s["description"],
+            ))
     return tuple(records)
 
 
@@ -188,6 +189,8 @@ def build_building_skill_search(pattern: str, max_results: int = 30) -> dict | s
         return regex_error_message(exc)
 
     results: list[_BuildingSkillRecord] = []
+    # Haystack = skill name + room + description; the unlock phase is
+    # deliberately not searchable (it is a display attribute, not content).
     for record in _building_skill_records():
         if regex.search(f"{record.skill} {record.room} {record.text}"):
             results.append(record)

@@ -168,29 +168,30 @@ export interface BuildingSkillSearchPayload {
 }
 
 function getBuildingSkillRecordsImpl(): BuildingSkillRecord[] {
-  const ct = getCharacterTable();
-
-  const records: BuildingSkillRecord[] = [];
-  try {
-    for (const [cid, info] of Object.entries(ct)) {
-      if (!info.name || !cid.startsWith("char_")) continue;
-      for (const s of buildingSkillsFor(cid)) {
-        records.push({
-          operator: info.name,
-          skill: s.name,
-          room: s.room,
-          unlock: s.unlock,
-          text: s.description,
-        });
-      }
-    }
-  } catch (err) {
+  if (!hasBuildingData()) {
     // Older user-supplied data roots may lack building_data.json; the
     // scope then reports no matches rather than a data error.
-    if (err instanceof Error && err.message.startsWith("基建技能数据文件不存在")) {
-      return [];
+    return [];
+  }
+  const ct = getCharacterTable();
+  // Mirror the PY twin's name→id folding: duplicate names collapse to the
+  // last cid while keeping first-insertion position.
+  const nameToId = new Map<string, string>();
+  for (const [cid, info] of Object.entries(ct)) {
+    if (info.name && cid.startsWith("char_")) nameToId.set(info.name, cid);
+  }
+
+  const records: BuildingSkillRecord[] = [];
+  for (const [name, charId] of nameToId) {
+    for (const s of buildingSkillsFor(charId)) {
+      records.push({
+        operator: name,
+        skill: s.name,
+        room: s.room,
+        unlock: s.unlock,
+        text: s.description,
+      });
     }
-    throw err;
   }
   return records;
 }
@@ -210,6 +211,8 @@ export function buildBuildingSkillSearch(pattern: string, maxResults = 30): Buil
   }
 
   const results: BuildingSkillRecord[] = [];
+  // Haystack = skill name + room + description; the unlock phase is
+  // deliberately not searchable (it is a display attribute, not content).
   for (const record of getBuildingSkillRecords()) {
     if (regex.test(`${record.skill} ${record.room} ${record.text}`)) {
       results.push(record);
