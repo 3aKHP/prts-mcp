@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections import Counter
 from typing import Any
 
 from prts_mcp.activation import register_activation_listener
@@ -13,7 +12,17 @@ from prts_mcp.data.dataset_access import (
     levels_store,
 )
 from prts_mcp.data.enemy_database import normalize_enemy_database
-from prts_mcp.data.gamedata_attrs import m_value as _m_value
+from prts_mcp.data.enemy_stats import (
+    format_stats as _format_stats,
+    overwritten_enemy_name as _overwritten_enemy_name,
+    stage_specific_enemy_data as _stage_specific_enemy_data,
+)
+from prts_mcp.data.level_parser import (
+    enemy_refs as _enemy_refs,
+    level_path as _level_path,
+    parse_level,
+    spawn_counts as _spawn_counts,
+)
 from prts_mcp.data.messages import levels_missing_message, validate_bounds
 
 
@@ -63,10 +72,6 @@ def _build_enemy_name_to_id_impl() -> dict[str, str]:
     }
 
 
-def _level_path(level_id: str) -> str:
-    return level_id.lower().replace("\\", "/") + ".json"
-
-
 def _load_level_json(stage: dict[str, Any]) -> dict[str, Any] | str:
     level_id = stage.get("levelId")
     if not level_id:
@@ -81,97 +86,15 @@ def _load_level_json(stage: dict[str, Any]) -> dict[str, Any] | str:
     return raw
 
 
-def _merge_defined(base: Any, override: Any) -> Any:
-    """Merge enemyData dictionaries, applying only m_defined=true overrides."""
-    if not isinstance(override, dict):
-        return base
-    if "m_defined" in override and "m_value" in override:
-        return override["m_value"] if override.get("m_defined") else base
-    if isinstance(base, dict):
-        merged = dict(base)
-    else:
-        merged = {}
-    for key, value in override.items():
-        if isinstance(value, dict) and value.get("m_defined") is False:
-            continue
-        merged[key] = _merge_defined(merged.get(key), value)
-    return merged
-
-
-def _spawn_counts(level: dict[str, Any]) -> Counter[str]:
-    counts: Counter[str] = Counter()
-    for wave in level.get("waves", []) or []:
-        for fragment in wave.get("fragments", []) or []:
-            for action in fragment.get("actions", []) or []:
-                if action.get("actionType") not in ("SPAWN", 0):
-                    continue
-                key = action.get("key")
-                if key:
-                    try:
-                        count = int(action.get("count", 1))
-                    except (TypeError, ValueError):
-                        count = 1
-                    counts[str(key)] += max(count, 1)
-    return counts
-
-
-def _enemy_refs(level: dict[str, Any]) -> dict[str, dict[str, Any]]:
-    refs: dict[str, dict[str, Any]] = {}
-    for ref in level.get("enemyDbRefs", []) or []:
-        key = ref.get("id")
-        if key:
-            refs[str(key)] = ref
-    return refs
-
-
 def _handbook_name(enemy_id: str) -> str:
     info = _load_enemy_handbook().get(enemy_id) or {}
     return str(info.get("name") or enemy_id)
-
-
-def _overwritten_enemy_name(overwritten: Any) -> str | None:
-    if not isinstance(overwritten, dict):
-        return None
-    name = overwritten.get("name") or overwritten.get("prefabKey")
-    return str(_m_value(name)) if name else None
 
 
 def _stage_label(stage: dict[str, Any], stage_id: str) -> str:
     name = stage.get("name") or "（无名）"
     code = stage.get("code") or stage_id
     return f"{name} {code}（{stage_id}）"
-
-
-def _stage_specific_enemy_data(enemy_id: str, level: int, overwritten: Any = None) -> dict[str, Any] | None:
-    db_entry = _load_enemy_database().get(enemy_id, {})
-    base = db_entry.get(level) or db_entry.get(0)
-    if base is None:
-        return overwritten if isinstance(overwritten, dict) else None
-    merged = _merge_defined(base, overwritten)
-    return merged if isinstance(merged, dict) else base
-
-
-def _format_stats(enemy_data: dict[str, Any] | None) -> str:
-    if not enemy_data:
-        return "无数据库记录"
-    attrs = enemy_data.get("attributes") or {}
-    hp = _m_value(attrs.get("maxHp"), 0)
-    atk = _m_value(attrs.get("atk"), 0)
-    defense = _m_value(attrs.get("def"), 0)
-    res = _m_value(attrs.get("magicResistance"), 0)
-    speed = _m_value(attrs.get("moveSpeed"), 0)
-    atk_time = _m_value(attrs.get("baseAttackTime"), 0)
-    parts = [
-        f"HP {hp:,}" if isinstance(hp, int) else f"HP {hp}",
-        f"ATK {atk}",
-        f"DEF {defense}",
-        f"RES {res}",
-    ]
-    if speed:
-        parts.append(f"移速 {speed}")
-    if atk_time:
-        parts.append(f"攻击间隔 {atk_time}s")
-    return "；".join(parts)
 
 
 def build_stage_enemies(stage_id: str) -> dict | str:
@@ -208,12 +131,9 @@ def build_stage_enemies(stage_id: str) -> dict | str:
     enemy_entries = []
     for enemy_id, count in counts.most_common():
         ref = refs.get(enemy_id, {})
-        try:
-            level_no = int(ref.get("level", 0))
-        except (TypeError, ValueError):
-            level_no = 0
+        level_no = parse_level(ref.get("level", 0))
         overwritten = ref.get("overwrittenData")
-        data = _stage_specific_enemy_data(enemy_id, level_no, overwritten)
+        data = _stage_specific_enemy_data(_load_enemy_database(), enemy_id, level_no, overwritten)
         name = _overwritten_enemy_name(overwritten) or _handbook_name(enemy_id)
         enemy_entries.append({
             "enemy_id": enemy_id,
@@ -429,11 +349,8 @@ def get_enemy_stage_info(name: str, stage_id: str) -> str:
     if ref is None:
         return f"关卡 {stage_id!r} 缺少 {enemy_id} 的 enemyDbRefs。"
 
-    try:
-        level_no = int(ref.get("level", 0))
-    except (TypeError, ValueError):
-        level_no = 0
-    data = _stage_specific_enemy_data(enemy_id, level_no, ref.get("overwrittenData"))
+    level_no = parse_level(ref.get("level", 0))
+    data = _stage_specific_enemy_data(_load_enemy_database(), enemy_id, level_no, ref.get("overwrittenData"))
     enemy_name = _overwritten_enemy_name(ref.get("overwrittenData")) or _handbook_name(enemy_id)
     lines = [f"# {enemy_name}（{enemy_id}）@ {_stage_label(stage, stage_id)}"]
     lines.append(f"- **出场数量**：{counts[enemy_id]}")

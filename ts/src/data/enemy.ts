@@ -9,7 +9,14 @@ import { loadConfig } from "../config.js";
 import type { CacheStat } from "../cacheStats.js";
 import { normalizeEnemyDatabase } from "./enemyDatabase.js";
 import { defineDataset, excelStore, levelsStore, type DatasetAccess } from "./datasetAccess.js";
-import { mValue, type MValue } from "./gamedataAttrs.js";
+import {
+  extractEnemyStats,
+  type EnemyDbEntry,
+  type EnemyStatsPayload,
+} from "./enemyStats.js";
+import { renderHandbookCard, renderStatsBlock } from "./enemyRender.js";
+
+export type { EnemyStatsPayload } from "./enemyStats.js";
 import {
   excelMissingMessage,
   regexErrorMessage,
@@ -54,45 +61,6 @@ interface EnemyHandbook {
   raceData?: Record<string, { id?: string; raceName?: string }>;
 }
 
-interface EnemyDbAttrs {
-  maxHp?: MValue;
-  atk?: MValue;
-  def?: MValue;
-  magicResistance?: MValue;
-  moveSpeed?: MValue;
-  baseAttackTime?: MValue;
-  attackSpeed?: MValue;
-  massLevel?: MValue;
-  hpRecoveryPerSec?: MValue;
-  spRecoveryPerSec?: MValue;
-  lifePointReduce?: MValue;
-  stunImmune?: MValue;
-  silenceImmune?: MValue;
-  sleepImmune?: MValue;
-  frozenImmune?: MValue;
-  levitateImmune?: MValue;
-  disarmedCombatImmune?: MValue;
-  fearedImmune?: MValue;
-  palsyImmune?: MValue;
-  attractImmune?: MValue;
-  [key: string]: MValue | undefined;
-}
-
-interface EnemySkill {
-  prefabKey?: string;
-  priority?: number;
-  cooldown?: number;
-  initCooldown?: number;
-  spData?: { spCost?: MValue };
-  blackboard?: Array<{ key?: string; value?: unknown }>;
-}
-
-interface EnemyDbEntry {
-  attributes?: EnemyDbAttrs;
-  skills?: EnemySkill[] | null;
-  talentBlackboard?: Array<{ key?: string; value?: unknown }>;
-}
-
 // Database file has { enemies: [{ Key, Value: [{ level, enemyData }] }] }
 interface EnemyDbRow {
   Key?: string;
@@ -127,25 +95,6 @@ export interface EnemiesListingPayload {
     description_excerpt: string;
   }>;
   empty_reason?: "offset_out_of_range";
-}
-
-export interface EnemyStatsPayload {
-  max_hp: string | null;
-  atk: string | null;
-  def: string | null;
-  resistance: string | null;
-  move_speed: string | null;
-  attack_interval: string | null;
-  attack_speed: string | null;
-  mass_level: string | null;
-  hp_recovery_per_sec: string | null;
-  immunities: string[];
-  life_point_reduce: string | null;
-  skills: Array<{
-    prefab: string;
-    timing: string;
-    blackboard: string;
-  }>;
 }
 
 export interface EnemyInfoPayload {
@@ -295,23 +244,6 @@ const DAMAGE_TYPE_ZH: Record<string, string> = {
   MAGIC: "法术",
   HEAL: "治疗",
 };
-
-const IMMUNITY_LABELS: Record<string, string> = {
-  stunImmune: "眩晕",
-  silenceImmune: "沉默",
-  sleepImmune: "睡眠",
-  frozenImmune: "冻结",
-  levitateImmune: "浮空",
-  disarmedCombatImmune: "缴械",
-  fearedImmune: "恐惧",
-  palsyImmune: "瘫痪",
-  attractImmune: "牵引",
-};
-
-function formatNumber(n: number): string {
-  // Locale-independent thousands separator (matches Python's f"{n:,}").
-  return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-}
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -471,130 +403,9 @@ export function buildEnemyInfo(name: string): EnemyInfoPayload | string {
   return payload;
 }
 
-function pythonFloatString(n: number): string {
-  return Number.isInteger(n) ? `${n}.0` : String(n);
-}
-
-function extractEnemyStats(dbEntry: EnemyDbEntry): EnemyStatsPayload {
-  const attrs = dbEntry.attributes ?? {};
-  const hp = mValue<number>(attrs.maxHp, 0) ?? 0;
-  const atk = mValue<number>(attrs.atk, 0) ?? 0;
-  const def = mValue<number>(attrs.def, 0) ?? 0;
-  const res = mValue<number>(attrs.magicResistance);
-  const speed = mValue<number>(attrs.moveSpeed, 0) ?? 0;
-  const atkTime = mValue<number>(attrs.baseAttackTime, 0) ?? 0;
-  const atkSpeed = mValue<number>(attrs.attackSpeed, 100) ?? 100;
-  const mass = mValue<number>(attrs.massLevel, 0) ?? 0;
-  const hpRec = mValue<number>(attrs.hpRecoveryPerSec, 0) ?? 0;
-  const lpr = mValue<number>(attrs.lifePointReduce, 0) ?? 0;
-
-  const immunities: string[] = [];
-  for (const [key, label] of Object.entries(IMMUNITY_LABELS)) {
-    if (mValue<boolean>(attrs[key], false)) immunities.push(label);
-  }
-
-  const skills = (Array.isArray(dbEntry.skills) ? dbEntry.skills : []).map((s) => {
-    const prefab = s.prefabKey ?? "未知";
-    const cd = s.cooldown;
-    const initCd = s.initCooldown;
-    const spCost = mValue<number>(s.spData?.spCost);
-    const cdParts: string[] = [];
-    if (cd) cdParts.push(`冷却 ${cd}s`);
-    if (initCd && initCd !== cd) cdParts.push(`初始 ${initCd}s`);
-    if (spCost) cdParts.push(`SP ${spCost}`);
-    const bbStrs = (Array.isArray(s.blackboard) ? s.blackboard : [])
-      .slice(0, 6)
-      .filter((b) => b.value != null)
-      .map((b) => {
-        const value = typeof b.value === "number" ? pythonFloatString(b.value) : b.value;
-        return `${b.key ?? ""}=${value}`;
-      });
-    return {
-      prefab,
-      timing: cdParts.join("，"),
-      blackboard: bbStrs.join("，"),
-    };
-  });
-
-  return {
-    max_hp: hp ? formatNumber(hp) : null,
-    atk: atk ? String(atk) : null,
-    def: def ? String(def) : null,
-    resistance: res !== undefined && res !== null ? pythonFloatString(res) : null,
-    move_speed: speed ? pythonFloatString(speed) : null,
-    attack_interval: atkTime ? `${pythonFloatString(atkTime)}s` : null,
-    attack_speed: atkSpeed !== 100 ? pythonFloatString(atkSpeed) : null,
-    mass_level: mass ? String(mass) : null,
-    hp_recovery_per_sec: hpRec ? pythonFloatString(hpRec) : null,
-    immunities,
-    life_point_reduce: lpr ? String(lpr) : null,
-    skills,
-  };
-}
-
-function hasEnemyStatsContent(stats: EnemyStatsPayload): boolean {
-  const scalarFields = [
-    "max_hp",
-    "atk",
-    "def",
-    "resistance",
-    "move_speed",
-    "attack_interval",
-    "attack_speed",
-    "mass_level",
-    "hp_recovery_per_sec",
-    "life_point_reduce",
-  ] as const;
-  return scalarFields.some((field) => Boolean(stats[field])) ||
-    stats.immunities.length > 0 ||
-    stats.skills.length > 0;
-}
-
 export function renderEnemyInfo(data: EnemyInfoPayload): string {
-  const lines: string[] = [];
-  if (data.name) {
-    lines.push(`# ${data.name} - 敌人图鉴\n`);
-    lines.push(`- **ID**：${data.enemy_id}`);
-  }
-
-  if (data.enemy_index) lines.push(`- **编号**：${data.enemy_index}`);
-  if (data.level_label) lines.push(`- **威胁等级**：${data.level_label}`);
-  if (data.description) lines.push(`- **描述**：${data.description}`);
-  if (data.attack_type) lines.push(`- **攻击方式**：${data.attack_type}`);
-  if (data.ability) lines.push(`- **特殊能力**：${data.ability}`);
-  if (data.damage_types_label) lines.push(`- **伤害类型**：${data.damage_types_label}`);
-  if (data.enemy_tags.length > 0) lines.push(`- **标签**：${data.enemy_tags.join("、")}`);
-
-  const stats = data.stats;
-  if (stats && hasEnemyStatsContent(stats)) {
-    lines.push("## 战斗属性");
-    for (const [field, label] of [
-      ["max_hp", "最大生命"],
-      ["atk", "攻击力"],
-      ["def", "防御力"],
-      ["resistance", "法术抗性"],
-      ["move_speed", "移动速度"],
-      ["attack_interval", "攻击间隔"],
-      ["attack_speed", "攻击速度"],
-      ["mass_level", "重量等级"],
-      ["hp_recovery_per_sec", "每秒生命回复"],
-    ] as const) {
-      const val = stats[field];
-      if (val) lines.push(`- **${label}**：${val}`);
-    }
-    if (stats.immunities.length > 0) lines.push(`- **免疫**：${stats.immunities.join("、")}`);
-    if (stats.life_point_reduce) lines.push(`- **生命值扣除**：${stats.life_point_reduce}`);
-    if (stats.skills.length > 0) {
-      lines.push("\n## 技能");
-      for (const skill of stats.skills) {
-        const parts = [`- **${skill.prefab}**`];
-        if (skill.timing) parts.push(`（${skill.timing}）`);
-        if (skill.blackboard) parts.push(": " + skill.blackboard);
-        lines.push(parts.join(""));
-      }
-    }
-  }
-
+  const lines = renderHandbookCard(data, true);
+  if (data.stats) lines.push(...renderStatsBlock(data.stats));
   return lines.join("\n");
 }
 
@@ -664,14 +475,5 @@ function enemySearchEntry(record: EnemySearchRecord): EnemySearchPayload["result
 }
 
 function renderEnemySearchCard(entry: EnemySearchPayload["results"][number]): string {
-  const lines: string[] = [];
-  if (entry.name) lines.push(`# ${entry.name} - 敌人图鉴\n`);
-  if (entry.enemy_index) lines.push(`- **编号**：${entry.enemy_index}`);
-  if (entry.level_label) lines.push(`- **威胁等级**：${entry.level_label}`);
-  if (entry.description) lines.push(`- **描述**：${entry.description}`);
-  if (entry.attack_type) lines.push(`- **攻击方式**：${entry.attack_type}`);
-  if (entry.ability) lines.push(`- **特殊能力**：${entry.ability}`);
-  if (entry.damage_types_label) lines.push(`- **伤害类型**：${entry.damage_types_label}`);
-  if (entry.enemy_tags.length > 0) lines.push(`- **标签**：${entry.enemy_tags.join("、")}`);
-  return lines.join("\n");
+  return renderHandbookCard(entry).join("\n");
 }

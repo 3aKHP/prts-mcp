@@ -14,7 +14,11 @@ from prts_mcp.data.dataset_access import (
     levels_store,
 )
 from prts_mcp.data.enemy_database import normalize_enemy_database
-from prts_mcp.data.gamedata_attrs import m_value as _m_value
+from prts_mcp.data.enemy_render import (
+    render_handbook_card,
+    render_stats_block,
+)
+from prts_mcp.data.enemy_stats import extract_enemy_stats
 from prts_mcp.data.messages import (
     excel_missing_message,
     regex_error_message,
@@ -168,25 +172,13 @@ _DAMAGE_TYPE_ZH: dict[str, str] = {
     "HEAL": "治疗",
 }
 
-_IMMUNITY_LABELS: dict[str, str] = {
-    "stunImmune": "眩晕",
-    "silenceImmune": "沉默",
-    "sleepImmune": "睡眠",
-    "frozenImmune": "冻结",
-    "levitateImmune": "浮空",
-    "disarmedCombatImmune": "缴械",
-    "fearedImmune": "恐惧",
-    "palsyImmune": "瘫痪",
-    "attractImmune": "牵引",
-}
-
 
 # NOTE: a _fmt_stats helper previously lived here, formatting combat stats
 # from enemy_database.json into markdown. It became dead code when
-# get_enemy_info migrated to _extract_enemy_stats (structured dict) +
-# render_enemy_info (markdown). Removed; if P2b PR2's list/search tools
-# need stat rendering, they should share _extract_enemy_stats rather than
-# resurrect this (see git history).
+# get_enemy_info migrated to the structured-dict + markdown-renderer split.
+# Stat extraction now lives in data/enemy_stats.extract_enemy_stats and
+# stat rendering in data/enemy_render.render_stats_block; do not resurrect
+# local copies (see git history).
 
 
 # ---------------------------------------------------------------------------
@@ -388,78 +380,9 @@ def build_enemy_info(name: str) -> dict | str:
     db = _load_enemy_database()
     db_entry = db["_index"].get(eid) if db else None
     if db_entry:
-        payload["stats"] = _extract_enemy_stats(db_entry)
+        payload["stats"] = extract_enemy_stats(db_entry)
 
     return payload
-
-
-def _extract_enemy_stats(db_entry: dict) -> dict:
-    """Extract combat stats from an enemy_database entry into a structured dict.
-
-    Numeric values are pre-formatted as render_enemy_info will emit them
-    (e.g. HP with thousands separator), and only non-default fields are
-    included.
-    """
-    attrs: dict = db_entry.get("attributes", {})
-    hp = _m_value(attrs.get("maxHp"), 0)
-    atk = _m_value(attrs.get("atk"), 0)
-    defense = _m_value(attrs.get("def"), 0)
-    res = _m_value(attrs.get("magicResistance"))
-    speed = _m_value(attrs.get("moveSpeed"), 0.0)
-    atk_time = _m_value(attrs.get("baseAttackTime"), 0.0)
-    atk_speed = _m_value(attrs.get("attackSpeed"), 100.0)
-    mass = _m_value(attrs.get("massLevel"), 0)
-    hp_recovery = _m_value(attrs.get("hpRecoveryPerSec"), 0.0)
-
-    immunities = []
-    for key, label in _IMMUNITY_LABELS.items():
-        if _m_value(attrs.get(key), False):
-            immunities.append(label)
-    lpr = _m_value(attrs.get("lifePointReduce"), 0)
-
-    stats: dict[str, Any] = {
-        "max_hp": f"{hp:,}" if hp else None,
-        "atk": str(atk) if atk else None,
-        "def": str(defense) if defense else None,
-        "resistance": str(res) if res is not None else None,
-        "move_speed": str(speed) if speed else None,
-        "attack_interval": f"{atk_time}s" if atk_time else None,
-        "attack_speed": str(atk_speed) if atk_speed != 100.0 else None,
-        "mass_level": str(mass) if mass else None,
-        "hp_recovery_per_sec": str(hp_recovery) if hp_recovery else None,
-        "immunities": immunities,
-        "life_point_reduce": str(lpr) if lpr else None,
-    }
-
-    skills: list[dict] = []
-    for s in db_entry.get("skills") or []:
-        prefab = s.get("prefabKey", "未知")
-        cooldown = s.get("cooldown", "")
-        sp_cost = _m_value(s.get("spData", {}).get("spCost") if s.get("spData") else None, None)
-        init_cd = s.get("initCooldown", "")
-
-        cd_parts = []
-        if cooldown:
-            cd_parts.append(f"冷却 {cooldown}s")
-        if init_cd and init_cd != cooldown:
-            cd_parts.append(f"初始 {init_cd}s")
-        if sp_cost:
-            cd_parts.append(f"SP {sp_cost}")
-        timing = "，".join(cd_parts) if cd_parts else ""
-
-        blackboard: list[dict] = s.get("blackboard", [])
-        bb_strs = []
-        for b in blackboard[:6]:
-            key = b.get("key", "")
-            val = b.get("value", "")
-            if val is not None:
-                bb_strs.append(f"{key}={val}")
-        bb = "，".join(bb_strs)
-
-        skills.append({"prefab": prefab, "timing": timing, "blackboard": bb})
-
-    stats["skills"] = skills
-    return stats
 
 
 def render_enemy_info(data: dict) -> str:
@@ -467,79 +390,10 @@ def render_enemy_info(data: dict) -> str:
 
     Pure renderer; the inverse of ``build_enemy_info``'s success path.
     """
-    lines: list[str] = []
-    name = data["name"]
-    if name:
-        lines.append(f"# {name} - 敌人图鉴\n")
-        lines.append(f"- **ID**：{data['enemy_id']}")
-
-    enemy_index = data["enemy_index"]
-    if enemy_index:
-        lines.append(f"- **编号**：{enemy_index}")
-
-    level_label = data["level_label"]
-    if level_label:
-        lines.append(f"- **威胁等级**：{level_label}")
-
-    desc = data["description"]
-    if desc:
-        lines.append(f"- **描述**：{desc}")
-
-    attack = data["attack_type"]
-    if attack:
-        lines.append(f"- **攻击方式**：{attack}")
-
-    ability = data["ability"]
-    if ability:
-        lines.append(f"- **特殊能力**：{ability}")
-
-    dt_label = data["damage_types_label"]
-    if dt_label:
-        lines.append(f"- **伤害类型**：{dt_label}")
-
-    enemy_tags = data["enemy_tags"]
-    if enemy_tags:
-        lines.append(f"- **标签**：{'、'.join(enemy_tags)}")
-
+    lines = render_handbook_card(data, include_enemy_id=True)
     stats = data["stats"]
     if stats:
-        # No leading \n here: "\n".join supplies the separator between the
-        # handbook block and this section (single newline, matching the old
-        # `result += _fmt_stats()` concatenation). The "## 技能" heading below
-        # keeps its leading \n to reproduce the original blank line there.
-        lines.append("## 战斗属性")
-        for field, label in (
-            ("max_hp", "最大生命"),
-            ("atk", "攻击力"),
-            ("def", "防御力"),
-            ("resistance", "法术抗性"),
-            ("move_speed", "移动速度"),
-            ("attack_interval", "攻击间隔"),
-            ("attack_speed", "攻击速度"),
-            ("mass_level", "重量等级"),
-            ("hp_recovery_per_sec", "每秒生命回复"),
-        ):
-            val = stats.get(field)
-            if val:
-                lines.append(f"- **{label}**：{val}")
-        immunities = stats["immunities"]
-        if immunities:
-            lines.append(f"- **免疫**：{'、'.join(immunities)}")
-        lpr = stats["life_point_reduce"]
-        if lpr:
-            lines.append(f"- **生命值扣除**：{lpr}")
-
-        skills = stats["skills"]
-        if skills:
-            lines.append("\n## 技能")
-            for s in skills:
-                parts = [f"- **{s['prefab']}**"]
-                if s["timing"]:
-                    parts.append(f"（{s['timing']}）")
-                if s["blackboard"]:
-                    parts.append(": " + s["blackboard"])
-                lines.append("".join(parts))
-
+        lines.extend(render_stats_block(stats))
     return "\n".join(lines)
 
 
@@ -626,37 +480,4 @@ def _enemy_search_entry(record: _EnemySearchRecord) -> dict[str, Any]:
 
 
 def _render_enemy_search_card(entry: dict) -> str:
-    lines: list[str] = []
-    name = entry["name"]
-    if name:
-        lines.append(f"# {name} - 敌人图鉴\n")
-
-    enemy_index = entry["enemy_index"]
-    if enemy_index:
-        lines.append(f"- **编号**：{enemy_index}")
-
-    level_label = entry["level_label"]
-    if level_label:
-        lines.append(f"- **威胁等级**：{level_label}")
-
-    desc = entry["description"]
-    if desc:
-        lines.append(f"- **描述**：{desc}")
-
-    attack = entry["attack_type"]
-    if attack:
-        lines.append(f"- **攻击方式**：{attack}")
-
-    ability = entry["ability"]
-    if ability:
-        lines.append(f"- **特殊能力**：{ability}")
-
-    damage_label = entry["damage_types_label"]
-    if damage_label:
-        lines.append(f"- **伤害类型**：{damage_label}")
-
-    enemy_tags = entry["enemy_tags"]
-    if enemy_tags:
-        lines.append(f"- **标签**：{'、'.join(enemy_tags)}")
-
-    return "\n".join(lines)
+    return "\n".join(render_handbook_card(entry))
