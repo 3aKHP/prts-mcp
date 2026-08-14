@@ -16,7 +16,7 @@
 
 ## 隔离原则（先读，勿跳）
 
-- **不要设置 `GAMEDATA_PATH` / `STORYJSON_PATH`**：显式设置会**禁用 auto-sync**（is_custom_gamedata 语义），而本流程的核心观察项之一就是 auto-sync。用 `XDG_DATA_HOME=<测试目录>` 重定向默认数据根——两侧实现都支持，既保 sync 又保隔离。`PRTS_IMAGE_DIR` 不受该语义影响，可直接设。
+- **不要设置 `GAMEDATA_PATH` / `STORYJSON_PATH`**：`GAMEDATA_PATH` 会置 `is_custom_gamedata` 关掉 gamedata auto-sync，`STORYJSON_PATH` 有独立的同效门——而本流程的核心观察项之一就是 auto-sync。用 `XDG_DATA_HOME=<测试目录>` 重定向默认数据根——两侧实现都支持，既保 sync 又保隔离。`PRTS_IMAGE_DIR` 不受该语义影响，可直接设。
 - `HOST=127.0.0.1` + 独立端口（如 39171/39172）+ `PRTS_DEBUG_TOKEN` 方便 `/debug/cache` / `/debug/metrics` 检查。
 - 测试目录建议 `~/prts-e2e/`，一轮结束后按需清空。
 
@@ -32,6 +32,7 @@ systemd **user** 单元（`~/.config/systemd/user/prts-e2e-ts.service`）：
 ```ini
 [Unit]
 Description=PRTS-MCP TS E2E (LOCAL_IMAGE=false)
+# user 单元的 After=network-online.target 实际不等待系统网络就绪，仅作标记；启动失败由 Restart 兜底
 After=network-online.target
 
 [Service]
@@ -81,7 +82,7 @@ du -sh ~/prts-e2e/data-ts/xdg/prts-mcp/*
 // call 结果汇总：isError / image 块 mime+bytes+PNG magic / structuredKeys / textPreview。
 ```
 
-（该脚本的完整版本随 2.7.0 E2E 存档于维护者 `~/prts-e2e/mcp-client.mjs`；丢失时按上述协议 ~60 行即可重写。）
+（该脚本的完整版本随 2.7.0 E2E 存档于维护者 `~/prts-e2e/mcp-client.mjs`；同一协议在仓内已有实现可参照：`ts/tests/e2e.test.ts` 与 `python/tests/test_e2e_http.py`，按上述协议 ~60 行即可重写。）
 
 冒烟清单——**24 个工具全部调用**，每组至少一个代表：
 
@@ -93,13 +94,13 @@ du -sh ~/prts-e2e/data-ts/xdg/prts-mcp/*
 | 剧情 | events → stories → summary → read_story → read_activity → search_stories → appearances → speakers | key 链路可串联 |
 | 图像 | `operator_artwork` list + get（MediaWiki 真图） | PNG magic、字节数、二次调用 LRU 命中 |
 
-图像工具重点：`--out` 落盘后 `file` 验证真 PNG；`/debug/cache` 的 `artwork_mediawiki.image_cache` 出现 `hits`。
+图像工具重点：`--out` 落盘后 `file` 验证真 PNG；`/debug/cache` 的 `artwork_mediawiki.image_cache` 出现 `hits`（**仅 TS**——TS 带 hits/misses/clears 计数器，PY 的 cache_stats 只有 `{loaded, count, bytes}`，这是已知的 debug 载荷分歧，勿当作 Python 回归）。
 
 ## 阶段 4 — LOCAL_IMAGE=true：观察图片 auto-sync
 
 改单元 `Environment=LOCAL_IMAGE=true`（**不设 ORIGINAL_IMAGE**）→ `daemon-reload` + `restart`。预期：
 
-- `Images synced: baseline=… current=… (1363 artworks)` 完成日志，~1.5GB 落盘（large+preview 四个 shard）。
+- `Images synced: baseline=… current=… (N artworks)` 完成日志，~1.5GB 量级落盘（large+preview 四个 shard； artworks 数与字节数随 release 漂移，核量级即可）。
 - 慢链路中段停滞是正常的——30-min 预算会吸收后自恢复，勿急着重启。
 - 重启一次验证 tag 快捷：`Images are up to date` 秒级返回、不重新下载。
 
@@ -116,16 +117,16 @@ du -sh ~/prts-e2e/data-ts/xdg/prts-mcp/*
 rm -rf ~/prts-e2e/data-ts        # 按需保留产物
 ```
 
-Python 单元差异：`ExecStart=uv run --directory <repo>/python --locked python -m prts_mcp.server`，另加 `Environment=PRTS_TRANSPORT=http`。然后**重复阶段 2–5**。重点对拍：
+Python 单元差异：`ExecStart=<uv 绝对路径> run --directory <repo>/python --locked python -m prts_mcp.server`（**uv 同样不在 systemd PATH 内，须绝对路径**），另加 `Environment=PRTS_TRANSPORT=http`，`XDG_DATA_HOME` 指向 `data-py/xdg`。然后**重复阶段 2–5**。注意 Python 的 sync 日志措辞与 TS 不同（如 `Data is up to date (…)` 而非 `Images are up to date`），核对状态而非逐字 grep。重点对拍：
 
-- 三路 sync 数据量与 TS 一致（108M/384M/33M）
+- 三路 sync 数据量与 TS 同量级（快照时点 108M/384M/33M）
 - MediaWiki artwork 载荷与 TS **逐字节一致**（同一 artwork_id 的 base64）
 - 24 工具输出与 TS 侧抽查一致（文案漂移按 D2 台账记录）
 
 ## 已知正常行为（勿误报为 bug）
 
 - 网络抖动下：TS 图片同步可能长时间停滞再自恢复；Python storyjson 停滞会走 httpx 120s 超时 → 30s/120s/600s 重试梯。
-- 进程被杀遗留 `.release.lock`：新进程 120s 锁等待超时 + 30-min staleness 自动回收；测试中可手动删孤儿锁加速（确认 `owner` 文件对应 pid 已死）。
+- 进程被杀遗留 `.release.lock`：新进程 120s 锁等待超时 + 30-min staleness 自动回收；测试中可手动删孤儿锁加速——**活性判断看 `owner` 文件的 mtime**（持锁者会心跳续期；注意 `owner` 内容是 UUID 不是 pid，不能按 pid 查）或直接确认没有存活的 prts 进程。
 - `ls` 空列表不等于卡死——大 shard 下载期间 staging 目录可能数分钟无新文件。
 
 ## 收尾
