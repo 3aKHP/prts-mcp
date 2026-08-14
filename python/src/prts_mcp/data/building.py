@@ -1,12 +1,14 @@
 """Base-skill (基建技能) data reader — building_data.json backed.
 
 Mirrors ts/src/data/building.ts. Deliberately dependency-free beyond the
-dataset-access layer: operator and search consume this module, so it must
-not import them (cycle hygiene).
+dataset-access layer: operator imports this module, so it must not import
+operator at module level (cycle hygiene) — the search-records builder
+imports it lazily instead.
 """
 from __future__ import annotations
 
 import re as _re
+from dataclasses import dataclass
 from typing import Any
 
 from prts_mcp.activation import register_activation_listener
@@ -17,7 +19,11 @@ from prts_mcp.data.dataset_access import (
     define_dataset,
     excel_store,
 )
-from prts_mcp.data.messages import excel_missing_message
+from prts_mcp.data.messages import (
+    excel_missing_message,
+    regex_error_message,
+    validate_bounds,
+)
 
 _ROOM_ZH: dict[str, str] = {
     "CONTROL": "控制中枢",
@@ -59,6 +65,7 @@ _access = define_dataset(DatasetSpec(
             load=lambda: _load_json("building_data.json"),
             count=lambda r: len(r.get("buffs") or {}),
         ),
+        "building_skill_records": LoaderSpec(load=lambda: _building_skill_records_impl()),
     },
     store=excel_store,
     available=lambda: _get_config().has_operator_data,
@@ -66,6 +73,7 @@ _access = define_dataset(DatasetSpec(
 ))
 
 _load_building_table = _access.cached("building_table")
+_building_skill_records = _access.cached("building_skill_records")
 
 
 def clear_building_caches() -> None:
@@ -128,3 +136,92 @@ def building_skills_for(char_id: str) -> list[dict[str, str]]:
             "unlock": _PHASE_ZH.get(phase, phase),
         })
     return skills
+
+
+# ---------------------------------------------------------------------------
+# Cross-operator search (search tool's building_skills scope)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class _BuildingSkillRecord:
+    operator: str
+    skill: str
+    room: str
+    unlock: str
+    text: str
+
+
+def _building_skill_records_impl() -> tuple[_BuildingSkillRecord, ...]:
+    # Lazy import to break the operator → building module cycle.
+    from prts_mcp.data.operator import _build_name_to_id
+
+    records: list[_BuildingSkillRecord] = []
+    try:
+        for name, char_id in _build_name_to_id().items():
+            for s in building_skills_for(char_id):
+                records.append(_BuildingSkillRecord(
+                    operator=name,
+                    skill=s["name"],
+                    room=s["room"],
+                    unlock=s["unlock"],
+                    text=s["description"],
+                ))
+    except FileNotFoundError:
+        # Older user-supplied data roots may lack building_data.json; the
+        # scope then reports no matches rather than a data error.
+        return ()
+    return tuple(records)
+
+
+def build_building_skill_search(pattern: str, max_results: int = 30) -> dict | str:
+    """Build the structured payload for base-skill search."""
+    if message := validate_bounds("max_results", max_results, minimum=1, maximum=100):
+        return message
+
+    if not _get_config().has_operator_data:
+        return _access.missing_message()
+
+    try:
+        regex = _re.compile(pattern, _re.IGNORECASE)
+    except _re.error as exc:
+        return regex_error_message(exc)
+
+    results: list[_BuildingSkillRecord] = []
+    for record in _building_skill_records():
+        if regex.search(f"{record.skill} {record.room} {record.text}"):
+            results.append(record)
+            if len(results) >= max_results:
+                break
+
+    return {
+        "scope": "building_skills",
+        "pattern": pattern,
+        "total": len(results),
+        "results": [
+            {
+                "operator": r.operator,
+                "skill": r.skill,
+                "room": r.room,
+                "unlock": r.unlock,
+                "text": r.text,
+            }
+            for r in results
+        ],
+    }
+
+
+def render_building_skill_search(data: dict) -> str:
+    """Render a base-skill search payload to markdown."""
+    pattern = data["pattern"]
+    results = data["results"]
+    if not results:
+        return f"未找到匹配 '{pattern}' 的干员基建技能。"
+
+    lines = [f"# 搜索 \"{pattern}\" 的结果（共 {data['total']} 条）"]
+    for r in results:
+        lines.append(
+            f"- **{r['operator']}**｜{r['skill']}"
+            f"（{r['room']}，{r['unlock']}解锁）：{r['text']}"
+        )
+    return "\n".join(lines)

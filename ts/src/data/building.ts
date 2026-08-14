@@ -8,7 +8,10 @@ import { registerActivationListener } from "../activation.js";
 import { hasOperatorData, loadConfig } from "../config.js";
 import type { CacheStat } from "../cacheStats.js";
 import { defineDataset, excelStore, type DatasetAccess } from "./datasetAccess.js";
-import { excelMissingMessage } from "./messages.js";
+import { excelMissingMessage, regexErrorMessage, validateBounds } from "./messages.js";
+// operator.ts imports this module back; the cycle is safe because both
+// sides only use each other's bindings inside function bodies.
+import { getCharacterTable } from "./operator.js";
 
 const ROOM_ZH: Record<string, string> = {
   CONTROL: "控制中枢",
@@ -86,6 +89,7 @@ const buildingAccess: DatasetAccess = defineDataset({
       load: getBuildingTableImpl,
       count: (r) => Object.keys((r as BuildingTable).buffs ?? {}).length,
     },
+    building_skill_records: { load: getBuildingSkillRecordsImpl },
   },
   store: excelStore,
   available: () => hasOperatorData(loadConfig()),
@@ -93,6 +97,7 @@ const buildingAccess: DatasetAccess = defineDataset({
 });
 
 const getBuildingTable = buildingAccess.loader<BuildingTable>("building_table");
+const getBuildingSkillRecords = buildingAccess.loader<BuildingSkillRecord[]>("building_skill_records");
 
 registerActivationListener(clearBuildingCaches);
 
@@ -141,4 +146,94 @@ export function buildingSkillsFor(charId: string): BuildingSkillPayload[] {
     });
   }
   return skills;
+}
+
+// ---------------------------------------------------------------------------
+// Cross-operator search (search tool's building_skills scope)
+// ---------------------------------------------------------------------------
+
+interface BuildingSkillRecord {
+  operator: string;
+  skill: string;
+  room: string;
+  unlock: string;
+  text: string;
+}
+
+export interface BuildingSkillSearchPayload {
+  scope: "building_skills";
+  pattern: string;
+  total: number;
+  results: BuildingSkillRecord[];
+}
+
+function getBuildingSkillRecordsImpl(): BuildingSkillRecord[] {
+  const ct = getCharacterTable();
+
+  const records: BuildingSkillRecord[] = [];
+  try {
+    for (const [cid, info] of Object.entries(ct)) {
+      if (!info.name || !cid.startsWith("char_")) continue;
+      for (const s of buildingSkillsFor(cid)) {
+        records.push({
+          operator: info.name,
+          skill: s.name,
+          room: s.room,
+          unlock: s.unlock,
+          text: s.description,
+        });
+      }
+    }
+  } catch (err) {
+    // Older user-supplied data roots may lack building_data.json; the
+    // scope then reports no matches rather than a data error.
+    if (err instanceof Error && err.message.startsWith("基建技能数据文件不存在")) {
+      return [];
+    }
+    throw err;
+  }
+  return records;
+}
+
+export function buildBuildingSkillSearch(pattern: string, maxResults = 30): BuildingSkillSearchPayload | string {
+  const boundsError = validateBounds("max_results", maxResults, { minimum: 1, maximum: 100 });
+  if (boundsError !== null) return boundsError;
+
+  const cfg = loadConfig();
+  if (!hasOperatorData(cfg)) return buildingAccess.missingMessage();
+
+  let regex: RegExp;
+  try {
+    regex = new RegExp(pattern, "iu");
+  } catch (exc) {
+    return regexErrorMessage(exc);
+  }
+
+  const results: BuildingSkillRecord[] = [];
+  for (const record of getBuildingSkillRecords()) {
+    if (regex.test(`${record.skill} ${record.room} ${record.text}`)) {
+      results.push(record);
+      if (results.length >= maxResults) break;
+    }
+  }
+
+  return {
+    scope: "building_skills",
+    pattern,
+    total: results.length,
+    results,
+  };
+}
+
+export function renderBuildingSkillSearch(data: BuildingSkillSearchPayload): string {
+  const { pattern, results } = data;
+  if (results.length === 0) return `未找到匹配 '${pattern}' 的干员基建技能。`;
+
+  const lines: string[] = [`# 搜索 "${pattern}" 的结果（共 ${data.total} 条）`];
+  for (const r of data.results) {
+    lines.push(
+      `- **${r.operator}**｜${r.skill}（${r.room}，${r.unlock}解锁）：${r.text}`,
+    );
+  }
+  return lines.join("\n");
 }

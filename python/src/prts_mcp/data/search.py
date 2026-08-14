@@ -119,7 +119,14 @@ def build_search(scope: str, pattern: str, max_results: int = 30) -> dict | str:
         from prts_mcp.data.item import build_item_search
 
         return build_item_search(pattern, max_results=max_results)
-    return f"不支持的搜索域：{scope!r}。可选：operators、enemies、stages、items。"
+    if scope == "building_skills":
+        from prts_mcp.data.building import build_building_skill_search
+
+        return build_building_skill_search(pattern, max_results=max_results)
+    return (
+        f"不支持的搜索域：{scope!r}。"
+        "可选：operators、enemies、stages、items、building_skills。"
+    )
 
 
 def render_search(data: dict) -> str:
@@ -139,6 +146,10 @@ def render_search(data: dict) -> str:
         from prts_mcp.data.item import render_item_search
 
         return render_item_search(data)
+    if scope == "building_skills":
+        from prts_mcp.data.building import render_building_skill_search
+
+        return render_building_skill_search(data)
     raise ValueError(f"不支持的搜索域：{scope!r}。")
 
 

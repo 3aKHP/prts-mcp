@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { REQUIRED_OPERATOR_FILES } from "./fixtures/operatorData.ts";
+import { REQUIRED_OPERATOR_FILES, writeMinimalGamedata } from "./fixtures/operatorData.ts";
 
 function tempGamedataRoot(): string {
   return mkdtempSync(join(tmpdir(), "prts-building-test-"));
@@ -11,6 +11,16 @@ function tempGamedataRoot(): string {
 
 async function loadBuildingModule(): Promise<typeof import("../src/data/building.js")> {
   return import(`../src/data/building.ts?cacheBust=${Date.now()}-${Math.random()}`);
+}
+
+async function loadSearchModule(): Promise<typeof import("../src/data/search.js")> {
+  return import(`../src/data/search.ts?cacheBust=${Date.now()}-${Math.random()}`);
+}
+
+function loadParityFixture(name: string): unknown {
+  return JSON.parse(
+    readFileSync(join(import.meta.dirname, "..", "..", "tests", "parity-fixtures", name), "utf-8"),
+  );
 }
 
 function writeSentinels(excel: string): void {
@@ -117,4 +127,46 @@ test("missing table surfaces availability and throws on load", async () => {
 
   assert.equal(building.hasBuildingData(), false);
   assert.throws(() => building.buildingSkillsFor("char_002_amiya"), /基建技能数据文件不存在/);
+});
+
+test("building-skill search golden and empty", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  delete process.env["STORYJSON_PATH"];
+  writeMinimalGamedata(root);
+  const building = await loadBuildingModule();
+
+  const data = building.buildBuildingSkillSearch("贸易站");
+  assert.deepEqual(data, loadParityFixture("search_building_skills.json"));
+  assert.equal(
+    building.renderBuildingSkillSearch(data as import("../src/data/building.js").BuildingSkillSearchPayload),
+    [
+      '# 搜索 "贸易站" 的结果（共 1 条）',
+      "- **阿米娅**｜合作协议（控制中枢，精英0解锁）：进驻控制中枢时，所有贸易站订单效率+7%（同种效果取最高）",
+    ].join("\n"),
+  );
+
+  const empty = building.buildBuildingSkillSearch("不存在");
+  assert.deepEqual(empty, loadParityFixture("search_building_skills_empty.json"));
+  assert.equal(
+    building.renderBuildingSkillSearch(empty as import("../src/data/building.js").BuildingSkillSearchPayload),
+    "未找到匹配 '不存在' 的干员基建技能。",
+  );
+});
+
+test("unified search dispatches building_skills", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  delete process.env["STORYJSON_PATH"];
+  writeMinimalGamedata(root);
+  const search = await loadSearchModule();
+
+  const routed = search.buildSearch("building_skills", "贸易站");
+  assert.equal(typeof routed, "object");
+  assert.equal((routed as { scope: string }).scope, "building_skills");
+
+  assert.equal(
+    search.buildSearch("no_such_scope", "x"),
+    "不支持的搜索域：'no_such_scope'。可选：operators、enemies、stages、items、building_skills。",
+  );
 });

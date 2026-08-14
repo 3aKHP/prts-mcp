@@ -7,9 +7,19 @@ from pathlib import Path
 from unittest.mock import patch
 
 from prts_mcp.data.building import (
+    build_building_skill_search,
     building_skills_for,
     clear_building_caches,
+    render_building_skill_search,
 )
+from prts_mcp.data.search import build_search
+
+from tests.fixtures import write_minimal_gamedata
+
+
+def _load_parity_fixture(name: str) -> dict:
+    path = Path(__file__).parents[2] / "tests" / "parity-fixtures" / name
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def _write_building(excel: Path, data: dict) -> None:
@@ -160,3 +170,38 @@ def test_missing_table_raises_file_not_found(tmp_path: Path) -> None:
             assert "基建技能数据文件不存在" in str(exc)
         else:
             raise AssertionError("expected FileNotFoundError")
+
+
+def test_building_skill_search_golden_and_empty(tmp_path: Path) -> None:
+    write_minimal_gamedata(tmp_path)
+    with patch.dict(os.environ, {"GAMEDATA_PATH": str(tmp_path)}, clear=False):
+        os.environ.pop("STORYJSON_PATH", None)
+
+        data = build_building_skill_search("贸易站")
+
+        assert data == _load_parity_fixture("search_building_skills.json")
+        assert render_building_skill_search(data) == (
+            '# 搜索 "贸易站" 的结果（共 1 条）\n'
+            "- **阿米娅**｜合作协议（控制中枢，精英0解锁）："
+            "进驻控制中枢时，所有贸易站订单效率+7%（同种效果取最高）"
+        )
+
+        empty = build_building_skill_search("不存在")
+        assert empty == _load_parity_fixture("search_building_skills_empty.json")
+        assert render_building_skill_search(empty) == "未找到匹配 '不存在' 的干员基建技能。"
+
+
+def test_unified_search_dispatches_building_skills(tmp_path: Path) -> None:
+    write_minimal_gamedata(tmp_path)
+    with patch.dict(os.environ, {"GAMEDATA_PATH": str(tmp_path)}, clear=False):
+        os.environ.pop("STORYJSON_PATH", None)
+
+        routed = build_search("building_skills", "贸易站")
+        assert isinstance(routed, dict)
+        assert routed["scope"] == "building_skills"
+
+        unsupported = build_search("no_such_scope", "x")
+        assert unsupported == (
+            "不支持的搜索域：'no_such_scope'。"
+            "可选：operators、enemies、stages、items、building_skills。"
+        )
