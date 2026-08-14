@@ -25,6 +25,7 @@ import {
 import {
   normalizedArtworkFormName,
   renderList,
+  type ArtworkListItem,
   type GetOutcome,
   type ListOutcome,
 } from "./artworkFormat.js";
@@ -64,6 +65,15 @@ export function loadIndex(genDir: string): ImagesIndex | null {
   }
 }
 
+/** Coerce a displaySkin text field to a non-empty string or null. */
+function displayText(
+  display: { skinGroupName?: unknown; obtainApproach?: unknown; description?: unknown } | undefined,
+  field: "skinGroupName" | "obtainApproach" | "description",
+): string | null {
+  const value = display?.[field];
+  return typeof value === "string" && value ? value : null;
+}
+
 export function listArtworksLocal(
   operatorName: string,
   genDir: string | null,
@@ -90,17 +100,23 @@ export function listArtworksLocal(
   }
 
   const charSkins = getCharSkins();
-  const artworks = matched.map(([sid, entry]) => {
+  const artworks = matched.map(([sid, entry]): ArtworkListItem => {
     const variants: Record<string, { width: number; height: number; bytes: number }> = {};
     for (const v of availableVariants(entry)) {
       const vm = entry.variants[v]!;
       variants[v] = { width: vm.width, height: vm.height, bytes: vm.bytes };
     }
+    const display = charSkins[sid]?.displaySkin;
     return {
       artwork_id: sid,
       label: buildArtworkLabel(sid, charSkins),
       kind: entry.kind,
       variants,
+      // Bounded skin metadata from skin_table.json's displaySkin
+      // (ROADMAP 2.7.0). Absent for base illusts without entries.
+      skin_group: displayText(display, "skinGroupName"),
+      acquisition: displayText(display, "obtainApproach"),
+      description: displayText(display, "description"),
     };
   });
 

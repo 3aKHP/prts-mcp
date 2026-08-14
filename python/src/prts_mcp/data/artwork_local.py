@@ -99,8 +99,10 @@ def list_artworks_local(operator_name: str, gen_dir: Path | None) -> ListOutcome
         return f"未找到「{operator_name}」的立绘数据。"
 
     char_skins = load_char_skins()
-    artworks = [
-        {
+    artworks = []
+    for sid, entry in matched:
+        display = (char_skins.get(sid) or {}).get("displaySkin") or {}
+        artworks.append({
             "artwork_id": sid,
             "label": build_artwork_label(sid, char_skins),
             "kind": entry.kind,
@@ -112,9 +114,13 @@ def list_artworks_local(operator_name: str, gen_dir: Path | None) -> ListOutcome
                 }
                 for v in entry.available_variants()
             },
-        }
-        for sid, entry in matched
-    ]
+            # Bounded skin metadata from skin_table.json's displaySkin
+            # (ROADMAP 2.7.0). Absent for base illusts without entries and
+            # for the MediaWiki backend, which has no skin_table join key.
+            "skin_group": display.get("skinGroupName") or None,
+            "acquisition": display.get("obtainApproach") or None,
+            "description": display.get("description") or None,
+        })
     data = {
         "operator_name": operator_name,
         "char_id": char_id,

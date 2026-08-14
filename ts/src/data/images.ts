@@ -132,9 +132,14 @@ export function parseIndex(data: unknown): ImagesIndex | null {
 // skin_table.json loading (charSkins mapping)
 // ---------------------------------------------------------------------------
 
-/** Subset of a charSkins entry — only the fields label construction reads. */
+/** Subset of a charSkins entry — only the fields consumers read. */
 export interface CharSkinLike {
-  displaySkin?: { skinName?: unknown };
+  displaySkin?: {
+    skinName?: unknown;
+    skinGroupName?: unknown;
+    obtainApproach?: unknown;
+    description?: unknown;
+  };
 }
 
 function getCharSkinsImpl(): Record<string, CharSkinLike> {
