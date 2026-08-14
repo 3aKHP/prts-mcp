@@ -24,7 +24,8 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "nod
 import { setTimeout as delay } from "node:timers/promises";
 import AdmZip from "adm-zip";
 
-import { type ReleaseArchiveSpec, type ReleaseSpec, errorMessage } from "./types.js";
+import { type ReleaseArchiveSpec, errorMessage } from "./types.js";
+import type { ReleaseSpec } from "./releaseDiscovery.js";
 
 const ACTIVATION_LOCK_TIMEOUT_MS = 120_000;
 const ACTIVATION_LOCK_STALE_MS = 30 * 60_000;

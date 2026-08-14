@@ -581,7 +581,7 @@ class TestSyncReleaseArchive:
 
         fallback = lambda spec: SyncResult(spec, "offline_fallback", None, "offline")
         with patch(
-            "prts_mcp.data.sync.sync_release_archive",
+            "prts_mcp.sync.gamedata_pair.sync_release_archive",
             side_effect=lambda spec, force_check=False: fallback(spec),
         ):
             sync_release_archive_pair(excel_spec, levels_spec)
@@ -607,7 +607,7 @@ class TestSyncReleaseArchive:
         pair_path.symlink_to(external)
 
         with patch(
-            "prts_mcp.data.sync.sync_release_archive",
+            "prts_mcp.sync.gamedata_pair.sync_release_archive",
             side_effect=lambda spec, force_check=False: SyncResult(
                 spec,
                 "offline_fallback",
@@ -730,7 +730,7 @@ class TestSyncReleaseArchive:
         )
 
         with patch(
-            "prts_mcp.data.sync.sync_release",
+            "prts_mcp.sync.gamedata_pair.sync_release",
             return_value=SyncResult(
                 spec=ReleaseSpec(
                     owner=spec.owner,
@@ -770,7 +770,7 @@ class TestSyncReleaseArchive:
         )
 
         with patch(
-            "prts_mcp.data.sync.sync_release",
+            "prts_mcp.sync.gamedata_pair.sync_release",
             return_value=SyncResult(
                 spec=ReleaseSpec(
                     owner=spec.owner,
@@ -822,7 +822,7 @@ class TestSyncReleaseArchive:
         )
 
         with (
-            patch("prts_mcp.data.sync.sync_release", return_value=release_result),
+            patch("prts_mcp.sync.gamedata_pair.sync_release", return_value=release_result),
             patch(
                 "prts_mcp.sync.release_activation._safe_extract_zip",
                 side_effect=RuntimeError("interrupted extraction"),
@@ -833,7 +833,7 @@ class TestSyncReleaseArchive:
         assert first.status == "offline_fallback"
         assert not (spec.local_zip.parent / "extract_meta.json").exists()
 
-        with patch("prts_mcp.data.sync.sync_release", return_value=release_result):
+        with patch("prts_mcp.sync.gamedata_pair.sync_release", return_value=release_result):
             second = sync_release_archive(spec)
 
         assert second.status == "updated"
@@ -874,7 +874,7 @@ class TestSyncReleaseArchive:
             error="network down",
         )
 
-        with patch("prts_mcp.data.sync.sync_release", return_value=release_result):
+        with patch("prts_mcp.sync.gamedata_pair.sync_release", return_value=release_result):
             result = sync_release_archive(spec)
 
         assert result.status == "updated"
@@ -923,7 +923,7 @@ class TestSyncReleaseArchive:
         )
 
         with patch(
-            "prts_mcp.data.sync.sync_release",
+            "prts_mcp.sync.gamedata_pair.sync_release",
             return_value=SyncResult(
                 spec=ReleaseSpec(
                     owner=spec.owner,
@@ -967,7 +967,7 @@ class TestSyncReleaseArchive:
             error=None,
         )
 
-        with patch("prts_mcp.data.sync.sync_release", return_value=release_result):
+        with patch("prts_mcp.sync.gamedata_pair.sync_release", return_value=release_result):
             result = sync_release_archive(spec)
 
         assert result.status == "no_data"
@@ -1011,7 +1011,7 @@ class TestSyncReleaseArchive:
                 active_publications -= 1
             return release_result
 
-        with patch("prts_mcp.data.sync.sync_release", side_effect=publish_release):
+        with patch("prts_mcp.sync.gamedata_pair.sync_release", side_effect=publish_release):
             with ThreadPoolExecutor(max_workers=2) as pool:
                 results = list(pool.map(lambda _: sync_release_archive(spec), range(2)))
 
@@ -1032,6 +1032,7 @@ class TestSyncReleaseArchive:
 import sys
 from pathlib import Path
 import prts_mcp.data.sync as sync
+import prts_mcp.sync.gamedata_pair as gpair
 
 zip_path = Path(sys.argv[1])
 local_root = Path(sys.argv[2])
@@ -1044,19 +1045,26 @@ spec = sync.ReleaseArchiveSpec(
     local_root=local_root,
     required_files=(required,),
 )
-sync.sync_release = lambda *args, **kwargs: sync.SyncResult(
-    spec=sync.RepoSpec(
-        owner=spec.owner,
-        repo=spec.repo,
-        branch="releases",
-        files=spec.required_files,
-        local_root=spec.local_root,
-    ),
-    status="updated",
-    commit_sha="abc123",
-    error=None,
-)
+# sync_release_archive lives in sync.gamedata_pair (P2.B.2) and resolves
+# sync_release in that namespace, so patch gamedata_pair -- NOT data.sync.
+calls = []
+def stub(*args, **kwargs):
+    calls.append(1)
+    return sync.SyncResult(
+        spec=sync.RepoSpec(
+            owner=spec.owner,
+            repo=spec.repo,
+            branch="releases",
+            files=spec.required_files,
+            local_root=spec.local_root,
+        ),
+        status="updated",
+        commit_sha="abc123",
+        error=None,
+    )
+gpair.sync_release = stub
 print(sync.sync_release_archive(spec).status)
+print("CALLED" if calls else "NOT_CALLED")
 """
         processes = [
             subprocess.Popen(
@@ -1070,7 +1078,17 @@ print(sync.sync_release_archive(spec).status)
         outputs = [process.communicate(timeout=20) for process in processes]
 
         assert all(process.returncode == 0 for process in processes), outputs
-        assert {stdout.strip() for stdout, _ in outputs} == {"updated", "up_to_date"}
+        statuses = []
+        for stdout, _ in outputs:
+            lines = stdout.strip().splitlines()
+            # Sentinel: the stub MUST have fired -- guards against silent
+            # non-interception if sync_release_archive's lookup namespace
+            # ever changes again.
+            assert len(lines) > 1 and lines[1] == "CALLED", (
+                f"sync_release stub was not invoked; stdout={stdout!r}"
+            )
+            statuses.append(lines[0])
+        assert set(statuses) == {"updated", "up_to_date"}
         spec = ReleaseArchiveSpec(
             owner="3aKHP",
             repo="arknights-data-pipeline",
@@ -1104,7 +1122,7 @@ print(sync.sync_release_archive(spec).status)
                 error=None,
             )
 
-        with patch("prts_mcp.data.sync.sync_release", return_value=release_result("one")):
+        with patch("prts_mcp.sync.gamedata_pair.sync_release", return_value=release_result("one")):
             assert sync_release_archive(spec).status == "updated"
         previous = _active_archive_root(spec)
         old = time.time() - 25 * 60 * 60
@@ -1114,7 +1132,7 @@ print(sync.sync_release_archive(spec).status)
         os.utime(orphan, (old, old))
 
         with patch(
-            "prts_mcp.data.sync.sync_release",
+            "prts_mcp.sync.gamedata_pair.sync_release",
             return_value=SyncResult(
                 spec=spec,
                 status="offline_fallback",
@@ -1125,7 +1143,7 @@ print(sync.sync_release_archive(spec).status)
             assert sync_release_archive(spec).status == "offline_fallback"
         assert not orphan.exists()
 
-        with patch("prts_mcp.data.sync.sync_release", return_value=release_result("two")):
+        with patch("prts_mcp.sync.gamedata_pair.sync_release", return_value=release_result("two")):
             assert sync_release_archive(spec).status == "updated"
 
         assert previous.is_dir()
@@ -1177,7 +1195,7 @@ print(sync.sync_release_archive(spec).status)
             return SyncResult(levels_spec, "offline_fallback", "old", "offline")
 
         with patch(
-            "prts_mcp.data.sync.sync_release_archive",
+            "prts_mcp.sync.gamedata_pair.sync_release_archive",
             side_effect=partial_sync,
         ):
             sync_release_archive_pair(excel_spec, levels_spec)
@@ -1195,7 +1213,7 @@ print(sync.sync_release_archive(spec).status)
             return SyncResult(spec, "updated", "new", None)
 
         with patch(
-            "prts_mcp.data.sync.sync_release_archive",
+            "prts_mcp.sync.gamedata_pair.sync_release_archive",
             side_effect=complete_sync,
         ):
             sync_release_archive_pair(excel_spec, levels_spec)

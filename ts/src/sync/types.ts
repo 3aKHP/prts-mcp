@@ -6,8 +6,6 @@
  * consumed by BOTH release and releaseActivation; placing it in either would
  * create a release↔releaseActivation cycle. Re-exported by data/sync.
  */
-import type { ReleaseSpec } from "./releaseDiscovery.js";
-
 /** Describes an upstream GitHub repository and the files required from it. */
 export interface RepoSpec {
   owner: string;
@@ -45,7 +43,3 @@ export interface ReleaseArchiveSpec {
 export function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
-
-// Re-export ReleaseSpec so data/sync's barrel can surface it from one place;
-// its canonical home remains releaseDiscovery.
-export type { ReleaseSpec };

@@ -2,8 +2,7 @@
 
 Extracted from ``data/sync`` in P2.B.1. Owns ``CacheMeta``, the release-asset
 download, the optional factory-manifest verification, and ``sync_release``
-(the release-level state machine). ``data/sync`` re-exports these during the
-P2.B migration; the archive/pair state machine still lives there until P2.B.2.
+(the release-level state machine). ``data/sync`` re-exports it as a barrel.
 """
 from __future__ import annotations
 
