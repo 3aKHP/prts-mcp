@@ -17,7 +17,7 @@
 ## 隔离原则（先读，勿跳）
 
 - **不要设置 `GAMEDATA_PATH` / `STORYJSON_PATH`**：`GAMEDATA_PATH` 会置 `is_custom_gamedata` 关掉 gamedata auto-sync，`STORYJSON_PATH` 有独立的同效门——而本流程的核心观察项之一就是 auto-sync。用 `XDG_DATA_HOME=<测试目录>` 重定向默认数据根——两侧实现都支持，既保 sync 又保隔离。`PRTS_IMAGE_DIR` 不受该语义影响，可直接设。
-- `HOST=127.0.0.1` + 独立端口（如 39171/39172）+ `PRTS_DEBUG_TOKEN` 方便 `/debug/cache` / `/debug/metrics` 检查。
+- `HOST=127.0.0.1` + 独立端口（如 39171/39172）+ `PRTS_DEBUG_TOKEN` 方便 `/debug/cache` 检查（`/debug/metrics` **仅 TS** 且需另设 `PRTS_METRICS_ENABLED=true`；Python 无该端点）。
 - 测试目录建议 `~/prts-e2e/`，一轮结束后按需清空。
 
 ## 阶段 1 — TS：打包 → bun 全局装 → systemd 注册
@@ -43,6 +43,7 @@ Environment=IMAGES_ENABLED=true
 Environment=LOCAL_IMAGE=false
 Environment=PRTS_IMAGE_CACHE=true
 Environment=PRTS_DEBUG_TOKEN=e2e-debug-token
+Environment=PRTS_METRICS_ENABLED=true
 Environment=PATH=/home/<user>/.bun/bin:/usr/local/bin:/usr/bin:/bin
 ExecStart=/home/<user>/.bun/bin/bun /home/<user>/.bun/install/global/node_modules/prts-mcp-ts/dist/server-bun.js
 Restart=on-failure
@@ -114,10 +115,11 @@ du -sh ~/prts-e2e/data-ts/xdg/prts-mcp/*
 ## 阶段 6 — 清空缓存后复测 Python
 
 ```bash
-rm -rf ~/prts-e2e/data-ts        # 按需保留产物
+systemctl --user stop prts-e2e-ts   # 先停 TS：避免端口与 XDG 数据目录竞争
+rm -rf ~/prts-e2e/data-ts           # 按需保留产物
 ```
 
-Python 单元差异：`ExecStart=<uv 绝对路径> run --directory <repo>/python --locked python -m prts_mcp.server`（**uv 同样不在 systemd PATH 内，须绝对路径**），另加 `Environment=PRTS_TRANSPORT=http`，`XDG_DATA_HOME` 指向 `data-py/xdg`。然后**重复阶段 2–5**。注意 Python 的 sync 日志措辞与 TS 不同（如 `Data is up to date (…)` 而非 `Images are up to date`），核对状态而非逐字 grep。重点对拍：
+Python 单元差异（`PORT=39172`）：`ExecStart=<uv 绝对路径> run --directory <repo>/python --locked python -m prts_mcp.server`（**uv 同样不在 systemd PATH 内，须绝对路径**），另加 `Environment=PRTS_TRANSPORT=http`，`XDG_DATA_HOME` 指向 `data-py/xdg`。然后**重复阶段 2–5**。注意 Python 的 sync 日志措辞与 TS 不同（如 `Data is up to date (…)` 而非 `Images are up to date`），核对状态而非逐字 grep。重点对拍：
 
 - 三路 sync 数据量与 TS 同量级（快照时点 108M/384M/33M）
 - MediaWiki artwork 载荷与 TS **逐字节一致**（同一 artwork_id 的 base64）
