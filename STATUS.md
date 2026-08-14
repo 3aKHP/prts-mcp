@@ -6,13 +6,14 @@ _Last updated: 2026-08-13_
 
 | 实现 | 版本 | 状态 |
 |------|------|------|
-| Python | 2.6.2 | Stable release |
-| TypeScript | 2.6.2 | Stable release |
+| Python | 2.7.0 | Stable release |
+| TypeScript | 2.7.0 | Stable release |
 
-- 当前稳定发布：2.6.2（24 个 MCP 工具）
+- 当前稳定发布：2.7.0（24 个 MCP 工具）
 - 当前 LTS 发布：1.7.0（32 个 MCP 工具，剧情角色追踪）
-- 下一开发目标：2.7.0（在 release branch 回合与开发版本重开后确定）
+- 下一开发目标：2.8.0（在 release branch 回合与开发版本重开后确定）
 - 当前稳定补丁线：2.6.x
+- 2.7.0 发布内容：干员基建技能（`get_operator_basic_info` 新段 + `search` `building_skills` scope 跨干员反查）、本地立绘列表的皮肤系列/获取方式/描述元数据、`building_data.json`/`skin_table.json` 提升 AKDP 数据集契约、2.7 上帝文件重构程序（#161–#171）、story 文案 parity 修复（#172）与全量 E2E 手册制度化（#173）。工具面保持 24。
 - 2.6.2 发布内容：GameData pair 幂等性修复——未变化的 Excel/Levels Auto-Sync 周期不再替换 `.gamedata_pair.json`，避免虚假激活变更与周期性缓存失效（#152）。
 - 2.6.1 发布内容：`prts_page(action="template")` 的嵌套字段安全渲染与 malformed-response 边界；`read_activity` 页码输入和越界提示一致性。
 - 2.6.0 发布内容：MCP SDK v2 与 legacy/`2026-07-28` 双时代协议服务；`operator_artwork` 阿米娅近卫/医疗形态解析与精确 opaque token 归属；TS 聚合指标、六会话隔离内存基准及同机 canary 资产。
@@ -25,6 +26,14 @@ _Last updated: 2026-08-13_
 - 2.0.2 补丁集：TS HTTP MCP smoke harness、TS Bun 候选运行路径、 `search_prts` redirect/技术页面过滤修复。Bun 在 2.0.2 仍是可选候选路径。
 - 2.0 交付内容：工具面合并（32 → 23）+ output channel（structuredContent）；**双端协议同步（Python 上 HTTP / TS 上 stdio）已后置到 2.0 之后**。
 - 兼容性合约：1.7.x LTS 线既有 32 个工具名、必填参数、默认输出格式不变；仅接受兼容性、安全性、数据同步和关键缺陷修复
+
+## 2.7.0 发布内容
+
+- [x] 干员基建技能：`get_operator_basic_info` 增 `building_skills` 段（技能名/设施/精英阶段解锁/效果描述）；`search` 增 `building_skills` scope 支持按设施/效果/技能名跨干员反查。工具面保持 24（#174）。
+- [x] `LOCAL_IMAGE=true` 下 `operator_artwork(action="list")` 附带皮肤元数据（`skin_group`/`acquisition`/`description`）；MediaWiki 路径不变（#174）。
+- [x] `building_data.json` 与 `skin_table.json` 提升 AKDP 数据集契约；/debug/cache 增 `building` 模块（10 个）。
+- [x] 2.7 上帝文件重构程序全部合入（#161–#171）：DatasetAccess 契约、sync 层迁出、enemy/artwork-images 簇拆分、parity 修复与 STYLE 归档。
+- [x] Story 工具文案 parity 修复（#172，源自 2.7.0 全量 E2E 实测）；E2E 真机测试流程制度化（#173，docs/dev/E2E.md）。
 
 ## 2.6.0 发布内容
 
@@ -71,9 +80,9 @@ _Last updated: 2026-08-13_
 
 ## 当前分支
 
-- `main`：2.6.2（最新稳定发布线）
+- `main`：2.7.0（最新稳定发布线）
 - `lts/1.7`：1.7.x LTS 维护线（从 1.7.0 发布提交创建）
-- `develop`：release branch 回合后重开 2.7.0 开发线
+- `develop`：release branch 回合后重开 2.8.0 开发线
 
 1.7.0 是最后一个 1.x 功能版本和 LTS 基线。它将 server.py/server.ts 和 story.py/story.ts 单体文件拆分为聚焦子模块，保留向后兼容垫片（shim），并新增剧情角色追踪工具：`find_character_appearances`、`find_speakers_in`。后续功能开发转向 2.0；1.7.x 仅做兼容性、安全性、数据同步和关键缺陷修复。
 
@@ -232,6 +241,7 @@ PRTS-MCP/
 
 | 版本 | 日期 | 亮点 |
 |------|------|------|
+| 2.7.0 | 2026-08-15 | 干员基建技能（basic_info 新段 + search 新 scope）；本地立绘皮肤元数据；2.7 重构程序收口 |
 | 2.6.2 | 2026-08-12 | GameData pair 幂等性修复：未变化同步周期不再替换激活 metadata 或清空缓存（#152） |
 | 2.6.1 | 2026-08-10 | 模板嵌套字段安全渲染与 malformed-response 边界；活动剧情页码校验与越界提示 |
 | 2.6.0 | 2026-08-09 | MCP SDK v2 双时代协议；阿米娅形态立绘；聚合指标、六会话内存基准与同机 canary |

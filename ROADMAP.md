@@ -6,8 +6,8 @@ PRTS-MCP is past 1.0. Version 1.7.0 is the final 1.x feature release and the 1.7
 
 ## Current Release
 
-- Python: `2.6.2` _(latest stable)_
-- TypeScript: `2.6.2` _(latest stable)_
+- Python: `2.7.0` _(latest stable)_
+- TypeScript: `2.7.0` _(latest stable)_
 - `1.7.0` LTS remains the maintenance line — compatibility, security, data-sync, and critical fixes only.
 - 24 public MCP tools on the 2.x line (CI-enforced); 32 public MCP tools frozen on the 1.7 LTS line.
 - See [migration guide 0.x → 1.0](docs/migration-0.x-to-1.0.md) and [migration guide 1.x → 2.0](docs/migration-1.x-to-2.0.md).
@@ -35,7 +35,7 @@ For derived reverse lookups, the current working position is to prefer the small
 
 Reopen the SQLite decision only if production evidence shows that derived JSON and targeted in-memory indexing are insufficient, such as sustained cold-build latency, unacceptable RSS under the deployment budget, materially larger datasets, or a growing set of compound reverse queries requiring indexed filtering, pagination, aggregation, and sorting. Any proposal must remain rebuildable from AKDP Release artifacts and prove that its measured benefit outweighs cross-runtime parity and operational cost.
 
-## 2.7+ Non-Binding Working Draft
+## 2.8+ Non-Binding Working Draft
 
 > **Draft status:** Everything in this 2.7+ section is a candidate direction only. The version numbers, ordering, scope, tool shape, and inclusion of individual items are planning placeholders. The project does not commit to releasing later versions according to this draft. Items may be reordered, merged, split, deferred, replaced, or dropped as source contracts, implementation review, maintenance capacity, ecosystem changes, and real-consumer evidence evolve.
 
@@ -43,7 +43,7 @@ Where a candidate remains useful, the default is to preserve the current 24-tool
 
 ### 2.7.0 — Operator Base Skills + Skin and Artwork Metadata
 
-Delivered on `develop` for 2.7.0:
+Shipped in 2.7.0:
 
 - `get_operator_basic_info` carries base-skill information (name, facility, elite-phase unlock, effect description) as a bounded `building_skills` section; the field is omitted when `building_data.json` is absent.
 - `search(scope, pattern, max_results)` gained a `building_skills` scope for facility, effect, skill-name, and cross-operator lookup — no list/get/search triplet was added (tool surface stays at 24).
