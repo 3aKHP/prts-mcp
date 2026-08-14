@@ -24,7 +24,7 @@ from prts_mcp.data.enemy_stats import (
 from prts_mcp.data.level_parser import (
     enemy_refs as _enemy_refs,
     level_path as _level_path,
-    parse_level,
+    parse_level as _parse_level,
     spawn_counts as _spawn_counts,
 )
 from prts_mcp.data.messages import levels_missing_message, validate_bounds
@@ -114,7 +114,7 @@ def build_stage_enemies(stage_id: str) -> dict | str:
     enemy_entries = []
     for enemy_id, count in counts.most_common():
         ref = refs.get(enemy_id, {})
-        level_no = parse_level(ref.get("level", 0))
+        level_no = _parse_level(ref.get("level", 0))
         overwritten = ref.get("overwrittenData")
         data = _stage_specific_enemy_data(load_enemy_levels(), enemy_id, level_no, overwritten)
         name = _overwritten_enemy_name(overwritten) or _handbook_name(enemy_id)
@@ -324,7 +324,7 @@ def get_enemy_stage_info(name: str, stage_id: str) -> str:
     if ref is None:
         return f"关卡 {stage_id!r} 缺少 {enemy_id} 的 enemyDbRefs。"
 
-    level_no = parse_level(ref.get("level", 0))
+    level_no = _parse_level(ref.get("level", 0))
     data = _stage_specific_enemy_data(load_enemy_levels(), enemy_id, level_no, ref.get("overwrittenData"))
     enemy_name = _overwritten_enemy_name(ref.get("overwrittenData")) or _handbook_name(enemy_id)
     lines = [f"# {enemy_name}（{enemy_id}）@ {_stage_label(stage, stage_id)}"]
