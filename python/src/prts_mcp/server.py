@@ -113,25 +113,32 @@ def _build_http_app():
         if not debug_authorized(request):
             return Response(status_code=404)
         # The data-module imports populate the dataset registry (registration
-        # side effect); their order preserves the historical key order.
-        # story_search and artwork_mediawiki are not on the contract yet and
-        # are read directly.
+        # side effect). The projection below uses an EXPLICIT fixed key order —
+        # registry insertion order is transitive-import-order-driven and must
+        # not leak into the output. story_search and artwork_mediawiki are not
+        # on the contract yet and are read directly. Mirrors ts cacheStats.ts.
         from prts_mcp.data import (  # noqa: F401
-            operator,
             enemy,
+            images,
+            item,
+            operator,
+            search,
             stage,
             stage_enemy,
-            item,
-            search,
-            images,
         )
         from prts_mcp.data.artwork_mediawiki import cache_stats as _am
         from prts_mcp.data.story_search import cache_stats as _ss
-        from prts_mcp.data.dataset_access import dataset_cache_stats
+        from prts_mcp.data.dataset_access import dataset_registry
 
+        registry = dataset_registry()
+        projection = {
+            name: registry[name].stats()
+            for name in ("operator", "enemy", "stage", "stage_enemy", "item", "search")
+        }
         return JSONResponse({
-            **dataset_cache_stats(),
+            **projection,
             "story_search": _ss(),
+            "images": registry["images"].stats(),
             "artwork_mediawiki": _am(),
         })
 

@@ -83,12 +83,23 @@ function entryLoaded(entry: LoaderEntry): boolean {
   return entry.status === "loaded";
 }
 
+/**
+ * Snapshot-visible "loaded" mirrors PY cache_stat: a loaded null counts as
+ * NOT loaded ({loaded: false, count: 0}) — absence is not a load. Hit/miss
+ * accounting (metrics.access) still counts a cached null as a hit, matching
+ * the old hand-rolled `_x !== null || failed` predicates.
+ */
+function snapshotLoaded(entry: LoaderEntry): boolean {
+  return entry.status === "loaded" && entry.value !== null;
+}
+
 function countValue(spec: LoaderSpec<unknown>, entry: LoaderEntry): number {
   if (entry.status !== "loaded") return 0;
   const value = entry.value;
+  if (value === null) return 0;
   if (spec.count) return spec.count(value);
   if (Array.isArray(value) || typeof value === "string") return value.length;
-  if (value !== null && typeof value === "object") return Object.keys(value as object).length;
+  if (typeof value === "object") return Object.keys(value as object).length;
   return 1;
 }
 
@@ -142,7 +153,7 @@ function buildAccess(spec: DatasetSpec): DatasetAccess {
       const out: Record<string, CacheStat> = {};
       for (const [key, slot] of wired) {
         out[key] = slot.metrics.snapshot(
-          entryLoaded(slot.entry),
+          snapshotLoaded(slot.entry),
           countValue(slot.spec, slot.entry),
         );
       }

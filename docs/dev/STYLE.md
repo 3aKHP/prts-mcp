@@ -143,6 +143,7 @@ def get_operator(name: str | None) -> dict[str, Any] | None: ...
 
 - gamedata 域模块经 `data/dataset_access`（TS `data/datasetAccess.ts`）声明缓存：`define_dataset(spec)` 返回 access 对象，loader 默认 `onError: "throw"`（异常传播、下次重试——保住"进程中途数据出现"语义）；缺数据当空/None 由 load 函数自行返回
 - 缓存引擎仍是 activation-aware（generation key），代际变更经各模块唯一一条 `register_activation_listener(clearX_caches)` 触发清除；operator 的清除会经 `on_clear` rider 级联清 search
+- 注意失效机制的不对称：Python 的 generation-key 缓存即使忘注册 listener 也会自愈；TS 的契约层不注册 listener，失效完全依赖各模块的 `registerActivationListener(clearXCaches)`——迁移新域时这条注册不可省
 - 不要缓存 `Config`，它需要反映 sync 后的路径变化
 
 ### MCP 工具注册

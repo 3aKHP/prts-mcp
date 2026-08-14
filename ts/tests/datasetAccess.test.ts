@@ -103,6 +103,18 @@ test("onError null and empty cache fallback values", () => {
   assert.deepEqual(emptyAccess.loader<Record<string, never>>("value")(), {});
 });
 
+test("a loaded null snapshots as not-loaded, mirroring python cache_stat", () => {
+  __resetActivationForTesting();
+  // Absence expressed by load() returning null (stage zone_table pattern).
+  const access = defineDataset({
+    name: "test_loaded_null_domain",
+    loaders: { value: { load: (): null => null } },
+  });
+  access.loader("value")();
+  assert.deepEqual(access.stats().value.loaded, false);
+  assert.deepEqual(access.stats().value.count, 0);
+});
+
 test("spec hooks: available / missingMessage / onClear", () => {
   __resetActivationForTesting();
   let cleared = 0;
