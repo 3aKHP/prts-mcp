@@ -174,7 +174,7 @@ def find_character_appearances_from_store(
     index = story_search_index(store)
 
     if scope is not None and scope not in index.event_ids:
-        raise KeyError(f"未找到匹配的活动：{scope!r}。")
+        raise KeyError(f'未找到匹配的活动："{scope}"。')
 
     name_lower = name.lower()
     appearances: list[CharacterAppearance] = []
@@ -252,7 +252,7 @@ def find_speakers_in_from_store(
     index = story_search_index(store)
 
     if event_id not in index.event_ids:
-        raise KeyError(f"未找到匹配的活动：{event_id!r}。")
+        raise KeyError(f'未找到匹配的活动："{event_id}"。')
 
     counts: dict[str, int] = {}
     for chapter in index.chapters:

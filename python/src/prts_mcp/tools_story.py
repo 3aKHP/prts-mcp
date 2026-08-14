@@ -77,7 +77,7 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
                 zip_path, event_id, include_summaries=include_summaries,
             )
         except KeyError:
-            return text_result(f"未找到活动：{event_id!r}。请先调用 list_story_events 确认活动 ID。")
+            return text_result(f'未找到活动："{event_id}"。请先调用 list_story_events 确认活动 ID。')
         except Exception as e:
             return text_result(f"读取章节列表失败：{e}")
         return render_result(data, _render_stories_listing(data))
@@ -101,7 +101,7 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         try:
             return text_result(_get_story_summary(zip_path, story_key))
         except KeyError:
-            return text_result(f"未找到剧情章节：{story_key!r}。请通过 list_stories 确认章节 key。")
+            return text_result(f'未找到剧情章节："{story_key}"。请通过 list_stories 确认章节 key。')
         except Exception as e:
             return text_result(f"读取梗概失败：{e}")
 
@@ -125,7 +125,7 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         try:
             chapter = _read_story(zip_path, story_key, include_narration=include_narration)
         except KeyError:
-            return text_result(f"未找到剧情：{story_key!r}。")
+            return text_result(f'未找到剧情："{story_key}"。请通过 list_stories 确认章节 key。')
         except Exception as e:
             return text_result(f"读取剧情失败：{e}")
 
@@ -172,7 +172,7 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
                 page_size=page_size,
             )
         except KeyError:
-            return text_result(f"未找到活动：{event_id!r}。请先调用 list_story_events 确认活动 ID。")
+            return text_result(f'未找到活动："{event_id}"。请先调用 list_story_events 确认活动 ID。')
         except Exception as e:
             return text_result(f"读取活动剧情失败：{e}")
 
@@ -187,16 +187,16 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
                 f"分页共 {total_pages} 页，请求的 page={page} 不存在。"
             )
 
-        header = f"【{result.event_name}】共 {total} 章"
-        if page is not None:
-            header += f"，当前第 {page} 页（{len(chapters)} 章）"
-            if has_more:
-                header += f"，还有更多（下一页：page={page + 1}）"
-        parts = [header, ""]
+        parts: list[str] = []
+        if result.event_name:
+            partial = "，当前为部分内容" if has_more else ""
+            parts.append(f"# {result.event_name}（共 {total} 章{partial}）")
 
         for chapter in chapters:
-            tag = f"[{chapter.avg_tag}]" if chapter.avg_tag else ""
-            parts.append(f"=== {chapter.story_code} {tag} {chapter.story_name} ===")
+            tag = f" [{chapter.avg_tag}]" if chapter.avg_tag else ""
+            parts.append(f"\n=== {chapter.story_code}{tag} {chapter.story_name} ===")
+            if chapter.story_info:
+                parts.append(f"简介：{chapter.story_info}")
             for ln in chapter.lines:
                 if ln.type == "dialog":
                     role = ln.role or "（旁白）"
@@ -205,8 +205,14 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
                     parts.append(f"*{ln.text}*")
                 elif ln.type == "choice":
                     parts.append(f"【选项】{ln.text}")
-            parts.append("")
 
+        if not chapters:
+            parts.append("该活动暂无可读取的章节数据。")
+        if has_more:
+            next_page = (page or 1) + 1
+            parts.append(
+                f'\n[还有更多章节，请调用 read_activity(event_id="{event_id}", page={next_page})]'
+            )
         return text_result("\n".join(parts))
 
     @mcp.tool()
@@ -265,7 +271,9 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         try:
             data = _build_operator_memoirs(zip_path, name)
         except KeyError as e:
-            return text_result(str(e))
+            # str(KeyError) repr-wraps the message in quotes; surface it bare
+            # (parity with the TS twin's e.message).
+            return text_result(e.args[0] if e.args else str(e))
         except Exception as e:
             return text_result(f"查询干员密录失败：{e}")
         return render_result(
@@ -300,7 +308,7 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         except ValueError as e:
             return text_result(str(e))
         except KeyError as e:
-            return text_result(str(e))
+            return text_result(e.args[0] if e.args else str(e))
         except Exception as e:
             return text_result(f"查询角色出场失败：{e}")
         return render_result(data, _render_character_appearances(data))
@@ -324,7 +332,7 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         try:
             data = _build_speakers_in_event(zip_path, event_id)
         except KeyError as e:
-            return text_result(str(e))
+            return text_result(e.args[0] if e.args else str(e))
         except Exception as e:
             return text_result(f"查询发言角色失败：{e}")
         return render_result(data, _render_speakers_in_event(data))

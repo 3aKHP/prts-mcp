@@ -136,6 +136,7 @@ def _story_files() -> dict[str, object]:
         },
         CHARDICT_PATH: {
             "amiya": {"name": "阿米娅", "id": "char_002_amiya"},
+            "nomemoir": {"name": "无密录干员", "id": "char_999_nomemoir"},
         },
         _story_path(FIRST_STORY_KEY): {
             "storyCode": "TEST-1",
@@ -540,3 +541,93 @@ def test_read_activity_page_schema_requires_positive_integer() -> None:
     page_schema = read_activity.input_schema["properties"]["page"]
 
     assert page_schema["anyOf"][0]["minimum"] == 1
+
+
+# ---------------------------------------------------------------------------
+# Story text parity with the TS twin (fix/v2.7.0-story-text-parity)
+# ---------------------------------------------------------------------------
+
+
+def _call_story_tool(app: MCPServer, name: str, args: dict) -> str:
+    result = asyncio.run(
+        app._tool_manager.call_tool(
+            name, args, Context(mcp_server=app), convert_result=True,
+        )
+    )
+    return result.content[0].text
+
+
+def _story_app() -> MCPServer:
+    app = MCPServer("story-parity-test")
+    register_story_tools(app)
+    return app
+
+
+def test_read_activity_paged_rendering_matches_ts(
+    monkeypatch: pytest.MonkeyPatch,
+    story_zip: Path,
+) -> None:
+    monkeypatch.setenv("STORYJSON_PATH", str(story_zip))
+    app = _story_app()
+
+    text = _call_story_tool(
+        app, "read_activity", {"event_id": "act_test", "page": 1, "page_size": 1},
+    )
+
+    assert text.startswith("# 测试活动（共 2 章，当前为部分内容）")
+    assert "简介：第一章梗概" in text
+    assert '[还有更多章节，请调用 read_activity(event_id="act_test", page=2)]' in text
+    # The old Python-only inline pagination header is gone.
+    assert "当前第 1 页" not in text
+    assert "还有更多（下一页" not in text
+
+
+def test_read_activity_full_rendering_has_no_partial_marker(
+    monkeypatch: pytest.MonkeyPatch,
+    story_zip: Path,
+) -> None:
+    monkeypatch.setenv("STORYJSON_PATH", str(story_zip))
+    app = _story_app()
+
+    text = _call_story_tool(app, "read_activity", {"event_id": "act_test"})
+
+    assert text.startswith("# 测试活动（共 2 章）")
+    assert "当前为部分内容" not in text
+    assert "还有更多章节" not in text
+
+
+def test_story_not_found_messages_double_quoted(
+    monkeypatch: pytest.MonkeyPatch,
+    story_zip: Path,
+) -> None:
+    monkeypatch.setenv("STORYJSON_PATH", str(story_zip))
+    app = _story_app()
+
+    assert _call_story_tool(app, "list_stories", {"event_id": "no-such-event"}) == (
+        '未找到活动："no-such-event"。请先调用 list_story_events 确认活动 ID。'
+    )
+    assert _call_story_tool(
+        app, "read_story", {"story_key": "no-such-key"},
+    ) == '未找到剧情："no-such-key"。请通过 list_stories 确认章节 key。'
+    # get_story_summary's not-found comes from the data layer as a message
+    # string (already identical on both implementations).
+    assert _call_story_tool(
+        app, "get_story_summary", {"story_key": "no-such-key"},
+    ) == "未找到剧情章节 'no-such-key' 的梗概。"
+    assert _call_story_tool(
+        app, "find_speakers_in", {"event_id": "no-such-event"},
+    ) == '未找到匹配的活动："no-such-event"。'
+
+
+def test_operator_memoirs_no_data_message_is_bare(
+    monkeypatch: pytest.MonkeyPatch,
+    story_zip: Path,
+) -> None:
+    monkeypatch.setenv("STORYJSON_PATH", str(story_zip))
+    app = _story_app()
+
+    # 无密录干员 exists in chardict but has no memoir chapters.
+    text = _call_story_tool(app, "get_operator_memoirs", {"name": "无密录干员"})
+
+    # No KeyError repr wrapper quotes around the message.
+    assert text == "干员 '无密录干员' (code=nomemoir) 暂无密录数据。"
