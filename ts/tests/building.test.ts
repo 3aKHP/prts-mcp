@@ -208,3 +208,23 @@ test("wrong-shape building table degrades basic info", async () => {
   assert.equal(typeof data, "object");
   assert.equal("building_skills" in (data as object), false);
 });
+
+test("building search scope degrades corrupt and wrong-shape tables (#178)", async () => {
+  for (const payload of ["{not json", "[]"]) {
+    const root = tempGamedataRoot();
+    process.env["GAMEDATA_PATH"] = root;
+    delete process.env["STORYJSON_PATH"];
+    writeMinimalGamedata(root);
+    writeFileSync(
+      join(root, "zh_CN", "gamedata", "excel", "building_data.json"),
+      payload,
+      "utf-8",
+    );
+    const building = await import(`../src/data/building.ts?cacheBust=${Date.now()}-${Math.random()}`);
+
+    // Degrades to the canonical missing-data message (+ cause), not a crash
+    // or an empty payload (the pre-guard TS behavior for []).
+    const result = building.buildBuildingSkillSearch("贸易站");
+    assert.equal(typeof result, "string", payload);
+  }
+});

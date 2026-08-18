@@ -25,6 +25,8 @@ import {
   assetUrl,
   latestReleaseByPrefix,
   listReleases,
+  listReleasesPaginated,
+  type GithubRelease,
   type ReleaseSpec,
 } from "./releaseDiscovery.js";
 import { type RepoSpec, type SyncResult } from "./types.js";
@@ -79,6 +81,45 @@ function releaseDownloadUrl(tag: string, assetName: string): string {
     `https://github.com/${IMAGES_REPO_OWNER}/${IMAGES_REPO}` +
     `/releases/download/${tag}/${assetName}`
   );
+}
+
+/** Extract the version from any ``images-*`` tag (baseline or delta). */
+function imagesTagVersion(tag: unknown): string | null {
+  if (typeof tag !== "string") return null;
+  if (tag.startsWith(BASELINE_PREFIX)) return tag.slice(BASELINE_PREFIX.length);
+  if (tag.startsWith(DELTA_PREFIX)) return tag.slice(DELTA_PREFIX.length);
+  return null;
+}
+
+/**
+ * Enumerate ``(version, release)`` deltas with baseline < v <= current.
+ *
+ * Version strings are fixed-width (``YY-MM-DD-HH-MM-SS_hash``), so
+ * lexicographic order is chronological — do not trust ``created_at``.
+ * Duplicate versions fail closed (null). Versions the pipeline never
+ * published as a Release cannot be enumerated here; the final sha256
+ * verification remains the authoritative completeness gate (#179).
+ */
+function enumerateDeltaChain(
+  releases: GithubRelease[],
+  baselineVersion: string,
+  currentVersion: string,
+): Array<[string, GithubRelease]> | null {
+  const chain: Array<[string, GithubRelease]> = [];
+  for (const release of releases) {
+    const tag = release["tag_name"];
+    if (typeof tag !== "string" || tag.startsWith(BASELINE_PREFIX)) continue;
+    const version = imagesTagVersion(tag);
+    if (version === null) continue;
+    if (baselineVersion < version && version <= currentVersion) {
+      chain.push([version, release]);
+    }
+  }
+  if (new Set(chain.map(([version]) => version)).size !== chain.length) {
+    return null;
+  }
+  chain.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+  return chain;
 }
 
 // ---------------------------------------------------------------------------
@@ -175,7 +216,7 @@ async function syncImagesLocked(
 ): Promise<SyncResult> {
   const spec = dummySpec(imageDir);
 
-  const releases = await listReleases(IMAGES_REPO_OWNER, IMAGES_REPO);
+  let releases = await listReleases(IMAGES_REPO_OWNER, IMAGES_REPO);
   if (releases === null) {
     return offlineOrNoData(imageDir, "Network unavailable");
   }
@@ -188,7 +229,7 @@ async function syncImagesLocked(
   }
 
   const deltaTag = String(deltaRelease["tag_name"] ?? "");
-  const currentVersion = deltaTag.slice(DELTA_PREFIX.length);
+  const tagVersion = deltaTag.slice(DELTA_PREFIX.length);
 
   const meta = await loadMeta(imageDir);
   const genDir = await activeGeneration(imageDir);
@@ -206,10 +247,10 @@ async function syncImagesLocked(
   if (
     meta !== null
     && genDir !== null
-    && meta["currentVersion"] === currentVersion
+    && meta["currentVersion"] === tagVersion
     && sameShards
   ) {
-    return { spec, status: "up_to_date", commitSha: currentVersion, error: null };
+    return { spec, status: "up_to_date", commitSha: tagVersion, error: null };
   }
 
   // Tag differs (or first sync) → download index.json and rebuild.
@@ -233,6 +274,72 @@ async function syncImagesLocked(
 
   const baselineVersion = index.baselineVersion;
 
+  // The index is authoritative for currentVersion; the latest delta tag is
+  // only a discovery hint. A drift between the two would pick the wrong
+  // chain endpoint and delta asset names — fail closed (#179).
+  const currentVersion = index.currentVersion;
+  if (!currentVersion || currentVersion !== tagVersion) {
+    return offlineOrNoData(
+      imageDir,
+      "index.json currentVersion does not match the latest images delta tag",
+    );
+  }
+
+  // Fast path is only valid when the prior generation sits on the same
+  // baseline, syncs the same shards, and is not ahead of the authoritative
+  // index. A rollback (prior current > index current) drops the fast path
+  // and rebuilds from baseline + the full chain (#179).
+  const priorCurrent = meta?.["currentVersion"];
+  const baselineUnchanged =
+    meta !== null
+    && genDir !== null
+    && meta["baselineVersion"] === baselineVersion
+    && sameShards
+    && typeof priorCurrent === "string"
+    && priorCurrent <= currentVersion;
+  const applyAfter =
+    baselineUnchanged && typeof priorCurrent === "string"
+      ? priorCurrent
+      : baselineVersion;
+
+  // Delta-chain enumeration must see every images release back to
+  // applyAfter; the newest-100 page may not reach that far (#179).
+  const coversChainStart = (release: GithubRelease): boolean => {
+    const version = imagesTagVersion(release["tag_name"]);
+    return version !== null && version <= applyAfter;
+  };
+  if (!releases.some(coversChainStart)) {
+    const paged = await listReleasesPaginated(
+      IMAGES_REPO_OWNER,
+      IMAGES_REPO,
+      coversChainStart,
+    );
+    if (paged === null) {
+      return offlineOrNoData(
+        imageDir,
+        "Release history does not cover the images baseline",
+      );
+    }
+    releases = paged;
+  }
+
+  const chain = enumerateDeltaChain(releases, baselineVersion, currentVersion);
+  if (chain === null) {
+    return offlineOrNoData(imageDir, "images delta chain has duplicate versions");
+  }
+
+  const pending = chain.filter(([version]) => version > applyAfter);
+  // Fail fast on a missing delta asset *before* the ~1.5 GB baseline
+  // download, so a broken chain never burns the transfer budget (#179).
+  for (const [chainVersion, chainRelease] of pending) {
+    if (assetUrl(chainRelease, `${DELTA_ASSET_PREFIX}${chainVersion}.zip`) === null) {
+      return offlineOrNoData(
+        imageDir,
+        `images delta asset missing: ${DELTA_ASSET_PREFIX}${chainVersion}.zip`,
+      );
+    }
+  }
+
   // --- Rebuild a new generation -----------------------------------------
   const relDir = await releasesDir(imageDir);
   const generation = `${versionHash(currentVersion)}-${randomUUID().replaceAll("-", "")}`;
@@ -243,13 +350,8 @@ async function syncImagesLocked(
     await mkdir(staging, { recursive: true });
     stagingExists = true;
 
-    const baselineUnchanged =
-      meta !== null
-      && genDir !== null
-      && meta["baselineVersion"] === baselineVersion
-      && sameShards;
     if (baselineUnchanged && genDir !== null) {
-      // Fast path: reuse prior PNGs, overlay only the new delta.
+      // Fast path: reuse prior PNGs, overlay only the newer deltas.
       await cp(genDir, staging, { recursive: true });
       await unlink(join(staging, "index.json")).catch(() => undefined);
       await unlink(join(staging, IMAGES_META)).catch(() => undefined);
@@ -265,18 +367,26 @@ async function syncImagesLocked(
       }
     }
 
-    // Delta: overlay incremental PNGs. A download/extract failure must
-    // propagate (not be swallowed) so a half-applied delta never activates —
-    // the authoritative index.json would otherwise reference PNGs that are
-    // absent. The sentinel delta (empty zip) downloads and extracts without
-    // raising, so it passes through cleanly.
-    const deltaAsset = `${DELTA_ASSET_PREFIX}${currentVersion}.zip`;
-    const deltaUrl = assetUrl(deltaRelease, deltaAsset);
-    if (deltaUrl !== null) {
+    // Delta chain: overlay every pending incremental in version order.
+    // A download/extract failure must propagate (not be swallowed) so a
+    // half-applied chain never activates — the authoritative index.json
+    // would otherwise reference PNGs that are absent. Sentinel deltas
+    // (empty zips) extract cleanly and pass through.
+    let seq = 0;
+    for (const [chainVersion, chainRelease] of pending) {
+      seq += 1;
+      const deltaUrl = assetUrl(chainRelease, `${DELTA_ASSET_PREFIX}${chainVersion}.zip`);
+      if (deltaUrl === null) {
+        // vanished since the pre-download check
+        throw new Error(
+          `images delta asset missing: ${DELTA_ASSET_PREFIX}${chainVersion}.zip`,
+        );
+      }
       const deltaZip = join(staging, ".delta.zip");
       await streamCascading(deltaUrl, deltaZip);
       await safeExtractZip(deltaZip, staging);
       await unlink(deltaZip).catch(() => undefined);
+      log("INFO", `Applied images delta ${chainVersion.slice(0, 16)} (${seq}/${pending.length})`);
     }
 
     // Verify every synced variant's sha256 against the index before
