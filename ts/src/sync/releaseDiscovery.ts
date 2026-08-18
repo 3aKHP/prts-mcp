@@ -44,6 +44,48 @@ export async function listReleases(
   }
 }
 
+/**
+ * List releases page by page until *stop* matches or history runs out.
+ *
+ * GitHub caps per_page at 100, so a caller that must see releases older
+ * than the newest 100 (e.g. images delta-chain enumeration back to the
+ * baseline release, #179) paginates until *stop* returns true for a release
+ * in the current page or a short page ends the list. Returns null on any
+ * network/API failure or when maxPages passes without *stop* matching —
+ * fail closed, because the caller cannot prove its history window is
+ * complete.
+ */
+export async function listReleasesPaginated(
+  owner: string,
+  repo: string,
+  stop: (release: GithubRelease) => boolean,
+  opts: { maxPages?: number; timeoutMs?: number } = {},
+): Promise<GithubRelease[] | null> {
+  const maxPages = opts.maxPages ?? 20;
+  const timeoutMs = opts.timeoutMs ?? 10_000;
+  const releases: GithubRelease[] = [];
+  for (let page = 1; page <= maxPages; page++) {
+    const url =
+      `https://api.github.com/repos/${owner}/${repo}/releases?per_page=100&page=${page}`;
+    let data: unknown;
+    try {
+      const res = await fetchCascading(url, { headers: githubHeaders() }, timeoutMs);
+      data = await res.json();
+    } catch {
+      return null;
+    }
+    if (!Array.isArray(data)) return null;
+    releases.push(...(data as GithubRelease[]));
+    if (
+      data.some((r) => typeof r === "object" && r !== null && stop(r as GithubRelease))
+    ) {
+      return releases;
+    }
+    if (data.length < 100) return releases;
+  }
+  return null;
+}
+
 /** Pick the newest release whose tag starts with *prefix*, sorting by created_at desc. */
 export function latestReleaseByPrefix(
   releases: GithubRelease[],
