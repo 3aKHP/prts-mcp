@@ -18,6 +18,7 @@ import AdmZip from "adm-zip";
 import { SCHEMA_VERSION } from "../src/data/images.ts";
 import { neededShardKeys, syncImages } from "../src/sync/imagesSync.ts";
 import { activeGeneration } from "../src/sync/generationStore.ts";
+import { listReleasesPaginated } from "../src/sync/releaseDiscovery.ts";
 
 function tempImageDir(): string {
   return join(mkdtempSync(join(tmpdir(), "prts-images-sync-test-")), "images");
@@ -384,6 +385,35 @@ test("fast path applies intermediate deltas (#179)", async () => {
   });
 });
 
+test("fast path overlays multiple pending deltas (#179 CR)", async () => {
+  // Prior generation sits at the baseline/sentinel version and two deltas
+  // publish at once — the fast path must overlay BOTH (the pre-fix
+  // single-delta overlay fails the truthful sha256 gate on this scenario).
+  const imageDir = tempImageDir();
+  const world = new ChainWorld();
+  world.baseFiles = skinFiles("skin_base");
+  world.deltaFiles = { [B]: {} }; // sentinel-only world: gen lands at version B
+  await withFetchMock(world.fetchMock(), async () => {
+    const r1 = await syncImages(imageDir, { forceCheck: true });
+    assert.equal(r1.status, "updated");
+    assert.equal(r1.commitSha, B);
+
+    world.deltaFiles = {
+      [D1]: skinFiles("skin_d1"),
+      [D2]: skinFiles("skin_d2"),
+    };
+
+    const r2 = await syncImages(imageDir, { forceCheck: true });
+    assert.equal(r2.status, "updated");
+    assert.equal(r2.commitSha, D2);
+    assert.deepEqual(await activeFiles(imageDir), new Set(Object.keys(world.allFiles())));
+    // Fast path: baseline shards are not re-fetched; both deltas overlay once.
+    assert.equal(world.baselineDownloads(), 2);
+    assert.equal(world.downloads.get(`https://ex/delta/${D1}.zip`), 1);
+    assert.equal(world.downloads.get(`https://ex/delta/${D2}.zip`), 1);
+  });
+});
+
 test("delta chain with include_original variant set", async () => {
   // includeOriginal adds the original shards; chain semantics unchanged.
   const imageDir = tempImageDir();
@@ -518,5 +548,61 @@ test("pagination recovers a baseline beyond the first page (#179)", async () => 
     assert.equal(r.status, "updated");
     assert.equal(world.paginatedCalls, 1);
     assert.deepEqual(await activeFiles(imageDir), new Set(Object.keys(world.allFiles())));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// listReleasesPaginated unit tests (#179 CR): the ChainWorld fetch mock
+// answers every &page= URL with the full list, so the pagination stop /
+// short-page / maxPages behavior gets its own focused coverage here.
+// ---------------------------------------------------------------------------
+
+function pagedFetch(pages: Record<number, ReleaseObj[]>) {
+  let calls = 0;
+  const fetchMock = (async (input: RequestInfo | URL) => {
+    calls += 1;
+    const page = Number(String(input).split("page=").pop());
+    return jsonResponse(pages[page]);
+  }) as typeof fetch;
+  return { fetchMock, calls: () => calls };
+}
+
+test("listReleasesPaginated paginates until stop matches", async () => {
+  const page1 = Array.from({ length: 100 }, (_, i) => ({ tag_name: `data-v${i}` }));
+  const page2 = [{ tag_name: "data-v100" }, { tag_name: "images-baseline-b1" }];
+  const world = pagedFetch({ 1: page1, 2: page2 });
+  await withFetchMock(world.fetchMock, async () => {
+    const result = await listReleasesPaginated(
+      "o", "r", (r) => r["tag_name"] === "images-baseline-b1",
+    );
+    assert.deepEqual(result, [...page1, ...page2]);
+  });
+  assert.equal(world.calls(), 2);
+});
+
+test("listReleasesPaginated short page ends history without stop", async () => {
+  const world = pagedFetch({ 1: [{ tag_name: "data-v1" }] });
+  await withFetchMock(world.fetchMock, async () => {
+    const result = await listReleasesPaginated("o", "r", () => false);
+    assert.deepEqual(result, [{ tag_name: "data-v1" }]);
+  });
+  assert.equal(world.calls(), 1);
+});
+
+test("listReleasesPaginated maxPages without stop fails closed", async () => {
+  const full = Array.from({ length: 100 }, () => ({ tag_name: "data-v1" }));
+  const world = pagedFetch({ 1: full, 2: full, 3: full, 4: full });
+  await withFetchMock(world.fetchMock, async () => {
+    const result = await listReleasesPaginated("o", "r", () => false, { maxPages: 3 });
+    assert.equal(result, null);
+  });
+  assert.equal(world.calls(), 3);
+});
+
+test("listReleasesPaginated network failure returns null", async () => {
+  await withFetchMock((async () => {
+    throw new Error("network down");
+  }) as typeof fetch, async () => {
+    assert.equal(await listReleasesPaginated("o", "r", () => true), null);
   });
 });

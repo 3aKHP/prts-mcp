@@ -666,3 +666,33 @@ def test_pagination_recovers_baseline_beyond_first_page(tmp_path, monkeypatch):
     assert r.status == "updated"
     assert world.paginated_calls == 1
     assert _active_files(image_dir) == set(world.all_files())
+
+
+def test_fast_path_overlays_multiple_pending_deltas(tmp_path, monkeypatch):
+    """#179 CR: prior generation sits at the baseline/sentinel version and two
+    deltas publish at once — the fast path must overlay BOTH (the pre-fix
+    single-delta overlay fails the truthful sha256 gate on this scenario)."""
+    image_dir = tmp_path / "images"
+    world = _ChainWorld()
+    world.base_files = _skin_files("skin_base")
+    world.delta_files = {_B: {}}  # sentinel-only world: gen lands at version B
+    world.install(monkeypatch)
+
+    r1 = sync_images(image_dir, include_original=False, force_check=True)
+    assert r1.status == "updated"
+    assert r1.commit_sha == _B
+
+    world.delta_files = {
+        _D1: _skin_files("skin_d1"),
+        _D2: _skin_files("skin_d2"),
+    }
+    world.install(monkeypatch)
+
+    r2 = sync_images(image_dir, include_original=False, force_check=True)
+    assert r2.status == "updated"
+    assert r2.commit_sha == _D2
+    assert _active_files(image_dir) == set(world.all_files())
+    # Fast path: baseline shards are not re-fetched; both deltas overlay once.
+    assert world.baseline_downloads() == 2
+    assert world.downloads[f"https://ex/delta/{_D1}.zip"] == 1
+    assert world.downloads[f"https://ex/delta/{_D2}.zip"] == 1
