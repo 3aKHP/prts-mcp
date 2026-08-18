@@ -1,18 +1,19 @@
 # PRTS-MCP 项目状态
 
-_Last updated: 2026-08-15_
+_Last updated: 2026-08-18_
 
 ## 当前版本
 
 | 实现 | 版本 | 状态 |
 |------|------|------|
-| Python | 2.7.0 | Stable release |
-| TypeScript | 2.7.0 | Stable release |
+| Python | 2.7.1 | Stable release |
+| TypeScript | 2.7.1 | Stable release |
 
-- 当前稳定发布：2.7.0（24 个 MCP 工具）
+- 当前稳定发布：2.7.1（24 个 MCP 工具）
 - 当前 LTS 发布：1.7.0（32 个 MCP 工具，剧情角色追踪）
 - 下一开发目标：2.8.0
 - 当前稳定补丁线：2.7.x
+- 2.7.1 发布内容：图片同步应用完整 AKDP delta chain（全新安装/跳版本同步不再漏中间 delta；断链在 baseline 下载前 fail fast；index currentVersion 权威化；release 发现分页覆盖链起点）（#179）；wrong-shape `building_data.json` 双实现一致降级（#178）。
 - 2.7.0 发布内容：干员基建技能（`get_operator_basic_info` 新段 + `search` `building_skills` scope 跨干员反查）、本地立绘列表的皮肤系列/获取方式/描述元数据、`building_data.json`/`skin_table.json` 提升 AKDP 数据集契约、2.7 上帝文件重构程序（#161–#171）、story 文案 parity 修复（#172）与全量 E2E 手册制度化（#173）。工具面保持 24。
 - 2.6.2 发布内容：GameData pair 幂等性修复——未变化的 Excel/Levels Auto-Sync 周期不再替换 `.gamedata_pair.json`，避免虚假激活变更与周期性缓存失效（#152）。
 - 2.6.1 发布内容：`prts_page(action="template")` 的嵌套字段安全渲染与 malformed-response 边界；`read_activity` 页码输入和越界提示一致性。

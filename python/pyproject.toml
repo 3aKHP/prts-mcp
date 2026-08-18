@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "prts-mcp"
-version = "2.7.0"
+version = "2.7.1"
 description = "MCP Server for Arknights PRTS Wiki & game data"
 readme = "README.md"
 license = { text = "MIT" }
