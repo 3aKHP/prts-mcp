@@ -170,11 +170,11 @@ def _enumerate_delta_chain(
     chain: list[tuple[str, dict]] = []
     for release in releases:
         tag = release.get("tag_name")
-        if not isinstance(tag, str) or not tag.startswith(_DELTA_PREFIX):
+        if not isinstance(tag, str) or tag.startswith(_BASELINE_PREFIX):
             continue
-        if tag.startswith(_BASELINE_PREFIX):
+        version = _images_tag_version(tag)
+        if version is None:
             continue
-        version = tag[len(_DELTA_PREFIX):]
         if baseline_version < version <= current_version:
             chain.append((version, release))
     versions = [version for version, _ in chain]

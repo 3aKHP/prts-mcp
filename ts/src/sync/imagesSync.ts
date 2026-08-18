@@ -108,9 +108,9 @@ function enumerateDeltaChain(
   const chain: Array<[string, GithubRelease]> = [];
   for (const release of releases) {
     const tag = release["tag_name"];
-    if (typeof tag !== "string" || !tag.startsWith(DELTA_PREFIX)) continue;
-    if (tag.startsWith(BASELINE_PREFIX)) continue;
-    const version = tag.slice(DELTA_PREFIX.length);
+    if (typeof tag !== "string" || tag.startsWith(BASELINE_PREFIX)) continue;
+    const version = imagesTagVersion(tag);
+    if (version === null) continue;
     if (baselineVersion < version && version <= currentVersion) {
       chain.push([version, release]);
     }
