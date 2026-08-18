@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.7.1] - 2026-08-18
+
+### Fixed
+
+- **Images sync applies the full AKDP delta chain (#179).** The syncer previously downloaded the baseline shards plus only the latest `images-delta-<currentVersion>.zip`, never enumerating intermediate delta releases. Once the factory publishes two or more non-empty deltas after a baseline, a fresh `LOCAL_IMAGE=true` install or a version-skipping sync built an incomplete generation and failed at the sha256 gate — after burning the ~1.5 GB baseline download (~5.1 GB with `ORIGINAL_IMAGE=true`). The syncer now enumerates every `images-*` delta release with `baselineVersion < v <= currentVersion` and applies the chain in version order; `index.json` `currentVersion` is authoritative and cross-checked against the latest delta tag (drift fails closed); a broken chain (missing delta asset, duplicate version) fails fast *before* the baseline download starts; release discovery paginates until the chain start is covered so the newest-100 page can no longer silently truncate the chain; and a fast-path generation only absorbs deltas newer than its own `currentVersion` — an index rollback behind the active generation now rebuilds from the baseline instead of reusing newer content. The atomic staging, sha256 verification, offline-fallback, and generation-prune semantics are unchanged. The TypeScript side also gained its first `imagesSync` test coverage, mirroring the Python chain scenarios.
+- **Wrong-shape `building_data.json` degrades like corrupt JSON (#178).** A valid-JSON-but-wrong-shape `building_data.json` (list/null/scalar) previously escaped the tolerate-family as an `AttributeError` in `get_operator_basic_info` on Python and produced an empty-payload `building_skills` on TypeScript (a parity fork). A top-level shape guard now converts it to the same degradation family on both implementations: basic_info omits the field, and the `search` `building_skills` scope reports the degradation instead of crashing. On Python the scope's catch tuple also gains `ValueError`, so corrupt-JSON tables now degrade there too (previously they crashed the scope; `JSONDecodeError` is a `ValueError` subclass) — basic_info's corrupt-JSON handling from 2.7.0 is unchanged.
+
 ## [2.7.0] - 2026-08-15
 
 ### Added

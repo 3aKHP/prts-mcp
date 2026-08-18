@@ -107,6 +107,75 @@ class TestCheckLatestRelease:
 
 
 # ---------------------------------------------------------------------------
+# list_releases_paginated (#179)
+# ---------------------------------------------------------------------------
+
+def _paged_response(payload: list[dict]) -> MagicMock:
+    resp = MagicMock()
+    resp.json.return_value = payload
+    return resp
+
+
+class TestListReleasesPaginated:
+    def test_paginates_until_stop_matches(self):
+        from prts_mcp.sync.release_discovery import list_releases_paginated
+
+        page1 = [{"tag_name": f"data-v{i:03d}"} for i in range(100)]
+        page2 = [{"tag_name": "data-v100"}, {"tag_name": "images-baseline-b1"}]
+
+        def fake_get(url, *, timeout, headers=None):
+            page = int(url.rsplit("page=", 1)[-1])
+            return _paged_response({1: page1, 2: page2}[page])
+
+        with patch(
+            "prts_mcp.sync.release_discovery.get_cascading",
+            side_effect=lambda url, **kw: fake_get(url, **kw),
+        ) as cascading:
+            result = list_releases_paginated(
+                "o", "r",
+                stop=lambda r: r.get("tag_name") == "images-baseline-b1",
+            )
+        assert result == page1 + page2
+        assert cascading.call_count == 2
+
+    def test_short_page_ends_history_without_stop(self):
+        from prts_mcp.sync.release_discovery import list_releases_paginated
+
+        with patch(
+            "prts_mcp.sync.release_discovery.get_cascading",
+            return_value=_paged_response([{"tag_name": "data-v1"}]),
+        ) as cascading:
+            result = list_releases_paginated(
+                "o", "r", stop=lambda r: False,
+            )
+        assert result == [{"tag_name": "data-v1"}]
+        assert cascading.call_count == 1
+
+    def test_max_pages_without_stop_fails_closed(self):
+        from prts_mcp.sync.release_discovery import list_releases_paginated
+
+        full_page = [{"tag_name": "data-v1"}] * 100
+        with patch(
+            "prts_mcp.sync.release_discovery.get_cascading",
+            return_value=_paged_response(full_page),
+        ):
+            result = list_releases_paginated(
+                "o", "r", stop=lambda r: False, max_pages=3,
+            )
+        assert result is None
+
+    def test_network_failure_returns_none(self):
+        from prts_mcp.sync.release_discovery import list_releases_paginated
+
+        with patch(
+            "prts_mcp.sync.release_discovery.get_cascading",
+            side_effect=Exception("network error"),
+        ):
+            result = list_releases_paginated("o", "r", stop=lambda r: True)
+        assert result is None
+
+
+# ---------------------------------------------------------------------------
 # sync_release
 # ---------------------------------------------------------------------------
 

@@ -41,6 +41,45 @@ def list_releases(owner: str, repo: str, *, timeout: float = 10.0) -> list[dict]
         return None
 
 
+def list_releases_paginated(
+    owner: str,
+    repo: str,
+    *,
+    stop: Callable[[dict], bool],
+    max_pages: int = 20,
+    timeout: float = 10.0,
+) -> list[dict] | None:
+    """List releases page by page until *stop* matches or history runs out.
+
+    GitHub caps ``per_page`` at 100, so a caller that must see releases
+    older than the newest 100 (e.g. images delta-chain enumeration back to
+    the baseline release, #179) paginates until *stop* returns True for a
+    release in the current page or a short page ends the list. Returns None
+    on any network/API failure or when *max_pages* passes without *stop*
+    matching — fail closed, because the caller cannot prove its history
+    window is complete.
+    """
+    releases: list[dict] = []
+    for page in range(1, max_pages + 1):
+        url = (
+            f"https://api.github.com/repos/{owner}/{repo}/releases"
+            f"?per_page=100&page={page}"
+        )
+        try:
+            response = get_cascading(url, timeout=timeout, headers=github_headers())
+            data = response.json()
+        except Exception:  # noqa: BLE001
+            return None
+        if not isinstance(data, list):
+            return None
+        releases.extend(data)
+        if any(stop(r) for r in data if isinstance(r, dict)):
+            return releases
+        if len(data) < 100:
+            return releases
+    return None
+
+
 def latest_release_by_prefix(
     releases: list[dict],
     prefix: str,
