@@ -240,3 +240,23 @@ def test_wrong_shape_building_table_degrades_basic_info(tmp_path: Path) -> None:
             assert "building_skills" not in data
         finally:
             clear_operator_caches()
+
+
+def test_building_search_scope_degrades_corrupt_and_wrong_shape(
+    tmp_path: Path,
+) -> None:
+    """#178: the search scope's catch tuple (incl. ValueError) degrades both
+    corrupt and wrong-shape building tables to a message, not a crash."""
+    for payload in ("{not json", "[]"):
+        clear_building_caches()
+        write_minimal_gamedata(tmp_path)
+        excel = tmp_path / "zh_CN" / "gamedata" / "excel"
+        (excel / "building_data.json").write_text(payload, encoding="utf-8")
+        with patch.dict(os.environ, {"GAMEDATA_PATH": str(tmp_path)}, clear=False):
+            os.environ.pop("STORYJSON_PATH", None)
+
+            result = build_search("building_skills", "贸易站")
+            # Degrades to the canonical missing-data message (+ cause).
+            assert isinstance(result, str), payload
+
+        clear_building_caches()
