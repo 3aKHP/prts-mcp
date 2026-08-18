@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import inspect
 import json
+from collections import Counter
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -52,6 +53,10 @@ def _setup_mocks(monkeypatch, *, current: str = "c1", baseline: str = "b1",
     monkeypatch.setattr(
         "prts_mcp.sync.images_sync.list_releases",
         lambda owner, repo, *, timeout=10.0: releases,
+    )
+    monkeypatch.setattr(
+        "prts_mcp.sync.images_sync.list_releases_paginated",
+        lambda owner, repo, *, stop, max_pages=20, timeout=10.0: releases,
     )
     monkeypatch.setattr(
         "prts_mcp.sync.images_sync._download_small",
@@ -301,3 +306,363 @@ def test_download_large_cascades_to_mirror_with_fresh_budget(tmp_path, monkeypat
     )
     assert dest.read_bytes() == b"mirror-bytes"
     assert list(tmp_path.glob(".*.tmp")) == []
+
+
+# ---------------------------------------------------------------------------
+# Delta-chain scenarios (#179): real zips + truthful index artworks, so the
+# sha256 gate actually exercises the applied chain instead of vacuously
+# passing over empty artworks.
+# ---------------------------------------------------------------------------
+
+_B = "26-08-03-00-00-00_aaaaaa"
+_D1 = "26-08-07-00-00-00_bbbbbb"
+_D2 = "26-08-17-00-00-00_cccccc"
+
+
+def _png(tag: str) -> bytes:
+    return b"\x89PNG\r\n\x1a\n" + tag.encode()
+
+
+def _skin_files(
+    skin: str, variants: tuple[str, ...] = ("large", "preview"),
+) -> dict[str, bytes]:
+    return {f"chararts/{skin}_{v}.png": _png(f"{skin}-{v}") for v in variants}
+
+
+def _artwork_entries(files: dict[str, bytes]) -> dict:
+    """Build index.json artworks entries with truthful sha256 for *files*."""
+    artworks: dict[str, dict] = {}
+    for path, content in files.items():
+        stem = path.split("/")[1][: -len(".png")]
+        skin, variant = stem.rsplit("_", 1)
+        artworks.setdefault(skin, {"kind": "base"})[variant] = {
+            "file": path,
+            "sha256": hashlib.sha256(content).hexdigest(),
+            "w": 1,
+            "h": 1,
+            "bytes": len(content),
+        }
+    return artworks
+
+
+class _ChainWorld:
+    """Controlled AKDP images world: real zips and a truthful index.
+
+    ``base_files`` ship in the baseline shards; ``delta_files`` maps each
+    delta version to the files its zip adds. The latest delta release also
+    serves the authoritative index.json covering every file, so the sha256
+    gate fails unless the full chain was applied (#179).
+    """
+
+    def __init__(
+        self,
+        *,
+        baseline: str = _B,
+        shard_keys: tuple[str, ...] = ("chararts-large", "chararts-preview"),
+    ) -> None:
+        self.baseline = baseline
+        self.shard_keys = shard_keys
+        self.base_files: dict[str, bytes] = {}
+        self.delta_files: dict[str, dict[str, bytes]] = {}
+        self.missing_delta_assets: set[str] = set()
+        self.omitted_releases: set[str] = set()
+        self.extra_releases: list[dict] = []
+        self.index_current_override: str | None = None
+        self.page1_only_latest = False
+        self.downloads: Counter[str] = Counter()
+        self.paginated_calls = 0
+
+    @property
+    def current(self) -> str:
+        versions = sorted(self.delta_files)
+        return versions[-1] if versions else self.baseline
+
+    def all_files(self) -> dict[str, bytes]:
+        files = dict(self.base_files)
+        for version in sorted(self.delta_files):
+            files.update(self.delta_files[version])
+        return files
+
+    def _index_payload(self) -> dict:
+        return {
+            "schemaVersion": SCHEMA_VERSION,
+            "baselineVersion": self.baseline,
+            "currentVersion": self.index_current_override or self.current,
+            "shards": {
+                key: f"images-baseline-{key}-{self.baseline}.zip"
+                for key in self.shard_keys
+            },
+            "artworks": _artwork_entries(self.all_files()),
+        }
+
+    def _releases(self) -> list[dict]:
+        releases = [{
+            "tag_name": f"images-baseline-{self.baseline}",
+            "created_at": "2026-08-01T00:00:00Z",
+            "assets": [],
+        }]
+        versions = sorted(self.delta_files)
+        for seq, version in enumerate(versions):
+            if version in self.omitted_releases:
+                continue
+            assets = []
+            if version not in self.missing_delta_assets:
+                assets.append({
+                    "name": f"images-delta-{version}.zip",
+                    "browser_download_url": f"https://ex/delta/{version}.zip",
+                })
+            if version == versions[-1]:
+                assets.append({
+                    "name": "index.json",
+                    "browser_download_url": f"https://ex/{version}/index.json",
+                })
+            releases.append({
+                "tag_name": f"images-{version}",
+                "created_at": f"2026-08-{2 + seq:02d}T00:00:00Z",
+                "assets": assets,
+            })
+        return releases + self.extra_releases
+
+    def _stream(self, url: str, dest: Path, *, timeout: float = 1800.0) -> None:
+        self.downloads[url] += 1
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        if url.startswith("https://ex/delta/"):
+            version = url.split("/")[-1][: -len(".zip")]
+            files = self.delta_files[version]
+        else:
+            shard_file = url.rsplit("/", 1)[-1]
+            shards = self._index_payload()["shards"]
+            shard_key = next(k for k, f in shards.items() if f == shard_file)
+            variant = shard_key.rsplit("-", 1)[-1]
+            files = {
+                p: c for p, c in self.base_files.items()
+                if p.endswith(f"_{variant}.png")
+            }
+        with ZipFile(dest, "w") as zf:
+            for path, content in files.items():
+                zf.writestr(path, content)
+
+    def install(self, monkeypatch) -> None:
+        releases = self._releases()
+        monkeypatch.setattr(
+            "prts_mcp.sync.images_sync.list_releases",
+            lambda owner, repo, *, timeout=10.0: (
+                releases[-1:] if self.page1_only_latest else releases
+            ),
+        )
+
+        def _paginated(owner, repo, *, stop, max_pages=20, timeout=10.0):
+            self.paginated_calls += 1
+            return releases
+
+        monkeypatch.setattr(
+            "prts_mcp.sync.images_sync.list_releases_paginated", _paginated,
+        )
+        monkeypatch.setattr(
+            "prts_mcp.sync.images_sync._download_small",
+            lambda url, *, timeout=30.0: json.dumps(self._index_payload()).encode()
+            if "index.json" in url else None,
+        )
+        monkeypatch.setattr(
+            "prts_mcp.sync.images_sync.stream_cascading", self._stream,
+        )
+
+    def baseline_downloads(self) -> int:
+        return sum(
+            n for url, n in self.downloads.items() if "/releases/download/" in url
+        )
+
+
+def _chain_world() -> _ChainWorld:
+    world = _ChainWorld()
+    world.base_files = _skin_files("skin_base")
+    world.delta_files = {
+        _D1: _skin_files("skin_d1"),
+        _D2: _skin_files("skin_d2"),
+    }
+    return world
+
+
+def _active_files(image_dir: Path) -> set[str]:
+    gen = active_generation(image_dir)
+    assert gen is not None
+    return {str(p.relative_to(gen)) for p in gen.rglob("*.png")}
+
+
+def test_fresh_install_applies_full_delta_chain(tmp_path, monkeypatch):
+    """#179: a fresh install must apply baseline + every intermediate delta."""
+    image_dir = tmp_path / "images"
+    world = _chain_world()
+    world.install(monkeypatch)
+
+    r = sync_images(image_dir, include_original=False, force_check=True)
+    assert r.status == "updated"
+    assert r.commit_sha == _D2
+    assert _active_files(image_dir) == set(world.all_files())
+    # Two baseline shards + both deltas, each fetched exactly once.
+    assert world.baseline_downloads() == 2
+    assert world.paginated_calls == 0  # page 1 already covers the baseline
+
+    r2 = sync_images(image_dir, include_original=False, force_check=True)
+    assert r2.status == "up_to_date"
+
+
+def test_fast_path_applies_intermediate_deltas(tmp_path, monkeypatch):
+    """#179: a prior generation must absorb every delta since its version."""
+    image_dir = tmp_path / "images"
+    world = _ChainWorld()
+    world.base_files = _skin_files("skin_base")
+    world.delta_files = {_D1: _skin_files("skin_d1")}
+    world.install(monkeypatch)
+
+    r1 = sync_images(image_dir, include_original=False, force_check=True)
+    assert r1.status == "updated"
+    assert r1.commit_sha == _D1
+    shards_after_first = world.baseline_downloads()
+
+    # The pipeline publishes D2; the instance jumps D1 -> D2 directly.
+    world.delta_files[_D2] = _skin_files("skin_d2")
+    world.install(monkeypatch)
+
+    r2 = sync_images(image_dir, include_original=False, force_check=True)
+    assert r2.status == "updated"
+    assert r2.commit_sha == _D2
+    assert _active_files(image_dir) == set(world.all_files())
+    # Fast path: baseline shards and the already-applied D1 are not re-fetched.
+    assert world.baseline_downloads() == shards_after_first
+    assert world.downloads[f"https://ex/delta/{_D1}.zip"] == 1
+    assert world.downloads[f"https://ex/delta/{_D2}.zip"] == 1
+
+
+def test_chain_include_original(tmp_path, monkeypatch):
+    """ORIGINAL_IMAGE=true adds the original shards; chain semantics unchanged."""
+    image_dir = tmp_path / "images"
+    world = _ChainWorld(
+        shard_keys=("chararts-large", "chararts-preview", "chararts-original"),
+    )
+    variants = ("large", "preview", "original")
+    world.base_files = _skin_files("skin_base", variants)
+    world.delta_files = {
+        _D1: _skin_files("skin_d1", variants),
+        _D2: _skin_files("skin_d2", variants),
+    }
+    world.install(monkeypatch)
+
+    r = sync_images(image_dir, include_original=True, force_check=True)
+    assert r.status == "updated"
+    assert _active_files(image_dir) == set(world.all_files())
+
+
+def test_missing_intermediate_release_fails_closed(tmp_path, monkeypatch):
+    """#179: a delta the pipeline never published cannot be enumerated; the
+    sha256 gate is the authoritative stop and nothing activates."""
+    image_dir = tmp_path / "images"
+    world = _chain_world()
+    world.omitted_releases = {_D1}
+    world.install(monkeypatch)
+
+    r = sync_images(image_dir, include_original=False, force_check=True)
+    assert r.status == "no_data"
+    assert "sha256" in (r.error or "")
+    assert active_generation(image_dir) is None
+
+
+def test_missing_delta_asset_fails_before_baseline_download(tmp_path, monkeypatch):
+    """#179: a broken chain fails closed *before* the ~1.5 GB baseline pull."""
+    image_dir = tmp_path / "images"
+    world = _chain_world()
+    world.missing_delta_assets = {_D1}
+    world.install(monkeypatch)
+
+    r = sync_images(image_dir, include_original=False, force_check=True)
+    assert r.status == "no_data"
+    assert "delta asset missing" in (r.error or "")
+    assert sum(world.downloads.values()) == 0
+    assert active_generation(image_dir) is None
+
+
+def test_duplicate_delta_version_fails_closed(tmp_path, monkeypatch):
+    """#179: two releases carrying the same delta version fail closed."""
+    image_dir = tmp_path / "images"
+    world = _chain_world()
+    world.extra_releases = [{
+        "tag_name": f"images-{_D1}",
+        # Older than D2 so latest_release_by_prefix still picks D2.
+        "created_at": "2026-08-02T12:00:00Z",
+        "assets": [{
+            "name": f"images-delta-{_D1}.zip",
+            "browser_download_url": f"https://ex/delta/{_D1}.zip",
+        }],
+    }]
+    world.install(monkeypatch)
+
+    r = sync_images(image_dir, include_original=False, force_check=True)
+    assert r.status == "no_data"
+    assert "duplicate" in (r.error or "")
+    assert sum(world.downloads.values()) == 0
+
+
+def test_rollback_rebuilds_from_baseline(tmp_path, monkeypatch):
+    """#179: index currentVersion moving backwards must not reuse the newer
+    prior generation; rebuild from baseline + chain instead."""
+    image_dir = tmp_path / "images"
+    world = _chain_world()
+    world.install(monkeypatch)
+    r1 = sync_images(image_dir, include_original=False, force_check=True)
+    assert r1.commit_sha == _D2
+
+    # The factory retracts D2 (release deleted, index regenerated at D1).
+    world.delta_files.pop(_D2)
+    world.install(monkeypatch)
+
+    r2 = sync_images(image_dir, include_original=False, force_check=True)
+    assert r2.status == "updated"
+    assert r2.commit_sha == _D1
+    assert _active_files(image_dir) == {
+        *world.base_files, *world.delta_files[_D1],
+    }
+
+
+def test_sentinel_only_chain_applies_baseline_alone(tmp_path, monkeypatch):
+    """A world whose only delta is the baseline sentinel (empty zip) is a
+    legal empty chain: shards only, no delta asset requested."""
+    image_dir = tmp_path / "images"
+    world = _ChainWorld()
+    world.base_files = _skin_files("skin_base")
+    world.delta_files = {_B: {}}  # sentinel: same version as the baseline
+    world.install(monkeypatch)
+
+    r = sync_images(image_dir, include_original=False, force_check=True)
+    assert r.status == "updated"
+    assert r.commit_sha == _B
+    assert _active_files(image_dir) == set(world.base_files)
+    assert world.baseline_downloads() == 2
+    assert not any("delta" in url for url in world.downloads)
+
+
+def test_index_current_tag_mismatch_fails_closed(tmp_path, monkeypatch):
+    """#179: index currentVersion is authoritative; drift from the latest
+    delta tag fails closed instead of building the wrong chain."""
+    image_dir = tmp_path / "images"
+    world = _chain_world()
+    world.index_current_override = "26-08-19-00-00-00_dddddd"
+    world.install(monkeypatch)
+
+    r = sync_images(image_dir, include_original=False, force_check=True)
+    assert r.status == "no_data"
+    assert "currentVersion" in (r.error or "")
+    assert sum(world.downloads.values()) == 0
+
+
+def test_pagination_recovers_baseline_beyond_first_page(tmp_path, monkeypatch):
+    """#179: when the baseline falls out of the newest-100 page, discovery
+    paginates until the chain start is covered."""
+    image_dir = tmp_path / "images"
+    world = _chain_world()
+    world.page1_only_latest = True
+    world.install(monkeypatch)
+
+    r = sync_images(image_dir, include_original=False, force_check=True)
+    assert r.status == "updated"
+    assert world.paginated_calls == 1
+    assert _active_files(image_dir) == set(world.all_files())
