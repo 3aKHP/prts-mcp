@@ -1,6 +1,6 @@
 # PRTS-MCP 路线图
 
-_最近更新：2026-08-13_ · [English](ROADMAP.md)
+_最近更新：2026-08-21_ · [English](ROADMAP.md)
 
 PRTS-MCP 已进入 1.x 稳定期。1.7.0 是最后一个 1.x 功能版本和 1.7 LTS 基线。本文档记录**接下来要做什么**——已发布的内容请查看 Python 和 TypeScript 各自的 CHANGELOG。
 
@@ -13,7 +13,7 @@ PRTS-MCP 已进入 1.x 稳定期。1.7.0 是最后一个 1.x 功能版本和 1.7
 - 迁移说明：[0.x → 1.0](docs/migration-0.x-to-1.0.md)、[1.x → 2.0](docs/migration-1.x-to-2.0.md)。
 - 2.6.0 在保留 legacy MCP 客户端的同时新增 opt-in `2026-07-28` 支持；变更客户端协议配置前请阅读 [2.5 → 2.6](docs/migration-2.5-to-2.6.md)。
 
-## 2.6.x 稳定维护
+## 2.7.x 稳定维护
 
 - 仅处理安全性、兼容性、数据同步、发布流水线、文档以及关键正确性/运维修复。
 - Patch 版本不新增 MCP 工具、必填参数或数据域。
@@ -41,15 +41,9 @@ SQLite 迁移不分配给任何版本。根据 2026 年 8 月的只读评估，�
 
 如果某项候选方向仍有价值，默认保持当前 24 个工具的工具面；只要 schema 仍然清晰一致，就优先扩展既有工具和 enum。候选方向只有经过另行的实现与发布决策后，才会成为正式版本范围。
 
-### 2.7.0 — 干员基建技能 + 时装与立绘元数据
+### 2.7.0 — 已于 2026-08-15 发布
 
-已在 2.7.0 发布：
-
-- `get_operator_basic_info` 以有界的 `building_skills` 区携带基建技能信息（名称、设施、精英阶段解锁、效果描述）；`building_data.json` 缺失时省略该字段。
-- `search(scope, pattern, max_results)` 新增 `building_skills` scope，支持设施、效果、技能名和跨干员反查——未新增 list/get/search 三件套（工具面保持 24）。
-- `building_data.json` 与 `skin_table.json` 已提升为经过验证的 AKDP 数据集合同内容。
-- 体积过大的 sync 模块已在功能工作前按职责拆分（2.7 上帝文件重构程序），结构重构与功能 diff 分开交付。
-- 从原 2.8.0 候选提前：`LOCAL_IMAGE=true` 下 `operator_artwork(action="list")` 通过现有 opaque `artwork_id` 附带有界皮肤元数据（系列/主题、获取方式、描述）；MediaWiki 后端不做富化（无 skin_table join key）。
+原草案中的干员基建技能（`get_operator_basic_info` 携带有界 `building_skills` 区，以及 `search` 新增 `building_skills` scope）与时装/立绘元数据条目已随 2.7.0 发布——详见 Python 与 TypeScript CHANGELOG。`LOCAL_IMAGE=true` 下 `operator_artwork(action="list")` 的皮肤元数据富化是从原 2.8.0 候选提前的条目，因此本草案暂时没有 2.8.0 小节。
 
 ### 2.9.0 候选 — 公开招募反查
 

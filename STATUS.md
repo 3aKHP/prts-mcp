@@ -157,7 +157,7 @@ PRTS-MCP/
 
 ## 数据源
 
-2.5.0 开发线（`develop`）的默认 Auto-Sync 只消费自建 `3aKHP/arknights-data-pipeline` Release；旧版两个上游仓库不再是新版本的数据依赖。 `main` 的 2.4.x 与 `lts/1.7` 暂保留旧上游兼容路径，供 LTS 维护使用，后续另行设计迁移，不在本轮跨线切换。
+`main`（2.7.x）与 `develop`（2.8.0 开发线）的默认 Auto-Sync 只消费自建 `3aKHP/arknights-data-pipeline` Release；旧版两个上游仓库不再是 2.x 线的数据依赖。仅 `lts/1.7` 保留旧上游兼容路径，供 LTS 维护使用。
 
 | 数据源 | 用途 | 同步方式 |
 |--------|------|----------|
@@ -195,7 +195,7 @@ PRTS-MCP/
 | 23 | `find_speakers_in` | StoryJson | 1.7.0 |
 | 24 | `operator_artwork` | PRTS Wiki / AKDP | 2.5.0 |
 
-> `search(scope, pattern, max_results)` 统一了 1.x 的 `search_data` / `search_enemies` / `search_stages` / `search_items` 与 `list_search_scopes` （scope ∈ operators/enemies/stages/items）。剧情台词搜索仍为独立的 `search_stories`（参数不同）。
+> `search(scope, pattern, max_results)` 统一了 1.x 的 `search_data` / `search_enemies` / `search_stages` / `search_items` 与 `list_search_scopes` （scope ∈ operators/enemies/stages/items；2.7.0 起新增 `building_skills`）。剧情台词搜索仍为独立的 `search_stories`（参数不同）。
 >
 > `prts_page(page_title, action, …)` 统一了 1.x 的 `read_prts_page` / `list_prts_sections` / `get_prts_categories` / `get_prts_links` / `get_prts_template`（action ∈ read/sections/categories/links/template）。维基关键词搜索仍为独立的 `search_prts`。
 >

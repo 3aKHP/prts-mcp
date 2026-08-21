@@ -292,10 +292,10 @@ TS 文件头注释应注明对应的 Python 文件：`Mirrors python/src/prts_mc
 
 | 文件 | develop 分支 | main 分支（发布时） |
 |------|---------|-------------------|
-| `python/pyproject.toml` | `2.5.0.dev0` | `2.5.0` |
-| `python/uv.lock` | `2.5.0.dev0` | `2.5.0` |
-| `ts/package.json` | `2.5.0-dev.0` | `2.5.0` |
-| `ts/package-lock.json` | `2.5.0-dev.0` | `2.5.0` |
+| `python/pyproject.toml` | `2.8.0.dev0` | `2.8.0` |
+| `python/uv.lock` | `2.8.0.dev0` | `2.8.0` |
+| `ts/package.json` | `2.8.0-dev.0` | `2.8.0` |
+| `ts/package-lock.json` | `2.8.0-dev.0` | `2.8.0` |
 
 **版本号需要同步更新的地方**：
 
@@ -306,11 +306,14 @@ TS 文件头注释应注明对应的 Python 文件：`Mirrors python/src/prts_mc
 | `ts/package.json` | `version` 字段（develop 分支带 `-dev.0` 后缀） |
 | `python/CHANGELOG.md` | 新版本条目 |
 | `ts/CHANGELOG.md` | 新版本条目 |
+| `ts/package-lock.json` | npm lockfile 顶层版本 |
 | `ROADMAP.md` | 当前版本号 |
+| `ROADMAP.zh-CN.md` | 当前版本号（与 `ROADMAP.md` 成对同步） |
 | `STATUS.md` | 当前版本 / 分支状态 |
+| `CLAUDE.md` / `AGENTS.md` | 分支模型表的当前版本口径（成对同步） |
 | `README.md` | 用户可见版本、工具数、工具清单 |
 
-Tag 使用实现级前缀：`python/vX.Y.Z` 和 `ts/vX.Y.Z`。Tag 必须打在 `main` 分支的发布 merge commit 上；1.7.x LTS patch tag 打在 `lts/1.7` 的对应 merge commit 上。
+Tag 使用实现级前缀：`python/vX.Y.Z` 和 `ts/vX.Y.Z`。稳定版 tag 必须打在 `main` 分支的发布 merge commit 上；1.7.x LTS patch tag 打在 `lts/1.7` 的对应 merge commit 上。预发布 tag（`-alpha` / `-beta` / `-rc` 后缀）打在 `develop` 的 merge commit 上；CD 的 verify job 会校验稳定版 tag 目标在 `main`、预发布 tag 目标在 `develop`，不匹配则拒绝发布（预发布完整流程见 CLAUDE.md 路径 F）。
 
 ---
 
