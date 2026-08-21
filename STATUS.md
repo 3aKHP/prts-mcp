@@ -97,22 +97,22 @@ PRTS-MCP/
 │   │   ├── tools_prts.py   # PRTS Wiki 工具注册（2 工具）
 │   │   ├── tools_gamedata.py # GameData 工具注册（12 工具）
 │   │   ├── tools_story.py  # 剧情工具注册（9 工具）
+│   │   ├── tools_artwork.py # 立绘工具注册（1 工具）
 │   │   ├── config.py       # 路径解析、环境变量
 │   │   ├── startup_sync.py # 后台数据同步编排
+│   │   ├── activation.py / cache_stats.py / output.py  # 代际激活、缓存统计、输出通道
 │   │   ├── api/            # PRTS Wiki MediaWiki API 客户端
 │   │   ├── data/           # 数据抽象层
 │   │   │   ├── story.py    # 兼容性垫片 → 子模块重导出
-│   │   │   ├── story_reader.py  # 剧情类型、常量、章节解析
-│   │   │   ├── story_search.py  # 全文搜索索引
-│   │   │   ├── story_memoir.py  # 干员密录发现
-│   │   │   ├── story_summary.py # 活动/章节摘要
-│   │   │   ├── operators.py     # 干员数据
-│   │   │   ├── enemies.py       # 敌人数据
-│   │   │   ├── stages.py        # 关卡数据
-│   │   │   ├── items.py         # 物品/材料数据
-│   │   │   ├── stores.py        # 存储抽象 (Directory/Zip/Fallback)
-│   │   │   └── sync.py          # 同步状态机（release/archive/pair 编排；P2.B 迁出中）
-│   │   ├── sync/            # GitHub Release 传输+发现（数据同步 HTTP 归此层；P2.A 抽出）
+│   │   │   ├── story_reader.py / story_search.py / story_memoir.py / story_summary.py / story_character.py
+│   │   │   ├── operator.py / enemy.py / stage.py / item.py  # 干员/敌人/关卡/物品数据
+│   │   │   ├── enemy_database.py / enemy_render.py / enemy_stats.py / stage_enemy.py / level_parser.py
+│   │   │   ├── building.py # 基建技能（2.7.0）
+│   │   │   ├── artwork_format.py / artwork_local.py / artwork_mediawiki.py  # 立绘后端（2.5.0）
+│   │   │   ├── images.py / search.py / datasets.py / dataset_access.py / gamedata_attrs.py / messages.py
+│   │   │   ├── stores.py   # 存储抽象 (Directory/Zip/Fallback)
+│   │   │   └── sync.py     # re-export 垫片（同步状态机在 sync/ 层）
+│   │   ├── sync/            # GitHub Release 传输+发现+激活（数据同步 HTTP 归此层）
 │   │   └── utils/          # wikitext 清洗等工具
 │   ├── tests/              # pytest 测试
 │   ├── pyproject.toml      # 包元数据、依赖
@@ -125,11 +125,13 @@ PRTS-MCP/
 │   │   ├── tools/          # 工具注册模块
 │   │   │   ├── prtsTools.ts
 │   │   │   ├── gamedataTools.ts
-│   │   │   └── storyTools.ts
+│   │   │   ├── storyTools.ts
+│   │   │   └── artworkTools.ts
 │   │   ├── data/           # 数据抽象层（对齐 python/src/prts_mcp/data/）
 │   │       ├── story.ts        # 兼容性垫片
-│   │       ├── storyReader.ts / storySearch.ts / storyMemoir.ts / storySummary.ts
-│   │       ├── operators.ts / enemies.ts / stages.ts / items.ts
+│   │       ├── storyReader.ts / storySearch.ts / storyMemoir.ts / storySummary.ts / storyCharacter.ts
+│   │       ├── operator.ts / enemy.ts / stage.ts / item.ts
+│   │       ├── building.ts / artworkFormat.ts / artworkLocal.ts / artworkMediawiki.ts / images.ts
 │   │       ├── stores.ts / sync.ts
 │   │       └── ...
 │   │   └── sync/           # GitHub Release 传输+发现（数据同步 HTTP 归此层）
@@ -155,7 +157,7 @@ PRTS-MCP/
 
 ## 数据源
 
-2.5.0 开发线（`develop`）的默认 Auto-Sync 只消费自建 `3aKHP/arknights-data-pipeline` Release；旧版两个上游仓库不再是新版本的数据依赖。 `main` 的 2.4.x 与 `lts/1.7` 暂保留旧上游兼容路径，供 LTS 维护使用，后续另行设计迁移，不在本轮跨线切换。
+`main`（2.7.x）与 `develop`（2.8.0 开发线）的默认 Auto-Sync 只消费自建 `3aKHP/arknights-data-pipeline` Release；旧版两个上游仓库不再是 2.x 线的数据依赖。仅 `lts/1.7` 保留旧上游兼容路径，供 LTS 维护使用。
 
 | 数据源 | 用途 | 同步方式 |
 |--------|------|----------|
@@ -193,7 +195,7 @@ PRTS-MCP/
 | 23 | `find_speakers_in` | StoryJson | 1.7.0 |
 | 24 | `operator_artwork` | PRTS Wiki / AKDP | 2.5.0 |
 
-> `search(scope, pattern, max_results)` 统一了 1.x 的 `search_data` / `search_enemies` / `search_stages` / `search_items` 与 `list_search_scopes` （scope ∈ operators/enemies/stages/items）。剧情台词搜索仍为独立的 `search_stories`（参数不同）。
+> `search(scope, pattern, max_results)` 统一了 1.x 的 `search_data` / `search_enemies` / `search_stages` / `search_items` 与 `list_search_scopes` （scope ∈ operators/enemies/stages/items；2.7.0 起新增 `building_skills`）。剧情台词搜索仍为独立的 `search_stories`（参数不同）。
 >
 > `prts_page(page_title, action, …)` 统一了 1.x 的 `read_prts_page` / `list_prts_sections` / `get_prts_categories` / `get_prts_links` / `get_prts_template`（action ∈ read/sections/categories/links/template）。维基关键词搜索仍为独立的 `search_prts`。
 >
