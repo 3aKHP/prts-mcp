@@ -214,8 +214,6 @@ interface CharacterEntry {
 - gamedata 域经 `data/datasetAccess.ts` 的 `defineDataset` 声明缓存（loader 状态机），不再手搓模块级 `let` + `checkActivationChange()` 脚手架；每个域保留恰好一条 `registerActivationListener(clearXCaches)`
 - 不要用 `Map` 做简单缓存（除非需要 LRU 或多 key）
 - Config 不缓存：`loadConfig()` 每次调用重新读取
-- 不要用 `Map` 做简单缓存（除非需要 LRU 或多 key）
-- Config 不缓存：`loadConfig()` 每次调用重新读取
 
 ### MCP 工具注册
 
