@@ -197,7 +197,7 @@ docker run -i --rm -v prts-mcp-data:/data/gamedata -v prts-mcp-levels:/data/game
 npx @modelcontextprotocol/inspector docker run -i --rm -v prts-mcp-data:/data/gamedata -v prts-mcp-levels:/data/gamedata-levels -v prts-mcp-storyjson:/data/storyjson prts-mcp
 ```
 
-预期能看到 32 个 Tool，以下是按数据域挑选的 smoke 参数：
+预期能看到 24 个 Tool（`IMAGES_ENABLED=false` 时 23 个），以下是按数据域挑选的 smoke 参数：
 
 | Tool | 测试参数 | 依赖 |
 |------|---------|------|
@@ -226,6 +226,7 @@ npx @modelcontextprotocol/inspector docker run -i --rm -v prts-mcp-data:/data/ga
 | `read_activity` | `event_id`: `act31side`, `page`: `1` | 剧情数据 |
 | `search` | `scope`: `operators`, `pattern`: `阿米娅` | 干员数据 |
 | `search_stories` | `pattern`: `博士`, `event_id`: `act31side` | 剧情数据 |
+| `operator_artwork` | `operator_name`: `阿米娅`, `action`: `list` | 网络 |
 
 ---
 
