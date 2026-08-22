@@ -76,4 +76,5 @@ GAMEDATA_PATH=/path/to/ArknightsGameData prts-mcp
 
 ## 详细文档
 
-→ [docs/deployment.md](docs/deployment.md)：完整部署方式、MCP 客户端配置、环境变量参考
+→ [docs/deployment.md](docs/deployment.md)：完整部署方式、MCP 客户端配置
+→ [环境变量参考](../docs/user/environment-variables.md)：双实现全部环境变量的单一来源
