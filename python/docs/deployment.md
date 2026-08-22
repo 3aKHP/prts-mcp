@@ -34,6 +34,25 @@ Named volume 由 Docker 自动管理，无需关心宿主机路径，**在所有
 
 > 如需降低 GitHub 匿名 API 限流风险，可追加 `-e GITHUB_TOKEN=ghp_xxx`。
 
+### Streamable HTTP 模式（作为 HTTP 服务部署）
+
+以上方式均为默认的 stdio 传输（MCP 客户端直接拉起容器进程）。如需作为独立 HTTP 服务长期运行、供远程 MCP 客户端接入，设置 `PRTS_TRANSPORT=http` 并发布端口：
+
+```bash
+docker run -d --name prts-mcp \
+  -p 3000:3000 \
+  -v prts-mcp-data:/data/gamedata \
+  -v prts-mcp-levels:/data/gamedata-levels \
+  -v prts-mcp-storyjson:/data/storyjson \
+  -e PRTS_TRANSPORT=http \
+  prts-mcp
+```
+
+- HTTP 端点为 `http://<host>:3000/mcp`，探活端点为 `/health`；监听地址与端口可用 `HOST` / `PORT` 调整（默认 `0.0.0.0:3000`）。
+- HTTP 模式不需要 `-i`（无 stdio 交互），用 `-d` 常驻；数据卷挂法与 stdio 模式完全一致。
+- 非 Docker 运行同样适用：`PRTS_TRANSPORT=http prts-mcp`。
+- 诊断端点 `/debug/cache` 需要 `PRTS_DEBUG_TOKEN` 的 Bearer 令牌，未设置时恒返回 404（等于默认关闭）；不要公开反代该路径。完整变量说明见[环境变量参考](../../docs/user/environment-variables.md)。
+
 ### 本地全量立绘模式（LOCAL_IMAGE=true）
 
 默认的 MediaWiki 按需模式不需要 images 卷。如需使用 AKDP 本地全量立绘资产（~1.5 GB），追加 images 卷和相关环境变量：
@@ -227,6 +246,12 @@ npx @modelcontextprotocol/inspector docker run -i --rm -v prts-mcp-data:/data/ga
 | `search` | `scope`: `operators`, `pattern`: `阿米娅` | 干员数据 |
 | `search_stories` | `pattern`: `博士`, `event_id`: `act31side` | 剧情数据 |
 | `operator_artwork` | `operator_name`: `阿米娅`, `action`: `list` | 网络 |
+
+Streamable HTTP 模式下可先做一次不依赖 MCP 客户端的探活：
+
+```bash
+curl -s http://127.0.0.1:3000/health   # 期望返回 {"status":"ok"}
+```
 
 ---
 
