@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from prts_mcp.activation import register_activation_listener
@@ -92,7 +93,7 @@ def build_stage_enemies(stage_id: str) -> dict | str:
         stages = load_stage_table()
         stage = stages.get(stage_id)
         if not stage:
-            return f"未找到关卡：{stage_id!r}。"
+            return f"未找到关卡：{json.dumps(stage_id, ensure_ascii=False)}。"
         level = _load_level_json(stage)
         if isinstance(level, str):
             return level
@@ -143,7 +144,7 @@ def render_stage_enemies(data: dict) -> str:
     Pure renderer; the inverse of ``build_stage_enemies``'s success path.
     """
     if data.get("empty_reason") == "no_match":
-        return f"关卡 {data['stage_id']!r} 未解析到实际出怪。"
+        return f"关卡 {json.dumps(data['stage_id'], ensure_ascii=False)} 未解析到实际出怪。"
 
     lines = [f"# {data['stage_label']} — 敌人列表"]
     for e in data["enemies"]:
@@ -220,7 +221,7 @@ def build_enemy_appearances(name: str, limit: int = 50, offset: int = 0) -> dict
     try:
         enemy_id = build_enemy_name_to_id().get(name) or (name if name in _load_enemy_handbook() else None)
         if enemy_id is None:
-            return f"未找到敌人：{name!r}。"
+            return f"未找到敌人：{json.dumps(name, ensure_ascii=False)}。"
         appearances = _find_enemy_appearances(enemy_id)
         stages = load_stage_table()
     except Exception as exc:  # noqa: BLE001
@@ -305,11 +306,11 @@ def get_enemy_stage_info(name: str, stage_id: str) -> str:
     try:
         enemy_id = build_enemy_name_to_id().get(name) or (name if name in _load_enemy_handbook() else None)
         if enemy_id is None:
-            return f"未找到敌人：{name!r}。"
+            return f"未找到敌人：{json.dumps(name, ensure_ascii=False)}。"
         stages = load_stage_table()
         stage = stages.get(stage_id)
         if not stage:
-            return f"未找到关卡：{stage_id!r}。"
+            return f"未找到关卡：{json.dumps(stage_id, ensure_ascii=False)}。"
         level = _load_level_json(stage)
         if isinstance(level, str):
             return level
@@ -320,9 +321,9 @@ def get_enemy_stage_info(name: str, stage_id: str) -> str:
         return f"读取关卡敌人失败：{exc}"
 
     if enemy_id not in counts:
-        return f"{_handbook_name(enemy_id)}（{enemy_id}）未在关卡 {stage_id!r} 实际出场。"
+        return f"{_handbook_name(enemy_id)}（{enemy_id}）未在关卡 {json.dumps(stage_id, ensure_ascii=False)} 实际出场。"
     if ref is None:
-        return f"关卡 {stage_id!r} 缺少 {enemy_id} 的 enemyDbRefs。"
+        return f"关卡 {json.dumps(stage_id, ensure_ascii=False)} 缺少 {enemy_id} 的 enemyDbRefs。"
 
     level_no = _parse_level(ref.get("level", 0))
     data = _stage_specific_enemy_data(load_enemy_levels(), enemy_id, level_no, ref.get("overwrittenData"))

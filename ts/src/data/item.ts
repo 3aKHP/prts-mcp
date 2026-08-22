@@ -7,6 +7,7 @@
 import { registerActivationListener } from "../activation.js";
 import type { CacheStat } from "../cacheStats.js";
 import { defineDataset, excelStore, type DatasetAccess } from "./datasetAccess.js";
+import { compareIds } from "./sort.js";
 import { excelMissingMessage, regexErrorMessage, validateBounds } from "./messages.js";
 
 const ITEM_FILE = "item_table.json";
@@ -263,7 +264,7 @@ export function buildItemsListing(
   entries.sort((a, b) => {
     const sa = a[1].sortId ?? 999999;
     const sb = b[1].sortId ?? 999999;
-    return sa !== sb ? sa - sb : a[0].localeCompare(b[0]);
+    return sa !== sb ? sa - sb : compareIds(a[0], b[0]);
   });
 
   const total = entries.length;
@@ -458,7 +459,7 @@ function getItemSearchRecordsImpl(): ItemSearchRecord[] {
   entries.sort((a, b) => {
     const sa = a[1].sortId ?? 999999;
     const sb = b[1].sortId ?? 999999;
-    return sa !== sb ? sa - sb : a[0].localeCompare(b[0]);
+    return sa !== sb ? sa - sb : compareIds(a[0], b[0]);
   });
   return entries.map(([itemId, info]) => ({
     itemId,

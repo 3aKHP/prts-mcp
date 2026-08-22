@@ -395,7 +395,7 @@ def list_stories_from_store(store: JsonStore, event_id: str) -> list[ChapterSumm
 
     entry = table.get(event_id)
     if entry is None:
-        raise KeyError(f"Event not found: {event_id!r}")
+        raise KeyError(f"Event not found: {json.dumps(event_id, ensure_ascii=False)}")
 
     chapters = []
     for d in sorted(entry.get("infoUnlockDatas") or [], key=lambda x: x.get("storySort", 0)):
@@ -469,7 +469,7 @@ def read_story_from_store(
     """Read and parse a single story chapter using a JSON store."""
     story_path = story_zip_path(story_key)
     if not store.exists(story_path):
-        raise KeyError(f"Story not found in store: {story_key!r}")
+        raise KeyError(f"Story not found in store: {json.dumps(story_key, ensure_ascii=False)}")
     raw: dict = load_json(store, story_path)  # type: ignore[assignment]
 
     all_lines = _parse_story_list(raw.get("storyList") or [])

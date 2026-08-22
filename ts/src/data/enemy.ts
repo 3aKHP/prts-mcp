@@ -8,6 +8,7 @@ import { registerActivationListener } from "../activation.js";
 import { loadConfig } from "../config.js";
 import type { CacheStat } from "../cacheStats.js";
 import { level0Index, normalizeEnemyDatabase } from "./enemyDatabase.js";
+import { compareIds } from "./sort.js";
 import { defineDataset, excelStore, levelsStore, type DatasetAccess } from "./datasetAccess.js";
 import {
   extractEnemyStats,
@@ -289,7 +290,7 @@ export function buildEnemiesListing(
   entries.sort((a, b) => {
     const sa = a[1].sortId ?? 9999;
     const sb = b[1].sortId ?? 9999;
-    return sa !== sb ? sa - sb : a[0].localeCompare(b[0]);
+    return sa !== sb ? sa - sb : compareIds(a[0], b[0]);
   });
 
   const total = entries.length;

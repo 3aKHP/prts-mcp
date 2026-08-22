@@ -1,6 +1,7 @@
 import { registerActivationListener } from "../activation.js";
 import { loadConfig } from "../config.js";
 import { getItemNameById } from "./item.js";
+import { compareIds } from "./sort.js";
 import type { CacheStat } from "../cacheStats.js";
 import { defineDataset, excelStore, type DatasetAccess } from "./datasetAccess.js";
 import { excelMissingMessage, regexErrorMessage, validateBounds } from "./messages.js";
@@ -226,7 +227,7 @@ function getZoneTableImpl(): ZoneTable | null {
 
 function getStageSearchRecordsImpl(): StageSearchRecord[] {
   return Object.entries(getStageTable())
-    .sort(([a], [b]) => a.localeCompare(b))
+    .sort(([a], [b]) => compareIds(a, b))
     .map(([stageId, entry]) => ({
       stageId,
       entry,
@@ -314,7 +315,7 @@ export function buildStagesListing(
   }
 
   const filtered: StageEntry[] = [];
-  for (const [, entry] of Object.entries(stages).sort(([a], [b]) => a.localeCompare(b))) {
+  for (const [, entry] of Object.entries(stages).sort(([a], [b]) => compareIds(a, b))) {
     if (chapter != null && entry.zoneId !== chapter) continue;
     if (type != null && entry.stageType !== type.toUpperCase()) continue;
     filtered.push(entry);
