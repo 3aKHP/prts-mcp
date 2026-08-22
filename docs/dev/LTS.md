@@ -31,6 +31,18 @@ Not allowed in `1.7.x`:
 
 Do not push directly to any long-lived branch. Use PRs.
 
+## Lifecycle
+
+The `lts/1.7` line is maintained for **12 months from the 1.7.0 baseline** (released 2026-07-02): end of life is **2027-07-02**.
+
+Until EOL, 1.7.x receives the fixes listed in [Scope](#scope). After EOL:
+
+- No further 1.7.x releases. The `lts/1.7` branch and all `python/v1.7.*` / `ts/v1.7.*` tags remain available read-only and are not deleted.
+- The AKDP projection workflows in `3aKHP/ArknightsGameData` and `3aKHP/ArknightsStoryJson` are stopped. 1.7 clients keep working with the last published data but no longer receive game-data updates.
+- Users still on 1.x should follow [the 1.x → 2.0 migration guide](../migration-1.x-to-2.0.md).
+
+**Data-source note:** 1.7 auto-sync reads the `3aKHP/ArknightsGameData` / `3aKHP/ArknightsStoryJson` forks via `/releases/latest`. These forks no longer track the original upstreams; their releases are projections of `3aKHP/arknights-data-pipeline` factory output, produced by each fork's own `sync-and-release.yml` workflow. Until EOL these forks must **not** be archived — archiving makes a repository read-only, which blocks new projection releases and would freeze 1.7 data.
+
 ## 1.7.x Fix Flow
 
 1. Branch from `lts/1.7` with `fix/v1.7.x-<topic>` or `docs/v1.7.x-<topic>`.
