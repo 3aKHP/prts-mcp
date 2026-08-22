@@ -107,7 +107,7 @@ The `operator_artwork` tool (2.5.0+) is **enabled by default**. Two data source 
 | `ORIGINAL_IMAGE` | `false` | Also sync original-resolution shards; only effective when `LOCAL_IMAGE=true`. |
 | `PRTS_IMAGE_DIR` | `~/.local/share/prts-mcp/images/` | AKDP asset sync target; only effective when `LOCAL_IMAGE=true`. Docker: `/data/images`. |
 
-Zero-config: the tool works immediately via MediaWiki with caching. For the full offline AKDP experience, set `LOCAL_IMAGE=true` (triggers ~1.5 GB background sync).
+Zero-config: the tool works immediately via MediaWiki with caching. For the full offline AKDP experience, set `LOCAL_IMAGE=true` (triggers ~1.5 GB background sync). For the complete environment-variable list, see [docs/user/environment-variables.md](docs/user/environment-variables.md).
 
 ### Quick Start
 
@@ -231,7 +231,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and [`doc
 | `ORIGINAL_IMAGE` | `false` | 额外同步原图分辨率分片；仅在 `LOCAL_IMAGE=true` 时生效。 |
 | `PRTS_IMAGE_DIR` | `~/.local/share/prts-mcp/images/` | AKDP 资产同步目标；仅在 `LOCAL_IMAGE=true` 时生效。Docker：`/data/images`。 |
 
-零配置即可使用：默认走 MediaWiki + 缓存。若需离线全量体验，设置 `LOCAL_IMAGE=true`（触发 ~1.5 GB 后台同步）。
+零配置即可使用：默认走 MediaWiki + 缓存。若需离线全量体验，设置 `LOCAL_IMAGE=true`（触发 ~1.5 GB 后台同步）。完整环境变量清单见[环境变量参考](docs/user/environment-variables.md)。
 
 ### 快速开始
 

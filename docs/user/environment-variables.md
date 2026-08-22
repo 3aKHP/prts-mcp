@@ -24,7 +24,7 @@
 | `GITHUB_TOKEN` | 空 | 双实现 | 提高 GitHub API 限额，降低 Release 检查被限流的风险 |
 | `GITHUB_MIRRORS` | 空 | 双实现 | 逗号分隔的 ghproxy 风格代理前缀列表（如 `https://ghproxy.net`），直连失败后依次尝试；首尾空白与尾部斜杠自动归一化 |
 | `PRTS_AUTO_SYNC_INTERVAL_SECONDS` | `3600` | 双实现 | GitHub Release 周期检查间隔（秒）；有效范围 `60..604800`（7 天），`0` 表示只执行启动同步；非法值回落默认值 |
-| `HTTP_PROXY` / `HTTPS_PROXY` | 未设置 | 双实现 | 同步与 Wiki 请求的 HTTP 代理。TS 侧显式读取；Python 侧由 httpx 默认 `trust_env` 隐式支持（含 `NO_PROXY`） |
+| `HTTP_PROXY` / `HTTPS_PROXY` | 未设置 | 双实现 | 同步与 Wiki 请求的 HTTP 代理（大小写形式均支持，`NO_PROXY` 排除列表两实现均生效）。TS 侧由 sync 传输显式读取；Python 侧由 httpx 默认 `trust_env` 隐式支持 |
 
 ## 立绘（`operator_artwork`）
 
@@ -39,10 +39,10 @@
 
 | 变量 | 默认值 | 实现 | 说明 |
 |------|--------|------|------|
-| `PRTS_OUTPUT_CHANNEL` | `content` | 双实现 | 结构化输出通道：`content`（默认，与 1.x 行为一致）/ `structured` / `both`；非法值回退 `content`。TS 另支持查询字符串 `?output_channel=` 与请求头 `x-prts-output-channel` 按连接覆盖 |
+| `PRTS_OUTPUT_CHANNEL` | `content` | 双实现 | 结构化输出通道：`content`（默认，与 1.x 行为一致）/ `structured` / `both`；非法值回退 `content`。TS 另支持查询字符串 `?output_channel=` 与请求头 `x-prts-output-channel` 覆盖 |
 | `PRTS_TRANSPORT` | `stdio` | 仅 Python | 传输选择：`stdio`（默认）/ `http`。TS 无此变量，经 bin 选择（`prts-mcp-ts`[-bun] = HTTP，`prts-mcp-ts-stdio` = stdio） |
 | `HOST` | `0.0.0.0` | 双实现 | HTTP 模式监听地址 |
-| `PORT` | `3000` | 双实现 | HTTP 模式监听端口；非数字值报错退出。HTTP 端点为 `/mcp`，探活为 `/health` |
+| `PORT` | `3000` | 双实现 | HTTP 模式监听端口；非法值导致启动失败。HTTP 端点为 `/mcp`，探活为 `/health` |
 
 ## 诊断端点
 
@@ -61,4 +61,4 @@
 | `PRTS_BENCH_ISOLATED` | TS 内存 bench 的隔离确认开关（`bench:memory`） |
 | `PRTS_BENCH_ORIGIN` | bench 目标地址，仅接受 loopback |
 | `PRTS_BENCH_MAX_RSS_BYTES` / `PRTS_BENCH_MAX_RSS_GROWTH_BYTES` | bench 的 RSS 上限与相对增长上限 |
-| `E2E_PRTS_API` | E2E 测试覆盖 PRTS API 基址 |
+| `E2E_PRTS_API` | E2E 测试 opt-in 开关：设为 `1` 时启用依赖真实 PRTS API 的网络用例（不是 URL 基址覆盖） |

@@ -160,7 +160,7 @@ docker run -d -p 3000:3000 -v prts-mcp-ts-data:/data/gamedata -v prts-mcp-ts-lev
 | `STORYJSON_PATH` | 未设置 | 指向本地 `zh_CN.zip`，**剧情 auto-sync 被禁用** |
 | `GITHUB_TOKEN` / `GITHUB_MIRRORS` | 空 | GitHub API 限额 / 代理前缀列表 |
 | `PRTS_AUTO_SYNC_INTERVAL_SECONDS` | `3600` | Release 周期检查间隔（秒）；`0` 表示只执行启动同步 |
-| `PRTS_OUTPUT_CHANNEL` | `content` | 2.0 输出通道；也可经查询字符串 `?output_channel=` 或请求头 `x-prts-output-channel` 按请求覆盖 |
+| `PRTS_OUTPUT_CHANNEL` | `content` | 2.0 输出通道；也可经查询字符串 `?output_channel=` 或请求头 `x-prts-output-channel` 覆盖 |
 | `PRTS_DEBUG_TOKEN` | 未设置 | `/debug/cache` 和 `/debug/metrics` 的必需 Bearer token；未设置或不匹配时返回 404。不要公开反代这两个路径 |
 | `PRTS_METRICS_ENABLED` | `false` | 设为严格的 `true` 才启用 `/debug/metrics`（仅 TS）；仍需有效 token |
 | `SESSION_IDLE_TIMEOUT_MS` | `86400000` | HTTP 会话空闲超时（毫秒，仅 TS）；非正数禁用 |
