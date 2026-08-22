@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re as _re
 from dataclasses import dataclass as _dataclass
 from typing import Any
@@ -198,7 +199,7 @@ def build_stages_listing(
         return message
     if type is not None and type.upper() not in _STAGE_TYPE_LABELS:
         allowed = "、".join(_STAGE_TYPE_LABELS)
-        return f"无效的 type：{type!r}。可选值：{allowed}。"
+        return f"无效的 type：{json.dumps(type, ensure_ascii=False)}。可选值：{allowed}。"
 
     try:
         stages = load_stage_table()
@@ -310,7 +311,7 @@ def build_stage_info(stage_id: str) -> dict | str:
 
     entry: dict | None = stages.get(stage_id)
     if entry is None:
-        return f"未找到关卡：{stage_id!r}。"
+        return f"未找到关卡：{json.dumps(stage_id, ensure_ascii=False)}。"
 
     _ap = entry.get("apCost")
     raw_desc = entry.get("description") or ""

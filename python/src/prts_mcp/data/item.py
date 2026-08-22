@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass
 from typing import Any
@@ -334,11 +335,11 @@ def build_item_info(name: str) -> dict | str:
     except (FileNotFoundError, RuntimeError, TypeError) as exc:
         return _missing_data_message() + f"（{exc}）"
     if item_id is None:
-        return f"未找到物品：{name!r}。"
+        return f"未找到物品：{json.dumps(name, ensure_ascii=False)}。"
 
     info = _load_items().get(item_id)
     if info is None:
-        return f"物品 {name!r} 暂无详细信息。"
+        return f"物品 {json.dumps(name, ensure_ascii=False)} 暂无详细信息。"
 
     return {
         "name": info.get("name") or name,

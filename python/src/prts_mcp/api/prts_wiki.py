@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import html as _html
+import json
 import logging
 import re
 import secrets
@@ -282,7 +283,7 @@ async def get_links(
         }
 
     if direction != "inbound":
-        raise ValueError(f"无效的 direction 参数：{direction!r}，可选值：outbound、inbound。")
+        raise ValueError(f"无效的 direction 参数：{json.dumps(direction, ensure_ascii=False)}，可选值：outbound、inbound。")
 
     # inbound: use list=backlinks
     params = {
@@ -549,7 +550,7 @@ async def download_image_safe(url: str) -> bytes:
             raise ValueError(f"redirected to disallowed host: {final.host}")
         ctype = resp.headers.get("content-type", "").split(";")[0].strip().lower()
         if ctype not in _ALLOWED_IMAGE_MIMES:
-            raise ValueError(f"bad content-type: {ctype!r}")
+            raise ValueError(f"bad content-type: {json.dumps(ctype, ensure_ascii=False)}")
         buf = bytearray()
         async for chunk in resp.aiter_bytes(chunk_size=8192):
             buf.extend(chunk)
@@ -557,5 +558,5 @@ async def download_image_safe(url: str) -> bytes:
                 raise ValueError(f"image exceeds {_MAX_IMAGE_BYTES} byte cap")
         data = bytes(buf)
     if not _image_magic_ok(data, ctype):
-        raise ValueError(f"magic bytes mismatch for {ctype!r}")
+        raise ValueError(f"magic bytes mismatch for {json.dumps(ctype, ensure_ascii=False)}")
     return data

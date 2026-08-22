@@ -8,7 +8,7 @@ Long-lived branches after the 1.7.0 LTS release:
 
 | Branch | Purpose | Version suffix |
 |--------|---------|---------------|
-| `main` | Latest stable release. Currently `2.7.1`. | (none) |
+| `main` | Latest stable release. Currently `2.7.2`. | (none) |
 | `lts/1.7` | 1.7.x long-term maintenance. Created from the 1.7.0 release commit (EOL 2027-07-02). | (none) |
 | `develop` | Development integration. All non-LTS changes land here. | `.dev0` (current target: `2.8.0.dev0`) |
 
