@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass
 from typing import Any
@@ -221,7 +222,7 @@ def build_enemies_listing(
     if threat_level:
         level_filter = threat_level.upper()
         if level_filter not in _ENEMY_LEVEL_ZH:
-            return f"无效的 threat_level 参数：{threat_level!r}，可选值：boss、elite、normal。"
+            return f"无效的 threat_level 参数：{json.dumps(threat_level, ensure_ascii=False)}，可选值：boss、elite、normal。"
         entries = [(e, i) for e, i in entries
                    if i.get("enemyLevel", "").upper() == level_filter]
 

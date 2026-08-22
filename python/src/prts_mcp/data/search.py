@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass
 
@@ -150,7 +151,7 @@ def render_search(data: dict) -> str:
         from prts_mcp.data.building import render_building_skill_search
 
         return render_building_skill_search(data)
-    raise ValueError(f"不支持的搜索域：{scope!r}。")
+    raise ValueError(f"不支持的搜索域：{json.dumps(scope, ensure_ascii=False)}。")
 
 
 def _operator_search_records_impl() -> tuple[_OperatorSearchRecord, ...]:

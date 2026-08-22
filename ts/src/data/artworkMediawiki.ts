@@ -19,6 +19,7 @@ import {
   getTemplateData,
   listAllimages,
 } from "../api/prtsWiki.js";
+import { compareIds } from "./sort.js";
 import {
   normalizedArtworkFormName,
   renderList,
@@ -186,7 +187,7 @@ export async function listArtworksMediawiki(operatorName: string): Promise<ListO
       variants: { large: {}, preview: {} },
     });
   }
-  artworks.sort((a, b) => a.artwork_id.localeCompare(b.artwork_id));
+  artworks.sort((a, b) => compareIds(a.artwork_id, b.artwork_id));
   if (artworks.length === 0) {
     return `未找到「${operatorName}」的立绘。建议先用 search_prts 确认名称。`;
   }
