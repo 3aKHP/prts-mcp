@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Fixed
 
-- Artwork list sorting now uses codepoint order through a shared `compareArtworkIds` comparator (`artworkLocal` + `artworkMediawiki`), matching Python's `sorted()`; `localeCompare` ICU collation previously inverted punctuation pairs such as `1+.png` vs `1.png` against the Python backend.
+- User-visible id listings now sort in codepoint order through a shared `compareIds` comparator (new `data/sort.ts`), matching Python's `sorted()`: artwork lists (`artworkLocal` + `artworkMediawiki`), the item listing and item-search tie-breaks, the enemy listing tie-break, and the stage listing sorts. `localeCompare` ICU collation previously inverted punctuation pairs such as `1+.png` vs `1.png` and folded uppercase item ids (`AP_GAMEPLAY`) after lowercase ones, so `list_items` pagination order already diverged from Python on real data.
 
 ## [2.7.1] - 2026-08-18
 

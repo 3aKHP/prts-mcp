@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Fixed
 
-- User-facing echoes of identifiers in not-found and validation messages now render with double quotes via `json.dumps(..., ensure_ascii=False)`, byte-identical to the TypeScript `JSON.stringify` rendering (stage / stage-enemy / item not-found, `threat_level` / search-scope / PRTS `direction` validation, image download guards). Story domains were already aligned via the canonical message families.
+- User-facing echoes of identifiers in not-found and validation messages now render with double quotes via `json.dumps(..., ensure_ascii=False)`, byte-identical to the TypeScript `JSON.stringify` rendering (stage / stage-enemy / item not-found, `threat_level` / search-scope / PRTS `direction` validation, image download guards, and the story `Event not found` / `Story not found` KeyErrors).
 
 ## [2.7.1] - 2026-08-18
 

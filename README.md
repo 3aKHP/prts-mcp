@@ -29,7 +29,7 @@ Two release lines ship in parallel:
 
 | Line | Version | Tools | Status |
 |------|---------|-------|--------|
-| **2.7** (`main`) | `2.7.1` | 24 | Operator base skills (basic_info section + `search` building_skills scope), local artwork skin metadata, and the 2.7 internal refactor program. |
+| **2.7** (`main`) | `2.7.2` | 24 | Operator base skills (basic_info section + `search` building_skills scope), local artwork skin metadata, and the 2.7 internal refactor program. |
 | **1.7 LTS** (`lts/1.7`) | `1.7.0` | 32 | Stable maintenance line. 1.7.x accepts only compatibility, security, data-sync, and critical bug fixes. |
 
 The `main` and `develop` lines use the self-built `arknights-data-pipeline` Release exclusively for default Auto-Sync. The 1.7 LTS line retains its legacy upstream compatibility until a separate, backwards-compatible migration; changes to the new factory path must not be backported to LTS as an implicit source switch.
@@ -155,7 +155,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and [`doc
 
 | 版本线 | 版本 | 工具数 | 状态 |
 |--------|------|--------|------|
-| **2.7**（`main`） | `2.7.1` | 24 | 干员基建技能（basic_info 新段 + `search` 新 scope）、本地立绘皮肤元数据、2.7 内部重构程序。 |
+| **2.7**（`main`） | `2.7.2` | 24 | 干员基建技能（basic_info 新段 + `search` 新 scope）、本地立绘皮肤元数据、2.7 内部重构程序。 |
 | **1.7 LTS**（`lts/1.7`） | `1.7.0` | 32 | 稳定维护线。1.7.x 仅接受兼容性、安全性、数据同步和关键缺陷修复。 |
 
 | 范围 | Python | TypeScript |

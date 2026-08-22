@@ -22,8 +22,8 @@ import {
   type ImagesIndex,
   type VariantName,
 } from "./images.js";
+import { compareIds } from "./sort.js";
 import {
-  compareArtworkIds,
   normalizedArtworkFormName,
   renderList,
   type ArtworkListItem,
@@ -95,7 +95,7 @@ export function listArtworksLocal(
 
   const matched = Object.entries(index.artworks)
     .filter(([sid]) => charIdOf(sid) === charId)
-    .sort(([a], [b]) => compareArtworkIds(a, b));
+    .sort(([a], [b]) => compareIds(a, b));
   if (matched.length === 0) {
     return `未找到「${operatorName}」的立绘数据。`;
   }

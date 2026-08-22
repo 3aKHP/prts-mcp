@@ -40,18 +40,6 @@ export function normalizedArtworkFormName(operatorName: string): string {
   return operatorName.trim().replaceAll("（", "(").replaceAll("）", ")");
 }
 
-/**
- * Codepoint-order string comparison for artwork ids, matching Python's
- * `sorted()`. `localeCompare` follows ICU collation (punctuation after
- * alphanumerics), which inverts pairs like `1+.png` vs `1.png` against the
- * Python backend; plain relational comparison keeps the two implementations
- * byte-identical (all artwork ids are BMP, so UTF-16 code-unit order equals
- * codepoint order).
- */
-export function compareArtworkIds(a: string, b: string): number {
-  return a < b ? -1 : a > b ? 1 : 0;
-}
-
 /** Render the shared artwork list markdown (used by both backends). */
 export function renderList(operatorName: string, artworks: ArtworkListItem[]): string {
   const header = `# 「${operatorName}」的立绘（共 ${artworks.length} 张）\n`;

@@ -6,13 +6,14 @@ _Last updated: 2026-08-18_
 
 | 实现 | 版本 | 状态 |
 |------|------|------|
-| Python | 2.7.1 | Stable release |
-| TypeScript | 2.7.1 | Stable release |
+| Python | 2.7.2 | Stable release |
+| TypeScript | 2.7.2 | Stable release |
 
-- 当前稳定发布：2.7.1（24 个 MCP 工具）
+- 当前稳定发布：2.7.2（24 个 MCP 工具）
 - 当前 LTS 发布：1.7.0（32 个 MCP 工具，剧情角色追踪）
 - 下一开发目标：2.8.0
 - 当前稳定补丁线：2.7.x
+- 2.7.2 发布内容：非 story 域 ID 回显引号双实现统一为双引号（`json.dumps` 对齐 `JSON.stringify`）；artwork 列表排序与 item 列表 tie-break 统一为码点序（修 `localeCompare` ICU 发散）。
 - 2.7.1 发布内容：图片同步应用完整 AKDP delta chain（全新安装/跳版本同步不再漏中间 delta；断链在 baseline 下载前 fail fast；index currentVersion 权威化；release 发现分页覆盖链起点）（#179）；wrong-shape `building_data.json` 双实现一致降级（#178）。
 - 2.7.0 发布内容：干员基建技能（`get_operator_basic_info` 新段 + `search` `building_skills` scope 跨干员反查）、本地立绘列表的皮肤系列/获取方式/描述元数据、`building_data.json`/`skin_table.json` 提升 AKDP 数据集契约、2.7 上帝文件重构程序（#161–#171）、story 文案 parity 修复（#172）与全量 E2E 手册制度化（#173）。工具面保持 24。
 - 2.6.2 发布内容：GameData pair 幂等性修复——未变化的 Excel/Levels Auto-Sync 周期不再替换 `.gamedata_pair.json`，避免虚假激活变更与周期性缓存失效（#152）。
@@ -81,7 +82,7 @@ _Last updated: 2026-08-18_
 
 ## 当前分支
 
-- `main`：2.7.1（最新稳定发布线）
+- `main`：2.7.2（最新稳定发布线）
 - `lts/1.7`：1.7.x LTS 维护线（从 1.7.0 发布提交创建）
 - `develop`：release branch 回合后重开 2.8.0 开发线
 
@@ -242,6 +243,7 @@ PRTS-MCP/
 
 | 版本 | 日期 | 亮点 |
 |------|------|------|
+| 2.7.2 | 2026-08-22 | ID 回显引号双实现统一；artwork/item 列表排序码点序对齐 |
 | 2.7.1 | 2026-08-18 | 图片同步应用完整 AKDP delta chain（#179）；wrong-shape building_data 双实现一致降级（#178） |
 | 2.7.0 | 2026-08-15 | 干员基建技能（basic_info 新段 + search 新 scope）；本地立绘皮肤元数据；2.7 重构程序收口 |
 | 2.6.2 | 2026-08-12 | GameData pair 幂等性修复：未变化同步周期不再替换激活 metadata 或清空缓存（#152） |
