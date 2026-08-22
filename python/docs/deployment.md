@@ -182,7 +182,11 @@ docker run -i --rm `
         "read_story",
         "read_activity",
         "search",
-        "search_stories"
+        "search_stories",
+        "get_operator_memoirs",
+        "find_character_appearances",
+        "find_speakers_in",
+        "operator_artwork"
     ]
 }
 ```

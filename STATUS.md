@@ -134,7 +134,7 @@ PRTS-MCP/
 │   │       ├── building.ts / artworkFormat.ts / artworkLocal.ts / artworkMediawiki.ts / images.ts
 │   │       ├── stores.ts / sync.ts
 │   │       └── ...
-│   │   └── sync/           # GitHub Release 传输+发现（数据同步 HTTP 归此层）
+│   │   └── sync/           # GitHub Release 传输+发现+激活（数据同步 HTTP 归此层）
 │   ├── tests/              # node --test 测试
 │   ├── package.json
 │   └── CHANGELOG.md
@@ -161,9 +161,9 @@ PRTS-MCP/
 
 | 数据源 | 用途 | 同步方式 |
 |--------|------|----------|
-| [arknights-data-pipeline](https://github.com/3aKHP/arknights-data-pipeline) | 干员/敌人/关卡/物品表格 | GitHub Release `zh_CN-excel.zip` |
-| [arknights-data-pipeline](https://github.com/3aKHP/arknights-data-pipeline) | 关卡实际出怪与关卡级敌人数值 | GitHub Release `zh_CN-levels.zip` |
-| [arknights-data-pipeline](https://github.com/3aKHP/arknights-data-pipeline) | 剧情台词 + LLM 摘要 | GitHub Release `zh_CN.zip` |
+| [arknights-data-pipeline](https://github.com/3aKHP/arknights-data-pipeline) | 干员/敌人/关卡/物品表格 | GitHub Release `zh_CN-excel.zip`（→ `gamedata` volume） |
+| [arknights-data-pipeline](https://github.com/3aKHP/arknights-data-pipeline) | 关卡实际出怪与关卡级敌人数值 | GitHub Release `zh_CN-levels.zip`（→ `gamedata-levels` volume） |
+| [arknights-data-pipeline](https://github.com/3aKHP/arknights-data-pipeline) | 剧情台词 + LLM 摘要 | GitHub Release `zh_CN.zip`（→ `storyjson` volume） |
 | [PRTS Wiki API](https://prts.wiki/api.php) | 世界观词条/阵营设定 | 实时 HTTP 请求 |
 
 ## 工具清单 (24, 2.x 发布线)
