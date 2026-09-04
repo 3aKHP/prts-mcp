@@ -146,7 +146,7 @@ jobs:
       - name: Download bundled storyjson zip
         run: |
           mkdir -p ts/data/storyjson
-          DATA_TAG=$(gh release list --repo 3aKHP/arknights-data-pipeline --json tagName,createdAt --limit 100 --jq '[.[] | select(.tagName | startswith("data-"))] | max_by(.createdAt) | .tagName')
+          DATA_TAG=$(gh release list --repo 3aKHP/arknights-data-pipeline --json tagName,createdAt --limit 100 --jq "$(cat .github/scripts/data-tag-selector.jq)")
           gh release download "$DATA_TAG" \
             --repo 3aKHP/arknights-data-pipeline \
             --pattern "zh_CN.zip" \
