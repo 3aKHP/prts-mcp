@@ -43,6 +43,8 @@ Until EOL, 1.7.x receives the fixes listed in [Scope](#scope). After EOL:
 
 **Data-source note:** 1.7 auto-sync reads the `3aKHP/ArknightsGameData` / `3aKHP/ArknightsStoryJson` forks via `/releases/latest`. These forks no longer track the original upstreams; their releases are projections of `3aKHP/arknights-data-pipeline` factory output, produced by each fork's own `sync-and-release.yml` workflow. Until EOL these forks must **not** be archived — archiving makes a repository read-only, which blocks new projection releases and would freeze 1.7 data.
 
+**Revision-release note:** from 2.8.0 the modern implementations additionally discover `datarev-<versionId>-r<N>` repair revisions directly from `3aKHP/arknights-data-pipeline` (ordered by `(versionId, publicationRevision)`). 1.7 never sees them: it follows `/releases/latest` on the projection forks, and `datarev-` releases are neither marked latest nor projected. Repair content reaches 1.7 only through the next normal `data-` release's projection.
+
 ## 1.7.x Fix Flow
 
 1. Branch from `lts/1.7` with `fix/v1.7.x-<topic>` or `docs/v1.7.x-<topic>`.
