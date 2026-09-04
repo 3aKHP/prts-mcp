@@ -1359,3 +1359,293 @@ class TestManifestAbsenceSemantics:
         ):
             with pytest.raises(ValueError, match="manifest unavailable"):
                 _verify_release_manifest(spec, "data-x", asset_path, timeout=1.0)
+
+
+# ---------------------------------------------------------------------------
+# datarev revision discovery and activation (2.8.0)
+# ---------------------------------------------------------------------------
+
+_VID = "26-09-03-04-06-00_ed95a2"
+_VID2 = "26-10-01-11-22-33_aabbcc"
+
+
+def _mock_releases_response(releases: list[dict]) -> MagicMock:
+    resp = MagicMock()
+    resp.json.return_value = releases
+    return resp
+
+
+def _release_entry(tag: str, *, created: str = "2026-01-01T00:00:00Z",
+                   asset_name: str = "zh_CN.zip",
+                   url: str = "https://example/asset") -> dict:
+    return {
+        "tag_name": tag,
+        "created_at": created,
+        "assets": [{"name": asset_name, "browser_download_url": url}],
+    }
+
+
+class TestParseDataTag:
+    def test_matrix(self):
+        from prts_mcp.sync.release_discovery import parse_data_tag
+
+        assert parse_data_tag(f"data-{_VID}") == (_VID, 1)
+        assert parse_data_tag(f"datarev-{_VID}-r2") == (_VID, 2)
+        assert parse_data_tag(f"datarev-{_VID}-r10") == (_VID, 10)
+        assert parse_data_tag("images-v1") is None
+        assert parse_data_tag("datarev-x-r2-extra") is None
+        assert parse_data_tag("datarev-vid") is None
+
+
+class TestParseReleaseSuffixAndTagSuffix:
+    def test_matrix(self):
+        from prts_mcp.sync.release_discovery import parse_release_suffix, tag_suffix
+
+        assert parse_release_suffix(_VID) == (_VID, 1)
+        assert parse_release_suffix(f"{_VID}-r3") == (_VID, 3)
+        for sentinel in ("unknown", "legacy", "local-abc123", "manual"):
+            assert parse_release_suffix(sentinel) is None
+        assert parse_release_suffix("abc123") is None  # not a versionId shape
+        assert tag_suffix(f"data-{_VID}") == _VID
+        assert tag_suffix(f"datarev-{_VID}-r2") == f"{_VID}-r2"
+        assert tag_suffix("unknown") == "unknown"
+
+
+class TestLatestDataRelease:
+    def test_revision_outranks_normal_despite_created_at(self):
+        from prts_mcp.sync.release_discovery import latest_data_release
+
+        releases = [
+            _release_entry(f"data-{_VID}", created="2026-09-05T00:00:00Z"),
+            _release_entry(f"datarev-{_VID}-r2", created="2026-09-04T00:00:00Z"),
+        ]
+        assert latest_data_release(releases)["tag_name"] == f"datarev-{_VID}-r2"
+
+    def test_newer_version_outranks_older_revision(self):
+        from prts_mcp.sync.release_discovery import latest_data_release
+
+        releases = [
+            _release_entry(f"datarev-{_VID}-r9"),
+            _release_entry(f"data-{_VID2}"),
+        ]
+        assert latest_data_release(releases)["tag_name"] == f"data-{_VID2}"
+
+    def test_revision_compares_numerically(self):
+        from prts_mcp.sync.release_discovery import latest_data_release
+
+        releases = [
+            _release_entry(f"datarev-{_VID}-r2"),
+            _release_entry(f"datarev-{_VID}-r10"),
+        ]
+        assert latest_data_release(releases)["tag_name"] == f"datarev-{_VID}-r10"
+
+    def test_duplicate_tuple_fails_closed(self):
+        from prts_mcp.sync.release_discovery import latest_data_release
+
+        releases = [
+            _release_entry(f"data-{_VID}"),
+            _release_entry(f"datarev-{_VID}-r1"),
+        ]
+        assert latest_data_release(releases) is None
+
+    def test_no_data_tags_returns_none(self):
+        from prts_mcp.sync.release_discovery import latest_data_release
+
+        assert latest_data_release([_release_entry("images-v1")]) is None
+
+
+class TestCheckLatestReleaseRevision:
+    def test_datarev_selected_over_normal_release(self, tmp_path):
+        spec = _make_spec(tmp_path)
+        resp = _mock_releases_response([
+            _release_entry(f"data-{_VID}"),
+            _release_entry(f"datarev-{_VID}-r2", url="https://example/rev2"),
+        ])
+        with patch("httpx.get", return_value=resp):
+            result = check_latest_release(spec)
+        assert result == (f"datarev-{_VID}-r2", "https://example/rev2")
+
+
+class TestReleaseUpToDateDecision:
+    def test_matrix(self):
+        from prts_mcp.sync.release import _release_up_to_date as up_to_date
+
+        assert up_to_date(_VID, f"{_VID}-r2") is False       # newer revision → download
+        assert up_to_date(f"{_VID}-r2", f"{_VID}-r2") is True
+        assert up_to_date(f"{_VID}-r2", _VID) is True        # downgrade refused
+        assert up_to_date(_VID, _VID2) is False              # newer versionId → download
+        assert up_to_date(_VID2, _VID) is True
+        assert up_to_date("unknown", "unknown") is True      # sentinel: string fallback
+        assert up_to_date("unknown", _VID) is False
+        assert up_to_date("legacy", _VID) is False
+
+
+class TestSyncReleaseRevisionFlow:
+    def _install_cache(self, spec, commit_sha):
+        from prts_mcp.sync.release import CacheMeta, _release_cache_path
+
+        CacheMeta(
+            repo="3aKHP/arknights-data-pipeline",
+            branch="releases",
+            commit_sha=commit_sha,
+            fetched_at="2026-01-01T00:00:00Z",
+            files=["zh_CN.zip"],
+        ).save(_release_cache_path(spec))
+
+    def test_revision_downloads_and_stores_revision_suffix(self, tmp_path):
+        spec = _make_spec(tmp_path)
+        _write_zip(spec.local_zip)
+        self._install_cache(spec, _VID)
+
+        content = b"PK\x03\x04-rev2"
+        releases = _mock_releases_response([
+            _release_entry(f"data-{_VID}"),
+            _release_entry(f"datarev-{_VID}-r2"),
+        ])
+        with patch(
+            "prts_mcp.sync.release.get_cascading",
+            side_effect=[releases, _mock_asset_response(content)],
+        ) as cascading, patch(
+            "prts_mcp.sync.release_discovery.get_cascading", cascading,
+        ):
+            result = sync_release(spec, force_check=True)
+
+        assert result.status == "updated"
+        assert result.commit_sha == f"{_VID}-r2"
+        assert spec.local_zip.read_bytes() == content
+        meta = json.loads(
+            (spec.local_zip.parent / "release_meta.json").read_text(encoding="utf-8")
+        )
+        assert meta["commit_sha"] == f"{_VID}-r2"
+
+    def test_installed_revision_stays_up_to_date(self, tmp_path):
+        spec = _make_spec(tmp_path)
+        _write_zip(spec.local_zip)
+        self._install_cache(spec, f"{_VID}-r2")
+
+        releases = _mock_releases_response([
+            _release_entry(f"data-{_VID}"),
+            _release_entry(f"datarev-{_VID}-r2"),
+        ])
+        with patch(
+            "prts_mcp.sync.release.get_cascading",
+            side_effect=[releases],
+        ) as cascading, patch(
+            "prts_mcp.sync.release_discovery.get_cascading", cascading,
+        ):
+            result = sync_release(spec, force_check=True)
+
+        assert result.status == "up_to_date"
+        assert result.commit_sha == f"{_VID}-r2"
+
+    def test_manifest_revision_mismatch_fails_closed(self, tmp_path):
+        spec = ReleaseSpec(
+            owner="3aKHP",
+            repo="arknights-data-pipeline",
+            asset_name="zh_CN.zip",
+            local_zip=tmp_path / "storyjson" / "zh_CN.zip",
+            verify_manifest=True,
+        )
+        spec.local_zip.parent.mkdir(parents=True)
+        spec.local_zip.write_bytes(b"old")
+        content = b"PK\x03\x04-rev2"
+        manifest = _mock_asset_response()
+        manifest.json.return_value = {
+            "contractVersion": "prts-mcp-data/v1",
+            "source": {"versionId": _VID},
+            "publicationRevision": 3,
+            "assets": {"zh_CN.zip": {"size": len(content), "sha256": hashlib.sha256(content).hexdigest()}},
+        }
+        releases = _mock_releases_response([
+            _release_entry(f"datarev-{_VID}-r2"),
+        ])
+        with patch(
+            "prts_mcp.sync.release.get_cascading",
+            side_effect=[releases, _mock_asset_response(content), manifest],
+        ) as cascading, patch(
+            "prts_mcp.sync.release_discovery.get_cascading", cascading,
+        ):
+            result = sync_release(spec, force_check=True)
+        assert result.status == "offline_fallback"
+        assert spec.local_zip.read_bytes() == b"old"
+
+    def test_manifest_revision_missing_fails_closed(self, tmp_path):
+        spec = ReleaseSpec(
+            owner="3aKHP",
+            repo="arknights-data-pipeline",
+            asset_name="zh_CN.zip",
+            local_zip=tmp_path / "storyjson" / "zh_CN.zip",
+            verify_manifest=True,
+        )
+        spec.local_zip.parent.mkdir(parents=True)
+        spec.local_zip.write_bytes(b"old")
+        content = b"PK\x03\x04-rev2"
+        manifest = _mock_asset_response()
+        manifest.json.return_value = {
+            "contractVersion": "prts-mcp-data/v1",
+            "source": {"versionId": _VID},
+            "assets": {"zh_CN.zip": {"size": len(content), "sha256": hashlib.sha256(content).hexdigest()}},
+        }
+        releases = _mock_releases_response([
+            _release_entry(f"datarev-{_VID}-r2"),
+        ])
+        with patch(
+            "prts_mcp.sync.release.get_cascading",
+            side_effect=[releases, _mock_asset_response(content), manifest],
+        ) as cascading, patch(
+            "prts_mcp.sync.release_discovery.get_cascading", cascading,
+        ):
+            result = sync_release(spec, force_check=True)
+        assert result.status == "offline_fallback"
+
+    def test_manifest_matching_revision_updates(self, tmp_path):
+        spec = ReleaseSpec(
+            owner="3aKHP",
+            repo="arknights-data-pipeline",
+            asset_name="zh_CN.zip",
+            local_zip=tmp_path / "storyjson" / "zh_CN.zip",
+            verify_manifest=True,
+        )
+        content = b"PK\x03\x04-rev2"
+        manifest = _mock_asset_response()
+        manifest.json.return_value = {
+            "contractVersion": "prts-mcp-data/v1",
+            "source": {"versionId": _VID},
+            "publicationRevision": 2,
+            "assets": {"zh_CN.zip": {"size": len(content), "sha256": hashlib.sha256(content).hexdigest()}},
+        }
+        releases = _mock_releases_response([
+            _release_entry(f"datarev-{_VID}-r2"),
+        ])
+        with patch(
+            "prts_mcp.sync.release.get_cascading",
+            side_effect=[releases, _mock_asset_response(content), manifest],
+        ) as cascading, patch(
+            "prts_mcp.sync.release_discovery.get_cascading", cascading,
+        ):
+            result = sync_release(spec, force_check=True)
+        assert result.status == "updated"
+        assert result.commit_sha == f"{_VID}-r2"
+
+    def test_refuses_downgrade_and_reports_installed_sha(self, tmp_path):
+        spec = _make_spec(tmp_path)
+        _write_zip(spec.local_zip)
+        self._install_cache(spec, f"{_VID}-r2")
+
+        releases = _mock_releases_response([
+            _release_entry(f"data-{_VID}"),  # older than installed r2
+        ])
+        with patch(
+            "prts_mcp.sync.release.get_cascading",
+            side_effect=[releases],
+        ) as cascading, patch(
+            "prts_mcp.sync.release_discovery.get_cascading", cascading,
+        ):
+            result = sync_release(spec, force_check=True)
+
+        assert result.status == "up_to_date"
+        assert result.commit_sha == f"{_VID}-r2"
+        meta = json.loads(
+            (spec.local_zip.parent / "release_meta.json").read_text(encoding="utf-8")
+        )
+        assert meta["commit_sha"] == f"{_VID}-r2"

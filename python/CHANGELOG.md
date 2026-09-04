@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Added
+
+- **Revision release discovery (`datarev-` namespace).** The data sync now understands the factory's immutable repair releases: `datarev-<versionId>-r<N>` tags are discovered alongside normal `data-<versionId>` releases and ordered by `(versionId, publicationRevision)` tuple instead of release creation time, so a repair revision outranks the release it fixes and a re-published older release can no longer win (rollback-by-republication protection; two releases claiming the same identity fail closed with a warning). Update decisions compare the same tuple over the stored release id — a bare `<versionId>` means revision 1 — while sentinel ids (`unknown`/`legacy`/`local-…`) keep the legacy string-equality semantics, and a refused downgrade reports the installed id. Manifest verification additionally requires `publicationRevision` on `datarev-` releases to match the tag. Stored metadata keeps the full tag suffix (`<versionId>-r<N>`), so the on-disk schemas and the cross-implementation meta interop are unchanged; 1.7-era deployments never see `datarev-` releases.
+
 ## [2.7.2] - 2026-08-22
 
 ### Fixed
