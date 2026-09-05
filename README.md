@@ -29,7 +29,7 @@ Two release lines ship in parallel:
 
 | Line | Version | Tools | Status |
 |------|---------|-------|--------|
-| **2.7** (`main`) | `2.7.2` | 24 | Operator base skills (basic_info section + `search` building_skills scope), local artwork skin metadata, and the 2.7 internal refactor program. |
+| **2.7** (`main`) | `2.7.3` | 24 | Operator base skills, local artwork skin metadata, repair-aware data sync, and consistent chapter summaries. |
 | **1.7 LTS** (`lts/1.7`) | `1.7.0` | 32 | Stable maintenance line. 1.7.x accepts only compatibility, security, data-sync, and critical bug fixes. |
 
 The `main` and `develop` lines use the self-built `arknights-data-pipeline` Release exclusively for default Auto-Sync. The 1.7 LTS line retains its legacy upstream compatibility until a separate, backwards-compatible migration; changes to the new factory path must not be backported to LTS as an implicit source switch.
@@ -107,7 +107,7 @@ The `operator_artwork` tool (2.5.0+) is **enabled by default**. Two data source 
 | `ORIGINAL_IMAGE` | `false` | Also sync original-resolution shards; only effective when `LOCAL_IMAGE=true`. |
 | `PRTS_IMAGE_DIR` | `~/.local/share/prts-mcp/images/` | AKDP asset sync target; only effective when `LOCAL_IMAGE=true`. Docker: `/data/images`. |
 
-Zero-config: the tool works immediately via MediaWiki with caching. For the full offline AKDP experience, set `LOCAL_IMAGE=true` (triggers ~1.5 GB background sync).
+Zero-config: the tool works immediately via MediaWiki with caching. For the full offline AKDP experience, set `LOCAL_IMAGE=true` (triggers ~1.5 GB background sync). For the complete environment-variable list, see [docs/user/environment-variables.md](docs/user/environment-variables.md).
 
 ### Quick Start
 
@@ -155,7 +155,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and [`doc
 
 | 版本线 | 版本 | 工具数 | 状态 |
 |--------|------|--------|------|
-| **2.7**（`main`） | `2.7.2` | 24 | 干员基建技能（basic_info 新段 + `search` 新 scope）、本地立绘皮肤元数据、2.7 内部重构程序。 |
+| **2.7**（`main`） | `2.7.3` | 24 | 干员基建技能、本地立绘皮肤元数据、数据修订同步、章节摘要一致性修复。 |
 | **1.7 LTS**（`lts/1.7`） | `1.7.0` | 32 | 稳定维护线。1.7.x 仅接受兼容性、安全性、数据同步和关键缺陷修复。 |
 
 | 范围 | Python | TypeScript |
@@ -231,7 +231,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and [`doc
 | `ORIGINAL_IMAGE` | `false` | 额外同步原图分辨率分片；仅在 `LOCAL_IMAGE=true` 时生效。 |
 | `PRTS_IMAGE_DIR` | `~/.local/share/prts-mcp/images/` | AKDP 资产同步目标；仅在 `LOCAL_IMAGE=true` 时生效。Docker：`/data/images`。 |
 
-零配置即可使用：默认走 MediaWiki + 缓存。若需离线全量体验，设置 `LOCAL_IMAGE=true`（触发 ~1.5 GB 后台同步）。
+零配置即可使用：默认走 MediaWiki + 缓存。若需离线全量体验，设置 `LOCAL_IMAGE=true`（触发 ~1.5 GB 后台同步）。完整环境变量清单见[环境变量参考](docs/user/environment-variables.md)。
 
 ### 快速开始
 

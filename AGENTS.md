@@ -8,9 +8,9 @@ Long-lived branches after the 1.7.0 LTS release:
 
 | Branch | Purpose | Version suffix |
 |--------|---------|---------------|
-| `main` | Latest stable release. Currently `2.7.2`. | (none) |
-| `lts/1.7` | 1.7.x long-term maintenance. Created from the 1.7.0 release commit. | (none) |
-| `develop` | Development integration. All non-LTS changes land here. | `.dev0` (current target: `2.7.0.dev0`) |
+| `main` | Latest stable release. Currently `2.7.3`. | (none) |
+| `lts/1.7` | 1.7.x long-term maintenance. Created from the 1.7.0 release commit (EOL 2027-07-02). | (none) |
+| `develop` | Development integration. All non-LTS changes land here. | `.dev0` (current target: `2.8.0.dev0`) |
 
 - Feature / refactor / perf / non-urgent fix / general docs / chore -> branch from `develop`, PR to `develop`.
 - 1.7.x LTS fix -> branch from `lts/1.7`, PR to `lts/1.7`, then cherry-pick or reimplement on `develop` if applicable.

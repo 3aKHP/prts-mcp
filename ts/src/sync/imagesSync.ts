@@ -229,7 +229,10 @@ async function syncImagesLocked(
   }
 
   const deltaTag = String(deltaRelease["tag_name"] ?? "");
-  const tagVersion = deltaTag.slice(DELTA_PREFIX.length);
+  const tagVersion = imagesTagVersion(deltaTag);
+  if (tagVersion === null) {
+    return offlineOrNoData(imageDir, "No images delta release found");
+  }
 
   const meta = await loadMeta(imageDir);
   const genDir = await activeGeneration(imageDir);

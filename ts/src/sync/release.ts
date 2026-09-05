@@ -12,7 +12,13 @@ import { basename, dirname, join } from "node:path";
 
 import { type RepoSpec, type SyncResult, errorMessage } from "./types.js";
 import { atomicWriteJson } from "./primitives.js";
-import { type ReleaseSpec, TAG_PREFIX, checkLatestRelease } from "./releaseDiscovery.js";
+import {
+  type ReleaseSpec,
+  parseDataTag,
+  parseReleaseSuffix,
+  tagSuffix,
+  checkLatestRelease,
+} from "./releaseDiscovery.js";
 import {
   AssetNotFoundError,
   fetchCascading,
@@ -143,7 +149,8 @@ export async function downloadReleaseAsset(
     }
     await rename(tmp, spec.localZip);
 
-    const commitSha = tag.startsWith(TAG_PREFIX) ? tag.slice(TAG_PREFIX.length) : tag;
+    // Strip the namespace prefix: data-<vid> → <vid>, datarev-<vid>-rN → <vid>-rN
+    const commitSha = tagSuffix(tag);
     await saveReleaseMeta(spec, {
       repo: `${spec.owner}/${spec.repo}`,
       branch: "releases",
@@ -173,7 +180,7 @@ async function verifyReleaseManifest(
     );
   } catch (err) {
     // Direct URL confirmed 404 → release predates the manifest asset.
-    if (err instanceof AssetNotFoundError) return;
+    if (err instanceof AssetNotFoundError && !tag.startsWith("datarev-")) return;
     throw new Error(`manifest unavailable for ${tag}: ${errorMessage(err)}`);
   }
   let manifest: unknown;
@@ -188,16 +195,28 @@ async function verifyReleaseManifest(
   const typedManifest = manifest as {
     assets?: Record<string, { size?: number; sha256?: string }>;
     contractVersion?: unknown;
+    publicationRevision?: unknown;
     source?: { versionId?: unknown };
   };
   if (typedManifest.contractVersion !== DATA_CONTRACT_VERSION) {
     throw new Error(`manifest for ${tag} has unsupported contractVersion`);
   }
+  const parsedTag = parseDataTag(tag);
   if (
-    tag.startsWith("data-")
-    && typedManifest.source?.versionId !== tag.slice("data-".length)
+    parsedTag
+    && typedManifest.source?.versionId !== parsedTag.versionId
   ) {
     throw new Error(`manifest source version does not match release tag ${tag}`);
+  }
+  if (parsedTag && parsedTag.revision > 1) {
+    // datarev releases must declare their revision; a missing field means
+    // the manifest was not produced by the revision pipeline
+    if (typedManifest.publicationRevision !== parsedTag.revision) {
+      throw new Error(
+        `manifest for ${tag} declares publicationRevision `
+        + `${String(typedManifest.publicationRevision)}, expected ${parsedTag.revision}`,
+      );
+    }
   }
   const expected = typedManifest.assets?.[spec.assetName];
   if (typeof expected?.size !== "number" || typeof expected.sha256 !== "string") {
@@ -211,6 +230,38 @@ async function verifyReleaseManifest(
       + `${expected.size}/${expected.sha256}, got ${bytes.byteLength}/${actualSha}`,
     );
   }
+}
+
+/**
+ * Tuple-aware up-to-date decision over stored commitSha values.
+ *
+ * Both sides parse into {versionId, revision} → compare tuples: newer
+ * upstream means stale, equal or older upstream means up to date (an older
+ * upstream is refused loudly — rollback-by-republication protection).
+ * Either side unparseable (sentinels like "unknown"/"legacy"/"local-…") →
+ * plain string equality, preserving the legacy semantics.
+ * Mirrors python's _release_up_to_date.
+ */
+function releaseUpToDate(localSha: string, upstreamSha: string): boolean {
+  const local = parseReleaseSuffix(localSha);
+  const upstream = parseReleaseSuffix(upstreamSha);
+  if (local && upstream) {
+    if (local.versionId !== upstream.versionId) {
+      if (upstream.versionId > local.versionId) return false;
+      console.warn(
+        `[sync] upstream ${upstreamSha} is not newer than installed ${localSha}; refusing downgrade`,
+      );
+      return true;
+    }
+    if (upstream.revision > local.revision) return false;
+    if (upstream.revision < local.revision) {
+      console.warn(
+        `[sync] upstream ${upstreamSha} is not newer than installed ${localSha}; refusing downgrade`,
+      );
+    }
+    return true;
+  }
+  return localSha === upstreamSha;
 }
 
 /**
@@ -251,6 +302,12 @@ async function syncReleaseLocked(
     }
     // No zip and API unreachable — attempt blind download via releases/latest/download/
     // (does not require the GitHub API; ghproxy and similar mirrors support this URL).
+    if (cache !== null && parseReleaseSuffix(cache.commitSha) !== null) {
+      return {
+        spec: dummySpec, status: "no_data", commitSha: cache.commitSha,
+        error: "Network unavailable; cannot verify replacement of recorded release",
+      };
+    }
     if (parseMirrors().length > 0) {
       const blindUrl = `https://github.com/${spec.owner}/${spec.repo}/releases/latest/download/${spec.assetName}`;
       try {
@@ -267,13 +324,25 @@ async function syncReleaseLocked(
     return { spec: dummySpec, status: "no_data", commitSha: null, error };
   }
 
-  const commitSha = latest.tag.startsWith(TAG_PREFIX)
-    ? latest.tag.slice(TAG_PREFIX.length)
-    : latest.tag;
+  const commitSha = tagSuffix(latest.tag);
 
-  if (cache !== null && cache.commitSha === commitSha && zipOk) {
+  if (cache !== null && !zipOk) {
+    const local = parseReleaseSuffix(cache.commitSha);
+    const upstream = parseReleaseSuffix(commitSha);
+    if (local && upstream && (local.versionId > upstream.versionId
+      || (local.versionId === upstream.versionId && local.revision > upstream.revision))) {
+      return {
+        spec: dummySpec, status: "no_data", commitSha: cache.commitSha,
+        error: "Refusing downgrade of recorded release while cached zip is unavailable",
+      };
+    }
+  }
+
+  if (cache !== null && zipOk && releaseUpToDate(cache.commitSha, commitSha)) {
     await saveReleaseMeta(spec, { ...cache, fetchedAt: new Date().toISOString() });
-    return { spec: dummySpec, status: "up_to_date", commitSha, error: null };
+    // report the *installed* sha: with tuple ordering this branch also
+    // covers refused downgrades, where upstream is older than installed
+    return { spec: dummySpec, status: "up_to_date", commitSha: cache.commitSha, error: null };
   }
 
   try {

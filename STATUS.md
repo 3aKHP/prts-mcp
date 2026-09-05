@@ -1,18 +1,19 @@
 # PRTS-MCP 项目状态
 
-_Last updated: 2026-08-22_
+_Last updated: 2026-09-05_
 
 ## 当前版本
 
 | 实现 | 版本 | 状态 |
 |------|------|------|
-| Python | 2.7.2 | Stable release |
-| TypeScript | 2.7.2 | Stable release |
+| Python | 2.7.3 | Stable release |
+| TypeScript | 2.7.3 | Stable release |
 
-- 当前稳定发布：2.7.2（24 个 MCP 工具）
+- 当前稳定发布：2.7.3（24 个 MCP 工具）
 - 当前 LTS 发布：1.7.0（32 个 MCP 工具，剧情角色追踪）
 - 下一开发目标：2.8.0
 - 当前稳定补丁线：2.7.x
+- 2.7.3 发布内容：修订数据包自动发现与 manifest 校验、重复版本拒绝、缓存 ZIP 恢复时的防降级，以及章节列表与单章摘要的一致回退。工具、参数和用户配置保持兼容。
 - 2.7.2 发布内容：ID 回显引号双实现统一为双引号（PY `json.dumps` 对齐 TS `JSON.stringify`，含 story 两处 KeyError）；全部用户可见 id 排序统一为码点序（新建 TS `data/sort.ts` 共享比较器，覆盖 artwork 列表、item/enemy 列表 tie-break、stage 列表；修 `localeCompare` ICU 发散，item 列表分页在真实数据上已可观测）。
 - 2.7.1 发布内容：图片同步应用完整 AKDP delta chain（全新安装/跳版本同步不再漏中间 delta；断链在 baseline 下载前 fail fast；index currentVersion 权威化；release 发现分页覆盖链起点）（#179）；wrong-shape `building_data.json` 双实现一致降级（#178）。
 - 2.7.0 发布内容：干员基建技能（`get_operator_basic_info` 新段 + `search` `building_skills` scope 跨干员反查）、本地立绘列表的皮肤系列/获取方式/描述元数据、`building_data.json`/`skin_table.json` 提升 AKDP 数据集契约、2.7 上帝文件重构程序（#161–#171）、story 文案 parity 修复（#172）与全量 E2E 手册制度化（#173）。工具面保持 24。
@@ -82,9 +83,9 @@ _Last updated: 2026-08-22_
 
 ## 当前分支
 
-- `main`：2.7.2（最新稳定发布线）
-- `lts/1.7`：1.7.x LTS 维护线（从 1.7.0 发布提交创建）
-- `develop`：release branch 回合后重开 2.8.0 开发线
+- `main`：2.7.3（最新稳定发布线）
+- `lts/1.7`：1.7.x LTS 维护线（从 1.7.0 发布提交创建；EOL 2027-07-02）
+- `develop`：2.8.0 开发线（`.dev0`）
 
 1.7.0 是最后一个 1.x 功能版本和 LTS 基线。它将 server.py/server.ts 和 story.py/story.ts 单体文件拆分为聚焦子模块，保留向后兼容垫片（shim），并新增剧情角色追踪工具：`find_character_appearances`、`find_speakers_in`。后续功能开发转向 2.0；1.7.x 仅做兼容性、安全性、数据同步和关键缺陷修复。
 
@@ -98,22 +99,22 @@ PRTS-MCP/
 │   │   ├── tools_prts.py   # PRTS Wiki 工具注册（2 工具）
 │   │   ├── tools_gamedata.py # GameData 工具注册（12 工具）
 │   │   ├── tools_story.py  # 剧情工具注册（9 工具）
+│   │   ├── tools_artwork.py # 立绘工具注册（1 工具）
 │   │   ├── config.py       # 路径解析、环境变量
 │   │   ├── startup_sync.py # 后台数据同步编排
+│   │   ├── activation.py / cache_stats.py / output.py  # 代际激活、缓存统计、输出通道
 │   │   ├── api/            # PRTS Wiki MediaWiki API 客户端
 │   │   ├── data/           # 数据抽象层
 │   │   │   ├── story.py    # 兼容性垫片 → 子模块重导出
-│   │   │   ├── story_reader.py  # 剧情类型、常量、章节解析
-│   │   │   ├── story_search.py  # 全文搜索索引
-│   │   │   ├── story_memoir.py  # 干员密录发现
-│   │   │   ├── story_summary.py # 活动/章节摘要
-│   │   │   ├── operators.py     # 干员数据
-│   │   │   ├── enemies.py       # 敌人数据
-│   │   │   ├── stages.py        # 关卡数据
-│   │   │   ├── items.py         # 物品/材料数据
-│   │   │   ├── stores.py        # 存储抽象 (Directory/Zip/Fallback)
-│   │   │   └── sync.py          # 同步状态机（release/archive/pair 编排；P2.B 迁出中）
-│   │   ├── sync/            # GitHub Release 传输+发现（数据同步 HTTP 归此层；P2.A 抽出）
+│   │   │   ├── story_reader.py / story_search.py / story_memoir.py / story_summary.py / story_character.py
+│   │   │   ├── operator.py / enemy.py / stage.py / item.py  # 干员/敌人/关卡/物品数据
+│   │   │   ├── enemy_database.py / enemy_render.py / enemy_stats.py / stage_enemy.py / level_parser.py
+│   │   │   ├── building.py # 基建技能（2.7.0）
+│   │   │   ├── artwork_format.py / artwork_local.py / artwork_mediawiki.py  # 立绘后端（2.5.0）
+│   │   │   ├── images.py / search.py / datasets.py / dataset_access.py / gamedata_attrs.py / messages.py
+│   │   │   ├── stores.py   # 存储抽象 (Directory/Zip/Fallback)
+│   │   │   └── sync.py     # re-export 垫片（同步状态机在 sync/ 层）
+│   │   ├── sync/            # GitHub Release 传输+发现+激活（数据同步 HTTP 归此层）
 │   │   └── utils/          # wikitext 清洗等工具
 │   ├── tests/              # pytest 测试
 │   ├── pyproject.toml      # 包元数据、依赖
@@ -126,14 +127,16 @@ PRTS-MCP/
 │   │   ├── tools/          # 工具注册模块
 │   │   │   ├── prtsTools.ts
 │   │   │   ├── gamedataTools.ts
-│   │   │   └── storyTools.ts
+│   │   │   ├── storyTools.ts
+│   │   │   └── artworkTools.ts
 │   │   ├── data/           # 数据抽象层（对齐 python/src/prts_mcp/data/）
 │   │       ├── story.ts        # 兼容性垫片
-│   │       ├── storyReader.ts / storySearch.ts / storyMemoir.ts / storySummary.ts
-│   │       ├── operators.ts / enemies.ts / stages.ts / items.ts
+│   │       ├── storyReader.ts / storySearch.ts / storyMemoir.ts / storySummary.ts / storyCharacter.ts
+│   │       ├── operator.ts / enemy.ts / stage.ts / item.ts
+│   │       ├── building.ts / artworkFormat.ts / artworkLocal.ts / artworkMediawiki.ts / images.ts
 │   │       ├── stores.ts / sync.ts
 │   │       └── ...
-│   │   └── sync/           # GitHub Release 传输+发现（数据同步 HTTP 归此层）
+│   │   └── sync/           # GitHub Release 传输+发现+激活（数据同步 HTTP 归此层）
 │   ├── tests/              # node --test 测试
 │   ├── package.json
 │   └── CHANGELOG.md
@@ -156,13 +159,13 @@ PRTS-MCP/
 
 ## 数据源
 
-2.5.0 开发线（`develop`）的默认 Auto-Sync 只消费自建 `3aKHP/arknights-data-pipeline` Release；旧版两个上游仓库不再是新版本的数据依赖。 `main` 的 2.4.x 与 `lts/1.7` 暂保留旧上游兼容路径，供 LTS 维护使用，后续另行设计迁移，不在本轮跨线切换。
+`main`（2.7.x）与 `develop`（2.8.0 开发线）的默认 Auto-Sync 只消费自建 `3aKHP/arknights-data-pipeline` Release；旧版两个上游仓库不再是 2.x 线的数据依赖。仅 `lts/1.7` 保留旧上游兼容路径，供 LTS 维护使用。
 
 | 数据源 | 用途 | 同步方式 |
 |--------|------|----------|
-| [arknights-data-pipeline](https://github.com/3aKHP/arknights-data-pipeline) | 干员/敌人/关卡/物品表格 | GitHub Release `zh_CN-excel.zip` |
-| [arknights-data-pipeline](https://github.com/3aKHP/arknights-data-pipeline) | 关卡实际出怪与关卡级敌人数值 | GitHub Release `zh_CN-levels.zip` |
-| [arknights-data-pipeline](https://github.com/3aKHP/arknights-data-pipeline) | 剧情台词 + LLM 摘要 | GitHub Release `zh_CN.zip` |
+| [arknights-data-pipeline](https://github.com/3aKHP/arknights-data-pipeline) | 干员/敌人/关卡/物品表格 | GitHub Release `zh_CN-excel.zip`（→ `gamedata` volume） |
+| [arknights-data-pipeline](https://github.com/3aKHP/arknights-data-pipeline) | 关卡实际出怪与关卡级敌人数值 | GitHub Release `zh_CN-levels.zip`（→ `gamedata-levels` volume） |
+| [arknights-data-pipeline](https://github.com/3aKHP/arknights-data-pipeline) | 剧情台词 + LLM 摘要 | GitHub Release `zh_CN.zip`（→ `storyjson` volume） |
 | [PRTS Wiki API](https://prts.wiki/api.php) | 世界观词条/阵营设定 | 实时 HTTP 请求 |
 
 ## 工具清单 (24, 2.x 发布线)
@@ -194,7 +197,7 @@ PRTS-MCP/
 | 23 | `find_speakers_in` | StoryJson | 1.7.0 |
 | 24 | `operator_artwork` | PRTS Wiki / AKDP | 2.5.0 |
 
-> `search(scope, pattern, max_results)` 统一了 1.x 的 `search_data` / `search_enemies` / `search_stages` / `search_items` 与 `list_search_scopes` （scope ∈ operators/enemies/stages/items）。剧情台词搜索仍为独立的 `search_stories`（参数不同）。
+> `search(scope, pattern, max_results)` 统一了 1.x 的 `search_data` / `search_enemies` / `search_stages` / `search_items` 与 `list_search_scopes` （scope ∈ operators/enemies/stages/items；2.7.0 起新增 `building_skills`）。剧情台词搜索仍为独立的 `search_stories`（参数不同）。
 >
 > `prts_page(page_title, action, …)` 统一了 1.x 的 `read_prts_page` / `list_prts_sections` / `get_prts_categories` / `get_prts_links` / `get_prts_template`（action ∈ read/sections/categories/links/template）。维基关键词搜索仍为独立的 `search_prts`。
 >
@@ -243,6 +246,7 @@ PRTS-MCP/
 
 | 版本 | 日期 | 亮点 |
 |------|------|------|
+| 2.7.3 | 2026-09-05 | 数据修订发现与校验；缓存恢复防降级；章节摘要一致性 |
 | 2.7.2 | 2026-08-22 | ID 回显引号双实现统一；artwork/item 列表排序码点序对齐 |
 | 2.7.1 | 2026-08-18 | 图片同步应用完整 AKDP delta chain（#179）；wrong-shape building_data 双实现一致降级（#178） |
 | 2.7.0 | 2026-08-15 | 干员基建技能（basic_info 新段 + search 新 scope）；本地立绘皮肤元数据；2.7 重构程序收口 |

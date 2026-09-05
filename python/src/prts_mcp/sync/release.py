@@ -19,7 +19,9 @@ from prts_mcp.sync.release_activation import with_archive_activation_lock
 from prts_mcp.sync.primitives import atomic_write_json
 from prts_mcp.sync.release_discovery import (
     ReleaseSpec,
-    _TAG_PREFIX,
+    parse_data_tag,
+    parse_release_suffix,
+    tag_suffix,
     check_latest_release,
 )
 from prts_mcp.sync.transport import (
@@ -123,8 +125,8 @@ def download_release_asset(spec: ReleaseSpec, tag: str, url: str, timeout: float
             _verify_release_manifest(spec, tag, tmp, timeout=timeout)
         tmp.replace(spec.local_zip)
 
-        # Extract version identifier from tag (format: "data-<versionId>")
-        commit_sha = tag[len(_TAG_PREFIX):] if tag.startswith(_TAG_PREFIX) else tag
+        # Strip the namespace prefix: data-<vid> → <vid>, datarev-<vid>-rN → <vid>-rN
+        commit_sha = tag_suffix(tag)
         CacheMeta(
             repo=f"{spec.owner}/{spec.repo}",
             branch="releases",
@@ -161,6 +163,8 @@ def _verify_release_manifest(
             manifest_url, timeout=timeout, headers=github_headers(), follow_redirects=True,
         )
     except _AssetNotFoundError:
+        if tag.startswith("datarev-"):
+            raise ValueError(f"manifest required for repair release {tag}") from None
         # Direct URL confirmed 404 → release predates the manifest asset.
         return
     except Exception as exc:
@@ -176,13 +180,24 @@ def _verify_release_manifest(
         expected = manifest["assets"][spec.asset_name]
         expected_size = int(expected["size"])
         expected_sha = str(expected["sha256"])
-        expected_version = tag.removeprefix("data-")
+        parsed_tag = parse_data_tag(tag)
+        version_id, tag_revision = parsed_tag if parsed_tag else (None, None)
+        expected_version = version_id if version_id is not None else tag.removeprefix("data-")
         source = manifest.get("source", {})
         if not isinstance(source, dict):
             raise ValueError("manifest source must be an object")
         source_version = source.get("versionId")
-        if tag.startswith("data-") and source_version != expected_version:
+        if version_id is not None and source_version != expected_version:
             raise ValueError("manifest source version does not match release tag")
+        if tag_revision is not None and tag_revision > 1:
+            # datarev releases must declare their revision; a missing field
+            # means the manifest was not produced by the revision pipeline
+            revision = manifest.get("publicationRevision")
+            if type(revision) is not int or revision != tag_revision:
+                raise ValueError(
+                    f"manifest publicationRevision {revision!r} does not "
+                    f"match tag revision {tag_revision}"
+                )
     except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
         raise ValueError(f"manifest for {tag} is invalid: {exc}") from exc
     actual_sha = hashlib.sha256(asset_path.read_bytes()).hexdigest()
@@ -192,6 +207,29 @@ def _verify_release_manifest(
             f"expected {expected_size}/{expected_sha}, "
             f"got {asset_path.stat().st_size}/{actual_sha}"
         )
+
+
+def _release_up_to_date(local_sha: str, upstream_sha: str) -> bool:
+    """Tuple-aware up-to-date decision over stored commit_sha values.
+
+    Both sides parse into (versionId, revision) → compare tuples: newer
+    upstream means stale, equal or older upstream means up to date (an older
+    upstream is refused loudly — rollback-by-republication protection).
+    Either side unparseable (sentinels like "unknown"/"legacy"/"local-…")
+    → plain string equality, preserving the legacy semantics.
+    """
+    local_version = parse_release_suffix(local_sha)
+    upstream_version = parse_release_suffix(upstream_sha)
+    if local_version is not None and upstream_version is not None:
+        if local_version < upstream_version:
+            return False
+        if local_version > upstream_version:
+            _logger.warning(
+                "upstream %s is not newer than installed %s; refusing downgrade",
+                upstream_sha, local_sha,
+            )
+        return True
+    return local_sha == upstream_sha
 
 
 def _sync_release_locked(spec: ReleaseSpec, *, force_check: bool = False) -> SyncResult:
@@ -237,6 +275,11 @@ def _sync_release_locked(spec: ReleaseSpec, *, force_check: bool = False) -> Syn
             )
         # No zip and API unreachable — attempt blind download via releases/latest/download/
         # (does not require the GitHub API; ghproxy and similar mirrors support this URL).
+        if cache is not None and parse_release_suffix(cache.commit_sha) is not None:
+            return SyncResult(
+                spec=_dummy_spec, status="no_data", commit_sha=cache.commit_sha,
+                error="Network unavailable; cannot verify replacement of recorded release",
+            )
         if _parse_mirrors():
             blind_url = f"https://github.com/{spec.owner}/{spec.repo}/releases/latest/download/{spec.asset_name}"
             try:
@@ -250,9 +293,18 @@ def _sync_release_locked(spec: ReleaseSpec, *, force_check: bool = False) -> Syn
         return SyncResult(spec=_dummy_spec, status="no_data", commit_sha=None, error=error)
 
     tag, asset_url = result
-    upstream_sha = tag[len(_TAG_PREFIX):] if tag.startswith(_TAG_PREFIX) else tag
+    upstream_sha = tag_suffix(tag)
 
-    if cache is not None and cache.commit_sha == upstream_sha and zip_ok:
+    if cache is not None and not zip_ok:
+        local_version = parse_release_suffix(cache.commit_sha)
+        upstream_version = parse_release_suffix(upstream_sha)
+        if local_version is not None and upstream_version is not None and local_version > upstream_version:
+            return SyncResult(
+                spec=_dummy_spec, status="no_data", commit_sha=cache.commit_sha,
+                error="Refusing downgrade of recorded release while cached zip is unavailable",
+            )
+
+    if cache is not None and zip_ok and _release_up_to_date(cache.commit_sha, upstream_sha):
         CacheMeta(
             repo=cache.repo,
             branch=cache.branch,
@@ -260,7 +312,9 @@ def _sync_release_locked(spec: ReleaseSpec, *, force_check: bool = False) -> Syn
             fetched_at=datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             files=cache.files,
         ).save(_release_cache_path(spec))
-        return SyncResult(spec=_dummy_spec, status="up_to_date", commit_sha=upstream_sha, error=None)
+        # report the *installed* sha: with tuple ordering this branch also
+        # covers refused downgrades, where upstream is older than installed
+        return SyncResult(spec=_dummy_spec, status="up_to_date", commit_sha=cache.commit_sha, error=None)
 
     try:
         download_release_asset(spec, tag, asset_url)

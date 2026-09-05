@@ -34,6 +34,12 @@ import {
   type ReleaseSpec,
 } from "../src/data/sync.ts";
 import { parseMirrors } from "../src/sync/transport.js";
+import {
+  latestDataRelease,
+  parseDataTag,
+  parseReleaseSuffix,
+  tagSuffix,
+} from "../src/sync/releaseDiscovery.js";
 
 test("fetchCascading raises AssetNotFoundError on a direct 404 (#100)", async () => {
   await withFetchMock((async () => new Response("missing", { status: 404 })) as typeof fetch, async () => {
@@ -991,4 +997,306 @@ test("concurrent archive activation keeps the authoritative tree", async () => {
     assert.equal(existsSync(join(dirname(spec.localZip), ".activation.lock")), false);
   });
   assert.equal(maxActiveChecks, 1);
+});
+
+// ---------------------------------------------------------------------------
+// datarev revision discovery and activation (2.8.0)
+// ---------------------------------------------------------------------------
+
+const REV_VID = "26-09-03-04-06-00_ed95a2";
+const REV_VID2 = "26-10-01-11-22-33_aabbcc";
+
+function releaseEntry(tag: string, created = "2026-01-01T00:00:00Z") {
+  return {
+    tag_name: tag,
+    created_at: created,
+    assets: [{ name: "zh_CN.zip", browser_download_url: "https://example.test/asset" }],
+  };
+}
+
+test("parseDataTag parses both data namespaces", () => {
+  assert.deepEqual(parseDataTag(`data-${REV_VID}`), { versionId: REV_VID, revision: 1 });
+  assert.deepEqual(parseDataTag(`datarev-${REV_VID}-r2`), { versionId: REV_VID, revision: 2 });
+  assert.deepEqual(parseDataTag(`datarev-${REV_VID}-r10`), { versionId: REV_VID, revision: 10 });
+  assert.equal(parseDataTag("images-v1"), null);
+  assert.equal(parseDataTag("datarev-x-r2-extra"), null);
+  assert.equal(parseDataTag("datarev-vid"), null);
+});
+
+test("parseReleaseSuffix and tagSuffix handle stored commitSha values", () => {
+  assert.deepEqual(parseReleaseSuffix(REV_VID), { versionId: REV_VID, revision: 1 });
+  assert.deepEqual(parseReleaseSuffix(`${REV_VID}-r3`), { versionId: REV_VID, revision: 3 });
+  for (const sentinel of ["unknown", "legacy", "local-abc123", "manual"]) {
+    assert.equal(parseReleaseSuffix(sentinel), null);
+  }
+  assert.equal(parseReleaseSuffix("abc123"), null);
+  assert.equal(tagSuffix(`data-${REV_VID}`), REV_VID);
+  assert.equal(tagSuffix(`datarev-${REV_VID}-r2`), `${REV_VID}-r2`);
+  assert.equal(tagSuffix("unknown"), "unknown");
+});
+
+test("latestDataRelease orders by (versionId, revision) tuple", () => {
+  const rev = latestDataRelease([
+    releaseEntry(`data-${REV_VID}`, "2026-09-05T00:00:00Z"),
+    releaseEntry(`datarev-${REV_VID}-r2`, "2026-09-04T00:00:00Z"),
+  ]);
+  assert.equal(rev?.["tag_name"], `datarev-${REV_VID}-r2`);
+
+  const newer = latestDataRelease([
+    releaseEntry(`datarev-${REV_VID}-r9`),
+    releaseEntry(`data-${REV_VID2}`),
+  ]);
+  assert.equal(newer?.["tag_name"], `data-${REV_VID2}`);
+
+  const numeric = latestDataRelease([
+    releaseEntry(`datarev-${REV_VID}-r2`),
+    releaseEntry(`datarev-${REV_VID}-r10`),
+  ]);
+  assert.equal(numeric?.["tag_name"], `datarev-${REV_VID}-r10`);
+
+  assert.equal(latestDataRelease([releaseEntry("images-v1")]), null);
+});
+
+test("latestDataRelease fails closed on duplicate release identity", () => {
+  assert.throws(() => latestDataRelease([
+    releaseEntry(`data-${REV_VID}`),
+    releaseEntry(`datarev-${REV_VID}-r1`),
+  ]), /duplicate data release identity/);
+});
+
+test("data release selector matches shared publication cases", () => {
+  const cases = JSON.parse(readFileSync(
+    join(import.meta.dirname, "../../tests/parity-fixtures/data-release-selection.json"), "utf8",
+  )) as { name: string; tags: string[]; expected?: string | null; error?: boolean;
+    draft?: string; prerelease?: string }[];
+  for (const entry of cases) {
+    const select = () => latestDataRelease(entry.tags.map(tag => ({
+      ...releaseEntry(tag), draft: tag === entry.draft, prerelease: tag === entry.prerelease,
+    })));
+    if (entry.error) assert.throws(select, /duplicate/, entry.name);
+    else assert.equal(select()?.["tag_name"] ?? null, entry.expected, entry.name);
+  }
+  for (const flag of ["draft", "prerelease"]) {
+    assert.equal(latestDataRelease([
+      releaseEntry("data-V"), { ...releaseEntry("datarev-V-r2"), [flag]: true },
+    ])?.["tag_name"], "data-V");
+  }
+});
+
+function writeRevCache(spec: ReleaseSpec, commitSha: string): void {
+  mkdirSync(dirname(spec.localZip), { recursive: true });
+  writeFileSync(spec.localZip, "cached");
+  writeFileSync(
+    join(dirname(spec.localZip), "release_meta.json"),
+    JSON.stringify({
+      repo: "3aKHP/arknights-data-pipeline",
+      branch: "releases",
+      commitSha,
+      fetchedAt: "2026-01-01T00:00:00Z",
+      files: ["zh_CN.zip"],
+    }),
+    "utf-8",
+  );
+}
+
+test("syncRelease downloads a datarev revision and stores the revision suffix", async () => {
+  const spec = tempSpec();
+  writeRevCache(spec, REV_VID);
+  const content = "rev2-content";
+  let call = 0;
+  await withFetchMock((async () => {
+    call += 1;
+    if (call === 1) {
+      return new Response(JSON.stringify([
+        releaseEntry(`data-${REV_VID}`),
+        releaseEntry(`datarev-${REV_VID}-r2`),
+      ]), { headers: { "content-type": "application/json" } });
+    }
+    return new Response(content);
+  }) as typeof fetch, async () => {
+    const result = await syncRelease(spec, true);
+    assert.equal(result.status, "updated");
+    assert.equal(result.commitSha, `${REV_VID}-r2`);
+  });
+  assert.equal(call, 2);
+  assert.equal(readFileSync(spec.localZip, "utf-8"), content);
+  const meta = JSON.parse(
+    readFileSync(join(dirname(spec.localZip), "release_meta.json"), "utf-8"),
+  ) as { commit_sha: string };
+  assert.equal(meta.commit_sha, `${REV_VID}-r2`);
+});
+
+test("syncRelease stays up_to_date on the installed revision", async () => {
+  const spec = tempSpec();
+  writeRevCache(spec, `${REV_VID}-r2`);
+  let fetchCalls = 0;
+  await withFetchMock((async () => {
+    fetchCalls += 1;
+    return new Response(JSON.stringify([
+      releaseEntry(`data-${REV_VID}`),
+      releaseEntry(`datarev-${REV_VID}-r2`),
+    ]), { headers: { "content-type": "application/json" } });
+  }) as typeof fetch, async () => {
+    const result = await syncRelease(spec, true);
+    assert.equal(result.status, "up_to_date");
+    assert.equal(result.commitSha, `${REV_VID}-r2`);
+  });
+  assert.equal(fetchCalls, 1);
+  assert.equal(readFileSync(spec.localZip, "utf-8"), "cached");
+});
+
+test("syncRelease refuses downgrade to an older release", async () => {
+  const spec = tempSpec();
+  writeRevCache(spec, `${REV_VID}-r2`);
+  let fetchCalls = 0;
+  await withFetchMock((async () => {
+    fetchCalls += 1;
+    return new Response(JSON.stringify([
+      releaseEntry(`data-${REV_VID}`),
+    ]), { headers: { "content-type": "application/json" } });
+  }) as typeof fetch, async () => {
+    const result = await syncRelease(spec, true);
+    assert.equal(result.status, "up_to_date");
+    assert.equal(result.commitSha, `${REV_VID}-r2`);
+  });
+  assert.equal(fetchCalls, 1);
+});
+
+async function syncDatarevManifestCase(manifest: unknown): Promise<{ status: string; zip: string }> {
+  const spec = { ...tempSpec(), verifyManifest: true };
+  mkdirSync(dirname(spec.localZip), { recursive: true });
+  writeFileSync(spec.localZip, "old");
+  const content = Buffer.from("rev2-verified", "utf-8");
+  let call = 0;
+  let status = "";
+  await withFetchMock((async () => {
+    call += 1;
+    if (call === 1) {
+      return new Response(JSON.stringify([releaseEntry(`datarev-${REV_VID}-r2`)]),
+        { headers: { "content-type": "application/json" } });
+    }
+    if (call === 2) return new Response(content);
+    if (manifest === undefined) return new Response("not found", { status: 404 });
+    return new Response(JSON.stringify(manifest),
+      { headers: { "content-type": "application/json" } });
+  }) as typeof fetch, async () => {
+    const result = await syncRelease(spec, true);
+    status = result.status;
+  });
+  return { status, zip: readFileSync(spec.localZip, "utf-8") };
+}
+
+for (const upstream of [null, `data-${REV_VID}`]) {
+  for (const invalidZip of [false, true]) {
+    test(`recorded revision prevents downgrade without valid zip: ${upstream}/${invalidZip}`, async () => {
+      const spec = { ...tempSpec(), ...(invalidZip ? { validateZip: () => ["invalid zip"] } : {}) };
+      writeRevCache(spec, `${REV_VID}-r2`);
+      if (!invalidZip) unlinkSync(spec.localZip);
+      const metaPath = join(dirname(spec.localZip), "release_meta.json");
+      const before = readFileSync(metaPath, "utf-8");
+      const oldMirrors = process.env["GITHUB_MIRRORS"];
+      process.env["GITHUB_MIRRORS"] = "https://mirror.test";
+      const urls: string[] = [];
+      try {
+        await withFetchMock((async (input) => {
+          const url = String(input);
+          urls.push(url);
+          if (upstream === null) throw new Error("offline");
+          return new Response(JSON.stringify([releaseEntry(upstream)]));
+        }) as typeof fetch, async () => {
+          const result = await syncRelease(spec, true);
+          assert.equal(result.status, "no_data");
+          assert.equal(result.commitSha, `${REV_VID}-r2`);
+        });
+      } finally {
+        if (oldMirrors === undefined) delete process.env["GITHUB_MIRRORS"];
+        else process.env["GITHUB_MIRRORS"] = oldMirrors;
+      }
+      assert(urls.every(url => url.includes("api.github.com")), JSON.stringify(urls));
+      assert.equal(readFileSync(metaPath, "utf-8"), before);
+    });
+  }
+}
+
+for (const revision of [2, 3]) {
+  test(`recorded revision permits replacement without zip: r${revision}`, async () => {
+    const spec = tempSpec();
+    writeRevCache(spec, `${REV_VID}-r2`);
+    unlinkSync(spec.localZip);
+    await withFetchMock((async (input) => {
+      return String(input).includes("api.github.com")
+        ? new Response(JSON.stringify([releaseEntry(`datarev-${REV_VID}-r${revision}`)]))
+        : new Response("replacement");
+    }) as typeof fetch, async () => {
+      const result = await syncRelease(spec, true);
+      assert.equal(result.status, "updated");
+      assert.equal(result.commitSha, `${REV_VID}-r${revision}`);
+    });
+    assert.equal(readFileSync(spec.localZip, "utf-8"), "replacement");
+  });
+}
+
+test("syncRelease fails closed when manifest revision mismatches the tag", async () => {
+  const content = Buffer.from("rev2-verified", "utf-8");
+  const sha256 = createHash("sha256").update(content).digest("hex");
+  const { status, zip } = await syncDatarevManifestCase({
+    contractVersion: "prts-mcp-data/v1",
+    source: { versionId: REV_VID },
+    publicationRevision: 3,
+    assets: { "zh_CN.zip": { size: content.byteLength, sha256 } },
+  });
+  assert.equal(status, "offline_fallback");
+  assert.equal(zip, "old");
+});
+
+test("syncRelease fails closed when manifest revision is missing", async () => {
+  const content = Buffer.from("rev2-verified", "utf-8");
+  const sha256 = createHash("sha256").update(content).digest("hex");
+  const { status, zip } = await syncDatarevManifestCase({
+    contractVersion: "prts-mcp-data/v1",
+    source: { versionId: REV_VID },
+    assets: { "zh_CN.zip": { size: content.byteLength, sha256 } },
+  });
+  assert.equal(status, "offline_fallback");
+  assert.equal(zip, "old");
+});
+
+test("syncRelease rejects a datarev manifest 404", async () => {
+  const { status, zip } = await syncDatarevManifestCase(undefined);
+  assert.equal(status, "offline_fallback");
+  assert.equal(zip, "old");
+});
+
+test("duplicate data identity never uses blind download", async () => {
+  const previousMirrors = process.env["GITHUB_MIRRORS"];
+  process.env["GITHUB_MIRRORS"] = "https://mirror.test";
+  let calls = 0;
+  try {
+    await withFetchMock((async () => {
+      calls += 1;
+      return new Response(JSON.stringify([
+        releaseEntry(`data-${REV_VID}`), releaseEntry(`datarev-${REV_VID}-r1`),
+      ]), { headers: { "content-type": "application/json" } });
+    }) as typeof fetch, async () => {
+      const result = await syncRelease(tempSpec(), true);
+      assert.equal(result.status, "no_data");
+      assert.match(result.error ?? "", /duplicate/);
+    });
+    assert.equal(calls, 1);
+  } finally {
+    if (previousMirrors === undefined) delete process.env["GITHUB_MIRRORS"];
+    else process.env["GITHUB_MIRRORS"] = previousMirrors;
+  }
+});
+
+test("syncRelease updates when manifest revision matches the tag", async () => {
+  const content = Buffer.from("rev2-verified", "utf-8");
+  const sha256 = createHash("sha256").update(content).digest("hex");
+  const { status } = await syncDatarevManifestCase({
+    contractVersion: "prts-mcp-data/v1",
+    source: { versionId: REV_VID },
+    publicationRevision: 2,
+    assets: { "zh_CN.zip": { size: content.byteLength, sha256 } },
+  });
+  assert.equal(status, "updated");
 });

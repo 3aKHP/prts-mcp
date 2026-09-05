@@ -10,6 +10,79 @@
 import { fetchCascading, githubHeaders } from "./transport.js";
 
 export const TAG_PREFIX = "data-";
+const DATAREV_TAG_PREFIX = "datarev-";
+
+// A data versionId is fixed-width "YY-MM-DD-HH-MM-SS_hash", so lexicographic
+// order is chronological order and (versionId, revision) tuples order without
+// any date parsing.
+const VID_RE = /^\d{2}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}_[0-9a-f]+$/;
+const DATAREV_TAG_RE = /^datarev-(?<vid>.+)-r(?<rev>\d+)$/;
+const DATAREV_SUFFIX_RE = /^(?<vid>\d{2}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}_[0-9a-f]+)-r(?<rev>\d+)$/;
+
+/** Parsed data release identity: versionId plus publication revision. */
+export interface DataTagVersion {
+  versionId: string;
+  revision: number;
+}
+
+/**
+ * Parse a data release tag into {versionId, revision}.
+ *
+ * `data-<versionId>` is a normal release (revision 1);
+ * `datarev-<versionId>-r<N>` is an immutable repair revision published by the
+ * factory's manual SOP. Anything else (images-*, unknown tags) is not a data
+ * release. Mirrors akdp.check.parse_release_tag.
+ */
+export function parseDataTag(tag: string): DataTagVersion | null {
+  const match = DATAREV_TAG_RE.exec(tag);
+  if (match?.groups) {
+    return { versionId: match.groups.vid, revision: Number(match.groups.rev) };
+  }
+  if (tag.startsWith(TAG_PREFIX)) {
+    return { versionId: tag.slice(TAG_PREFIX.length), revision: 1 };
+  }
+  return null;
+}
+
+/**
+ * Strip the data/datarev namespace prefix from a release tag.
+ *
+ * `data-<vid>` → `<vid>`; `datarev-<vid>-r<N>` → `<vid>-r<N>`. The result is
+ * the canonical commitSha persisted in release_meta/extract_meta/
+ * .gamedata_pair and shown in logs.
+ */
+export function tagSuffix(tag: string): string {
+  if (tag.startsWith(DATAREV_TAG_PREFIX)) return tag.slice(DATAREV_TAG_PREFIX.length);
+  if (tag.startsWith(TAG_PREFIX)) return tag.slice(TAG_PREFIX.length);
+  return tag;
+}
+
+/**
+ * Parse a stored commitSha (tag suffix) into {versionId, revision}.
+ *
+ * `<vid>-r<N>` (written for datarev releases) → revision N; a bare versionId
+ * → revision 1. Sentinel values ("unknown", "legacy", "local-<digest>") and
+ * any future format return null so callers fall back to plain string
+ * comparison.
+ */
+export function parseReleaseSuffix(suffix: string): DataTagVersion | null {
+  const match = DATAREV_SUFFIX_RE.exec(suffix);
+  if (match?.groups) {
+    return { versionId: match.groups.vid, revision: Number(match.groups.rev) };
+  }
+  if (VID_RE.test(suffix)) return { versionId: suffix, revision: 1 };
+  return null;
+}
+
+function tupleKey(v: DataTagVersion): string {
+  return `${v.versionId}\u0000${v.revision}`;
+}
+
+/** True when *b* is strictly newer than *a* (tuple order). */
+function isNewer(a: DataTagVersion, b: DataTagVersion): boolean {
+  if (a.versionId !== b.versionId) return b.versionId > a.versionId;
+  return b.revision > a.revision;
+}
 
 // ---------------------------------------------------------------------------
 // Release discovery (tag-prefix filtered)
@@ -106,6 +179,40 @@ export function latestReleaseByPrefix(
   return candidates[0];
 }
 
+/**
+ * Pick the newest data release across the data-/datarev- namespaces.
+ *
+ * Orders by (versionId, revision) tuple instead of created_at, so a repair
+ * revision outranks the release it fixes and a re-published older release
+ * can no longer win (rollback-by-republication). Two releases claiming the
+ * same tuple is an upstream integrity violation: throw so callers cannot
+ * attempt a blind network fallback.
+ */
+export function latestDataRelease(
+  releases: GithubRelease[],
+): GithubRelease | null {
+  let best: { key: DataTagVersion; release: GithubRelease } | null = null;
+  const seen = new Set<string>();
+  for (const release of releases) {
+    if (release["draft"] || release["prerelease"]) continue;
+    const tag = release["tag_name"];
+    if (typeof tag !== "string") continue;
+    const parsed = parseDataTag(tag);
+    if (!parsed) continue;
+    const key = tupleKey(parsed);
+    if (seen.has(key)) {
+      console.warn(
+        `[sync] duplicate data release identity (versionId=${parsed.versionId}, `
+        + `revision=${parsed.revision}) claimed by "${tag}"; failing closed`,
+      );
+      throw new Error("duplicate data release identity");
+    }
+    seen.add(key);
+    if (best === null || isNewer(best.key, parsed)) best = { key: parsed, release };
+  }
+  return best?.release ?? null;
+}
+
 /** Extract the browser_download_url for *assetName* from a release object. */
 export function assetUrl(release: GithubRelease, assetName: string): string | null {
   const assets = release["assets"];
@@ -134,12 +241,14 @@ export interface ReleaseSpec {
 }
 
 /**
- * Return the latest ``data-*`` release tag and asset download URL.
+ * Return the latest data release tag and asset download URL.
  *
  * Uses the releases list API with tag-prefix filtering instead of
  * ``/releases/latest``, because the data-pipeline repo also hosts
- * ``images-*`` releases that may be promoted to "Latest" on GitHub.
- * Returns null on network failure or when no matching release/asset is found.
+ * ``images-*`` releases that may be promoted to "Latest" on GitHub, and a
+ * ``datarev-`` repair revision must outrank the ``data-`` release it fixes
+ * even though it is never marked latest. Returns null on network failure or
+ * when no matching release/asset is found.
  */
 export async function checkLatestRelease(
   spec: ReleaseSpec,
@@ -147,7 +256,7 @@ export async function checkLatestRelease(
 ): Promise<{ tag: string; url: string } | null> {
   const releases = await listReleases(spec.owner, spec.repo, timeoutMs);
   if (releases === null) return null;
-  const latest = latestReleaseByPrefix(releases, TAG_PREFIX);
+  const latest = latestDataRelease(releases);
   if (!latest) return null;
   const tag = latest["tag_name"];
   if (typeof tag !== "string") return null;

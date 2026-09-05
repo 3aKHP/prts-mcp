@@ -252,7 +252,9 @@ def _sync_images_locked(
         return _offline_or_no_data(image_dir, error="No images delta release found")
 
     delta_tag = str(delta_release.get("tag_name", ""))
-    tag_version = delta_tag[len(_DELTA_PREFIX):]
+    tag_version = _images_tag_version(delta_tag)
+    if tag_version is None:
+        return _offline_or_no_data(image_dir, error="No images delta release found")
 
     meta = load_meta(image_dir)
     gen_dir = active_generation(image_dir)

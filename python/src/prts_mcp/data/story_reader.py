@@ -413,6 +413,39 @@ def list_stories_from_store(store: JsonStore, event_id: str) -> list[ChapterSumm
     return chapters
 
 
+def load_chapter_summaries_from_store(store: JsonStore) -> dict[str, str]:
+    """Load usable chapter summaries, preferring LLM text over official text."""
+    summaries: dict[str, str] = {}
+    for path in (STORYINFO, SUMMARIES):
+        try:
+            if store.exists(path):
+                raw = load_json(store, path)
+                if isinstance(raw, dict):
+                    summaries.update({key: value.strip() for key, value in raw.items()
+                                      if isinstance(value, str) and value.strip()})
+        except Exception as exc:
+            _logger.debug("读取剧情摘要失败：%s", exc)
+    return summaries
+
+
+def chapter_summary_from_store(
+    store: JsonStore, story_key: str, summaries: dict[str, str],
+) -> str:
+    """Resolve one chapter, falling back to its embedded official summary."""
+    if story_key in summaries:
+        return summaries[story_key]
+    try:
+        path = story_zip_path(story_key)
+        if store.exists(path):
+            raw = load_json(store, path)
+            text = raw.get("storyInfo") if isinstance(raw, dict) else None
+            if isinstance(text, str):
+                return text.strip()
+    except Exception as exc:
+        _logger.debug("读取章节梗概失败：%s", exc)
+    return ""
+
+
 def build_stories_listing_from_store(
     store: JsonStore,
     event_id: str,
@@ -423,18 +456,16 @@ def build_stories_listing_from_store(
     chapter_summaries: dict[str, str] = {}
     event_summary_text = ""
     if include_summaries:
+        chapter_summaries = load_chapter_summaries_from_store(store)
         try:
-            if store.exists(STORYINFO):
-                raw = store.read_json(STORYINFO)
-                if isinstance(raw, dict):
-                    chapter_summaries = {str(k): str(v) for k, v in raw.items() if v}
             if store.exists(EVENT_SUMMARIES):
                 raw_events = store.read_json(EVENT_SUMMARIES)
                 if isinstance(raw_events, dict):
-                    event_summary_text = str(raw_events.get(event_id) or "").strip()
+                    text = raw_events.get(event_id)
+                    if isinstance(text, str):
+                        event_summary_text = text.strip()
         except Exception as exc:
             _logger.debug("读取剧情摘要失败，跳过摘要：%s", exc)
-            chapter_summaries = {}
             event_summary_text = ""
 
     data = {
@@ -448,7 +479,7 @@ def build_stories_listing_from_store(
                 "story_key": ch.story_key,
                 "avg_tag": ch.avg_tag,
                 **(
-                    {"summary": chapter_summaries.get(ch.story_key, "")}
+                    {"summary": chapter_summary_from_store(store, ch.story_key, chapter_summaries)}
                     if include_summaries
                     else {}
                 ),

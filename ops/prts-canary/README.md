@@ -1,5 +1,10 @@
 # PRTS-MCP 2.6.0 same-host canary
 
+> **Archive note:** this runbook records the 2.6.0 release acceptance
+> exercise (known-good rollback baseline 2.5.2). The pinned version
+> numbers are historical and intentionally not rolled forward; substitute
+> the current release and rollback versions before reusing it.
+
 This is a deliberately separate service for release acceptance. It is not a
 production replacement unit and it must not be enabled before the exact npm
 package has been published and verified.

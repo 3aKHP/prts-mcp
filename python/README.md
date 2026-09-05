@@ -2,7 +2,7 @@
 
 明日方舟同人创作辅助 MCP Server，Python 版本。支持 **stdio** 与 **Streamable HTTP**，可接入本地 MCP 客户端或作为 HTTP 服务部署。
 
-提供 23 个 MCP 工具（2.0）：PRTS 词条检索与页面结构、干员档案/语音/基础信息、剧情活动与台词、角色出场追踪、全文搜索、敌人图鉴、关卡查询、关卡敌人融合，以及物品/材料查询。完整清单见仓库根目录 [`README.md`](../README.md)。
+提供 24 个 MCP 工具（2.x）：PRTS 词条检索与页面结构、干员档案/语音/基础信息、剧情活动与台词、角色出场追踪、全文搜索、敌人图鉴、关卡查询、关卡敌人融合、物品/材料查询，以及干员立绘。完整清单见仓库根目录 [`README.md`](../README.md)。
 
 > **2.0 变更**：工具面由 1.x 的 32 个合并为 23 个（详见 [1.x → 2.0 迁移指南](../docs/migration-1.x-to-2.0.md)）；新增可选的 output channel（`PRTS_OUTPUT_CHANNEL` 环境变量，默认 `content`，与 1.x 行为一致）。
 
@@ -60,7 +60,7 @@ GAMEDATA_PATH=/path/to/ArknightsGameData prts-mcp
 
 服务器启动时会立即在后台同步三类数据，此后默认每小时检查一次新 Release，无需重启进程：
 
-- **游戏表格数据**（`gamedata` volume）：从 [3aKHP/arknights-data-pipeline](https://github.com/3aKHP/arknights-data-pipeline) Release 下载 `zh_CN-excel.zip` 和 `zh_CN-levels.zip`
+- **游戏表格数据**（`gamedata` volume）：从 [3aKHP/arknights-data-pipeline](https://github.com/3aKHP/arknights-data-pipeline) Release 下载 `zh_CN-excel.zip`
 - **关卡战斗数据**（`gamedata-levels` volume）：从同一 Release 下载 `zh_CN-levels.zip`，用于关卡实际出怪和关卡级敌人数值
 - **剧情数据**（`storyjson` volume）：从同一 Release 下载 `zh_CN.zip`（含剧情 JSON 和 LLM 摘要）
 
@@ -76,4 +76,5 @@ GAMEDATA_PATH=/path/to/ArknightsGameData prts-mcp
 
 ## 详细文档
 
-→ [docs/deployment.md](docs/deployment.md)：完整部署方式、MCP 客户端配置、环境变量参考
+→ [docs/deployment.md](docs/deployment.md)：完整部署方式、MCP 客户端配置
+→ [环境变量参考](../docs/user/environment-variables.md)：双实现全部环境变量的单一来源

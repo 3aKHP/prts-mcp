@@ -1,19 +1,19 @@
 # PRTS-MCP Roadmap
 
-_Last updated: 2026-08-22_ · [中文版](ROADMAP.zh-CN.md)
+_Last updated: 2026-09-05_ · [中文版](ROADMAP.zh-CN.md)
 
 PRTS-MCP is past 1.0. Version 1.7.0 is the final 1.x feature release and the 1.7 LTS baseline. This document tracks **what comes next** — not what has shipped. For shipped features, see the Python and TypeScript CHANGELOGs.
 
 ## Current Release
 
-- Python: `2.7.2` _(latest stable)_
-- TypeScript: `2.7.2` _(latest stable)_
+- Python: `2.7.3` _(latest stable)_
+- TypeScript: `2.7.3` _(latest stable)_
 - `1.7.0` LTS remains the maintenance line — compatibility, security, data-sync, and critical fixes only.
 - 24 public MCP tools on the 2.x line (CI-enforced); 32 public MCP tools frozen on the 1.7 LTS line.
 - See [migration guide 0.x → 1.0](docs/migration-0.x-to-1.0.md) and [migration guide 1.x → 2.0](docs/migration-1.x-to-2.0.md).
 - 2.6.0 retains legacy MCP clients while adding opt-in `2026-07-28` support; see [2.5 → 2.6](docs/migration-2.5-to-2.6.md) before changing client protocol configuration.
 
-## 2.6.x Stable Maintenance
+## 2.7.x Stable Maintenance
 
 - Security, compatibility, data-sync, release-pipeline, documentation, and critical correctness/operational fixes only.
 - No new MCP tools, required parameters, or data domains in patch releases.
@@ -41,15 +41,9 @@ Reopen the SQLite decision only if production evidence shows that derived JSON a
 
 Where a candidate remains useful, the default is to preserve the current 24-tool surface by extending existing tools and enums when their schema remains coherent. A candidate becomes release scope only through a separate implementation and release decision.
 
-### 2.7.0 — Operator Base Skills + Skin and Artwork Metadata
+### 2.7.0 — Shipped 2026-08-15
 
-Shipped in 2.7.0:
-
-- `get_operator_basic_info` carries base-skill information (name, facility, elite-phase unlock, effect description) as a bounded `building_skills` section; the field is omitted when `building_data.json` is absent.
-- `search(scope, pattern, max_results)` gained a `building_skills` scope for facility, effect, skill-name, and cross-operator lookup — no list/get/search triplet was added (tool surface stays at 24).
-- `building_data.json` and `skin_table.json` were promoted into the validated AKDP dataset contract.
-- The oversized sync modules were split by responsibility ahead of the feature work (the 2.7 god-file refactor program), kept in separate PRs from the feature diff.
-- Pulled forward from the former 2.8.0 candidate: `operator_artwork(action="list")` under `LOCAL_IMAGE=true` is enriched with bounded skin metadata (collection/theme, acquisition, description) via the existing opaque `artwork_id`; the MediaWiki backend is not enriched (no skin_table join key).
+The former draft items for operator base skills (`get_operator_basic_info` carrying a bounded `building_skills` section, plus a `building_skills` scope on `search`) and skin/artwork metadata shipped in 2.7.0 — see the Python and TypeScript CHANGELOGs for details. The `operator_artwork(action="list")` skin-metadata enrichment under `LOCAL_IMAGE=true` was pulled forward from the former 2.8.0 candidate, which is why this draft has no 2.8.0 section yet.
 
 ### 2.9.0 Candidate — Recruitment Lookup
 

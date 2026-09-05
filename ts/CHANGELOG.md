@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.7.3] - 2026-09-05
+
+### Fixed
+
+- Chapter listings and single-chapter summaries now consistently prefer valid LLM summaries, with official summaries as fallback.
+- Data sync discovers immutable `datarev-<versionId>-r<N>` repair releases and orders updates by source version and revision, allowing corrected data to arrive through normal Auto-Sync without client configuration changes.
+- Repair releases require matching manifests. Duplicate identities are rejected, and runtime and build selectors exclude drafts and prereleases.
+- Recorded release identities continue to prevent downgrades when a cached ZIP is missing or invalid; recovery can download the same or a newer revision without an unverified Latest fallback.
+
+### Changed
+
+- Consolidated environment-variable and HTTP deployment guidance, and clarified the 1.7 LTS lifecycle policy.
+
 ## [2.7.2] - 2026-08-22
 
 ### Fixed

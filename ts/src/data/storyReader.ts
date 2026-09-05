@@ -443,6 +443,41 @@ export function listStoriesFromStore(
   return chapters;
 }
 
+/** Load usable chapter summaries, preferring LLM text over official text. */
+export function loadChapterSummariesFromStore(store: JsonStore): Record<string, string> {
+  const summaries: Record<string, string> = {};
+  for (const path of [STORYINFO, SUMMARIES]) {
+    try {
+      if (!store.exists(path)) continue;
+      const raw = store.readJson<unknown>(path);
+      if (typeof raw !== "object" || raw === null || Array.isArray(raw)) continue;
+      for (const [key, value] of Object.entries(raw)) {
+        if (typeof value === "string" && value.trim()) summaries[key] = value.trim();
+      }
+    } catch {
+      // Keep the other summary source usable.
+    }
+  }
+  return summaries;
+}
+
+/** Resolve one chapter, falling back to its embedded official summary. */
+export function chapterSummaryFromStore(
+  store: JsonStore, storyKey: string, summaries: Record<string, string>,
+): string {
+  if (Object.hasOwn(summaries, storyKey)) return summaries[storyKey]!;
+  try {
+    const path = storyZipPath(storyKey);
+    if (store.exists(path)) {
+      const raw = store.readJson<{ storyInfo?: unknown }>(path);
+      if (typeof raw?.storyInfo === "string") return raw.storyInfo.trim();
+    }
+  } catch {
+    // No usable chapter summary.
+  }
+  return "";
+}
+
 export function buildStoriesListingFromStore(
   store: JsonStore,
   eventId: string,
@@ -453,22 +488,14 @@ export function buildStoriesListingFromStore(
   let eventSummaryText = "";
 
   if (includeSummaries) {
+    chapterSummaries = loadChapterSummariesFromStore(store);
     try {
-      if (store.exists(STORYINFO)) {
-        const raw = store.readJson<Record<string, unknown>>(STORYINFO);
-        chapterSummaries = Object.fromEntries(
-          Object.entries(raw)
-            .filter(([, value]) => Boolean(value))
-            .map(([key, value]) => [key, String(value)]),
-        );
-      }
       if (store.exists(EVENT_SUMMARIES)) {
         const rawEvents = store.readJson<Record<string, unknown>>(EVENT_SUMMARIES);
         const text = rawEvents[eventId];
         if (typeof text === "string") eventSummaryText = text.trim();
       }
     } catch {
-      chapterSummaries = {};
       eventSummaryText = "";
     }
   }
@@ -482,7 +509,7 @@ export function buildStoriesListingFromStore(
       story_name: ch.storyName,
       story_key: ch.storyKey,
       avg_tag: ch.avgTag,
-      ...(includeSummaries ? { summary: chapterSummaries[ch.storyKey] ?? "" } : {}),
+      ...(includeSummaries ? { summary: chapterSummaryFromStore(store, ch.storyKey, chapterSummaries) } : {}),
     })),
   };
   if (eventSummaryText) data.event_summary = eventSummaryText;
