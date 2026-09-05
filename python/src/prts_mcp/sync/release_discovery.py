@@ -169,12 +169,13 @@ def latest_data_release(releases: list[dict]) -> dict | None:
     ``created_at``, so a repair revision outranks the release it fixes and a
     re-published older release can no longer win (rollback-by-republication).
     Two releases claiming the same tuple is an upstream integrity violation:
-    log loudly and fail closed (returns None), mirroring the images pipeline's
-    duplicate-version rejection.
+    raise an integrity error so callers cannot attempt a blind network fallback.
     """
     best: tuple[tuple[str, int], dict] | None = None
     seen: set[tuple[str, int]] = set()
     for release in releases:
+        if release.get("draft") or release.get("prerelease"):
+            continue
         tag = release.get("tag_name")
         if not isinstance(tag, str):
             continue
@@ -186,7 +187,7 @@ def latest_data_release(releases: list[dict]) -> dict | None:
                 "duplicate data release identity (versionId=%s, revision=%d) "
                 "claimed by %r; failing closed", parsed[0], parsed[1], tag,
             )
-            return None
+            raise ValueError("duplicate data release identity")
         seen.add(parsed)
         if best is None or parsed > best[0]:
             best = (parsed, release)

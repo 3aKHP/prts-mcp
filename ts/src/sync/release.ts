@@ -180,7 +180,7 @@ async function verifyReleaseManifest(
     );
   } catch (err) {
     // Direct URL confirmed 404 → release predates the manifest asset.
-    if (err instanceof AssetNotFoundError) return;
+    if (err instanceof AssetNotFoundError && !tag.startsWith("datarev-")) return;
     throw new Error(`manifest unavailable for ${tag}: ${errorMessage(err)}`);
   }
   let manifest: unknown;
@@ -302,6 +302,12 @@ async function syncReleaseLocked(
     }
     // No zip and API unreachable — attempt blind download via releases/latest/download/
     // (does not require the GitHub API; ghproxy and similar mirrors support this URL).
+    if (cache !== null && parseReleaseSuffix(cache.commitSha) !== null) {
+      return {
+        spec: dummySpec, status: "no_data", commitSha: cache.commitSha,
+        error: "Network unavailable; cannot verify replacement of recorded release",
+      };
+    }
     if (parseMirrors().length > 0) {
       const blindUrl = `https://github.com/${spec.owner}/${spec.repo}/releases/latest/download/${spec.assetName}`;
       try {
@@ -319,6 +325,18 @@ async function syncReleaseLocked(
   }
 
   const commitSha = tagSuffix(latest.tag);
+
+  if (cache !== null && !zipOk) {
+    const local = parseReleaseSuffix(cache.commitSha);
+    const upstream = parseReleaseSuffix(commitSha);
+    if (local && upstream && (local.versionId > upstream.versionId
+      || (local.versionId === upstream.versionId && local.revision > upstream.revision))) {
+      return {
+        spec: dummySpec, status: "no_data", commitSha: cache.commitSha,
+        error: "Refusing downgrade of recorded release while cached zip is unavailable",
+      };
+    }
+  }
 
   if (cache !== null && zipOk && releaseUpToDate(cache.commitSha, commitSha)) {
     await saveReleaseMeta(spec, { ...cache, fetchedAt: new Date().toISOString() });

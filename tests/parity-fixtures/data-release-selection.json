@@ -1,0 +1,9 @@
+[
+  {"name":"numeric revision", "tags":["data-V", "datarev-V-r2", "datarev-V-r10", "images-V"], "expected":"datarev-V-r10"},
+  {"name":"new source wins", "tags":["datarev-V-r10", "data-W"], "expected":"data-W"},
+  {"name":"duplicate identity", "tags":["data-V", "datarev-V-r1"], "error":true},
+  {"name":"duplicate revision", "tags":["datarev-V-r2", "datarev-V-r02"], "error":true},
+  {"name":"empty", "tags":["images-V"], "expected":null},
+  {"name":"draft excluded", "tags":["data-V", "datarev-V-r2"], "draft":"datarev-V-r2", "expected":"data-V"},
+  {"name":"prerelease excluded", "tags":["data-V", "datarev-V-r2"], "prerelease":"datarev-V-r2", "expected":"data-V"}
+]

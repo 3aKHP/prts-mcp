@@ -1058,10 +1058,29 @@ test("latestDataRelease orders by (versionId, revision) tuple", () => {
 });
 
 test("latestDataRelease fails closed on duplicate release identity", () => {
-  assert.equal(latestDataRelease([
+  assert.throws(() => latestDataRelease([
     releaseEntry(`data-${REV_VID}`),
     releaseEntry(`datarev-${REV_VID}-r1`),
-  ]), null);
+  ]), /duplicate data release identity/);
+});
+
+test("data release selector matches shared publication cases", () => {
+  const cases = JSON.parse(readFileSync(
+    join(import.meta.dirname, "../../tests/parity-fixtures/data-release-selection.json"), "utf8",
+  )) as { name: string; tags: string[]; expected?: string | null; error?: boolean;
+    draft?: string; prerelease?: string }[];
+  for (const entry of cases) {
+    const select = () => latestDataRelease(entry.tags.map(tag => ({
+      ...releaseEntry(tag), draft: tag === entry.draft, prerelease: tag === entry.prerelease,
+    })));
+    if (entry.error) assert.throws(select, /duplicate/, entry.name);
+    else assert.equal(select()?.["tag_name"] ?? null, entry.expected, entry.name);
+  }
+  for (const flag of ["draft", "prerelease"]) {
+    assert.equal(latestDataRelease([
+      releaseEntry("data-V"), { ...releaseEntry("datarev-V-r2"), [flag]: true },
+    ])?.["tag_name"], "data-V");
+  }
 });
 
 function writeRevCache(spec: ReleaseSpec, commitSha: string): void {
@@ -1157,6 +1176,7 @@ async function syncDatarevManifestCase(manifest: unknown): Promise<{ status: str
         { headers: { "content-type": "application/json" } });
     }
     if (call === 2) return new Response(content);
+    if (manifest === undefined) return new Response("not found", { status: 404 });
     return new Response(JSON.stringify(manifest),
       { headers: { "content-type": "application/json" } });
   }) as typeof fetch, async () => {
@@ -1164,6 +1184,56 @@ async function syncDatarevManifestCase(manifest: unknown): Promise<{ status: str
     status = result.status;
   });
   return { status, zip: readFileSync(spec.localZip, "utf-8") };
+}
+
+for (const upstream of [null, `data-${REV_VID}`]) {
+  for (const invalidZip of [false, true]) {
+    test(`recorded revision prevents downgrade without valid zip: ${upstream}/${invalidZip}`, async () => {
+      const spec = { ...tempSpec(), ...(invalidZip ? { validateZip: () => ["invalid zip"] } : {}) };
+      writeRevCache(spec, `${REV_VID}-r2`);
+      if (!invalidZip) unlinkSync(spec.localZip);
+      const metaPath = join(dirname(spec.localZip), "release_meta.json");
+      const before = readFileSync(metaPath, "utf-8");
+      const oldMirrors = process.env["GITHUB_MIRRORS"];
+      process.env["GITHUB_MIRRORS"] = "https://mirror.test";
+      const urls: string[] = [];
+      try {
+        await withFetchMock((async (input) => {
+          const url = String(input);
+          urls.push(url);
+          if (upstream === null) throw new Error("offline");
+          return new Response(JSON.stringify([releaseEntry(upstream)]));
+        }) as typeof fetch, async () => {
+          const result = await syncRelease(spec, true);
+          assert.equal(result.status, "no_data");
+          assert.equal(result.commitSha, `${REV_VID}-r2`);
+        });
+      } finally {
+        if (oldMirrors === undefined) delete process.env["GITHUB_MIRRORS"];
+        else process.env["GITHUB_MIRRORS"] = oldMirrors;
+      }
+      assert(urls.every(url => url.includes("api.github.com")), JSON.stringify(urls));
+      assert.equal(readFileSync(metaPath, "utf-8"), before);
+    });
+  }
+}
+
+for (const revision of [2, 3]) {
+  test(`recorded revision permits replacement without zip: r${revision}`, async () => {
+    const spec = tempSpec();
+    writeRevCache(spec, `${REV_VID}-r2`);
+    unlinkSync(spec.localZip);
+    await withFetchMock((async (input) => {
+      return String(input).includes("api.github.com")
+        ? new Response(JSON.stringify([releaseEntry(`datarev-${REV_VID}-r${revision}`)]))
+        : new Response("replacement");
+    }) as typeof fetch, async () => {
+      const result = await syncRelease(spec, true);
+      assert.equal(result.status, "updated");
+      assert.equal(result.commitSha, `${REV_VID}-r${revision}`);
+    });
+    assert.equal(readFileSync(spec.localZip, "utf-8"), "replacement");
+  });
 }
 
 test("syncRelease fails closed when manifest revision mismatches the tag", async () => {
@@ -1189,6 +1259,34 @@ test("syncRelease fails closed when manifest revision is missing", async () => {
   });
   assert.equal(status, "offline_fallback");
   assert.equal(zip, "old");
+});
+
+test("syncRelease rejects a datarev manifest 404", async () => {
+  const { status, zip } = await syncDatarevManifestCase(undefined);
+  assert.equal(status, "offline_fallback");
+  assert.equal(zip, "old");
+});
+
+test("duplicate data identity never uses blind download", async () => {
+  const previousMirrors = process.env["GITHUB_MIRRORS"];
+  process.env["GITHUB_MIRRORS"] = "https://mirror.test";
+  let calls = 0;
+  try {
+    await withFetchMock((async () => {
+      calls += 1;
+      return new Response(JSON.stringify([
+        releaseEntry(`data-${REV_VID}`), releaseEntry(`datarev-${REV_VID}-r1`),
+      ]), { headers: { "content-type": "application/json" } });
+    }) as typeof fetch, async () => {
+      const result = await syncRelease(tempSpec(), true);
+      assert.equal(result.status, "no_data");
+      assert.match(result.error ?? "", /duplicate/);
+    });
+    assert.equal(calls, 1);
+  } finally {
+    if (previousMirrors === undefined) delete process.env["GITHUB_MIRRORS"];
+    else process.env["GITHUB_MIRRORS"] = previousMirrors;
+  }
 });
 
 test("syncRelease updates when manifest revision matches the tag", async () => {

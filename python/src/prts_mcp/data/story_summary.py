@@ -9,11 +9,9 @@ from pathlib import Path
 
 from prts_mcp.data.stores import JsonStore
 from prts_mcp.data.story_reader import (
-    STORYINFO,
-    SUMMARIES,
-    load_json,
+    chapter_summary_from_store,
+    load_chapter_summaries_from_store,
     story_store,
-    story_zip_path,
 )
 
 
@@ -35,42 +33,9 @@ def get_story_summary_from_store(store: JsonStore, story_key: str) -> str:
     """Return a summary for a single story chapter.
 
     Fallback chain:
-    1. zh_CN/summaries.json — LLM-generated long summary (future)
+    1. zh_CN/summaries.json — LLM-generated long summary
     2. zh_CN/storyinfo.json — official one-line summary
     3. Chapter JSON ``storyInfo`` field — identical to #2, last resort
     """
-    # --- tier 1: LLM summaries (future) ---
-    if store.exists(SUMMARIES):
-        try:
-            raw = load_json(store, SUMMARIES)
-            if isinstance(raw, dict):
-                text = raw.get(story_key)
-                if text and isinstance(text, str):
-                    return text.strip()
-        except Exception:
-            pass
-
-    # --- tier 2: storyinfo.json ---
-    if store.exists(STORYINFO):
-        try:
-            raw = load_json(store, STORYINFO)
-            if isinstance(raw, dict):
-                text = raw.get(story_key)
-                if text and isinstance(text, str):
-                    return text.strip()
-        except Exception:
-            pass
-
-    # --- tier 3: chapter JSON storyInfo ---
-    story_path = story_zip_path(story_key)
-    if store.exists(story_path):
-        try:
-            raw = load_json(store, story_path)
-            if isinstance(raw, dict):
-                text = raw.get("storyInfo")
-                if text and isinstance(text, str):
-                    return text.strip()
-        except Exception:
-            pass
-
-    return f"未找到剧情章节 '{story_key}' 的梗概。"
+    text = chapter_summary_from_store(store, story_key, load_chapter_summaries_from_store(store))
+    return text or f"未找到剧情章节 '{story_key}' 的梗概。"
