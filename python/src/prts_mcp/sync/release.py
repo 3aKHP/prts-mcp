@@ -163,6 +163,8 @@ def _verify_release_manifest(
             manifest_url, timeout=timeout, headers=github_headers(), follow_redirects=True,
         )
     except _AssetNotFoundError:
+        if tag.startswith("datarev-"):
+            raise ValueError(f"manifest required for repair release {tag}") from None
         # Direct URL confirmed 404 → release predates the manifest asset.
         return
     except Exception as exc:
@@ -191,7 +193,7 @@ def _verify_release_manifest(
             # datarev releases must declare their revision; a missing field
             # means the manifest was not produced by the revision pipeline
             revision = manifest.get("publicationRevision")
-            if revision != tag_revision:
+            if type(revision) is not int or revision != tag_revision:
                 raise ValueError(
                     f"manifest publicationRevision {revision!r} does not "
                     f"match tag revision {tag_revision}"
@@ -273,6 +275,11 @@ def _sync_release_locked(spec: ReleaseSpec, *, force_check: bool = False) -> Syn
             )
         # No zip and API unreachable — attempt blind download via releases/latest/download/
         # (does not require the GitHub API; ghproxy and similar mirrors support this URL).
+        if cache is not None and parse_release_suffix(cache.commit_sha) is not None:
+            return SyncResult(
+                spec=_dummy_spec, status="no_data", commit_sha=cache.commit_sha,
+                error="Network unavailable; cannot verify replacement of recorded release",
+            )
         if _parse_mirrors():
             blind_url = f"https://github.com/{spec.owner}/{spec.repo}/releases/latest/download/{spec.asset_name}"
             try:
@@ -287,6 +294,15 @@ def _sync_release_locked(spec: ReleaseSpec, *, force_check: bool = False) -> Syn
 
     tag, asset_url = result
     upstream_sha = tag_suffix(tag)
+
+    if cache is not None and not zip_ok:
+        local_version = parse_release_suffix(cache.commit_sha)
+        upstream_version = parse_release_suffix(upstream_sha)
+        if local_version is not None and upstream_version is not None and local_version > upstream_version:
+            return SyncResult(
+                spec=_dummy_spec, status="no_data", commit_sha=cache.commit_sha,
+                error="Refusing downgrade of recorded release while cached zip is unavailable",
+            )
 
     if cache is not None and zip_ok and _release_up_to_date(cache.commit_sha, upstream_sha):
         CacheMeta(

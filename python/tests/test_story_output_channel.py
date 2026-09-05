@@ -28,6 +28,9 @@ from prts_mcp.tools_prts import (
     register_prts_tools,
 )
 from prts_mcp.tools_story import register_story_tools
+from prts_mcp.data.stores import DirectoryStore
+from prts_mcp.data.story_reader import build_stories_listing_from_store
+from prts_mcp.data.story_summary import get_story_summary_from_store
 
 STORY_REVIEW_PATH = "zh_CN/gamedata/excel/story_review_table.json"
 CHARDICT_PATH = "zh_CN/chardict.json"
@@ -40,6 +43,45 @@ NO_SUMMARY_STORY_KEY = "activities/act_no_summary/level_act_no_summary_01"
 NO_SUMMARY_SECOND_STORY_KEY = "activities/act_no_summary/level_act_no_summary_02"
 NARRATION_STORY_KEY = "activities/act_narration/level_act_narration_01"
 MEMOIR_STORY_KEY = "memory/amiya/level_amiya_01"
+
+
+@pytest.mark.parametrize("llm", [" LLM summary. ", " ", "", None, 42])
+def test_listing_and_summary_share_fallbacks(tmp_path, llm):
+    files = {
+        STORY_REVIEW_PATH: {"act": {"infoUnlockDatas": [{"storyTxt": "chapter"}]}},
+        "zh_CN/summaries.json": {"chapter": llm},
+        STORYINFO_PATH: {"chapter": " Official summary. "},
+        EVENT_SUMMARIES_PATH: {"act": "Event summary."},
+    }
+    for filename, value in files.items():
+        path = tmp_path / filename
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(value))
+    store = DirectoryStore(tmp_path)
+    result = build_stories_listing_from_store(store, "act", True)
+    expected = llm.strip() if isinstance(llm, str) and llm.strip() else "Official summary."
+    assert result["chapters"][0]["summary"] == expected
+    assert get_story_summary_from_store(store, "chapter") == expected
+    assert result["event_summary"] == "Event summary."
+
+
+def test_summary_sources_fail_independently_and_fall_back_to_chapter(tmp_path):
+    files = {
+        STORY_REVIEW_PATH: {"act": {"infoUnlockDatas": [{"storyTxt": "chapter"}]}},
+        "zh_CN/summaries.json": [],
+        "zh_CN/gamedata/story/chapter.json": {"storyInfo": " Embedded summary. "},
+        EVENT_SUMMARIES_PATH: {"act": "Event summary."},
+    }
+    for filename, value in files.items():
+        path = tmp_path / filename
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(value))
+    (tmp_path / STORYINFO_PATH).write_text("{broken")
+    store = DirectoryStore(tmp_path)
+    result = build_stories_listing_from_store(store, "act", True)
+    assert result["chapters"][0]["summary"] == "Embedded summary."
+    assert get_story_summary_from_store(store, "chapter") == "Embedded summary."
+    assert result["event_summary"] == "Event summary."
 
 
 def _story_path(story_key: str) -> str:

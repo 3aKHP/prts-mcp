@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Fixed
+
+- Chapter listings with summaries now prefer LLM summaries and share the single-chapter tool's official-summary fallback, including blank or invalid cached values.
+- Repair releases require a manifest even when its download returns 404. Duplicate release identities fail without a blind Latest download, and runtime and build selectors exclude drafts and prereleases.
+- Recorded release identities continue to prevent downgrades when a cached ZIP is missing or invalid; an unverified Latest fallback cannot replace them.
+
 ### Added
 
 - **Revision release discovery (`datarev-` namespace).** The data sync now understands the factory's immutable repair releases: `datarev-<versionId>-r<N>` tags are discovered alongside normal `data-<versionId>` releases and ordered by `(versionId, publicationRevision)` tuple instead of release creation time, so a repair revision outranks the release it fixes and a re-published older release can no longer win (rollback-by-republication protection; two releases claiming the same identity fail closed with a warning). Update decisions compare the same tuple over the stored release id — a bare `<versionId>` means revision 1 — while sentinel ids (`unknown`/`legacy`/`local-…`) keep the legacy string-equality semantics, and a refused downgrade reports the installed id. Manifest verification additionally requires `publicationRevision` on `datarev-` releases to match the tag. Stored metadata keeps the full tag suffix (`<versionId>-r<N>`), so the on-disk schemas and the cross-implementation meta interop are unchanged; 1.7-era deployments never see `datarev-` releases.

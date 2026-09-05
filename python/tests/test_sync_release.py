@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import dataclasses
 import hashlib
 import os
 import subprocess
@@ -1446,7 +1447,8 @@ class TestLatestDataRelease:
             _release_entry(f"data-{_VID}"),
             _release_entry(f"datarev-{_VID}-r1"),
         ]
-        assert latest_data_release(releases) is None
+        with pytest.raises(ValueError, match="duplicate data release identity"):
+            latest_data_release(releases)
 
     def test_no_data_tags_returns_none(self):
         from prts_mcp.sync.release_discovery import latest_data_release
@@ -1627,6 +1629,7 @@ class TestSyncReleaseRevisionFlow:
         assert result.status == "updated"
         assert result.commit_sha == f"{_VID}-r2"
 
+
     def test_refuses_downgrade_and_reports_installed_sha(self, tmp_path):
         spec = _make_spec(tmp_path)
         _write_zip(spec.local_zip)
@@ -1649,3 +1652,80 @@ class TestSyncReleaseRevisionFlow:
             (spec.local_zip.parent / "release_meta.json").read_text(encoding="utf-8")
         )
         assert meta["commit_sha"] == f"{_VID}-r2"
+
+
+def test_datarev_manifest_404_keeps_old_archive(tmp_path):
+    spec = ReleaseSpec("3aKHP", "arknights-data-pipeline", "zh_CN.zip",
+                       tmp_path / "story.zip", verify_manifest=True)
+    spec.local_zip.write_bytes(b"old")
+    releases = _mock_releases_response([_release_entry(f"datarev-{_VID}-r2")])
+    with patch("prts_mcp.sync.release_discovery.list_releases", return_value=releases.json()), patch(
+        "prts_mcp.sync.release.get_cascading",
+        side_effect=[_mock_asset_response(b"new"), _AssetNotFoundError("not found")],
+    ):
+        result = sync_release(spec, force_check=True)
+    assert result.status == "offline_fallback"
+    assert spec.local_zip.read_bytes() == b"old"
+    assert "manifest" in result.error
+
+
+def test_duplicate_identity_never_uses_blind_download(tmp_path):
+    spec = _make_spec(tmp_path)
+    releases = [_release_entry(f"data-{_VID}"), _release_entry(f"datarev-{_VID}-r1")]
+    with patch("prts_mcp.sync.release_discovery.list_releases", return_value=releases), patch(
+        "prts_mcp.sync.release._parse_mirrors", return_value=["https://mirror.test"]
+    ), patch("prts_mcp.sync.release.download_release_asset") as download:
+        result = sync_release(spec, force_check=True)
+    assert result.status == "no_data"
+    assert "duplicate" in result.error
+    download.assert_not_called()
+
+
+@pytest.mark.parametrize("upstream", [None, f"data-{_VID}"])
+@pytest.mark.parametrize("invalid_zip", [False, True])
+def test_recorded_revision_prevents_downgrade_without_valid_zip(tmp_path, upstream, invalid_zip):
+    from prts_mcp.sync.release import CacheMeta
+
+    spec = _make_spec(tmp_path)
+    spec.local_zip.parent.mkdir(parents=True, exist_ok=True)
+    if invalid_zip:
+        spec.local_zip.write_bytes(b"broken")
+        spec = dataclasses.replace(spec, validate_zip=lambda path: ["invalid zip"])
+    meta_path = spec.local_zip.parent / "release_meta.json"
+    CacheMeta(
+        repo="3aKHP/arknights-data-pipeline", branch="releases",
+        commit_sha=f"{_VID}-r2", fetched_at="2000-01-01T00:00:00Z",
+        files=[spec.asset_name],
+    ).save(meta_path)
+    before = meta_path.read_bytes()
+    latest = (upstream, "https://example.test/old.zip") if upstream else None
+    with patch("prts_mcp.sync.release.check_latest_release", return_value=latest), patch(
+        "prts_mcp.sync.release._parse_mirrors", return_value=["https://mirror.test"]
+    ), patch("prts_mcp.sync.release.download_release_asset") as download:
+        result = sync_release(spec, force_check=True)
+    assert result.status == "no_data"
+    assert result.commit_sha == f"{_VID}-r2"
+    assert meta_path.read_bytes() == before
+    download.assert_not_called()
+
+
+@pytest.mark.parametrize("revision", [2, 3])
+def test_recorded_revision_allows_verified_replacement_without_zip(tmp_path, revision):
+    from prts_mcp.sync.release import CacheMeta
+
+    spec = _make_spec(tmp_path)
+    spec.local_zip.parent.mkdir(parents=True, exist_ok=True)
+    CacheMeta(
+        repo="3aKHP/arknights-data-pipeline", branch="releases",
+        commit_sha=f"{_VID}-r2", fetched_at="2000-01-01T00:00:00Z",
+        files=[spec.asset_name],
+    ).save(spec.local_zip.parent / "release_meta.json")
+    tag = f"datarev-{_VID}-r{revision}"
+    url = "https://example.test/current.zip"
+    with patch("prts_mcp.sync.release.check_latest_release", return_value=(tag, url)), patch(
+        "prts_mcp.sync.release.download_release_asset"
+    ) as download:
+        result = sync_release(spec, force_check=True)
+    assert result.status == "updated"
+    assert result.commit_sha == f"{_VID}-r{revision}"
+    download.assert_called_once_with(spec, tag, url)

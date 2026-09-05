@@ -4,6 +4,9 @@ import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import AdmZip from "adm-zip";
+import { ZipStore } from "../src/data/stores.ts";
+import { buildStoriesListingFromStore } from "../src/data/storyReader.ts";
+import { getStorySummaryFromStore } from "../src/data/storySummary.ts";
 import {
   buildCharacterAppearances,
   buildOperatorMemoirs,
@@ -29,9 +32,57 @@ const NO_SUMMARY_SECOND_STORY_KEY = "activities/act_no_summary/level_act_no_summ
 const NARRATION_STORY_KEY = "activities/act_narration/level_act_narration_01";
 const MEMOIR_STORY_KEY = "memory/amiya/level_amiya_01";
 
+for (const llm of [" LLM summary. ", " ", "", null, 42]) {
+  test(`listing and summary share fallbacks: ${JSON.stringify(llm)}`, () => {
+    const zip = new AdmZip();
+    const files = {
+      [STORY_REVIEW_PATH]: { act: { infoUnlockDatas: [{ storyTxt: "chapter" }] } },
+      "zh_CN/summaries.json": { chapter: llm },
+      [STORYINFO_PATH]: { chapter: " Official summary. " },
+      [EVENT_SUMMARIES_PATH]: { act: "Event summary." },
+    };
+    for (const [name, value] of Object.entries(files)) zip.addFile(name, Buffer.from(JSON.stringify(value)));
+    const path = join(mkdtempSync(join(tmpdir(), "summary-fallback-")), "story.zip");
+    zip.writeZip(path);
+    const store = new ZipStore(path);
+    try {
+      const result = buildStoriesListingFromStore(store, "act", true);
+      const expected = typeof llm === "string" && llm.trim() ? llm.trim() : "Official summary.";
+      assert.equal(result.chapters[0]?.summary, expected);
+      assert.equal(getStorySummaryFromStore(store, "chapter"), expected);
+      assert.equal(result.event_summary, "Event summary.");
+    } finally {
+      store.close();
+    }
+  });
+}
+
 function storyPath(storyKey: string): string {
   return `zh_CN/gamedata/story/${storyKey}.json`;
 }
+
+test("summary sources fail independently and fall back to chapter", () => {
+  const zip = new AdmZip();
+  const files = {
+    [STORY_REVIEW_PATH]: { act: { infoUnlockDatas: [{ storyTxt: "chapter" }] } },
+    "zh_CN/summaries.json": [],
+    [storyPath("chapter")]: { storyInfo: " Embedded summary. " },
+    [EVENT_SUMMARIES_PATH]: { act: "Event summary." },
+  };
+  for (const [name, value] of Object.entries(files)) zip.addFile(name, Buffer.from(JSON.stringify(value)));
+  zip.addFile(STORYINFO_PATH, Buffer.from("{broken"));
+  const path = join(mkdtempSync(join(tmpdir(), "summary-embedded-")), "story.zip");
+  zip.writeZip(path);
+  const store = new ZipStore(path);
+  try {
+    const listing = buildStoriesListingFromStore(store, "act", true);
+    assert.equal(listing.chapters[0]?.summary, "Embedded summary.");
+    assert.equal(getStorySummaryFromStore(store, "chapter"), "Embedded summary.");
+    assert.equal(listing.event_summary, "Event summary.");
+  } finally {
+    store.close();
+  }
+});
 
 function loadParityFixture(name: string): unknown {
   return JSON.parse(

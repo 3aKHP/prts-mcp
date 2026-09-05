@@ -185,8 +185,8 @@ export function latestReleaseByPrefix(
  * Orders by (versionId, revision) tuple instead of created_at, so a repair
  * revision outranks the release it fixes and a re-published older release
  * can no longer win (rollback-by-republication). Two releases claiming the
- * same tuple is an upstream integrity violation: log loudly and fail closed
- * (returns null), mirroring the images pipeline's duplicate-version rejection.
+ * same tuple is an upstream integrity violation: throw so callers cannot
+ * attempt a blind network fallback.
  */
 export function latestDataRelease(
   releases: GithubRelease[],
@@ -194,6 +194,7 @@ export function latestDataRelease(
   let best: { key: DataTagVersion; release: GithubRelease } | null = null;
   const seen = new Set<string>();
   for (const release of releases) {
+    if (release["draft"] || release["prerelease"]) continue;
     const tag = release["tag_name"];
     if (typeof tag !== "string") continue;
     const parsed = parseDataTag(tag);
@@ -204,7 +205,7 @@ export function latestDataRelease(
         `[sync] duplicate data release identity (versionId=${parsed.versionId}, `
         + `revision=${parsed.revision}) claimed by "${tag}"; failing closed`,
       );
-      return null;
+      throw new Error("duplicate data release identity");
     }
     seen.add(key);
     if (best === null || isNewer(best.key, parsed)) best = { key: parsed, release };
