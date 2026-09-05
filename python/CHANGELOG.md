@@ -4,17 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [2.7.3] - 2026-09-05
 
 ### Fixed
 
-- Chapter listings with summaries now prefer LLM summaries and share the single-chapter tool's official-summary fallback, including blank or invalid cached values.
-- Repair releases require a manifest even when its download returns 404. Duplicate release identities fail without a blind Latest download, and runtime and build selectors exclude drafts and prereleases.
-- Recorded release identities continue to prevent downgrades when a cached ZIP is missing or invalid; an unverified Latest fallback cannot replace them.
+- Chapter listings and single-chapter summaries now consistently prefer valid LLM summaries, with official summaries as fallback.
+- Data sync discovers immutable `datarev-<versionId>-r<N>` repair releases and orders updates by source version and revision, allowing corrected data to arrive through normal Auto-Sync without client configuration changes.
+- Repair releases require matching manifests. Duplicate identities are rejected, and runtime and build selectors exclude drafts and prereleases.
+- Recorded release identities continue to prevent downgrades when a cached ZIP is missing or invalid; recovery can download the same or a newer revision without an unverified Latest fallback.
 
-### Added
+### Changed
 
-- **Revision release discovery (`datarev-` namespace).** The data sync now understands the factory's immutable repair releases: `datarev-<versionId>-r<N>` tags are discovered alongside normal `data-<versionId>` releases and ordered by `(versionId, publicationRevision)` tuple instead of release creation time, so a repair revision outranks the release it fixes and a re-published older release can no longer win (rollback-by-republication protection; two releases claiming the same identity fail closed with a warning). Update decisions compare the same tuple over the stored release id — a bare `<versionId>` means revision 1 — while sentinel ids (`unknown`/`legacy`/`local-…`) keep the legacy string-equality semantics, and a refused downgrade reports the installed id. Manifest verification additionally requires `publicationRevision` on `datarev-` releases to match the tag. Stored metadata keeps the full tag suffix (`<versionId>-r<N>`), so the on-disk schemas and the cross-implementation meta interop are unchanged; 1.7-era deployments never see `datarev-` releases.
+- Consolidated environment-variable and HTTP deployment guidance, and clarified the 1.7 LTS lifecycle policy.
 
 ## [2.7.2] - 2026-08-22
 

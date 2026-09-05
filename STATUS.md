@@ -1,18 +1,19 @@
 # PRTS-MCP 项目状态
 
-_Last updated: 2026-08-22_
+_Last updated: 2026-09-05_
 
 ## 当前版本
 
 | 实现 | 版本 | 状态 |
 |------|------|------|
-| Python | 2.7.2 | Stable release |
-| TypeScript | 2.7.2 | Stable release |
+| Python | 2.7.3 | Stable release |
+| TypeScript | 2.7.3 | Stable release |
 
-- 当前稳定发布：2.7.2（24 个 MCP 工具）
+- 当前稳定发布：2.7.3（24 个 MCP 工具）
 - 当前 LTS 发布：1.7.0（32 个 MCP 工具，剧情角色追踪）
 - 下一开发目标：2.8.0
 - 当前稳定补丁线：2.7.x
+- 2.7.3 发布内容：修订数据包自动发现与 manifest 校验、重复版本拒绝、缓存 ZIP 恢复时的防降级，以及章节列表与单章摘要的一致回退。工具、参数和用户配置保持兼容。
 - 2.7.2 发布内容：ID 回显引号双实现统一为双引号（PY `json.dumps` 对齐 TS `JSON.stringify`，含 story 两处 KeyError）；全部用户可见 id 排序统一为码点序（新建 TS `data/sort.ts` 共享比较器，覆盖 artwork 列表、item/enemy 列表 tie-break、stage 列表；修 `localeCompare` ICU 发散，item 列表分页在真实数据上已可观测）。
 - 2.7.1 发布内容：图片同步应用完整 AKDP delta chain（全新安装/跳版本同步不再漏中间 delta；断链在 baseline 下载前 fail fast；index currentVersion 权威化；release 发现分页覆盖链起点）（#179）；wrong-shape `building_data.json` 双实现一致降级（#178）。
 - 2.7.0 发布内容：干员基建技能（`get_operator_basic_info` 新段 + `search` `building_skills` scope 跨干员反查）、本地立绘列表的皮肤系列/获取方式/描述元数据、`building_data.json`/`skin_table.json` 提升 AKDP 数据集契约、2.7 上帝文件重构程序（#161–#171）、story 文案 parity 修复（#172）与全量 E2E 手册制度化（#173）。工具面保持 24。
@@ -82,7 +83,7 @@ _Last updated: 2026-08-22_
 
 ## 当前分支
 
-- `main`：2.7.2（最新稳定发布线）
+- `main`：2.7.3（最新稳定发布线）
 - `lts/1.7`：1.7.x LTS 维护线（从 1.7.0 发布提交创建；EOL 2027-07-02）
 - `develop`：2.8.0 开发线（`.dev0`）
 
@@ -245,6 +246,7 @@ PRTS-MCP/
 
 | 版本 | 日期 | 亮点 |
 |------|------|------|
+| 2.7.3 | 2026-09-05 | 数据修订发现与校验；缓存恢复防降级；章节摘要一致性 |
 | 2.7.2 | 2026-08-22 | ID 回显引号双实现统一；artwork/item 列表排序码点序对齐 |
 | 2.7.1 | 2026-08-18 | 图片同步应用完整 AKDP delta chain（#179）；wrong-shape building_data 双实现一致降级（#178） |
 | 2.7.0 | 2026-08-15 | 干员基建技能（basic_info 新段 + search 新 scope）；本地立绘皮肤元数据；2.7 重构程序收口 |
