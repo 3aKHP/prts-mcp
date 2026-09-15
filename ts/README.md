@@ -163,7 +163,7 @@ docker run -d -p 3000:3000 -v prts-mcp-ts-data:/data/gamedata -v prts-mcp-ts-lev
 | `PRTS_OUTPUT_CHANNEL` | `content` | 2.0 输出通道；也可经查询字符串 `?output_channel=` 或请求头 `x-prts-output-channel` 覆盖 |
 | `PRTS_DEBUG_TOKEN` | 未设置 | `/debug/cache` 和 `/debug/metrics` 的必需 Bearer token；未设置或不匹配时返回 404。不要公开反代这两个路径 |
 | `PRTS_METRICS_ENABLED` | `false` | 设为严格的 `true` 才启用 `/debug/metrics`（仅 TS）；仍需有效 token |
-| `SESSION_IDLE_TIMEOUT_MS` | `86400000` | HTTP 会话空闲超时（毫秒，仅 TS）；非正数禁用 |
+| `SESSION_IDLE_TIMEOUT_MS` | `86400000` | HTTP 会话空闲超时（毫秒）；非正数禁用 |
 
 需要验证重复负载与并发会话时，只能在隔离的本机实例上执行 `PRTS_BENCH_ISOLATED=true PRTS_BENCH_ORIGIN=http://127.0.0.1:<port> PRTS_DEBUG_TOKEN=... npm run bench:memory`。脚本要求指标端点、有效诊断 token 和可读剧情/本地图片数据均已启用：它会先发现一个活动、章节和阿米娅立绘，然后以 **6 个并发会话** 执行档案、基础资料、数据搜索、剧情搜索、单章、活动分页和实际图片 get。除重复负载不能新增 cache miss 外，它还要求并发后至少 7 个会话仍在、请求已静止、RSS 不超过 1 GiB、相对冷缓存增长不超过 256 MiB（可用 `PRTS_BENCH_MAX_RSS_BYTES` / `PRTS_BENCH_MAX_RSS_GROWTH_BYTES` 调整）。它拒绝非 loopback 目标，不得在生产正式服务执行。
 
