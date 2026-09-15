@@ -61,6 +61,6 @@ git diff HEAD -- AGENTS.md CLAUDE.md
 
 PR 可能收到人类、自动化 Bot 或 AI 辅助审阅。维护者还可能安排一次 clean-context 独立审阅；外部 contributor 无需在开 PR 前自行运行特定 Bot、模型或 SubAgent。远端 Bot CR 与独立审阅覆盖不同盲点，彼此补充但互不替代。
 
-自动化评论是需要验证的 finding，不是 CI check、approval 或合并门禁，其触发、响应时间和覆盖范围也不保证。按当前配置，KHPilot 对同一个 PR 只会主动审阅一次、不自动复审；追加 commit 不会自动触发复审，确有必要时可在现有 thread 或 PR conversation 中 `@khpilot`（或 App 提及形式 `@khpilot[bot]`）请求 re-review，也可以用同样方式追问具体 finding。
+自动化评论是需要验证的 finding，不是 CI check、approval 或合并门禁，其触发、响应时间和覆盖范围也不保证。KHPilot 的评审机制详见 [`docs/dev/WORKFLOW.md`](docs/dev/WORKFLOW.md)；要点：对同一个 PR 只主动审阅一次，追加 commit 不触发复审，确有必要时可在现有 thread 或 PR conversation 中 `@khpilot`（或 App 提及形式 `@khpilot[bot]`）请求 re-review 或追问具体 finding。
 
 请逐条回应可操作反馈；若不同意，应给出代码、测试或文档证据。CI 状态以 PR Checks 为准，是否阻塞以及最终 merge 仍由人类维护者决定。

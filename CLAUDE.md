@@ -154,9 +154,8 @@ fix/*（最新稳定 hotfix）────────→ main ──→ develop
 8. **双轨 CR** → **应对 CR** → **人类 merge** 到 `main`
 9. 在 `main` 的 merge commit 上打 tag：`git tag python/vX.Y.Z && git tag ts/vX.Y.Z && git push origin python/vX.Y.Z ts/vX.Y.Z`
 10. PR：同一个 `release/vX.Y.Z` → `develop`（不要 squash，保留 release merge 语义），针对新 base 重新走双轨 CR
-11. 从更新后的 `develop` 拉 `chore/vNext-open-development`，bump 到下一目标版本 + 加回 `-dev` / `.dev0` 后缀，并重新打开空 `[Unreleased]` 段
-12. PR：`chore/vNext-open-development` → `develop`，按分级重新走评审
-13. **本地清扫**：`git checkout develop && git pull && git branch -d release/vX.Y.Z chore/vNext-open-development && git remote prune origin`
+11. **reopen 随回灌 PR 顺手做**：回灌 PR 合并前往同一个 `release/vX.Y.Z` 追加一个 `chore(release): reopen vNext development` commit——bump 到下一目标版本 + 加回 `-dev` / `.dev0` 后缀，并重新打开空 `[Unreleased]` 段（不开单独 chore PR；下一目标版本按 [`docs/dev/VERSIONING.md`](docs/dev/VERSIONING.md) 的回灌规则确定）
+12. **本地清扫**：`git checkout develop && git pull && git branch -d release/vX.Y.Z && git remote prune origin`
 
 ### 路径 E：1.7.0 LTS 发布
 
@@ -255,8 +254,7 @@ KHPilot 的行为特征（何时主动评审、评审耗时、HEAD 移动中断�
 
 - PR 打开后确认 Bot review 对应的 head commit；首次 review 可能延迟，沉默不代表 approval
 - Bot review 不是 CI check 或合并门禁；CI 结果仍以 GitHub Checks 为准
-- 按当前配置，KHPilot 对同一 PR 只主动审一次、不自动复审；为避免主执行 Agent 与 Bot 陷入循环，仅在 Bot 结论对合并决策确有必要时才 `@khpilot`（或 App 提及形式 `@khpilot[bot]`）请求 re-review
-- 可在现有 thread 或 PR conversation 中 `@khpilot` 追问，并在复审请求里给出新 head SHA 和验证结果
+- re-review 与追问：KHPilot 的主动评审时机与复审机制以 WORKFLOW.md 机制一节为准；仅在 Bot 结论对合并决策确有必要时才 `@khpilot`（或 App 提及形式 `@khpilot[bot]`）请求 re-review 或追问，请求里给出新 head SHA 和验证结果，避免主执行 Agent 与 Bot 陷入循环
 - 尽量让 Bot 与独立 reviewer 先各自完成判断，再比较 findings，避免相互锚定
 - 两路命中同一问题时提高优先级；仅一路命中时仍独立复现，不以“另一边没提”驳回
 - 两路意见冲突时用代码、测试、规范和可复现证据裁决，不按数量投票
