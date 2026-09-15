@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project follows the versioning convention documented in [`docs/dev/VERSIONING.md`](../docs/dev/VERSIONING.md).
 
+## [Unreleased]
+
 ## [2.7.4] - 2026-09-15
 
 ### Fixed
