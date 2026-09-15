@@ -33,7 +33,7 @@
 - 部署、CI/CD 与发布 workflow
 - debug / 鉴权端点
 
-前四项同时是 [`E2E.md`](E2E.md) 的强制全量 E2E 触发条件——**Huge PR 与 Release 合并前必须完成全量 E2E**。对 Standard 及以下等级，全量 E2E 同为默认要求；仅当维护者按改动范围与验证成本明确决定时，可以面向改动范围的轻量化真机验证替代**当次**全量流程，且 PR 必须披露验证范围与未执行环节，未执行的全量 E2E 仍留在发布前检查单上（先例：PR #194 会话管理改动，合并前经维护者指示执行轻量化验证——双实现生产式部署 + 会话生命周期探测——并在 PR 记录中披露范围与未执行的重型环节）。替代是维护者对单次改动的裁量，不是作者的自助降级通道。
+前四项同时是 [`E2E.md`](E2E.md) 的强制全量 E2E 触发条件——**Huge PR 与 Release 合并前必须完成全量 E2E**。对 Standard 及以下等级（含 Hot-Fix 的紧急场景，由维护者一并权衡时效与风险），全量 E2E 同为默认要求；仅当维护者按改动范围与验证成本明确决定时，可以面向改动范围的轻量化真机验证替代**当次**全量流程，且 PR 必须披露验证范围与未执行环节，未执行的全量 E2E 仍留在发布前检查单上（先例：PR #194 会话管理改动，合并前经维护者指示执行轻量化验证——双实现生产式部署 + 会话生命周期探测——并在 PR 记录中披露范围与未执行的重型环节）。替代是维护者对单次改动的裁量，不是作者的自助降级通道。
 
 ## 各级说明
 
@@ -105,7 +105,7 @@ gh pr view "$pr" --json reviews \
 
 | 改动类型 | 最小验证 |
 |---|---|
-| 仅文档 | 术语 / 链接 targeted grep；引用代码时按需 `pytest -k <topic>`。CI 仅在改动命中 paths 过滤（`python/**`、`ts/**`——含两实现的 CHANGELOG、workflow 文件）时运行；`docs/**` 与根目录 .md 不触发 CI |
+| 仅文档 | 术语 / 链接 targeted grep；引用代码时按需 `pytest -k <topic>`。CI 仅在改动命中 paths 过滤（`python/**` 与 `ts/**`——含两实现的 CHANGELOG——以及 `.github/workflows/{ci,cd,cd-ts}.yml`、`scripts/test-shared-volume-sync.sh`）时运行；`docs/**` 与根目录 .md 不触发 CI |
 | 小代码（单实现） | 对应实现的全量单测（Python pytest 或 TS build + test + typecheck） |
 | 工具面 / 数据 / sync 运行时 | 双实现全量 + `./scripts/check-runtime.sh --full` |
 | 高风险域改动 | 双实现全量 + check-runtime --full；全量 E2E 为默认要求，维护者可按上节规则决定当次以面向范围的轻量化真机验证替代（PR 披露范围与未执行环节） |
