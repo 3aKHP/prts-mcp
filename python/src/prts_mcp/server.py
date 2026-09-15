@@ -18,6 +18,7 @@ for backward compatibility with tests that access them via ``server.*``.
 from __future__ import annotations
 
 import logging
+import math
 import os
 import sys
 import threading
@@ -78,6 +79,29 @@ _register_tools()
 # Transport selection
 # ---------------------------------------------------------------------------
 
+_SESSION_IDLE_TIMEOUT_DEFAULT_MS = 24 * 60 * 60 * 1000
+
+
+def _session_idle_timeout_seconds() -> float | None:
+    """Resolve the HTTP session idle timeout in seconds; ``None`` disables it.
+
+    Reads ``SESSION_IDLE_TIMEOUT_MS`` with the same semantics as the
+    TypeScript implementation (ts/src/server.ts): unset falls back to the
+    24h default, a positive finite number is taken as milliseconds, and any
+    other value disables idle eviction. The MCP Python SDK expresses the
+    timeout in seconds, hence the conversion.
+    """
+    raw = os.environ.get("SESSION_IDLE_TIMEOUT_MS")
+    if raw is None:
+        return _SESSION_IDLE_TIMEOUT_DEFAULT_MS / 1000
+    try:
+        parsed = float(raw)
+    except ValueError:
+        return None
+    if math.isfinite(parsed) and parsed > 0:
+        return parsed / 1000
+    return None
+
 
 def _build_http_app():
     """Build the Starlette app for the Streamable HTTP transport.
@@ -99,6 +123,13 @@ def _build_http_app():
     from starlette.routing import Route
 
     app = mcp.streamable_http_app()
+
+    idle_timeout_s = _session_idle_timeout_seconds()
+    if idle_timeout_s is not None:
+        # mcp 2.0.0 does not plumb session_idle_timeout through
+        # streamable_http_app(); the session manager reads the attribute on
+        # every request, so assigning it before uvicorn starts is effective.
+        mcp.session_manager.session_idle_timeout = idle_timeout_s
 
     async def health(_request):
         return JSONResponse({"status": "ok"})

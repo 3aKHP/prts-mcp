@@ -402,3 +402,74 @@ def test_output_channel_env_governs_not_query():
             handle["proc"].wait(timeout=5)
         except subprocess.TimeoutExpired:
             handle["proc"].kill()
+
+
+def test_session_idle_timeout_parsing(monkeypatch):
+    """SESSION_IDLE_TIMEOUT_MS parsing mirrors the TypeScript semantics."""
+    from prts_mcp.server import _session_idle_timeout_seconds
+
+    monkeypatch.delenv("SESSION_IDLE_TIMEOUT_MS", raising=False)
+    assert _session_idle_timeout_seconds() == 24 * 60 * 60  # unset → 24h default
+    monkeypatch.setenv("SESSION_IDLE_TIMEOUT_MS", "2000")
+    assert _session_idle_timeout_seconds() == 2.0
+    for bad in ("0", "-5", "abc", "", "inf"):
+        monkeypatch.setenv("SESSION_IDLE_TIMEOUT_MS", bad)
+        assert _session_idle_timeout_seconds() is None, f"{bad!r} should disable eviction"
+
+
+def test_idle_session_evicted_after_timeout():
+    """An idle HTTP session is evicted ~SESSION_IDLE_TIMEOUT_MS after its last
+    request — neither never (unwired timeout) nor prematurely (#193 parity)."""
+    handle = _start_server(extra_env={"SESSION_IDLE_TIMEOUT_MS": "2000"})
+    try:
+        origin = handle["origin"]
+        status, payload, sid = _mcp_post(
+            origin,
+            {
+                "jsonrpc": "2.0",
+                "method": "initialize",
+                "id": 1,
+                "params": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {},
+                    "clientInfo": {"name": "pytest", "version": "0"},
+                },
+            },
+        )
+        assert status == 200
+        assert sid is not None
+
+        # Activity after initialize: eviction comes due one timeout (2s) after
+        # the LAST request — every request pushes the idle deadline forward.
+        time.sleep(0.15)
+        status, _, _ = _mcp_post(
+            origin,
+            {"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}},
+            session_id=sid,
+        )
+        assert status in (200, 202)
+
+        # 1.35s after initialize (< 2s deadline): still alive. This probe is
+        # itself activity — the deadline moves to ~probe time + 2s.
+        time.sleep(1.2)
+        status, payload, _ = _mcp_post(
+            origin,
+            {"jsonrpc": "2.0", "method": "tools/list", "id": 2, "params": {}},
+            session_id=sid,
+        )
+        assert status == 200, "session must not be evicted before the idle timeout"
+
+        # 2.6s after the probe (past its 2s deadline, ~0.6s margin): evicted.
+        time.sleep(2.6)
+        status, _, _ = _mcp_post(
+            origin,
+            {"jsonrpc": "2.0", "method": "tools/list", "id": 3, "params": {}},
+            session_id=sid,
+        )
+        assert status == 404, "idle session should be evicted ~timeout after last activity"
+    finally:
+        handle["proc"].terminate()
+        try:
+            handle["proc"].wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            handle["proc"].kill()
