@@ -2,7 +2,7 @@
 
 本文件是 PRTS-MCP 版本语义与兼容性承诺的单一事实源，面向下游部署者与协作者。分支、评审、验证与发布的操作流程见 [`WORKFLOW.md`](WORKFLOW.md)；1.7 LTS 线的专门规则见 [`LTS.md`](LTS.md)。
 
-> **Core promise (EN):** PRTS-MCP follows SemVer-shaped versioning with a closed, enumerated set of deviations declared in this document — not maintainer discretion. For every Patch and Minor release within a Major line, the default goal is a blind upgrade: `pip install -U` / `npm install -g` with no configuration change, and end users noticing nothing.
+> **Core promise (EN):** PRTS-MCP follows SemVer-shaped versioning with a closed, enumerated set of deviations declared in this document — not maintainer discretion. For every Patch and Minor release within a Major line, the default goal is a blind upgrade: `pip install -U` / `npm install -g` with no configuration change, without end users noticing anything.
 
 ## 兼容的统一定义
 
@@ -41,7 +41,7 @@ Patch 与 Minor 共享同一个默认姿态。**兼容** = 同时满足：
 
 ## 版本号操作规则
 
-- **三段式 `Major.Minor.Patch`**；预发布后缀与 PEP 440 / semver 双格式归一化见 `CLAUDE.md` 的"版本号约定"一节，本文不重复。
+- **三段式 `Major.Minor.Patch`**；预发布后缀与 PEP 440 / semver 双格式归一化见 [`CLAUDE.md`](../../CLAUDE.md) 路径 F 的"版本号约定"段落，本文不重复。
 - **双实现版本锁步**：`python/pyproject.toml` 与 `ts/package.json` 版本号始终一致（格式分别遵循 PEP 440 与 semver）；tag 成对（`python/vX.Y.Z` + `ts/vX.Y.Z`）。
 - **develop 目标版本**：`develop` 上的版本号 = 下一计划发布目标 + 开发后缀（`.dev0` / `-dev.0`）。正式发布并回灌后，默认进入当前 Minor 的下一 Patch（如 2.7.4 发布后 → `2.7.5.dev0` / `2.7.5-dev.0`）；确定开启新主题时才改为下一 Minor（`2.8.0.dev0`），并在 ROADMAP 记录主题。目标版本只表达下一计划发布，允许随范围调整；已发布 tag 与发行物保持原样。
 - **Patch 是系列内累积更新的常规载体，hotfix 只是它的特例**：Patch release 可以容纳修复、优化、功能补全与小型兼容增补，不要求也不默认是一次紧急修复。非 hotfix 的 patch 工作一律经 `develop` 累积、随标准 release 流程发布；唯一直通 `main` 的通道是 hotfix（触发条件见 [`WORKFLOW.md`](WORKFLOW.md) 的 Hot-Fix 一节）。

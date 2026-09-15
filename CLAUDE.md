@@ -226,7 +226,7 @@ EOF
 
 ## 双轨 CR 规范
 
-每个准备合并的 PR 都由维护者安排一次独立审阅，并检查 GitHub 上是否收到自动化 Bot CR（当前为 KHPilot）。两路审阅从不同视角查漏，不能因为一方没有发现问题就否定另一方的 finding。外部 contributor 无需自行运行特定 AI；这是维护者侧质量流程，最终 merge 仍由人类决定。
+变更按 [`docs/dev/WORKFLOW.md`](docs/dev/WORKFLOW.md) 的分级表定级：Quick PR 只要求 Bot Review；**Standard 及以上等级的每个 PR** 都由维护者安排一次独立审阅，并检查 GitHub 上是否收到自动化 Bot CR（当前为 KHPilot）。两路审阅从不同视角查漏，不能因为一方没有发现问题就否定另一方的 finding。外部 contributor 无需自行运行特定 AI；这是维护者侧质量流程，最终 merge 仍由人类决定。
 
 ### 独立子代理 CR
 
@@ -249,10 +249,12 @@ EOF
 
 ### Bot CR 与交叉核对
 
+KHPilot 的行为特征（何时主动评审、评审耗时、HEAD 移动中断、等待编排）以 [`docs/dev/WORKFLOW.md`](docs/dev/WORKFLOW.md) 的 "KHPilot Bot Review 机制" 一节为准。操作要点：
+
 - PR 打开后确认 Bot review 对应的 head commit；首次 review 可能延迟，沉默不代表 approval
 - Bot review 不是 CI check 或合并门禁；CI 结果仍以 GitHub Checks 为准
-- 按当前配置，KHPilot 对同一 PR 只主动审一次；追加 commit 后旧 review 不覆盖新 head，必须 `@KHPilot[bot]` 请求 re-review
-- 可在现有 thread 或 PR conversation 中 `@KHPilot[bot]` 追问，并在复审请求里给出新 head SHA 和验证结果
+- 按当前配置，KHPilot 对同一 PR 只主动审一次；追加 commit 后旧 review 不覆盖新 head，必须 `@khpilot[bot]` 请求 re-review
+- 可在现有 thread 或 PR conversation 中 `@khpilot[bot]` 追问，并在复审请求里给出新 head SHA 和验证结果
 - 尽量让 Bot 与独立 reviewer 先各自完成判断，再比较 findings，避免相互锚定
 - 两路命中同一问题时提高优先级；仅一路命中时仍独立复现，不以“另一边没提”驳回
 - 两路意见冲突时用代码、测试、规范和可复现证据裁决，不按数量投票
@@ -312,7 +314,7 @@ git push origin python/v2.6.0-alpha.1 ts/v2.6.0-alpha.1
 - 改了一个实现的工具行为，**必须检查**另一个实现是否有对应改动
 - 公共工具名、必填参数、输出格式（含 `structuredContent` 载荷）在两套实现间必须一致（CI 有 tool surface / output-channel parity 测试）
 - 新工具建议先在一个实现中完成，验证后再移植到另一个
-- 两套实现各有独立的 CHANGELOG，版本号尽量同步
+- 两套实现各有独立的 CHANGELOG，版本号始终一致（tag 成对 `python/vX.Y.Z` + `ts/vX.Y.Z`，CD 有门禁）
 
 ## 已知陷阱
 

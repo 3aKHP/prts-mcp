@@ -33,7 +33,7 @@
 - 部署、CI/CD 与发布 workflow
 - debug / 鉴权端点
 
-前四项同时是 [`E2E.md`](E2E.md) 的强制全量 E2E 触发条件——**Huge PR 与 Release 合并前必须完成全量 E2E**；其余等级按改动规模与流量预算，可用面向改动范围的轻量化真机验证替代（先例：PR #194 会话管理改动，用双实现生产式部署 + 会话生命周期探测替代全量流程，并在 PR 披露未执行的重型环节）。
+前四项同时是 [`E2E.md`](E2E.md) 的强制全量 E2E 触发条件——**Huge PR 与 Release 合并前必须完成全量 E2E**。对 Standard 及以下等级，全量 E2E 同为默认要求；仅当维护者按改动范围与验证成本明确决定时，可以面向改动范围的轻量化真机验证替代**当次**全量流程，且 PR 必须披露验证范围与未执行环节，未执行的全量 E2E 仍留在发布前检查单上（先例：PR #194 会话管理改动，合并前经维护者指示执行轻量化验证——双实现生产式部署 + 会话生命周期探测——并在 PR 记录中披露范围与未执行的重型环节）。替代是维护者对单次改动的裁量，不是作者的自助降级通道。
 
 ## 各级说明
 
@@ -50,6 +50,8 @@
 - 由未参与实现会话的干净上下文 reviewer 执行（通常为 SubAgent），只读，不修改代码；
 - 每条 finding 须引用契约与 `file:line` 举证；
 - 输出按四分类整理；明确给出"可合并 / 不可合并"结论。
+
+reviewer 独立性、不可信输入处理、交叉核对与 finding 处置的操作契约见 `CLAUDE.md` "双轨 CR 规范"一节。
 
 ### Huge PR
 
@@ -83,14 +85,15 @@ KHPilot 是 PR 侧的自动评审 Bot，行为特征：
 
 ```bash
 # 等待 KHPilot 评审到达：每 3 分钟查一次，20 次（60 分钟）封顶
-pr=<PR号>
+pr=123  # PR 号
 for i in $(seq 1 20); do
   gh pr view "$pr" --json reviews \
     --jq '[.reviews[].author.login] | any(. == "khpilot")' \
     2>/dev/null | grep -q true && break
   sleep 180
 done
-gh pr view "$pr" --json reviews --jq '.reviews[-1] | {author:.author.login, state:.state}'
+gh pr view "$pr" --json reviews \
+  --jq '[.reviews[] | select(.author.login == "khpilot")] | last | {state, submittedAt}'
 ```
 
 3. 后续将以 KHPilot 的**状态查询接口 / Webhook** 替代轮询（规划项，落地后修订本节）。
@@ -104,8 +107,8 @@ gh pr view "$pr" --json reviews --jq '.reviews[-1] | {author:.author.login, stat
 | 仅文档 | 术语 / 链接 targeted grep；引用代码时按需 `pytest -k <topic>`；CI workflow-lint |
 | 小代码（单实现） | 对应实现的全量单测（Python pytest 或 TS build + test + typecheck） |
 | 工具面 / 数据 / sync 运行时 | 双实现全量 + `./scripts/check-runtime.sh --full` |
-| 高风险域改动 | 双实现全量 + check-runtime --full + 面向改动范围的轻量化真机验证（PR 披露范围与未执行环节） |
-| Huge PR / Release | 上述全部 + **全量 E2E**（[`E2E.md`](E2E.md)） |
+| 高风险域改动 | 双实现全量 + check-runtime --full；全量 E2E 为默认要求，维护者可按上节规则决定当次以面向范围的轻量化真机验证替代（PR 披露范围与未执行环节） |
+| Huge PR / Release | 上述全部 + 双实现 parity 测试 + CHANGELOG / 版本号 / STATUS 口径核对 + **全量 E2E**（[`E2E.md`](E2E.md)）+ CD 产物核对 |
 
 ## 其他约定
 
