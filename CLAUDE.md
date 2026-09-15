@@ -13,7 +13,7 @@ PRTS-MCP 是面向明日方舟同人创作的 MCP Server，包含 Python 和 Typ
 |---|---|
 | 项目现状、版本状态、仓库结构 | [`STATUS.md`](STATUS.md) |
 | 代码规范、反模式、已知陷阱 | [`docs/dev/STYLE.md`](docs/dev/STYLE.md) |
-| 全量 E2E 真机测试流程（高风险改动后必跑，例外通道见文内） | [`docs/dev/E2E.md`](docs/dev/E2E.md) |
+| 全量 E2E 真机测试流程（高风险改动强烈建议，维护者当次裁量，非门禁） | [`docs/dev/E2E.md`](docs/dev/E2E.md) |
 | 版本语义与兼容性承诺 | [`docs/dev/VERSIONING.md`](docs/dev/VERSIONING.md) |
 | 变更分级、双轨 CR 机制与验证矩阵 | [`docs/dev/WORKFLOW.md`](docs/dev/WORKFLOW.md) |
 | 路线图与未来规划 | [`ROADMAP.md`](ROADMAP.md) |
