@@ -9,6 +9,10 @@ pattern. Tests that run without network or full data:
   2. MCP initialize handshake + session id
   3. tools/list — all tools registered
   4. output_channel env-only behavior (query string ignored)
+  5. idle session eviction ~SESSION_IDLE_TIMEOUT_MS after the last request
+
+Unit tests for the server's module-level helpers (no subprocess) live in
+test_server.py.
 """
 from __future__ import annotations
 
@@ -18,6 +22,7 @@ import socket
 import subprocess
 import sys
 import time
+from contextlib import contextmanager
 from importlib.metadata import PackageNotFoundError, version as _pkg_version
 from pathlib import Path
 
@@ -181,10 +186,10 @@ def _start_server(extra_env: dict | None = None) -> dict:
     return {"origin": origin, "proc": proc}
 
 
-@pytest.fixture(scope="module")
-def server():
-    """Default server (env-default output_channel = content)."""
-    handle = _start_server()
+@contextmanager
+def running_server(extra_env: dict | None = None):
+    """Start a server with env overrides and terminate it on exit."""
+    handle = _start_server(extra_env)
     try:
         yield handle
     finally:
@@ -193,6 +198,13 @@ def server():
             handle["proc"].wait(timeout=5)
         except subprocess.TimeoutExpired:
             handle["proc"].kill()
+
+
+@pytest.fixture(scope="module")
+def server():
+    """Default server (env-default output_channel = content)."""
+    with running_server() as handle:
+        yield handle
 
 
 # ---------------------------------------------------------------------------
@@ -337,8 +349,7 @@ def test_output_channel_env_governs_not_query():
     if not char_table.is_file():
         pytest.skip("GameData character_table not available; cannot test structured tool")
 
-    handle = _start_server(extra_env={"PRTS_OUTPUT_CHANNEL": "structured"})
-    try:
+    with running_server({"PRTS_OUTPUT_CHANNEL": "structured"}) as handle:
         origin = handle["origin"]
         _, _, sid = _mcp_post(
             origin,
@@ -396,9 +407,57 @@ def test_output_channel_env_governs_not_query():
             "query ?output_channel=content must be ignored. "
             "If structuredContent is null, the query override leaked."
         )
-    finally:
-        handle["proc"].terminate()
-        try:
-            handle["proc"].wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            handle["proc"].kill()
+
+
+def test_idle_session_evicted_after_timeout():
+    """An idle HTTP session is evicted ~SESSION_IDLE_TIMEOUT_MS after its last
+    request — neither never (unwired timeout) nor prematurely (#193 parity)."""
+    with running_server({"SESSION_IDLE_TIMEOUT_MS": "2000"}) as handle:
+        origin = handle["origin"]
+        status, payload, sid = _mcp_post(
+            origin,
+            {
+                "jsonrpc": "2.0",
+                "method": "initialize",
+                "id": 1,
+                "params": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {},
+                    "clientInfo": {"name": "pytest", "version": "0"},
+                },
+            },
+        )
+        assert status == 200
+        assert sid is not None
+
+        # Activity after initialize: eviction comes due one timeout (2s) after
+        # the LAST request — every request pushes the idle deadline forward.
+        time.sleep(0.15)
+        status, _, _ = _mcp_post(
+            origin,
+            {"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}},
+            session_id=sid,
+        )
+        assert status in (200, 202)
+
+        # 1.35s after initialize (< 2s deadline): still alive. This probe is
+        # itself activity — the deadline moves to ~probe time + 2s.
+        time.sleep(1.2)
+        status, payload, _ = _mcp_post(
+            origin,
+            {"jsonrpc": "2.0", "method": "tools/list", "id": 2, "params": {}},
+            session_id=sid,
+        )
+        assert status == 200, "session must not be evicted before the idle timeout"
+
+        # 3.0s after the probe (past its 2s deadline, ~1s margin): evicted.
+        # The check is single-shot by design — polling with session requests
+        # would itself count as activity and keep the session alive, and the
+        # server exposes no session-state side channel (no /debug/metrics).
+        time.sleep(3.0)
+        status, _, _ = _mcp_post(
+            origin,
+            {"jsonrpc": "2.0", "method": "tools/list", "id": 3, "params": {}},
+            session_id=sid,
+        )
+        assert status == 404, "idle session should be evicted ~timeout after last activity"

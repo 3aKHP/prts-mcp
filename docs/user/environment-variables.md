@@ -50,7 +50,7 @@
 |------|--------|------|------|
 | `PRTS_DEBUG_TOKEN` | 未设置 | 双实现 | `/debug/cache`（及 TS 的 `/debug/metrics`）的必需 Bearer 令牌；未设置或不匹配时返回 404（等于默认关闭）。不要公开反代这些路径，也不要把令牌写入日志或客户端配置 |
 | `PRTS_METRICS_ENABLED` | `false` | 仅 TS | 设为严格的 `true` 才启用 `/debug/metrics`；响应只含聚合指标，不含 MCP 参数、结果或会话 ID |
-| `SESSION_IDLE_TIMEOUT_MS` | `86400000`（24h） | 仅 TS | HTTP 会话空闲超时（毫秒）；非法值或 ≤0 表示禁用空闲清理 |
+| `SESSION_IDLE_TIMEOUT_MS` | `86400000`（24h） | 双实现 | HTTP 会话空闲超时（毫秒）；非法值或 ≤0 表示禁用空闲清理 |
 
 ## 附录：非运行时变量（bench / 测试）
 
