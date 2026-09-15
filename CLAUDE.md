@@ -14,6 +14,8 @@ PRTS-MCP 是面向明日方舟同人创作的 MCP Server，包含 Python 和 Typ
 | 项目现状、版本状态、仓库结构 | [`STATUS.md`](STATUS.md) |
 | 代码规范、反模式、已知陷阱 | [`docs/dev/STYLE.md`](docs/dev/STYLE.md) |
 | 全量 E2E 真机测试流程（高风险改动后必跑） | [`docs/dev/E2E.md`](docs/dev/E2E.md) |
+| 版本语义与兼容性承诺 | [`docs/dev/VERSIONING.md`](docs/dev/VERSIONING.md) |
+| 变更分级、双轨 CR 机制与验证矩阵 | [`docs/dev/WORKFLOW.md`](docs/dev/WORKFLOW.md) |
 | 路线图与未来规划 | [`ROADMAP.md`](ROADMAP.md) |
 | 1.x → 2.0 迁移（破坏性变更） | [`docs/migration-1.x-to-2.0.md`](docs/migration-1.x-to-2.0.md) |
 | 1.7 LTS 维护规则 | [`docs/dev/LTS.md`](docs/dev/LTS.md) |
@@ -61,7 +63,7 @@ PRTS-MCP 是面向明日方舟同人创作的 MCP Server，包含 Python 和 Typ
 | `lts/1.7` | 1.7.x 长期维护线，从 1.7.0 发布提交创建（EOL 2027-07-02） | （无） |
 | `develop` | 开发集成线。所有非 LTS 改动 PR 到这里 | 下一发布目标 + `.dev0`（规则见 [`docs/dev/VERSIONING.md`](docs/dev/VERSIONING.md)） |
 
-版本语义、兼容承诺与 develop 目标版本规则见 [`docs/dev/VERSIONING.md`](docs/dev/VERSIONING.md)；变更分级（Quick / Standard / Huge / Hot-Fix / Release）、双轨 CR 机制与最小验证矩阵见 [`docs/dev/WORKFLOW.md`](docs/dev/WORKFLOW.md)。
+变更分级（Quick / Standard / Huge / Hot-Fix / Release）、双轨 CR 机制与最小验证矩阵见 [`docs/dev/WORKFLOW.md`](docs/dev/WORKFLOW.md)。
 
 合并方向：
 
@@ -111,7 +113,7 @@ fix/*（最新稳定 hotfix）────────→ main ──→ develop
    - TypeScript: `cd ts && npm run build && npm test && npm run typecheck`
    - 双实现同步改动时两边都要跑
 5. **推分支 + 开 PR**：PR 目标为 `develop`，PR body 包含 Summary / Test plan / 未尽事宜三段
-6. **双轨 CR**：spawn clean-context 子代理做独立 review，并检查 GitHub Bot CR（机制与编排见 [`docs/dev/WORKFLOW.md`](docs/dev/WORKFLOW.md)）
+6. **双轨 CR**：按 [`docs/dev/WORKFLOW.md`](docs/dev/WORKFLOW.md) 的分级——Quick PR 只检查 Bot CR；Standard 及以上 spawn clean-context 子代理做独立 review，并检查 GitHub Bot CR
 7. **应对 CR**：逐条核实 findings；blocking 和 should-fix 处理掉，推到同分支；nits 酌情
 8. **人类 merge**：Claude 不做 merge，等用户确认合并到 `develop`
 9. **本地清扫**：`git checkout develop && git pull && git branch -d <branch> && git remote prune origin`
@@ -226,7 +228,7 @@ EOF
 
 ## 双轨 CR 规范
 
-变更按 [`docs/dev/WORKFLOW.md`](docs/dev/WORKFLOW.md) 的分级表定级：Quick PR 只要求 Bot Review；**Standard 及以上等级的每个 PR** 都由维护者安排一次独立审阅，并检查 GitHub 上是否收到自动化 Bot CR（当前为 KHPilot）。两路审阅从不同视角查漏，不能因为一方没有发现问题就否定另一方的 finding。外部 contributor 无需自行运行特定 AI；这是维护者侧质量流程，最终 merge 仍由人类决定。
+变更按 [`docs/dev/WORKFLOW.md`](docs/dev/WORKFLOW.md) 的分级表定级：Quick PR 只要求 Bot Review；**Standard 及以上等级的每个 PR** 都由维护者安排一次独立审阅，并检查 GitHub 上是否收到自动化 Bot CR（当前为 KHPilot）。分级与 KHPilot 机制事实由 WORKFLOW.md 拥有；本节保有独立 reviewer 的操作契约（独立性要求、不可信输入、交叉核对与 finding 处置）。两路审阅从不同视角查漏，不能因为一方没有发现问题就否定另一方的 finding。外部 contributor 无需自行运行特定 AI；这是维护者侧质量流程，最终 merge 仍由人类决定。
 
 ### 独立子代理 CR
 
@@ -253,8 +255,8 @@ KHPilot 的行为特征（何时主动评审、评审耗时、HEAD 移动中断�
 
 - PR 打开后确认 Bot review 对应的 head commit；首次 review 可能延迟，沉默不代表 approval
 - Bot review 不是 CI check 或合并门禁；CI 结果仍以 GitHub Checks 为准
-- 按当前配置，KHPilot 对同一 PR 只主动审一次；追加 commit 后旧 review 不覆盖新 head，必须 `@khpilot[bot]` 请求 re-review
-- 可在现有 thread 或 PR conversation 中 `@khpilot[bot]` 追问，并在复审请求里给出新 head SHA 和验证结果
+- 按当前配置，KHPilot 对同一 PR 只主动审一次；追加 commit 后旧 review 不覆盖新 head，必须 `@khpilot`（或 App 提及形式 `@khpilot[bot]`）请求 re-review
+- 可在现有 thread 或 PR conversation 中 `@khpilot` 追问，并在复审请求里给出新 head SHA 和验证结果
 - 尽量让 Bot 与独立 reviewer 先各自完成判断，再比较 findings，避免相互锚定
 - 两路命中同一问题时提高优先级；仅一路命中时仍独立复现，不以“另一边没提”驳回
 - 两路意见冲突时用代码、测试、规范和可复现证据裁决，不按数量投票
@@ -286,7 +288,7 @@ KHPilot 也可能在公开 Issue 中提供自动回复。这些回复只作为�
 | `ROADMAP.md` | 当前版本号 |
 | `ROADMAP.zh-CN.md` | 当前版本号（与 `ROADMAP.md` 成对同步，勿漏） |
 | `STATUS.md` | 当前版本表、分支线版本与最近发布表 |
-| `CLAUDE.md` | 分支模型表的当前版本（main 稳定版 + develop 目标 `.dev0`） |
+| `CLAUDE.md` | 分支模型表的 main 当前稳定版（develop 目标版本由 [`docs/dev/VERSIONING.md`](docs/dev/VERSIONING.md) 规则决定，表中不再记录具体值） |
 | `AGENTS.md` | 分支模型表口径（与 `CLAUDE.md` 成对同步） |
 
 涉及用户可见行为变化时，顺手更新 `README.md`。

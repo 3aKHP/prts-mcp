@@ -74,9 +74,9 @@ reviewer 独立性、不可信输入处理、交叉核对与 finding 处置的�
 
 KHPilot 是 PR 侧的自动评审 Bot，行为特征：
 
-- **仅在开 PR 时主动评审一次**（不请自来）；后续 head 不主动复审，需在 PR 评论中 `@khpilot[bot]` 请求 re-review；
+- **仅在开 PR 时主动评审一次**（不请自来）；后续 head 不主动复审，需在 PR 评论中 `@khpilot`（或 App 提及形式 `@khpilot[bot]`）请求 re-review；
 - 评审耗时视 diff 规模约 **3–5 分钟至近 1 小时**；
-- 评审进行中 PR **HEAD 移动会立即中断**该次评审——因此本地 CR 修复推送后，若 Bot 在途评审被中断，push 后需 `@khpilot[bot]` 请求对新 head 复审。
+- 评审进行中 PR **HEAD 移动会立即中断**该次评审——因此本地 CR 修复推送后，若 Bot 在途评审被中断，push 后需 `@khpilot` 请求对新 head 复审。
 
 据此的工作流编排：
 
@@ -85,15 +85,16 @@ KHPilot 是 PR 侧的自动评审 Bot，行为特征：
 
 ```bash
 # 等待 KHPilot 评审到达：每 3 分钟查一次，20 次（60 分钟）封顶
+# 观测到的 review author login 为 "khpilot"；startswith 同时兼容 App 形式 "khpilot[bot]"
 pr=123  # PR 号
 for i in $(seq 1 20); do
   gh pr view "$pr" --json reviews \
-    --jq '[.reviews[].author.login] | any(. == "khpilot")' \
+    --jq '[.reviews[].author.login] | any(startswith("khpilot"))' \
     2>/dev/null | grep -q true && break
   sleep 180
 done
 gh pr view "$pr" --json reviews \
-  --jq '[.reviews[] | select(.author.login == "khpilot")] | last | {state, submittedAt}'
+  --jq '[.reviews[] | select(.author.login | startswith("khpilot"))] | last | {state, submittedAt}'
 ```
 
 3. 后续将以 KHPilot 的**状态查询接口 / Webhook** 替代轮询（规划项，落地后修订本节）。
@@ -104,7 +105,7 @@ gh pr view "$pr" --json reviews \
 
 | 改动类型 | 最小验证 |
 |---|---|
-| 仅文档 | 术语 / 链接 targeted grep；引用代码时按需 `pytest -k <topic>`；CI workflow-lint |
+| 仅文档 | 术语 / 链接 targeted grep；引用代码时按需 `pytest -k <topic>`。CI 仅在改动命中 paths 过滤（`python/**`、`ts/**`——含两实现的 CHANGELOG、workflow 文件）时运行；`docs/**` 与根目录 .md 不触发 CI |
 | 小代码（单实现） | 对应实现的全量单测（Python pytest 或 TS build + test + typecheck） |
 | 工具面 / 数据 / sync 运行时 | 双实现全量 + `./scripts/check-runtime.sh --full` |
 | 高风险域改动 | 双实现全量 + check-runtime --full；全量 E2E 为默认要求，维护者可按上节规则决定当次以面向范围的轻量化真机验证替代（PR 披露范围与未执行环节） |
