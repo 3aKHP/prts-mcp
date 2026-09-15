@@ -59,7 +59,9 @@ PRTS-MCP 是面向明日方舟同人创作的 MCP Server，包含 Python 和 Typ
 |------|------|-----------|
 | `main` | 最新稳定发布。当前为 2.7.3 | （无） |
 | `lts/1.7` | 1.7.x 长期维护线，从 1.7.0 发布提交创建（EOL 2027-07-02） | （无） |
-| `develop` | 开发集成线。所有非 LTS 改动 PR 到这里 | `.dev0`（当前目标为 `2.8.0.dev0`） |
+| `develop` | 开发集成线。所有非 LTS 改动 PR 到这里 | 下一发布目标 + `.dev0`（规则见 [`docs/dev/VERSIONING.md`](docs/dev/VERSIONING.md)） |
+
+版本语义、兼容承诺与 develop 目标版本规则见 [`docs/dev/VERSIONING.md`](docs/dev/VERSIONING.md)；变更分级（Quick / Standard / Huge / Hot-Fix / Release）、双轨 CR 机制与最小验证矩阵见 [`docs/dev/WORKFLOW.md`](docs/dev/WORKFLOW.md)。
 
 合并方向：
 
@@ -109,7 +111,7 @@ fix/*（最新稳定 hotfix）────────→ main ──→ develop
    - TypeScript: `cd ts && npm run build && npm test && npm run typecheck`
    - 双实现同步改动时两边都要跑
 5. **推分支 + 开 PR**：PR 目标为 `develop`，PR body 包含 Summary / Test plan / 未尽事宜三段
-6. **双轨 CR**：spawn clean-context 子代理做独立 review，并检查 GitHub Bot CR（见下文）
+6. **双轨 CR**：spawn clean-context 子代理做独立 review，并检查 GitHub Bot CR（机制与编排见 [`docs/dev/WORKFLOW.md`](docs/dev/WORKFLOW.md)）
 7. **应对 CR**：逐条核实 findings；blocking 和 should-fix 处理掉，推到同分支；nits 酌情
 8. **人类 merge**：Claude 不做 merge，等用户确认合并到 `develop`
 9. **本地清扫**：`git checkout develop && git pull && git branch -d <branch> && git remote prune origin`
@@ -171,7 +173,7 @@ fix/*（最新稳定 hotfix）────────→ main ──→ develop
 
 用于在 `develop` 上发布 alpha / beta / rc 版本供早期测试。
 
-**版本号约定**：tag 始终使用连字符后缀（`-alpha.N` / `-beta.N` / `-rc.N`），Python 和 TS 统一。`pyproject.toml` 内用 PEP 440（`2.6.0a1`），CD 的 version check 自动归一化 `-alpha.` → `a`；`package.json` 内用与 tag 相同的 semver 形式（`2.6.0-alpha.1`）。
+**版本号约定**：tag 始终使用连字符后缀（`-alpha.N` / `-beta.N` / `-rc.N`），Python 和 TS 统一。`pyproject.toml` 内用 PEP 440（`2.6.0a1`），CD 的 version check 自动归一化 `-alpha.` → `a`；`package.json` 内用与 tag 相同的 semver 形式（`2.6.0-alpha.1`）。版本语义与目标版本规则见 [`docs/dev/VERSIONING.md`](docs/dev/VERSIONING.md)。
 
 1. **拉分支**：从 `develop` 拉 `release/vX.Y.Z-alpha.N`（或 `-beta.N` / `-rc.N`）
 2. **bump 版本号**：`pyproject.toml` 从 `.dev0` 改为 `X.Y.ZaN`（如 `2.6.0a1`），`package.json` 从 `-dev.0` 改为 `X.Y.Z-alpha.N`（如 `2.6.0-alpha.1`）。运行 `uv lock --directory python` 同步 lockfile，同步 `ts/package-lock.json`
@@ -187,15 +189,7 @@ fix/*（最新稳定 hotfix）────────→ main ──→ develop
 
 ## 验证矩阵
 
-按改动风险选最小的验证集（命令清单以"路径 A 步骤 4"为单一来源，本表只标层级）：
-
-| 改动类型 | 最小验证 |
-|---|---|
-| 仅文档 | 术语 / 链接 targeted grep；引用代码时按需 `uv run --directory python --locked python -m pytest tests -k <topic>` |
-| 小代码（单实现） | 按"路径 A 步骤 4"的对应实现命令（Python 或 TS，含 `typecheck`） |
-| 工具面 / 数据 / sync 运行时 | "路径 A 步骤 4"双实现全量 + `./scripts/check-runtime.sh --full` |
-| **大规模高风险跨模块改动**（程序级重构、`sync/`/`api/` 层行为改动、artwork/images 域、MCP 传输层；以及发布里程碑） | **必须**走全量 E2E 真机测试（[`docs/dev/E2E.md`](docs/dev/E2E.md)）：双实现生产式部署 + 真实 MCP Client 全工具组 + 图像双数据源，**缺此环节不得视为验证完成** |
-| release / `main` 快照 | "路径 A 步骤 4"全量 + 双实现 parity 测试 + CHANGELOG / 版本号 / STATUS 口径核对 |
+按改动风险选最小验证集的矩阵见 [`docs/dev/WORKFLOW.md`](docs/dev/WORKFLOW.md)；命令清单以"路径 A 步骤 4"为单一来源。
 
 ## 文档扫描
 
