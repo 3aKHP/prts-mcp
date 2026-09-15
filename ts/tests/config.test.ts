@@ -345,6 +345,9 @@ test("SESSION_IDLE_TIMEOUT_MS parsing is strict-decimal", async () => {
     ["0b101", -1],
     ["0o17", -1],
     ["1_000", -1],
+    // Python's \d matches Unicode digits; both sides must reject them.
+    ["２０００", -1],
+    ["٢٠٠٠", -1],
   ];
   try {
     for (const [raw, expected] of cases) {

@@ -81,7 +81,9 @@ _register_tools()
 # ---------------------------------------------------------------------------
 
 _SESSION_IDLE_TIMEOUT_DEFAULT_MS = 24 * 60 * 60 * 1000
-_DECIMAL_NUMBER_PATTERN = re.compile(r"^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$")
+# [0-9] rather than \d: Python's \d also matches Unicode digits (e.g.
+# fullwidth "２０００") while the TypeScript side rejects them.
+_DECIMAL_NUMBER_PATTERN = re.compile(r"^[+-]?(?:[0-9]+\.?[0-9]*|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$")
 
 
 def _session_idle_timeout_seconds() -> float | None:
@@ -90,9 +92,10 @@ def _session_idle_timeout_seconds() -> float | None:
     Reads ``SESSION_IDLE_TIMEOUT_MS`` with the same semantics as the
     TypeScript implementation (ts/src/config.ts): unset falls back to the
     24h default, a positive finite number is taken as milliseconds, and any
-    other value disables idle eviction. Parsing is strict-decimal so
-    spellings like ``0x10`` or ``1_000`` (which ``float()`` would otherwise
-    handle differently from TypeScript's ``Number()``) are rejected
+    other value disables idle eviction. Parsing is strict-decimal with
+    ASCII digits only, so spellings like ``0x10`` or ``1_000`` (which
+    ``float()`` would otherwise handle differently from TypeScript's
+    ``Number()``) and Unicode digits (e.g. fullwidth input) are rejected
     identically on both sides. The MCP Python SDK expresses the timeout in
     seconds, hence the conversion.
     """

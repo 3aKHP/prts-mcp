@@ -20,8 +20,14 @@ def test_session_idle_timeout_parsing(monkeypatch):
 
     # Invalid or <= 0 disables — including spellings where Python float() and
     # TypeScript Number() diverge (hex/binary/octal literals, PEP 515
-    # underscores); parity is pinned by ts/tests/config.test.ts.
-    for bad in ("0", "-5", "abc", "", "inf", "1e400", "nan", "0x10", "0b101", "0o17", "1_000"):
+    # underscores) and Unicode digits (Python's \d would match them; both sides
+    # must reject); parity is pinned by ts/tests/config.test.ts.
+    for bad in (
+        "0", "-5", "abc", "", "inf", "1e400", "nan",
+        "0x10", "0b101", "0o17", "1_000",
+        "２０００",  # fullwidth
+        "٢٠٠٠",  # Arabic-Indic
+    ):
         monkeypatch.setenv("SESSION_IDLE_TIMEOUT_MS", bad)
         assert _session_idle_timeout_seconds() is None, f"{bad!r} should disable eviction"
 

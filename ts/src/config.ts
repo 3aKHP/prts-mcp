@@ -102,13 +102,16 @@ export const DEFAULT_GAMEDATA_PATH = resolveDefaultGamedataPath();
 /** Image artwork assets (2.5.0) sit alongside gamedata under the data root. */
 export const DEFAULT_IMAGES_PATH = join(dirname(DEFAULT_GAMEDATA_PATH), "images");
 
-const DECIMAL_NUMBER_PATTERN = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/;
+// [0-9] rather than \d for textual parity with the Python side, where \d
+// would also match Unicode digits (e.g. fullwidth "２０００").
+const DECIMAL_NUMBER_PATTERN = /^[+-]?(?:[0-9]+\.?[0-9]*|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$/;
 
 /**
  * SESSION_IDLE_TIMEOUT_MS — HTTP session idle timeout in milliseconds.
  * Unset falls back to the 24h default; a positive finite decimal number is
  * taken as-is; any other value disables idle eviction (`<= 0` sentinel).
- * Parsing is strict-decimal so spellings like `0x10` or `1_000` are rejected
+ * Parsing is strict-decimal with ASCII digits only, so spellings like
+ * `0x10` or `1_000` and Unicode digits (e.g. fullwidth input) are rejected
  * identically to the Python implementation (python/src/prts_mcp/server.py).
  */
 export const SESSION_IDLE_TIMEOUT_MS = (() => {
