@@ -104,7 +104,7 @@ function touchSession(id: string): void {
   meta.lastActivity = Date.now();
 }
 
-function scheduleSessionTimeout(id: string): void {
+function scheduleSessionTimeout(id: string, delayMs = SESSION_IDLE_TIMEOUT_MS): void {
   if (SESSION_IDLE_TIMEOUT_MS <= 0) return;
   const meta = sessionMeta.get(id);
   if (!meta) return;
@@ -128,9 +128,10 @@ function scheduleSessionTimeout(id: string): void {
         runtimeMetrics?.sessionClosed();
       }
     } else {
-      scheduleSessionTimeout(id);
+      // Re-arm for the remaining idle budget, not the full period (#193).
+      scheduleSessionTimeout(id, SESSION_IDLE_TIMEOUT_MS - idleMs);
     }
-  }, SESSION_IDLE_TIMEOUT_MS);
+  }, delayMs);
   meta.timer.unref();
 }
 
@@ -215,7 +216,8 @@ app.all("/mcp", async (req, res) => {
       transport = newTransport;
     }
 
-    // Update idle timer on each request
+    // Refresh the last-activity timestamp on each request; the pending timer
+    // re-arms for the remaining idle budget when it fires.
     if (sessionId) {
       touchSession(sessionId);
     }
