@@ -127,7 +127,7 @@ fix/*（最新稳定 hotfix）────────→ main ──→ develop
 3. **推分支 + 开 PR**：PR 目标为 `lts/1.7`
 4. **按 [`docs/dev/WORKFLOW.md`](docs/dev/WORKFLOW.md) 分级的评审**（LTS 小型改动可为 Quick，其余走双轨）→ **应对 CR** → **人类 merge** 到 `lts/1.7`
 5. **打 tag**：`git tag python/v1.7.x && git tag ts/v1.7.x && git push origin python/v1.7.x ts/v1.7.x`
-6. **同步到开发线**：如果修复也适用于当前开发版，另开 PR 到 `develop`，cherry-pick 或重做后重新走双轨 CR
+6. **同步到开发线**：如果修复也适用于当前开发版，另开 PR 到 `develop`，cherry-pick 或重做后按分级重新走评审
 7. **本地清扫**：`git checkout lts/1.7 && git pull && git branch -d <branch> && git remote prune origin`
 
 ### 路径 C：最新稳定紧急修复（→ main，hotfix）
@@ -137,7 +137,7 @@ fix/*（最新稳定 hotfix）────────→ main ──→ develop
 3. **推分支 + 开 PR**：PR 目标为 `main`
 4. **按 [`docs/dev/WORKFLOW.md`](docs/dev/WORKFLOW.md) 分级的评审**（非平凡 hotfix 至少独立 CR）→ **应对 CR** → **人类 merge** 到 `main`
 5. **打 tag**：`git tag python/vX.Y.Z && git tag ts/vX.Y.Z && git push origin --tags`
-6. **同步回开发线**：开 back-merge PR（`main` → `develop`，或从 `develop` 拉临时分支 merge `main` 后 PR 到 `develop`），重新走双轨 CR
+6. **同步回开发线**：开 back-merge PR（`main` → `develop`，或从 `develop` 拉临时分支 merge `main` 后 PR 到 `develop`），按分级重新走评审
 7. **本地清扫**：`git checkout develop && git pull && git branch -d <branch> && git remote prune origin`
 
 ### 路径 D：标准 GitFlow 发布（release/* → main + develop）
@@ -155,7 +155,7 @@ fix/*（最新稳定 hotfix）────────→ main ──→ develop
 9. 在 `main` 的 merge commit 上打 tag：`git tag python/vX.Y.Z && git tag ts/vX.Y.Z && git push origin python/vX.Y.Z ts/vX.Y.Z`
 10. PR：同一个 `release/vX.Y.Z` → `develop`（不要 squash，保留 release merge 语义），针对新 base 重新走双轨 CR
 11. 从更新后的 `develop` 拉 `chore/vNext-open-development`，bump 到下一目标版本 + 加回 `-dev` / `.dev0` 后缀，并重新打开空 `[Unreleased]` 段
-12. PR：`chore/vNext-open-development` → `develop`，重新走双轨 CR
+12. PR：`chore/vNext-open-development` → `develop`，按分级重新走评审
 13. **本地清扫**：`git checkout develop && git pull && git branch -d release/vX.Y.Z chore/vNext-open-development && git remote prune origin`
 
 ### 路径 E：1.7.0 LTS 发布
