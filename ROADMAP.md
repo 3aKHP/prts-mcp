@@ -16,7 +16,7 @@ PRTS-MCP is past 1.0. Version 1.7.0 is the final 1.x feature release and the 1.7
 ## 2.7.x Stable Maintenance
 
 - Security, compatibility, data-sync, release-pipeline, documentation, and critical correctness/operational fixes only; the compatible additions below are the documented exception.
-- Exception — new MCP tools and data domains are scheduled for Minor releases by convention (narrative rule: [`docs/dev/VERSIONING.md`](docs/dev/VERSIONING.md)); a Patch that carries a new tool stays blind-upgrade compatible. Required-parameter and output-format changes in a Patch remain limited to VERSIONING.md's closed Patch whitelist.
+- Exception — new MCP tools, including tools that open new data domains, are scheduled for Minor releases by convention (narrative rule: [`docs/dev/VERSIONING.md`](docs/dev/VERSIONING.md)); a Patch that carries a new tool stays blind-upgrade compatible. Required-parameter and output-format changes in a Patch remain limited to VERSIONING.md's closed Patch whitelist.
 - Exercise the exact-artifact promotion path on the next real release and keep Python/TypeScript package provenance aligned.
 
 ## Cross-Version Policies
