@@ -16,9 +16,9 @@
 |---|---|---|---|
 | **Quick PR** | 小/中型、低风险、不触高风险域 | KHPilot Bot Review 一轮 | Bot 无 Blocking 后人工合并 |
 | **Standard PR** | 中型，或触及任一高风险域 | 独立 CR + Bot Review **并行**（"双轨 CR"） | 无未解决 Blocking / Should-fix 后人工合并 |
-| **Huge PR** | 大型、跨模块、高风险 | 专题计划 + 拆分为多个 Standard PR + 整体多透镜审查 + 全量 E2E | Deep-CR 结论收口后人工合并 |
+| **Huge PR** | 大型、跨模块、高风险 | 专题计划 + 拆分为多个 Standard PR + 整体多透镜审查（全量 E2E 强烈建议，非门禁） | Deep-CR 结论收口后人工合并 |
 | **Hot-Fix** | `main` / 已发布 tag 的阻断回归 | 非平凡变更至少独立 CR | PR 到 `main`，再回灌 `develop` |
-| **Release** | 公开发布（含 patch / minor / 预发布） | 至少 Standard；命中 Huge 条件按 Huge 执行 + 全量 E2E | release PR 合 `main` 后打 tag |
+| **Release** | 公开发布（含 patch / minor / 预发布） | 至少 Standard；命中 Huge 条件按 Huge 执行 | release PR 合 `main` 后打 tag |
 
 评审输出统一四分类：**Blocking**（合并前必须修复）、**Should-fix**（除非 PR 记录延后理由否则修复）、**Nits**（酌情）、**Verified claims**（可记录于 PR / merge notes）。
 
@@ -33,7 +33,7 @@
 - 部署、CI/CD 与发布 workflow
 - debug / 鉴权端点
 
-其中 `sync/` 层、`api/` 行为改动、MCP 传输层与会话管理、artwork/images 同时属于 [`E2E.md`](E2E.md) 枚举的强制全量 E2E 触发条件（该清单由 E2E.md 拥有，另含程序级重构与发布前里程碑）——**Huge PR 与 Release 合并前必须完成全量 E2E**。对 Standard 及以下等级（含 Hot-Fix 的紧急场景，由维护者一并权衡时效与风险），全量 E2E 同为默认要求；仅当维护者按改动范围与验证成本明确决定时，可以面向改动范围的轻量化真机验证替代**当次**全量流程，且 PR 必须披露验证范围与未执行环节，未执行的全量 E2E 仍留在发布前检查单上（先例：PR #194 会话管理改动，合并前经维护者指示执行轻量化验证——双实现生产式部署 + 会话生命周期探测——并在 PR 记录中披露范围与未执行的重型环节）。替代是维护者对单次改动的裁量，不是作者的自助降级通道。
+其中 `sync/` 层、`api/` 行为改动、MCP 传输层与会话管理、artwork/images 同时属于 [`E2E.md`](E2E.md) 枚举的全量 E2E 建议场景（该清单由 E2E.md 拥有，另含程序级重构）。全量 E2E 沉重（三路数据全量同步 + 双实现生产式部署 + 全工具组真机调用），**任何等级均不设强制门禁**：命中建议场景时，是否执行全量流程、或以面向改动范围的轻量化真机验证替代，由维护者按改动范围与验证成本当次决定（先例：PR #194 会话管理改动，合并前经维护者指示执行轻量化验证——双实现生产式部署 + 会话生命周期探测——并在 PR 记录中披露范围与未执行的重型环节）。替代时 PR 必须披露验证范围与未执行环节。替代是维护者对单次改动的裁量，不是作者的自助降级通道。
 
 ## 各级说明
 
@@ -60,7 +60,7 @@ reviewer 独立性、不可信输入处理、交叉核对与 finding 处置的�
 - 开始前编写专题计划：目标与验收条件、涉及子系统、风险与失败模式、拆分方案；
 - 实现拆分为多个 Standard PR，每个只承载一个主要意图，各自走完双轨；
 - 整体变更做多透镜审查，透镜按本仓库风险面设定：① sync 数据管线；② api / parity 契约；③ MCP 传输与会话；④ artwork 双数据源缝合；⑤ 跨实现结构、配置与部署一致性；
-- 合并前完成全量 E2E（[`E2E.md`](E2E.md)），缺此环节不得视为验证完成。
+- 全量 E2E 为强烈建议（[`E2E.md`](E2E.md)），不是合并门禁；未执行时按"高风险域"一节的裁量规则在 PR 披露验证范围与替代方案。
 
 ### Hot-Fix
 
@@ -68,7 +68,7 @@ reviewer 独立性、不可信输入处理、交叉核对与 finding 处置的�
 
 ### Release
 
-按 `CLAUDE.md` 路径 D / F 执行；评审至少 Standard，命中 Huge 条件时按 Huge 执行；合并前完成全量 E2E 与 CD 产物核对。回灌完成后核对 develop 的下一目标版本（规则见 [`VERSIONING.md`](VERSIONING.md)）。
+按 `CLAUDE.md` 路径 D / F 执行；评审至少 Standard，命中 Huge 条件时按 Huge 执行；合并前完成 CD 产物核对。全量 E2E 不构成发布前置项——发布内容命中 [`E2E.md`](E2E.md) 建议场景时，是否执行由维护者按"高风险域"一节的裁量规则当次决定。回灌完成后核对 develop 的下一目标版本（规则见 [`VERSIONING.md`](VERSIONING.md)）。
 
 ## KHPilot Bot Review 机制
 
@@ -108,8 +108,9 @@ gh pr view "$pr" --json reviews \
 | 仅文档 | 术语 / 链接 targeted grep；引用代码时按需 `pytest -k <topic>`。CI 仅在改动命中 paths 过滤（`python/**` 与 `ts/**`——含两实现的 CHANGELOG——以及 `.github/workflows/{ci,cd,cd-ts}.yml`、`scripts/test-shared-volume-sync.sh`）时运行；`docs/**` 与根目录 .md 不触发 CI |
 | 小代码（单实现） | 对应实现的全量单测（Python pytest 或 TS build + test + typecheck） |
 | 工具面 / 数据 / sync 运行时 | 双实现全量 + `./scripts/check-runtime.sh --full` |
-| 高风险域改动 | 双实现全量 + check-runtime --full；全量 E2E 为默认要求，维护者可按上节规则决定当次以面向范围的轻量化真机验证替代（PR 披露范围与未执行环节） |
-| Huge PR / Release | 上述全部 + 双实现 parity 测试 + CHANGELOG / 版本号 / STATUS 口径核对 + **全量 E2E**（[`E2E.md`](E2E.md)）+ CD 产物核对 |
+| 高风险域改动 | 双实现全量 + check-runtime --full；全量 E2E 强烈建议，维护者可按上节规则当次裁量（替代时 PR 披露范围与未执行环节） |
+| Huge PR | 上述全部 + 双实现 parity 测试 + 整体多透镜审查；全量 E2E 强烈建议（[`E2E.md`](E2E.md)），非门禁 |
+| Release | 上述全部 + 双实现 parity 测试 + CHANGELOG / 版本号 / STATUS 口径核对 + CD 产物核对 |
 
 ## 其他约定
 
