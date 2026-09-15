@@ -62,7 +62,7 @@ test("idle sessions are evicted after timeout", async () => {
         LOCALAPPDATA: localAppData,
         GITHUB_MIRRORS: "",
         STORYJSON_PATH: join(dataHome, "storyjson", "missing.zip"),
-        SESSION_IDLE_TIMEOUT_MS: "2000",
+        SESSION_IDLE_TIMEOUT_MS: "3000",
         PRTS_METRICS_ENABLED: "true",
         PRTS_DEBUG_TOKEN: debugToken,
       },
@@ -93,11 +93,11 @@ test("idle sessions are evicted after timeout", async () => {
     assert.ok(initRes.ok, "initialize should succeed");
 
     // Any post-initialize request bumps lastActivity past the moment the idle
-    // timer was armed (#193), so eviction comes due one timeout after THIS
-    // request. Without it the bug is invisible: a δ of zero evicts on time
-    // even when the reschedule uses the full period. The small delay keeps
-    // δ clear of same-millisecond quantization.
-    await new Promise((r) => setTimeout(r, 150));
+    // timer was armed (#193). With a 3s timeout and a request 1s in, eviction
+    // is due at ~4s after initialize: at 3.5s the session must still be alive
+    // (it would already be gone at 3.0s if activity did not extend the
+    // deadline) …
+    await new Promise((r) => setTimeout(r, 1000));
     const notifyRes = await fetch(origin + "/mcp", {
       method: "POST",
       headers: {
@@ -109,23 +109,29 @@ test("idle sessions are evicted after timeout", async () => {
     });
     assert.ok(notifyRes.ok, "post-initialize request on the session should succeed");
 
-    // Eviction must land at ~TIMEOUT after last activity, not ~2×TIMEOUT (#193):
-    // at 1.2s (< 2s timeout) the session must still be active …
-    await new Promise((r) => setTimeout(r, 1200));
+    await new Promise((r) => setTimeout(r, 2500));
     const earlyRes = await fetch(origin + "/debug/metrics", { headers: debugHeaders });
     assert.equal(earlyRes.status, 200);
     const earlyMetrics = JSON.parse(await earlyRes.text()) as { sessions: Record<string, unknown> };
-    assert.equal(earlyMetrics.sessions.active, 1, "session must not be evicted before the idle timeout");
+    assert.equal(earlyMetrics.sessions.active, 1, "session must not be evicted before the idle deadline");
     assert.equal(earlyMetrics.sessions.evicted_total, 0);
 
-    // … and at 2.8s (> 2s, < 4s) it must already be evicted. A 2× wait here
-    // cannot distinguish on-time eviction from full-period rescheduling.
-    await new Promise((r) => setTimeout(r, 1600));
-
-    const metricsRes = await fetch(origin + "/debug/metrics", { headers: debugHeaders });
-    assert.equal(metricsRes.status, 200);
-    const metricsText = await metricsRes.text();
-    const metrics = JSON.parse(metricsText) as { sessions: Record<string, unknown> };
+    // … and eviction must land at ~4s (one timeout after the last request),
+    // not ~6s (full-period reschedule, the #193 bug). Poll the metrics side
+    // channel — requests to /mcp would themselves count as activity and push
+    // the deadline — with a 5.2s hard deadline that keeps the 2× bug red
+    // while absorbing event-loop stalls.
+    let metrics: { sessions: Record<string, unknown> } | undefined;
+    let metricsText = "";
+    const evictDeadline = Date.now() + 1700;
+    while (Date.now() < evictDeadline) {
+      const pollRes = await fetch(origin + "/debug/metrics", { headers: debugHeaders });
+      metricsText = await pollRes.text();
+      metrics = JSON.parse(metricsText) as { sessions: Record<string, unknown> };
+      if (metrics.sessions.active === 0) break;
+      await new Promise((r) => setTimeout(r, 200));
+    }
+    assert.ok(metrics, "metrics should be available");
     assert.equal(metrics.sessions.active, 0, "an evicted session must not stay active in metrics");
     assert.equal(metrics.sessions.initialized_total, 1);
     assert.equal(metrics.sessions.evicted_total, 1);
