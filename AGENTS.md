@@ -10,18 +10,19 @@ Long-lived branches after the 1.7.0 LTS release:
 |--------|---------|---------------|
 | `main` | Latest stable release. Currently `2.7.3`. | (none) |
 | `lts/1.7` | 1.7.x long-term maintenance. Created from the 1.7.0 release commit (EOL 2027-07-02). | (none) |
-| `develop` | Development integration. All non-LTS changes land here. | `.dev0` (current target: `2.8.0.dev0`) |
+| `develop` | Development integration. All non-LTS changes land here. | Next release target + `.dev0` (rule: `docs/dev/VERSIONING.md`) |
 
 - Feature / refactor / perf / non-urgent fix / general docs / chore -> branch from `develop`, PR to `develop`.
 - 1.7.x LTS fix -> branch from `lts/1.7`, PR to `lts/1.7`, then cherry-pick or reimplement on `develop` if applicable.
 - Hotfix for the latest stable line -> branch from `main`, PR to `main`, then forward-merge/cherry-pick to `develop`.
 - Release -> branch from `develop` as `release/vX.Y.Z`, merge the release branch to `main` by PR, tag on `main`, then merge the same release branch back to `develop` by PR.
 
-Never push directly to `main`, `develop`, or `lts/1.7`. Always create a feature/fix branch and open a PR. See `CLAUDE.md` and `docs/dev/LTS.md` for the detailed iteration cycles.
+Never push directly to `main`, `develop`, or `lts/1.7`. Always create a feature/fix branch and open a PR. See `CLAUDE.md` and `docs/dev/LTS.md` for the detailed iteration cycles. Version semantics and the compatibility commitment live in `docs/dev/VERSIONING.md`; change grading (Quick / Standard / Huge / Hot-Fix / Release) and the dual-track review workflow (independent CR + KHPilot Bot Review) live in `docs/dev/WORKFLOW.md`.
 
 ## Startup Reads
 
 - Read `CLAUDE.md` and `docs/dev/STYLE.md` before non-trivial code changes.
+- Read `docs/dev/VERSIONING.md` and `docs/dev/WORKFLOW.md` before versioning, release, or review-process work.
 - Read `docs/dev/LTS.md` before 1.7.x compatibility, security, or release work.
 - Use `STATUS.md` for current project shape and version state.
 - Use `ROADMAP.md` / `ROADMAP.zh-CN.md` when planning feature work.
@@ -49,7 +50,7 @@ Run the full validation set before merging runtime-sensitive changes:
 ./scripts/check-runtime.sh --full
 ```
 
-**After large-scale high-risk cross-module changes** (program-level refactors, `sync/`/`api/` behavior changes, the artwork/images domain, MCP transport changes, and release milestones), the full E2E real-machine pass is **mandatory** — production-style deployment of both implementations plus a real MCP client exercising every tool group. Procedure: [`docs/dev/E2E.md`](docs/dev/E2E.md).
+**After large-scale high-risk cross-module changes** (program-level refactors, `sync/`/`api/` behavior changes, the artwork/images domain, MCP transport changes, and release milestones), the full E2E real-machine pass is **mandatory** — production-style deployment of both implementations plus a real MCP client exercising every tool group. Procedure: [`docs/dev/E2E.md`](docs/dev/E2E.md). The exception channel (maintainer-approved scoped substitution for a single Standard-grade-or-below change) is owned by `docs/dev/WORKFLOW.md`.
 
 Equivalent manual commands:
 

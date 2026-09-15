@@ -284,16 +284,18 @@ TS 文件头注释应注明对应的 Python 文件：`Mirrors python/src/prts_mc
 
 ## 版本号与发布
 
-遵循 [SemVer](https://semver.org/)。预发布用 `-alpha.N` / `-beta.N` / `-rc.N` 后缀。
+版本语义与兼容性承诺见 [`VERSIONING.md`](VERSIONING.md)（SemVer 形状 + 封闭枚举的偏离）。预发布用 `-alpha.N` / `-beta.N` / `-rc.N` 后缀。
 
 **`develop` 分支上的版本号**始终带开发后缀，发布时去掉：
 
 | 文件 | develop 分支 | main 分支（发布时） |
 |------|---------|-------------------|
-| `python/pyproject.toml` | `2.8.0.dev0` | `2.8.0` |
-| `python/uv.lock` | `2.8.0.dev0` | `2.8.0` |
-| `ts/package.json` | `2.8.0-dev.0` | `2.8.0` |
-| `ts/package-lock.json` | `2.8.0-dev.0` | `2.8.0` |
+| `python/pyproject.toml` | `X.Y.Z.dev0` | `X.Y.Z` |
+| `python/uv.lock` | `X.Y.Z.dev0` | `X.Y.Z` |
+| `ts/package.json` | `X.Y.Z-dev.0` | `X.Y.Z` |
+| `ts/package-lock.json` | `X.Y.Z-dev.0` | `X.Y.Z` |
+
+`X.Y.Z` = 下一计划发布目标（选择规则见 [`VERSIONING.md`](VERSIONING.md)）。
 
 **版本号需要同步更新的地方**：
 

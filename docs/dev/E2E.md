@@ -14,6 +14,8 @@
 
 普通单模块 PR 不需要本流程——验证矩阵的常规行已覆盖。
 
+**例外通道**：对 Standard 及以下等级（含 Hot-Fix）的单个改动，维护者可当次决定以面向改动范围的轻量化真机验证替代全量流程；适用边界、披露义务与先例由 [`WORKFLOW.md`](WORKFLOW.md) 的"高风险域"一节拥有。Huge PR 与 Release 不适用本例外。
+
 ## 隔离原则（先读，勿跳）
 
 - **不要设置 `GAMEDATA_PATH` / `STORYJSON_PATH`**：`GAMEDATA_PATH` 会置 `is_custom_gamedata` 关掉 gamedata auto-sync，`STORYJSON_PATH` 有独立的同效门——而本流程的核心观察项之一就是 auto-sync。用 `XDG_DATA_HOME=<测试目录>` 重定向默认数据根——两侧实现都支持，既保 sync 又保隔离。`PRTS_IMAGE_DIR` 不受该语义影响，可直接设。

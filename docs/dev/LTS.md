@@ -29,7 +29,7 @@ Not allowed in `1.7.x`:
 | `lts/1.7` | Long-term 1.7.x maintenance branch, created from the 1.7.0 release commit. |
 | `develop` | Active development integration after the 1.7.0 LTS release. |
 
-Do not push directly to any long-lived branch. Use PRs.
+Do not push directly to any long-lived branch. Use PRs. Version semantics and the develop target-version rule live in [`VERSIONING.md`](VERSIONING.md); change grading and the dual-track review workflow live in [`WORKFLOW.md`](WORKFLOW.md).
 
 ## Lifecycle
 
