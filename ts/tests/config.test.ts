@@ -323,3 +323,37 @@ test("activated release symlink cannot escape the configured root", async () => 
     delete process.env["GAMEDATA_PATH"];
   }
 });
+
+test("SESSION_IDLE_TIMEOUT_MS parsing is strict-decimal", async () => {
+  const cases: Array<[string | undefined, number]> = [
+    [undefined, 86_400_000], // unset → 24h default
+    ["2000", 2000],
+    [" 2000 ", 2000],
+    ["1e3", 1000],
+    ["250.5", 250.5],
+    // Invalid or <= 0 disables, including spellings where Number() and
+    // Python float() diverge (hex/binary/octal literals, PEP 515
+    // underscores) — parity with python/src/prts_mcp/server.py.
+    ["0", -1],
+    ["-5", -1],
+    ["abc", -1],
+    ["", -1],
+    ["Infinity", -1],
+    ["1e400", -1],
+    ["nan", -1],
+    ["0x10", -1],
+    ["0b101", -1],
+    ["0o17", -1],
+    ["1_000", -1],
+  ];
+  try {
+    for (const [raw, expected] of cases) {
+      if (raw === undefined) delete process.env["SESSION_IDLE_TIMEOUT_MS"];
+      else process.env["SESSION_IDLE_TIMEOUT_MS"] = raw;
+      const mod = await loadConfigModule();
+      assert.equal(mod.SESSION_IDLE_TIMEOUT_MS, expected, `input ${JSON.stringify(raw)}`);
+    }
+  } finally {
+    delete process.env["SESSION_IDLE_TIMEOUT_MS"];
+  }
+});

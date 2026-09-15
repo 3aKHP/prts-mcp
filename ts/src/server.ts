@@ -15,6 +15,7 @@ import express from "express";
 import { createMcpHandler, isLegacyRequest } from "@modelcontextprotocol/server";
 import { NodeStreamableHTTPServerTransport, toNodeHandler, toWebRequest } from "@modelcontextprotocol/node";
 import { startAutoSync } from "./startupSync.js";
+import { SESSION_IDLE_TIMEOUT_MS } from "./config.js";
 import { parseChannel, type OutputChannel } from "./output.js";
 import { createMcpServer, log, SERVER_VERSION } from "./server-core.js";
 import { getCacheStats } from "./cacheStats.js";
@@ -78,14 +79,6 @@ const modernHandler = createMcpHandler(
 const handleModernRequest = toNodeHandler(modernHandler, {
   onerror: (error) => log("ERROR", `Modern MCP adapter failed: ${error.message}`),
 });
-
-const SESSION_IDLE_TIMEOUT_MS = (() => {
-  const raw = process.env["SESSION_IDLE_TIMEOUT_MS"];
-  if (raw === undefined) return 24 * 60 * 60 * 1000;
-  const parsed = Number(raw);
-  if (Number.isFinite(parsed) && parsed > 0) return parsed;
-  return -1;
-})();
 
 interface SessionMeta {
   transport: NodeStreamableHTTPServerTransport;
