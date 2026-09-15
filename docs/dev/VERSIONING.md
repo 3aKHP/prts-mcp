@@ -41,12 +41,14 @@ Patch 与 Minor 共享同一个默认姿态。**兼容** = 同时满足：
 
 ## 版本号操作规则
 
-- **三段式 `Major.Minor.Patch`**；预发布后缀与 PEP 440 / semver 双格式归一化见 [`CLAUDE.md`](../../CLAUDE.md) 路径 F 的"版本号约定"段落，本文不重复。
+- **三段式 `Major.Minor.Patch`**。**预发布后缀与归一化**：tag 始终使用连字符后缀（`-alpha.N` / `-beta.N` / `-rc.N`），Python 和 TS 统一；`pyproject.toml` 内用 PEP 440（`2.6.0a1`），CD 的 version check 自动归一化 `-alpha.` → `a`；`package.json` 内用与 tag 相同的 semver 形式（`2.6.0-alpha.1`）。
 - **双实现版本锁步**：`python/pyproject.toml` 与 `ts/package.json` 版本号始终一致（格式分别遵循 PEP 440 与 semver）；tag 成对（`python/vX.Y.Z` + `ts/vX.Y.Z`）。
 - **develop 目标版本**：`develop` 上的版本号 = 下一计划发布目标 + 开发后缀（`.dev0` / `-dev.0`）。正式发布并回灌后，默认进入当前 Minor 的下一 Patch（如 2.7.4 发布后 → `2.7.5.dev0` / `2.7.5-dev.0`）；确定开启新主题时才改为下一 Minor（`2.8.0.dev0`），并在 ROADMAP 记录主题。目标版本只表达下一计划发布，允许随范围调整；已发布 tag 与发行物保持原样。
 - **Patch 是系列内累积更新的常规载体，hotfix 只是它的特例**：Patch release 可以容纳修复、优化、功能补全与小型兼容增补，不要求也不默认是一次紧急修复。非 hotfix 的 patch 工作一律经 `develop` 累积、随标准 release 流程发布；唯一直通 `main` 的通道是 hotfix（触发条件见 [`WORKFLOW.md`](WORKFLOW.md) 的 Hot-Fix 一节）。
 
-### 回灌对照表（hotfix 占用目标版本时）
+### 回灌后的 develop 目标版本对照表
+
+覆盖 hotfix 占用目标版本与常规发布回灌两类场景。表中版本号以 TS（semver）形式书写；Python 侧对应 PEP 440 形式（`-dev.0` → `.dev0`）。
 
 | 场景 | 回灌后的 develop 版本 |
 |---|---|

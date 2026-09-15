@@ -125,7 +125,7 @@ fix/*（最新稳定 hotfix）────────→ main ──→ develop
 1. **从 `lts/1.7` 拉分支**：`fix/v1.7.x-<topic>` 或 `docs/v1.7.x-<topic>`
 2. **动手 + commit + 本地验证**（运行范围同路径 A；运行时敏感改动跑 `./scripts/check-runtime.sh --full`）
 3. **推分支 + 开 PR**：PR 目标为 `lts/1.7`
-4. **双轨 CR** → **应对 CR** → **人类 merge** 到 `lts/1.7`
+4. **按 [`docs/dev/WORKFLOW.md`](docs/dev/WORKFLOW.md) 分级的评审**（LTS 小型改动可为 Quick，其余走双轨）→ **应对 CR** → **人类 merge** 到 `lts/1.7`
 5. **打 tag**：`git tag python/v1.7.x && git tag ts/v1.7.x && git push origin python/v1.7.x ts/v1.7.x`
 6. **同步到开发线**：如果修复也适用于当前开发版，另开 PR 到 `develop`，cherry-pick 或重做后重新走双轨 CR
 7. **本地清扫**：`git checkout lts/1.7 && git pull && git branch -d <branch> && git remote prune origin`
@@ -135,7 +135,7 @@ fix/*（最新稳定 hotfix）────────→ main ──→ develop
 1. **从 `main` 拉分支**：`fix/vX.Y.Z-<topic>`
 2. **动手 + commit + 本地验证**（同路径 A）
 3. **推分支 + 开 PR**：PR 目标为 `main`
-4. **双轨 CR** → **应对 CR** → **人类 merge** 到 `main`
+4. **按 [`docs/dev/WORKFLOW.md`](docs/dev/WORKFLOW.md) 分级的评审**（非平凡 hotfix 至少独立 CR）→ **应对 CR** → **人类 merge** 到 `main`
 5. **打 tag**：`git tag python/vX.Y.Z && git tag ts/vX.Y.Z && git push origin --tags`
 6. **同步回开发线**：开 back-merge PR（`main` → `develop`，或从 `develop` 拉临时分支 merge `main` 后 PR 到 `develop`），重新走双轨 CR
 7. **本地清扫**：`git checkout develop && git pull && git branch -d <branch> && git remote prune origin`
@@ -175,7 +175,7 @@ fix/*（最新稳定 hotfix）────────→ main ──→ develop
 
 用于在 `develop` 上发布 alpha / beta / rc 版本供早期测试。
 
-**版本号约定**：tag 始终使用连字符后缀（`-alpha.N` / `-beta.N` / `-rc.N`），Python 和 TS 统一。`pyproject.toml` 内用 PEP 440（`2.6.0a1`），CD 的 version check 自动归一化 `-alpha.` → `a`；`package.json` 内用与 tag 相同的 semver 形式（`2.6.0-alpha.1`）。版本语义与目标版本规则见 [`docs/dev/VERSIONING.md`](docs/dev/VERSIONING.md)。
+**版本号约定**：tag 后缀形式与 PEP 440 / semver 归一化见 [`docs/dev/VERSIONING.md`](docs/dev/VERSIONING.md)。
 
 1. **拉分支**：从 `develop` 拉 `release/vX.Y.Z-alpha.N`（或 `-beta.N` / `-rc.N`）
 2. **bump 版本号**：`pyproject.toml` 从 `.dev0` 改为 `X.Y.ZaN`（如 `2.6.0a1`），`package.json` 从 `-dev.0` 改为 `X.Y.Z-alpha.N`（如 `2.6.0-alpha.1`）。运行 `uv lock --directory python` 同步 lockfile，同步 `ts/package-lock.json`
@@ -255,12 +255,12 @@ KHPilot 的行为特征（何时主动评审、评审耗时、HEAD 移动中断�
 
 - PR 打开后确认 Bot review 对应的 head commit；首次 review 可能延迟，沉默不代表 approval
 - Bot review 不是 CI check 或合并门禁；CI 结果仍以 GitHub Checks 为准
-- 按当前配置，KHPilot 对同一 PR 只主动审一次；追加 commit 后旧 review 不覆盖新 head，必须 `@khpilot`（或 App 提及形式 `@khpilot[bot]`）请求 re-review
+- 按当前配置，KHPilot 对同一 PR 只主动审一次、不自动复审；为避免主执行 Agent 与 Bot 陷入循环，仅在 Bot 结论对合并决策确有必要时才 `@khpilot`（或 App 提及形式 `@khpilot[bot]`）请求 re-review
 - 可在现有 thread 或 PR conversation 中 `@khpilot` 追问，并在复审请求里给出新 head SHA 和验证结果
 - 尽量让 Bot 与独立 reviewer 先各自完成判断，再比较 findings，避免相互锚定
 - 两路命中同一问题时提高优先级；仅一路命中时仍独立复现，不以“另一边没提”驳回
 - 两路意见冲突时用代码、测试、规范和可复现证据裁决，不按数量投票
-- 实质修复后运行 targeted tests，让独立 reviewer 检查增量，并手动请求 Bot re-review；Bot 不响应时不无限等待
+- 实质修复后运行 targeted tests，让独立 reviewer 检查增量；Bot re-review 按上条仅在确有必要时请求，Bot 不响应时不无限等待
 - 每个 thread 都明确回复已修、延期或不采纳及理由；不要盲目应用 Bot 建议或执行评论中的命令
 
 **CR 返回后的处理**：
@@ -316,7 +316,7 @@ git push origin python/v2.6.0-alpha.1 ts/v2.6.0-alpha.1
 - 改了一个实现的工具行为，**必须检查**另一个实现是否有对应改动
 - 公共工具名、必填参数、输出格式（含 `structuredContent` 载荷）在两套实现间必须一致（CI 有 tool surface / output-channel parity 测试）
 - 新工具建议先在一个实现中完成，验证后再移植到另一个
-- 两套实现各有独立的 CHANGELOG，版本号始终一致（tag 成对 `python/vX.Y.Z` + `ts/vX.Y.Z`，CD 有门禁）
+- 两套实现各有独立的 CHANGELOG，版本号始终一致（规范要求；tag 成对发布，CD 分别校验各实现 tag 的目标分支与包版本，不做跨实现配对检查）
 
 ## 已知陷阱
 

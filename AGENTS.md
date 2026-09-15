@@ -50,7 +50,7 @@ Run the full validation set before merging runtime-sensitive changes:
 ./scripts/check-runtime.sh --full
 ```
 
-**After large-scale high-risk cross-module changes** (program-level refactors, `sync/`/`api/` behavior changes, the artwork/images domain, MCP transport changes, and release milestones), the full E2E real-machine pass is **mandatory** — production-style deployment of both implementations plus a real MCP client exercising every tool group. Procedure: [`docs/dev/E2E.md`](docs/dev/E2E.md). For Standard-grade-and-below single changes the maintainer may substitute a scoped lightweight real-machine verification for a given pass, with scope and skipped parts disclosed in the PR — see `docs/dev/WORKFLOW.md` and the exception channel in `docs/dev/E2E.md`.
+**After large-scale high-risk cross-module changes** (program-level refactors, `sync/`/`api/` behavior changes, the artwork/images domain, MCP transport changes, and release milestones), the full E2E real-machine pass is **mandatory** — production-style deployment of both implementations plus a real MCP client exercising every tool group. Procedure: [`docs/dev/E2E.md`](docs/dev/E2E.md). The exception channel (maintainer-approved scoped substitution for a single Standard-grade-or-below change) is owned by `docs/dev/WORKFLOW.md`.
 
 Equivalent manual commands:
 
