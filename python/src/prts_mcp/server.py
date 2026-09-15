@@ -20,6 +20,7 @@ from __future__ import annotations
 import logging
 import math
 import os
+import re
 import sys
 import threading
 from secrets import compare_digest
@@ -80,24 +81,28 @@ _register_tools()
 # ---------------------------------------------------------------------------
 
 _SESSION_IDLE_TIMEOUT_DEFAULT_MS = 24 * 60 * 60 * 1000
+_DECIMAL_NUMBER_PATTERN = re.compile(r"^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$")
 
 
 def _session_idle_timeout_seconds() -> float | None:
     """Resolve the HTTP session idle timeout in seconds; ``None`` disables it.
 
     Reads ``SESSION_IDLE_TIMEOUT_MS`` with the same semantics as the
-    TypeScript implementation (ts/src/server.ts): unset falls back to the
+    TypeScript implementation (ts/src/config.ts): unset falls back to the
     24h default, a positive finite number is taken as milliseconds, and any
-    other value disables idle eviction. The MCP Python SDK expresses the
-    timeout in seconds, hence the conversion.
+    other value disables idle eviction. Parsing is strict-decimal so
+    spellings like ``0x10`` or ``1_000`` (which ``float()`` would otherwise
+    handle differently from TypeScript's ``Number()``) are rejected
+    identically on both sides. The MCP Python SDK expresses the timeout in
+    seconds, hence the conversion.
     """
     raw = os.environ.get("SESSION_IDLE_TIMEOUT_MS")
     if raw is None:
         return _SESSION_IDLE_TIMEOUT_DEFAULT_MS / 1000
-    try:
-        parsed = float(raw)
-    except ValueError:
+    trimmed = raw.strip()
+    if not _DECIMAL_NUMBER_PATTERN.match(trimmed):
         return None
+    parsed = float(trimmed)
     if math.isfinite(parsed) and parsed > 0:
         return parsed / 1000
     return None
@@ -124,12 +129,12 @@ def _build_http_app():
 
     app = mcp.streamable_http_app()
 
-    idle_timeout_s = _session_idle_timeout_seconds()
-    if idle_timeout_s is not None:
-        # mcp 2.0.0 does not plumb session_idle_timeout through
-        # streamable_http_app(); the session manager reads the attribute on
-        # every request, so assigning it before uvicorn starts is effective.
-        mcp.session_manager.session_idle_timeout = idle_timeout_s
+    # mcp 2.0.0 does not plumb session_idle_timeout through
+    # streamable_http_app(); the session manager reads the attribute on
+    # every request, so assigning it before uvicorn starts is effective.
+    # Assign the disabled case (None) explicitly rather than relying on the
+    # SDK default staying None.
+    mcp.session_manager.session_idle_timeout = _session_idle_timeout_seconds()
 
     async def health(_request):
         return JSONResponse({"status": "ok"})
