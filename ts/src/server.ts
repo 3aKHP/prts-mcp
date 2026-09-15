@@ -15,6 +15,7 @@ import express from "express";
 import { createMcpHandler, isLegacyRequest } from "@modelcontextprotocol/server";
 import { NodeStreamableHTTPServerTransport, toNodeHandler, toWebRequest } from "@modelcontextprotocol/node";
 import { startAutoSync } from "./startupSync.js";
+import { SESSION_IDLE_TIMEOUT_MS } from "./config.js";
 import { parseChannel, type OutputChannel } from "./output.js";
 import { createMcpServer, log, SERVER_VERSION } from "./server-core.js";
 import { getCacheStats } from "./cacheStats.js";
@@ -79,14 +80,6 @@ const handleModernRequest = toNodeHandler(modernHandler, {
   onerror: (error) => log("ERROR", `Modern MCP adapter failed: ${error.message}`),
 });
 
-const SESSION_IDLE_TIMEOUT_MS = (() => {
-  const raw = process.env["SESSION_IDLE_TIMEOUT_MS"];
-  if (raw === undefined) return 24 * 60 * 60 * 1000;
-  const parsed = Number(raw);
-  if (Number.isFinite(parsed) && parsed > 0) return parsed;
-  return -1;
-})();
-
 interface SessionMeta {
   transport: NodeStreamableHTTPServerTransport;
   createdAt: number;
@@ -104,7 +97,7 @@ function touchSession(id: string): void {
   meta.lastActivity = Date.now();
 }
 
-function scheduleSessionTimeout(id: string): void {
+function scheduleSessionTimeout(id: string, delayMs = SESSION_IDLE_TIMEOUT_MS): void {
   if (SESSION_IDLE_TIMEOUT_MS <= 0) return;
   const meta = sessionMeta.get(id);
   if (!meta) return;
@@ -128,9 +121,10 @@ function scheduleSessionTimeout(id: string): void {
         runtimeMetrics?.sessionClosed();
       }
     } else {
-      scheduleSessionTimeout(id);
+      // Re-arm for the remaining idle budget, not the full period (#193).
+      scheduleSessionTimeout(id, SESSION_IDLE_TIMEOUT_MS - idleMs);
     }
-  }, SESSION_IDLE_TIMEOUT_MS);
+  }, delayMs);
   meta.timer.unref();
 }
 
@@ -215,7 +209,8 @@ app.all("/mcp", async (req, res) => {
       transport = newTransport;
     }
 
-    // Update idle timer on each request
+    // Refresh the last-activity timestamp on each request; the pending timer
+    // re-arms for the remaining idle budget when it fires.
     if (sessionId) {
       touchSession(sessionId);
     }
