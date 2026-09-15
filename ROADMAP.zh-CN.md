@@ -15,8 +15,8 @@ PRTS-MCP 已越过 1.x 时代。1.7.0 是最后一个 1.x 功能版本和 1.7 LT
 
 ## 2.7.x 稳定维护
 
-- 仅处理安全性、兼容性、数据同步、发布流水线、文档以及关键正确性/运维修复。
-- 新增 MCP 工具、必填参数和数据域按惯例安排在 Minor 版本（惯例见 [`docs/dev/VERSIONING.md`](docs/dev/VERSIONING.md) 叙事条款）；Patch 版本携带此类增补时仍保持无脑升级兼容。
+- 仅处理安全性、兼容性、数据同步、发布流水线、文档以及关键正确性/运维修复；下条所述兼容增补为记录的例外。
+- 例外——新增 MCP 工具和数据域按惯例安排在 Minor 版本（惯例见 [`docs/dev/VERSIONING.md`](docs/dev/VERSIONING.md) 叙事条款）；Patch 携带新工具时仍保持无脑升级兼容。Patch 中的必填参数与输出格式变更仍仅限 VERSIONING.md 的封闭 Patch 白名单。
 - 在下一次真实发布中实际验证精确构建产物提升流程，并保持 Python/TypeScript 包产物来源一致。
 
 ## 跨版本政策
