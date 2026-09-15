@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+## [2.7.4] - 2026-09-15
+
 ### Fixed
 
 - **HTTP sessions were evicted after ~2× the configured idle timeout (#193).** When the idle timer fired with less than `SESSION_IDLE_TIMEOUT_MS` elapsed since the last request — guaranteed whenever any request followed `initialize`, since that request refreshes activity after the timer is armed — the timer was re-armed for a full period instead of the remaining time, so eviction landed at ~48h with the default 24h timeout and `/debug/metrics` could report an `oldest_age_ms` well beyond `idle_timeout_ms`. The timer now re-arms for the remaining idle budget. The variable is now parsed as a strict decimal (in `config.ts`), so non-decimal spellings such as `0x10` are rejected as invalid instead of being interpreted as hex and evicting almost immediately. The `sessionIdleTimeout` regression test now sends a post-initialize request and asserts eviction timing on both sides of the threshold, replacing a 2×-duration wait that passed under both behaviors.

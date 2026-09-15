@@ -1,18 +1,19 @@
 # PRTS-MCP 项目状态
 
-_Last updated: 2026-09-05_
+_Last updated: 2026-09-15_
 
 ## 当前版本
 
 | 实现 | 版本 | 状态 |
 |------|------|------|
-| Python | 2.7.3 | Stable release |
-| TypeScript | 2.7.3 | Stable release |
+| Python | 2.7.4 | Stable release |
+| TypeScript | 2.7.4 | Stable release |
 
-- 当前稳定发布：2.7.3（24 个 MCP 工具）
+- 当前稳定发布：2.7.4（24 个 MCP 工具）
 - 当前 LTS 发布：1.7.0（32 个 MCP 工具，剧情角色追踪）
-- 下一开发目标：2.8.0
+- 下一开发目标：2.7.5
 - 当前稳定补丁线：2.7.x
+- 2.7.4 发布内容：HTTP 会话空闲淘汰双实现对齐（#193）——Python HTTP transport 新增 `SESSION_IDLE_TIMEOUT_MS` 支持（未设回落 24h、正数有限值按毫秒计、其余取值禁用淘汰，语义与 TS 一致）；TS 修复淘汰耗时约为配置值 2× 的问题（重排计时器改用剩余空闲预算），并将该变量解析收紧为严格十进制。工具、参数和用户配置保持兼容。
 - 2.7.3 发布内容：修订数据包自动发现与 manifest 校验、重复版本拒绝、缓存 ZIP 恢复时的防降级，以及章节列表与单章摘要的一致回退。工具、参数和用户配置保持兼容。
 - 2.7.2 发布内容：ID 回显引号双实现统一为双引号（PY `json.dumps` 对齐 TS `JSON.stringify`，含 story 两处 KeyError）；全部用户可见 id 排序统一为码点序（新建 TS `data/sort.ts` 共享比较器，覆盖 artwork 列表、item/enemy 列表 tie-break、stage 列表；修 `localeCompare` ICU 发散，item 列表分页在真实数据上已可观测）。
 - 2.7.1 发布内容：图片同步应用完整 AKDP delta chain（全新安装/跳版本同步不再漏中间 delta；断链在 baseline 下载前 fail fast；index currentVersion 权威化；release 发现分页覆盖链起点）（#179）；wrong-shape `building_data.json` 双实现一致降级（#178）。
@@ -83,9 +84,9 @@ _Last updated: 2026-09-05_
 
 ## 当前分支
 
-- `main`：2.7.3（最新稳定发布线）
+- `main`：2.7.4（最新稳定发布线）
 - `lts/1.7`：1.7.x LTS 维护线（从 1.7.0 发布提交创建；EOL 2027-07-02）
-- `develop`：2.8.0 开发线（`.dev0`）
+- `develop`：2.7.5 开发线（`.dev0`）
 
 1.7.0 是最后一个 1.x 功能版本和 LTS 基线。它将 server.py/server.ts 和 story.py/story.ts 单体文件拆分为聚焦子模块，保留向后兼容垫片（shim），并新增剧情角色追踪工具：`find_character_appearances`、`find_speakers_in`。后续功能开发转向 2.0；1.7.x 仅做兼容性、安全性、数据同步和关键缺陷修复。
 
@@ -159,7 +160,7 @@ PRTS-MCP/
 
 ## 数据源
 
-`main`（2.7.x）与 `develop`（2.8.0 开发线）的默认 Auto-Sync 只消费自建 `3aKHP/arknights-data-pipeline` Release；旧版两个上游仓库不再是 2.x 线的数据依赖。仅 `lts/1.7` 保留旧上游兼容路径，供 LTS 维护使用。
+`main`（2.7.x）与 `develop`（2.7.5 开发线）的默认 Auto-Sync 只消费自建 `3aKHP/arknights-data-pipeline` Release；旧版两个上游仓库不再是 2.x 线的数据依赖。仅 `lts/1.7` 保留旧上游兼容路径，供 LTS 维护使用。
 
 | 数据源 | 用途 | 同步方式 |
 |--------|------|----------|
@@ -246,6 +247,7 @@ PRTS-MCP/
 
 | 版本 | 日期 | 亮点 |
 |------|------|------|
+| 2.7.4 | 2026-09-15 | HTTP 会话空闲淘汰双实现一致（Python 支持 SESSION_IDLE_TIMEOUT_MS；TS 剩余预算重排 + 严格十进制解析） |
 | 2.7.3 | 2026-09-05 | 数据修订发现与校验；缓存恢复防降级；章节摘要一致性 |
 | 2.7.2 | 2026-08-22 | ID 回显引号双实现统一；artwork/item 列表排序码点序对齐 |
 | 2.7.1 | 2026-08-18 | 图片同步应用完整 AKDP delta chain（#179）；wrong-shape building_data 双实现一致降级（#178） |

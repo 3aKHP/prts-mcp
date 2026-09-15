@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+## [2.7.4] - 2026-09-15
+
 ### Added
 
 - **HTTP session idle eviction now honors `SESSION_IDLE_TIMEOUT_MS` (#193).** The Python HTTP transport previously delegated session lifecycle entirely to the MCP Python SDK without configuring its idle timeout, so idle sessions lived until client disconnect or process restart while the TypeScript side evicted them. The variable is read with the same semantics as TypeScript — unset falls back to 24h, a positive finite value is taken as milliseconds, anything else disables eviction — and passed to the SDK session manager, which now reaps idle sessions one timeout after their last request.
