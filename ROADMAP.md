@@ -15,8 +15,8 @@ PRTS-MCP is past 1.0. Version 1.7.0 is the final 1.x feature release and the 1.7
 
 ## 2.7.x Stable Maintenance
 
-- Security, compatibility, data-sync, release-pipeline, documentation, and critical correctness/operational fixes only.
-- No new MCP tools, required parameters, or data domains in patch releases.
+- Security, compatibility, data-sync, release-pipeline, documentation, and critical correctness/operational fixes only; the compatible additions below are the documented exception.
+- Exception — new MCP tools, including tools that open new data domains, are scheduled for Minor releases by convention (narrative rule: [`docs/dev/VERSIONING.md`](docs/dev/VERSIONING.md)); a Patch that carries a new tool stays blind-upgrade compatible. Required-parameter and output-format changes in a Patch remain limited to VERSIONING.md's closed Patch whitelist.
 - Exercise the exact-artifact promotion path on the next real release and keep Python/TypeScript package provenance aligned.
 
 ## Cross-Version Policies
@@ -192,7 +192,7 @@ See [the 2.0 migration guide](docs/migration-1.x-to-2.0.md) for the per-tool cha
 
 1. **1.7 LTS is closed to new capabilities** — keep the stable line small, predictable, and supportable.
 2. **One data domain per feature release** — easier to communicate, easier to migrate, easier to roll back.
-3. **Patches don't add new capability surface** — they fix bugs, improve compatibility, and preserve the 1.7 contract.
+3. **Patches stay blind-upgrade compatible** — they fix bugs and improve compatibility, and may carry small compatible additions; new capability surface is scheduled for Minor by convention (rule: [`docs/dev/VERSIONING.md`](docs/dev/VERSIONING.md)).
 4. **Lead breaking changes with explicit migration docs** — 2.0's tool-surface and output-format changes must be documented before prerelease.
 5. **Bind cross-source fusion to its data dependency** — `get_stage_enemies` ships after the stage data domain, not before it.
 6. **Consolidate by schema shape, not by domain** — merging tools that share parameter structure preserves selection accuracy; merging by "everything operator-related" doesn't.
