@@ -4,6 +4,7 @@ WORKDIR /app
 
 COPY python/pyproject.toml .
 COPY README.md .
+COPY NOTICE .
 COPY python/src/ src/
 # Bundled game data baked in at build time (pre-fetched by CI via
 # python/scripts/fetch_gamedata.py).  Serves as a read-only offline fallback

@@ -262,6 +262,6 @@ TypeScript 实现支持 Bun 与 Node.js。自 2.2.0 起 **Bun 是默认生产运
 
 **Code / 代码** — MIT © 2026 3aKHP，见 [`LICENSE`](LICENSE)。
 
-**Third-party content / 第三方内容** — PRTS Wiki text is [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) © PRTS Wiki contributors; Arknights game data and artwork are © 上海鹰角网络科技有限公司 (Hypergryph). PRTS Wiki 文字内容以 CC BY-NC-SA 4.0 授权，版权归 PRTS Wiki 贡献者所有；明日方舟游戏数据与立绘素材版权归上海鹰角网络科技有限公司所有。
+**Third-party content / 第三方内容** — PRTS Wiki text and Arknights game data/artwork served through this project remain under their own licenses; attribution, terms and takedown contact: [`NOTICE`](NOTICE). PRTS Wiki 文字、明日方舟游戏数据与立绘等经本项目提供的第三方内容仍按其各自条款授权；归属、授权条款与撤下联系方式见 [`NOTICE`](NOTICE)。
 
-This is a non-commercial fan project, not affiliated with Hypergryph. 本项目为非商业同人项目，与鹰角网络无关联。Full attribution, licensing terms and takedown contact / 完整归属、授权条款与撤下联系方式：[`NOTICE`](NOTICE)。
+This is a non-commercial fan project, not affiliated with Hypergryph. 本项目为非商业同人项目，与鹰角网络无关联。
