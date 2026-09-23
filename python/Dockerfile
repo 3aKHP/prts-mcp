@@ -2,7 +2,7 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY python/pyproject.toml .
+COPY python/pyproject.toml python/hatch_build.py ./
 COPY README.md .
 COPY NOTICE .
 COPY python/src/ src/
