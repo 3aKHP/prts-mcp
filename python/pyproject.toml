@@ -61,6 +61,19 @@ prts-mcp = "prts_mcp.server:main"
 [tool.hatch.build.targets.wheel]
 packages = ["src/prts_mcp"]
 
+# Ship the repo-root IP notices with published artifacts. hatch_build.py
+# materializes python/NOTICE (from the repo root, or reuses the copy already
+# present in an sdist or Docker build context) so the single "NOTICE" source
+# spelling resolves in every build context. The wheel maps the file into the
+# package directory so it does not pollute site-packages.
+[tool.hatch.build.hooks.custom]
+
+[tool.hatch.build.targets.sdist.force-include]
+"NOTICE" = "NOTICE"
+
+[tool.hatch.build.targets.wheel.force-include]
+"NOTICE" = "prts_mcp/NOTICE"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]

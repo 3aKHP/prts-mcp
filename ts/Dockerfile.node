@@ -34,6 +34,9 @@ COPY --from=builder /build/dist ./dist
 # Serves as a read-only offline fallback when /data/gamedata has no data yet.
 COPY data/ data/
 
+# Third-party content & IP notices must ship with the image.
+COPY NOTICE .
+
 # Tell config.ts we are running inside Docker so it uses /data/gamedata
 # (the volume mount-point) as the auto-sync target.
 ENV PRTS_MCP_ROOT=/app

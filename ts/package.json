@@ -11,7 +11,8 @@
   },
   "files": [
     "dist/",
-    "data/"
+    "data/",
+    "NOTICE"
   ],
   "engines": {
     "node": ">=22.0.0"
@@ -35,7 +36,8 @@
     "bench:memory": "node scripts/bench-memory.mjs",
     "test": "node --import tsx --test \"tests/**/*.test.ts\"",
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "tsc"
+    "prepublishOnly": "tsc",
+    "prepack": "node -e \"require('node:fs').copyFileSync('../NOTICE','NOTICE')\""
   },
   "repository": {
     "type": "git",

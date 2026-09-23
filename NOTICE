@@ -1,0 +1,55 @@
+PRTS-MCP — Third-Party Content & IP Notices
+PRTS-MCP — 第三方内容与知识产权声明
+
+The MIT License (see LICENSE) covers only this project's own source code.
+It does not apply to third-party content accessed or redistributed by this
+project; such content remains under its own terms as listed below.
+
+MIT 许可证（见 LICENSE）仅适用于本项目自身的源代码，不适用于本项目访问
+或转发的第三方内容；第三方内容仍按其各自条款授权，具体如下。
+
+1. PRTS Wiki content / PRTS Wiki 内容
+
+   Text and data fetched through the PRTS Wiki MediaWiki API
+   (https://prts.wiki) are, unless otherwise noted on the source page,
+   licensed by the PRTS Wiki contributors under CC BY-NC-SA 4.0
+   (https://creativecommons.org/licenses/by-nc-sa/4.0/). Some pages carry
+   separate licenses; see <https://prts.wiki/w/PRTS:授权一览>.
+
+   Content served through this project remains under CC BY-NC-SA 4.0:
+   attribution to PRTS Wiki is required, commercial use is prohibited,
+   and adaptations must be shared under the same license.
+
+   通过 PRTS Wiki MediaWiki API（https://prts.wiki）获取的文字与数据，
+   除源页面另有声明外，由 PRTS Wiki 贡献者以 CC BY-NC-SA 4.0 授权；
+   部分页面另有单独授权，见 <https://prts.wiki/w/PRTS:授权一览>。
+   经本项目转出的此类内容仍以 CC BY-NC-SA 4.0 提供：须署名 PRTS Wiki、
+   禁止商业使用、演绎作品须以相同条款共享。
+
+2. Arknights game data & assets / 明日方舟游戏数据与素材
+
+   Game data tables, story text and operator artwork consumed or synced by
+   this project (via arknights-data-pipeline Releases) are © 上海鹰角网络
+   科技有限公司 (Hypergryph) and/or its affiliates. No open license is
+   granted for them; they are used for non-commercial fan purposes only,
+   under the tolerance of the rights holder's fan-work policy.
+
+   This project is not affiliated with, endorsed by, or sponsored by
+   Hypergryph. Rights holders may request removal via
+   https://github.com/3aKHP/prts-mcp/issues and it will be honored promptly.
+
+   本项目消费或同步的游戏数值表、剧情文本与干员立绘（来自
+   arknights-data-pipeline Release）版权归上海鹰角网络科技有限公司
+  （Hypergryph）及/或其关联方所有，未获得任何开源授权，仅在版权方
+   二创政策的容忍范围内用于非商业同人用途。本项目与鹰角网络无任何
+   关联、未获其授权或赞助。权利人可通过
+   https://github.com/3aKHP/prts-mcp/issues 提出删除要求，将立即处理。
+
+3. Non-commercial policy / 非商业化政策
+
+   PRTS-MCP is a fan project run for the community. It accepts no
+   commercial sponsorship, advertising or paid promotion, and ships no
+   paid features.
+
+   PRTS-MCP 是为爱发电的同人项目：不接受商业赞助、广告或付费推广，
+   也不提供任何付费功能。
