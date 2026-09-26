@@ -71,8 +71,8 @@ const DOCKER_LEVELS_PATH = "/data/gamedata-levels";
 /** Bundled levels fallback baked into the package at publish/build time. */
 export const BUNDLED_LEVELS_PATH = join(_PACKAGE_ROOT, "data", "gamedata-levels");
 
-// [0-9] rather than \d so Unicode digits (e.g. fullwidth "２０００") are
-// rejected instead of passing the pattern and being parsed by Number().
+// [0-9] spelled out instead of \d to make the strict-decimal (ASCII-only)
+// intent explicit at the pattern site.
 const DECIMAL_NUMBER_PATTERN = /^[+-]?(?:[0-9]+\.?[0-9]*|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$/;
 
 /**
