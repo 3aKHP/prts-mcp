@@ -82,6 +82,7 @@ development line instead.
 2.0 work may break the 1.x compatibility contract. The 2.0 branch must provide migration notes before prerelease for:
 
 - Final tool-surface consolidation.
-- Markdown/JSON output-format behavior.
-- Python and TypeScript transport parity.
+- Output channel (`structuredContent`) behavior — note 2.0 keeps markdown as the default `content` and does **not** flip to a JSON default; the originally proposed per-call `output_format=markdown|json` parameter was rejected during design.
 - Removed or hidden legacy tool aliases.
+
+Cross-transport parity was deferred from 2.0 and delivered in 2.3.0: Python gained Streamable HTTP and TypeScript gained stdio, while both original transport entry points remained compatible. See [`docs/migration-1.x-to-2.0.md` on the `main` branch](https://github.com/3aKHP/prts-mcp/blob/main/docs/migration-1.x-to-2.0.md) for the delivered 2.0 changes (the migration guide itself is not carried on this LTS branch).
