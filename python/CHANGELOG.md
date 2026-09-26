@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.7.2] - Unreleased
+
+### Fixed
+
+- `release_meta.json` sync metadata is now interoperable when the Python and TypeScript runtimes share one data directory: both implementations read either key casing (`commit_sha`/`commitSha`, `fetched_at`/`fetchedAt`) with defensive field validation, and both write snake_case. Previously a TypeScript-written cache was discarded by Python (treated as missing) and a Python-written cache yielded an undefined commit SHA and NaN freshness in TypeScript (forced re-download). Unknown keys in the file are now tolerated instead of invalidating the cache.
+- Cache metadata saves are now atomic (unique tmp file + rename, no corruption from a crash mid-write), and release asset downloads use unique tmp names so concurrent processes no longer race on a shared `.tmp` file.
+
 ## [1.7.1] - 2026-07-10
 
 ### Fixed

@@ -1,10 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import AdmZip from "adm-zip";
-import { syncRelease, syncReleaseArchive, type ReleaseArchiveSpec, type ReleaseSpec } from "../src/data/sync.ts";
+import { downloadReleaseAsset, syncRelease, syncReleaseArchive, type ReleaseArchiveSpec, type ReleaseSpec } from "../src/data/sync.ts";
 
 function tempSpec(): ReleaseSpec {
   const root = mkdtempSync(join(tmpdir(), "prts-sync-test-"));
@@ -66,6 +66,157 @@ test("syncRelease returns offline_fallback when network fails but zip exists", a
     assert.equal(result.commitSha, null);
     assert.equal(result.error, "Network unavailable");
   });
+});
+
+test("syncRelease reads Python release metadata", async () => {
+  const spec = tempSpec();
+  writeZip(spec.localZip, { "zh_CN/storyinfo.json": "{}" });
+  writeFileSync(
+    join(dirname(spec.localZip), "release_meta.json"),
+    JSON.stringify({
+      repo: "3aKHP/ArknightsStoryJson",
+      branch: "releases",
+      commit_sha: "same-sha",
+      fetched_at: "2099-01-01T00:00:00.000Z",
+      files: [spec.assetName],
+    }),
+    "utf-8",
+  );
+  let fetches = 0;
+
+  await withFetchMock((async () => {
+    fetches += 1;
+    throw new Error("unexpected fetch");
+  }) as typeof fetch, async () => {
+    const result = await syncRelease(spec);
+    assert.equal(result.status, "up_to_date");
+    assert.equal(result.commitSha, "same-sha");
+  });
+  assert.equal(fetches, 0);
+});
+
+test("syncRelease writes snake_case release metadata", async () => {
+  const spec = tempSpec();
+  const zip = new AdmZip();
+  zip.addFile("zh_CN/storyinfo.json", Buffer.from("{}", "utf-8"));
+  const zipBytes = new Uint8Array(zip.toBuffer());
+
+  await withFetchMock((async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.includes("api.github.com")) {
+      return new Response(JSON.stringify({
+        tag_name: "upstream-newsha",
+        assets: [{ name: spec.assetName, browser_download_url: "https://example.com/zh_CN.zip" }],
+      }), { status: 200 });
+    }
+    return new Response(zipBytes, { status: 200 });
+  }) as typeof fetch, async () => {
+    const result = await syncRelease(spec);
+    assert.equal(result.status, "updated");
+    assert.equal(result.commitSha, "newsha");
+  });
+
+  const data = JSON.parse(
+    readFileSync(join(dirname(spec.localZip), "release_meta.json"), "utf-8"),
+  ) as Record<string, unknown>;
+  assert.equal(data["repo"], "3aKHP/ArknightsStoryJson");
+  assert.equal(data["branch"], "releases");
+  assert.equal(data["commit_sha"], "newsha");
+  assert.equal(typeof data["fetched_at"], "string");
+  assert.deepEqual(data["files"], ["zh_CN.zip"]);
+  assert.equal(data["commitSha"], undefined);
+  assert.equal(data["fetchedAt"], undefined);
+  // Atomic writes leave no tmp files behind.
+  assert.deepEqual(
+    readdirSync(dirname(spec.localZip)).filter((name) => name.endsWith(".tmp")),
+    [],
+  );
+});
+
+test("syncRelease tolerates unknown keys in release metadata", async () => {
+  const spec = tempSpec();
+  writeZip(spec.localZip, { "zh_CN/storyinfo.json": "{}" });
+  writeFileSync(
+    join(dirname(spec.localZip), "release_meta.json"),
+    JSON.stringify({
+      repo: "3aKHP/ArknightsStoryJson",
+      branch: "releases",
+      commit_sha: "cached-sha",
+      fetched_at: "2099-01-01T00:00:00.000Z",
+      files: [spec.assetName],
+      future_field: { nested: true },
+    }),
+    "utf-8",
+  );
+
+  await withFetchMock((async () => {
+    throw new Error("unexpected fetch");
+  }) as typeof fetch, async () => {
+    const result = await syncRelease(spec);
+    assert.equal(result.status, "up_to_date");
+    assert.equal(result.commitSha, "cached-sha");
+  });
+});
+
+test("syncRelease ignores release metadata with wrong field types", async () => {
+  const spec = tempSpec();
+  writeZip(spec.localZip, { "zh_CN/storyinfo.json": "{}" });
+  writeFileSync(
+    join(dirname(spec.localZip), "release_meta.json"),
+    JSON.stringify({
+      repo: "3aKHP/ArknightsStoryJson",
+      branch: "releases",
+      commit_sha: 123,
+      fetched_at: "2099-01-01T00:00:00.000Z",
+      files: [spec.assetName],
+    }),
+    "utf-8",
+  );
+  let fetches = 0;
+
+  await withFetchMock((async () => {
+    fetches += 1;
+    throw new Error("network down");
+  }) as typeof fetch, async () => {
+    const result = await syncRelease(spec);
+    assert.equal(result.status, "offline_fallback");
+    assert.equal(result.commitSha, null);
+  });
+  assert.equal(fetches, 1);
+});
+
+test("downloadReleaseAsset uses unique tmp names for concurrent downloads", async () => {
+  const spec = tempSpec();
+  const seen: string[] = [];
+  const concurrentSpec: ReleaseSpec = {
+    ...spec,
+    validateZip: (zipPath) => {
+      seen.push(zipPath);
+      return [];
+    },
+  };
+  const zip = new AdmZip();
+  zip.addFile("zh_CN/storyinfo.json", Buffer.from("{}", "utf-8"));
+  const zipBytes = new Uint8Array(zip.toBuffer());
+
+  await withFetchMock((async () => new Response(zipBytes, { status: 200 })) as typeof fetch, async () => {
+    const outcomes = await Promise.allSettled([
+      downloadReleaseAsset(concurrentSpec, "upstream-sha1", "https://example.com/one"),
+      downloadReleaseAsset(concurrentSpec, "upstream-sha2", "https://example.com/two"),
+    ]);
+    assert.deepEqual(outcomes.map((outcome) => outcome.status), ["fulfilled", "fulfilled"]);
+  });
+
+  assert.equal(seen.length, 2);
+  assert.notEqual(seen[0], seen[1]);
+  for (const tmpPath of seen) {
+    assert.equal(dirname(tmpPath), dirname(spec.localZip));
+    assert.match(basename(tmpPath), /^\.zh_CN\.zip\.[0-9a-f]{32}\.tmp$/);
+  }
+  assert.deepEqual(
+    readdirSync(dirname(spec.localZip)).filter((name) => name.endsWith(".tmp")),
+    [],
+  );
 });
 
 test("syncRelease treats invalid validated zip as no_data", async () => {
