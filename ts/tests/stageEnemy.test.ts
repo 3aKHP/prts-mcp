@@ -163,6 +163,47 @@ test("getStageEnemies uses spawn actions and overrides", async () => {
   assert.doesNotMatch(out, /未出场敌人/);
 });
 
+test("getStageEnemies reads the direct-map enemy database from current AKDP releases", async () => {
+  const root = tempRoot();
+  const gamedata = writeFixture(root);
+  writeJson(
+    join(root, "gamedata-levels", "zh_CN", "gamedata", "levels", "enemydata", "enemy_database.json"),
+    {
+      enemy_1007_slime: [{
+        level: 0,
+        enemyData: {
+          attributes: {
+            maxHp: { m_defined: true, m_value: 550 },
+            atk: { m_defined: true, m_value: 130 },
+            def: { m_defined: true, m_value: 0 },
+            magicResistance: { m_defined: true, m_value: 0 },
+          },
+        },
+      }],
+    },
+  );
+  process.env["GAMEDATA_PATH"] = gamedata;
+  const mod = await loadModule();
+  const out = mod.getStageEnemies("main_00-01");
+  assert.match(out, /HP 550/);
+  assert.doesNotMatch(out, /无数据库记录/);
+});
+
+test("getStageEnemies keeps the fallback rendering for an empty legacy wrapper", async () => {
+  const root = tempRoot();
+  const gamedata = writeFixture(root);
+  writeJson(
+    join(root, "gamedata-levels", "zh_CN", "gamedata", "levels", "enemydata", "enemy_database.json"),
+    { enemies: [] },
+  );
+  process.env["GAMEDATA_PATH"] = gamedata;
+  const mod = await loadModule();
+  const out = mod.getStageEnemies("main_00-01");
+  // Enemies without a database entry keep the previous fallback rendering.
+  assert.match(out, /源石虫/);
+  assert.match(out, /无数据库记录/);
+});
+
 test("getEnemyAppearances", async () => {
   const root = tempRoot();
   process.env["GAMEDATA_PATH"] = writeFixture(root);
@@ -265,7 +306,7 @@ test("enemy database {} Value placeholder behaves as empty", async () => {
   assert.match(out, /HP 1,650/);
 });
 
-test("enemy database {} enemies placeholder behaves as empty", async () => {
+test("enemy database {} enemies placeholder raises the descriptive format error", async () => {
   const root = tempRoot();
   process.env["GAMEDATA_PATH"] = writeFixture(root);
   writeJson(
@@ -273,9 +314,7 @@ test("enemy database {} enemies placeholder behaves as empty", async () => {
     { enemies: {} },
   );
   const mod = await loadModule();
-  const out = mod.getStageEnemies("main_00-01");
-  assert.doesNotMatch(out, /读取关卡敌人失败/);
-  assert.match(out, /源石虫/);
-  assert.match(out, /士兵/);
-  assert.match(out, /无数据库记录/);
+  // normalizeEnemyDatabase (backport of c834bfa) rejects the {} placeholder
+  // with a descriptive error instead of a raw TypeError crash.
+  assert.throws(() => mod.getStageEnemies("main_00-01"), /格式异常/);
 });
