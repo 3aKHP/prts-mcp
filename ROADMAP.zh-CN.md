@@ -6,8 +6,8 @@ PRTS-MCP 已进入 1.x 稳定期。1.7.0 是最后一个 1.x 功能版本和 1.7
 
 ## 当前 LTS 发布
 
-- Python：`1.7.1` LTS
-- TypeScript：`1.7.1` LTS
+- Python：`1.7.2` LTS
+- TypeScript：`1.7.2` LTS
 - 1.7 LTS 线冻结 32 个公共 MCP 工具（CI 强制检查）。
 - 0.x → 1.0 迁移说明见 [迁移指南](docs/migration-0.x-to-1.0.md)。
 
