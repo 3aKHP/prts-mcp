@@ -4,6 +4,51 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- `release_meta.json` sync metadata is now interoperable when the Python and TypeScript runtimes share one data directory: both implementations read either key casing (`commit_sha`/`commitSha`, `fetched_at`/`fetchedAt`) with defensive field validation, and both write snake_case. Previously a TypeScript-written cache was discarded by Python (treated as missing) and a Python-written cache yielded an undefined commit SHA and NaN freshness in TypeScript (forced re-download). Python additionally tolerates unknown keys in the file instead of invalidating the cache.
+- Cache metadata saves are now atomic (unique tmp file + rename, no corruption from a crash mid-write), and release asset downloads use unique tmp names so concurrent processes no longer race on a shared `.tmp` file.
+- `GITHUB_MIRRORS` entries are now normalized identically in both implementations: surrounding whitespace is trimmed and all trailing slashes are stripped (previously TypeScript stripped only one trailing slash, so `https://ghproxy.net//` produced a broken `...//https://...` candidate that proxies reject, and Python kept surrounding whitespace and filtered blank entries before normalizing). Entries left empty after normalization (e.g. `///`) are dropped by both sides.
+- User-visible id listings (item listing and item search, enemy handbook
+  tie-break, stage listings and stage search) now order ids by Unicode
+  codepoint like the Python backend's `sorted()`, instead of ICU locale
+  collation that folds uppercase ids after lowercase ones on sortId ties
+  (e.g. `AP_GAMEPLAY` vs `ap_item_*`).
+- User-supplied search patterns (`search`, `search_stories`, and the
+  enemy/stage/item search scopes) now compile with the RegExp `/u` flag, so
+  astral characters match as single codepoints like Python's Unicode-default
+  `re`. Identity escapes that `/u` rejects (e.g. `\ `) now surface the
+  existing invalid-regex error instead of being silently tolerated.
+### Security
+
+- Updated production dependencies to resolve current npm security advisories:
+  `@modelcontextprotocol/sdk` to ^1.30.0 (staying on the v1 SDK line) and
+  `adm-zip` to ^0.6.0 as direct dependencies, with `overrides` pinning the
+  transitive `@hono/node-server`, `hono`, `body-parser`, `type-is`,
+  `fast-uri`, `ip-address`, and `qs` packages to patched versions
+  (`content-type` 2.x is pulled in through the patched `body-parser` /
+  `type-is` chain). The dev-only `tsx` / `esbuild` update clears the dev
+  esbuild advisory. `npm audit` now reports zero vulnerabilities.
+### Fixed
+
+- **Scalar story decisions.** A `Decision.options` string is returned as one
+  complete choice line instead of being silently dropped.
+- Guarded JSON-sourced array reads against upstream `{}` empty-object
+  placeholders: game data that encodes empty arrays as `{}` no longer crashes
+  `get_stage_info` (unlock conditions), `get_stage_enemies` /
+  `get_enemy_appearances` (level waves, fragments, actions, enemyDbRefs),
+  enemy queries (handbook damage types/tags, database enemies/skills/blackboard),
+  operator archives and basic info (story audio, stories, talents, candidates),
+  and `get_item_info` (stage drop list). Affected fields are now treated as
+  empty lists.
+- `get_enemy_info` / `get_stage_enemies` read the current upstream
+  `enemy_database.json` direct-mapping shape again (enemy combat stats are
+  restored); the legacy `enemies` wrapper shape remains supported.
+- `get_stage_enemies` no-stats fallback no longer renders a doubled
+  `战斗属性：战斗属性：` prefix.
+
 ## [1.7.1] - 2026-07-10
 
 ### Fixed

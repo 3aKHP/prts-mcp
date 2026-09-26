@@ -6,6 +6,7 @@
 
 import { loadConfig, hasLevelsData } from "../config.js";
 import { DirectoryStore } from "./stores.js";
+import { normalizeEnemyDatabase } from "./enemyDatabase.js";
 
 const DATABASE_FILE = "enemydata/enemy_database.json";
 
@@ -121,19 +122,9 @@ function loadEnemyHandbook(): Record<string, EnemyHandbookEntry> {
 
 function loadEnemyDatabase(): Record<string, Record<number, EnemyData>> {
   if (enemyDatabase === null) {
-    const raw = levelsStore().readJson<{
-      enemies?: Array<{ Key?: string; Value?: Array<{ level?: number | string; enemyData?: EnemyData }> }>;
-    }>(DATABASE_FILE);
-    const index: Record<string, Record<number, EnemyData>> = {};
-    for (const row of raw.enemies ?? []) {
-      if (!row.Key) continue;
-      const levelMap: Record<number, EnemyData> = {};
-      for (const value of row.Value ?? []) {
-        if (value.enemyData) levelMap[parseLevel(value.level)] = value.enemyData;
-      }
-      index[row.Key] = levelMap;
-    }
-    enemyDatabase = index;
+    enemyDatabase = normalizeEnemyDatabase<EnemyData>(
+      levelsStore().readJson(DATABASE_FILE),
+    );
   }
   return enemyDatabase;
 }
@@ -194,9 +185,9 @@ function mergeDefined(base: unknown, override: unknown): unknown {
 
 function spawnCounts(level: LevelJson): Map<string, number> {
   const counts = new Map<string, number>();
-  for (const wave of level.waves ?? []) {
-    for (const fragment of wave.fragments ?? []) {
-      for (const action of fragment.actions ?? []) {
+  for (const wave of Array.isArray(level.waves) ? level.waves : []) {
+    for (const fragment of Array.isArray(wave.fragments) ? wave.fragments : []) {
+      for (const action of Array.isArray(fragment.actions) ? fragment.actions : []) {
         if (action.actionType !== "SPAWN" && action.actionType !== 0) continue;
         if (!action.key) continue;
         const rawCount = Number(action.count ?? 1);
@@ -210,7 +201,7 @@ function spawnCounts(level: LevelJson): Map<string, number> {
 
 function enemyRefs(level: LevelJson): Map<string, EnemyRef> {
   const refs = new Map<string, EnemyRef>();
-  for (const ref of level.enemyDbRefs ?? []) {
+  for (const ref of Array.isArray(level.enemyDbRefs) ? level.enemyDbRefs : []) {
     if (ref.id) refs.set(ref.id, ref);
   }
   return refs;
@@ -250,7 +241,7 @@ function formatNumber(value: unknown): string {
 }
 
 function formatStats(enemyData: EnemyData | null): string {
-  if (!enemyData) return "战斗属性：无数据库记录";
+  if (!enemyData) return "无数据库记录";
   const attrs = enemyData.attributes ?? {};
   const hp = mValue(attrs.maxHp, 0);
   const atk = mValue(attrs.atk, 0);
