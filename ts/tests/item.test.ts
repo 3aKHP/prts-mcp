@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -225,4 +225,20 @@ test("searchItems rejects identity escapes under /u", async () => {
   // it is a SyntaxError and must surface as the invalid-regex tool error.
   const out = item.searchItems("\\ ");
   assert.match(out, /正则表达式无效/);
+});
+
+// Upstream AKDP encodes empty arrays as {} empty-object placeholders;
+// the readers must treat them as empty instead of throwing.
+test("getItemInfo treats {} stageDropList placeholder as empty", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  writeFixtures(root);
+  const tablePath = join(root, "zh_CN", "gamedata", "excel", "item_table.json");
+  const table = JSON.parse(readFileSync(tablePath, "utf-8"));
+  table.items["30011"].stageDropList = {};
+  writeFileSync(tablePath, JSON.stringify(table), "utf-8");
+  const item = await loadItemModule();
+  const out = item.getItemInfo("源岩");
+  assert.match(out, /# 源岩/);
+  assert.match(out, /（无）/);
 });

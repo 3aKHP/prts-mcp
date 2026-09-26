@@ -155,6 +155,23 @@ test("search_operator_data matches by archive", async () => {
   assert.match(result, /匹配：档案资料一/);
 });
 
+test("search_operator_data tolerates {} handbook placeholders", async () => {
+  const root = tempRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  delete process.env["STORYJSON_PATH"];
+  writeMinimalGamedata(root);
+  writeFileSync(
+    join(root, "zh_CN", "gamedata", "excel", "handbook_info_table.json"),
+    JSON.stringify({ handbookDict: { char_002_amiya: { storyTextAudio: {} } } }),
+    "utf-8",
+  );
+
+  const search = await loadSearchModule();
+  const result = search.searchOperatorData("阿米娅");
+  assert.doesNotMatch(result, /is not iterable/);
+  assert.match(result, /\[operators\/basic\/阿米娅\]/);
+});
+
 test("search_operator_data matches by voiceline", async () => {
   const root = tempRoot();
   process.env["GAMEDATA_PATH"] = root;

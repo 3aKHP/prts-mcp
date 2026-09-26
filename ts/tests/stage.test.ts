@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -410,4 +410,20 @@ test("searchStages max_results cap", async () => {
   const stage = await loadStageModule();
   const out = stage.searchStages(".", 1);
   assert.match(out, /共 1 个/);
+});
+
+// Upstream AKDP encodes empty arrays as {} empty-object placeholders;
+// the readers must treat them as empty instead of throwing.
+test("getStageInfo treats {} unlockCondition placeholder as empty", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  writeFixtures(root);
+  const tablePath = join(root, "zh_CN", "gamedata", "excel", "stage_table.json");
+  const table = JSON.parse(readFileSync(tablePath, "utf-8"));
+  table.stages["main_00-01"].unlockCondition = {};
+  writeFileSync(tablePath, JSON.stringify(table), "utf-8");
+  const stage = await loadStageModule();
+  const out = stage.getStageInfo("main_00-01");
+  assert.match(out, /坍塌/);
+  assert.match(out, /无条件/);
 });

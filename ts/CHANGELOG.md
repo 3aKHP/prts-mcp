@@ -18,6 +18,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
   astral characters match as single codepoints like Python's Unicode-default
   `re`. Identity escapes that `/u` rejects (e.g. `\ `) now surface the
   existing invalid-regex error instead of being silently tolerated.
+### Security
+
+- Updated production dependencies to resolve current npm security advisories:
+  `@modelcontextprotocol/sdk` to ^1.30.0 (staying on the v1 SDK line) and
+  `adm-zip` to ^0.6.0 as direct dependencies, with `overrides` pinning the
+  transitive `@hono/node-server`, `hono`, `body-parser`, `type-is`,
+  `fast-uri`, `ip-address`, and `qs` packages to patched versions
+  (`content-type` 2.x is pulled in through the patched `body-parser` /
+  `type-is` chain). The dev-only `tsx` / `esbuild` update clears the dev
+  esbuild advisory. `npm audit` now reports zero vulnerabilities.
+### Fixed
+
+- **Scalar story decisions.** A `Decision.options` string is returned as one
+  complete choice line instead of being silently dropped.
+- Guarded JSON-sourced array reads against upstream `{}` empty-object
+  placeholders: game data that encodes empty arrays as `{}` no longer crashes
+  `get_stage_info` (unlock conditions), `get_stage_enemies` /
+  `get_enemy_appearances` (level waves, fragments, actions, enemyDbRefs),
+  enemy queries (handbook damage types/tags, database enemies/skills/blackboard),
+  operator archives and basic info (story audio, stories, talents, candidates),
+  and `get_item_info` (stage drop list). Affected fields are now treated as
+  empty lists.
+- `get_enemy_info` / `get_stage_enemies` read the current upstream
+  `enemy_database.json` direct-mapping shape again (enemy combat stats are
+  restored); the legacy `enemies` wrapper shape remains supported.
+- `get_stage_enemies` no-stats fallback no longer renders a doubled
+  `战斗属性：战斗属性：` prefix.
 
 ## [1.7.1] - 2026-07-10
 

@@ -132,9 +132,9 @@ function getOperatorSearchRecords(): SearchResult[] {
 
     const hbEntry = handbook.handbookDict?.[charId];
     if (hbEntry) {
-      for (const story of hbEntry.storyTextAudio ?? []) {
+      for (const story of Array.isArray(hbEntry.storyTextAudio) ? hbEntry.storyTextAudio : []) {
         const title = story.storyTitle ?? "";
-        for (const s of story.stories ?? []) {
+        for (const s of Array.isArray(story.stories) ? story.stories : []) {
           const text = s.storyText ?? "";
           if (text) records.push({ operator: name, category: "archives", field: title, text });
         }
