@@ -77,11 +77,12 @@ Until EOL, 1.7.x receives the fixes listed in [Scope](#scope). After EOL:
 back to `main`; cherry-pick or reimplement an applicable fix on the current
 development line instead.
 
-## 2.0 Boundary
+## 2.0 Boundary (Delivered)
 
-2.0 work may break the 1.x compatibility contract. The 2.0 branch must provide migration notes before prerelease for:
+2.0 has shipped and breaks the 1.x compatibility contract in the following areas, recorded here as the 1.7 LTS boundary reference:
 
 - Final tool-surface consolidation.
-- Markdown/JSON output-format behavior.
-- Python and TypeScript transport parity.
+- Output channel (`structuredContent`) behavior — 2.0 keeps markdown as the default `content` and does **not** flip to a JSON default.
 - Removed or hidden legacy tool aliases.
+
+Cross-transport parity was deferred from 2.0 and delivered in 2.3.0: Python gained Streamable HTTP and TypeScript gained stdio, while both original transport entry points remained compatible. See the migration guide linked in the Lifecycle section above for the delivered 2.0 changes.
