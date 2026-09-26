@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Fixed
 
+- **Scalar story decisions.** A `Decision.options` string is returned as one
+  complete choice line instead of being silently dropped.
 - Guarded JSON-sourced array reads against upstream `{}` empty-object
   placeholders: game data that encodes empty arrays as `{}` no longer crashes
   `get_stage_info` (unlock conditions), `get_stage_enemies` /

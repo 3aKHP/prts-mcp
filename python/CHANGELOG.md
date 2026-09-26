@@ -8,6 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Fixed
 
+- **Scalar story decisions.** A `Decision.options` string is returned as one
+  complete choice line instead of being split into one bogus choice line per
+  character.
 - `get_enemy_info` / `get_stage_enemies` read the current upstream
   `enemy_database.json` direct-mapping shape again (enemy combat stats are
   restored); the legacy `enemies` wrapper shape remains supported.
