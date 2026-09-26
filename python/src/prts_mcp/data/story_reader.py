@@ -355,6 +355,9 @@ def read_activity_from_store(
     summaries = list_stories_from_store(store, event_id)
     total = len(summaries)
 
+    if not 1 <= page_size <= 20:
+        raise ValueError("page_size 参数必须在 1 到 20 之间")
+
     if page is not None:
         if page < 1:
             raise ValueError("page 参数必须 >= 1")

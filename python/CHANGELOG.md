@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.7.2] - Unreleased
+
+### Fixed
+
+- `read_activity` now bounds `page` (`>= 1`) and `page_size` (`1-20`) at the framework layer via `Field(ge=, le=)`, matching the TypeScript Zod schema, so invalid pagination (e.g. `page_size=0`, which previously produced endless empty pages with `has_more=True`) is rejected before reaching the data layer.
+
 ## [1.7.1] - 2026-07-10
 
 ### Fixed
