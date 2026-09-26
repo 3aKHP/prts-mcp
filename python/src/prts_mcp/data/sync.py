@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Literal
+from uuid import uuid4
 
 import httpx
 
@@ -47,17 +48,23 @@ def _github_headers() -> dict[str, str]:
 
 
 def _parse_mirrors() -> list[str]:
-    """Parse GITHUB_MIRRORS env var into a list of proxy base URLs (trailing slash stripped).
+    """Parse GITHUB_MIRRORS env var into a list of proxy base URLs.
+
+    Surrounding whitespace is trimmed and all trailing slashes are stripped;
+    entries left empty after normalization are dropped. Both implementations
+    normalize identically (parity).
 
     Unset / empty → [] (direct only, no cascade)
     "https://ghproxy.net" → ["https://ghproxy.net"]
     "https://a.example,https://b.example" → ["https://a.example", "https://b.example"]
+    " https://a.example/ , https://b.example// " → ["https://a.example", "https://b.example"]
+    "https://a,///,https://b" → ["https://a", "https://b"] (slash-only entry dropped)
 
     Mirror URL format (ghproxy-style): <mirror>/<original_url>
     e.g. "https://ghproxy.net/https://raw.githubusercontent.com/..."
     """
     raw = os.environ.get("GITHUB_MIRRORS", "")
-    return [m.rstrip("/") for m in raw.split(",") if m.strip()]
+    return [m for m in (part.strip().rstrip("/") for part in raw.split(",")) if m]
 
 
 def _url_candidates(url: str) -> list[str]:
@@ -125,13 +132,26 @@ class CacheMeta:
             return None
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
-            return cls(**data)
-        except (json.JSONDecodeError, TypeError, KeyError):
+            # Accept both key casings so a file written by the TypeScript
+            # runtime (camelCase) loads here and vice versa.
+            commit_sha = data.get("commit_sha", data.get("commitSha"))
+            fetched_at = data.get("fetched_at", data.get("fetchedAt"))
+            if not isinstance(commit_sha, str) or not isinstance(fetched_at, str):
+                return None
+            return cls(
+                repo=data["repo"],
+                branch=data["branch"],
+                commit_sha=commit_sha,
+                fetched_at=fetched_at,
+                files=data["files"],
+            )
+        except (json.JSONDecodeError, TypeError, KeyError, AttributeError):
             return None
 
     def save(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(
+        tmp = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
+        tmp.write_text(
             json.dumps(
                 {
                     "repo": self.repo,
@@ -145,6 +165,7 @@ class CacheMeta:
             ),
             encoding="utf-8",
         )
+        tmp.replace(path)
 
 
 @dataclass
@@ -229,7 +250,7 @@ def check_latest_release(spec: ReleaseSpec, timeout: float = 10.0) -> tuple[str,
 def download_release_asset(spec: ReleaseSpec, tag: str, url: str, timeout: float = 120.0) -> None:
     """Download a release asset zip atomically, then write cache metadata."""
     spec.local_zip.parent.mkdir(parents=True, exist_ok=True)
-    tmp = spec.local_zip.with_suffix(spec.local_zip.suffix + ".tmp")
+    tmp = spec.local_zip.with_name(f".{spec.local_zip.name}.{uuid4().hex}.tmp")
     try:
         _logger.debug("Downloading release asset %s", url)
         response = _get_cascading(url, timeout=timeout, headers=_github_headers(), follow_redirects=True)
