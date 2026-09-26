@@ -9,6 +9,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 ### Fixed
 
 - `get_operator_memoirs`, `find_character_appearances`, and `find_speakers_in` no longer return KeyError messages (unknown operator, operator without memoir data, unknown event) wrapped in Python repr quotes; the clean message text is surfaced bare, matching the TypeScript implementation.
+- Cap the mcp SDK dependency to the compatible 1.x line (`mcp[cli]>=1.28,<2`)
+  so fresh installs and Docker builds no longer resolve the incompatible 2.x
+  major.
 
 ## [1.7.1] - 2026-07-10
 
