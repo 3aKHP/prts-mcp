@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.7.2] - Unreleased
+
+### Fixed
+
+- `get_operator_memoirs`, `find_character_appearances`, and `find_speakers_in` no longer return KeyError messages (unknown operator, operator without memoir data, unknown event) wrapped in Python repr quotes; the clean message text is surfaced bare, matching the TypeScript implementation.
+
 ## [1.7.1] - 2026-07-10
 
 ### Fixed
