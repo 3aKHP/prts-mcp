@@ -90,19 +90,25 @@ function githubHeaders(): Record<string, string> {
 }
 
 /**
- * Parse GITHUB_MIRRORS env var into a list of proxy base URLs (trailing slash stripped).
+ * Parse GITHUB_MIRRORS env var into a list of proxy base URLs.
+ *
+ * Surrounding whitespace is trimmed and all trailing slashes are stripped;
+ * entries left empty after normalization are dropped. Both implementations
+ * normalize identically (parity).
  *
  * Unset / empty  → [] (direct only, no cascade)
  * "https://ghproxy.net"              → ["https://ghproxy.net"]
  * "https://a.example,https://b.example" → ["https://a.example", "https://b.example"]
+ * " https://a.example/ , https://b.example// " → ["https://a.example", "https://b.example"]
+ * "https://a,///,https://b" → ["https://a", "https://b"] (slash-only entry dropped)
  *
  * Mirror URL format (ghproxy-style): <mirror>/<original_url>
  * e.g. "https://ghproxy.net/https://raw.githubusercontent.com/..."
  */
-function parseMirrors(): string[] {
+export function parseMirrors(): string[] {
   return (process.env["GITHUB_MIRRORS"] ?? "")
     .split(",")
-    .map((s) => s.trim().replace(/\/$/, ""))
+    .map((s) => s.trim().replace(/\/+$/, ""))
     .filter(Boolean);
 }
 

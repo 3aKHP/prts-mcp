@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import AdmZip from "adm-zip";
-import { downloadReleaseAsset, syncRelease, syncReleaseArchive, type ReleaseArchiveSpec, type ReleaseSpec } from "../src/data/sync.ts";
+import { downloadReleaseAsset, parseMirrors, syncRelease, syncReleaseArchive, type ReleaseArchiveSpec, type ReleaseSpec } from "../src/data/sync.ts";
 
 function tempSpec(): ReleaseSpec {
   const root = mkdtempSync(join(tmpdir(), "prts-sync-test-"));
@@ -51,6 +51,49 @@ function withFetchMock(
     else process.env["GITHUB_MIRRORS"] = originalMirrors;
   });
 }
+
+function withMirrors(mirrors: string | undefined, run: () => void): void {
+  const originalMirrors = process.env["GITHUB_MIRRORS"];
+  if (mirrors === undefined) delete process.env["GITHUB_MIRRORS"];
+  else process.env["GITHUB_MIRRORS"] = mirrors;
+  try {
+    run();
+  } finally {
+    if (originalMirrors === undefined) delete process.env["GITHUB_MIRRORS"];
+    else process.env["GITHUB_MIRRORS"] = originalMirrors;
+  }
+}
+
+test("parseMirrors returns [] when GITHUB_MIRRORS is unset or empty", () => {
+  withMirrors(undefined, () => assert.deepEqual(parseMirrors(), []));
+  withMirrors("", () => assert.deepEqual(parseMirrors(), []));
+});
+
+test("parseMirrors strips all trailing slashes", () => {
+  withMirrors("https://ghproxy.net/", () =>
+    assert.deepEqual(parseMirrors(), ["https://ghproxy.net"]));
+  withMirrors("https://ghproxy.net//", () =>
+    assert.deepEqual(parseMirrors(), ["https://ghproxy.net"]));
+});
+
+test("parseMirrors trims surrounding whitespace", () => {
+  withMirrors(" https://a.example , https://b.example ", () =>
+    assert.deepEqual(parseMirrors(), ["https://a.example", "https://b.example"]));
+});
+
+test("parseMirrors trims whitespace and strips slashes together", () => {
+  withMirrors(" https://a.example/ , https://b.example// ", () =>
+    assert.deepEqual(parseMirrors(), ["https://a.example", "https://b.example"]));
+});
+
+test("parseMirrors drops blank and slash-only entries", () => {
+  withMirrors("https://a, ,https://b", () =>
+    assert.deepEqual(parseMirrors(), ["https://a", "https://b"]));
+  withMirrors("https://a,,https://b", () =>
+    assert.deepEqual(parseMirrors(), ["https://a", "https://b"]));
+  withMirrors("https://a,///,https://b", () =>
+    assert.deepEqual(parseMirrors(), ["https://a", "https://b"]));
+});
 
 test("syncRelease returns offline_fallback when network fails but zip exists", async () => {
   const spec = tempSpec();

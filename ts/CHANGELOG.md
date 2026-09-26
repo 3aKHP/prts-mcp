@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 - `release_meta.json` sync metadata is now interoperable when the Python and TypeScript runtimes share one data directory: both implementations read either key casing (`commit_sha`/`commitSha`, `fetched_at`/`fetchedAt`) with defensive field validation, and both write snake_case. Previously a TypeScript-written cache was discarded by Python (treated as missing) and a Python-written cache yielded an undefined commit SHA and NaN freshness in TypeScript (forced re-download). Unknown keys in the file are now tolerated instead of invalidating the cache.
 - Cache metadata saves are now atomic (unique tmp file + rename, no corruption from a crash mid-write), and release asset downloads use unique tmp names so concurrent processes no longer race on a shared `.tmp` file.
+- `GITHUB_MIRRORS` entries are now normalized identically in both implementations: surrounding whitespace is trimmed and all trailing slashes are stripped (previously TypeScript stripped only one trailing slash, so `https://ghproxy.net//` produced a broken `...//https://...` candidate that proxies reject, and Python kept surrounding whitespace and filtered blank entries before normalizing). Entries left empty after normalization (e.g. `///`) are dropped by both sides.
 
 ## [1.7.1] - 2026-07-10
 
