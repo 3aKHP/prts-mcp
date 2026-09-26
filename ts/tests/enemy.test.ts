@@ -232,6 +232,69 @@ test("get_enemy_info reads database from sibling levels path", async () => {
   assert.match(out, /\*\*免疫\*\*：眩晕、冻结/);
 });
 
+test("get_enemy_info reads the direct-map enemy database from current AKDP releases", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  writeFixtures(root);
+  writeFileSync(
+    join(root, "zh_CN", "gamedata", "levels", "enemydata", "enemy_database.json"),
+    JSON.stringify({
+      enemy_1505_frstar: [{
+        level: 0,
+        enemyData: {
+          attributes: {
+            maxHp: { m_defined: true, m_value: 25000 },
+            atk: { m_defined: true, m_value: 420 },
+            def: { m_defined: true, m_value: 250 },
+            magicResistance: { m_defined: true, m_value: 50 },
+          },
+        },
+      }],
+    }),
+    "utf-8",
+  );
+  const enemy = await loadEnemyModule();
+  assert.match(enemy.getEnemyInfo("霜星"), /\*\*最大生命\*\*：25,000/);
+});
+
+test("get_enemy_info degrades to handbook-only for an empty legacy wrapper", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  writeFixtures(root);
+  writeFileSync(
+    join(root, "zh_CN", "gamedata", "levels", "enemydata", "enemy_database.json"),
+    '{"enemies": []}',
+    "utf-8",
+  );
+  const enemy = await loadEnemyModule();
+  const out = enemy.getEnemyInfo("霜星");
+  assert.match(out, /霜星/);
+  assert.doesNotMatch(out, /\*\*最大生命\*\*/);
+});
+
+test("normalizeEnemyDatabase accepts both shapes and rejects garbage", async () => {
+  const { normalizeEnemyDatabase } = await import("../src/data/enemyDatabase.ts");
+  assert.deepEqual(
+    normalizeEnemyDatabase({ enemies: [{ Key: "enemy_a", Value: [{ level: 0, enemyData: { hp: 1 } }] }] }),
+    { enemy_a: { 0: { hp: 1 } } },
+  );
+  assert.deepEqual(
+    normalizeEnemyDatabase({ enemy_a: [{ level: 1, enemyData: { hp: 2 } }] }),
+    { enemy_a: { 1: { hp: 2 } } },
+  );
+  // Malformed rows are skipped rather than crashing.
+  assert.deepEqual(
+    normalizeEnemyDatabase({ enemies: [
+      "garbage",
+      { Key: "enemy_a", Value: "not-a-list" },
+      { Key: "enemy_b", Value: ["garbage", { level: "bad", enemyData: { hp: 2 } }] },
+    ] }),
+    { enemy_b: { 0: { hp: 2 } } },
+  );
+  assert.throws(() => normalizeEnemyDatabase(["not", "a", "dict"]), /根节点必须是对象/);
+  assert.throws(() => normalizeEnemyDatabase({ totally: "unknown" }), /未找到敌人等级数据/);
+});
+
 test("get_enemy_info handbook-only when no database entry", async () => {
   const root = tempGamedataRoot();
   process.env["GAMEDATA_PATH"] = root;

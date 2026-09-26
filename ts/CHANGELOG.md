@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- `get_enemy_info` / `get_stage_enemies` read the current upstream
+  `enemy_database.json` direct-mapping shape again (enemy combat stats are
+  restored); the legacy `enemies` wrapper shape remains supported.
+- `get_stage_enemies` no-stats fallback no longer renders a doubled
+  `战斗属性：战斗属性：` prefix.
+
 ## [1.7.1] - 2026-07-10
 
 ### Fixed

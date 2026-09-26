@@ -186,6 +186,46 @@ def test_get_stage_enemies_uses_spawn_actions_and_overrides(gamedata: Path) -> N
     assert "未出场敌人" not in out
 
 
+def test_get_stage_enemies_reads_current_akdp_direct_map(gamedata: Path) -> None:
+    db_path = (
+        gamedata / "gamedata-levels" / "zh_CN" / "gamedata" / "levels"
+        / "enemydata" / "enemy_database.json"
+    )
+    db_path.write_text(
+        json.dumps({
+            "enemy_1007_slime": [{
+                "level": 0,
+                "enemyData": {
+                    "attributes": {
+                        "maxHp": {"m_defined": True, "m_value": 550},
+                        "atk": {"m_defined": True, "m_value": 130},
+                        "def": {"m_defined": True, "m_value": 0},
+                        "magicResistance": {"m_defined": True, "m_value": 0},
+                    }
+                },
+            }],
+        }, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    clear_stage_enemy_caches()
+    out = get_stage_enemies("main_00-01")
+    assert "HP 550" in out
+    assert "无数据库记录" not in out
+
+
+def test_get_stage_enemies_empty_legacy_wrapper_keeps_fallback(gamedata: Path) -> None:
+    db_path = (
+        gamedata / "gamedata-levels" / "zh_CN" / "gamedata" / "levels"
+        / "enemydata" / "enemy_database.json"
+    )
+    db_path.write_text('{"enemies": []}', encoding="utf-8")
+    clear_stage_enemy_caches()
+    out = get_stage_enemies("main_00-01")
+    # Enemies without a database entry keep the previous fallback rendering.
+    assert "源石虫" in out
+    assert "无数据库记录" in out
+
+
 def test_get_enemy_appearances(gamedata: Path) -> None:
     out = get_enemy_appearances("源石虫")
     assert "源石虫" in out
