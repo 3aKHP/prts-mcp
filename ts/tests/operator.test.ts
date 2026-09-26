@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -139,4 +139,65 @@ test("trap entry with same name does not override operator", async () => {
   const info = operator.getOperatorBasicInfo("阿米娅");
   assert.match(info, /5★/);
   assert.doesNotMatch(info, /TRAP/);
+});
+
+// Upstream AKDP encodes empty arrays as {} empty-object placeholders;
+// the readers must treat them as empty instead of throwing.
+test("operator archives treat {} storyTextAudio placeholder as empty", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  writeMinimalGamedata(root);
+  const excel = join(root, "zh_CN", "gamedata", "excel");
+  writeFileSync(
+    join(excel, "handbook_info_table.json"),
+    JSON.stringify({ handbookDict: { char_002_amiya: { storyTextAudio: {} } } }),
+    "utf-8",
+  );
+  const operator = await loadOperatorModule();
+  assert.match(operator.getOperatorArchives("阿米娅"), /档案内容为空/);
+});
+
+test("operator archives treat {} stories placeholder as empty", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  writeMinimalGamedata(root);
+  const excel = join(root, "zh_CN", "gamedata", "excel");
+  writeFileSync(
+    join(excel, "handbook_info_table.json"),
+    JSON.stringify({
+      handbookDict: {
+        char_002_amiya: {
+          storyTextAudio: [{ storyTitle: "档案资料一", stories: {} }],
+        },
+      },
+    }),
+    "utf-8",
+  );
+  const operator = await loadOperatorModule();
+  assert.match(operator.getOperatorArchives("阿米娅"), /档案内容为空/);
+});
+
+test("operator basic info treats {} talents/candidates placeholders as empty", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  writeMinimalGamedata(root);
+  const tablePath = join(root, "zh_CN", "gamedata", "excel", "character_table.json");
+  const operator = await loadOperatorModule();
+
+  const rewriteTalents = (talents: unknown): void => {
+    const table = JSON.parse(readFileSync(tablePath, "utf-8"));
+    table.char_002_amiya.talents = talents;
+    writeFileSync(tablePath, JSON.stringify(table), "utf-8");
+    operator.clearOperatorCaches();
+  };
+
+  rewriteTalents({});
+  const noTalents = operator.getOperatorBasicInfo("阿米娅");
+  assert.match(noTalents, /阿米娅/);
+  assert.doesNotMatch(noTalents, /## 天赋/);
+
+  rewriteTalents([{ candidates: {} }]);
+  const emptyCandidates = operator.getOperatorBasicInfo("阿米娅");
+  assert.match(emptyCandidates, /## 天赋/);
+  assert.doesNotMatch(emptyCandidates, /情绪吸收/);
 });

@@ -14,6 +14,7 @@ from prts_mcp.data.enemy import (
     get_enemy_info,
     search_enemies,
 )
+from prts_mcp.data.enemy_database import normalize_enemy_database
 
 
 def _write_handbook(excel: Path) -> None:
@@ -210,6 +211,41 @@ class TestGetEnemyInfo:
         assert "**最大生命**：25,000" in out
         assert "**免疫**：眩晕、冻结" in out
 
+    def test_reads_current_akdp_direct_map(self, gamedata):
+        db_path = (
+            gamedata / "zh_CN" / "gamedata" / "levels" / "enemydata"
+            / "enemy_database.json"
+        )
+        db_path.write_text(
+            json.dumps({
+                "enemy_1505_frstar": [{
+                    "level": 0,
+                    "enemyData": {
+                        "attributes": {
+                            "maxHp": {"m_defined": True, "m_value": 25000},
+                            "atk": {"m_defined": True, "m_value": 420},
+                            "def": {"m_defined": True, "m_value": 250},
+                            "magicResistance": {"m_defined": True, "m_value": 50},
+                        }
+                    },
+                }],
+            }, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        clear_enemy_caches()
+        assert "**最大生命**：25,000" in get_enemy_info("霜星")
+
+    def test_empty_legacy_wrapper_degrades_to_handbook_only(self, gamedata):
+        db_path = (
+            gamedata / "zh_CN" / "gamedata" / "levels" / "enemydata"
+            / "enemy_database.json"
+        )
+        db_path.write_text('{"enemies": []}', encoding="utf-8")
+        clear_enemy_caches()
+        out = get_enemy_info("霜星")
+        assert "霜星" in out
+        assert "**最大生命**" not in out
+
     def test_handbook_only_when_no_db_entry(self, gamedata):
         # 源石虫 has no entry in our minimal database fixture
         out = get_enemy_info("源石虫")
@@ -241,3 +277,38 @@ class TestSearchEnemies:
     def test_filters_hidden(self, gamedata):
         out = search_enemies("隐藏")
         assert "应被过滤" not in out
+
+
+class TestNormalizeEnemyDatabase:
+    def test_legacy_wrapper_shape(self):
+        index = normalize_enemy_database({"enemies": [
+            {"Key": "enemy_a", "Value": [{"level": 0, "enemyData": {"hp": 1}}]},
+        ]})
+        assert index == {"enemy_a": {0: {"hp": 1}}}
+
+    def test_direct_map_shape(self):
+        index = normalize_enemy_database({
+            "enemy_a": [{"level": 1, "enemyData": {"hp": 2}}],
+        })
+        assert index == {"enemy_a": {1: {"hp": 2}}}
+
+    def test_malformed_rows_skipped(self):
+        index = normalize_enemy_database({"enemies": [
+            "garbage",
+            {"Key": 123, "Value": [{"level": 0, "enemyData": {"hp": 1}}]},
+            {"Key": "enemy_a", "Value": "not-a-list"},
+            {"Key": "enemy_b", "Value": [
+                "garbage",
+                {"level": "bad", "enemyData": {"hp": 2}},
+                {"level": 0, "enemyData": "not-a-dict"},
+            ]},
+        ]})
+        assert index == {"enemy_b": {0: {"hp": 2}}}
+
+    def test_non_dict_root_raises(self):
+        with pytest.raises(TypeError, match="根节点必须是对象"):
+            normalize_enemy_database(["not", "a", "dict"])
+
+    def test_unrecognized_shape_raises(self):
+        with pytest.raises(TypeError, match="未找到敌人等级数据"):
+            normalize_enemy_database({"totally": "unknown"})

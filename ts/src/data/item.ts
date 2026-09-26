@@ -163,7 +163,7 @@ function visibleItems(): Array<[string, ItemEntry]> {
 }
 
 function formatStageDrops(dropList: StageDrop[] | null | undefined, maxEntries = 12): string {
-  if (!dropList || dropList.length === 0) return "（无）";
+  if (!Array.isArray(dropList) || dropList.length === 0) return "（无）";
   const lines = [...dropList]
     .sort((a, b) => (a.sortId ?? 9999) - (b.sortId ?? 9999))
     .slice(0, maxEntries)

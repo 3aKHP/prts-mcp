@@ -192,9 +192,9 @@ export function getOperatorArchives(name: string): string {
   if (!entry) return `干员 '${name}' 暂无档案数据。`;
 
   const sections: string[] = [];
-  for (const story of entry.storyTextAudio ?? []) {
+  for (const story of Array.isArray(entry.storyTextAudio) ? entry.storyTextAudio : []) {
     const title = story.storyTitle ?? "";
-    const texts = (story.stories ?? [])
+    const texts = (Array.isArray(story.stories) ? story.stories : [])
       .map((s) => s.storyText ?? "")
       .filter(Boolean);
     if (texts.length > 0) {
@@ -320,11 +320,11 @@ export function getOperatorBasicInfo(name: string): string {
     lines.push(`\n**获取方式**：${info.itemObtainApproach}`);
   }
 
-  const talents = info.talents ?? [];
+  const talents = Array.isArray(info.talents) ? info.talents : [];
   if (talents.length > 0) {
     lines.push("\n## 天赋");
     for (const slot of talents) {
-      const candidates = slot.candidates ?? [];
+      const candidates = Array.isArray(slot.candidates) ? slot.candidates : [];
       let chosen: TalentCandidate | undefined;
       for (let i = candidates.length - 1; i >= 0; i--) {
         const c = candidates[i];
