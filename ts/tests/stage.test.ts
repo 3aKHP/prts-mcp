@@ -392,6 +392,17 @@ test("searchStages invalid regex", async () => {
   assert.match(out, /正则表达式无效/);
 });
 
+test("searchStages rejects identity escapes under /u", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  writeFixtures(root);
+  const stage = await loadStageModule();
+  // "\ " is silently tolerated as an identity escape without /u; under /u
+  // it is a SyntaxError and must surface as the invalid-regex tool error.
+  const out = stage.searchStages("\\ ");
+  assert.match(out, /正则表达式无效/);
+});
+
 test("searchStages max_results cap", async () => {
   const root = tempGamedataRoot();
   process.env["GAMEDATA_PATH"] = root;

@@ -286,6 +286,17 @@ test("search_enemies invalid regex", async () => {
   assert.match(out, /正则表达式无效/);
 });
 
+test("search_enemies rejects identity escapes under /u", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  writeFixtures(root);
+  const enemy = await loadEnemyModule();
+  // "\ " is silently tolerated as an identity escape without /u; under /u
+  // it is a SyntaxError and must surface as the invalid-regex tool error.
+  const out = enemy.searchEnemies("\\ ");
+  assert.match(out, /正则表达式无效/);
+});
+
 test("search_enemies filters hidden", async () => {
   const root = tempGamedataRoot();
   process.env["GAMEDATA_PATH"] = root;

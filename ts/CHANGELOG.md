@@ -13,6 +13,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
   codepoint like the Python backend's `sorted()`, instead of ICU locale
   collation that folds uppercase ids after lowercase ones on sortId ties
   (e.g. `AP_GAMEPLAY` vs `ap_item_*`).
+- User-supplied search patterns (`search`, `search_stories`, and the
+  enemy/stage/item search scopes) now compile with the RegExp `/u` flag, so
+  astral characters match as single codepoints like Python's Unicode-default
+  `re`. Identity escapes that `/u` rejects (e.g. `\ `) now surface the
+  existing invalid-regex error instead of being silently tolerated.
 
 ## [1.7.1] - 2026-07-10
 

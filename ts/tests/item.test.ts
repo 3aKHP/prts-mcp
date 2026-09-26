@@ -215,3 +215,14 @@ test("searchItems invalid regex", async () => {
   const out = item.searchItems("[bad");
   assert.match(out, /正则表达式无效/);
 });
+
+test("searchItems rejects identity escapes under /u", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  writeFixtures(root);
+  const item = await loadItemModule();
+  // "\ " is silently tolerated as an identity escape without /u; under /u
+  // it is a SyntaxError and must surface as the invalid-regex tool error.
+  const out = item.searchItems("\\ ");
+  assert.match(out, /正则表达式无效/);
+});

@@ -189,6 +189,19 @@ test("search_operator_data invalid regex", async () => {
   assert.match(result, /正则表达式无效/);
 });
 
+test("search_operator_data rejects identity escapes under /u", async () => {
+  const root = tempRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  delete process.env["STORYJSON_PATH"];
+  writeMinimalGamedata(root);
+
+  const search = await loadSearchModule();
+  // "\ " is silently tolerated as an identity escape without /u; under /u
+  // it is a SyntaxError and must surface as the invalid-regex tool error.
+  const result = search.searchOperatorData("\\ ");
+  assert.match(result, /正则表达式无效/);
+});
+
 test("search_operator_data missing_data", async () => {
   const root = tempRoot();
   process.env["GAMEDATA_PATH"] = "/nonexistent/path";
@@ -330,6 +343,61 @@ for (const kind of ["directory", "zip"] as const) {
     assert.match(result, /context_lines 必须 >= 0/);
   });
 }
+
+// ---------------------------------------------------------------------------
+// /u-flag behavior: astral matching and strict escapes
+// ---------------------------------------------------------------------------
+
+test("search_stories matches astral text codepoint-wise", () => {
+  const root = tempRoot();
+  // One dialog line of exactly three codepoints, the last an astral emoji
+  // (U+1F642). Without /u the emoji is two UTF-16 surrogate halves and
+  // "^...$" cannot match the 4-unit line; Python re matches codepoints.
+  const astralStoryKey = "activities/act_astral/level_act_astral_01_beg";
+  const files: Record<string, unknown> = {
+    [STORY_REVIEW_PATH]: {
+      act_astral: {
+        name: "星界活动",
+        entryType: "ACTIVITY",
+        infoUnlockDatas: [
+          {
+            storyTxt: astralStoryKey,
+            storyCode: "AST-1",
+            storyName: "星界",
+            avgTag: "BEG",
+            storySort: 1,
+          },
+        ],
+      },
+    },
+    [storyPath(astralStoryKey)]: {
+      storyCode: "AST-1",
+      storyName: "星界",
+      avgTag: "BEG",
+      eventName: "星界活动",
+      storyInfo: "",
+      storyList: [
+        { prop: "name", attributes: { name: "博士", content: "出击🙂" } },
+      ],
+    },
+  };
+  for (const [path, data] of Object.entries(files)) {
+    const target = join(root, path);
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, JSON.stringify(data), "utf-8");
+  }
+  const store = new DirectoryStore(root);
+  const result = searchStoriesFromStore(store, "^...$");
+  assert.match(result, />>> 博士：出击🙂/);
+  assert.match(searchStoriesFromStore(store, "^..$"), /未找到匹配/);
+});
+
+test("search_stories rejects identity escapes under /u", () => {
+  const root = tempRoot();
+  const store = storyStore("directory", root);
+  const result = searchStoriesFromStore(store, "\\ ");
+  assert.match(result, /正则表达式无效/);
+});
 
 // ---------------------------------------------------------------------------
 // list_search_scopes test (sanity check on server registration)

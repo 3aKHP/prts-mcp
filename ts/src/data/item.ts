@@ -286,7 +286,7 @@ export function searchItems(pattern: string, maxResults = 30): string {
 
   let regex: RegExp;
   try {
-    regex = new RegExp(pattern, "i");
+    regex = new RegExp(pattern, "iu");
   } catch (err) {
     return `正则表达式无效：${err instanceof Error ? err.message : String(err)}`;
   }
