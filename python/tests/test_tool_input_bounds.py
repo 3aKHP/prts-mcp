@@ -74,8 +74,6 @@ def test_read_activity_accepts_boundary_pagination(
         assert text.startswith(("剧情数据未就绪", "未找到活动")), f"{arguments}: {text[:120]}"
 
 
-_GAMEDATA_LIST_TOOLS = ("list_enemies", "get_enemy_appearances", "list_stages", "list_items")
-
 # Minimum extra arguments each list tool needs besides limit/offset.
 _GAMEDATA_REQUIRED_ARGS: dict[str, dict] = {
     "list_enemies": {},
@@ -83,6 +81,8 @@ _GAMEDATA_REQUIRED_ARGS: dict[str, dict] = {
     "list_stages": {},
     "list_items": {},
 }
+
+_GAMEDATA_LIST_TOOLS = tuple(_GAMEDATA_REQUIRED_ARGS)
 
 
 @pytest.fixture
