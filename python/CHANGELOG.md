@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 ### Fixed
 
 - `read_activity` now bounds `page` (`>= 1`) and `page_size` (`1-20`) at the framework layer via `Field(ge=, le=)`, matching the TypeScript Zod schema, so invalid pagination (e.g. `page_size=0`, which previously produced endless empty pages with `has_more=True`) is rejected before reaching the data layer.
+- Gamedata listing tools (`list_enemies`/`get_enemy_appearances`/`list_stages`/`list_items`) now enforce `limit` (`1-200`) and `offset` (`>= 0`) bounds at the framework layer via `Field(ge=, le=)`, matching the TypeScript Zod schema so out-of-range pagination is rejected consistently across implementations.
 
 ## [1.7.1] - 2026-07-10
 
