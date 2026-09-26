@@ -86,8 +86,39 @@ test("idle sessions are evicted after timeout", async () => {
     assert.ok(sessionId, "should return Mcp-Session-Id");
     assert.ok(initRes.ok, "initialize should succeed");
 
-    // Wait for idle eviction (timeout is 2s, wait 4s)
-    await new Promise((r) => setTimeout(r, 4000));
+    // Any post-initialize request bumps lastActivity past the moment the idle
+    // timer was armed, so eviction comes due one timeout after THIS request.
+    // Without it the reschedule bug is invisible: a δ of zero evicts on time
+    // even when the reschedule uses the full period. The small delay keeps
+    // δ clear of same-millisecond quantization.
+    await new Promise((r) => setTimeout(r, 150));
+    const notifyRes = await fetch(origin + "/mcp", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json, text/event-stream",
+        "mcp-session-id": sessionId,
+      },
+      body: JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }),
+    });
+    assert.ok(notifyRes.ok, "post-initialize request on the session should succeed");
+
+    // Eviction must land at ~TIMEOUT after last activity (~2.15s from here),
+    // not ~2×TIMEOUT (~4s). Probing the session with an MCP request would
+    // itself refresh activity, so the "still alive" side is asserted via the
+    // eviction log: at 1.25s after the bump the server must NOT have evicted.
+    await new Promise((r) => setTimeout(r, 1100));
+    assert.doesNotMatch(
+      stderrLines.join(""),
+      /idle for \d+s.*evicting/i,
+      "session must not be evicted before the idle timeout",
+    );
+
+    // … and at ~3.05s (> 2.15s, < 4.15s) it must already be evicted — the
+    // stale-session 404 below fails against a full-period reschedule, which
+    // would keep the session alive until ~4.15s. A 2× wait here could not
+    // distinguish on-time eviction from full-period rescheduling.
+    await new Promise((r) => setTimeout(r, 1800));
 
     // --- non-init request with stale session → 404 JSON-RPC error ---
     const reuseRes = await fetch(origin + "/mcp", {

@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.7.2] - Unreleased
+
+### Fixed
+
+- **HTTP sessions were evicted after up to ~2× the configured idle timeout.** When the idle timer fired with less than `SESSION_IDLE_TIMEOUT_MS` elapsed since the last request — guaranteed whenever any request followed `initialize`, since that request refreshes activity after the timer is armed — the timer was re-armed for a full period instead of the remaining time, so eviction could land at ~48h with the default 24h timeout. The timer now re-arms for the remaining idle budget.
+- **`SESSION_IDLE_TIMEOUT_MS` is now parsed as a strict decimal.** Non-decimal spellings such as `0x10` were previously accepted by `Number()` and interpreted as a millisecond-scale timeout, evicting sessions almost immediately. Invalid or non-positive values now disable idle eviction as documented.
+
 ## [1.7.1] - 2026-07-10
 
 ### Fixed
