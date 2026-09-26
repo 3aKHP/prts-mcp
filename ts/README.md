@@ -74,6 +74,7 @@ npm start         # 运行编译后的版本
 | `STORYJSON_PATH` | 未设置 | 设置后指向本地 `zh_CN.zip`，**剧情 auto-sync 被禁用** |
 | `GITHUB_TOKEN` | 空 | 用于提高 GitHub API 限额，降低限流风险 |
 | `GITHUB_MIRRORS` | 空 | 逗号分隔的 ghproxy 风格代理前缀列表（如 `https://ghproxy.net`），依次在直连失败后尝试 |
+| `SESSION_IDLE_TIMEOUT_MS` | `86400000`（24h） | HTTP 会话空闲淘汰毫秒数；正数十进制生效，非法值或非正数禁用空闲淘汰 |
 
 ---
 
