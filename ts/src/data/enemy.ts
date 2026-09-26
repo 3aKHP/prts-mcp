@@ -5,6 +5,7 @@
  */
 
 import { loadConfig } from "../config.js";
+import { compareIds } from "./sort.js";
 import { DirectoryStore } from "./stores.js";
 
 // ---------------------------------------------------------------------------
@@ -352,7 +353,7 @@ export function listEnemies(
   entries.sort((a, b) => {
     const sa = a[1].sortId ?? 9999;
     const sb = b[1].sortId ?? 9999;
-    return sa !== sb ? sa - sb : a[0].localeCompare(b[0]);
+    return sa !== sb ? sa - sb : compareIds(a[0], b[0]);
   });
 
   const total = entries.length;

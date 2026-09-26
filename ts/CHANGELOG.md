@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.7.2] - Unreleased
+
+### Fixed
+
+- User-visible id listings (item listing and item search, enemy handbook
+  tie-break, stage listings and stage search) now order ids by Unicode
+  codepoint like the Python backend's `sorted()`, instead of ICU locale
+  collation that folds uppercase ids after lowercase ones on sortId ties
+  (e.g. `AP_GAMEPLAY` vs `ap_item_*`).
+
 ## [1.7.1] - 2026-07-10
 
 ### Fixed

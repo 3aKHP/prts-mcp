@@ -5,6 +5,7 @@
  */
 
 import { loadConfig } from "../config.js";
+import { compareIds } from "./sort.js";
 import { DirectoryStore } from "./stores.js";
 
 const ITEM_FILE = "item_table.json";
@@ -213,7 +214,7 @@ export function listItems(
   entries.sort((a, b) => {
     const sa = a[1].sortId ?? 999999;
     const sb = b[1].sortId ?? 999999;
-    return sa !== sb ? sa - sb : a[0].localeCompare(b[0]);
+    return sa !== sb ? sa - sb : compareIds(a[0], b[0]);
   });
 
   const total = entries.length;
@@ -329,7 +330,7 @@ function getItemSearchRecords(): ItemSearchRecord[] {
   entries.sort((a, b) => {
     const sa = a[1].sortId ?? 999999;
     const sb = b[1].sortId ?? 999999;
-    return sa !== sb ? sa - sb : a[0].localeCompare(b[0]);
+    return sa !== sb ? sa - sb : compareIds(a[0], b[0]);
   });
   itemSearchRecords = entries.map(([itemId, info]) => ({
     itemId,
