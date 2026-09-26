@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.7.2] - Unreleased
+
+### Fixed
+
+- Guarded JSON-sourced array reads against upstream `{}` empty-object
+  placeholders: game data that encodes empty arrays as `{}` no longer crashes
+  `get_stage_info` (unlock conditions), `get_stage_enemies` /
+  `get_enemy_appearances` (level waves, fragments, actions, enemyDbRefs),
+  enemy queries (handbook damage types/tags, database enemies/skills/blackboard),
+  operator archives and basic info (story audio, stories, talents, candidates),
+  and `get_item_info` (stage drop list). Affected fields are now treated as
+  empty lists.
+
 ## [1.7.1] - 2026-07-10
 
 ### Fixed

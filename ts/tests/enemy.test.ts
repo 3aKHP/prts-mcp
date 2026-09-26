@@ -294,3 +294,97 @@ test("search_enemies filters hidden", async () => {
   const out = enemy.searchEnemies("隐藏");
   assert.doesNotMatch(out, /应被过滤/);
 });
+
+// Upstream AKDP encodes empty arrays as {} empty-object placeholders;
+// the readers must treat them as empty instead of throwing.
+test("handbook {} damageType/enemyTags placeholders behave as empty", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  writeFixtures(root);
+  const excel = join(root, "zh_CN", "gamedata", "excel");
+  writeFileSync(
+    join(excel, "enemy_handbook_table.json"),
+    JSON.stringify({
+      enemyData: {
+        enemy_1505_frstar: {
+          enemyId: "enemy_1505_frstar",
+          enemyIndex: "FN",
+          name: "霜星",
+          enemyLevel: "BOSS",
+          sortId: 100,
+          description: "整合运动法术部队干部。",
+          damageType: {},
+          enemyTags: {},
+          hideInHandbook: false,
+        },
+      },
+    }),
+    "utf-8",
+  );
+  const enemy = await loadEnemyModule();
+  const out = enemy.getEnemyInfo("霜星");
+  assert.match(out, /霜星/);
+  assert.doesNotMatch(out, /伤害类型/);
+  assert.doesNotMatch(out, /标签/);
+  // The search-index spread over enemyTags must not throw on {}.
+  assert.match(enemy.searchEnemies("整合运动"), /霜星/);
+});
+
+test("enemy database {} skills/blackboard placeholders behave as empty", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  writeFixtures(root);
+  const dbRoot = join(root, "zh_CN", "gamedata", "levels", "enemydata");
+  writeFileSync(
+    join(dbRoot, "enemy_database.json"),
+    JSON.stringify({
+      enemies: [
+        {
+          Key: "enemy_1505_frstar",
+          Value: [
+            {
+              level: 0,
+              enemyData: {
+                attributes: { maxHp: { m_defined: true, m_value: 25000 } },
+                skills: [{ prefabKey: "ArcticBlast", cooldown: 8.5, blackboard: {} }],
+              },
+            },
+          ],
+        },
+        {
+          Key: "enemy_1004_mslime",
+          Value: [
+            {
+              level: 0,
+              enemyData: {
+                attributes: { maxHp: { m_defined: true, m_value: 550 } },
+                skills: {},
+              },
+            },
+          ],
+        },
+      ],
+    }),
+    "utf-8",
+  );
+  const enemy = await loadEnemyModule();
+  const boss = enemy.getEnemyInfo("霜星");
+  assert.match(boss, /\*\*最大生命\*\*：25,000/);
+  assert.match(boss, /ArcticBlast/);
+  assert.doesNotMatch(boss, /duration=/);
+  const slime = enemy.getEnemyInfo("源石虫");
+  assert.match(slime, /\*\*最大生命\*\*：550/);
+  assert.doesNotMatch(slime, /## 技能/);
+});
+
+test("enemy database {} enemies placeholder behaves as empty", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  writeFixtures(root);
+  const dbRoot = join(root, "zh_CN", "gamedata", "levels", "enemydata");
+  writeFileSync(join(dbRoot, "enemy_database.json"), JSON.stringify({ enemies: {} }), "utf-8");
+  const enemy = await loadEnemyModule();
+  const out = enemy.getEnemyInfo("霜星");
+  assert.match(out, /霜星/);
+  assert.doesNotMatch(out, /\*\*最大生命\*\*/);
+});
