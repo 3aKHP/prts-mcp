@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Cap the mcp SDK dependency to the compatible 1.x line (`mcp[cli]>=1.28,<2`)
+  so fresh installs and Docker builds no longer resolve the incompatible 2.x
+  major.
+
 ## [1.7.1] - 2026-07-10
 
 ### Fixed
