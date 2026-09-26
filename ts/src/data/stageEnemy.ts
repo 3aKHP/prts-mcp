@@ -185,9 +185,9 @@ function mergeDefined(base: unknown, override: unknown): unknown {
 
 function spawnCounts(level: LevelJson): Map<string, number> {
   const counts = new Map<string, number>();
-  for (const wave of level.waves ?? []) {
-    for (const fragment of wave.fragments ?? []) {
-      for (const action of fragment.actions ?? []) {
+  for (const wave of Array.isArray(level.waves) ? level.waves : []) {
+    for (const fragment of Array.isArray(wave.fragments) ? wave.fragments : []) {
+      for (const action of Array.isArray(fragment.actions) ? fragment.actions : []) {
         if (action.actionType !== "SPAWN" && action.actionType !== 0) continue;
         if (!action.key) continue;
         const rawCount = Number(action.count ?? 1);
@@ -201,7 +201,7 @@ function spawnCounts(level: LevelJson): Map<string, number> {
 
 function enemyRefs(level: LevelJson): Map<string, EnemyRef> {
   const refs = new Map<string, EnemyRef>();
-  for (const ref of level.enemyDbRefs ?? []) {
+  for (const ref of Array.isArray(level.enemyDbRefs) ? level.enemyDbRefs : []) {
     if (ref.id) refs.set(ref.id, ref);
   }
   return refs;

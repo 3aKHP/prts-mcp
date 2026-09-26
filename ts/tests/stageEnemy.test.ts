@@ -253,3 +253,68 @@ test("missing levels data message", async () => {
   const mod = await loadModule();
   assert.match(mod.getStageEnemies("main_00-01"), /关卡战斗数据暂不可用/);
 });
+
+// Upstream AKDP encodes empty arrays as {} empty-object placeholders;
+// the readers must treat them as empty instead of throwing.
+test("level json {} waves/enemyDbRefs placeholders behave as empty", async () => {
+  const root = tempRoot();
+  process.env["GAMEDATA_PATH"] = writeFixture(root);
+  writeJson(
+    join(root, "gamedata-levels", "zh_CN", "gamedata", "levels", "obt", "main", "level_main_00-01.json"),
+    { enemyDbRefs: {}, waves: {} },
+  );
+  const mod = await loadModule();
+  assert.match(mod.getStageEnemies("main_00-01"), /未解析到实际出怪/);
+  assert.match(mod.getEnemyAppearances("源石虫"), /未找到.*实际出场关卡/);
+});
+
+test("level json {} fragments/actions placeholders behave as empty", async () => {
+  const root = tempRoot();
+  process.env["GAMEDATA_PATH"] = writeFixture(root);
+  writeJson(
+    join(root, "gamedata-levels", "zh_CN", "gamedata", "levels", "obt", "main", "level_main_00-01.json"),
+    {
+      enemyDbRefs: [{ id: "enemy_1007_slime", level: 0, overwrittenData: null }],
+      waves: [{ fragments: {} }, { fragments: [{ actions: {} }] }],
+    },
+  );
+  const mod = await loadModule();
+  assert.match(mod.getStageEnemies("main_00-01"), /未解析到实际出怪/);
+});
+
+test("enemy database {} Value placeholder behaves as empty", async () => {
+  const root = tempRoot();
+  process.env["GAMEDATA_PATH"] = writeFixture(root);
+  writeJson(
+    join(root, "gamedata-levels", "zh_CN", "gamedata", "levels", "enemydata", "enemy_database.json"),
+    {
+      enemies: [
+        { Key: "enemy_1007_slime", Value: {} },
+        {
+          Key: "enemy_1002_nsabr",
+          Value: [
+            { level: 0, enemyData: { attributes: { maxHp: { m_defined: true, m_value: 1650 } } } },
+          ],
+        },
+      ],
+    },
+  );
+  const mod = await loadModule();
+  const out = mod.getStageEnemies("main_00-01");
+  assert.match(out, /源石虫/);
+  assert.match(out, /无数据库记录/);
+  assert.match(out, /HP 1,650/);
+});
+
+test("enemy database {} enemies placeholder raises the descriptive format error", async () => {
+  const root = tempRoot();
+  process.env["GAMEDATA_PATH"] = writeFixture(root);
+  writeJson(
+    join(root, "gamedata-levels", "zh_CN", "gamedata", "levels", "enemydata", "enemy_database.json"),
+    { enemies: {} },
+  );
+  const mod = await loadModule();
+  // normalizeEnemyDatabase (backport of c834bfa) rejects the {} placeholder
+  // with a descriptive error instead of a raw TypeError crash.
+  assert.throws(() => mod.getStageEnemies("main_00-01"), /格式异常/);
+});
