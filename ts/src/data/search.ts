@@ -64,7 +64,7 @@ export function searchOperatorData(pattern: string, maxResults = 30): string {
 
   let regex: RegExp;
   try {
-    regex = new RegExp(pattern, "i");
+    regex = new RegExp(pattern, "iu");
   } catch (exc) {
     return `正则表达式无效：${exc instanceof Error ? exc.message : String(exc)}`;
   }
@@ -132,9 +132,9 @@ function getOperatorSearchRecords(): SearchResult[] {
 
     const hbEntry = handbook.handbookDict?.[charId];
     if (hbEntry) {
-      for (const story of hbEntry.storyTextAudio ?? []) {
+      for (const story of Array.isArray(hbEntry.storyTextAudio) ? hbEntry.storyTextAudio : []) {
         const title = story.storyTitle ?? "";
-        for (const s of story.stories ?? []) {
+        for (const s of Array.isArray(story.stories) ? story.stories : []) {
           const text = s.storyText ?? "";
           if (text) records.push({ operator: name, category: "archives", field: title, text });
         }

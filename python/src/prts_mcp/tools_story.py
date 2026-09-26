@@ -25,6 +25,15 @@ from prts_mcp.data.story import (
 from prts_mcp.startup_sync import _require_story_zip
 
 
+def _key_error_text(e: KeyError) -> str:
+    """Surface a KeyError's message bare.
+
+    ``str(KeyError)`` repr-wraps the message in quotes; the TS twin surfaces
+    ``e.message`` bare, so parity requires ``e.args[0]``.
+    """
+    return e.args[0] if e.args else str(e)
+
+
 def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
     """Register the 10 story-backed tools on the given FastMCP instance."""
 
@@ -307,7 +316,12 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         try:
             result = _get_operator_memoirs(zip_path, operator_name)
         except KeyError as e:
-            return str(e)
+            msg = _key_error_text(e)
+            # Mirror the TS twin's allowlist: operator-resolution and
+            # no-memoir messages surface bare, anything else is prefixed.
+            if "未找到干员名称" in msg or "暂无密录数据" in msg:
+                return msg
+            return f"查询干员密录失败：{msg}"
         except Exception as e:
             return f"查询干员密录失败：{e}"
 
@@ -346,7 +360,7 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         except ValueError as e:
             return str(e)
         except KeyError as e:
-            return str(e)
+            return _key_error_text(e)
         except Exception as e:
             return f"查询角色出场失败：{e}"
 
@@ -388,7 +402,7 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
         try:
             speakers = _find_speakers_in(zip_path, event_id)
         except KeyError as e:
-            return str(e)
+            return _key_error_text(e)
         except Exception as e:
             return f"查询发言角色失败：{e}"
 

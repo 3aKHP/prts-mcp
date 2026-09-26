@@ -10,6 +10,7 @@
  */
 
 import { existsSync, statSync } from "node:fs";
+import { randomUUID } from "node:crypto";
 import {
   mkdir,
   readFile,
@@ -89,19 +90,25 @@ function githubHeaders(): Record<string, string> {
 }
 
 /**
- * Parse GITHUB_MIRRORS env var into a list of proxy base URLs (trailing slash stripped).
+ * Parse GITHUB_MIRRORS env var into a list of proxy base URLs.
+ *
+ * Surrounding whitespace is trimmed and all trailing slashes are stripped;
+ * entries left empty after normalization are dropped. Both implementations
+ * normalize identically (parity).
  *
  * Unset / empty  → [] (direct only, no cascade)
  * "https://ghproxy.net"              → ["https://ghproxy.net"]
  * "https://a.example,https://b.example" → ["https://a.example", "https://b.example"]
+ * " https://a.example/ , https://b.example// " → ["https://a.example", "https://b.example"]
+ * "https://a,///,https://b" → ["https://a", "https://b"] (slash-only entry dropped)
  *
  * Mirror URL format (ghproxy-style): <mirror>/<original_url>
  * e.g. "https://ghproxy.net/https://raw.githubusercontent.com/..."
  */
-function parseMirrors(): string[] {
+export function parseMirrors(): string[] {
   return (process.env["GITHUB_MIRRORS"] ?? "")
     .split(",")
-    .map((s) => s.trim().replace(/\/$/, ""))
+    .map((s) => s.trim().replace(/\/+$/, ""))
     .filter(Boolean);
 }
 
@@ -204,7 +211,33 @@ function releaseCachePath(spec: ReleaseSpec): string {
 async function loadReleaseMeta(spec: ReleaseSpec): Promise<CacheMeta | null> {
   try {
     const text = await readFile(releaseCachePath(spec), "utf-8");
-    return JSON.parse(text) as CacheMeta;
+    const value = JSON.parse(text) as {
+      repo?: unknown;
+      branch?: unknown;
+      commit_sha?: unknown;
+      commitSha?: unknown;
+      fetched_at?: unknown;
+      fetchedAt?: unknown;
+      files?: unknown;
+    };
+    // Accept both key casings so a file written by the Python runtime
+    // (snake_case) loads here and vice versa.
+    const commitSha = value.commit_sha ?? value.commitSha;
+    const fetchedAt = value.fetched_at ?? value.fetchedAt;
+    if (
+      typeof value.repo !== "string"
+      || typeof value.branch !== "string"
+      || typeof commitSha !== "string"
+      || typeof fetchedAt !== "string"
+      || !Array.isArray(value.files)
+    ) return null;
+    return {
+      repo: value.repo,
+      branch: value.branch,
+      commitSha,
+      fetchedAt,
+      files: value.files.filter((file): file is string => typeof file === "string"),
+    };
   } catch {
     return null;
   }
@@ -215,8 +248,17 @@ async function saveReleaseMeta(
   meta: CacheMeta
 ): Promise<void> {
   const p = releaseCachePath(spec);
+  const tmp = join(dirname(p), `.${basename(p)}.${randomUUID().replaceAll("-", "")}.tmp`);
   await mkdir(dirname(p), { recursive: true });
-  await writeFile(p, JSON.stringify(meta, null, 2), "utf-8");
+  // snake_case on disk: the canonical casing both runtimes read and write.
+  await writeFile(tmp, JSON.stringify({
+    repo: meta.repo,
+    branch: meta.branch,
+    commit_sha: meta.commitSha,
+    fetched_at: meta.fetchedAt,
+    files: meta.files,
+  }, null, 2), "utf-8");
+  await rename(tmp, p);
 }
 
 /**
@@ -255,7 +297,10 @@ export async function downloadReleaseAsset(
   assetUrl: string,
   timeoutMs = 120_000
 ): Promise<void> {
-  const tmp = spec.localZip + ".tmp";
+  const tmp = join(
+    dirname(spec.localZip),
+    `.${basename(spec.localZip)}.${randomUUID().replaceAll("-", "")}.tmp`,
+  );
   await mkdir(dirname(spec.localZip), { recursive: true });
   try {
     const res = await fetchCascading(

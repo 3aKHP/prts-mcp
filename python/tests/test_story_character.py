@@ -25,6 +25,7 @@ from prts_mcp.data.story_character import (
     find_character_appearances_from_store,
     find_speakers_in_from_store,
 )
+from prts_mcp.tools_story import register_story_tools
 
 
 # ---------------------------------------------------------------------------
@@ -296,3 +297,104 @@ class TestNarrationOnlyEvent:
         store = _narration_only_store(store_kind, tmp_path)
         result = find_character_appearances_from_store(store, "博士")
         assert result.total_chapters == 0
+
+
+# ---------------------------------------------------------------------------
+# Tool layer: KeyError messages surface bare (1.7.2 backport of main d1d7852)
+#
+# str(KeyError) repr-wraps the message in quotes, so the three story tools
+# that catch KeyError used to return doubled-quoted garbage. The tool layer
+# now unwraps e.args[0]; these tests pin the clean text for each tool.
+# ---------------------------------------------------------------------------
+
+CHARDICT_PATH = "zh_CN/chardict.json"
+
+
+@pytest.fixture()
+def tool_story_zip(tmp_path: Path) -> Path:
+    files = _story_files()
+    files[CHARDICT_PATH] = {
+        "amiya": {"name": "阿米娅", "id": "char_002_amiya"},
+        "nomemoir": {"name": "无密录干员", "id": "char_999_nomemoir"},
+    }
+    zip_path = tmp_path / "zh_CN.zip"
+    with zipfile.ZipFile(zip_path, "w") as zf:
+        for inner_path, data in files.items():
+            zf.writestr(inner_path, json.dumps(data, ensure_ascii=False))
+    return zip_path
+
+
+class _RecordingMCP:
+    """Capture registered tool functions without a live MCP transport.
+
+    test_server_startup_sync.py installs mcp/pydantic import stubs into
+    sys.modules before this module is collected, so the real FastMCP class
+    is not reliably importable here; a recorder follows the same FakeFastMCP
+    pattern while still exercising the tool bodies end to end.
+    """
+
+    def __init__(self) -> None:
+        self.tools: dict[str, object] = {}
+
+    def tool(self):  # type: ignore[no-untyped-def]
+        def decorator(func):  # type: ignore[no-untyped-def]
+            self.tools[func.__name__] = func
+            return func
+        return decorator
+
+
+def _story_tools() -> dict[str, object]:
+    recorder = _RecordingMCP()
+    register_story_tools(recorder)
+    return recorder.tools
+
+
+class TestStoryToolKeyErrorMessages:
+    def test_get_operator_memoirs_unknown_operator_is_bare(
+        self, monkeypatch: pytest.MonkeyPatch, tool_story_zip: Path,
+    ) -> None:
+        monkeypatch.setenv("STORYJSON_PATH", str(tool_story_zip))
+        text = _story_tools()["get_operator_memoirs"](operator_name="不存在的干员")
+        # No repr wrapper: str(KeyError) would add outer double quotes.
+        assert text == "未找到干员名称 '不存在的干员' 对应的内部代码。请使用游戏内中文名称。"
+        assert not text.startswith('"') and not text.endswith('"')
+
+    def test_get_operator_memoirs_no_memoir_data_is_bare(
+        self, monkeypatch: pytest.MonkeyPatch, tool_story_zip: Path,
+    ) -> None:
+        monkeypatch.setenv("STORYJSON_PATH", str(tool_story_zip))
+        # 无密录干员 exists in chardict but has no memoir chapters.
+        text = _story_tools()["get_operator_memoirs"](operator_name="无密录干员")
+        assert text == "干员 '无密录干员' (code=nomemoir) 暂无密录数据。"
+        assert not text.startswith('"') and not text.endswith('"')
+
+    def test_get_operator_memoirs_missing_chardict_gets_prefix(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+    ) -> None:
+        # Zip without chardict.json: the KeyError message is not in the
+        # bare-message allowlist, so the tool prefixes it.
+        zip_path = tmp_path / "zh_CN.zip"
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            for inner_path, data in _story_files().items():
+                zf.writestr(inner_path, json.dumps(data, ensure_ascii=False))
+        monkeypatch.setenv("STORYJSON_PATH", str(zip_path))
+        text = _story_tools()["get_operator_memoirs"](operator_name="阿米娅")
+        assert text == "查询干员密录失败：chardict.json 未在 story zip 中找到。"
+
+    def test_find_character_appearances_unknown_scope_is_bare(
+        self, monkeypatch: pytest.MonkeyPatch, tool_story_zip: Path,
+    ) -> None:
+        monkeypatch.setenv("STORYJSON_PATH", str(tool_story_zip))
+        text = _story_tools()["find_character_appearances"](
+            name="博士", scope="no_such_event",
+        )
+        assert text == "未找到匹配的活动：'no_such_event'。"
+        assert not text.startswith('"') and not text.endswith('"')
+
+    def test_find_speakers_in_unknown_event_is_bare(
+        self, monkeypatch: pytest.MonkeyPatch, tool_story_zip: Path,
+    ) -> None:
+        monkeypatch.setenv("STORYJSON_PATH", str(tool_story_zip))
+        text = _story_tools()["find_speakers_in"](event_id="no_such_event")
+        assert text == "未找到匹配的活动：'no_such_event'。"
+        assert not text.startswith('"') and not text.endswith('"')
