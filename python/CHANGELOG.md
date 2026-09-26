@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
   restored); the legacy `enemies` wrapper shape remains supported.
 - `get_stage_enemies` no-stats fallback no longer renders a doubled
   `战斗属性：战斗属性：` prefix.
+- Cap the mcp SDK dependency to the compatible 1.x line (`mcp[cli]>=1.28,<2`)
+  so fresh installs and Docker builds no longer resolve the incompatible 2.x
+  major.
 
 ## [1.7.1] - 2026-07-10
 
