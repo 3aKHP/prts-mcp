@@ -6,7 +6,7 @@ PRTS-MCP maintains security fixes for the latest stable release line and the 1.7
 
 | Version line | Security support |
 |--------------|------------------|
-| 2.x | Supported once released as the latest stable line. |
+| 2.x | Supported as the latest stable release line. |
 | 1.7.x | Supported as the LTS line for security, compatibility, data-sync, and critical fixes. |
 | < 1.7 | Not supported. Please upgrade before reporting. |
 | `dev` / prerelease builds | Best-effort fixes before release; not a production support line. |
