@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -102,6 +102,56 @@ test("listItems default", async () => {
   assert.match(out, /共 2 个/);
 });
 
+test("listItems sortId tie-break uses codepoint order", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  const excel = join(root, "zh_CN", "gamedata", "excel");
+  mkdirSync(excel, { recursive: true });
+  for (const f of SENTINEL_FILES) {
+    writeFileSync(join(excel, f), "{}", "utf-8");
+  }
+  // ICU localeCompare folds case and ranks "lower_tie" first ("l" < "u"
+  // alphabetically); Python sorted() compares codepoints, so uppercase ids
+  // (U+0041–U+005A) precede all lowercase ones (U+0061–).
+  writeFileSync(
+    join(excel, "item_table.json"),
+    JSON.stringify({
+      items: {
+        lower_tie: {
+          itemId: "lower_tie",
+          name: "小写物品",
+          sortId: 42,
+          hideInItemGet: false,
+          classifyType: "MATERIAL",
+          itemType: "MATERIAL",
+        },
+        UPPER_TIE: {
+          itemId: "UPPER_TIE",
+          name: "大写物品",
+          sortId: 42,
+          hideInItemGet: false,
+          classifyType: "MATERIAL",
+          itemType: "MATERIAL",
+        },
+      },
+    }),
+    "utf-8",
+  );
+  const item = await loadItemModule();
+
+  const listing = item.listItems();
+  const upperPos = listing.indexOf("（id: UPPER_TIE）");
+  const lowerPos = listing.indexOf("（id: lower_tie）");
+  assert.ok(upperPos !== -1 && lowerPos !== -1);
+  assert.ok(upperPos < lowerPos, "uppercase id must sort before lowercase id on sortId tie");
+
+  const found = item.searchItems("物品");
+  const upperSearchPos = found.indexOf("（id: UPPER_TIE）");
+  const lowerSearchPos = found.indexOf("（id: lower_tie）");
+  assert.ok(upperSearchPos !== -1 && lowerSearchPos !== -1);
+  assert.ok(upperSearchPos < lowerSearchPos, "search records keep the same tie-break order");
+});
+
 test("listItems category filter", async () => {
   const root = tempGamedataRoot();
   process.env["GAMEDATA_PATH"] = root;
@@ -164,4 +214,31 @@ test("searchItems invalid regex", async () => {
   const item = await loadItemModule();
   const out = item.searchItems("[bad");
   assert.match(out, /正则表达式无效/);
+});
+
+test("searchItems rejects identity escapes under /u", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  writeFixtures(root);
+  const item = await loadItemModule();
+  // "\ " is silently tolerated as an identity escape without /u; under /u
+  // it is a SyntaxError and must surface as the invalid-regex tool error.
+  const out = item.searchItems("\\ ");
+  assert.match(out, /正则表达式无效/);
+});
+
+// Upstream AKDP encodes empty arrays as {} empty-object placeholders;
+// the readers must treat them as empty instead of throwing.
+test("getItemInfo treats {} stageDropList placeholder as empty", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  writeFixtures(root);
+  const tablePath = join(root, "zh_CN", "gamedata", "excel", "item_table.json");
+  const table = JSON.parse(readFileSync(tablePath, "utf-8"));
+  table.items["30011"].stageDropList = {};
+  writeFileSync(tablePath, JSON.stringify(table), "utf-8");
+  const item = await loadItemModule();
+  const out = item.getItemInfo("源岩");
+  assert.match(out, /# 源岩/);
+  assert.match(out, /（无）/);
 });

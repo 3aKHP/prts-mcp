@@ -52,3 +52,39 @@ test("custom GAMEDATA_PATH without embedded levels uses sibling path", async () 
     delete process.env["PRTS_MCP_ROOT"];
   }
 });
+
+test("SESSION_IDLE_TIMEOUT_MS parsing is strict-decimal", async () => {
+  const cases: Array<[string | undefined, number]> = [
+    [undefined, 86_400_000], // unset → 24h default
+    ["2000", 2000],
+    [" 2000 ", 2000],
+    ["1e3", 1000],
+    ["250.5", 250.5],
+    // Invalid or <= 0 disables, including spellings that Number() would
+    // otherwise accept (hex/binary/octal literals, numeric separators).
+    ["0", -1],
+    ["-5", -1],
+    ["abc", -1],
+    ["", -1],
+    ["Infinity", -1],
+    ["1e400", -1],
+    ["nan", -1],
+    ["0x10", -1],
+    ["0b101", -1],
+    ["0o17", -1],
+    ["1_000", -1],
+    // Unicode digits must be rejected too, not passed through to Number().
+    ["２０００", -1],
+    ["٢٠٠٠", -1],
+  ];
+  try {
+    for (const [raw, expected] of cases) {
+      if (raw === undefined) delete process.env["SESSION_IDLE_TIMEOUT_MS"];
+      else process.env["SESSION_IDLE_TIMEOUT_MS"] = raw;
+      const mod = await loadConfigModule();
+      assert.equal(mod.SESSION_IDLE_TIMEOUT_MS, expected, `input ${JSON.stringify(raw)}`);
+    }
+  } finally {
+    delete process.env["SESSION_IDLE_TIMEOUT_MS"];
+  }
+});

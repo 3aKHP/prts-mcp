@@ -5,7 +5,9 @@
  */
 
 import { loadConfig } from "../config.js";
+import { compareIds } from "./sort.js";
 import { DirectoryStore } from "./stores.js";
+import { normalizeEnemyDatabase } from "./enemyDatabase.js";
 
 // ---------------------------------------------------------------------------
 // Module-level caches
@@ -160,12 +162,11 @@ function getDbIndex(): Record<string, EnemyDbEntry> {
     // path handling
     const store = new DirectoryStore(dbRoot);
     if (!store.exists(DATABASE_FILE)) { _dbIndex = {}; return _dbIndex; }
-    const raw = store.readJson<EnemyDatabase>(DATABASE_FILE);
+    const levels = normalizeEnemyDatabase<EnemyDbEntry>(store.readJson(DATABASE_FILE));
     const index: Record<string, EnemyDbEntry> = {};
-    for (const row of raw.enemies ?? []) {
-      if (row.Key && row.Value && row.Value[0]?.enemyData) {
-        index[row.Key] = row.Value[0].enemyData;
-      }
+    for (const [enemyId, levelMap] of Object.entries(levels)) {
+      const first = levelMap[0] ?? Object.values(levelMap)[0];
+      if (first) index[enemyId] = first;
     }
     _dbIndex = index;
   }
@@ -231,7 +232,7 @@ function fmtEnemy(info: EnemyHandbookEntry, includeId = false): string {
   if (info.attackType) lines.push(`- **攻击方式**：${info.attackType}`);
   if (info.ability) lines.push(`- **特殊能力**：${info.ability}`);
 
-  const damageTypes = info.damageType ?? [];
+  const damageTypes = Array.isArray(info.damageType) ? info.damageType : [];
   if (damageTypes.length > 0) {
     const dtZh = damageTypes.map((dt) =>
       ({ PHYSIC: "物理", MAGIC: "法术", HEAL: "治疗" })[dt] ?? dt
@@ -239,7 +240,7 @@ function fmtEnemy(info: EnemyHandbookEntry, includeId = false): string {
     lines.push(`- **伤害类型**：${dtZh}`);
   }
 
-  const tags = info.enemyTags ?? [];
+  const tags = Array.isArray(info.enemyTags) ? info.enemyTags : [];
   if (tags && tags.length > 0) {
     lines.push(`- **标签**：${tags.join("、")}`);
   }
@@ -285,7 +286,7 @@ function fmtStats(dbEntry: EnemyDbEntry): string {
 
   if (lpr) lines.push(`- **生命值扣除**：${lpr}`);
 
-  const skills = dbEntry.skills ?? [];
+  const skills = Array.isArray(dbEntry.skills) ? dbEntry.skills : [];
   if (skills.length > 0) {
     lines.push("\n## 技能");
     for (const s of skills) {
@@ -301,7 +302,7 @@ function fmtStats(dbEntry: EnemyDbEntry): string {
       if (spCost) cdParts.push(`SP ${spCost}`);
       if (cdParts.length > 0) parts.push(`（${cdParts.join("，")}）`);
 
-      const bb = s.blackboard ?? [];
+      const bb = Array.isArray(s.blackboard) ? s.blackboard : [];
       if (bb.length > 0) {
         const bbStrs = bb
           .slice(0, 6)
@@ -352,7 +353,7 @@ export function listEnemies(
   entries.sort((a, b) => {
     const sa = a[1].sortId ?? 9999;
     const sb = b[1].sortId ?? 9999;
-    return sa !== sb ? sa - sb : a[0].localeCompare(b[0]);
+    return sa !== sb ? sa - sb : compareIds(a[0], b[0]);
   });
 
   const total = entries.length;
@@ -415,7 +416,7 @@ export function searchEnemies(pattern: string, maxResults = 30): string {
   if (maxResults > 100) return "max_results 必须 <= 100。";
 
   let regex: RegExp;
-  try { regex = new RegExp(pattern, "i"); } catch (err) {
+  try { regex = new RegExp(pattern, "iu"); } catch (err) {
     return `正则表达式无效：${err instanceof Error ? err.message : String(err)}`;
   }
 
@@ -450,7 +451,7 @@ function getEnemySearchRecords(): EnemySearchRecord[] {
         info.name ?? "",
         info.description ?? "",
         info.ability ?? "",
-        ...(info.enemyTags ?? []),
+        ...(Array.isArray(info.enemyTags) ? info.enemyTags : []),
       ].join(" "),
     }));
   return _enemySearchRecords;

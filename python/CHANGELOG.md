@@ -18,6 +18,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
   enforce `limit` (`1-200`) and `offset` (`>= 0`) bounds at the framework
   layer via `Field(ge=, le=)`, matching the TypeScript Zod schema so
   out-of-range pagination is rejected consistently across implementations.
+- `get_operator_memoirs`, `find_character_appearances`, and `find_speakers_in` no longer return KeyError messages (unknown operator, operator without memoir data, unknown event) wrapped in Python repr quotes; the clean message text is surfaced bare, matching the TypeScript implementation.
+- `release_meta.json` sync metadata is now interoperable when the Python and TypeScript runtimes share one data directory: both implementations read either key casing (`commit_sha`/`commitSha`, `fetched_at`/`fetchedAt`) with defensive field validation, and both write snake_case. Previously a TypeScript-written cache was discarded by Python (treated as missing) and a Python-written cache yielded an undefined commit SHA and NaN freshness in TypeScript (forced re-download). Unknown keys in the file are now tolerated instead of invalidating the cache.
+- Cache metadata saves are now atomic (unique tmp file + rename, no corruption from a crash mid-write), and release asset downloads use unique tmp names so concurrent processes no longer race on a shared `.tmp` file.
+- `GITHUB_MIRRORS` entries are now normalized identically in both implementations: surrounding whitespace is trimmed and all trailing slashes are stripped (previously TypeScript stripped only one trailing slash, so `https://ghproxy.net//` produced a broken `...//https://...` candidate that proxies reject, and Python kept surrounding whitespace and filtered blank entries before normalizing). Entries left empty after normalization (e.g. `///`) are dropped by both sides.
+- **Scalar story decisions.** A `Decision.options` string is returned as one
+  complete choice line instead of being split into one bogus choice line per
+  character.
+- `get_enemy_info` / `get_stage_enemies` read the current upstream
+  `enemy_database.json` direct-mapping shape again (enemy combat stats are
+  restored); the legacy `enemies` wrapper shape remains supported.
+- `get_stage_enemies` no-stats fallback no longer renders a doubled
+  `战斗属性：战斗属性：` prefix.
 - Cap the mcp SDK dependency to the compatible 1.x line (`mcp[cli]>=1.28,<2`)
   so fresh installs and Docker builds no longer resolve the incompatible 2.x
   major.

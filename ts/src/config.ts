@@ -71,6 +71,27 @@ const DOCKER_LEVELS_PATH = "/data/gamedata-levels";
 /** Bundled levels fallback baked into the package at publish/build time. */
 export const BUNDLED_LEVELS_PATH = join(_PACKAGE_ROOT, "data", "gamedata-levels");
 
+// [0-9] spelled out instead of \d to make the strict-decimal (ASCII-only)
+// intent explicit at the pattern site.
+const DECIMAL_NUMBER_PATTERN = /^[+-]?(?:[0-9]+\.?[0-9]*|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$/;
+
+/**
+ * SESSION_IDLE_TIMEOUT_MS — HTTP session idle timeout in milliseconds.
+ * Unset falls back to the 24h default; a positive finite decimal number is
+ * taken as-is; any other value disables idle eviction (`<= 0` sentinel).
+ * Parsing is strict-decimal with ASCII digits only, so spellings like
+ * `0x10` or `1_000` that Number() would otherwise accept are rejected.
+ */
+export const SESSION_IDLE_TIMEOUT_MS = (() => {
+  const raw = process.env["SESSION_IDLE_TIMEOUT_MS"];
+  if (raw === undefined) return 24 * 60 * 60 * 1000;
+  const trimmed = raw.trim();
+  if (!DECIMAL_NUMBER_PATTERN.test(trimmed)) return -1;
+  const parsed = Number(trimmed);
+  if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  return -1;
+})();
+
 // ---------------------------------------------------------------------------
 // Path resolution
 // ---------------------------------------------------------------------------
