@@ -368,6 +368,19 @@ class TestStoryToolKeyErrorMessages:
         assert text == "干员 '无密录干员' (code=nomemoir) 暂无密录数据。"
         assert not text.startswith('"') and not text.endswith('"')
 
+    def test_get_operator_memoirs_missing_chardict_gets_prefix(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+    ) -> None:
+        # Zip without chardict.json: the KeyError message is not in the
+        # bare-message allowlist, so the tool prefixes it.
+        zip_path = tmp_path / "zh_CN.zip"
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            for inner_path, data in _story_files().items():
+                zf.writestr(inner_path, json.dumps(data, ensure_ascii=False))
+        monkeypatch.setenv("STORYJSON_PATH", str(zip_path))
+        text = _story_tools()["get_operator_memoirs"](operator_name="阿米娅")
+        assert text == "查询干员密录失败：chardict.json 未在 story zip 中找到。"
+
     def test_find_character_appearances_unknown_scope_is_bare(
         self, monkeypatch: pytest.MonkeyPatch, tool_story_zip: Path,
     ) -> None:
