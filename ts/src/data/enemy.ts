@@ -5,6 +5,7 @@
  */
 
 import { loadConfig } from "../config.js";
+import { compareIds } from "./sort.js";
 import { DirectoryStore } from "./stores.js";
 import { normalizeEnemyDatabase } from "./enemyDatabase.js";
 
@@ -352,7 +353,7 @@ export function listEnemies(
   entries.sort((a, b) => {
     const sa = a[1].sortId ?? 9999;
     const sb = b[1].sortId ?? 9999;
-    return sa !== sb ? sa - sb : a[0].localeCompare(b[0]);
+    return sa !== sb ? sa - sb : compareIds(a[0], b[0]);
   });
 
   const total = entries.length;
@@ -415,7 +416,7 @@ export function searchEnemies(pattern: string, maxResults = 30): string {
   if (maxResults > 100) return "max_results 必须 <= 100。";
 
   let regex: RegExp;
-  try { regex = new RegExp(pattern, "i"); } catch (err) {
+  try { regex = new RegExp(pattern, "iu"); } catch (err) {
     return `正则表达式无效：${err instanceof Error ? err.message : String(err)}`;
   }
 

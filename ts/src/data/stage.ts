@@ -1,6 +1,7 @@
 import { loadConfig } from "../config.js";
 import { DirectoryStore } from "./stores.js";
 import { getItemNameById } from "./item.js";
+import { compareIds } from "./sort.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -216,7 +217,7 @@ export function listStages(
   }
 
   const filtered: StageEntry[] = [];
-  for (const [sid, entry] of Object.entries(stages).sort(([a], [b]) => a.localeCompare(b))) {
+  for (const [sid, entry] of Object.entries(stages).sort(([a], [b]) => compareIds(a, b))) {
     if (chapter != null && entry.zoneId !== chapter) continue;
     if (type != null && entry.stageType !== type.toUpperCase()) continue;
     filtered.push(entry);
@@ -320,7 +321,7 @@ export function searchStages(pattern: string, maxResults: number = 30): string {
 
   let regex: RegExp;
   try {
-    regex = new RegExp(pattern, "i");
+    regex = new RegExp(pattern, "iu");
   } catch (e) {
     return `正则表达式无效：${e instanceof Error ? e.message : String(e)}`;
   }
@@ -367,7 +368,7 @@ export function searchStages(pattern: string, maxResults: number = 30): string {
 function getStageSearchRecords(): StageSearchRecord[] {
   if (_stageSearchRecords !== null) return _stageSearchRecords;
   _stageSearchRecords = Object.entries(getStageTable())
-    .sort(([a], [b]) => a.localeCompare(b))
+    .sort(([a], [b]) => compareIds(a, b))
     .map(([stageId, entry]) => ({
       stageId,
       entry,
