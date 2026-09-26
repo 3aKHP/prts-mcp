@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Security
+
+- Updated production dependencies to resolve current npm security advisories:
+  `@modelcontextprotocol/sdk` to ^1.30.0 (staying on the v1 SDK line) and
+  `adm-zip` to ^0.6.0 as direct dependencies, with `overrides` pinning the
+  transitive `@hono/node-server`, `hono`, `body-parser`, `type-is`,
+  `fast-uri`, `ip-address`, and `qs` packages to patched versions
+  (`content-type` 2.x is pulled in through the patched `body-parser` /
+  `type-is` chain). The dev-only `tsx` / `esbuild` update clears the dev
+  esbuild advisory. `npm audit` now reports zero vulnerabilities.
 ### Fixed
 
 - **Scalar story decisions.** A `Decision.options` string is returned as one
