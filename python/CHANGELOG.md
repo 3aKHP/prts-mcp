@@ -11,6 +11,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - **Scalar story decisions.** A `Decision.options` string is returned as one
   complete choice line instead of being split into one bogus choice line per
   character.
+- Cap the mcp SDK dependency to the compatible 1.x line (`mcp[cli]>=1.28,<2`)
+  so fresh installs and Docker builds no longer resolve the incompatible 2.x
+  major.
 
 ## [1.7.1] - 2026-07-10
 
