@@ -143,6 +143,23 @@ def test_story_tools_read_from_store(tmp_path, store_kind):
     assert [chapter.story_key for chapter in activity.chapters] == [FIRST_STORY_KEY]
 
 
+def test_read_activity_page_size_bounds(tmp_path):
+    write_story_dir(tmp_path)
+    store = DirectoryStore(tmp_path)
+
+    for kwargs in ({"page": 1, "page_size": 0}, {"page": 1, "page_size": 21}, {"page_size": 0}):
+        with pytest.raises(ValueError, match="page_size 参数必须在 1 到 20 之间"):
+            read_activity_from_store(store, "act_test", **kwargs)
+
+    first_page = read_activity_from_store(store, "act_test", page=1, page_size=1)
+    assert [chapter.story_key for chapter in first_page.chapters] == [FIRST_STORY_KEY]
+    assert first_page.has_more is True
+
+    all_at_once = read_activity_from_store(store, "act_test", page=1, page_size=20)
+    assert len(all_at_once.chapters) == 2
+    assert all_at_once.has_more is False
+
+
 def test_public_zip_path_api_still_reads_zip(tmp_path):
     zip_path = tmp_path / "zh_CN.zip"
     write_story_zip(zip_path)

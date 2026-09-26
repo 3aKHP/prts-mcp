@@ -28,7 +28,14 @@ def _install_server_import_stubs() -> None:
     sys.modules.setdefault("pydantic", pydantic_module)
 
 
-_install_server_import_stubs()
+try:
+    import mcp.server.fastmcp  # noqa: F401
+    import pydantic  # noqa: F401
+except ImportError:
+    # Fallback for minimal environments without the real mcp/pydantic runtime.
+    # When the real packages are installed they must win: installing stubs here
+    # would poison sys.modules for every later test module in this process.
+    _install_server_import_stubs()
 
 from prts_mcp import server
 

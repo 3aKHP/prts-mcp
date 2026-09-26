@@ -8,6 +8,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Fixed
 
+- `read_activity` now bounds `page` (`>= 1`) and `page_size` (`1-20`) at the
+  framework layer via `Field(ge=, le=)`, matching the TypeScript Zod schema,
+  so invalid pagination (e.g. `page_size=0`, which previously produced
+  endless empty pages with `has_more=True`) is rejected before reaching the
+  data layer.
+- Gamedata listing tools
+  (`list_enemies`/`get_enemy_appearances`/`list_stages`/`list_items`) now
+  enforce `limit` (`1-200`) and `offset` (`>= 0`) bounds at the framework
+  layer via `Field(ge=, le=)`, matching the TypeScript Zod schema so
+  out-of-range pagination is rejected consistently across implementations.
 - `get_operator_memoirs`, `find_character_appearances`, and `find_speakers_in` no longer return KeyError messages (unknown operator, operator without memoir data, unknown event) wrapped in Python repr quotes; the clean message text is surfaced bare, matching the TypeScript implementation.
 - `release_meta.json` sync metadata is now interoperable when the Python and TypeScript runtimes share one data directory: both implementations read either key casing (`commit_sha`/`commitSha`, `fetched_at`/`fetchedAt`) with defensive field validation, and both write snake_case. Previously a TypeScript-written cache was discarded by Python (treated as missing) and a Python-written cache yielded an undefined commit SHA and NaN freshness in TypeScript (forced re-download). Unknown keys in the file are now tolerated instead of invalidating the cache.
 - Cache metadata saves are now atomic (unique tmp file + rename, no corruption from a crash mid-write), and release asset downloads use unique tmp names so concurrent processes no longer race on a shared `.tmp` file.
