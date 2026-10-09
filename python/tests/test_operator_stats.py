@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 from prts_mcp.data.operator import clear_operator_caches
 from prts_mcp.data.operator_stats import (
+    PANEL_FIELDS,
     build_operator_stats,
     interpolate_attributes,
     render_operator_stats,
@@ -111,6 +112,32 @@ def test_operator_stats_validates_phase_level(tmp_path: Path) -> None:
         assert build_operator_stats("阿米娅", phase=0, level=1)["attributes"]["maxHp"] == 699
 
 
+def test_operator_stats_degrades_on_malformed_keyframes(tmp_path: Path) -> None:
+    # Hand-made roots may carry phases without keyframes: both the detail
+    # path and the overview render must degrade, never raise.
+    write_minimal_gamedata(tmp_path)
+    excel = tmp_path / "zh_CN" / "gamedata" / "excel"
+    table = json.loads((excel / "character_table.json").read_text(encoding="utf-8"))
+    table["char_002_amiya"]["phases"][2]["attributesKeyFrames"] = []
+    (excel / "character_table.json").write_text(
+        json.dumps(table, ensure_ascii=False), encoding="utf-8"
+    )
+    with patch.dict(os.environ, {"GAMEDATA_PATH": str(tmp_path)}, clear=False):
+        os.environ.pop("STORYJSON_PATH", None)
+
+        message = build_operator_stats("阿米娅", phase=2, level=40)
+        assert message == "干员 '阿米娅' 的精英2面板关键帧缺失，数据可能损坏。"
+
+        overview = build_operator_stats("阿米娅")
+        assert isinstance(overview, dict)
+        empty_frames = overview["phases"][2]["keyframes"]["lv1"]
+        # Full key set present with None values (renderer must not KeyError).
+        assert set(empty_frames) == {key for key, _ in PANEL_FIELDS}
+        assert all(value is None for value in empty_frames.values())
+        markdown = render_operator_stats(overview)
+        assert "Lv1 None / Lv满 None" in markdown
+
+
 def test_real_data_matches_published_panels() -> None:
     root = Path(__file__).parents[2] / "data" / "gamedata"
     if not (root / "zh_CN" / "gamedata" / "excel" / "character_table.json").exists():
@@ -119,27 +146,33 @@ def test_real_data_matches_published_panels() -> None:
         pytest.skip("No bundled operator data")
 
     clear_operator_caches()
-    try:
-        # Keyframe anchors: every level PRTS Wiki publishes must match exactly.
-        cases = {(0, 1): _WIKI_AMIYA[("e0", 1)], (0, 50): _WIKI_AMIYA[("e0", 50)],
-                 (1, 70): _WIKI_AMIYA[("e1", 70)], (2, 80): _WIKI_AMIYA[("e2", 80)]}
-        for (phase, level), (hp, atk, df, res) in cases.items():
-            detail = build_operator_stats("阿米娅", phase=phase, level=level)
-            assert isinstance(detail, dict), detail
-            attrs = detail["attributes"]
-            assert attrs["maxHp"] == hp and attrs["atk"] == atk, (phase, level)
-            assert attrs["def"] == df and attrs["magicResistance"] == res
+    # Patch GAMEDATA_PATH like every sibling test: Config.load() otherwise
+    # resolves a user-dir default in CI and the guard above would probe a
+    # different path than the code under test reads.
+    with patch.dict(os.environ, {"GAMEDATA_PATH": str(root)}, clear=False):
+        os.environ.pop("STORYJSON_PATH", None)
+        try:
+            # Keyframe anchors: every level PRTS Wiki publishes must match
+            # exactly.
+            cases = {(0, 1): _WIKI_AMIYA[("e0", 1)], (0, 50): _WIKI_AMIYA[("e0", 50)],
+                     (1, 70): _WIKI_AMIYA[("e1", 70)], (2, 80): _WIKI_AMIYA[("e2", 80)]}
+            for (phase, level), (hp, atk, df, res) in cases.items():
+                detail = build_operator_stats("阿米娅", phase=phase, level=level)
+                assert isinstance(detail, dict), detail
+                attrs = detail["attributes"]
+                assert attrs["maxHp"] == hp and attrs["atk"] == atk, (phase, level)
+                assert attrs["def"] == df and attrs["magicResistance"] == res
 
-        # Max-trust bonus matches the wiki (+200 HP, +70 ATK).
-        overview = build_operator_stats("阿米娅")
-        assert isinstance(overview, dict)
-        assert overview["favor_bonus"]["maxHp"] == _WIKI_AMIYA_TRUST[0]
-        assert overview["favor_bonus"]["atk"] == _WIKI_AMIYA_TRUST[1]
+            # Max-trust bonus matches the wiki (+200 HP, +70 ATK).
+            overview = build_operator_stats("阿米娅")
+            assert isinstance(overview, dict)
+            assert overview["favor_bonus"]["maxHp"] == _WIKI_AMIYA_TRUST[0]
+            assert overview["favor_bonus"]["atk"] == _WIKI_AMIYA_TRUST[1]
 
-        # Mid-level sanity: interpolated E2 Lv40 stays inside the frame span
-        # and matches the hand-computed linear value.
-        detail = build_operator_stats("阿米娅", phase=2, level=40)
-        assert isinstance(detail, dict)
-        assert detail["attributes"]["maxHp"] == 1337
-    finally:
-        clear_operator_caches()
+            # Mid-level sanity: interpolated E2 Lv40 stays inside the frame
+            # span and matches the hand-computed linear value.
+            detail = build_operator_stats("阿米娅", phase=2, level=40)
+            assert isinstance(detail, dict)
+            assert detail["attributes"]["maxHp"] == 1337
+        finally:
+            clear_operator_caches()

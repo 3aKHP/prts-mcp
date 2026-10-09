@@ -1,8 +1,9 @@
 /**
  * GameData tool registrations — operators, enemies, stages, items, search.
  *
- * Split from server.ts. Exports registerGamedataTools which attaches the 12
- * game-data-backed tools to a McpServer instance.
+ * Split from server.ts. Exports registerGamedataTools which attaches the 14
+ * game-data-backed tools to a McpServer instance (operators x5, enemies x4,
+ * stages x2, items x2, unified search).
  */
 
 import type { McpServer } from "@modelcontextprotocol/server";

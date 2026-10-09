@@ -34,12 +34,15 @@ interface RequestToken {
 
 // Tool names are protocol input. Keep this allow-list fixed so an invalid
 // caller-supplied name cannot become a retained metric label or grow memory.
-const METRIC_TOOL_NAMES = new Set([
+// Exported for the tool-surface test that pins it to EXPECTED_TOOLS.
+export const METRIC_TOOL_NAMES = new Set([
   "search_prts",
   "prts_page",
   "get_operator_archives",
   "get_operator_voicelines",
   "get_operator_basic_info",
+  "get_operator_skills",
+  "get_operator_stats",
   "list_story_events",
   "list_stories",
   "read_story",

@@ -9,6 +9,7 @@ import {
   getCharacterTable,
   getHandbookTable,
   getCharwordTable,
+  nameToCharId,
 } from "./operator.js";
 import type { CacheStat } from "../cacheStats.js";
 import { defineDataset, type DatasetAccess } from "./datasetAccess.js";
@@ -158,11 +159,6 @@ function getOperatorSearchRecordsImpl(): OperatorSearchEntry[] {
   const handbook = getHandbookTable();
   const charwords = getCharwordTable();
 
-  const nameToId = new Map<string, string>();
-  for (const [cid, info] of Object.entries(ct)) {
-    if (info.name && cid.startsWith("char_")) nameToId.set(info.name, cid);
-  }
-
   const charidToVoices = new Map<string, CharwordEntry[]>();
   for (const entry of Object.values(charwords.charWords ?? {})) {
     if (entry.charId && entry.voiceText) {
@@ -173,7 +169,7 @@ function getOperatorSearchRecordsImpl(): OperatorSearchEntry[] {
   }
 
   const records: OperatorSearchEntry[] = [];
-  for (const [name, charId] of nameToId) {
+  for (const [name, charId] of nameToCharId()) {
     const info = ct[charId];
     if (!info) continue;
 

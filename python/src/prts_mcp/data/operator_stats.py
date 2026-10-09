@@ -63,7 +63,13 @@ def interpolate_attributes(
     for key, _label in PANEL_FIELDS:
         lo_value, hi_value = lo.get(key), hi.get(key)
         if span <= 0 or not _is_number(lo_value) or not _is_number(hi_value):
-            panel[key] = hi_value if _is_number(hi_value) else lo_value
+            # Non-numeric or malformed fields project as None (TS twin
+            # coerces to null) rather than passing raw strings/bools.
+            panel[key] = (
+                hi_value if _is_number(hi_value)
+                else lo_value if _is_number(lo_value)
+                else None
+            )
             continue
         ratio = (level - lo_level) / span
         raw = float(lo_value) + (float(hi_value) - float(lo_value)) * ratio
@@ -99,8 +105,11 @@ def _potential(info: dict[str, Any]) -> list[str]:
 def _phase_summary(index: int, phase: dict[str, Any]) -> dict[str, Any]:
     frames = [f for f in (phase.get("attributesKeyFrames") or []) if isinstance(f, dict)]
     max_level = phase.get("maxLevel")
-    lv1 = _project_panel(frames[0].get("data") or {}) if frames else {}
-    lv_max = _project_panel(frames[-1].get("data") or {}) if frames else {}
+    # Panels are always fully projected (missing frames → all-None fields)
+    # so the renderer can index keys unconditionally, mirroring the TS
+    # `?? null` behavior on malformed hand-made data roots.
+    lv1 = _project_panel((frames[0].get("data") if frames else None) or {})
+    lv_max = _project_panel((frames[-1].get("data") if frames else None) or {})
     return {
         "phase": index,
         "max_level": max_level,
@@ -152,13 +161,18 @@ def build_operator_stats(
     target = phases[phase]
     frames = [f for f in (target.get("attributesKeyFrames") or []) if isinstance(f, dict)]
     max_level = target.get("maxLevel") or 0
-    if not isinstance(level, int) or not 1 <= level <= max_level:
+    if not isinstance(level, int) or isinstance(level, bool) or not 1 <= level <= max_level:
         return f"level 必须在 1..{max_level} 之间（精英{phase} 的等级上限为 {max_level}）。"
+
+    if not frames:
+        # Malformed hand-made roots may carry a phase without keyframes;
+        # degrade to a message instead of an IndexError (TS twin too).
+        return f"干员 '{name}' 的精英{phase}面板关键帧缺失，数据可能损坏。"
 
     lo, hi = frames[0], frames[-1]
     attributes = interpolate_attributes(
         lo.get("data") or {}, hi.get("data") or {},
-        level, lo.get("level", 1), hi.get("level", max_level),
+        level, lo.get("level") or 1, hi.get("level") or max_level,
     )
     return {
         "name": name,

@@ -11,7 +11,7 @@ import { defineDataset, excelStore, type DatasetAccess } from "./datasetAccess.j
 import { excelMissingMessage, regexErrorMessage, validateBounds } from "./messages.js";
 // operator.ts imports this module back; the cycle is safe because both
 // sides only use each other's bindings inside function bodies.
-import { getCharacterTable } from "./operator.js";
+import { getCharacterTable, nameToCharId } from "./operator.js";
 
 const ROOM_ZH: Record<string, string> = {
   CONTROL: "控制中枢",
@@ -179,15 +179,8 @@ function getBuildingSkillRecordsImpl(): BuildingSkillRecord[] {
     return [];
   }
   const ct = getCharacterTable();
-  // Mirror the PY twin's name→id folding: duplicate names collapse to the
-  // last cid while keeping first-insertion position.
-  const nameToId = new Map<string, string>();
-  for (const [cid, info] of Object.entries(ct)) {
-    if (info.name && cid.startsWith("char_")) nameToId.set(info.name, cid);
-  }
-
   const records: BuildingSkillRecord[] = [];
-  for (const [name, charId] of nameToId) {
+  for (const [name, charId] of nameToCharId()) {
     for (const s of buildingSkillsFor(charId)) {
       records.push({
         operator: name,
