@@ -441,7 +441,9 @@ function talentTierNote(candidates: OperatorTalentCandidatePayload[]): string {
   if (phases.length > 0) parts.push(`${phases[0]}解锁`);
   for (const phase of phases.slice(1)) parts.push(`${phase}强化`);
   const maxRank = Math.max(...candidates.map((c) => c.potential_rank ?? 0));
-  if (maxRank > 0) parts.push(`潜能${maxRank}档强化`);
+  // Number.isInteger mirrors the PY isinstance(max_rank, int) guard so a
+  // hypothetical non-integer rank renders identically on both sides.
+  if (Number.isInteger(maxRank) && maxRank > 0) parts.push(`潜能${maxRank}档强化`);
   return parts.length > 0 ? `（${parts.join("；")}）` : "";
 }
 
