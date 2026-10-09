@@ -37,6 +37,7 @@ test("dataset specs expose expected release asset requirements", () => {
   assert.ok(GAMEDATA_EXCEL.requiredFiles.includes("zh_CN/gamedata/excel/stage_table.json"));
   assert.ok(GAMEDATA_EXCEL.requiredFiles.includes("zh_CN/gamedata/excel/building_data.json"));
   assert.ok(GAMEDATA_EXCEL.requiredFiles.includes("zh_CN/gamedata/excel/skin_table.json"));
+  assert.ok(GAMEDATA_EXCEL.requiredFiles.includes("zh_CN/gamedata/excel/skill_table.json"));
 
   assert.equal(GAMEDATA_LEVELS.datasetId, "gamedata.levels");
   assert.equal(GAMEDATA_LEVELS.assetName, "zh_CN-levels.zip");

@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Added
+
+- **Operator combat skills: `get_operator_skills` and a `skills` search scope.** The new tool returns an operator's combat skills with per-level effects — Lv1-7 plus mastery 1-3 — including SP cost, initial SP, charge count, duration/ammo, and descriptions rendered by substituting blackboard placeholders (`{key}` / `{key:0%}` .NET-style formats; unknown placeholders stay literal). The unified `search` tool gains a `skills` scope for cross-operator keyword lookup over all level descriptions. The `skills` scope returns each matching skill's highest-level effect line, so the matched keyword may appear in a lower level's description rather than the displayed line. `skill_table.json` becomes a validated dataset-contract entry of the AKDP `zh_CN-excel.zip` dataset (the archive has always shipped it, so re-download restores contract compliance on older deployments); user-supplied data roots without the file degrade: the tool explains the gap, the scope reports no matches. The `skill` domain registers on the dataset-access contract and appears as the eleventh `/debug/cache` module. The MCP tool surface grows from 24 to 25; existing tools, parameters, and user configuration stay compatible.
+
 ## [2.7.4] - 2026-09-15
 
 ### Added

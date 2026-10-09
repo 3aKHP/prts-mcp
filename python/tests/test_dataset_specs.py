@@ -12,6 +12,7 @@ def test_gamedata_excel_requires_current_public_tool_tables():
     assert "zh_CN/gamedata/excel/stage_table.json" in GAMEDATA_EXCEL.required_files
     assert "zh_CN/gamedata/excel/building_data.json" in GAMEDATA_EXCEL.required_files
     assert "zh_CN/gamedata/excel/skin_table.json" in GAMEDATA_EXCEL.required_files
+    assert "zh_CN/gamedata/excel/skill_table.json" in GAMEDATA_EXCEL.required_files
 
 
 def test_gamedata_levels_spec_requires_enemy_database():

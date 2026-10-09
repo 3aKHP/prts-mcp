@@ -198,6 +198,7 @@ test("E2E", async (t) => {
     const expectedModules = new Set([
       "operator", "enemy", "stage", "stage_enemy", "item",
       "search", "story_search", "images", "artwork_mediawiki", "building",
+      "skill",
     ]);
     assert.deepEqual(new Set(Object.keys(data)), expectedModules, "module set mismatch");
     for (const [mod, caches] of Object.entries(data)) {
@@ -256,7 +257,7 @@ test("E2E", async (t) => {
     assert.equal(list.status, 200);
     assert.equal(list.sessionId, null, "modern tools/list must stay stateless");
     const tools = (list.body["result"] as { tools?: Array<{ name: string }> }).tools;
-    assert.equal(tools?.length, 24);
+    assert.equal(tools?.length, 25);
 
     const call = await modernPost(origin, "tools/call", {
       name: "get_operator_basic_info",
@@ -280,7 +281,7 @@ test("E2E", async (t) => {
   });
 
   // --- tools/list ---
-  await t.test("tools/list returns all 24 tools", async () => {
+  await t.test("tools/list returns all 25 tools", async () => {
     const tl = await mcpPost(
       origin,
       { jsonrpc: "2.0", method: "tools/list", id: 2 },
@@ -290,7 +291,7 @@ test("E2E", async (t) => {
     assert.equal(tl.status, 200);
     const tools = (tl.body?.result as Record<string, unknown>)?.tools as Array<{ name: string }> | undefined;
     assert.ok(tools, "tools/list should return tools");
-    assert.equal(tools!.length, 24, `got ${tools!.length} tools`);
+    assert.equal(tools!.length, 25, `got ${tools!.length} tools`);
 
     const expected = new Set([
       "search_prts", "prts_page",

@@ -1,7 +1,9 @@
 """GameData tool registrations — operators, enemies, stages, items, search.
 
-Split from server.py. Covers 12 tools that read local gamedata tables
-(via the store abstraction) and format results as markdown text.
+Split from server.py. Covers 13 tools that read local gamedata tables
+(via the store abstraction) and format results as markdown text:
+operators (archives/voicelines/basic info/combat skills), enemies,
+stages, items, and the unified search.
 """
 from __future__ import annotations
 
@@ -45,11 +47,15 @@ from prts_mcp.data.search import (
     build_search as _build_search,
     render_search as _render_search,
 )
+from prts_mcp.data.skill import (
+    build_operator_skills as _build_operator_skills,
+    render_operator_skills as _render_operator_skills,
+)
 from prts_mcp.output import render_result, text_result
 
 
 def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
-    """Register the 12 GameData-backed tools on the given MCPServer instance."""
+    """Register the 13 GameData-backed tools on the given MCPServer instance."""
 
     @mcp.tool()
     @activation_snapshot
@@ -252,8 +258,28 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
 
     @mcp.tool()
     @activation_snapshot
+    def get_operator_skills(
+        name: Annotated[str, Field(description="干员的游戏内中文名，如「阿米娅」、「能天使」。")],
+    ) -> object:
+        """获取指定干员的战斗技能及各等级效果。
+
+        返回每个技能的触发方式（手动/自动/被动）、技力回复类型，以及
+        Lv1-7 与专精一/二/三各级的具体效果描述与消耗。
+        基本定位信息见 get_operator_basic_info。
+        """
+        data = _build_operator_skills(name)
+        if isinstance(data, str):
+            return text_result(data)
+        return render_result(
+            data,
+            _render_operator_skills(data),
+            summary=f"干员『{data['name']}』的战斗技能",
+        )
+
+    @mcp.tool()
+    @activation_snapshot
     def search(
-        scope: Annotated[Literal["operators", "enemies", "stages", "items", "building_skills"], Field(description="搜索域（必填）：operators（干员）/ enemies（敌人）/ stages（关卡）/ items（物品）/ building_skills（基建技能）。")],
+        scope: Annotated[Literal["operators", "enemies", "stages", "items", "building_skills", "skills"], Field(description="搜索域（必填）：operators（干员）/ enemies（敌人）/ stages（关卡）/ items（物品）/ building_skills（基建技能）/ skills（战斗技能）。")],
         pattern: Annotated[str, Field(description="正则表达式搜索模式，大小写不敏感。")],
         max_results: Annotated[int, Field(default=30, ge=1, le=100, description="返回结果数量上限，默认 30。")] = 30,
     ) -> object:
@@ -261,7 +287,8 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
 
         scope 选择搜索域：operators（名称/属性/档案/语音）、enemies（图鉴）、
         stages（关卡）、items（物品/材料）、building_skills（干员基建技能，
-        可按设施/效果/技能名跨干员反查）。返回带域标签的匹配结果。
+        可按设施/效果/技能名跨干员反查）、skills（干员战斗技能，
+        可按效果关键词跨干员反查）。返回带域标签的匹配结果。
         剧情台词搜索见 search_stories。
         """
         data = _build_search(scope, pattern, max_results=max_results)

@@ -1,8 +1,9 @@
 /**
  * GameData tool registrations — operators, enemies, stages, items, search.
  *
- * Split from server.ts. Exports registerGamedataTools which attaches the 12
- * game-data-backed tools to a McpServer instance.
+ * Split from server.ts. Exports registerGamedataTools which attaches the 13
+ * game-data-backed tools to a McpServer instance (operators x4, enemies x4,
+ * stages x2, items x2, unified search).
  */
 
 import type { McpServer } from "@modelcontextprotocol/server";
@@ -14,6 +15,7 @@ import {
   getOperatorVoicelines,
   renderOperatorBasicInfo,
 } from "../data/operator.js";
+import { buildOperatorSkills, renderOperatorSkills } from "../data/skill.js";
 import {
   buildEnemiesListing,
   buildEnemyInfo,
@@ -88,6 +90,26 @@ export function registerGamedataTools(server: McpServer, channel: OutputChannel 
         renderOperatorBasicInfo(data),
         channel,
         `干员『${data.name}』的基本信息`,
+      );
+    })
+  );
+
+  registerTool(server,
+    "get_operator_skills",
+    [
+      "获取指定干员的战斗技能及各等级效果。",
+      "返回每个技能的触发方式（手动/自动/被动）、技力回复类型，以及 Lv1-7 与专精一/二/三各级的具体效果描述与消耗。",
+      "基本定位信息见 get_operator_basic_info。",
+    ].join(" "),
+    { name: z.string().describe("干员的游戏内中文名，如「阿米娅」、「能天使」。") },
+    ({ name }) => withActivationSnapshot(() => {
+      const data = buildOperatorSkills(name);
+      if (typeof data === "string") return textResult(data);
+      return renderResult(
+        data,
+        renderOperatorSkills(data),
+        channel,
+        `干员『${data.name}』的战斗技能`,
       );
     })
   );
@@ -264,11 +286,11 @@ export function registerGamedataTools(server: McpServer, channel: OutputChannel 
     "search",
     [
       "在指定数据域中执行全文正则搜索。",
-      "scope 选择搜索域：operators（名称/属性/档案/语音）、enemies（图鉴）、stages（关卡）、items（物品/材料）、building_skills（干员基建技能，可按设施/效果/技能名跨干员反查）。",
+      "scope 选择搜索域：operators（名称/属性/档案/语音）、enemies（图鉴）、stages（关卡）、items（物品/材料）、building_skills（干员基建技能，可按设施/效果/技能名跨干员反查）、skills（干员战斗技能，可按效果关键词跨干员反查）。",
       "返回带域标签的匹配结果。剧情台词搜索见 search_stories。",
     ].join(" "),
     {
-      scope: z.enum(["operators", "enemies", "stages", "items", "building_skills"]).describe("搜索域（必填）：operators / enemies / stages / items / building_skills。"),
+      scope: z.enum(["operators", "enemies", "stages", "items", "building_skills", "skills"]).describe("搜索域（必填）：operators / enemies / stages / items / building_skills / skills。"),
       pattern: z.string().describe("正则表达式搜索模式，大小写不敏感。"),
       max_results: z.number().int().min(1).max(100).default(30).describe("返回结果数量上限，默认 30。"),
     },

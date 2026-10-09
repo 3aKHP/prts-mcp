@@ -193,7 +193,7 @@ def test_unified_search_dispatches_building_skills(tmp_path: Path) -> None:
         unsupported = build_search("no_such_scope", "x")
         assert unsupported == (
             "不支持的搜索域：'no_such_scope'。"
-            "可选：operators、enemies、stages、items、building_skills。"
+            "可选：operators、enemies、stages、items、building_skills、skills。"
         )
 
 

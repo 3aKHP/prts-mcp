@@ -19,6 +19,7 @@ EXPECTED_TOOL_SURFACE = {
     "get_operator_archives": ("name",),
     "get_operator_voicelines": ("name",),
     "get_operator_basic_info": ("name",),
+    "get_operator_skills": ("name",),
     "list_enemies": ("threat_level", "limit", "offset", "full"),
     "get_enemy_info": ("name", "stage_id"),
     "get_stage_enemies": ("stage_id",),
@@ -222,12 +223,12 @@ def test_user_pattern_search_stays_unicode_aware() -> None:
     """Guard the Python half of the /u parity.
 
     Python ``re`` is Unicode-default, so the property holds unless a search
-    surface actively restricts to ASCII. Assert none of the five user-pattern
+    surface actively restricts to ASCII. Assert none of the user-pattern
     search files opt into ``re.ASCII`` / ``(?a)``; paired with the TypeScript
     source-flag scan this makes unilateral drift on either side fail CI.
     """
     data_dir = Path(__file__).parents[1] / "src" / "prts_mcp" / "data"
-    for name in ("search.py", "story_search.py", "enemy.py", "stage.py", "item.py"):
+    for name in ("search.py", "story_search.py", "enemy.py", "stage.py", "item.py", "building.py", "skill.py"):
         text = (data_dir / name).read_text(encoding="utf-8")
         assert "re.ASCII" not in text, f"{name} must not restrict user-pattern matching to ASCII"
         assert "(?a)" not in text, f"{name} must not use the (?a) ASCII inline flag"

@@ -171,13 +171,15 @@ def _run_startup_sync(*, force_check: bool = False) -> None:
                     enemy,
                     item,
                     operator,
+                    skill,
                     stage,
                     stage_enemy,
                 )
                 from prts_mcp.data.dataset_access import dataset_registry
 
                 for domain in (
-                    "operator", "enemy", "item", "stage_enemy", "stage", "building",
+                    "operator", "enemy", "item", "stage_enemy", "stage",
+                    "building", "skill",
                 ):
                     dataset_registry()[domain].clear()
             return _gamedata_pair_needs_retry(

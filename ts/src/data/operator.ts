@@ -57,6 +57,7 @@ interface CharacterEntry {
   itemDesc?: string;
   itemObtainApproach?: string;
   talents?: TalentSlot[];
+  skills?: Array<{ skillId?: string | null } | null>;
 }
 
 interface TalentCandidate {
@@ -192,6 +193,16 @@ export { getCharacterTable, getHandbookTable, getCharwordTable };
 
 export function resolveCharId(name: string): string | null {
   return buildNameToId().get(name) ?? null;
+}
+
+/**
+ * Shared name→charId folding for the cross-operator search records
+ * (mirrors PY `_build_name_to_id`): duplicate names collapse to the last
+ * cid while keeping first-insertion position. Centralised here so the
+ * sibling data modules don't re-implement the loop.
+ */
+export function nameToCharId(): Map<string, string> {
+  return buildNameToId();
 }
 
 registerActivationListener(clearOperatorCaches);
