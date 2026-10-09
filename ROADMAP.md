@@ -1,6 +1,6 @@
 # PRTS-MCP Roadmap
 
-_Last updated: 2026-09-05_ · [中文版](ROADMAP.zh-CN.md)
+_Last updated: 2026-10-09_ · [中文版](ROADMAP.zh-CN.md)
 
 PRTS-MCP is past 1.0. Version 1.7.0 is the final 1.x feature release and the 1.7 LTS baseline. This document tracks **what comes next** — not what has shipped. For shipped features, see the Python and TypeScript CHANGELOGs.
 
@@ -43,7 +43,18 @@ Where a candidate remains useful, the default is to preserve the current 24-tool
 
 ### 2.7.0 — Shipped 2026-08-15
 
-The former draft items for operator base skills (`get_operator_basic_info` carrying a bounded `building_skills` section, plus a `building_skills` scope on `search`) and skin/artwork metadata shipped in 2.7.0 — see the Python and TypeScript CHANGELOGs for details. The `operator_artwork(action="list")` skin-metadata enrichment under `LOCAL_IMAGE=true` was pulled forward from the former 2.8.0 candidate, which is why this draft has no 2.8.0 section yet.
+The former draft items for operator base skills (`get_operator_basic_info` carrying a bounded `building_skills` section, plus a `building_skills` scope on `search`) and skin/artwork metadata shipped in 2.7.0 — see the Python and TypeScript CHANGELOGs for details. The `operator_artwork(action="list")` skin-metadata enrichment under `LOCAL_IMAGE=true` was pulled forward from the former 2.8.0 candidate; that 2.8.0 placeholder was a target version only and never carried a theme.
+
+### 2.8.0 — Operator Deep Stats (In Development)
+
+Theme: close the three gaps in operator numeric queries — level-specific panels, per-level skill effects, and per-tier talent effects. `develop` has switched its target version to `2.8.0.dev0` per [`docs/dev/VERSIONING.md`](docs/dev/VERSIONING.md).
+
+- `get_operator_skills(name)` (new tool): per-level effects of an operator's combat skills. `skill_table.json` is promoted to a validated dataset-contract entry (AKDP `zh_CN-excel.zip` has always shipped the file; no upstream change needed); level descriptions are rendered through blackboard placeholder substitution (`{key}` / `{key:0%}`).
+- `get_operator_stats(name, phase?, level?)` (new tool): an operator's panel at a specific elite phase and level. The raw data is `character_table.json` `phases[].attributesKeyFrames` keyframes (only Lv1/LvMax per phase); intermediate levels are linearly interpolated and calibrated against published PRTS Wiki panel values. Defaults to the max-level overview plus trust/potential bonus summaries.
+- `get_operator_basic_info` talent section additive extension: each talent slot gains per-tier candidates (unlock phase/level, potential rank); the existing top-tier `name`/`description` fields keep their semantics.
+- `search` gains a `skills` scope: cross-operator keyword lookup over skill effects.
+- Tool surface 24 → 26. This is a one-time exception to the "preserve the current 24-tool surface" default above: panel and skill queries differ in output shape and length from `get_operator_basic_info`'s short-profile positioning — merging them into one tool would dilute its semantics and bloat single-call output, the same criterion that kept the operator trio unmerged during the 2.0 tool-surface consolidation.
+- Non-goals: skill upgrade material costs (`levelUpCostCond` / `allSkillLvlup`), modules (`uniequip_table.json`), and attack-range shapes (`range_table.json`) stay future candidates; the 1.7 LTS tool surface does not change.
 
 ### 2.9.0 Candidate — Recruitment Lookup
 

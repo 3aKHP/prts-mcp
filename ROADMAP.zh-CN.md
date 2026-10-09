@@ -1,6 +1,6 @@
 # PRTS-MCP 路线图
 
-_最近更新：2026-09-05_ · [English](ROADMAP.md)
+_最近更新：2026-10-09_ · [English](ROADMAP.md)
 
 PRTS-MCP 已越过 1.x 时代。1.7.0 是最后一个 1.x 功能版本和 1.7 LTS 基线。本文档记录**接下来要做什么**——已发布的内容请查看 Python 和 TypeScript 各自的 CHANGELOG。
 
@@ -43,7 +43,18 @@ SQLite 迁移不分配给任何版本。根据 2026 年 8 月的只读评估，�
 
 ### 2.7.0 — 已于 2026-08-15 发布
 
-原草案中的干员基建技能（`get_operator_basic_info` 携带有界 `building_skills` 区，以及 `search` 新增 `building_skills` scope）与时装/立绘元数据条目已随 2.7.0 发布——详见 Python 与 TypeScript CHANGELOG。`LOCAL_IMAGE=true` 下 `operator_artwork(action="list")` 的皮肤元数据富化是从原 2.8.0 候选提前的条目，因此本草案暂时没有 2.8.0 小节。
+原草案中的干员基建技能（`get_operator_basic_info` 携带有界 `building_skills` 区，以及 `search` 新增 `building_skills` scope）与时装/立绘元数据条目已随 2.7.0 发布——详见 Python 与 TypeScript CHANGELOG。`LOCAL_IMAGE=true` 下 `operator_artwork(action="list")` 的皮肤元数据富化是从原 2.8.0 候选提前的条目；该次 2.8.0 占位仅为目标版本号，未承载主题。
+
+### 2.8.0 — 干员深度数值（开发中）
+
+主题：补齐干员数值查询的三个缺口——特定等级面板、技能各等级效果、天赋逐档效果。`develop` 已按 [`docs/dev/VERSIONING.md`](docs/dev/VERSIONING.md) 将目标版本切到 `2.8.0.dev0`。
+
+- `get_operator_skills(name)`（新工具）：干员战斗技能的逐等级效果。`skill_table.json` 提升为经过验证的数据集契约条目（AKDP `zh_CN-excel.zip` 历来包含该文件，无需上游变更）；等级描述经 blackboard 占位符渲染（`{key}` / `{key:0%}`）。
+- `get_operator_stats(name, phase?, level?)`（新工具）：干员特定精英阶段与等级的面板数据。原始数据为 `character_table.json` 的 `phases[].attributesKeyFrames` 关键帧（每阶段仅 1 级/满级），中间等级按线性插值计算并以 PRTS Wiki 公开面板值校准；默认返回满级全貌 + 信赖/潜能加成摘要。
+- `get_operator_basic_info` 天赋段增量扩展：每个天赋槽输出逐档候选（解锁精英阶段/等级、潜能档），既有最高档 `name`/`description` 字段语义不变。
+- `search` 新增 `skills` scope：按技能效果关键词跨干员反查。
+- 工具面 24 → 26。这是对上方「默认保持 24 个工具」的一次性例外：面板与技能查询的输出形态和长度与 `get_operator_basic_info` 的短档案定位异质，并入单一工具会稀释其语义并膨胀单次输出——判据与 2.0 工具面合并时「干员件套不合并」一致。
+- Non-goals：技能升级材料费用（`levelUpCostCond` / `allSkillLvlup`）、模组（`uniequip_table.json`）、攻击范围形状（`range_table.json`）留作后续候选；1.7 LTS 工具面不动。
 
 ### 2.9.0 候选 — 公开招募反查
 
