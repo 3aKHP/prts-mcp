@@ -9,6 +9,7 @@ operator never imports this module, so the top-level import is cycle-free.
 from __future__ import annotations
 
 import re as _re
+from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Any
 
@@ -206,6 +207,32 @@ def _skill_levels(entry: dict[str, Any]) -> list[dict[str, Any]]:
     return levels
 
 
+def _iter_operator_skills(
+    info: dict[str, Any],
+    table: dict[str, Any],
+) -> Iterator[tuple[str, list[dict[str, Any]]]]:
+    """Yield ``(skillId, levels)`` for every resolvable skill ref.
+
+    Single home for the character_table ↔ skill_table join: null refs,
+    dangling ids, and empty level lists are skipped here.
+    """
+    for ref in info.get("skills") or []:
+        skill_id = (ref or {}).get("skillId") if isinstance(ref, dict) else None
+        if not skill_id:
+            continue
+        entry = table.get(skill_id)
+        if not isinstance(entry, dict):
+            continue
+        levels = _skill_levels(entry)
+        if levels:
+            yield skill_id, levels
+
+
+def _skill_display_name(levels: list[dict[str, Any]]) -> str:
+    """Top level's name, falling back to Lv1 (shared by payload + search)."""
+    return levels[-1].get("name") or levels[0].get("name", "")
+
+
 def build_operator_skills(name: str) -> dict | str:
     """Build the per-operator combat-skill payload, or an error message."""
     if not _get_config().has_operator_data:
@@ -227,22 +254,14 @@ def build_operator_skills(name: str) -> dict | str:
     if not isinstance(table, dict):
         return "skill_table.json 顶层不是 JSON 对象。"
 
-    skills: list[dict[str, Any]] = []
-    for ref in info.get("skills") or []:
-        skill_id = (ref or {}).get("skillId") if isinstance(ref, dict) else None
-        if not skill_id:
-            continue
-        entry = table.get(skill_id)
-        if not isinstance(entry, dict):
-            continue
-        levels = _skill_levels(entry)
-        if not levels:
-            continue
-        skills.append({
+    skills: list[dict[str, Any]] = [
+        {
             "skill_id": skill_id,
-            "name": levels[-1].get("name") or levels[0].get("name", ""),
+            "name": _skill_display_name(levels),
             "levels": levels,
-        })
+        }
+        for skill_id, levels in _iter_operator_skills(info, table)
+    ]
 
     if not skills:
         return f"干员 '{name}' 暂无战斗技能数据。"
@@ -273,8 +292,12 @@ def _level_suffix(level: dict[str, Any]) -> str:
         if level.get("init_sp"):
             parts.append(f"初始 {level['init_sp']}")
         charge = level.get("max_charge_time")
-        if isinstance(charge, int) and charge > 1:
-            parts.append(f"可充能 {charge} 次")
+        if (
+            isinstance(charge, (int, float))
+            and not isinstance(charge, bool)
+            and charge > 1
+        ):
+            parts.append(f"可充能 {_plain_number(charge)} 次")
     duration = level.get("duration")
     # -1 is the table's "no duration" sentinel (instant / on-next-attack
     # skills and passives); only positive durations render.
@@ -333,18 +356,11 @@ def _skill_search_records_impl() -> tuple[_SkillSearchRecord, ...]:
     records: list[_SkillSearchRecord] = []
     for op_name, char_id in _build_name_to_id().items():
         info = ct.get(char_id) or {}
-        for ref in info.get("skills") or []:
-            skill_id = (ref or {}).get("skillId") if isinstance(ref, dict) else None
-            entry = table.get(skill_id) if skill_id else None
-            if not isinstance(entry, dict):
-                continue
-            levels = _skill_levels(entry)
-            if not levels:
-                continue
+        for _skill_id, levels in _iter_operator_skills(info, table):
             top = levels[-1]
             records.append(_SkillSearchRecord(
                 operator=op_name,
-                skill=top.get("name") or levels[0].get("name", ""),
+                skill=_skill_display_name(levels),
                 text=top.get("description", ""),
                 haystack=" ".join(
                     f"{lv.get('name') or ''} {lv.get('description') or ''}"
