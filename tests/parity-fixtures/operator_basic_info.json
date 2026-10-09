@@ -21,7 +21,21 @@
   "talents": [
     {
       "name": "情绪吸收",
-      "description": "攻击回复技力"
+      "description": "攻击回复技力（+2）",
+      "candidates": [
+        {
+          "name": "情绪吸收",
+          "description": "攻击回复技力",
+          "unlock": "精英1",
+          "potential_rank": 0
+        },
+        {
+          "name": "情绪吸收",
+          "description": "攻击回复技力（+2）",
+          "unlock": "精英2",
+          "potential_rank": 4
+        }
+      ]
     }
   ],
   "building_skills": [

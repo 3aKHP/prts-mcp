@@ -42,7 +42,18 @@ def write_minimal_gamedata(root: Path) -> Path:
                         {
                             "candidates": [
                                 {"name": "？？？", "description": ""},
-                                {"name": "情绪吸收", "description": "攻击回复技力"},
+                                {
+                                    "name": "情绪吸收",
+                                    "description": "攻击回复技力",
+                                    "unlockCondition": {"phase": "PHASE_1", "level": 1},
+                                    "requiredPotentialRank": 0,
+                                },
+                                {
+                                    "name": "情绪吸收",
+                                    "description": "攻击回复技力<@ba.talpu>（+2）</>",
+                                    "unlockCondition": {"phase": "PHASE_2", "level": 1},
+                                    "requiredPotentialRank": 4,
+                                },
                             ]
                         }
                     ],

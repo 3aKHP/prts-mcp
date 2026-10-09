@@ -65,7 +65,7 @@ Both implementations expose the same tool set:
 | `prts_page(page_title, action, ...)` | Read a wiki page or metadata; `template` returns rendered fields from top-level templates |
 | `get_operator_archives(name)` | Retrieve operator archive records (Chinese name) |
 | `get_operator_voicelines(name)` | Retrieve operator voice lines (Chinese name) |
-| `get_operator_basic_info(name)` | Retrieve basic operator profile: class, rarity, faction, recruit tags, talents, base skills (Chinese name) |
+| `get_operator_basic_info(name)` | Retrieve basic operator profile: class, rarity, faction, recruit tags, talents (per unlock/potential tier), base skills (Chinese name) |
 | `get_operator_skills(name)` | Retrieve an operator's combat skills with per-level effects: Lv1-7 and mastery 1-3 descriptions, SP cost, charge (Chinese name) |
 | `get_operator_stats(name, phase?, level?)` | Retrieve an operator's stat panel: per-phase Lv1/max keyframes with trust/potential bonuses, or the exact interpolated panel at a given elite phase and level (Chinese name) |
 | `list_story_events(category?)` | List story events; optional filter: `main` (main story) or `activities` |
@@ -191,7 +191,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and [`doc
 | `prts_page(page_title, action, ...)` | 读取词条正文或元数据；`template` 返回顶层模板的结构化、已渲染字段数据 |
 | `get_operator_archives(name)` | 获取干员档案资料（中文名） |
 | `get_operator_voicelines(name)` | 获取干员语音记录（中文名） |
-| `get_operator_basic_info(name)` | 获取干员基本信息：职业、稀有度、所属、招募标签、天赋、基建技能（中文名） |
+| `get_operator_basic_info(name)` | 获取干员基本信息：职业、稀有度、所属、招募标签、天赋（含解锁/潜能逐档）、基建技能（中文名） |
 | `get_operator_skills(name)` | 获取干员战斗技能及各等级效果：Lv1-7 与专精一/二/三描述、SP 消耗、充能（中文名） |
 | `get_operator_stats(name, phase?, level?)` | 获取干员面板数值：各精英阶段 Lv1/满级关键帧与信赖/潜能加成，或指定精英阶段与等级的精确插值面板（中文名） |
 | `list_story_events(category?)` | 列出剧情活动，可选过滤：`main`（主线）或 `activities`（活动） |
