@@ -167,7 +167,7 @@ test("unified search dispatches building_skills", async () => {
 
   assert.equal(
     search.buildSearch("no_such_scope", "x"),
-    "不支持的搜索域：'no_such_scope'。可选：operators、enemies、stages、items、building_skills。",
+    "不支持的搜索域：'no_such_scope'。可选：operators、enemies、stages、items、building_skills、skills。",
   );
 });
 

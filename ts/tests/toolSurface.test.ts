@@ -23,6 +23,7 @@ const EXPECTED_TOOLS = [
   "get_operator_archives",
   "get_operator_voicelines",
   "get_operator_basic_info",
+  "get_operator_skills",
   "list_enemies",
   "get_enemy_info",
   "get_stage_enemies",
@@ -145,9 +146,9 @@ test("user-pattern regexes handle astral codepoints (Unicode flag)", () => {
 
 test("user-pattern search sites use the Unicode flag (source guard)", () => {
   // Anchors the /u parity to the actual production call sites: reverting any of
-  // the five `new RegExp(pattern, "iu")` sites back to "i" fails this test. The
+  // the seven `new RegExp(pattern, "iu")` sites back to "i" fails this test. The
   // astral test above documents RegExp semantics; this one guards the code.
-  const files = ["search.ts", "storySearch.ts", "enemy.ts", "stage.ts", "item.ts"];
+  const files = ["search.ts", "storySearch.ts", "enemy.ts", "stage.ts", "item.ts", "building.ts", "skill.ts"];
   for (const f of files) {
     const src = readFileSync(join(import.meta.dirname, "..", "src", "data", f), "utf-8");
     assert.ok(
@@ -381,6 +382,7 @@ function mockPrtsFetch(): () => void {
 
 const STRUCTURED_TOOL_ARGS: Record<string, Record<string, unknown>> = {
   get_operator_basic_info: { name: "阿米娅" },
+  get_operator_skills: { name: "阿米娅" },
   list_enemies: { limit: 1, offset: 0, full: false },
   get_enemy_info: { name: "源石虫" },
   get_stage_enemies: { stage_id: "main_00-01" },

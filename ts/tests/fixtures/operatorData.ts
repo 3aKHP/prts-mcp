@@ -41,6 +41,11 @@ export function writeMinimalGamedata(root: string): void {
           ],
         },
       ],
+      skills: [
+        { skillId: "skchr_amiya_1" },
+        { skillId: "skchr_amiya_2" },
+        { skillId: "skchr_amiya_3" },
+      ],
     },
   });
   writeJson(join(excel, "handbook_info_table.json"), {
@@ -66,6 +71,116 @@ export function writeMinimalGamedata(root: string): void {
   });
   writeJson(join(excel, "story_review_table.json"), {});
   writeJson(join(excel, "item_table.json"), { items: {} });
+  writeJson(join(excel, "skill_table.json"), {
+    "skchr_amiya_1": {
+      skillId: "skchr_amiya_1",
+      iconId: null,
+      hidden: false,
+      levels: [
+        {
+          name: "战术咏唱",
+          description: "攻击速度<@ba.vup>+{attack_speed}</>，持续{duration}秒",
+          skillType: "MANUAL",
+          durationType: "NONE",
+          duration: 30.0,
+          spData: {
+            spType: "INCREASE_WITH_TIME",
+            spCost: 40,
+            initSp: 0,
+            maxChargeTime: 1,
+            levelUpCost: null,
+            increment: 1.0,
+          },
+          blackboard: [
+            { key: "attack_speed", value: 30.0, valueStr: null },
+            { key: "duration", value: 30.0, valueStr: null },
+          ],
+        },
+        {
+          name: "战术咏唱",
+          description: "攻击速度<@ba.vup>+{attack_speed}</>，持续{duration}秒",
+          skillType: "MANUAL",
+          durationType: "NONE",
+          duration: 30.0,
+          spData: {
+            spType: "INCREASE_WITH_TIME",
+            spCost: 35,
+            initSp: 5,
+            maxChargeTime: 1,
+            levelUpCost: null,
+            increment: 1.0,
+          },
+          blackboard: [
+            { key: "attack_speed", value: 35.0, valueStr: null },
+            { key: "duration", value: 30.0, valueStr: null },
+          ],
+        },
+      ],
+    },
+    "skchr_amiya_2": {
+      skillId: "skchr_amiya_2",
+      iconId: null,
+      hidden: false,
+      levels: [
+        {
+          name: "精神爆发",
+          description:
+            "攻击力<@ba.vup>+{atk:0%}</>，有{prob:0.0%}概率使目标<$ba.stun>晕眩</>{ABILITY_RANGE_FORWARD_EXTEND}",
+          skillType: "AUTO",
+          durationType: "AMMO",
+          duration: 6.0,
+          spData: {
+            spType: "INCREASE_WHEN_ATTACK",
+            spCost: 12,
+            initSp: 0,
+            maxChargeTime: 3,
+            levelUpCost: null,
+            increment: 1.0,
+          },
+          blackboard: [
+            { key: "atk", value: 0.1, valueStr: null },
+            { key: "prob", value: 0.275, valueStr: null },
+          ],
+        },
+        {
+          name: "精神爆发",
+          description: "伤害类型变为{damage_type}，连击{times:0}次，倍率{atk_scale:0.0%}",
+          skillType: "AUTO",
+          durationType: "AMMO",
+          duration: 8.0,
+          spData: {
+            spType: "INCREASE_WHEN_ATTACK",
+            spCost: 10,
+            initSp: 0,
+            maxChargeTime: 3,
+            levelUpCost: null,
+            increment: 1.0,
+          },
+          blackboard: [
+            { key: "damage_type", value: null, valueStr: "法术" },
+            { key: "times", value: 6.0, valueStr: null },
+            { key: "atk_scale", value: 1.15, valueStr: null },
+          ],
+        },
+      ],
+    },
+    "skchr_amiya_3": {
+      skillId: "skchr_amiya_3",
+      iconId: null,
+      hidden: false,
+      levels: [
+        {
+          name: "奇美拉",
+          description: "被动效果：每击使敌人晕眩{stun}秒",
+          skillType: "PASSIVE",
+          durationType: "NONE",
+          duration: 0.0,
+          spData: null,
+          blackboard: [{ key: "stun", value: 2.0, valueStr: null }],
+        },
+      ],
+    },
+  });
   writeJson(join(excel, "building_data.json"), {
     chars: {
       char_002_amiya: {
