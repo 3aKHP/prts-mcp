@@ -277,6 +277,7 @@ def test_operator_actions_stdio(tmp_path, modern) -> None:
         **os.environ, "GAMEDATA_PATH": str(tmp_path), "PRTS_OUTPUT_CHANNEL": "both",
         "STORYJSON_PATH": str(tmp_path / "missing.zip"), "IMAGES_ENABLED": "true",
         "PRTS_TRANSPORT": "stdio",
+        "PYTHONPATH": str(Path(__file__).resolve().parents[1] / "src"),
     }
     proc = subprocess.Popen(
         [sys.executable, "-m", "prts_mcp.server"],
@@ -291,25 +292,30 @@ def test_operator_actions_stdio(tmp_path, modern) -> None:
             })
             assert "result" in _recv(proc)
             _send(proc, {"jsonrpc": "2.0", "method": "notifications/initialized"})
-        queries = [
-            ({"name": "阿米娅"}, "operator_basic_info.json"),
-            ({"name": "阿米娅", "action": "skills"}, "operator_skills.json"),
-            ({"name": "阿米娅", "action": "stats"}, "operator_stats.json"),
-            ({"name": "阿米娅", "action": "stats", "phase": 2, "level": 40}, "operator_stats_level.json"),
-        ]
         parity = Path(__file__).parents[2] / "tests/parity-fixtures"
-        for request_id, (args, filename) in enumerate(queries, 2):
-            params = {"name": "get_operator_basic_info", "arguments": args}
+        queries = json.loads((parity / "operator-query-cases.json").read_text())
+        for request_id, case in enumerate(queries, 2):
+            params = {"name": "get_operator_basic_info", "arguments": case["args"]}
             message = _modern_message("tools/call", params, request_id) if modern else {
                 "jsonrpc": "2.0", "method": "tools/call", "params": params, "id": request_id,
             }
             _send(proc, message)
             response = _recv(proc)
             assert response["id"] == request_id
-            assert response["result"]["structuredContent"] == json.loads((parity / filename).read_text())
+            result = response["result"]
+            assert not result.get("isError"), result
+            if "fixture" in case:
+                assert result["structuredContent"] == json.loads((parity / case["fixture"]).read_text())
+            else:
+                assert result.get("structuredContent") is None
+                assert result["content"][0]["text"] == case["error"]
     finally:
         proc.terminate()
-        proc.wait(timeout=5)
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
 
 
 @pytest.mark.skipif(not _has_operator_data, reason="No bundled operator data")

@@ -361,13 +361,10 @@ def test_operator_actions_over_http(tmp_path, modern):
                 "jsonrpc": "2.0", "method": "notifications/initialized", "params": {},
             }, session_id=sid)
 
-        for index, args in enumerate([
-            {"name": "阿米娅"},
-            {"name": "阿米娅", "action": "skills"},
-            {"name": "阿米娅", "action": "stats"},
-            {"name": "阿米娅", "action": "stats", "phase": 2, "level": 40},
-        ], 2):
-            params = {"name": "get_operator_basic_info", "arguments": args}
+        parity = Path(__file__).parents[2] / "tests/parity-fixtures"
+        queries = json.loads((parity / "operator-query-cases.json").read_text())
+        for index, case in enumerate(queries, 2):
+            params = {"name": "get_operator_basic_info", "arguments": case["args"]}
             if modern:
                 status, response, response_sid = _modern_post(origin, "tools/call", params, index)
                 assert response_sid is None
@@ -378,15 +375,11 @@ def test_operator_actions_over_http(tmp_path, modern):
             assert status == 200
             result = response["result"]
             assert not result.get("isError"), result
-            data = result["structuredContent"]
-            if "level" in args:
-                assert data["attributes"]["maxHp"] == 1337
-            elif args.get("action") == "stats":
-                assert len(data["phases"]) == 3
-            elif args.get("action") == "skills":
-                assert len(data["skills"][0]["levels"]) == 10
+            if "fixture" in case:
+                assert result["structuredContent"] == json.loads((parity / case["fixture"]).read_text())
             else:
-                assert data["rarity"] == "5★"
+                assert result.get("structuredContent") is None
+                assert result["content"][0]["text"] == case["error"]
 
 
 def test_output_channel_env_governs_not_query():

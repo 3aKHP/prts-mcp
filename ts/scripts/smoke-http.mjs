@@ -540,11 +540,15 @@ async function checkOperatorActions(origin, sessionId, timeoutMs, outputChannel)
     const response = await callTool(origin, sessionId, timeoutMs, outputChannel,
       "get_operator_basic_info", { name: "阿米娅", ...args }, 30 + index);
     const payload = requireStructuredObject(step, response);
-    const valid = args.action === "skills"
-      ? Array.isArray(payload.skills) && payload.skills.length > 0
-      : args.phase === undefined
-        ? Array.isArray(payload.phases) && payload.phases.length > 0
-        : payload.phase === 2 && payload.level === 40 && typeof payload.attributes?.maxHp === "number";
+    let valid;
+    if (args.action === "skills") {
+      valid = Array.isArray(payload.skills) && payload.skills.length > 0;
+    } else if (args.phase === undefined) {
+      valid = Array.isArray(payload.phases) && payload.phases.length > 0;
+    } else {
+      valid = payload.phase === args.phase && payload.level === args.level
+        && typeof payload.attributes?.maxHp === "number";
+    }
     if (!valid) throw new SmokeFailure(step, "unexpected action payload", JSON.stringify(payload));
   }
 }

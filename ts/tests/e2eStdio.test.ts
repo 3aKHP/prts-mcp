@@ -12,7 +12,7 @@ import assert from "node:assert/strict";
 import { spawn, ChildProcess } from "node:child_process";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { writeMinimalGamedata } from "./fixtures/operatorData.ts";
 
@@ -56,7 +56,7 @@ function startServer(gamedataPath = GAMEDATA_PATH, outputChannel = "content"): S
     PRTS_OUTPUT_CHANNEL: outputChannel,
     IMAGES_ENABLED: "true",
     GITHUB_MIRRORS: "",
-    STORYJSON_PATH: join(GAMEDATA_PATH, "does-not-exist.zip"),
+    STORYJSON_PATH: join(gamedataPath, "does-not-exist.zip"),
   } as Record<string, string>;
 
   const child = spawn(process.execPath, [distServer], {
@@ -228,6 +228,7 @@ test("stdio: modern discovery and tools/list need no initialize", async () => {
 
 test("stdio: operator actions preserve payloads in both protocol eras", async (t) => {
   const root = mkdtempSync(join(tmpdir(), "prts-stdio-operator-"));
+  t.after(() => { rmSync(root, { recursive: true, force: true }); });
   writeMinimalGamedata(root);
   const parity = join(REPO_ROOT, "tests", "parity-fixtures");
   for (const modern of [false, true]) {
@@ -244,20 +245,29 @@ test("stdio: operator actions preserve payloads in both protocol eras", async (t
           await send(child, { jsonrpc: "2.0", method: "notifications/initialized" });
         }
         const queries = JSON.parse(readFileSync(join(parity, "operator-query-cases.json"), "utf-8")) as Array<{
-          args: Record<string, unknown>; fixture?: string;
+          args: Record<string, unknown>; fixture?: string; error?: string;
         }>;
-        for (const [index, query] of queries.filter((query) => query.fixture).entries()) {
+        for (const [index, query] of queries.entries()) {
           const params = { name: "get_operator_basic_info", arguments: query.args };
           await send(child, modern ? modernMessage("tools/call", params, index + 2) : {
             jsonrpc: "2.0", method: "tools/call", params, id: index + 2,
           });
           const response = await recv(child);
           assert.equal(response["id"], index + 2);
-          const result = response["result"] as { structuredContent: unknown };
-          assert.deepEqual(result.structuredContent, JSON.parse(readFileSync(join(parity, query.fixture!), "utf-8")));
+          const result = response["result"] as {
+            structuredContent?: unknown; content: Array<{ text?: string }>; isError?: boolean;
+          };
+          assert.notEqual(result.isError, true);
+          if (query.fixture) {
+            assert.deepEqual(result.structuredContent, JSON.parse(readFileSync(join(parity, query.fixture), "utf-8")));
+          } else {
+            assert.equal(result.structuredContent, undefined);
+            assert.equal(result.content[0]?.text, query.error);
+          }
         }
       } finally {
         child.kill();
+        await new Promise<void>((resolve) => { child.once("exit", () => resolve()); });
       }
     });
   }
