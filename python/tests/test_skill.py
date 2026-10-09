@@ -46,6 +46,9 @@ def test_placeholder_formats_closed_set() -> None:
     assert format_placeholder_value(2.25, "0.0") == "2.3"
     assert format_placeholder_value(1.0, "F1") is None
     assert format_placeholder_value(-0.125, "0%") == "-13%"  # half away from zero
+    # Zero results never render as "-0" / "-0%" (PY copysign vs JS toFixed).
+    assert format_placeholder_value(-0.3, "0") == "0"
+    assert format_placeholder_value(-0.001, "0%") == "0%"
 
 
 def test_render_description_substitution_matrix() -> None:
@@ -53,14 +56,19 @@ def test_render_description_substitution_matrix() -> None:
         {"key": "times", "value": 10.0, "valueStr": None},
         {"key": "atk_scale", "value": 2.6, "valueStr": None},
         {"key": "tag", "value": None, "valueStr": "法术"},
+        {"key": "def", "value": -330.0, "valueStr": None},
+        {"key": "move_speed", "value": -0.35, "valueStr": None},
+        {"key": "zero", "value": 0, "valueStr": None},
     ]
     rendered = render_skill_description(
         "造成<@ba.vup>{atk_scale:0%}</>伤害{times}次，类型{tag}，"
+        "防御力-{-def}，移速-{-move_speed:0%}，追击{zero}次，"
         "未知{ABILITY_RANGE_FORWARD_EXTEND}",
         blackboard,
     )
     assert rendered == (
-        "造成260%伤害10次，类型法术，未知{ABILITY_RANGE_FORWARD_EXTEND}"
+        "造成260%伤害10次，类型法术，防御力-330，移速-35%，追击0次，"
+        "未知{ABILITY_RANGE_FORWARD_EXTEND}"
     )
 
 
@@ -73,14 +81,25 @@ def test_operator_skills_golden_and_parity(tmp_path: Path) -> None:
         assert isinstance(data, dict)
         assert data == _load_parity_fixture("operator_skills.json")
 
-        # Mastery labeling, SP suffix, ammo/charge rendering, passive omission.
+        # Mastery labeling, SP suffix, ammo/charge rendering, passive
+        # conventions (spType-8 sentinel heading, -1 duration, minus keys).
         markdown = render_operator_skills(data)
         assert markdown.startswith("# 阿米娅 - 战斗技能")
         assert "## 战术咏唱（手动，自动回复）" in markdown
         assert "- **Lv1**：攻击速度+30，持续30秒（SP 40，持续 30 秒）" in markdown
-        assert "- **Lv2**：攻击速度+35，持续30秒（SP 35，初始 5，持续 30 秒）" in markdown
+        assert "- **Lv2**：攻击速度+35，持续30秒（SP 40，持续 30 秒）" in markdown
+        assert "- **Lv4**：攻击速度+45，持续30秒（SP 35，初始 5，持续 30 秒）" in markdown
+        assert "- **Lv7**：攻击速度+60，持续30秒（SP 32，初始 10，持续 30 秒）" in markdown
+        assert "- **专一**：攻击速度+70，持续30秒（SP 32，初始 10，持续 30 秒）" in markdown
+        assert "- **专二**：攻击速度+80，持续30秒（SP 32，初始 10，持续 30 秒）" in markdown
+        assert "- **专三**：攻击速度+90，持续30秒（SP 30，初始 15，持续 30 秒）" in markdown
+        assert "移动速度-35%" in markdown
         assert "弹药 6 发" in markdown and "可充能 3 次" in markdown
+        assert "另有0次追击" in markdown  # falsy-but-numeric zero renders
         assert "## 奇美拉（被动）" in markdown
+        assert "（被动，8）" not in markdown  # integer spType sentinel never leaks
+        assert "防御力-330" in markdown  # minus-key placeholder resolves
+        assert "持续 -1 秒" not in markdown  # -1 is the no-duration sentinel
         assert "SP" not in markdown.split("## 奇美拉")[1].split("##")[0]
 
         missing = build_operator_skills("不存在")
@@ -96,8 +115,8 @@ def test_skill_search_golden_empty_and_dispatch(tmp_path: Path) -> None:
         assert routed == _load_parity_fixture("search_skills.json")
         assert render_skill_search(routed) == (
             "# 搜索 \"晕眩\" 的结果（共 2 条）\n"
-            "- **阿米娅**｜精神爆发：伤害类型变为法术，连击6次，倍率115.0%\n"
-            "- **阿米娅**｜奇美拉：被动效果：每击使敌人晕眩2秒"
+            "- **阿米娅**｜精神爆发：伤害类型变为法术，连击6次，倍率115.0%，另有0次追击\n"
+            "- **阿米娅**｜奇美拉：被动效果：每击使敌人防御力-330，并使其晕眩2秒"
         )
 
         empty = build_skill_search("不存在")

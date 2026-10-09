@@ -72,7 +72,7 @@ Both implementations expose the same tool set:
 | `get_story_summary(story_key)` | Single-chapter summary (LLM long summary or official one-liner) |
 | `read_story(story_key, include_narration)` | Read full dialogue for a single chapter |
 | `read_activity(event_id, include_narration, page, page_size)` | Read a complete activity's transcript, with pagination |
-| `search(scope, pattern, max_results)` | Full-text regex search within a data domain: `scope` ∈ operators / enemies / stages / items / building_skills |
+| `search(scope, pattern, max_results)` | Full-text regex search within a data domain: `scope` ∈ operators / enemies / stages / items / building_skills / skills |
 | `search_stories(pattern, character?, line_type?, context_lines?, max_results?, event_id?)` | Full-text regex search across story dialogue, narration, and choice lines with filtering |
 | `list_enemies()` | List all enemies in the handbook with threat level and description |
 | `get_enemy_info(name, stage_id?)` | Retrieve full enemy handbook entry by name, or stage-specific stats when `stage_id` is provided |
@@ -197,7 +197,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and [`doc
 | `get_story_summary(story_key)` | 获取单章梗概（LLM 长摘要或官方一句话简介） |
 | `read_story(story_key, include_narration)` | 读取单章完整台词 |
 | `read_activity(event_id, include_narration, page, page_size)` | 读取整个活动的完整剧情，支持分页 |
-| `search(scope, pattern, max_results)` | 在指定数据域执行全文正则搜索：`scope` ∈ operators / enemies / stages / items / building_skills（基建技能跨干员反查） |
+| `search(scope, pattern, max_results)` | 在指定数据域执行全文正则搜索：`scope` ∈ operators / enemies / stages / items / building_skills / skills（基建/战斗技能跨干员反查） |
 | `search_stories(pattern, character?, line_type?, context_lines?, max_results?, event_id?)` | 在剧情台词中执行全文正则搜索，支持按角色和台词类型过滤 |
 | `list_enemies()` | 列出敌方图鉴中所有敌人及其威胁等级和描述 |
 | `get_enemy_info(name, stage_id?)` | 获取指定敌人的详细图鉴资料；传入 `stage_id` 时返回关卡级数值 |

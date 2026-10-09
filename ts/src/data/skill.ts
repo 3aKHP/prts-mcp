@@ -12,7 +12,7 @@ import type { CacheStat } from "../cacheStats.js";
 import { stripWikitext } from "../utils/sanitizer.js";
 import { defineDataset, excelStore, type DatasetAccess } from "./datasetAccess.js";
 import { excelMissingMessage, regexErrorMessage, validateBounds } from "./messages.js";
-import { getCharacterTable, resolveCharId } from "./operator.js";
+import { getCharacterTable, nameToCharId, resolveCharId } from "./operator.js";
 
 const SKILL_TYPE_ZH: Record<string, string> = {
   MANUAL: "手动",
@@ -33,7 +33,8 @@ interface BlackboardEntry {
 }
 
 interface SpData {
-  spType?: string | null;
+  // Real passives carry the integer sentinel 8 instead of a string enum.
+  spType?: string | number | null;
   spCost?: number | null;
   initSp?: number | null;
   maxChargeTime?: number | null;
@@ -62,6 +63,7 @@ export interface SkillLevelPayload {
   level: number;
   name: string;
   skill_type: string;
+  skill_type_raw: string;
   sp_type: string;
   sp_cost: number | null;
   init_sp: number | null;
@@ -139,9 +141,11 @@ const KNOWN_FORMAT_RE = /^0(?:\.0+)?%?$/;
 function roundHalfAway(value: number, decimals: number): number {
   // .NET numeric format strings round midpoints away from zero; the PY
   // twin shares this exact formula so rendered text stays byte-identical.
+  // A zero result is normalized to +0: Python copysign would keep the
+  // sign (rendering "-0"/"-0%") where ECMAScript toFixed drops it.
   const factor = 10 ** decimals;
   const rounded = Math.floor(Math.abs(value) * factor + 0.5) / factor;
-  return Math.sign(value) * rounded;
+  return rounded === 0 ? 0 : Math.sign(value) * rounded;
 }
 
 export function formatPlaceholderValue(value: number, fmt: string): string | null {
@@ -174,13 +178,18 @@ export function renderSkillDescription(
     PLACEHOLDER_RE,
     (token: string, key: string, fmtArg: string | undefined) => {
       const fmt = fmtArg ?? "";
-      const entry = values.get(key);
+      // A leading `-` in the key negates the positive twin's value — the
+      // table's convention for debuffs (`-{-def}` with `def: -330`).
+      const negated = key.startsWith("-");
+      const entry = values.get(negated ? key.slice(1) : key);
       if (entry === undefined) return token;
       if (entry.valueStr !== null && entry.valueStr !== undefined) {
-        return String(entry.valueStr);
+        // Negation only applies to numeric values; a string twin of a
+        // minus key has no defined rendering — keep the literal token.
+        return negated ? token : String(entry.valueStr);
       }
       if (typeof entry.value !== "number") return token;
-      const rendered = formatPlaceholderValue(entry.value, fmt);
+      const rendered = formatPlaceholderValue(negated ? -entry.value : entry.value, fmt);
       return rendered ?? token;
     },
   );
@@ -196,15 +205,23 @@ function skillLevels(entry: SkillTableEntry): SkillLevelPayload[] {
   // is the 1-based array index (levels[0] is Lv1, levels[9] is mastery 3).
   const levels: SkillLevelPayload[] = [];
   const rawLevels = Array.isArray(entry.levels) ? entry.levels : [];
-  rawLevels.forEach((lv, idx) => {
-    const sp = lv.spData ?? {};
+  rawLevels.forEach((rawLv, idx) => {
+    // Mirror the PY isinstance(lv, dict) guard: null/primitive level
+    // entries are skipped, not crashed on.
+    if (typeof rawLv !== "object" || rawLv === null) return;
+    const lv = rawLv;
+    const sp = typeof lv.spData === "object" && lv.spData !== null ? lv.spData : {};
     const skillTypeRaw = lv.skillType ?? "";
-    const spTypeRaw = sp.spType ?? "";
+    // Real passives carry spType as the JSON integer 8 (a "no SP
+    // recovery" sentinel), not a string — non-string spTypes render as
+    // empty rather than leaking the raw value into payloads.
+    const spTypeRaw = typeof sp.spType === "string" ? sp.spType : "";
     const durationTypeRaw = lv.durationType ?? "";
     levels.push({
       level: idx + 1,
       name: lv.name ?? "",
       skill_type: SKILL_TYPE_ZH[skillTypeRaw] ?? skillTypeRaw,
+      skill_type_raw: skillTypeRaw,
       sp_type: SP_TYPE_ZH[spTypeRaw] ?? spTypeRaw,
       sp_cost: sp.spCost ?? null,
       init_sp: sp.initSp ?? null,
@@ -271,14 +288,16 @@ function plainNumber(value: number): string {
 
 function levelSuffix(level: SkillLevelPayload): string {
   const parts: string[] = [];
-  if (level.skill_type !== "被动" && level.sp_cost !== null) {
+  if (level.skill_type_raw !== "PASSIVE" && level.sp_cost !== null) {
     parts.push(`SP ${level.sp_cost}`);
     if (level.init_sp) parts.push(`初始 ${level.init_sp}`);
     if (typeof level.max_charge_time === "number" && level.max_charge_time > 1) {
       parts.push(`可充能 ${level.max_charge_time} 次`);
     }
   }
-  if (typeof level.duration === "number" && level.duration) {
+  // -1 is the table's "no duration" sentinel (instant / on-next-attack
+  // skills and passives); only positive durations render.
+  if (typeof level.duration === "number" && level.duration > 0) {
     if (level.duration_type === "AMMO") {
       parts.push(`弹药 ${plainNumber(level.duration)} 发`);
     } else {
@@ -336,15 +355,8 @@ function getSkillSearchRecordsImpl(): SkillSearchRecord[] {
   }
 
   const ct = getCharacterTable();
-  // Mirror the PY twin's name→id folding: duplicate names collapse to the
-  // last cid while keeping first-insertion position.
-  const nameToId = new Map<string, string>();
-  for (const [cid, info] of Object.entries(ct)) {
-    if (info.name && cid.startsWith("char_")) nameToId.set(info.name, cid);
-  }
-
   const records: SkillSearchRecord[] = [];
-  for (const [opName, charId] of nameToId) {
+  for (const [opName, charId] of nameToCharId()) {
     const info = ct[charId] ?? {};
     for (const ref of Array.isArray(info.skills) ? info.skills : []) {
       const skillId = ref?.skillId;
