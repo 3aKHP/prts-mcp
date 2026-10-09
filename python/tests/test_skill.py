@@ -130,16 +130,6 @@ def test_skill_search_golden_empty_and_dispatch(tmp_path: Path) -> None:
         )
 
 
-def _write_skill(excel: Path, data: object) -> None:
-    excel.mkdir(parents=True, exist_ok=True)
-    # Sentinel tables for config's _files_complete gate.
-    for sentinel in REQUIRED_OPERATOR_FILES:
-        (excel / sentinel).write_text("{}", encoding="utf-8")
-    (excel / "skill_table.json").write_text(
-        json.dumps(data, ensure_ascii=False), encoding="utf-8"
-    )
-
-
 def test_missing_skill_table_degrades(tmp_path: Path) -> None:
     # Operator data resolvable but no skill_table.json (older user-supplied
     # data root) — the dedicated tool explains the gap, the search scope
