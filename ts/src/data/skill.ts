@@ -256,18 +256,20 @@ export function buildOperatorSkills(name: string): OperatorSkillsPayload | strin
   const cfg = loadConfig();
   if (!hasOperatorData(cfg)) return skillAccess.missingMessage();
 
-  const charId = resolveCharId(name);
-  if (charId === null) {
-    return `未找到干员 '${name}'。请使用游戏内中文名称（如'阿米娅'）。`;
-  }
-
-  const info = getCharacterTable()[charId] ?? {};
-
+  let charId: string | null;
+  let info: { skills?: Array<{ skillId?: string | null } | null> };
   let table: SkillTable;
   try {
+    // Corrupt/truncated character_table.json must degrade to a message
+    // like the sibling operator tools, not surface a protocol error.
+    charId = resolveCharId(name);
+    info = getCharacterTable()[charId ?? ""] ?? {};
     table = getSkillTable();
   } catch (err) {
     return err instanceof Error ? err.message : String(err);
+  }
+  if (charId === null) {
+    return `未找到干员 '${name}'。请使用游戏内中文名称（如'阿米娅'）。`;
   }
   if (typeof table !== "object" || table === null || Array.isArray(table)) {
     return "skill_table.json 顶层不是 JSON 对象。";

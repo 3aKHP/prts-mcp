@@ -131,11 +131,15 @@ def build_operator_stats(
     if not _get_config().has_operator_data:
         return excel_missing_message("干员")()
 
-    char_id = resolve_char_id(name)
+    try:
+        char_id = resolve_char_id(name)
+        info = (_load_character_table() or {}).get(char_id) or {}
+    except (FileNotFoundError, OSError, ValueError) as exc:
+        # Corrupt/truncated character_table.json degrades to a message
+        # (same family as the skill module).
+        return str(exc)
     if char_id is None:
         return f"未找到干员 '{name}'。请使用游戏内中文名称（如'阿米娅'）。"
-
-    info = (_load_character_table() or {}).get(char_id) or {}
     phases = [p for p in (info.get("phases") or []) if isinstance(p, dict)]
     if not phases:
         return f"干员 '{name}' 暂无面板数据。"

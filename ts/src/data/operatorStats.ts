@@ -165,12 +165,19 @@ export function buildOperatorStats(
   const cfg = loadConfig();
   if (!hasOperatorData(cfg)) return excelMissingMessage("干员")();
 
-  const charId = resolveCharId(name);
+  let charId: string | null;
+  let info: StatsCharacterEntry;
+  try {
+    // Corrupt/truncated character_table.json must degrade to a message
+    // (same family as the skill module), not surface a protocol error.
+    charId = resolveCharId(name);
+    info = (getCharacterTable()[charId ?? ""] ?? {}) as StatsCharacterEntry;
+  } catch (err) {
+    return err instanceof Error ? err.message : String(err);
+  }
   if (charId === null) {
     return `未找到干员 '${name}'。请使用游戏内中文名称（如'阿米娅'）。`;
   }
-
-  const info = (getCharacterTable()[charId] ?? {}) as StatsCharacterEntry;
   // Array.isArray per the 2.5.0 convention: AKDP emits {} placeholders
   // where arrays are expected, and `?? []` would crash on .filter.
   const phases = (Array.isArray(info.phases) ? info.phases : []).filter(

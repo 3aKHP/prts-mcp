@@ -238,19 +238,18 @@ def build_operator_skills(name: str) -> dict | str:
     if not _get_config().has_operator_data:
         return _access.missing_message()
 
-    char_id = resolve_char_id(name)
-    if char_id is None:
-        return f"未找到干员 '{name}'。请使用游戏内中文名称（如'阿米娅'）。"
-
-    info = (_load_character_table() or {}).get(char_id) or {}
-
     try:
+        char_id = resolve_char_id(name)
+        info = (_load_character_table() or {}).get(char_id) or {}
         table = _load_skill_table()
     except (FileNotFoundError, OSError, ValueError) as exc:
         # Same tolerate-family as operator.py's building-skills guard:
-        # corrupt JSON (JSONDecodeError is a ValueError) and wrong-shape
-        # roots degrade to a message instead of a raw traceback.
+        # corrupt JSON (JSONDecodeError is a ValueError), truncated
+        # downloads, and wrong-shape roots degrade to a message instead
+        # of a raw traceback.
         return str(exc)
+    if char_id is None:
+        return f"未找到干员 '{name}'。请使用游戏内中文名称（如'阿米娅'）。"
     if not isinstance(table, dict):
         return "skill_table.json 顶层不是 JSON 对象。"
 

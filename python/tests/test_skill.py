@@ -176,3 +176,22 @@ def test_wrong_shape_skill_table_degrades(tmp_path: Path) -> None:
         search = build_skill_search("晕眩")
         assert isinstance(search, str)
         assert "skill_table.json 顶层不是 JSON 对象" in search
+
+
+def test_corrupt_character_table_degrades(tmp_path: Path) -> None:
+    # A truncated/corrupt character_table.json must degrade to a message
+    # instead of surfacing a protocol-level error (sibling operator tools
+    # guard the same way).
+    write_minimal_gamedata(tmp_path)
+    excel = tmp_path / "zh_CN" / "gamedata" / "excel"
+    (excel / "character_table.json").write_text("{not json", encoding="utf-8")
+    with patch.dict(os.environ, {"GAMEDATA_PATH": str(tmp_path)}, clear=False):
+        os.environ.pop("STORYJSON_PATH", None)
+
+        message = build_operator_skills("阿米娅")
+        assert isinstance(message, str)
+        assert "正则表达式无效" not in message  # JSON error, not a regex one
+        assert "数据" in message or "json" in message.lower() or "Expecting" in message
+
+        search = build_skill_search("晕眩")
+        assert isinstance(search, str)  # scope-level degrade, not a crash
