@@ -6,6 +6,7 @@ import { join } from "node:path";
 import AdmZip from "adm-zip";
 
 import { clearEnemyCaches } from "../src/data/enemy.ts";
+import { METRIC_TOOL_NAMES } from "../src/metrics.ts";
 import { clearItemCaches } from "../src/data/item.ts";
 import { clearOperatorCaches } from "../src/data/operator.ts";
 import { clearStageCaches } from "../src/data/stage.ts";
@@ -134,6 +135,13 @@ test("TS numeric fields match the parity contract", () => {
       }
     }
   }
+});
+
+test("metrics tool-name allow-list matches the frozen tool surface", () => {
+  // /debug/metrics by_name only counts tools present in METRIC_TOOL_NAMES;
+  // a tool missing here silently disappears from production observability
+  // (found by review on the 2.8.0 additions). Pin the lists together.
+  assert.deepEqual([...METRIC_TOOL_NAMES].sort(), [...EXPECTED_TOOLS].sort());
 });
 
 test("user-pattern regexes handle astral codepoints (Unicode flag)", () => {
