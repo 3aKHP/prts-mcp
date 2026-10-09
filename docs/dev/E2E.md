@@ -124,7 +124,7 @@ Python 单元差异（`PORT=39172`）：`ExecStart=<uv 绝对路径> run --direc
 
 - 三路 sync 数据量与 TS 同量级（快照时点 108M/384M/33M）
 - MediaWiki artwork 载荷与 TS **逐字节一致**（同一 artwork_id 的 base64）
-- 26 工具输出与 TS 侧抽查一致（文案漂移按 D2 台账记录）
+- 24 工具输出及干员信息的 basic/skills/stats action 与 TS 侧抽查一致（文案漂移按 D2 台账记录）
 
 ## 已知正常行为（勿误报为 bug）
 

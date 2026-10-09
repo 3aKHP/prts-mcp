@@ -85,15 +85,15 @@ export function registerGamedataTools(server: McpServer, channel: OutputChannel 
     {
       name: z.string().describe("干员的游戏内中文名，如「阿米娅」、「能天使」。"),
       action: z.enum(["basic", "skills", "stats"]).default("basic").describe("查询内容：basic（默认，定位/天赋/基建技能）、skills（战斗技能各等级效果）、stats（面板数值）。"),
-      phase: z.number().int().min(0).max(2).optional().describe("仅 action=stats：精英阶段 0/1/2。与 level 同时提供，或同时省略以查看各阶段 Lv1/满级面板及信赖/潜能加成。"),
-      level: z.number().int().min(1).optional().describe("仅 action=stats：该精英阶段内的等级。必须与 phase 同时提供或同时省略。"),
+      phase: z.number().int().min(0).max(2).nullish().describe("仅 action=stats：精英阶段 0/1/2。与 level 同时提供，或同时省略以查看各阶段 Lv1/满级面板及信赖/潜能加成。"),
+      level: z.number().int().min(1).nullish().describe("仅 action=stats：该精英阶段内的等级。必须与 phase 同时提供或同时省略。"),
     },
     ({ name, action, phase, level }) => withActivationSnapshot(() => {
-      if (action !== "stats" && (phase !== undefined || level !== undefined)) {
+      if (action !== "stats" && (phase != null || level != null)) {
         return textResult("phase 与 level 仅适用于 action=stats。");
       }
       if (action === "stats") {
-        const data = buildOperatorStats(name, phase, level);
+        const data = buildOperatorStats(name, phase ?? undefined, level ?? undefined);
         if (typeof data === "string") return textResult(data);
         return renderResult(data, renderOperatorStats(data), channel, `干员『${data.name}』的面板数值`);
       }
