@@ -164,7 +164,7 @@ def render_skill_description(
 
 
 # ---------------------------------------------------------------------------
-# Per-operator payload (get_operator_skills)
+# Per-operator payload (get_operator_basic_info action=skills)
 # ---------------------------------------------------------------------------
 
 

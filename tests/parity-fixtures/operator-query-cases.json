@@ -1,0 +1,14 @@
+[
+  {"args": {"name": "阿米娅"}, "fixture": "operator_basic_info.json", "text": "5★"},
+  {"args": {"name": "阿米娅", "action": "basic"}, "fixture": "operator_basic_info.json", "text": "5★"},
+  {"args": {"name": "阿米娅", "action": "skills"}, "fixture": "operator_skills.json", "text": "专三"},
+  {"args": {"name": "阿米娅", "action": "stats"}, "fixture": "operator_stats.json", "text": "Lv1 1198 / Lv满 1480"},
+  {"args": {"name": "阿米娅", "action": "stats", "phase": 2, "level": 40}, "fixture": "operator_stats_level.json", "text": "生命上限：1337"},
+  {"args": {"name": "阿米娅", "phase": 0}, "error": "phase 与 level 仅适用于 action=stats。"},
+  {"args": {"name": "阿米娅", "action": "skills", "level": 1}, "error": "phase 与 level 仅适用于 action=stats。"},
+  {"args": {"name": "阿米娅", "action": "stats", "phase": 2}, "error": "phase 与 level 必须同时提供（如 精英2 Lv40 → phase=2, level=40），或同时省略以查看各阶段关键帧。"},
+  {"args": {"name": "阿米娅", "action": "stats", "level": 40}, "error": "phase 与 level 必须同时提供（如 精英2 Lv40 → phase=2, level=40），或同时省略以查看各阶段关键帧。"},
+  {"args": {"name": "阿米娅", "action": "stats", "phase": 2, "level": 81}, "error": "level 必须在 1..80 之间（精英2 的等级上限为 80）。"},
+  {"args": {"name": "不存在", "action": "skills"}, "error": "未找到干员 '不存在'。请使用游戏内中文名称（如'阿米娅'）。"},
+  {"args": {"name": "不存在", "action": "stats"}, "error": "未找到干员 '不存在'。请使用游戏内中文名称（如'阿米娅'）。"}
+]

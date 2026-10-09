@@ -86,12 +86,12 @@ du -sh ~/prts-e2e/data-ts/xdg/prts-mcp/*
 
 （该脚本的完整版本随 2.7.0 E2E 存档于维护者 `~/prts-e2e/mcp-client.mjs`；同一协议在仓内已有实现可参照：`ts/tests/e2e.test.ts` 与 `python/tests/test_e2e_http.py`，按上述协议 ~60 行即可重写。）
 
-冒烟清单——**26 个工具全部调用**（2.8.0 起，含 `get_operator_skills` / `get_operator_stats`），每组至少一个代表：
+冒烟清单——**24 个工具全部调用**（2.8.0 起，另覆盖 `get_operator_basic_info` 的 `basic` / `skills` / `stats` action），每组至少一个代表：
 
 | 组 | 代表调用 | 验证点 |
 |---|---|---|
 | wiki | `search_prts`、`prts_page(action=sections)` | 真实 MediaWiki 命中 |
-| 干员 | basic_info / archives / voicelines / skills / stats / memoirs | 中文渲染、占位符数值渲染、插值面板、缺数据优雅降级 |
+| 干员 | basic_info(action=basic/skills/stats) / archives / voicelines / memoirs | 中文渲染、占位符数值渲染、插值面板、缺数据优雅降级 |
 | gamedata | list/get × items/enemies/stages/stage_enemies/appearances、`search` | 数字格式、structuredContent |
 | 剧情 | events → stories → summary → read_story → read_activity → search_stories → appearances → speakers | key 链路可串联 |
 | 图像 | `operator_artwork` list + get（MediaWiki 真图） | PNG magic、字节数、二次调用 LRU 命中 |

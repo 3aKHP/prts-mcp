@@ -1,6 +1,6 @@
 """GameData tool registrations — operators, enemies, stages, items, search.
 
-Split from server.py. Covers 14 tools that read local gamedata tables
+Split from server.py. Covers 12 tools that read local gamedata tables
 (via the store abstraction) and format results as markdown text:
 operators (archives/voicelines/basic info/skills/stats), enemies,
 stages, items, and the unified search.
@@ -59,7 +59,7 @@ from prts_mcp.output import render_result, text_result
 
 
 def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
-    """Register the 14 GameData-backed tools on the given MCPServer instance."""
+    """Register the 12 GameData-backed tools on the given MCPServer instance."""
 
     @mcp.tool()
     @activation_snapshot
@@ -89,20 +89,36 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
     @activation_snapshot
     async def get_operator_basic_info(
         name: Annotated[str, Field(description="干员的游戏内中文名，如「阿米娅」、「能天使」。")],
+        action: Annotated[Literal["basic", "skills", "stats"], Field(default="basic", description="查询内容：basic（默认，定位/天赋/基建技能）、skills（战斗技能各等级效果）、stats（面板数值）。")] = "basic",
+        phase: Annotated[int | None, Field(default=None, ge=0, le=2, description="仅 action=stats：精英阶段 0/1/2。与 level 同时提供，或同时省略以查看各阶段 Lv1/满级面板及信赖/潜能加成。")] = None,
+        level: Annotated[int | None, Field(default=None, ge=1, description="仅 action=stats：该精英阶段内的等级。必须与 phase 同时提供或同时省略。")] = None,
     ) -> object:
-        """获取指定干员的基本数值信息。
+        """查询指定干员的基本信息、战斗技能或面板数值。
 
-        返回干员的职业、子职业、稀有度（星级）、所属阵营、招募标签、天赋名称及描述、
-        基建技能（设施/精英阶段解锁/效果）等结构化信息，适合快速了解干员定位。
+        按 action 返回定位/天赋/基建技能、战斗技能 Lv1-7 与专精各级效果，
+        或各精英阶段关键帧/指定等级面板，每次仅返回所选内容。
         完整背景故事见 get_operator_archives。
         """
-        data = _build_basic_info(name)
+        if action != "stats" and (phase is not None or level is not None):
+            return text_result("phase 与 level 仅适用于 action=stats。")
+        if action == "stats":
+            data = _build_operator_stats(name, phase=phase, level=level)
+            renderer = _render_operator_stats
+            label = "面板数值"
+        elif action == "skills":
+            data = _build_operator_skills(name)
+            renderer = _render_operator_skills
+            label = "战斗技能"
+        else:
+            data = _build_basic_info(name)
+            renderer = _render_basic_info
+            label = "基本信息"
         if isinstance(data, str):
             return text_result(data)
         return render_result(
             data,
-            _render_basic_info(data),
-            summary=f"干员『{data['name']}』的基本信息",
+            renderer(data),
+            summary=f"干员『{data['name']}』的{label}",
         )
 
     @mcp.tool()
@@ -258,48 +274,6 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
             data,
             _render_item_info(data),
             summary=f"物品『{data['name']}』的详情",
-        )
-
-    @mcp.tool()
-    @activation_snapshot
-    def get_operator_skills(
-        name: Annotated[str, Field(description="干员的游戏内中文名，如「阿米娅」、「能天使」。")],
-    ) -> object:
-        """获取指定干员的战斗技能及各等级效果。
-
-        返回每个技能的触发方式（手动/自动/被动）、技力回复类型，以及
-        Lv1-7 与专精一/二/三各级的具体效果描述与消耗。
-        基本定位信息见 get_operator_basic_info。
-        """
-        data = _build_operator_skills(name)
-        if isinstance(data, str):
-            return text_result(data)
-        return render_result(
-            data,
-            _render_operator_skills(data),
-            summary=f"干员『{data['name']}』的战斗技能",
-        )
-
-    @mcp.tool()
-    @activation_snapshot
-    def get_operator_stats(
-        name: Annotated[str, Field(description="干员的游戏内中文名，如「阿米娅」、「能天使」。")],
-        phase: Annotated[int | None, Field(default=None, ge=0, le=2, description="精英阶段：0（精英0）/ 1（精英1）/ 2（精英2）。与 level 必须同时提供或同时省略。")] = None,
-        level: Annotated[int | None, Field(default=None, ge=1, description="该精英阶段内的等级，如 40。与 phase 必须同时提供或同时省略。")] = None,
-    ) -> object:
-        """获取指定干员的面板数值。
-
-        省略 phase/level 时返回各精英阶段的关键帧面板（Lv1/满级）及满信赖、
-        潜能加成；同时提供 phase 与 level 时返回该等级的精确插值面板。
-        技能效果见 get_operator_skills，定位信息见 get_operator_basic_info。
-        """
-        data = _build_operator_stats(name, phase=phase, level=level)
-        if isinstance(data, str):
-            return text_result(data)
-        return render_result(
-            data,
-            _render_operator_stats(data),
-            summary=f"干员『{data['name']}』的面板数值",
         )
 
     @mcp.tool()

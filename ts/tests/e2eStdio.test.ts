@@ -12,7 +12,9 @@ import assert from "node:assert/strict";
 import { spawn, ChildProcess } from "node:child_process";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { writeMinimalGamedata } from "./fixtures/operatorData.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, "..", "..");
@@ -46,11 +48,13 @@ interface ServerHandle {
   child: ChildProcess;
 }
 
-function startServer(): ServerHandle {
+function startServer(gamedataPath = GAMEDATA_PATH, outputChannel = "content"): ServerHandle {
   const distServer = join(REPO_ROOT, "ts", "dist", "server-stdio.js");
   const env: Record<string, string> = {
     ...process.env,
-    GAMEDATA_PATH: GAMEDATA_PATH,
+    GAMEDATA_PATH: gamedataPath,
+    PRTS_OUTPUT_CHANNEL: outputChannel,
+    IMAGES_ENABLED: "true",
     GITHUB_MIRRORS: "",
     STORYJSON_PATH: join(GAMEDATA_PATH, "does-not-exist.zip"),
   } as Record<string, string>;
@@ -143,6 +147,7 @@ test("stdio: initialize handshake + tools/list", async () => {
     assert.equal(listResp["id"], 2);
     const tools = (listResp["result"] as { tools: Array<{ name: string }> }).tools;
     const names = new Set(tools.map((t) => t.name));
+    assert.equal(names.size, 24);
     for (const required of [
       "search_prts",
       "get_operator_archives",
@@ -214,9 +219,47 @@ test("stdio: modern discovery and tools/list need no initialize", async () => {
     const list = await recv(child);
     assert.equal(list["id"], 11);
     const tools = (list["result"] as { tools: Array<{ name: string }> }).tools;
+    assert.equal(tools.length, 24);
     assert.ok(tools.some((tool) => tool.name === "get_operator_basic_info"));
   } finally {
     child.kill();
+  }
+});
+
+test("stdio: operator actions preserve payloads in both protocol eras", async (t) => {
+  const root = mkdtempSync(join(tmpdir(), "prts-stdio-operator-"));
+  writeMinimalGamedata(root);
+  const parity = join(REPO_ROOT, "tests", "parity-fixtures");
+  for (const modern of [false, true]) {
+    await t.test(modern ? "modern" : "legacy", async () => {
+      const { child } = startServer(root, "both");
+      try {
+        if (!modern) {
+          await send(child, {
+            jsonrpc: "2.0", method: "initialize", id: 1,
+            params: { protocolVersion: "2024-11-05", capabilities: {},
+              clientInfo: { name: "operator-test", version: "0" } },
+          });
+          assert.ok((await recv(child))["result"]);
+          await send(child, { jsonrpc: "2.0", method: "notifications/initialized" });
+        }
+        const queries = JSON.parse(readFileSync(join(parity, "operator-query-cases.json"), "utf-8")) as Array<{
+          args: Record<string, unknown>; fixture?: string;
+        }>;
+        for (const [index, query] of queries.filter((query) => query.fixture).entries()) {
+          const params = { name: "get_operator_basic_info", arguments: query.args };
+          await send(child, modern ? modernMessage("tools/call", params, index + 2) : {
+            jsonrpc: "2.0", method: "tools/call", params, id: index + 2,
+          });
+          const response = await recv(child);
+          assert.equal(response["id"], index + 2);
+          const result = response["result"] as { structuredContent: unknown };
+          assert.deepEqual(result.structuredContent, JSON.parse(readFileSync(join(parity, query.fixture!), "utf-8")));
+        }
+      } finally {
+        child.kill();
+      }
+    });
   }
 });
 

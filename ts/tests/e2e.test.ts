@@ -257,7 +257,7 @@ test("E2E", async (t) => {
     assert.equal(list.status, 200);
     assert.equal(list.sessionId, null, "modern tools/list must stay stateless");
     const tools = (list.body["result"] as { tools?: Array<{ name: string }> }).tools;
-    assert.equal(tools?.length, 26);
+    assert.equal(tools?.length, 24);
 
     const call = await modernPost(origin, "tools/call", {
       name: "get_operator_basic_info",
@@ -281,7 +281,7 @@ test("E2E", async (t) => {
   });
 
   // --- tools/list ---
-  await t.test("tools/list returns all 26 tools", async () => {
+  await t.test("tools/list returns all 24 tools", async () => {
     const tl = await mcpPost(
       origin,
       { jsonrpc: "2.0", method: "tools/list", id: 2 },
@@ -291,7 +291,7 @@ test("E2E", async (t) => {
     assert.equal(tl.status, 200);
     const tools = (tl.body?.result as Record<string, unknown>)?.tools as Array<{ name: string }> | undefined;
     assert.ok(tools, "tools/list should return tools");
-    assert.equal(tools!.length, 26, `got ${tools!.length} tools`);
+    assert.equal(tools!.length, 24, `got ${tools!.length} tools`);
 
     const expected = new Set([
       "search_prts", "prts_page",

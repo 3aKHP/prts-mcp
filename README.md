@@ -36,7 +36,7 @@ The `main` and `develop` lines use the self-built `arknights-data-pipeline` Rele
 
 | Area | Python | TypeScript |
 |------|--------|------------|
-| MCP tools | Same 26 public tool names and required parameters (2.x) / 32 on 1.7 LTS | Same 26 (2.x) / 32 on 1.7 LTS |
+| MCP tools | Same 24 public tool names and required parameters (2.x) / 32 on 1.7 LTS | Same 24 (2.x) / 32 on 1.7 LTS |
 | GameData | `GAMEDATA_PATH` or auto-synced `zh_CN-excel.zip` | `GAMEDATA_PATH` or auto-synced `zh_CN-excel.zip` |
 | Level data | Auto-synced `zh_CN-levels.zip` beside GameData | Auto-synced `zh_CN-levels.zip` beside GameData |
 | Story data | `STORYJSON_PATH` or auto-synced `zh_CN.zip` | `STORYJSON_PATH` or auto-synced `zh_CN.zip` |
@@ -65,9 +65,7 @@ Both implementations expose the same tool set:
 | `prts_page(page_title, action, ...)` | Read a wiki page or metadata; `template` returns rendered fields from top-level templates |
 | `get_operator_archives(name)` | Retrieve operator archive records (Chinese name) |
 | `get_operator_voicelines(name)` | Retrieve operator voice lines (Chinese name) |
-| `get_operator_basic_info(name)` | Retrieve basic operator profile: class, rarity, faction, recruit tags, talents (per unlock/potential tier), base skills (Chinese name) |
-| `get_operator_skills(name)` | Retrieve an operator's combat skills with per-level effects: Lv1-7 and mastery 1-3 descriptions, SP cost, charge (Chinese name) |
-| `get_operator_stats(name, phase?, level?)` | Retrieve an operator's stat panel: per-phase Lv1/max keyframes with trust/potential bonuses, or the exact interpolated panel at a given elite phase and level (Chinese name) |
+| `get_operator_basic_info(name, action="basic", phase?, level?)` | Query an operator's profile/talents/base skills (`basic`, default), per-level combat skills (`skills`), or stat panels (`stats`); `phase`/`level` apply only to `stats` (Chinese name) |
 | `list_story_events(category?)` | List story events; optional filter: `main` (main story) or `activities` |
 | `list_stories(event_id, include_summaries?)` | List chapters of an event in official order; `include_summaries` adds the event-level overview + per-chapter summaries |
 | `get_story_summary(story_key)` | Single-chapter summary (LLM long summary or official one-liner) |
@@ -87,6 +85,8 @@ Both implementations expose the same tool set:
 | `find_character_appearances(name, scope?, max_events?)` | Find chapters/events where a character speaks (dialog) or is mentioned (name substring) |
 | `find_speakers_in(event_id)` | List every speaker in an event with dialog line counts |
 | `operator_artwork(operator_name, action, artwork_id?, variant?)` | List operator illustrations/skins (local list carries skin collection/acquisition metadata) and retrieve image variants (base64); MediaWiki by default, AKDP local assets when `LOCAL_IMAGE=true` |
+
+`get_operator_basic_info(name)` keeps the basic profile as its default. Select `action="skills"` for Lv1–7 and mastery effects, or `action="stats"` for every elite phase's Lv1/max panels with trust/potential bonus summaries. For a specific panel, supply both `phase` (0–2) and `level`, for example `get_operator_basic_info("阿米娅", action="stats", phase=2, level=40)`. These two parameters are valid only with `stats`; each action returns only its selected content.
 
 ### Output Channel
 
@@ -162,7 +162,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and [`doc
 
 | 范围 | Python | TypeScript |
 |------|--------|------------|
-| MCP 工具 | 相同的 26 个工具名和必填参数（2.x）/ 1.7 LTS 为 32 个 | 相同的 26 个（2.x）/ 1.7 LTS 为 32 个 |
+| MCP 工具 | 相同的 24 个工具名和必填参数（2.x）/ 1.7 LTS 为 32 个 | 相同的 24 个（2.x）/ 1.7 LTS 为 32 个 |
 | 干员数据 | `GAMEDATA_PATH` 或自动同步 `zh_CN-excel.zip` | `GAMEDATA_PATH` 或自动同步 `zh_CN-excel.zip` |
 | 关卡战斗数据 | 自动同步与 GameData 并列的 `zh_CN-levels.zip` | 自动同步与 GameData 并列的 `zh_CN-levels.zip` |
 | 剧情数据 | `STORYJSON_PATH` 或自动同步 `zh_CN.zip` | `STORYJSON_PATH` 或自动同步 `zh_CN.zip` |
@@ -191,9 +191,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and [`doc
 | `prts_page(page_title, action, ...)` | 读取词条正文或元数据；`template` 返回顶层模板的结构化、已渲染字段数据 |
 | `get_operator_archives(name)` | 获取干员档案资料（中文名） |
 | `get_operator_voicelines(name)` | 获取干员语音记录（中文名） |
-| `get_operator_basic_info(name)` | 获取干员基本信息：职业、稀有度、所属、招募标签、天赋（含解锁/潜能逐档）、基建技能（中文名） |
-| `get_operator_skills(name)` | 获取干员战斗技能及各等级效果：Lv1-7 与专精一/二/三描述、SP 消耗、充能（中文名） |
-| `get_operator_stats(name, phase?, level?)` | 获取干员面板数值：各精英阶段 Lv1/满级关键帧与信赖/潜能加成，或指定精英阶段与等级的精确插值面板（中文名） |
+| `get_operator_basic_info(name, action="basic", phase?, level?)` | 查询定位/天赋/基建技能（`basic`，默认）、战斗技能各等级效果（`skills`）或面板数值（`stats`）；`phase`/`level` 仅用于 `stats`（中文名） |
 | `list_story_events(category?)` | 列出剧情活动，可选过滤：`main`（主线）或 `activities`（活动） |
 | `list_stories(event_id, include_summaries?)` | 列出指定活动的章节（按官方顺序）；`include_summaries` 附活动级概览 + 每章梗概 |
 | `get_story_summary(story_key)` | 获取单章梗概（LLM 长摘要或官方一句话简介） |
@@ -213,6 +211,8 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and [`doc
 | `find_character_appearances(name, scope?, max_events?)` | 查找角色在哪些章节/活动中开口（对话）或被提及（名字子串） |
 | `find_speakers_in(event_id)` | 列出指定活动中所有发言角色及其对话行数 |
 | `operator_artwork(operator_name, action, artwork_id?, variant?)` | 列出干员立绘/时装（本地模式附带皮肤系列/获取方式等元数据）并获取图片变体（base64）；默认走 MediaWiki，`LOCAL_IMAGE=true` 时使用 AKDP 本地资产 |
+
+`get_operator_basic_info(name)` 默认仍返回基本信息。`action="skills"` 查询 Lv1–7 与专精各级效果；`action="stats"` 查询各精英阶段 Lv1/满级面板及信赖/潜能加成摘要。查询指定等级时同时提供 `phase`（0–2）与 `level`，例如 `get_operator_basic_info("阿米娅", action="stats", phase=2, level=40)`。这两个参数仅适用于 `stats`；每次调用只返回所选内容。
 
 ### 输出通道
 
