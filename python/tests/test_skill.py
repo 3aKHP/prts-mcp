@@ -132,7 +132,7 @@ def test_skill_search_golden_empty_and_dispatch(tmp_path: Path) -> None:
 
 def test_missing_skill_table_degrades(tmp_path: Path) -> None:
     # Operator data resolvable but no skill_table.json (older user-supplied
-    # data root) — the dedicated tool explains the gap, the search scope
+    # data root) — the skills action explains the gap, the search scope
     # reports no matches instead of a data error (building_data precedent).
     excel = tmp_path / "zh_CN" / "gamedata" / "excel"
     excel.mkdir(parents=True, exist_ok=True)

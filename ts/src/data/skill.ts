@@ -188,7 +188,7 @@ export function renderSkillDescription(
 }
 
 // ---------------------------------------------------------------------------
-// Per-operator payload (get_operator_skills)
+// Per-operator payload (get_operator_basic_info action=skills)
 // ---------------------------------------------------------------------------
 
 function skillLevels(entry: SkillTableEntry): SkillLevelPayload[] {

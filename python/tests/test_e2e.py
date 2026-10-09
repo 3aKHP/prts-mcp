@@ -22,6 +22,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.fixtures import write_minimal_gamedata
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -165,7 +167,6 @@ def server():
 EXPECTED_TOOLS = {
     "search_prts", "prts_page",
     "get_operator_archives", "get_operator_voicelines", "get_operator_basic_info",
-    "get_operator_skills", "get_operator_stats",
     "list_enemies", "get_enemy_info",
     "get_stage_enemies", "get_enemy_appearances",
     "list_stages", "get_stage_info",
@@ -209,7 +210,7 @@ def test_tools_list(server: subprocess.Popen) -> None:
     tools = resp["result"]["tools"]
     names = {t["name"] for t in tools}
 
-    assert len(names) == 26, f"Expected 26 tools, got {len(names)}: {sorted(names)}"
+    assert len(names) == 24, f"Expected 24 tools, got {len(names)}: {sorted(names)}"
     for name in EXPECTED_TOOLS:
         assert name in names, f"Missing tool: {name}"
 
@@ -266,6 +267,55 @@ def test_modern_stdio_discovery_list_and_call_need_no_initialize() -> None:
 def test_operator_basic_info_amiya(server: subprocess.Popen) -> None:
     text = _call_result_text(server, "get_operator_basic_info", {"name": "阿米娅"}, 3)
     assert "5★" in text, f"阿米娅 should be 5★: {text.split(chr(10))}"
+
+
+@pytest.mark.parametrize("modern", [False, True])
+def test_operator_actions_stdio(tmp_path, modern) -> None:
+    """Exercise the consolidated entry point through a real stdio process."""
+    write_minimal_gamedata(tmp_path)
+    env = {
+        **os.environ, "GAMEDATA_PATH": str(tmp_path), "PRTS_OUTPUT_CHANNEL": "both",
+        "STORYJSON_PATH": str(tmp_path / "missing.zip"), "IMAGES_ENABLED": "true",
+        "PRTS_TRANSPORT": "stdio",
+        "PYTHONPATH": str(Path(__file__).resolve().parents[1] / "src"),
+    }
+    proc = subprocess.Popen(
+        [sys.executable, "-m", "prts_mcp.server"],
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=env,
+    )
+    try:
+        if not modern:
+            _send(proc, {
+                "jsonrpc": "2.0", "method": "initialize", "id": 1,
+                "params": {"protocolVersion": "2024-11-05", "capabilities": {},
+                           "clientInfo": {"name": "operator-test", "version": "0"}},
+            })
+            assert "result" in _recv(proc)
+            _send(proc, {"jsonrpc": "2.0", "method": "notifications/initialized"})
+        parity = Path(__file__).parents[2] / "tests/parity-fixtures"
+        queries = json.loads((parity / "operator-query-cases.json").read_text())
+        for request_id, case in enumerate(queries, 2):
+            params = {"name": "get_operator_basic_info", "arguments": case["args"]}
+            message = _modern_message("tools/call", params, request_id) if modern else {
+                "jsonrpc": "2.0", "method": "tools/call", "params": params, "id": request_id,
+            }
+            _send(proc, message)
+            response = _recv(proc)
+            assert response["id"] == request_id
+            result = response["result"]
+            assert not result.get("isError"), result
+            if "fixture" in case:
+                assert result["structuredContent"] == json.loads((parity / case["fixture"]).read_text())
+            else:
+                assert result.get("structuredContent") is None
+                assert result["content"][0]["text"] == case["error"]
+    finally:
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
 
 
 @pytest.mark.skipif(not _has_operator_data, reason="No bundled operator data")

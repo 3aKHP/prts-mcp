@@ -20,8 +20,6 @@ const EXPECTED_TOOLS = [
   "get_operator_archives",
   "get_operator_voicelines",
   "get_operator_basic_info",
-  "get_operator_skills",
-  "get_operator_stats",
   "list_enemies",
   "get_enemy_info",
   "get_stage_enemies",
@@ -294,6 +292,16 @@ async function createFixtureData() {
         groupId: "",
         teamId: "",
         tagList: ["输出", "支援"],
+        skills: [{ skillId: "skchr_amiya_1" }],
+        phases: [
+          [50, 699, 958], [70, 958, 1198], [80, 1198, 1480],
+        ].map(([maxLevel, loHp, hiHp]) => ({
+          maxLevel,
+          attributesKeyFrames: [
+            { level: 1, data: { maxHp: loHp } },
+            { level: maxLevel, data: { maxHp: hiHp } },
+          ],
+        })),
         itemUsage: "罗德岛的公开领袖。",
         itemDesc: "阿米娅的信物。",
         itemObtainApproach: "主线获得",
@@ -305,6 +313,16 @@ async function createFixtureData() {
             ],
           },
         ],
+      },
+    });
+    writeJson(join(excel, "skill_table.json"), {
+      skchr_amiya_1: {
+        levels: [{
+          name: "战术咏唱", skillType: "MANUAL", duration: 30,
+          description: "攻击速度+{attack_speed}",
+          blackboard: [{ key: "attack_speed", value: 30 }],
+          spData: { spType: "INCREASE_WITH_TIME", spCost: 40, initSp: 0 },
+        }],
       },
     });
     writeJson(join(excel, "handbook_info_table.json"), {
@@ -510,6 +528,31 @@ async function checkOperator(origin, sessionId, timeoutMs, outputChannel) {
   }
 }
 
+async function checkOperatorActions(origin, sessionId, timeoutMs, outputChannel) {
+  const queries = [
+    { action: "skills" },
+    { action: "stats" },
+    { action: "stats", phase: 2, level: 40 },
+  ];
+  for (const [index, args] of queries.entries()) {
+    const step = `get_operator_basic_info ${JSON.stringify(args)}`;
+    console.log(`Checking ${step} ...`);
+    const response = await callTool(origin, sessionId, timeoutMs, outputChannel,
+      "get_operator_basic_info", { name: "阿米娅", ...args }, 30 + index);
+    const payload = requireStructuredObject(step, response);
+    let valid;
+    if (args.action === "skills") {
+      valid = Array.isArray(payload.skills) && payload.skills.length > 0;
+    } else if (args.phase === undefined) {
+      valid = Array.isArray(payload.phases) && payload.phases.length > 0;
+    } else {
+      valid = payload.phase === args.phase && payload.level === args.level
+        && typeof payload.attributes?.maxHp === "number";
+    }
+    if (!valid) throw new SmokeFailure(step, "unexpected action payload", JSON.stringify(payload));
+  }
+}
+
 async function discoverStoryTarget(origin, sessionId, timeoutMs, outputChannel, storyEventId, storyKey) {
   console.log("Checking list_story_events ...");
   const eventsResponse = await callTool(
@@ -621,6 +664,7 @@ async function runSmoke(origin, options) {
   await sendInitialized(origin, sessionId, options.timeoutMs, options.outputChannel);
   await checkToolsList(origin, sessionId, options.timeoutMs, options.outputChannel);
   await checkOperator(origin, sessionId, options.timeoutMs, options.outputChannel);
+  await checkOperatorActions(origin, sessionId, options.timeoutMs, options.outputChannel);
   const target = await discoverStoryTarget(
     origin,
     sessionId,

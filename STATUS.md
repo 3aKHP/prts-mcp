@@ -12,6 +12,7 @@ _Last updated: 2026-10-09_
 - 当前稳定发布：2.7.4（24 个 MCP 工具）
 - 当前 LTS 发布：1.7.0（32 个 MCP 工具，剧情角色追踪）
 - 下一开发目标：2.8.0（干员深度数值主题，见 ROADMAP 2.8.0 小节）
+- develop 工具面保持 24：`get_operator_basic_info` 以可选 `action=basic/skills/stats` 承载基本信息、逐等级战斗技能和面板查询；默认 basic 调用保持兼容，`search` 新增 skills scope。
 - 当前稳定补丁线：2.7.x
 - 2.7.4 发布内容：HTTP 会话空闲淘汰双实现对齐（#193）——Python HTTP transport 新增 `SESSION_IDLE_TIMEOUT_MS` 支持（未设回落 24h、正数有限值按毫秒计、其余取值禁用淘汰，语义与 TS 一致）；TS 修复淘汰耗时约为配置值 2× 的问题（重排计时器改用剩余空闲预算），并将该变量解析收紧为严格十进制。工具、参数和用户配置保持兼容。
 - 2.7.3 发布内容：修订数据包自动发现与 manifest 校验、重复版本拒绝、缓存 ZIP 恢复时的防降级，以及章节列表与单章摘要的一致回退。工具、参数和用户配置保持兼容。
@@ -111,6 +112,7 @@ PRTS-MCP/
 │   │   │   ├── operator.py / enemy.py / stage.py / item.py  # 干员/敌人/关卡/物品数据
 │   │   │   ├── enemy_database.py / enemy_render.py / enemy_stats.py / stage_enemy.py / level_parser.py
 │   │   │   ├── building.py # 基建技能（2.7.0）
+│   │   │   ├── skill.py / operator_stats.py # 战斗技能与面板（2.8.0 开发线）
 │   │   │   ├── artwork_format.py / artwork_local.py / artwork_mediawiki.py  # 立绘后端（2.5.0）
 │   │   │   ├── images.py / search.py / datasets.py / dataset_access.py / gamedata_attrs.py / messages.py
 │   │   │   ├── stores.py   # 存储抽象 (Directory/Zip/Fallback)

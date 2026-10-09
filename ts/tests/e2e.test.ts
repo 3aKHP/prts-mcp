@@ -18,6 +18,7 @@ import { createServer } from "node:net";
 import { mkdirSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { writeMinimalGamedata } from "./fixtures/operatorData.ts";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -149,6 +150,42 @@ const EXPECTED_VERSION = JSON.parse(
   readFileSync(join(import.meta.dirname, "..", "package.json"), "utf-8"),
 ).version as string;
 
+test("modern HTTP operator actions match shared payload and error contracts", async (t) => {
+  const root = mkdtempSync(join(tmpdir(), "prts-http-operator-"));
+  writeMinimalGamedata(root);
+  const origin = `http://127.0.0.1:${await getFreePort()}`;
+  const child = spawn(process.execPath, [join(import.meta.dirname, "..", "dist", "server.js")], {
+    env: {
+      ...process.env, PORT: new URL(origin).port, HOST: "127.0.0.1",
+      GAMEDATA_PATH: root, STORYJSON_PATH: join(root, "missing.zip"),
+      PRTS_OUTPUT_CHANNEL: "both", IMAGES_ENABLED: "true",
+    },
+    stdio: "ignore",
+  });
+  t.after(() => { child.kill(); });
+  await waitForHealth(origin, 15000);
+  const listing = await modernPost(origin, "tools/list", {}, 1);
+  assert.equal((listing.body["result"] as { tools: unknown[] }).tools.length, 24);
+  const parity = join(import.meta.dirname, "..", "..", "tests", "parity-fixtures");
+  const queries = JSON.parse(readFileSync(join(parity, "operator-query-cases.json"), "utf-8")) as Array<{
+    args: Record<string, unknown>; fixture?: string; error?: string;
+  }>;
+  for (const [index, query] of queries.entries()) {
+    const response = await modernPost(origin, "tools/call", {
+      name: "get_operator_basic_info", arguments: query.args,
+    }, index + 2);
+    assert.equal(response.status, 200);
+    assert.equal(response.sessionId, null);
+    const result = response.body["result"] as { structuredContent?: unknown };
+    if (query.fixture) {
+      assert.deepEqual(result.structuredContent, JSON.parse(readFileSync(join(parity, query.fixture), "utf-8")));
+    } else {
+      assert.equal(result.structuredContent, undefined);
+      assert.equal(toolResultText(response), query.error);
+    }
+  }
+});
+
 test("E2E", async (t) => {
   // --- start server ---
   const port = await getFreePort();
@@ -257,7 +294,7 @@ test("E2E", async (t) => {
     assert.equal(list.status, 200);
     assert.equal(list.sessionId, null, "modern tools/list must stay stateless");
     const tools = (list.body["result"] as { tools?: Array<{ name: string }> }).tools;
-    assert.equal(tools?.length, 26);
+    assert.equal(tools?.length, 24);
 
     const call = await modernPost(origin, "tools/call", {
       name: "get_operator_basic_info",
@@ -281,7 +318,7 @@ test("E2E", async (t) => {
   });
 
   // --- tools/list ---
-  await t.test("tools/list returns all 26 tools", async () => {
+  await t.test("tools/list returns all 24 tools", async () => {
     const tl = await mcpPost(
       origin,
       { jsonrpc: "2.0", method: "tools/list", id: 2 },
@@ -291,7 +328,7 @@ test("E2E", async (t) => {
     assert.equal(tl.status, 200);
     const tools = (tl.body?.result as Record<string, unknown>)?.tools as Array<{ name: string }> | undefined;
     assert.ok(tools, "tools/list should return tools");
-    assert.equal(tools!.length, 26, `got ${tools!.length} tools`);
+    assert.equal(tools!.length, 24, `got ${tools!.length} tools`);
 
     const expected = new Set([
       "search_prts", "prts_page",
