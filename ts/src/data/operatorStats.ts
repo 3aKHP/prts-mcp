@@ -120,7 +120,7 @@ export function interpolateAttributes(
 
 function favorBonus(info: StatsCharacterEntry): PanelAttributes {
   // Non-zero curated fields of the max-trust keyframe (typically atk/def).
-  const frames = (info.favorKeyFrames ?? []).filter(
+  const frames = (Array.isArray(info.favorKeyFrames) ? info.favorKeyFrames : []).filter(
     (f): f is FavorFrame => typeof f === "object" && f !== null,
   );
   if (frames.length === 0) return {};
@@ -135,22 +135,24 @@ function favorBonus(info: StatsCharacterEntry): PanelAttributes {
 
 function potential(info: StatsCharacterEntry): string[] {
   const out: string[] = [];
-  for (const rank of info.potentialRanks ?? []) {
+  for (const rank of Array.isArray(info.potentialRanks) ? info.potentialRanks : []) {
     if (typeof rank === "object" && rank !== null && rank.description) out.push(rank.description);
   }
   return out;
 }
 
 function phaseSummary(index: number, phase: PhaseEntry): OperatorStatsPhasePayload {
-  const frames = (phase.attributesKeyFrames ?? []).filter(
+  const frames = (Array.isArray(phase.attributesKeyFrames) ? phase.attributesKeyFrames : []).filter(
     (f): f is AttributeFrame => typeof f === "object" && f !== null,
   );
+  // Panels are always fully projected (missing frames → all-null fields)
+  // so payloads carry the full key set even on malformed hand-made roots.
   return {
     phase: index,
     max_level: phase.maxLevel ?? null,
     keyframes: {
-      lv1: frames.length > 0 ? projectPanel(frames[0]!.data ?? {}) : {},
-      lv_max: frames.length > 0 ? projectPanel(frames[frames.length - 1]!.data ?? {}) : {},
+      lv1: projectPanel(frames.length > 0 ? frames[0]!.data ?? {} : {}),
+      lv_max: projectPanel(frames.length > 0 ? frames[frames.length - 1]!.data ?? {} : {}),
     },
   };
 }
@@ -169,7 +171,9 @@ export function buildOperatorStats(
   }
 
   const info = (getCharacterTable()[charId] ?? {}) as StatsCharacterEntry;
-  const phases = (info.phases ?? []).filter(
+  // Array.isArray per the 2.5.0 convention: AKDP emits {} placeholders
+  // where arrays are expected, and `?? []` would crash on .filter.
+  const phases = (Array.isArray(info.phases) ? info.phases : []).filter(
     (p): p is PhaseEntry => typeof p === "object" && p !== null,
   );
   if (phases.length === 0) {
@@ -201,12 +205,20 @@ export function buildOperatorStats(
   }
 
   const target = phases[requestedPhase]!;
-  const frames = (target.attributesKeyFrames ?? []).filter(
+  const frames = (Array.isArray(target.attributesKeyFrames) ? target.attributesKeyFrames : []).filter(
     (f): f is AttributeFrame => typeof f === "object" && f !== null,
   );
   const maxLevel = target.maxLevel ?? 0;
-  if (typeof level !== "number" || !(level >= 1 && level <= maxLevel)) {
+  // Number.isInteger mirrors the PY isinstance(level, int) guard so the
+  // twins agree on fractional levels even below the tool layer.
+  if (typeof level !== "number" || !Number.isInteger(level) || !(level >= 1 && level <= maxLevel)) {
     return `level 必须在 1..${maxLevel} 之间（精英${requestedPhase} 的等级上限为 ${maxLevel}）。`;
+  }
+
+  if (frames.length === 0) {
+    // Malformed hand-made roots may carry a phase without keyframes;
+    // degrade to a message instead of a TypeError (PY twin too).
+    return `干员 '${name}' 的精英${requestedPhase}面板关键帧缺失，数据可能损坏。`;
   }
 
   const lo = frames[0]!;

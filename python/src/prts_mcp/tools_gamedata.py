@@ -1,8 +1,8 @@
 """GameData tool registrations — operators, enemies, stages, items, search.
 
-Split from server.py. Covers 13 tools that read local gamedata tables
+Split from server.py. Covers 14 tools that read local gamedata tables
 (via the store abstraction) and format results as markdown text:
-operators (archives/voicelines/basic info/combat skills), enemies,
+operators (archives/voicelines/basic info/skills/stats), enemies,
 stages, items, and the unified search.
 """
 from __future__ import annotations

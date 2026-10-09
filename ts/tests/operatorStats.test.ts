@@ -96,4 +96,34 @@ test("operator stats validates phase and level", async () => {
   );
   const e0 = stats.buildOperatorStats("阿米娅", 0, 1);
   assert.equal((e0 as { attributes: { maxHp: number } }).attributes.maxHp, 699);
+
+  // Number.isInteger mirrors PY's isinstance(level, int): fractional
+  // levels degrade at the module layer on both sides.
+  const fractional = stats.buildOperatorStats("阿米娅", 2, 40.5);
+  assert.match(fractional as string, /level 必须在 1\.\.80 之间/);
+});
+
+test("operator stats degrades on malformed keyframes", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  writeMinimalGamedata(root);
+  const { readFileSync, writeFileSync, mkdirSync } = await import("node:fs");
+  const excel = join(root, "zh_CN", "gamedata", "excel");
+  mkdirSync(excel, { recursive: true });
+  const table = JSON.parse(readFileSync(join(excel, "character_table.json"), "utf-8"));
+  table.char_002_amiya.phases[2].attributesKeyFrames = [];
+  writeFileSync(join(excel, "character_table.json"), JSON.stringify(table), "utf-8");
+  const stats = await loadOperatorStatsModule();
+
+  const message = stats.buildOperatorStats("阿米娅", 2, 40);
+  assert.equal(message, "干员 '阿米娅' 的精英2面板关键帧缺失，数据可能损坏。");
+
+  const overview = stats.buildOperatorStats("阿米娅");
+  const emptyFrames = (overview as { phases: Array<{ keyframes: { lv1: Record<string, number | null> } }> })
+    .phases[2]!.keyframes.lv1;
+  // Full key set present with null values (payload parity with PY).
+  assert.equal(Object.keys(emptyFrames).length, 9);
+  assert.ok(Object.values(emptyFrames).every((v) => v === null));
+  const markdown = stats.renderOperatorStats(overview!);
+  assert.ok(markdown.includes("Lv1 None / Lv满 None"));
 });
