@@ -266,8 +266,11 @@ test("stdio: operator actions preserve payloads in both protocol eras", async (t
           }
         }
       } finally {
-        child.kill();
-        await new Promise<void>((resolve) => { child.once("exit", () => resolve()); });
+        if (child.exitCode === null && child.signalCode === null) {
+          const exited = new Promise<void>((resolve) => { child.once("exit", () => resolve()); });
+          child.kill();
+          await exited;
+        }
       }
     });
   }
