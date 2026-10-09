@@ -22,6 +22,32 @@ function loadParityFixture(name: string): unknown {
   );
 }
 
+test("talent unlock conditions match shared real-data cases", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  writeMinimalGamedata(root);
+  const tablePath = join(root, "zh_CN", "gamedata", "excel", "character_table.json");
+  const table = JSON.parse(readFileSync(tablePath, "utf-8"));
+  const { cases } = JSON.parse(readFileSync(
+    join(import.meta.dirname, "..", "..", "tests", "parity-fixtures", "operator-talent-cases.json"),
+    "utf-8",
+  ));
+  for (const [index, entry] of cases.entries()) {
+    table[`char_test_${index}`] = { name: entry.name, talents: [{ candidates: entry.candidates }] };
+  }
+  writeFileSync(tablePath, JSON.stringify(table), "utf-8");
+  const operator = await loadOperatorModule();
+  for (const entry of cases) {
+    const data = operator.buildOperatorBasicInfo(entry.name);
+    assert.ok(typeof data !== "string");
+    assert.deepStrictEqual(
+      data.talents[0]!.candidates.map((c) => [c.unlock, c.unlock_level, c.potential_rank]),
+      entry.conditions,
+    );
+    assert.ok(operator.renderOperatorBasicInfo(data).split("\n").includes(`  ${entry.note}`));
+  }
+});
+
 test("same process sees data written after initial miss", async () => {
   const root = tempGamedataRoot();
   process.env["GAMEDATA_PATH"] = root;
@@ -83,7 +109,7 @@ test("core operator tools read the shared minimal fixture", async () => {
       "",
       "## 天赋",
       "- **情绪吸收**：攻击回复技力（+2）",
-      "  （精英1解锁；精英2强化；潜能4档强化）",
+      "  （精英1解锁；精英2强化；潜能5档强化）",
       "",
       "## 基建技能",
       "- **合作协议**（控制中枢，精英0解锁）：进驻控制中枢时，所有贸易站订单效率+7%（同种效果取最高）",

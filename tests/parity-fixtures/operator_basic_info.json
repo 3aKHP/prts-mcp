@@ -27,12 +27,14 @@
           "name": "情绪吸收",
           "description": "攻击回复技力",
           "unlock": "精英1",
+          "unlock_level": 1,
           "potential_rank": 0
         },
         {
           "name": "情绪吸收",
           "description": "攻击回复技力（+2）",
           "unlock": "精英2",
+          "unlock_level": 1,
           "potential_rank": 4
         }
       ]

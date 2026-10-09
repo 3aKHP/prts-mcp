@@ -197,11 +197,14 @@ def _talent_candidates(talent: Any) -> list[dict[str, Any]]:
         name = c.get("name") or ""
         if not name or name == "？？？":
             continue
-        phase = ((c.get("unlockCondition") or {}).get("phase")) or ""
+        condition = c.get("unlockCondition") or {}
+        phase = condition.get("phase") or ""
         out.append({
             "name": name,
             "description": strip_wikitext(c.get("description") or ""),
             "unlock": _TALENT_PHASE_ZH.get(phase, phase),
+            "unlock_level": condition.get("level") or 1,
+            # Raw zero-based rank; the player-facing potential is rank + 1.
             "potential_rank": c.get("requiredPotentialRank") or 0,
         })
     return out
@@ -309,12 +312,15 @@ def build_operator_basic_info(name: str) -> dict | str:
 
 def _talent_tier_note(candidates: list[dict[str, Any]]) -> str:
     """Compact unlock/potential annotation for one talent slot."""
-    phases = list(dict.fromkeys(c["unlock"] for c in candidates if c.get("unlock")))
-    parts = [f"{phases[0]}解锁"] if phases else []
-    parts.extend(f"{phase}强化" for phase in phases[1:])
+    conditions = list(dict.fromkeys(
+        c["unlock"] + (f" Lv{c['unlock_level']}" if c["unlock_level"] > 1 else "")
+        for c in candidates if c.get("unlock")
+    ))
+    parts = [f"{conditions[0]}解锁"] if conditions else []
+    parts.extend(f"{condition}强化" for condition in conditions[1:])
     max_rank = max((c.get("potential_rank") or 0 for c in candidates), default=0)
     if isinstance(max_rank, int) and max_rank > 0:
-        parts.append(f"潜能{max_rank}档强化")
+        parts.append(f"潜能{max_rank + 1}档强化")
     return f"（{'；'.join(parts)}）" if parts else ""
 
 
