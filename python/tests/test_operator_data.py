@@ -50,7 +50,8 @@ class TestOperatorDataRefresh:
                     [c["unlock"], c["unlock_level"], c["potential_rank"]]
                     for c in candidates
                 ] == case["conditions"]
-                assert f"  {case['note']}" in operator.render_operator_basic_info(data).splitlines()
+                rendered = operator.render_operator_basic_info(data).splitlines()
+                assert f"  {case['note']}" in rendered
 
     def test_same_process_sees_data_written_after_initial_miss(self, tmp_path):
         with patch.dict(os.environ, {"GAMEDATA_PATH": str(tmp_path)}, clear=False):

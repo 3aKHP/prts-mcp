@@ -92,7 +92,7 @@ function talentCandidates(slot: TalentSlot): OperatorTalentCandidatePayload[] {
       name,
       description: stripWikitext(c.description ?? ""),
       unlock: TALENT_PHASE_ZH[phase] ?? phase,
-      unlock_level: c.unlockCondition?.level ?? 1,
+      unlock_level: c.unlockCondition?.level || 1,
       potential_rank: c.requiredPotentialRank ?? 0,
     });
   }
