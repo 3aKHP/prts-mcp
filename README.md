@@ -36,7 +36,7 @@ The `main` and `develop` lines use the self-built `arknights-data-pipeline` Rele
 
 | Area | Python | TypeScript |
 |------|--------|------------|
-| MCP tools | Same 25 public tool names and required parameters (2.x) / 32 on 1.7 LTS | Same 25 (2.x) / 32 on 1.7 LTS |
+| MCP tools | Same 26 public tool names and required parameters (2.x) / 32 on 1.7 LTS | Same 26 (2.x) / 32 on 1.7 LTS |
 | GameData | `GAMEDATA_PATH` or auto-synced `zh_CN-excel.zip` | `GAMEDATA_PATH` or auto-synced `zh_CN-excel.zip` |
 | Level data | Auto-synced `zh_CN-levels.zip` beside GameData | Auto-synced `zh_CN-levels.zip` beside GameData |
 | Story data | `STORYJSON_PATH` or auto-synced `zh_CN.zip` | `STORYJSON_PATH` or auto-synced `zh_CN.zip` |
@@ -67,6 +67,7 @@ Both implementations expose the same tool set:
 | `get_operator_voicelines(name)` | Retrieve operator voice lines (Chinese name) |
 | `get_operator_basic_info(name)` | Retrieve basic operator profile: class, rarity, faction, recruit tags, talents, base skills (Chinese name) |
 | `get_operator_skills(name)` | Retrieve an operator's combat skills with per-level effects: Lv1-7 and mastery 1-3 descriptions, SP cost, charge (Chinese name) |
+| `get_operator_stats(name, phase?, level?)` | Retrieve an operator's stat panel: per-phase Lv1/max keyframes with trust/potential bonuses, or the exact interpolated panel at a given elite phase and level (Chinese name) |
 | `list_story_events(category?)` | List story events; optional filter: `main` (main story) or `activities` |
 | `list_stories(event_id, include_summaries?)` | List chapters of an event in official order; `include_summaries` adds the event-level overview + per-chapter summaries |
 | `get_story_summary(story_key)` | Single-chapter summary (LLM long summary or official one-liner) |
@@ -161,7 +162,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and [`doc
 
 | 范围 | Python | TypeScript |
 |------|--------|------------|
-| MCP 工具 | 相同的 25 个工具名和必填参数（2.x）/ 1.7 LTS 为 32 个 | 相同的 25 个（2.x）/ 1.7 LTS 为 32 个 |
+| MCP 工具 | 相同的 26 个工具名和必填参数（2.x）/ 1.7 LTS 为 32 个 | 相同的 26 个（2.x）/ 1.7 LTS 为 32 个 |
 | 干员数据 | `GAMEDATA_PATH` 或自动同步 `zh_CN-excel.zip` | `GAMEDATA_PATH` 或自动同步 `zh_CN-excel.zip` |
 | 关卡战斗数据 | 自动同步与 GameData 并列的 `zh_CN-levels.zip` | 自动同步与 GameData 并列的 `zh_CN-levels.zip` |
 | 剧情数据 | `STORYJSON_PATH` 或自动同步 `zh_CN.zip` | `STORYJSON_PATH` 或自动同步 `zh_CN.zip` |
@@ -192,6 +193,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and [`doc
 | `get_operator_voicelines(name)` | 获取干员语音记录（中文名） |
 | `get_operator_basic_info(name)` | 获取干员基本信息：职业、稀有度、所属、招募标签、天赋、基建技能（中文名） |
 | `get_operator_skills(name)` | 获取干员战斗技能及各等级效果：Lv1-7 与专精一/二/三描述、SP 消耗、充能（中文名） |
+| `get_operator_stats(name, phase?, level?)` | 获取干员面板数值：各精英阶段 Lv1/满级关键帧与信赖/潜能加成，或指定精英阶段与等级的精确插值面板（中文名） |
 | `list_story_events(category?)` | 列出剧情活动，可选过滤：`main`（主线）或 `activities`（活动） |
 | `list_stories(event_id, include_summaries?)` | 列出指定活动的章节（按官方顺序）；`include_summaries` 附活动级概览 + 每章梗概 |
 | `get_story_summary(story_key)` | 获取单章梗概（LLM 长摘要或官方一句话简介） |

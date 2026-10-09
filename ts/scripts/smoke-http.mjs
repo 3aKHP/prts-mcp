@@ -21,6 +21,7 @@ const EXPECTED_TOOLS = [
   "get_operator_voicelines",
   "get_operator_basic_info",
   "get_operator_skills",
+  "get_operator_stats",
   "list_enemies",
   "get_enemy_info",
   "get_stage_enemies",

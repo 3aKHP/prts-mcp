@@ -24,6 +24,7 @@ const EXPECTED_TOOLS = [
   "get_operator_voicelines",
   "get_operator_basic_info",
   "get_operator_skills",
+  "get_operator_stats",
   "list_enemies",
   "get_enemy_info",
   "get_stage_enemies",
@@ -383,6 +384,7 @@ function mockPrtsFetch(): () => void {
 const STRUCTURED_TOOL_ARGS: Record<string, Record<string, unknown>> = {
   get_operator_basic_info: { name: "阿米娅" },
   get_operator_skills: { name: "阿米娅" },
+  get_operator_stats: { name: "阿米娅" },
   list_enemies: { limit: 1, offset: 0, full: false },
   get_enemy_info: { name: "源石虫" },
   get_stage_enemies: { stage_id: "main_00-01" },

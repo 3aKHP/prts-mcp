@@ -1,0 +1,26 @@
+{
+  "name": "阿米娅",
+  "char_id": "char_002_amiya",
+  "phase": 2,
+  "level": 40,
+  "max_level": 80,
+  "attributes": {
+    "maxHp": 1337,
+    "atk": 562,
+    "def": 115,
+    "magicResistance": 20,
+    "cost": 20,
+    "blockCnt": 1,
+    "attackSpeed": 100,
+    "baseAttackTime": 1.6,
+    "respawnTime": 70
+  },
+  "favor_bonus": {
+    "maxHp": 200,
+    "atk": 70
+  },
+  "potential": [
+    "部署费用-2",
+    "攻击力+25"
+  ]
+}

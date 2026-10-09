@@ -10,6 +10,7 @@ import { registerActivationListener } from "../activation.js";
 import { hasOperatorData, loadConfig } from "../config.js";
 import type { CacheStat } from "../cacheStats.js";
 import { stripWikitext } from "../utils/sanitizer.js";
+import { roundHalfAway } from "../utils/numbers.js";
 import { defineDataset, excelStore, type DatasetAccess } from "./datasetAccess.js";
 import { excelMissingMessage, regexErrorMessage, validateBounds } from "./messages.js";
 import { getCharacterTable, resolveCharId } from "./operator.js";
@@ -135,14 +136,6 @@ registerActivationListener(clearSkillCaches);
 // set as of the 2.8.0 scan): "", "0", "0.0", "0%", "0.0%".
 const PLACEHOLDER_RE = /\{([^{}:]+)(?::([^{}]*))?\}/g;
 const KNOWN_FORMAT_RE = /^0(?:\.0+)?%?$/;
-
-function roundHalfAway(value: number, decimals: number): number {
-  // .NET numeric format strings round midpoints away from zero; the PY
-  // twin shares this exact formula so rendered text stays byte-identical.
-  const factor = 10 ** decimals;
-  const rounded = Math.floor(Math.abs(value) * factor + 0.5) / factor;
-  return Math.sign(value) * rounded;
-}
 
 export function formatPlaceholderValue(value: number, fmt: string): string | null {
   if (fmt === "") {
