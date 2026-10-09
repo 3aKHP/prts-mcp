@@ -63,10 +63,39 @@ interface CharacterEntry {
 interface TalentCandidate {
   name?: string;
   description?: string;
+  unlockCondition?: { phase?: string; level?: number } | null;
+  requiredPotentialRank?: number | null;
 }
 
 interface TalentSlot {
   candidates?: TalentCandidate[];
+}
+
+const TALENT_PHASE_ZH: Record<string, string> = {
+  PHASE_0: "精英0",
+  PHASE_1: "精英1",
+  PHASE_2: "精英2",
+};
+
+/** Project a talent slot's candidates into per-tier payloads.
+ *
+ * Pre-unlock placeholder candidates (`？？？`) are skipped, mirroring the
+ * top-pick rule; order follows the raw table (later = stronger).
+ */
+function talentCandidates(slot: TalentSlot): OperatorTalentCandidatePayload[] {
+  const out: OperatorTalentCandidatePayload[] = [];
+  for (const c of Array.isArray(slot.candidates) ? slot.candidates : []) {
+    const name = c.name ?? "";
+    if (!name || name === "？？？") continue;
+    const phase = c.unlockCondition?.phase ?? "";
+    out.push({
+      name,
+      description: stripWikitext(c.description ?? ""),
+      unlock: TALENT_PHASE_ZH[phase] ?? phase,
+      potential_rank: c.requiredPotentialRank ?? 0,
+    });
+  }
+  return out;
 }
 
 interface StoryEntry {
@@ -92,9 +121,17 @@ interface CharwordTable {
   charWords?: Record<string, CharwordEntry>;
 }
 
+export interface OperatorTalentCandidatePayload {
+  name: string;
+  description: string;
+  unlock: string;
+  potential_rank: number;
+}
+
 export interface OperatorTalentPayload {
   name: string;
   description: string;
+  candidates: OperatorTalentCandidatePayload[];
 }
 
 export interface OperatorBasicInfoPayload {
@@ -348,21 +385,17 @@ export function buildOperatorBasicInfo(name: string): OperatorBasicInfoPayload |
   const affiliationParts = [info.nationId, info.groupId, info.teamId].filter(Boolean) as string[];
   const affiliation = affiliationParts.length > 0 ? affiliationParts.join(" / ") : "-";
 
+  // The top candidate stays the headline; per-tier candidates (unlock
+  // phase + potential rank) ride along for structured consumers.
   const talents: OperatorTalentPayload[] = [];
   for (const slot of Array.isArray(info.talents) ? info.talents : []) {
-    const candidates = Array.isArray(slot.candidates) ? slot.candidates : [];
-    let chosen: TalentCandidate | undefined;
-    for (let i = candidates.length - 1; i >= 0; i--) {
-      const c = candidates[i];
-      if (c.name && c.name !== "？？？") {
-        chosen = c;
-        break;
-      }
-    }
-    if (chosen) {
+    const tierCandidates = talentCandidates(slot);
+    if (tierCandidates.length > 0) {
+      const chosen = tierCandidates[tierCandidates.length - 1]!;
       talents.push({
-        name: chosen.name ?? "",
-        description: stripWikitext(chosen.description ?? ""),
+        name: chosen.name,
+        description: chosen.description,
+        candidates: tierCandidates,
       });
     }
   }
@@ -401,6 +434,19 @@ export function buildOperatorBasicInfo(name: string): OperatorBasicInfoPayload |
   };
 }
 
+/** Compact unlock/potential annotation for one talent slot. */
+function talentTierNote(candidates: OperatorTalentCandidatePayload[]): string {
+  const phases = [...new Set(candidates.map((c) => c.unlock).filter(Boolean))];
+  const parts: string[] = [];
+  if (phases.length > 0) parts.push(`${phases[0]}解锁`);
+  for (const phase of phases.slice(1)) parts.push(`${phase}强化`);
+  const maxRank = Math.max(...candidates.map((c) => c.potential_rank ?? 0));
+  // Number.isInteger mirrors the PY isinstance(max_rank, int) guard so a
+  // hypothetical non-integer rank renders identically on both sides.
+  if (Number.isInteger(maxRank) && maxRank > 0) parts.push(`潜能${maxRank}档强化`);
+  return parts.length > 0 ? `（${parts.join("；")}）` : "";
+}
+
 export function renderOperatorBasicInfo(data: OperatorBasicInfoPayload): string {
   const lines: string[] = [`# ${data.name} - 干员基本信息\n`];
   lines.push(`- **编号**：${data.display_number}`);
@@ -428,6 +474,8 @@ export function renderOperatorBasicInfo(data: OperatorBasicInfoPayload): string 
     lines.push("\n## 天赋");
     for (const talent of data.talents) {
       lines.push(`- **${talent.name}**：${talent.description}`);
+      const note = talentTierNote(talent.candidates ?? []);
+      if (note) lines.push(`  ${note}`);
     }
   }
   const buildingSkills = data.building_skills;
