@@ -37,7 +37,7 @@ Reopen the SQLite decision only if production evidence shows that derived JSON a
 
 ## 2.8+ Non-Binding Working Draft
 
-> **Draft status:** Everything in this 2.8+ section is a candidate direction only. The version numbers, ordering, scope, tool shape, and inclusion of individual items are planning placeholders. The project does not commit to releasing later versions according to this draft. Items may be reordered, merged, split, deferred, replaced, or dropped as source contracts, implementation review, maintenance capacity, ecosystem changes, and real-consumer evidence evolve.
+> **Draft status:** Every **un-opened candidate** in this 2.8+ section is a candidate direction only. The version numbers, ordering, scope, tool shape, and inclusion of individual items are planning placeholders. The project does not commit to releasing later versions according to this draft. Items may be reordered, merged, split, deferred, replaced, or dropped as source contracts, implementation review, maintenance capacity, ecosystem changes, and real-consumer evidence evolve. **Exception: sections marked "In Development" (e.g. 2.8.0) are themes already opened on `develop`; their scope is a settled decision, not a placeholder.**
 
 Where a candidate remains useful, the default is to preserve the current 24-tool surface by extending existing tools and enums when their schema remains coherent. A candidate becomes release scope only through a separate implementation and release decision.
 
@@ -49,12 +49,12 @@ The former draft items for operator base skills (`get_operator_basic_info` carry
 
 Theme: close the three gaps in operator numeric queries — level-specific panels, per-level skill effects, and per-tier talent effects. `develop` has switched its target version to `2.8.0.dev0` per [`docs/dev/VERSIONING.md`](docs/dev/VERSIONING.md).
 
-- `get_operator_skills(name)` (new tool): per-level effects of an operator's combat skills. `skill_table.json` is promoted to a validated dataset-contract entry (AKDP `zh_CN-excel.zip` has always shipped the file; no upstream change needed); level descriptions are rendered through blackboard placeholder substitution (`{key}` / `{key:0%}`).
-- `get_operator_stats(name, phase?, level?)` (new tool): an operator's panel at a specific elite phase and level. The raw data is `character_table.json` `phases[].attributesKeyFrames` keyframes (only Lv1/LvMax per phase); intermediate levels are linearly interpolated and calibrated against published PRTS Wiki panel values. Defaults to the max-level overview plus trust/potential bonus summaries.
+- `get_operator_skills(name)` (new tool): per-level effects of an operator's combat skills (Lv1-7 plus each mastery rank). `skill_table.json` is promoted to a validated dataset-contract entry.
+- `get_operator_stats(name, phase?, level?)` (new tool): an operator's panel at a specific elite phase and level, linearly interpolated between keyframes and calibrated against published PRTS Wiki panel values. Defaults to the max-level overview plus trust/potential bonus summaries.
 - `get_operator_basic_info` talent section additive extension: each talent slot gains per-tier candidates (unlock phase/level, potential rank); the existing top-tier `name`/`description` fields keep their semantics.
 - `search` gains a `skills` scope: cross-operator keyword lookup over skill effects.
 - Tool surface 24 → 26. This is a one-time exception to the "preserve the current 24-tool surface" default above: panel and skill queries differ in output shape and length from `get_operator_basic_info`'s short-profile positioning — merging them into one tool would dilute its semantics and bloat single-call output, the same criterion that kept the operator trio unmerged during the 2.0 tool-surface consolidation.
-- Non-goals: skill upgrade material costs (`levelUpCostCond` / `allSkillLvlup`), modules (`uniequip_table.json`), and attack-range shapes (`range_table.json`) stay future candidates; the 1.7 LTS tool surface does not change.
+- Non-goals: skill upgrade material costs, modules, and attack-range shapes stay future candidates; the 1.7 LTS tool surface does not change. Implementation-level details (data paths, placeholder syntax, interpolation and calibration specifics) live in the feature PRs' CHANGELOG entries.
 
 ### 2.9.0 Candidate — Recruitment Lookup
 
