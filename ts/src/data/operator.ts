@@ -92,6 +92,7 @@ function talentCandidates(slot: TalentSlot): OperatorTalentCandidatePayload[] {
       name,
       description: stripWikitext(c.description ?? ""),
       unlock: TALENT_PHASE_ZH[phase] ?? phase,
+      unlock_level: c.unlockCondition?.level ?? 1,
       potential_rank: c.requiredPotentialRank ?? 0,
     });
   }
@@ -125,6 +126,8 @@ export interface OperatorTalentCandidatePayload {
   name: string;
   description: string;
   unlock: string;
+  unlock_level: number;
+  /** Raw zero-based rank; the player-facing potential is rank + 1. */
   potential_rank: number;
 }
 
@@ -436,14 +439,16 @@ export function buildOperatorBasicInfo(name: string): OperatorBasicInfoPayload |
 
 /** Compact unlock/potential annotation for one talent slot. */
 function talentTierNote(candidates: OperatorTalentCandidatePayload[]): string {
-  const phases = [...new Set(candidates.map((c) => c.unlock).filter(Boolean))];
+  const conditions = [...new Set(candidates.filter((c) => c.unlock).map(
+    (c) => c.unlock + (c.unlock_level > 1 ? ` Lv${c.unlock_level}` : ""),
+  ))];
   const parts: string[] = [];
-  if (phases.length > 0) parts.push(`${phases[0]}解锁`);
-  for (const phase of phases.slice(1)) parts.push(`${phase}强化`);
+  if (conditions.length > 0) parts.push(`${conditions[0]}解锁`);
+  for (const condition of conditions.slice(1)) parts.push(`${condition}强化`);
   const maxRank = Math.max(...candidates.map((c) => c.potential_rank ?? 0));
   // Number.isInteger mirrors the PY isinstance(max_rank, int) guard so a
   // hypothetical non-integer rank renders identically on both sides.
-  if (Number.isInteger(maxRank) && maxRank > 0) parts.push(`潜能${maxRank}档强化`);
+  if (Number.isInteger(maxRank) && maxRank > 0) parts.push(`潜能${maxRank + 1}档强化`);
   return parts.length > 0 ? `（${parts.join("；")}）` : "";
 }
 
