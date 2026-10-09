@@ -55,7 +55,7 @@ from prts_mcp.output import render_result, text_result
 
 
 def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
-    """Register the 12 GameData-backed tools on the given MCPServer instance."""
+    """Register the 13 GameData-backed tools on the given MCPServer instance."""
 
     @mcp.tool()
     @activation_snapshot

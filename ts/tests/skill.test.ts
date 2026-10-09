@@ -107,7 +107,7 @@ test("skills search golden, empty, and dispatch", async () => {
   const routed = search.buildSearch("skills", "晕眩");
   assert.deepEqual(routed, loadParityFixture("search_skills.json"));
   assert.equal(
-    skill.renderSkillSearch(routed as { scope: "skills"; pattern: string; total: number; results: unknown[] }),
+    skill.renderSkillSearch(routed as Parameters<typeof skill.renderSkillSearch>[0]),
     '# 搜索 "晕眩" 的结果（共 2 条）\n' +
       "- **阿米娅**｜精神爆发：伤害类型变为法术，连击6次，倍率115.0%，另有0次追击\n" +
       "- **阿米娅**｜奇美拉：被动效果：每击使敌人防御力-330，并使其晕眩2秒",
@@ -116,7 +116,7 @@ test("skills search golden, empty, and dispatch", async () => {
   const empty = skill.buildSkillSearch("不存在");
   assert.deepEqual(empty, loadParityFixture("search_skills_empty.json"));
   assert.equal(
-    skill.renderSkillSearch(empty as { scope: "skills"; pattern: string; total: number; results: unknown[] }),
+    skill.renderSkillSearch(empty as Parameters<typeof skill.renderSkillSearch>[0]),
     "未找到匹配 '不存在' 的干员战斗技能。",
   );
 
@@ -166,4 +166,21 @@ test("wrong-shape skill_table degrades to a message", async () => {
   const search = skill.buildSkillSearch("晕眩");
   assert.equal(typeof search, "string");
   assert.ok(search.includes("skill_table.json 顶层不是 JSON 对象"));
+});
+
+test("corrupt character_table degrades to a message", async () => {
+  const root = tempGamedataRoot();
+  process.env["GAMEDATA_PATH"] = root;
+  writeMinimalGamedata(root);
+  const excel = join(root, "zh_CN", "gamedata", "excel");
+  writeFileSync(join(excel, "character_table.json"), "{not json", "utf-8");
+  const skill = await loadSkillModule();
+
+  const message = skill.buildOperatorSkills("阿米娅");
+  assert.equal(typeof message, "string");
+  assert.ok(message.length > 0);
+  assert.notEqual(message[0], "#");
+
+  const search = skill.buildSkillSearch("晕眩");
+  assert.equal(typeof search, "string"); // scope-level degrade, not a crash
 });
