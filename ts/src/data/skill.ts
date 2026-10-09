@@ -234,6 +234,33 @@ function skillLevels(entry: SkillTableEntry): SkillLevelPayload[] {
   return levels;
 }
 
+/** Single home for the character_table ↔ skill_table join: null refs,
+ * dangling ids, and empty level lists are skipped here. */
+function collectOperatorSkills(
+  info: { skills?: Array<{ skillId?: string | null } | null> },
+  table: SkillTable,
+): Array<{ skillId: string; levels: SkillLevelPayload[] }> {
+  const out: Array<{ skillId: string; levels: SkillLevelPayload[] }> = [];
+  for (const ref of Array.isArray(info.skills) ? info.skills : []) {
+    const skillId = ref?.skillId;
+    if (!skillId) continue;
+    const entry = table[skillId];
+    if (typeof entry !== "object" || entry === null) continue;
+    const levels = skillLevels(entry);
+    if (levels.length > 0) out.push({ skillId, levels });
+  }
+  return out;
+}
+
+/** Top level's name, falling back to Lv1 (shared by payload + search). */
+function topLevel(levels: SkillLevelPayload[]): SkillLevelPayload {
+  return levels[levels.length - 1]!;
+}
+
+function skillDisplayName(levels: SkillLevelPayload[]): string {
+  return topLevel(levels).name || levels[0]!.name;
+}
+
 export function buildOperatorSkills(name: string): OperatorSkillsPayload | string {
   const cfg = loadConfig();
   if (!hasOperatorData(cfg)) return skillAccess.missingMessage();
@@ -255,20 +282,13 @@ export function buildOperatorSkills(name: string): OperatorSkillsPayload | strin
     return "skill_table.json 顶层不是 JSON 对象。";
   }
 
-  const skills: OperatorSkillPayload[] = [];
-  for (const ref of Array.isArray(info.skills) ? info.skills : []) {
-    const skillId = ref?.skillId;
-    if (!skillId) continue;
-    const entry = table[skillId];
-    if (typeof entry !== "object" || entry === null) continue;
-    const levels = skillLevels(entry);
-    if (levels.length === 0) continue;
-    skills.push({
+  const skills: OperatorSkillPayload[] = collectOperatorSkills(info, table).map(
+    ({ skillId, levels }) => ({
       skill_id: skillId,
-      name: levels[levels.length - 1]!.name || levels[0]!.name,
+      name: skillDisplayName(levels),
       levels,
-    });
-  }
+    }),
+  );
 
   if (skills.length === 0) {
     return `干员 '${name}' 暂无战斗技能数据。`;
@@ -292,7 +312,7 @@ function levelSuffix(level: SkillLevelPayload): string {
     parts.push(`SP ${level.sp_cost}`);
     if (level.init_sp) parts.push(`初始 ${level.init_sp}`);
     if (typeof level.max_charge_time === "number" && level.max_charge_time > 1) {
-      parts.push(`可充能 ${level.max_charge_time} 次`);
+      parts.push(`可充能 ${plainNumber(level.max_charge_time)} 次`);
     }
   }
   // -1 is the table's "no duration" sentinel (instant / on-next-attack
@@ -310,7 +330,7 @@ function levelSuffix(level: SkillLevelPayload): string {
 export function renderOperatorSkills(data: OperatorSkillsPayload): string {
   const lines: string[] = [`# ${data.name} - 战斗技能`];
   for (const skill of data.skills) {
-    const top = skill.levels[skill.levels.length - 1]!;
+    const top = topLevel(skill.levels);
     let heading = skill.name;
     if (top.skill_type) {
       heading += `（${top.skill_type}`;
@@ -358,17 +378,11 @@ function getSkillSearchRecordsImpl(): SkillSearchRecord[] {
   const records: SkillSearchRecord[] = [];
   for (const [opName, charId] of nameToCharId()) {
     const info = ct[charId] ?? {};
-    for (const ref of Array.isArray(info.skills) ? info.skills : []) {
-      const skillId = ref?.skillId;
-      const entry = skillId ? table[skillId] : undefined;
-      if (typeof entry !== "object" || entry === null) continue;
-      const levels = skillLevels(entry);
-      if (levels.length === 0) continue;
-      const top = levels[levels.length - 1]!;
+    for (const { levels } of collectOperatorSkills(info, table)) {
       records.push({
         operator: opName,
-        skill: top.name || levels[0]!.name,
-        text: top.description,
+        skill: skillDisplayName(levels),
+        text: topLevel(levels).description,
         haystack: levels.map((lv) => `${lv.name} ${lv.description}`).join(" "),
       });
     }
@@ -395,8 +409,10 @@ export function buildSkillSearch(pattern: string, maxResults = 30): SkillSearchP
   try {
     records = getSkillSearchRecords();
   } catch (err) {
-    // Same degrade-to-message contract as the sibling scopes.
-    return err instanceof Error ? err.message : String(err);
+    // Same degrade-to-message contract as the PY twin: canonical missing
+    // message with the underlying error appended.
+    const detail = err instanceof Error ? err.message : String(err);
+    return `${skillAccess.missingMessage()}（${detail}）`;
   }
   // Haystack = per-level skill names + rendered descriptions across all
   // levels; results display the highest-level effect line.
