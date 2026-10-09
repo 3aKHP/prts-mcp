@@ -20,6 +20,7 @@ EXPECTED_TOOL_SURFACE = {
     "get_operator_voicelines": ("name",),
     "get_operator_basic_info": ("name",),
     "get_operator_skills": ("name",),
+    "get_operator_stats": ("name", "phase", "level"),
     "list_enemies": ("threat_level", "limit", "offset", "full"),
     "get_enemy_info": ("name", "stage_id"),
     "get_stage_enemies": ("stage_id",),

@@ -1,8 +1,8 @@
 /**
  * GameData tool registrations — operators, enemies, stages, items, search.
  *
- * Split from server.ts. Exports registerGamedataTools which attaches the 13
- * game-data-backed tools to a McpServer instance (operators x4, enemies x4,
+ * Split from server.ts. Exports registerGamedataTools which attaches the 14
+ * game-data-backed tools to a McpServer instance (operators x5, enemies x4,
  * stages x2, items x2, unified search).
  */
 
@@ -16,6 +16,7 @@ import {
   renderOperatorBasicInfo,
 } from "../data/operator.js";
 import { buildOperatorSkills, renderOperatorSkills } from "../data/skill.js";
+import { buildOperatorStats, renderOperatorStats } from "../data/operatorStats.js";
 import {
   buildEnemiesListing,
   buildEnemyInfo,
@@ -110,6 +111,30 @@ export function registerGamedataTools(server: McpServer, channel: OutputChannel 
         renderOperatorSkills(data),
         channel,
         `干员『${data.name}』的战斗技能`,
+      );
+    })
+  );
+
+  registerTool(server,
+    "get_operator_stats",
+    [
+      "获取指定干员的面板数值。",
+      "省略 phase/level 时返回各精英阶段的关键帧面板（Lv1/满级）及满信赖、潜能加成；同时提供 phase 与 level 时返回该等级的精确插值面板。",
+      "技能效果见 get_operator_skills，定位信息见 get_operator_basic_info。",
+    ].join(" "),
+    {
+      name: z.string().describe("干员的游戏内中文名，如「阿米娅」、「能天使」。"),
+      phase: z.number().int().min(0).max(2).optional().describe("精英阶段：0（精英0）/ 1（精英1）/ 2（精英2）。与 level 必须同时提供或同时省略。"),
+      level: z.number().int().min(1).optional().describe("该精英阶段内的等级，如 40。与 phase 必须同时提供或同时省略。"),
+    },
+    ({ name, phase, level }) => withActivationSnapshot(() => {
+      const data = buildOperatorStats(name, phase, level);
+      if (typeof data === "string") return textResult(data);
+      return renderResult(
+        data,
+        renderOperatorStats(data),
+        channel,
+        `干员『${data.name}』的面板数值`,
       );
     })
   );

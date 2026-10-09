@@ -42,6 +42,7 @@ export const METRIC_TOOL_NAMES = new Set([
   "get_operator_voicelines",
   "get_operator_basic_info",
   "get_operator_skills",
+  "get_operator_stats",
   "list_story_events",
   "list_stories",
   "read_story",

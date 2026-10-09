@@ -1,8 +1,8 @@
 """GameData tool registrations — operators, enemies, stages, items, search.
 
-Split from server.py. Covers 13 tools that read local gamedata tables
+Split from server.py. Covers 14 tools that read local gamedata tables
 (via the store abstraction) and format results as markdown text:
-operators (archives/voicelines/basic info/combat skills), enemies,
+operators (archives/voicelines/basic info/skills/stats), enemies,
 stages, items, and the unified search.
 """
 from __future__ import annotations
@@ -51,11 +51,15 @@ from prts_mcp.data.skill import (
     build_operator_skills as _build_operator_skills,
     render_operator_skills as _render_operator_skills,
 )
+from prts_mcp.data.operator_stats import (
+    build_operator_stats as _build_operator_stats,
+    render_operator_stats as _render_operator_stats,
+)
 from prts_mcp.output import render_result, text_result
 
 
 def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
-    """Register the 13 GameData-backed tools on the given MCPServer instance."""
+    """Register the 14 GameData-backed tools on the given MCPServer instance."""
 
     @mcp.tool()
     @activation_snapshot
@@ -274,6 +278,28 @@ def register_gamedata_tools(mcp) -> None:  # type: ignore[no-untyped-def]
             data,
             _render_operator_skills(data),
             summary=f"干员『{data['name']}』的战斗技能",
+        )
+
+    @mcp.tool()
+    @activation_snapshot
+    def get_operator_stats(
+        name: Annotated[str, Field(description="干员的游戏内中文名，如「阿米娅」、「能天使」。")],
+        phase: Annotated[int | None, Field(default=None, ge=0, le=2, description="精英阶段：0（精英0）/ 1（精英1）/ 2（精英2）。与 level 必须同时提供或同时省略。")] = None,
+        level: Annotated[int | None, Field(default=None, ge=1, description="该精英阶段内的等级，如 40。与 phase 必须同时提供或同时省略。")] = None,
+    ) -> object:
+        """获取指定干员的面板数值。
+
+        省略 phase/level 时返回各精英阶段的关键帧面板（Lv1/满级）及满信赖、
+        潜能加成；同时提供 phase 与 level 时返回该等级的精确插值面板。
+        技能效果见 get_operator_skills，定位信息见 get_operator_basic_info。
+        """
+        data = _build_operator_stats(name, phase=phase, level=level)
+        if isinstance(data, str):
+            return text_result(data)
+        return render_result(
+            data,
+            _render_operator_stats(data),
+            summary=f"干员『{data['name']}』的面板数值",
         )
 
     @mcp.tool()

@@ -8,7 +8,6 @@ operator never imports this module, so the top-level import is cycle-free.
 """
 from __future__ import annotations
 
-import math
 import re as _re
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -32,6 +31,7 @@ from prts_mcp.data.operator import (
     _load_character_table,
     resolve_char_id,
 )
+from prts_mcp.utils.numbers import round_half_away
 from prts_mcp.utils.sanitizer import strip_wikitext
 
 _SKILL_TYPE_ZH: dict[str, str] = {
@@ -102,18 +102,6 @@ _PLACEHOLDER_RE = _re.compile(r"\{([^{}:]+)(?::([^{}]*))?\}")
 _KNOWN_FORMAT_RE = _re.compile(r"^0(?:\.0+)?%?$")
 
 
-def _round_half_away(value: float, decimals: int) -> float:
-    # .NET numeric format strings round midpoints away from zero; the TS
-    # twin shares this exact formula so rendered text stays byte-identical.
-    # A zero result is normalized to +0.0: Python copysign would keep the
-    # sign (rendering "-0"/"-0%") where ECMAScript toFixed drops it.
-    factor = 10 ** decimals
-    rounded = math.floor(abs(value) * factor + 0.5) / factor
-    if rounded == 0:
-        return 0.0
-    return math.copysign(rounded, value)
-
-
 def format_placeholder_value(value: float, fmt: str) -> str | None:
     """Render a blackboard value under a .NET-style format suffix.
 
@@ -132,7 +120,7 @@ def format_placeholder_value(value: float, fmt: str) -> str | None:
         fmt = fmt[:-1]
         value = value * 100
     decimals = len(fmt.split(".", 1)[1]) if "." in fmt else 0
-    rendered = f"{_round_half_away(float(value), decimals):.{decimals}f}"
+    rendered = f"{round_half_away(float(value), decimals):.{decimals}f}"
     return rendered + "%" if percent else rendered
 
 

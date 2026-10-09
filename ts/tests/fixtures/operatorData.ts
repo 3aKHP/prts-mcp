@@ -46,6 +46,40 @@ export function writeMinimalGamedata(root: string): void {
         { skillId: "skchr_amiya_2" },
         { skillId: "skchr_amiya_3" },
       ],
+      // Keyframes mirror the real Amiya values (PRTS Wiki publishes
+      // exactly these levels: E0 Lv1/Lv50, E1 Lv70, E2 Lv80); E1 attack
+      // time deviates to exercise decimal interpolation.
+      phases: [
+        {
+          maxLevel: 50,
+          attributesKeyFrames: [
+            { level: 1, data: { maxHp: 699, atk: 276, def: 48, magicResistance: 10.0, cost: 18, blockCnt: 1, attackSpeed: 100.0, baseAttackTime: 1.6, respawnTime: 70 } },
+            { level: 50, data: { maxHp: 958, atk: 390, def: 81, magicResistance: 10.0, cost: 18, blockCnt: 1, attackSpeed: 100.0, baseAttackTime: 1.6, respawnTime: 70 } },
+          ],
+        },
+        {
+          maxLevel: 70,
+          attributesKeyFrames: [
+            { level: 1, data: { maxHp: 958, atk: 390, def: 81, magicResistance: 15.0, cost: 19, blockCnt: 1, attackSpeed: 100.0, baseAttackTime: 1.6, respawnTime: 70 } },
+            { level: 70, data: { maxHp: 1198, atk: 514, def: 110, magicResistance: 15.0, cost: 20, blockCnt: 1, attackSpeed: 100.0, baseAttackTime: 2.0, respawnTime: 70 } },
+          ],
+        },
+        {
+          maxLevel: 80,
+          attributesKeyFrames: [
+            { level: 1, data: { maxHp: 1198, atk: 514, def: 110, magicResistance: 20.0, cost: 20, blockCnt: 1, attackSpeed: 100.0, baseAttackTime: 1.6, respawnTime: 70 } },
+            { level: 80, data: { maxHp: 1480, atk: 612, def: 121, magicResistance: 20.0, cost: 20, blockCnt: 1, attackSpeed: 100.0, baseAttackTime: 1.6, respawnTime: 70 } },
+          ],
+        },
+      ],
+      favorKeyFrames: [
+        { level: 0, data: { maxHp: 0, atk: 0, def: 0 } },
+        { level: 50, data: { maxHp: 200, atk: 70 } },
+      ],
+      potentialRanks: [
+        { type: "BUFF", description: "部署费用-2" },
+        { type: "BUFF", description: "攻击力+25" },
+      ],
     },
   });
   writeJson(join(excel, "handbook_info_table.json"), {

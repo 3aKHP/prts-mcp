@@ -165,7 +165,7 @@ def server():
 EXPECTED_TOOLS = {
     "search_prts", "prts_page",
     "get_operator_archives", "get_operator_voicelines", "get_operator_basic_info",
-    "get_operator_skills",
+    "get_operator_skills", "get_operator_stats",
     "list_enemies", "get_enemy_info",
     "get_stage_enemies", "get_enemy_appearances",
     "list_stages", "get_stage_info",
@@ -209,7 +209,7 @@ def test_tools_list(server: subprocess.Popen) -> None:
     tools = resp["result"]["tools"]
     names = {t["name"] for t in tools}
 
-    assert len(names) == 25, f"Expected 25 tools, got {len(names)}: {sorted(names)}"
+    assert len(names) == 26, f"Expected 26 tools, got {len(names)}: {sorted(names)}"
     for name in EXPECTED_TOOLS:
         assert name in names, f"Missing tool: {name}"
 
