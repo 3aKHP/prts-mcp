@@ -110,46 +110,30 @@ export function writeMinimalGamedata(root: string): void {
       skillId: "skchr_amiya_1",
       iconId: null,
       hidden: false,
+      // Ten levels so the mastery labels (专一/专二/专三) are exercised,
+      // mirroring the real Amiya S1 progression.
       levels: [
-        {
-          name: "战术咏唱",
-          description: "攻击速度<@ba.vup>+{attack_speed}</>，持续{duration}秒",
-          skillType: "MANUAL",
-          durationType: "NONE",
-          duration: 30.0,
-          spData: {
-            spType: "INCREASE_WITH_TIME",
-            spCost: 40,
-            initSp: 0,
-            maxChargeTime: 1,
-            levelUpCost: null,
-            increment: 1.0,
-          },
-          blackboard: [
-            { key: "attack_speed", value: 30.0, valueStr: null },
-            { key: "duration", value: 30.0, valueStr: null },
-          ],
+        [30, 40, 0], [35, 40, 0], [40, 40, 0], [45, 35, 5], [50, 35, 5],
+        [55, 35, 5], [60, 32, 10], [70, 32, 10], [80, 32, 10], [90, 30, 15],
+      ].map(([attackSpeed, spCost, initSp]) => ({
+        name: "战术咏唱",
+        description: "攻击速度<@ba.vup>+{attack_speed}</>，持续{duration}秒",
+        skillType: "MANUAL",
+        durationType: "NONE",
+        duration: 30.0,
+        spData: {
+          spType: "INCREASE_WITH_TIME",
+          spCost,
+          initSp,
+          maxChargeTime: 1,
+          levelUpCost: null,
+          increment: 1.0,
         },
-        {
-          name: "战术咏唱",
-          description: "攻击速度<@ba.vup>+{attack_speed}</>，持续{duration}秒",
-          skillType: "MANUAL",
-          durationType: "NONE",
-          duration: 30.0,
-          spData: {
-            spType: "INCREASE_WITH_TIME",
-            spCost: 35,
-            initSp: 5,
-            maxChargeTime: 1,
-            levelUpCost: null,
-            increment: 1.0,
-          },
-          blackboard: [
-            { key: "attack_speed", value: 35.0, valueStr: null },
-            { key: "duration", value: 30.0, valueStr: null },
-          ],
-        },
-      ],
+        blackboard: [
+          { key: "attack_speed", value: attackSpeed, valueStr: null },
+          { key: "duration", value: 30.0, valueStr: null },
+        ],
+      })),
     },
     "skchr_amiya_2": {
       skillId: "skchr_amiya_2",
@@ -159,7 +143,7 @@ export function writeMinimalGamedata(root: string): void {
         {
           name: "精神爆发",
           description:
-            "攻击力<@ba.vup>+{atk:0%}</>，有{prob:0.0%}概率使目标<$ba.stun>晕眩</>{ABILITY_RANGE_FORWARD_EXTEND}",
+            "攻击力<@ba.vup>+{atk:0%}</>，移动速度<@ba.vdown>-{-move_speed:0%}</>，有{prob:0.0%}概率使目标<$ba.stun>晕眩</>{ABILITY_RANGE_FORWARD_EXTEND}",
           skillType: "AUTO",
           durationType: "AMMO",
           duration: 6.0,
@@ -174,11 +158,12 @@ export function writeMinimalGamedata(root: string): void {
           blackboard: [
             { key: "atk", value: 0.1, valueStr: null },
             { key: "prob", value: 0.275, valueStr: null },
+            { key: "move_speed", value: -0.35, valueStr: null },
           ],
         },
         {
           name: "精神爆发",
-          description: "伤害类型变为{damage_type}，连击{times:0}次，倍率{atk_scale:0.0%}",
+          description: "伤害类型变为{damage_type}，连击{times:0}次，倍率{atk_scale:0.0%}，另有{extra_hits}次追击",
           skillType: "AUTO",
           durationType: "AMMO",
           duration: 8.0,
@@ -194,6 +179,8 @@ export function writeMinimalGamedata(root: string): void {
             { key: "damage_type", value: null, valueStr: "法术" },
             { key: "times", value: 6.0, valueStr: null },
             { key: "atk_scale", value: 1.15, valueStr: null },
+            // Zero is falsy but numeric — must render "0".
+            { key: "extra_hits", value: 0, valueStr: null },
           ],
         },
       ],
@@ -202,15 +189,27 @@ export function writeMinimalGamedata(root: string): void {
       skillId: "skchr_amiya_3",
       iconId: null,
       hidden: false,
+      // Real passives: spType is the integer sentinel 8 and duration
+      // carries the -1 "no duration" marker.
       levels: [
         {
           name: "奇美拉",
-          description: "被动效果：每击使敌人晕眩{stun}秒",
+          description: "被动效果：每击使敌人防御力-{-def}，并使其晕眩{stun}秒",
           skillType: "PASSIVE",
           durationType: "NONE",
-          duration: 0.0,
-          spData: null,
-          blackboard: [{ key: "stun", value: 2.0, valueStr: null }],
+          duration: -1,
+          spData: {
+            spType: 8,
+            spCost: null,
+            initSp: null,
+            maxChargeTime: null,
+            levelUpCost: null,
+            increment: null,
+          },
+          blackboard: [
+            { key: "def", value: -330.0, valueStr: null },
+            { key: "stun", value: 2.0, valueStr: null },
+          ],
         },
       ],
     },

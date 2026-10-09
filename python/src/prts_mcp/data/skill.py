@@ -131,6 +131,8 @@ def render_skill_description(
 
     Placeholders whose key is absent from the level's blackboard stay
     literal (upstream constants like ``ABILITY_RANGE_FORWARD_EXTEND``).
+    A leading ``-`` in the key negates the positive twin's value — the
+    table's convention for debuffs (``-{-def}`` with ``def: -330``).
     """
     values: dict[str, dict[str, Any]] = {}
     for entry in blackboard or []:
@@ -141,14 +143,19 @@ def render_skill_description(
     def _sub(match: _re.Match[str]) -> str:
         token, key = match.group(0), match.group(1)
         fmt = match.group(2) or ""
-        entry = values.get(key)
+        negated = key.startswith("-")
+        entry = values.get(key[1:] if negated else key)
         if entry is None:
             return token
         if entry.get("valueStr") is not None:
-            return str(entry["valueStr"])
+            # Negation only applies to numeric values; a string twin of a
+            # minus key has no defined rendering — keep the literal token.
+            return token if negated else str(entry["valueStr"])
         value = entry.get("value")
         if isinstance(value, bool) or not isinstance(value, (int, float)):
             return token
+        if negated:
+            value = -float(value)
         rendered = format_placeholder_value(float(value), fmt)
         return rendered if rendered is not None else token
 
@@ -170,14 +177,22 @@ def _skill_levels(entry: dict[str, Any]) -> list[dict[str, Any]]:
     for idx, lv in enumerate(entry.get("levels") or [], start=1):
         if not isinstance(lv, dict):
             continue
-        sp = lv.get("spData") or {}
+        sp = lv.get("spData")
+        if not isinstance(sp, dict):
+            sp = {}
         skill_type_raw = lv.get("skillType") or ""
-        sp_type_raw = sp.get("spType") or ""
+        # Real passives carry spType as the JSON integer 8 (a "no SP
+        # recovery" sentinel), not a string — non-string spTypes render
+        # as empty rather than leaking the raw value into payloads.
+        sp_type_raw = sp.get("spType")
+        if not isinstance(sp_type_raw, str):
+            sp_type_raw = ""
         duration_type_raw = lv.get("durationType") or ""
         levels.append({
             "level": idx,
             "name": lv.get("name") or "",
             "skill_type": _SKILL_TYPE_ZH.get(skill_type_raw, skill_type_raw),
+            "skill_type_raw": skill_type_raw,
             "sp_type": _SP_TYPE_ZH.get(sp_type_raw, sp_type_raw),
             "sp_cost": sp.get("spCost"),
             "init_sp": sp.get("initSp"),
@@ -204,7 +219,10 @@ def build_operator_skills(name: str) -> dict | str:
 
     try:
         table = _load_skill_table()
-    except FileNotFoundError as exc:
+    except (FileNotFoundError, OSError, ValueError) as exc:
+        # Same tolerate-family as operator.py's building-skills guard:
+        # corrupt JSON (JSONDecodeError is a ValueError) and wrong-shape
+        # roots degrade to a message instead of a raw traceback.
         return str(exc)
     if not isinstance(table, dict):
         return "skill_table.json 顶层不是 JSON 对象。"
@@ -250,7 +268,7 @@ def _plain_number(value: Any) -> str:
 def _level_suffix(level: dict[str, Any]) -> str:
     parts: list[str] = []
     sp_cost = level.get("sp_cost")
-    if level.get("skill_type") != "被动" and sp_cost is not None:
+    if level.get("skill_type_raw") != "PASSIVE" and sp_cost is not None:
         parts.append(f"SP {sp_cost}")
         if level.get("init_sp"):
             parts.append(f"初始 {level['init_sp']}")
@@ -258,7 +276,9 @@ def _level_suffix(level: dict[str, Any]) -> str:
         if isinstance(charge, int) and charge > 1:
             parts.append(f"可充能 {charge} 次")
     duration = level.get("duration")
-    if isinstance(duration, (int, float)) and duration:
+    # -1 is the table's "no duration" sentinel (instant / on-next-attack
+    # skills and passives); only positive durations render.
+    if isinstance(duration, (int, float)) and not isinstance(duration, bool) and duration > 0:
         if level.get("duration_type") == "AMMO":
             parts.append(f"弹药 {_plain_number(duration)} 发")
         else:
