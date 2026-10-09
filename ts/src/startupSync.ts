@@ -17,6 +17,7 @@ import { clearItemCaches } from "./data/item.js";
 import { clearStageEnemyCaches } from "./data/stageEnemy.js";
 import { clearSearchCaches } from "./data/search.js";
 import { clearBuildingCaches } from "./data/building.js";
+import { clearSkillCaches } from "./data/skill.js";
 import { clearStoryCaches } from "./data/story.js";
 import { syncImages } from "./sync/imagesSync.js";
 import { syncRelease, syncReleaseArchivePair } from "./data/sync.js";
@@ -166,6 +167,7 @@ export async function runStartupSync(forceCheck = false): Promise<void> {
         clearStageEnemyCaches();
         clearSearchCaches();
         clearBuildingCaches();
+        clearSkillCaches();
       }
       return gamedataPairNeedsRetry(r.status, levelsResult.status);
     };

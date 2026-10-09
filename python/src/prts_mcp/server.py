@@ -163,6 +163,7 @@ def _build_http_app():
             item,
             operator,
             search,
+            skill,
             stage,
             stage_enemy,
         )
@@ -175,7 +176,7 @@ def _build_http_app():
             name: registry[name].stats()
             for name in (
                 "operator", "enemy", "stage", "stage_enemy", "item", "search",
-                "building",
+                "building", "skill",
             )
         }
         return JSONResponse({

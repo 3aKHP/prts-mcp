@@ -57,6 +57,7 @@ interface CharacterEntry {
   itemDesc?: string;
   itemObtainApproach?: string;
   talents?: TalentSlot[];
+  skills?: Array<{ skillId?: string | null } | null>;
 }
 
 interface TalentCandidate {
