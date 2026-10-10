@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Added
+
+- **Roguelike story supplement catalog support.** When the story pack carries `story_supplement.json` (an additive file within the `prts-mcp-data/v1` contract, produced by arknights-data-pipeline), the six `rogue_N` roguelike events become first-class story content: `list_story_events` lists them (with a new `category="roguelike"` filter), `list_stories` / `read_activity` order their chapters, `search_stories` and the two character tools index them through the shared search index, and `read_story` / `get_story_summary` resolve their keys. Packs without the file behave exactly as before; directory-store caches now track the supplement file so self-hosted directory trees invalidate correctly. The MCP tool surface stays at 24.
+
 ## [2.8.0] - 2026-10-10
 
 ### Added
