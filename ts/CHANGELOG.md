@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project follows the versioning convention documented in [`docs/dev/VERSIONING.md`](https://github.com/3aKHP/prts-mcp/blob/main/docs/dev/VERSIONING.md).
 
-## [Unreleased]
+## [2.8.0] - 2026-10-10
 
 ### Added
 
