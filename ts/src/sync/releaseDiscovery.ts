@@ -12,12 +12,13 @@ import { fetchCascading, githubHeaders } from "./transport.js";
 export const TAG_PREFIX = "data-";
 const DATAREV_TAG_PREFIX = "datarev-";
 
-// A data versionId is fixed-width "YY-MM-DD-HH-MM-SS_hash", so lexicographic
-// order is chronological order and (versionId, revision) tuples order without
-// any date parsing.
-const VID_RE = /^\d{2}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}_[0-9a-f]+$/;
+// A data versionId is fixed-width "YY-MM-DD-HH-MM-SS" plus a lowercase hex
+// hash, joined by "_" before 2026-10 and "-" since; the fixed-width timestamp
+// prefix dominates, so lexicographic order stays chronological across both
+// shapes and (versionId, revision) tuples order without any date parsing.
+const VID_RE = /^\d{2}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}[_-][0-9a-f]+$/;
 const DATAREV_TAG_RE = /^datarev-(?<vid>.+)-r(?<rev>\d+)$/;
-const DATAREV_SUFFIX_RE = /^(?<vid>\d{2}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}_[0-9a-f]+)-r(?<rev>\d+)$/;
+const DATAREV_SUFFIX_RE = /^(?<vid>\d{2}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}[_-][0-9a-f]+)-r(?<rev>\d+)$/;
 
 /** Parsed data release identity: versionId plus publication revision. */
 export interface DataTagVersion {

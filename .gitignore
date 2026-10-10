@@ -28,6 +28,10 @@ prts-mcp.tar
 ts/node_modules/
 ts/dist/
 ts/*.tgz
+# Copied from the repo root by the npm prepack lifecycle script at pack time
+ts/NOTICE
+# Materialized by python/hatch_build.py during Python package builds
+python/NOTICE
 
 # TS npm bundled data — directories tracked, content downloaded by CI at publish time
 ts/data/*

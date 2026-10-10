@@ -1,22 +1,22 @@
 # PRTS-MCP Roadmap
 
-_Last updated: 2026-09-05_ · [中文版](ROADMAP.zh-CN.md)
+_Last updated: 2026-10-09_ · [中文版](ROADMAP.zh-CN.md)
 
 PRTS-MCP is past 1.0. Version 1.7.0 is the final 1.x feature release and the 1.7 LTS baseline. This document tracks **what comes next** — not what has shipped. For shipped features, see the Python and TypeScript CHANGELOGs.
 
 ## Current Release
 
-- Python: `2.7.4` _(latest stable)_
-- TypeScript: `2.7.4` _(latest stable)_
+- Python: `2.8.0` _(latest stable)_
+- TypeScript: `2.8.0` _(latest stable)_
 - `1.7.0` LTS remains the maintenance line — compatibility, security, data-sync, and critical fixes only.
 - 24 public MCP tools on the 2.x line (CI-enforced); 32 public MCP tools frozen on the 1.7 LTS line.
 - See [migration guide 0.x → 1.0](docs/migration-0.x-to-1.0.md) and [migration guide 1.x → 2.0](docs/migration-1.x-to-2.0.md).
 - 2.6.0 retains legacy MCP clients while adding opt-in `2026-07-28` support; see [2.5 → 2.6](docs/migration-2.5-to-2.6.md) before changing client protocol configuration.
 
-## 2.7.x Stable Maintenance
+## 2.8.x Stable Maintenance
 
-- Security, compatibility, data-sync, release-pipeline, documentation, and critical correctness/operational fixes only.
-- No new MCP tools, required parameters, or data domains in patch releases.
+- Security, compatibility, data-sync, release-pipeline, documentation, and critical correctness/operational fixes only; the compatible additions below are the documented exception.
+- Exception — new MCP tools, including tools that open new data domains, are scheduled for Minor releases by convention (narrative rule: [`docs/dev/VERSIONING.md`](docs/dev/VERSIONING.md)); a Patch that carries a new tool stays blind-upgrade compatible. Required-parameter and output-format changes in a Patch remain limited to VERSIONING.md's closed Patch whitelist.
 - Exercise the exact-artifact promotion path on the next real release and keep Python/TypeScript package provenance aligned.
 
 ## Cross-Version Policies
@@ -37,18 +37,29 @@ Reopen the SQLite decision only if production evidence shows that derived JSON a
 
 ## 2.8+ Non-Binding Working Draft
 
-> **Draft status:** Everything in this 2.8+ section is a candidate direction only. The version numbers, ordering, scope, tool shape, and inclusion of individual items are planning placeholders. The project does not commit to releasing later versions according to this draft. Items may be reordered, merged, split, deferred, replaced, or dropped as source contracts, implementation review, maintenance capacity, ecosystem changes, and real-consumer evidence evolve.
+> **Draft status:** Every **un-opened candidate** in this 2.8+ section is a candidate direction only. The version numbers, ordering, scope, tool shape, and inclusion of individual items are planning placeholders. The project does not commit to releasing later versions according to this draft. Items may be reordered, merged, split, deferred, replaced, or dropped as source contracts, implementation review, maintenance capacity, ecosystem changes, and real-consumer evidence evolve. **Exception: sections marked "In Development" (currently none) are themes already opened on `develop`; their scope is a settled decision, not a placeholder.**
 
-Where a candidate remains useful, the default is to preserve the current 24-tool surface by extending existing tools and enums when their schema remains coherent. A candidate becomes release scope only through a separate implementation and release decision.
+Where a candidate remains useful, subsequent 2.x development preserves the current 24-tool surface by extending existing tools and enums when their schema remains coherent. A candidate becomes release scope only through a separate implementation and release decision.
 
 ### 2.7.0 — Shipped 2026-08-15
 
-The former draft items for operator base skills (`get_operator_basic_info` carrying a bounded `building_skills` section, plus a `building_skills` scope on `search`) and skin/artwork metadata shipped in 2.7.0 — see the Python and TypeScript CHANGELOGs for details. The `operator_artwork(action="list")` skin-metadata enrichment under `LOCAL_IMAGE=true` was pulled forward from the former 2.8.0 candidate, which is why this draft has no 2.8.0 section yet.
+The former draft items for operator base skills (`get_operator_basic_info` carrying a bounded `building_skills` section, plus a `building_skills` scope on `search`) and skin/artwork metadata shipped in 2.7.0 — see the Python and TypeScript CHANGELOGs for details. The `operator_artwork(action="list")` skin-metadata enrichment under `LOCAL_IMAGE=true` was pulled forward from the former 2.8.0 candidate; that 2.8.0 placeholder was a target version only and never carried a theme.
+
+### 2.8.0 — Shipped 2026-10-10
+
+Theme: closed the three gaps in operator numeric queries — level-specific panels, per-level skill effects, and per-tier talent effects. See the Python and TypeScript CHANGELOGs for the shipped details.
+
+- `get_operator_basic_info(name, action="skills")`: per-level effects of an operator's combat skills (Lv1-7 plus each mastery rank). `skill_table.json` is promoted to a validated dataset-contract entry.
+- `get_operator_basic_info(name, action="stats", phase?, level?)`: an operator's panel at a specific elite phase and level, linearly interpolated between keyframes and calibrated against published PRTS Wiki panel values. Omitting phase/level returns every elite phase's Lv1/max panels plus trust/potential bonus summaries.
+- `get_operator_basic_info` talent section additive extension: each talent slot gains per-tier candidates (unlock phase/level, potential rank); the existing top-tier `name`/`description` fields keep their semantics.
+- `search` gains a `skills` scope: cross-operator keyword lookup over skill effects.
+- The tool surface stays at 24. Skills and panels use an optional action on `get_operator_basic_info`; default `basic` retains the existing short profile, and each call returns only the selected content.
+- Non-goals: skill upgrade material costs, modules, and attack-range shapes stay future candidates; the 1.7 LTS tool surface does not change. Implementation-level details (data paths, placeholder syntax, interpolation and calibration specifics) live in the feature PRs' CHANGELOG entries.
 
 ### 2.9.0 Candidate — Recruitment Lookup
 
 - Evaluate a structured reverse lookup from recruitment tag combinations to eligible operators.
-- Treat tag-combination semantics as distinct from regex full-text search; add a dedicated tool only if an existing schema cannot express the result clearly.
+- Treat tag-combination semantics as distinct from regex full-text search; evaluate an entry point within the existing tools and schemas, preserving 24 tools. The exact shape requires a separate decision.
 - Promote `gacha_table.json` into the validated dataset contract and verify recruitment rules against current game data before assigning delivery scope.
 
 ### Lower-Priority Candidates
@@ -192,7 +203,7 @@ See [the 2.0 migration guide](docs/migration-1.x-to-2.0.md) for the per-tool cha
 
 1. **1.7 LTS is closed to new capabilities** — keep the stable line small, predictable, and supportable.
 2. **One data domain per feature release** — easier to communicate, easier to migrate, easier to roll back.
-3. **Patches don't add new capability surface** — they fix bugs, improve compatibility, and preserve the 1.7 contract.
+3. **Patches stay blind-upgrade compatible** — they fix bugs and improve compatibility, and may carry small compatible additions; new capability surface is scheduled for Minor by convention (rule: [`docs/dev/VERSIONING.md`](docs/dev/VERSIONING.md)).
 4. **Lead breaking changes with explicit migration docs** — 2.0's tool-surface and output-format changes must be documented before prerelease.
 5. **Bind cross-source fusion to its data dependency** — `get_stage_enemies` ships after the stage data domain, not before it.
 6. **Consolidate by schema shape, not by domain** — merging tools that share parameter structure preserves selection accuracy; merging by "everything operator-related" doesn't.

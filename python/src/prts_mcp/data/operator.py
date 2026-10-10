@@ -179,6 +179,36 @@ _POSITION_ZH: dict[str, str] = {
     "NONE": "-",
 }
 
+_TALENT_PHASE_ZH: dict[str, str] = {
+    "PHASE_0": "精英0",
+    "PHASE_1": "精英1",
+    "PHASE_2": "精英2",
+}
+
+
+def _talent_candidates(talent: Any) -> list[dict[str, Any]]:
+    """Project a talent slot's candidates into per-tier payloads.
+
+    Pre-unlock placeholder candidates (``？？？``) are skipped, mirroring
+    the top-pick rule; order follows the raw table (later = stronger).
+    """
+    out: list[dict[str, Any]] = []
+    for c in talent.get("candidates") or []:
+        name = c.get("name") or ""
+        if not name or name == "？？？":
+            continue
+        condition = c.get("unlockCondition") or {}
+        phase = condition.get("phase") or ""
+        out.append({
+            "name": name,
+            "description": strip_wikitext(c.get("description") or ""),
+            "unlock": _TALENT_PHASE_ZH.get(phase, phase),
+            "unlock_level": condition.get("level") or 1,
+            # Raw zero-based rank; the player-facing potential is rank + 1.
+            "potential_rank": c.get("requiredPotentialRank") or 0,
+        })
+    return out
+
 
 def build_operator_basic_info(name: str) -> dict | str:
     """Build the structured payload for an operator's basic profile.
@@ -220,22 +250,19 @@ def build_operator_basic_info(name: str) -> dict | str:
     affiliation_parts = [x for x in [nation_id, group_id, team_id] if x]
     affiliation = " / ".join(affiliation_parts) if affiliation_parts else "-"
 
-    # Talents — show the highest-unlock candidate for each talent slot
-    chosen_talents: list[dict[str, str]] = []
+    # Talents — the top candidate stays the headline; per-tier candidates
+    # (unlock phase + potential rank) ride along for structured consumers.
+    chosen_talents: list[dict[str, Any]] = []
     talents: list[Any] = info.get("talents") or []
     for talent in talents:
-        candidates: list[Any] = talent.get("candidates") or []
-        # Pick last candidate with a real name
-        chosen = None
-        for c in reversed(candidates):
-            if c.get("name") and c["name"] not in ("？？？",):
-                chosen = c
-                break
-        if chosen:
+        tier_candidates = _talent_candidates(talent)
+        if tier_candidates:
+            chosen = tier_candidates[-1]
             chosen_talents.append(
                 {
-                    "name": chosen.get("name", ""),
-                    "description": strip_wikitext(chosen.get("description", "")),
+                    "name": chosen["name"],
+                    "description": chosen["description"],
+                    "candidates": tier_candidates,
                 }
             )
 
@@ -283,6 +310,20 @@ def build_operator_basic_info(name: str) -> dict | str:
     }
 
 
+def _talent_tier_note(candidates: list[dict[str, Any]]) -> str:
+    """Compact unlock/potential annotation for one talent slot."""
+    conditions = list(dict.fromkeys(
+        c["unlock"] + (f" Lv{c['unlock_level']}" if c["unlock_level"] > 1 else "")
+        for c in candidates if c.get("unlock")
+    ))
+    parts = [f"{conditions[0]}解锁"] if conditions else []
+    parts.extend(f"{condition}强化" for condition in conditions[1:])
+    max_rank = max((c.get("potential_rank") or 0 for c in candidates), default=0)
+    if isinstance(max_rank, int) and max_rank > 0:
+        parts.append(f"潜能{max_rank + 1}档强化")
+    return f"（{'；'.join(parts)}）" if parts else ""
+
+
 def render_operator_basic_info(data: dict) -> str:
     """Render an operator basic-info payload dict to markdown.
 
@@ -315,6 +356,9 @@ def render_operator_basic_info(data: dict) -> str:
         lines.append("\n## 天赋")
         for t in talents:
             lines.append(f"- **{t['name']}**：{t['description']}")
+            note = _talent_tier_note(t.get("candidates") or [])
+            if note:
+                lines.append(f"  {note}")
 
     building_skills = data.get("building_skills")
     if building_skills:

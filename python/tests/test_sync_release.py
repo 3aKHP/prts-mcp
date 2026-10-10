@@ -1368,6 +1368,8 @@ class TestManifestAbsenceSemantics:
 
 _VID = "26-09-03-04-06-00_ed95a2"
 _VID2 = "26-10-01-11-22-33_aabbcc"
+#: upstream joined the hash with "_" before 2026-10 and "-" since
+_VID_HYPHEN = "26-10-08-04-51-28-56071834"
 
 
 def _mock_releases_response(releases: list[dict]) -> MagicMock:
@@ -1393,6 +1395,8 @@ class TestParseDataTag:
         assert parse_data_tag(f"data-{_VID}") == (_VID, 1)
         assert parse_data_tag(f"datarev-{_VID}-r2") == (_VID, 2)
         assert parse_data_tag(f"datarev-{_VID}-r10") == (_VID, 10)
+        assert parse_data_tag(f"data-{_VID_HYPHEN}") == (_VID_HYPHEN, 1)
+        assert parse_data_tag(f"datarev-{_VID_HYPHEN}-r2") == (_VID_HYPHEN, 2)
         assert parse_data_tag("images-v1") is None
         assert parse_data_tag("datarev-x-r2-extra") is None
         assert parse_data_tag("datarev-vid") is None
@@ -1404,11 +1408,16 @@ class TestParseReleaseSuffixAndTagSuffix:
 
         assert parse_release_suffix(_VID) == (_VID, 1)
         assert parse_release_suffix(f"{_VID}-r3") == (_VID, 3)
+        assert parse_release_suffix(_VID_HYPHEN) == (_VID_HYPHEN, 1)
+        assert parse_release_suffix(f"{_VID_HYPHEN}-r2") == (_VID_HYPHEN, 2)
+        assert parse_release_suffix(f"{_VID_HYPHEN}-r10") == (_VID_HYPHEN, 10)
         for sentinel in ("unknown", "legacy", "local-abc123", "manual"):
             assert parse_release_suffix(sentinel) is None
         assert parse_release_suffix("abc123") is None  # not a versionId shape
         assert tag_suffix(f"data-{_VID}") == _VID
         assert tag_suffix(f"datarev-{_VID}-r2") == f"{_VID}-r2"
+        assert tag_suffix(f"data-{_VID_HYPHEN}") == _VID_HYPHEN
+        assert tag_suffix(f"datarev-{_VID_HYPHEN}-r2") == f"{_VID_HYPHEN}-r2"
         assert tag_suffix("unknown") == "unknown"
 
 
@@ -1439,6 +1448,15 @@ class TestLatestDataRelease:
             _release_entry(f"datarev-{_VID}-r10"),
         ]
         assert latest_data_release(releases)["tag_name"] == f"datarev-{_VID}-r10"
+
+    def test_hyphen_format_version_outranks_older_revision(self):
+        from prts_mcp.sync.release_discovery import latest_data_release
+
+        releases = [
+            _release_entry(f"datarev-{_VID}-r10"),
+            _release_entry(f"data-{_VID_HYPHEN}"),
+        ]
+        assert latest_data_release(releases)["tag_name"] == f"data-{_VID_HYPHEN}"
 
     def test_duplicate_tuple_fails_closed(self):
         from prts_mcp.sync.release_discovery import latest_data_release
@@ -1477,6 +1495,10 @@ class TestReleaseUpToDateDecision:
         assert up_to_date(f"{_VID}-r2", _VID) is True        # downgrade refused
         assert up_to_date(_VID, _VID2) is False              # newer versionId → download
         assert up_to_date(_VID2, _VID) is True
+        assert up_to_date(_VID_HYPHEN, f"{_VID_HYPHEN}-r2") is False
+        assert up_to_date(f"{_VID_HYPHEN}-r2", _VID_HYPHEN) is True   # hyphen: downgrade refused
+        assert up_to_date(f"{_VID}-r2", _VID_HYPHEN) is False         # cross-format newer source
+        assert up_to_date(_VID_HYPHEN, f"{_VID}-r2") is True          # cross-format older source
         assert up_to_date("unknown", "unknown") is True      # sentinel: string fallback
         assert up_to_date("unknown", _VID) is False
         assert up_to_date("legacy", _VID) is False
@@ -1653,6 +1675,27 @@ class TestSyncReleaseRevisionFlow:
         )
         assert meta["commit_sha"] == f"{_VID}-r2"
 
+    def test_hyphen_format_upstream_updates_underscore_install(self, tmp_path):
+        spec = _make_spec(tmp_path)
+        _write_zip(spec.local_zip)
+        self._install_cache(spec, f"{_VID}-r2")
+
+        content = b"PK\x03\x04-new-source"
+        releases = _mock_releases_response([
+            _release_entry(f"data-{_VID_HYPHEN}", url="https://example/new"),
+        ])
+        with patch(
+            "prts_mcp.sync.release.get_cascading",
+            side_effect=[releases, _mock_asset_response(content)],
+        ) as cascading, patch(
+            "prts_mcp.sync.release_discovery.get_cascading", cascading,
+        ):
+            result = sync_release(spec, force_check=True)
+
+        assert result.status == "updated"
+        assert result.commit_sha == _VID_HYPHEN
+        assert spec.local_zip.read_bytes() == content
+
 
 def test_datarev_manifest_404_keeps_old_archive(tmp_path):
     spec = ReleaseSpec("3aKHP", "arknights-data-pipeline", "zh_CN.zip",
@@ -1681,9 +1724,10 @@ def test_duplicate_identity_never_uses_blind_download(tmp_path):
     download.assert_not_called()
 
 
-@pytest.mark.parametrize("upstream", [None, f"data-{_VID}"])
+@pytest.mark.parametrize("vid", [_VID, _VID_HYPHEN])
+@pytest.mark.parametrize("has_upstream", [False, True])
 @pytest.mark.parametrize("invalid_zip", [False, True])
-def test_recorded_revision_prevents_downgrade_without_valid_zip(tmp_path, upstream, invalid_zip):
+def test_recorded_revision_prevents_downgrade_without_valid_zip(tmp_path, vid, has_upstream, invalid_zip):
     from prts_mcp.sync.release import CacheMeta
 
     spec = _make_spec(tmp_path)
@@ -1694,38 +1738,39 @@ def test_recorded_revision_prevents_downgrade_without_valid_zip(tmp_path, upstre
     meta_path = spec.local_zip.parent / "release_meta.json"
     CacheMeta(
         repo="3aKHP/arknights-data-pipeline", branch="releases",
-        commit_sha=f"{_VID}-r2", fetched_at="2000-01-01T00:00:00Z",
+        commit_sha=f"{vid}-r2", fetched_at="2000-01-01T00:00:00Z",
         files=[spec.asset_name],
     ).save(meta_path)
     before = meta_path.read_bytes()
-    latest = (upstream, "https://example.test/old.zip") if upstream else None
+    latest = (f"data-{vid}", "https://example.test/old.zip") if has_upstream else None
     with patch("prts_mcp.sync.release.check_latest_release", return_value=latest), patch(
         "prts_mcp.sync.release._parse_mirrors", return_value=["https://mirror.test"]
     ), patch("prts_mcp.sync.release.download_release_asset") as download:
         result = sync_release(spec, force_check=True)
     assert result.status == "no_data"
-    assert result.commit_sha == f"{_VID}-r2"
+    assert result.commit_sha == f"{vid}-r2"
     assert meta_path.read_bytes() == before
     download.assert_not_called()
 
 
+@pytest.mark.parametrize("vid", [_VID, _VID_HYPHEN])
 @pytest.mark.parametrize("revision", [2, 3])
-def test_recorded_revision_allows_verified_replacement_without_zip(tmp_path, revision):
+def test_recorded_revision_allows_verified_replacement_without_zip(tmp_path, vid, revision):
     from prts_mcp.sync.release import CacheMeta
 
     spec = _make_spec(tmp_path)
     spec.local_zip.parent.mkdir(parents=True, exist_ok=True)
     CacheMeta(
         repo="3aKHP/arknights-data-pipeline", branch="releases",
-        commit_sha=f"{_VID}-r2", fetched_at="2000-01-01T00:00:00Z",
+        commit_sha=f"{vid}-r2", fetched_at="2000-01-01T00:00:00Z",
         files=[spec.asset_name],
     ).save(spec.local_zip.parent / "release_meta.json")
-    tag = f"datarev-{_VID}-r{revision}"
+    tag = f"datarev-{vid}-r{revision}"
     url = "https://example.test/current.zip"
     with patch("prts_mcp.sync.release.check_latest_release", return_value=(tag, url)), patch(
         "prts_mcp.sync.release.download_release_asset"
     ) as download:
         result = sync_release(spec, force_check=True)
     assert result.status == "updated"
-    assert result.commit_sha == f"{_VID}-r{revision}"
+    assert result.commit_sha == f"{vid}-r{revision}"
     download.assert_called_once_with(spec, tag, url)

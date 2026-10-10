@@ -13,7 +13,7 @@
 
 普通单模块 PR 不需要本流程——验证矩阵的常规行已覆盖。Release 不单独构成触发：发布内容命中上述场景时，是否执行由构成它的各 PR 按自身等级处理。
 
-**维护者裁量**：命中上述场景时，是否执行全量流程、或以面向改动范围的轻量化真机验证替代，由维护者当次决定；替代时 PR / 发布记录必须披露验证范围与未执行环节。裁量规则与先例由 [`WORKFLOW.md`](WORKFLOW.md) 的"高风险域"一节拥有。
+**维护者裁量**：命中上述场景时是否执行、或以何种范围的验证替代，由维护者按 [`WORKFLOW.md`](WORKFLOW.md) "高风险域"一节的裁量规则当次决定；披露义务与先例同归该节拥有。
 
 ## 隔离原则（先读，勿跳）
 
@@ -86,12 +86,12 @@ du -sh ~/prts-e2e/data-ts/xdg/prts-mcp/*
 
 （该脚本的完整版本随 2.7.0 E2E 存档于维护者 `~/prts-e2e/mcp-client.mjs`；同一协议在仓内已有实现可参照：`ts/tests/e2e.test.ts` 与 `python/tests/test_e2e_http.py`，按上述协议 ~60 行即可重写。）
 
-冒烟清单——**24 个工具全部调用**，每组至少一个代表：
+冒烟清单——**24 个工具全部调用**（2.8.0 起，另覆盖 `get_operator_basic_info` 的 `basic` / `skills` / `stats` action），每组至少一个代表：
 
 | 组 | 代表调用 | 验证点 |
 |---|---|---|
 | wiki | `search_prts`、`prts_page(action=sections)` | 真实 MediaWiki 命中 |
-| 干员 | basic_info / archives / voicelines / memoirs | 中文渲染、缺数据优雅降级 |
+| 干员 | basic_info(action=basic/skills/stats) / archives / voicelines / memoirs | 中文渲染、占位符数值渲染、插值面板、缺数据优雅降级 |
 | gamedata | list/get × items/enemies/stages/stage_enemies/appearances、`search` | 数字格式、structuredContent |
 | 剧情 | events → stories → summary → read_story → read_activity → search_stories → appearances → speakers | key 链路可串联 |
 | 图像 | `operator_artwork` list + get（MediaWiki 真图） | PNG magic、字节数、二次调用 LRU 命中 |
@@ -111,7 +111,7 @@ du -sh ~/prts-e2e/data-ts/xdg/prts-mcp/*
 - list（不透明 token + 变体清单）→ get large/preview（真 PNG，尺寸与变体一致）。
 - `variant=original`（未同步）→ `图片文件缺失：…` 优雅拒绝。
 - 表单别名 `阿米娅(近卫)` 独立解析；跨 form token → `不属于` 拒绝。
-- `/debug/cache` 十模块齐全（Bearer debug token）。
+- `/debug/cache` 十一模块齐全（Bearer debug token，含 `skill`）。
 
 ## 阶段 6 — 清空缓存后复测 Python
 
@@ -124,7 +124,7 @@ Python 单元差异（`PORT=39172`）：`ExecStart=<uv 绝对路径> run --direc
 
 - 三路 sync 数据量与 TS 同量级（快照时点 108M/384M/33M）
 - MediaWiki artwork 载荷与 TS **逐字节一致**（同一 artwork_id 的 base64）
-- 24 工具输出与 TS 侧抽查一致（文案漂移按 D2 台账记录）
+- 24 工具输出及干员信息的 basic/skills/stats action 与 TS 侧抽查一致（文案漂移按 D2 台账记录）
 
 ## 已知正常行为（勿误报为 bug）
 

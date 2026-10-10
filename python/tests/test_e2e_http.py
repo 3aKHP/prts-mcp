@@ -29,6 +29,8 @@ from pathlib import Path
 import httpx
 import pytest
 
+from tests.fixtures import write_minimal_gamedata
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -227,6 +229,7 @@ def test_debug_cache(server):
     expected_modules = {
         "operator", "enemy", "stage", "stage_enemy", "item",
         "search", "story_search", "images", "artwork_mediawiki", "building",
+        "skill",
     }
     assert set(data.keys()) == expected_modules
     for module_name, caches in data.items():
@@ -275,6 +278,7 @@ def test_initialize_and_tools_list(server):
     assert status == 200
     assert payload is not None
     names = {t["name"] for t in payload["result"]["tools"]}
+    assert len(names) == 24
     # Spot-check a few tools across domains.
     for required in [
         "search_prts",
@@ -305,6 +309,7 @@ def test_modern_http_requests_are_stateless_and_strict(server):
     assert sid is None
     assert payload is not None
     names = {tool["name"] for tool in payload["result"]["tools"]}
+    assert len(names) == 24
     assert "get_operator_basic_info" in names
 
     if not (GAMEDATA_PATH / "zh_CN/gamedata/excel/character_table.json").is_file():
@@ -332,6 +337,49 @@ def test_modern_http_requests_are_stateless_and_strict(server):
     )
     assert malformed.status_code == 400
     assert malformed.headers.get("mcp-session-id") is None
+
+
+@pytest.mark.parametrize("modern", [False, True])
+def test_operator_actions_over_http(tmp_path, modern):
+    """Both protocol eras dispatch the actions and preserve structured payloads."""
+    write_minimal_gamedata(tmp_path)
+    with running_server({
+        "GAMEDATA_PATH": str(tmp_path),
+        "STORYJSON_PATH": str(tmp_path / "missing.zip"),
+        "PRTS_OUTPUT_CHANNEL": "both",
+    }) as handle:
+        origin = handle["origin"]
+        sid = None
+        if not modern:
+            _, _, sid = _mcp_post(origin, {
+                "jsonrpc": "2.0", "method": "initialize", "id": 1,
+                "params": {"protocolVersion": "2024-11-05", "capabilities": {},
+                           "clientInfo": {"name": "operator-test", "version": "0"}},
+            })
+            assert sid is not None
+            _mcp_post(origin, {
+                "jsonrpc": "2.0", "method": "notifications/initialized", "params": {},
+            }, session_id=sid)
+
+        parity = Path(__file__).parents[2] / "tests/parity-fixtures"
+        queries = json.loads((parity / "operator-query-cases.json").read_text())
+        for index, case in enumerate(queries, 2):
+            params = {"name": "get_operator_basic_info", "arguments": case["args"]}
+            if modern:
+                status, response, response_sid = _modern_post(origin, "tools/call", params, index)
+                assert response_sid is None
+            else:
+                status, response, _ = _mcp_post(origin, {
+                    "jsonrpc": "2.0", "method": "tools/call", "params": params, "id": index,
+                }, session_id=sid)
+            assert status == 200
+            result = response["result"]
+            assert not result.get("isError"), result
+            if "fixture" in case:
+                assert result["structuredContent"] == json.loads((parity / case["fixture"]).read_text())
+            else:
+                assert result.get("structuredContent") is None
+                assert result["content"][0]["text"] == case["error"]
 
 
 def test_output_channel_env_governs_not_query():

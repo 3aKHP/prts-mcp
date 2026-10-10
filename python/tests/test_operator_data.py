@@ -32,6 +32,27 @@ def teardown_function() -> None:
 
 
 class TestOperatorDataRefresh:
+    def test_talent_unlock_conditions_match_shared_real_data_cases(self, tmp_path):
+        write_minimal_gamedata(tmp_path)
+        table_path = tmp_path / "zh_CN/gamedata/excel/character_table.json"
+        table = json.loads(table_path.read_text(encoding="utf-8"))
+        cases = _load_parity_fixture("operator-talent-cases.json")["cases"]
+        for index, case in enumerate(cases):
+            table[f"char_test_{index}"] = {
+                "name": case["name"], "talents": [{"candidates": case["candidates"]}],
+            }
+        table_path.write_text(json.dumps(table, ensure_ascii=False), encoding="utf-8")
+        with patch.dict(os.environ, {"GAMEDATA_PATH": str(tmp_path)}, clear=False):
+            for case in cases:
+                data = build_operator_basic_info(case["name"])
+                candidates = data["talents"][0]["candidates"]
+                assert [
+                    [c["unlock"], c["unlock_level"], c["potential_rank"]]
+                    for c in candidates
+                ] == case["conditions"]
+                rendered = operator.render_operator_basic_info(data).splitlines()
+                assert f"  {case['note']}" in rendered
+
     def test_same_process_sees_data_written_after_initial_miss(self, tmp_path):
         with patch.dict(os.environ, {"GAMEDATA_PATH": str(tmp_path)}, clear=False):
             os.environ.pop("STORYJSON_PATH", None)
@@ -78,7 +99,8 @@ class TestOperatorDataRefresh:
                 "**获取方式**：主线获得\n"
                 "\n"
                 "## 天赋\n"
-                "- **情绪吸收**：攻击回复技力\n"
+                "- **情绪吸收**：攻击回复技力（+2）\n"
+                "  （精英1解锁；精英2强化；潜能5档强化）\n"
                 "\n"
                 "## 基建技能\n"
                 "- **合作协议**（控制中枢，精英0解锁）："

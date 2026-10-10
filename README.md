@@ -29,7 +29,7 @@ Two release lines ship in parallel:
 
 | Line | Version | Tools | Status |
 |------|---------|-------|--------|
-| **2.7** (`main`) | `2.7.4` | 24 | Operator base skills, local artwork skin metadata, repair-aware data sync, consistent chapter summaries, and aligned HTTP session idle eviction. |
+| **2.8** (`main`) | `2.8.0` | 24 | Operator deep stats — level-specific panels, per-level skill effects, and per-tier talent effects via `get_operator_basic_info` actions — plus hyphen-format data-revision compatibility. |
 | **1.7 LTS** (`lts/1.7`) | `1.7.0` | 32 | Stable maintenance line. 1.7.x accepts only compatibility, security, data-sync, and critical bug fixes. |
 
 The `main` and `develop` lines use the self-built `arknights-data-pipeline` Release exclusively for default Auto-Sync. The 1.7 LTS line retains its legacy upstream compatibility until a separate, backwards-compatible migration; changes to the new factory path must not be backported to LTS as an implicit source switch.
@@ -65,13 +65,13 @@ Both implementations expose the same tool set:
 | `prts_page(page_title, action, ...)` | Read a wiki page or metadata; `template` returns rendered fields from top-level templates |
 | `get_operator_archives(name)` | Retrieve operator archive records (Chinese name) |
 | `get_operator_voicelines(name)` | Retrieve operator voice lines (Chinese name) |
-| `get_operator_basic_info(name)` | Retrieve basic operator profile: class, rarity, faction, recruit tags, talents, base skills (Chinese name) |
+| `get_operator_basic_info(name, action="basic", phase?, level?)` | Query an operator's profile/talents/base skills (`basic`, default), per-level combat skills (`skills`), or stat panels (`stats`); `phase`/`level` apply only to `stats` (Chinese name) |
 | `list_story_events(category?)` | List story events; optional filter: `main` (main story) or `activities` |
 | `list_stories(event_id, include_summaries?)` | List chapters of an event in official order; `include_summaries` adds the event-level overview + per-chapter summaries |
 | `get_story_summary(story_key)` | Single-chapter summary (LLM long summary or official one-liner) |
 | `read_story(story_key, include_narration)` | Read full dialogue for a single chapter |
 | `read_activity(event_id, include_narration, page, page_size)` | Read a complete activity's transcript, with pagination |
-| `search(scope, pattern, max_results)` | Full-text regex search within a data domain: `scope` ∈ operators / enemies / stages / items / building_skills |
+| `search(scope, pattern, max_results)` | Full-text regex search within a data domain: `scope` ∈ operators / enemies / stages / items / building_skills / skills |
 | `search_stories(pattern, character?, line_type?, context_lines?, max_results?, event_id?)` | Full-text regex search across story dialogue, narration, and choice lines with filtering |
 | `list_enemies()` | List all enemies in the handbook with threat level and description |
 | `get_enemy_info(name, stage_id?)` | Retrieve full enemy handbook entry by name, or stage-specific stats when `stage_id` is provided |
@@ -85,6 +85,8 @@ Both implementations expose the same tool set:
 | `find_character_appearances(name, scope?, max_events?)` | Find chapters/events where a character speaks (dialog) or is mentioned (name substring) |
 | `find_speakers_in(event_id)` | List every speaker in an event with dialog line counts |
 | `operator_artwork(operator_name, action, artwork_id?, variant?)` | List operator illustrations/skins (local list carries skin collection/acquisition metadata) and retrieve image variants (base64); MediaWiki by default, AKDP local assets when `LOCAL_IMAGE=true` |
+
+`get_operator_basic_info(name)` keeps the basic profile as its default. Select `action="skills"` for Lv1–7 and mastery effects, or `action="stats"` for every elite phase's Lv1/max panels with trust/potential bonus summaries. For a specific panel, supply both `phase` (0–2) and `level`, for example `get_operator_basic_info("阿米娅", action="stats", phase=2, level=40)`. These two parameters are valid only with `stats`; each action returns only its selected content.
 
 ### Output Channel
 
@@ -155,7 +157,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and [`doc
 
 | 版本线 | 版本 | 工具数 | 状态 |
 |--------|------|--------|------|
-| **2.7**（`main`） | `2.7.4` | 24 | 干员基建技能、本地立绘皮肤元数据、数据修订同步、章节摘要一致性修复、HTTP 会话空闲淘汰双实现一致。 |
+| **2.8**（`main`） | `2.8.0` | 24 | 干员深度数值——`get_operator_basic_info` 统一入口的面板插值、技能逐等级、天赋逐档；数据同步兼容连字符 versionId 修订。 |
 | **1.7 LTS**（`lts/1.7`） | `1.7.0` | 32 | 稳定维护线。1.7.x 仅接受兼容性、安全性、数据同步和关键缺陷修复。 |
 
 | 范围 | Python | TypeScript |
@@ -189,13 +191,13 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and [`doc
 | `prts_page(page_title, action, ...)` | 读取词条正文或元数据；`template` 返回顶层模板的结构化、已渲染字段数据 |
 | `get_operator_archives(name)` | 获取干员档案资料（中文名） |
 | `get_operator_voicelines(name)` | 获取干员语音记录（中文名） |
-| `get_operator_basic_info(name)` | 获取干员基本信息：职业、稀有度、所属、招募标签、天赋、基建技能（中文名） |
+| `get_operator_basic_info(name, action="basic", phase?, level?)` | 查询定位/天赋/基建技能（`basic`，默认）、战斗技能各等级效果（`skills`）或面板数值（`stats`）；`phase`/`level` 仅用于 `stats`（中文名） |
 | `list_story_events(category?)` | 列出剧情活动，可选过滤：`main`（主线）或 `activities`（活动） |
 | `list_stories(event_id, include_summaries?)` | 列出指定活动的章节（按官方顺序）；`include_summaries` 附活动级概览 + 每章梗概 |
 | `get_story_summary(story_key)` | 获取单章梗概（LLM 长摘要或官方一句话简介） |
 | `read_story(story_key, include_narration)` | 读取单章完整台词 |
 | `read_activity(event_id, include_narration, page, page_size)` | 读取整个活动的完整剧情，支持分页 |
-| `search(scope, pattern, max_results)` | 在指定数据域执行全文正则搜索：`scope` ∈ operators / enemies / stages / items / building_skills（基建技能跨干员反查） |
+| `search(scope, pattern, max_results)` | 在指定数据域执行全文正则搜索：`scope` ∈ operators / enemies / stages / items / building_skills / skills（基建/战斗技能跨干员反查） |
 | `search_stories(pattern, character?, line_type?, context_lines?, max_results?, event_id?)` | 在剧情台词中执行全文正则搜索，支持按角色和台词类型过滤 |
 | `list_enemies()` | 列出敌方图鉴中所有敌人及其威胁等级和描述 |
 | `get_enemy_info(name, stage_id?)` | 获取指定敌人的详细图鉴资料；传入 `stage_id` 时返回关卡级数值 |
@@ -209,6 +211,8 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and [`doc
 | `find_character_appearances(name, scope?, max_events?)` | 查找角色在哪些章节/活动中开口（对话）或被提及（名字子串） |
 | `find_speakers_in(event_id)` | 列出指定活动中所有发言角色及其对话行数 |
 | `operator_artwork(operator_name, action, artwork_id?, variant?)` | 列出干员立绘/时装（本地模式附带皮肤系列/获取方式等元数据）并获取图片变体（base64）；默认走 MediaWiki，`LOCAL_IMAGE=true` 时使用 AKDP 本地资产 |
+
+`get_operator_basic_info(name)` 默认仍返回基本信息。`action="skills"` 查询 Lv1–7 与专精各级效果；`action="stats"` 查询各精英阶段 Lv1/满级面板及信赖/潜能加成摘要。查询指定等级时同时提供 `phase`（0–2）与 `level`，例如 `get_operator_basic_info("阿米娅", action="stats", phase=2, level=40)`。这两个参数仅适用于 `stats`；每次调用只返回所选内容。
 
 ### 输出通道
 
@@ -258,6 +262,10 @@ TypeScript 实现支持 Bun 与 Node.js。自 2.2.0 起 **Bun 是默认生产运
 
 ---
 
-## License
+## License / 许可
 
-MIT
+**Code / 代码** — MIT © 2026 3aKHP，见 [`LICENSE`](LICENSE)。
+
+**Third-party content / 第三方内容** — PRTS Wiki text and Arknights game data/artwork served through this project remain under their own licenses; attribution, terms and takedown contact: [`NOTICE`](NOTICE). PRTS Wiki 文字、明日方舟游戏数据与立绘等经本项目提供的第三方内容仍按其各自条款授权；归属、授权条款与撤下联系方式见 [`NOTICE`](NOTICE)。
+
+This is a non-commercial fan project, not affiliated with Hypergryph. 本项目为非商业同人项目，与鹰角网络无关联。

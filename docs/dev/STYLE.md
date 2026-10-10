@@ -337,8 +337,7 @@ Tag 使用实现级前缀：`python/vX.Y.Z` 和 `ts/vX.Y.Z`。稳定版 tag 必�
 2. 在 release 分支将 `## [Unreleased]` 改为 `## [X.Y.Z] - YYYY-MM-DD`
 3. release PR 到 `main` 时不保留空 `## [Unreleased]` 段
 4. 版本号去掉 `-dev` 后缀后通过 PR 合并到 `main`，在 `main` 的 merge commit 上打 tag
-5. 将同一个 release 分支通过 PR merge 回 `develop`（不要 squash）
-6. 从更新后的 `develop` 拉 chore 分支，bump 到下个开发版本后，再打开新的空 `## [Unreleased]` 段并 PR 回 `develop`
+5. 将同一个 release 分支通过 PR merge 回 `develop`（不要 squash）；合并前往同一 release 分支追加 reopen commit：bump 到下个开发版本并重新打开空 `## [Unreleased]` 段（完整流程见 `CLAUDE.md` 路径 D）
 
 ---
 

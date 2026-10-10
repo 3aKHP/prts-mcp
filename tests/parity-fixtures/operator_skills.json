@@ -1,0 +1,193 @@
+{
+  "name": "阿米娅",
+  "char_id": "char_002_amiya",
+  "skills": [
+    {
+      "skill_id": "skchr_amiya_1",
+      "name": "战术咏唱",
+      "levels": [
+        {
+          "level": 1,
+          "name": "战术咏唱",
+          "skill_type": "手动",
+          "skill_type_raw": "MANUAL",
+          "sp_type": "自动回复",
+          "sp_cost": 40,
+          "init_sp": 0,
+          "max_charge_time": 1,
+          "duration": 30.0,
+          "duration_type": "NONE",
+          "description": "攻击速度+30，持续30秒"
+        },
+        {
+          "level": 2,
+          "name": "战术咏唱",
+          "skill_type": "手动",
+          "skill_type_raw": "MANUAL",
+          "sp_type": "自动回复",
+          "sp_cost": 40,
+          "init_sp": 0,
+          "max_charge_time": 1,
+          "duration": 30.0,
+          "duration_type": "NONE",
+          "description": "攻击速度+35，持续30秒"
+        },
+        {
+          "level": 3,
+          "name": "战术咏唱",
+          "skill_type": "手动",
+          "skill_type_raw": "MANUAL",
+          "sp_type": "自动回复",
+          "sp_cost": 40,
+          "init_sp": 0,
+          "max_charge_time": 1,
+          "duration": 30.0,
+          "duration_type": "NONE",
+          "description": "攻击速度+40，持续30秒"
+        },
+        {
+          "level": 4,
+          "name": "战术咏唱",
+          "skill_type": "手动",
+          "skill_type_raw": "MANUAL",
+          "sp_type": "自动回复",
+          "sp_cost": 35,
+          "init_sp": 5,
+          "max_charge_time": 1,
+          "duration": 30.0,
+          "duration_type": "NONE",
+          "description": "攻击速度+45，持续30秒"
+        },
+        {
+          "level": 5,
+          "name": "战术咏唱",
+          "skill_type": "手动",
+          "skill_type_raw": "MANUAL",
+          "sp_type": "自动回复",
+          "sp_cost": 35,
+          "init_sp": 5,
+          "max_charge_time": 1,
+          "duration": 30.0,
+          "duration_type": "NONE",
+          "description": "攻击速度+50，持续30秒"
+        },
+        {
+          "level": 6,
+          "name": "战术咏唱",
+          "skill_type": "手动",
+          "skill_type_raw": "MANUAL",
+          "sp_type": "自动回复",
+          "sp_cost": 35,
+          "init_sp": 5,
+          "max_charge_time": 1,
+          "duration": 30.0,
+          "duration_type": "NONE",
+          "description": "攻击速度+55，持续30秒"
+        },
+        {
+          "level": 7,
+          "name": "战术咏唱",
+          "skill_type": "手动",
+          "skill_type_raw": "MANUAL",
+          "sp_type": "自动回复",
+          "sp_cost": 32,
+          "init_sp": 10,
+          "max_charge_time": 1,
+          "duration": 30.0,
+          "duration_type": "NONE",
+          "description": "攻击速度+60，持续30秒"
+        },
+        {
+          "level": 8,
+          "name": "战术咏唱",
+          "skill_type": "手动",
+          "skill_type_raw": "MANUAL",
+          "sp_type": "自动回复",
+          "sp_cost": 32,
+          "init_sp": 10,
+          "max_charge_time": 1,
+          "duration": 30.0,
+          "duration_type": "NONE",
+          "description": "攻击速度+70，持续30秒"
+        },
+        {
+          "level": 9,
+          "name": "战术咏唱",
+          "skill_type": "手动",
+          "skill_type_raw": "MANUAL",
+          "sp_type": "自动回复",
+          "sp_cost": 32,
+          "init_sp": 10,
+          "max_charge_time": 1,
+          "duration": 30.0,
+          "duration_type": "NONE",
+          "description": "攻击速度+80，持续30秒"
+        },
+        {
+          "level": 10,
+          "name": "战术咏唱",
+          "skill_type": "手动",
+          "skill_type_raw": "MANUAL",
+          "sp_type": "自动回复",
+          "sp_cost": 30,
+          "init_sp": 15,
+          "max_charge_time": 1,
+          "duration": 30.0,
+          "duration_type": "NONE",
+          "description": "攻击速度+90，持续30秒"
+        }
+      ]
+    },
+    {
+      "skill_id": "skchr_amiya_2",
+      "name": "精神爆发",
+      "levels": [
+        {
+          "level": 1,
+          "name": "精神爆发",
+          "skill_type": "自动",
+          "skill_type_raw": "AUTO",
+          "sp_type": "攻击回复",
+          "sp_cost": 12,
+          "init_sp": 0,
+          "max_charge_time": 3,
+          "duration": 6.0,
+          "duration_type": "AMMO",
+          "description": "攻击力+10%，移动速度-35%，有27.5%概率使目标晕眩{ABILITY_RANGE_FORWARD_EXTEND}"
+        },
+        {
+          "level": 2,
+          "name": "精神爆发",
+          "skill_type": "自动",
+          "skill_type_raw": "AUTO",
+          "sp_type": "攻击回复",
+          "sp_cost": 10,
+          "init_sp": 0,
+          "max_charge_time": 3,
+          "duration": 8.0,
+          "duration_type": "AMMO",
+          "description": "伤害类型变为法术，连击6次，倍率115.0%，另有0次追击"
+        }
+      ]
+    },
+    {
+      "skill_id": "skchr_amiya_3",
+      "name": "奇美拉",
+      "levels": [
+        {
+          "level": 1,
+          "name": "奇美拉",
+          "skill_type": "被动",
+          "skill_type_raw": "PASSIVE",
+          "sp_type": "",
+          "sp_cost": null,
+          "init_sp": null,
+          "max_charge_time": null,
+          "duration": -1,
+          "duration_type": "NONE",
+          "description": "被动效果：每击使敌人防御力-330，并使其晕眩2秒"
+        }
+      ]
+    }
+  ]
+}

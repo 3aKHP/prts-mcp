@@ -1,0 +1,98 @@
+{
+  "name": "阿米娅",
+  "char_id": "char_002_amiya",
+  "phases": [
+    {
+      "phase": 0,
+      "max_level": 50,
+      "keyframes": {
+        "lv1": {
+          "maxHp": 699,
+          "atk": 276,
+          "def": 48,
+          "magicResistance": 10.0,
+          "cost": 18,
+          "blockCnt": 1,
+          "attackSpeed": 100.0,
+          "baseAttackTime": 1.6,
+          "respawnTime": 70
+        },
+        "lv_max": {
+          "maxHp": 958,
+          "atk": 390,
+          "def": 81,
+          "magicResistance": 10.0,
+          "cost": 18,
+          "blockCnt": 1,
+          "attackSpeed": 100.0,
+          "baseAttackTime": 1.6,
+          "respawnTime": 70
+        }
+      }
+    },
+    {
+      "phase": 1,
+      "max_level": 70,
+      "keyframes": {
+        "lv1": {
+          "maxHp": 958,
+          "atk": 390,
+          "def": 81,
+          "magicResistance": 15.0,
+          "cost": 19,
+          "blockCnt": 1,
+          "attackSpeed": 100.0,
+          "baseAttackTime": 1.6,
+          "respawnTime": 70
+        },
+        "lv_max": {
+          "maxHp": 1198,
+          "atk": 514,
+          "def": 110,
+          "magicResistance": 15.0,
+          "cost": 20,
+          "blockCnt": 1,
+          "attackSpeed": 100.0,
+          "baseAttackTime": 2.0,
+          "respawnTime": 70
+        }
+      }
+    },
+    {
+      "phase": 2,
+      "max_level": 80,
+      "keyframes": {
+        "lv1": {
+          "maxHp": 1198,
+          "atk": 514,
+          "def": 110,
+          "magicResistance": 20.0,
+          "cost": 20,
+          "blockCnt": 1,
+          "attackSpeed": 100.0,
+          "baseAttackTime": 1.6,
+          "respawnTime": 70
+        },
+        "lv_max": {
+          "maxHp": 1480,
+          "atk": 612,
+          "def": 121,
+          "magicResistance": 20.0,
+          "cost": 20,
+          "blockCnt": 1,
+          "attackSpeed": 100.0,
+          "baseAttackTime": 1.6,
+          "respawnTime": 70
+        }
+      }
+    }
+  ],
+  "favor_bonus": {
+    "maxHp": 200,
+    "atk": 70
+  },
+  "potential": [
+    "部署费用-2",
+    "攻击力+25"
+  ]
+}
