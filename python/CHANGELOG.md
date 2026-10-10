@@ -16,6 +16,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 - **One operator-information entry point, still 24 MCP tools.** `get_operator_basic_info` accepts optional `action="basic"|"skills"|"stats"` (default `basic`). Existing name-only calls retain the basic profile; skills and panels are returned only when selected, with the same output-channel behavior. `phase` and `level` are accepted only for `stats` and must be supplied together or both omitted. The unreleased standalone skill/stat tool registrations are withdrawn.
 
+### Fixed
+
+- **Release identity parsing accepts the hyphen-joined upstream versionId format.** Upstream data versionIds changed from `YY-MM-DD-HH-MM-SS_hash` to a trailing-hyphen shape (`YY-MM-DD-HH-MM-SS-hash`) in October 2026, but the stored-identity parser only recognized the underscore shape. For any new-format source the anti-downgrade guarantee introduced in 2.7.3 silently degraded to plain string comparison: an installed `datarev` repair revision no longer refused a same-source plain release, and the identity checks guarding blind downloads and missing-zip recovery were bypassed. The suffix patterns now accept either separator, restoring tuple comparison for both formats. Release discovery and normal updates were already format-agnostic and are unchanged.
+
 ## [2.7.4] - 2026-09-15
 
 ### Added
