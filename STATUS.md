@@ -200,7 +200,7 @@ PRTS-MCP/
 | 23 | `find_speakers_in` | StoryJson | 1.7.0 |
 | 24 | `operator_artwork` | PRTS Wiki / AKDP | 2.5.0 |
 
-> `search(scope, pattern, max_results)` 统一了 1.x 的 `search_data` / `search_enemies` / `search_stages` / `search_items` 与 `list_search_scopes` （scope ∈ operators/enemies/stages/items；2.7.0 起新增 `building_skills`）。剧情台词搜索仍为独立的 `search_stories`（参数不同）。
+> `search(scope, pattern, max_results)` 统一了 1.x 的 `search_data` / `search_enemies` / `search_stages` / `search_items` 与 `list_search_scopes` （scope ∈ operators/enemies/stages/items；2.7.0 起新增 `building_skills`，2.8.0 起新增 `skills`）。剧情台词搜索仍为独立的 `search_stories`（参数不同）。
 >
 > `prts_page(page_title, action, …)` 统一了 1.x 的 `read_prts_page` / `list_prts_sections` / `get_prts_categories` / `get_prts_links` / `get_prts_template`（action ∈ read/sections/categories/links/template）。维基关键词搜索仍为独立的 `search_prts`。
 >

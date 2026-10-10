@@ -13,7 +13,7 @@ PRTS-MCP is past 1.0. Version 1.7.0 is the final 1.x feature release and the 1.7
 - See [migration guide 0.x → 1.0](docs/migration-0.x-to-1.0.md) and [migration guide 1.x → 2.0](docs/migration-1.x-to-2.0.md).
 - 2.6.0 retains legacy MCP clients while adding opt-in `2026-07-28` support; see [2.5 → 2.6](docs/migration-2.5-to-2.6.md) before changing client protocol configuration.
 
-## 2.7.x Stable Maintenance
+## 2.8.x Stable Maintenance
 
 - Security, compatibility, data-sync, release-pipeline, documentation, and critical correctness/operational fixes only; the compatible additions below are the documented exception.
 - Exception — new MCP tools, including tools that open new data domains, are scheduled for Minor releases by convention (narrative rule: [`docs/dev/VERSIONING.md`](docs/dev/VERSIONING.md)); a Patch that carries a new tool stays blind-upgrade compatible. Required-parameter and output-format changes in a Patch remain limited to VERSIONING.md's closed Patch whitelist.
@@ -37,7 +37,7 @@ Reopen the SQLite decision only if production evidence shows that derived JSON a
 
 ## 2.8+ Non-Binding Working Draft
 
-> **Draft status:** Every **un-opened candidate** in this 2.8+ section is a candidate direction only. The version numbers, ordering, scope, tool shape, and inclusion of individual items are planning placeholders. The project does not commit to releasing later versions according to this draft. Items may be reordered, merged, split, deferred, replaced, or dropped as source contracts, implementation review, maintenance capacity, ecosystem changes, and real-consumer evidence evolve. **Exception: sections marked "In Development" are themes already opened on `develop`; their scope is a settled decision, not a placeholder.**
+> **Draft status:** Every **un-opened candidate** in this 2.8+ section is a candidate direction only. The version numbers, ordering, scope, tool shape, and inclusion of individual items are planning placeholders. The project does not commit to releasing later versions according to this draft. Items may be reordered, merged, split, deferred, replaced, or dropped as source contracts, implementation review, maintenance capacity, ecosystem changes, and real-consumer evidence evolve. **Exception: sections marked "In Development" (currently none) are themes already opened on `develop`; their scope is a settled decision, not a placeholder.**
 
 Where a candidate remains useful, subsequent 2.x development preserves the current 24-tool surface by extending existing tools and enums when their schema remains coherent. A candidate becomes release scope only through a separate implementation and release decision.
 
