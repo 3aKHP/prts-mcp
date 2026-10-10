@@ -198,3 +198,56 @@ test("invalid supplement degrades to review (directory)", () => {
     ["act_test"],
   );
 });
+
+test("malformed supplement fields degrade (directory)", () => {
+  // mirrors the Python test: wrong-typed fields degrade to defaults
+  const root = mkdtempSync(join(tmpdir(), "prts-supp-"));
+  const store = makeStore(root, "directory");
+  const bad = {
+    version: 1,
+    events: [
+      { event_id: 123, chapters: [] }, // non-string id: skipped
+      { event_id: "rogue_9", chapters: 5 }, // non-list: event with 0 chapters
+      {
+        event_id: "rogue_7", name: null, entry_type: 7,
+        chapters: [
+          { key: ROGUE_KEY, name: null, code: null, avg_tag: 3, sort: null },
+        ],
+      },
+    ],
+  };
+  writeFileSync(join(root, STORY_SUPPLEMENT_PATH), JSON.stringify(bad), "utf-8");
+
+  const events = listStoryEventsFromStore(store);
+  const byId = new Map(events.map((ev) => [ev.eventId, ev]));
+  assert.equal(byId.get("rogue_9")?.storyCount, 0);
+  assert.ok(byId.has("rogue_7"));
+  assert.equal(byId.get("rogue_7")?.entryType, "ROGUELIKE");
+  assert.ok(events.every((ev) => typeof ev.eventId === "string"));
+
+  const chapters = listStoriesFromStore(store, "rogue_7"); // sort:null must not throw
+  assert.deepEqual(
+    chapters.map((c) => [c.storyCode, c.storyName, c.avgTag, c.sortOrder]),
+    [["", "", null, 0]],
+  );
+  assert.ok(searchStoriesFromStore(store, "你好", undefined, undefined, 1, 5).includes("你好"));
+});
+
+test("directory store invalidates index when only the supplement changes", () => {
+  // behavioral counterpart of the Python descriptor test: the catalog file
+  // alone changing must rebuild the search index
+  const root = mkdtempSync(join(tmpdir(), "prts-supp-"));
+  const store = makeStore(root, "directory");
+  const hit = searchStoriesFromStore(store, "独特旁白词项xyz", undefined, undefined, 1, 5);
+  assert.ok(hit.includes("rogue_6"));
+
+  const suppPath = join(root, STORY_SUPPLEMENT_PATH);
+  const supp = JSON.parse(readFileSync(suppPath, "utf-8"));
+  supp.events[0].chapters = supp.events[0].chapters.filter(
+    (c: { key: string }) => c.key !== ROGUE_KEY,
+  );
+  writeFileSync(suppPath, JSON.stringify(supp, null, 2), "utf-8");
+
+  const miss = searchStoriesFromStore(store, "独特旁白词项xyz", undefined, undefined, 1, 5);
+  assert.ok(!miss.includes("rogue_6"));
+});

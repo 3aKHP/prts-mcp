@@ -1,0 +1,45 @@
+{
+  "total": 6,
+  "filters": {
+    "category": null,
+    "category_normalized": null
+  },
+  "events": [
+    {
+      "event_id": "act_test",
+      "name": "测试活动",
+      "entry_type": "ACTIVITY",
+      "story_count": 2
+    },
+    {
+      "event_id": "act_no_summary",
+      "name": "无长摘要活动",
+      "entry_type": "ACTIVITY",
+      "story_count": 2
+    },
+    {
+      "event_id": "act_narration",
+      "name": "纯旁白活动",
+      "entry_type": "ACTIVITY",
+      "story_count": 1
+    },
+    {
+      "event_id": "act_empty",
+      "name": "空活动",
+      "entry_type": "ACTIVITY",
+      "story_count": 0
+    },
+    {
+      "event_id": "story_amiya_set_1",
+      "name": "阿米娅密录",
+      "entry_type": "NONE",
+      "story_count": 1
+    },
+    {
+      "event_id": "rogue_6",
+      "name": "沉沦者的黑流树海",
+      "entry_type": "ROGUELIKE",
+      "story_count": 2
+    }
+  ]
+}

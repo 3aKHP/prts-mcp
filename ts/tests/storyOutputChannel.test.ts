@@ -268,6 +268,12 @@ test("story supplement payloads match shared parity fixtures", () => {
     "- [ROGUELIKE] rogue_6：沉沦者的黑流树海（2 章）",
   );
 
+  // pin the ordering contract: review events keep their order,
+  // the supplement appends after them
+  const all = buildStoryEventsListing(zipPath);
+  assert.deepStrictEqual(all, loadParityFixture("story_events_all.json"));
+  assert.equal(all.events[all.events.length - 1]?.event_id, "rogue_6");
+
   const stories = buildStoriesListing(zipPath, "rogue_6", false);
   assert.deepStrictEqual(stories, loadParityFixture("list_stories_roguelike.json"));
   assert.equal(

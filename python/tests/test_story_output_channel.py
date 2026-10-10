@@ -316,6 +316,14 @@ def test_list_story_events_golden_and_empty(story_zip: Path) -> None:
     assert render_story_events_listing(empty) == "未找到符合条件的活动（category='main'）。"
 
 
+def test_list_story_events_unfiltered_golden(story_zip: Path) -> None:
+    """Pin the ordering contract: review events keep their order, the
+    supplement appends after them."""
+    data = build_story_events_listing(story_zip)
+    assert data == _load_parity_fixture("story_events_all.json")
+    assert data["events"][-1]["event_id"] == "rogue_6"
+
+
 def test_list_story_events_roguelike_golden(story_zip: Path) -> None:
     data = build_story_events_listing(story_zip, category="roguelike")
 
