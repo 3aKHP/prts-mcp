@@ -15,9 +15,10 @@ from pathlib import Path
 from prts_mcp.data.stores import DirectoryStore, JsonStore, ZipStore
 from prts_mcp.data.story_reader import (
     STORY_REVIEW_TABLE,
+    STORY_SUPPLEMENT,
     StoryLine,
     is_memoir_event,
-    load_json,
+    load_event_table,
     read_story_from_store,
     story_store,
 )
@@ -318,7 +319,15 @@ def _story_store_descriptor(store: JsonStore) -> tuple[str, str, int, int] | Non
         if not review.is_file():
             return None
         stat = review.stat()
-        return ("directory", str(root), stat.st_size, stat.st_mtime_ns)
+        size, mtime_ns = stat.st_size, stat.st_mtime_ns
+        # the supplement catalog (if present) is part of the indexed corpus —
+        # its changes must invalidate the cached index for directory stores
+        supplement = root / STORY_SUPPLEMENT
+        if supplement.is_file():
+            sstat = supplement.stat()
+            size += sstat.st_size
+            mtime_ns = max(mtime_ns, sstat.st_mtime_ns)
+        return ("directory", str(root), size, mtime_ns)
     return None
 
 
@@ -339,7 +348,7 @@ def _cached_story_search_index(
 
 
 def _build_story_search_index(store: JsonStore) -> _StorySearchIndex:
-    table: dict = load_json(store, STORY_REVIEW_TABLE)  # type: ignore[assignment]
+    table: dict = load_event_table(store)
     event_ids: set[str] = set()
     chapters: list[StorySearchChapter] = []
     records: list[_StorySearchRecord] = []

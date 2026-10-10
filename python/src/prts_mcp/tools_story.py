@@ -44,12 +44,12 @@ def register_story_tools(mcp) -> None:  # type: ignore[no-untyped-def]
 
     @mcp.tool()
     def list_story_events(
-        category: Annotated[str | None, Field(default=None, description="可选过滤分类。\"main\" = 主线章节，\"activities\" = 活动剧情（含联动），\"memoirs\" = 干员密录。不填则返回全部活动。")] = None,
+        category: Annotated[str | None, Field(default=None, description="可选过滤分类。\"main\" = 主线章节，\"activities\" = 活动剧情（含联动），\"memoirs\" = 干员密录，\"roguelike\" = 集成战略（肉鸽）剧情。不填则返回全部活动。")] = None,
     ) -> object:
         """列出明日方舟剧情活动列表。
 
         返回格式：每行 `- [类型] 活动ID：名称（N 章）`，类型为 MAINLINE / ACTIVITY /
-        MINI_ACTIVITY / NONE 之一。获取活动 ID 后可调用 list_stories 查看该活动的章节列表。
+        MINI_ACTIVITY / NONE / ROGUELIKE 之一。获取活动 ID 后可调用 list_stories 查看该活动的章节列表。
         """
         from prts_mcp.config import Config
         cfg = Config.load()

@@ -14,6 +14,7 @@ import { JsonStore, ZipStore } from "./stores.js";
 // ---------------------------------------------------------------------------
 
 export const STORY_REVIEW_TABLE = "zh_CN/gamedata/excel/story_review_table.json";
+export const STORY_SUPPLEMENT = "zh_CN/story_supplement.json";
 export const STORYINFO = "zh_CN/storyinfo.json";
 export const SUMMARIES = "zh_CN/summaries.json";
 export const EVENT_SUMMARIES = "zh_CN/event_summaries.json";
@@ -28,6 +29,7 @@ export const CATEGORY_MAP: Record<string, string[]> = {
   main: ["MAINLINE"],
   activities: ["ACTIVITY", "MINI_ACTIVITY"],
   memoirs: ["NONE"],
+  roguelike: ["ROGUELIKE"],
 };
 
 // ---------------------------------------------------------------------------
@@ -79,6 +81,63 @@ interface RawReviewEntry {
 }
 
 export type RawReviewTable = Record<string, RawReviewEntry>;
+
+/**
+ * story_review_table merged with the optional story supplement overlay
+ * (mirrors Python load_event_table).
+ *
+ * The supplement (roguelike catalog, additive in prts-mcp-data/v1) is
+ * projected into review-table entry shape and merged *under* the review
+ * table: on eventId collision the review entry wins. A missing or invalid
+ * supplement degrades to the plain review table (old behavior).
+ */
+export function loadEventTable(store: JsonStore): RawReviewTable {
+  const table = store.readJson<RawReviewTable>(STORY_REVIEW_TABLE);
+  let events: unknown;
+  try {
+    if (!store.exists(STORY_SUPPLEMENT)) return table;
+    const raw = store.readJson<{ events?: unknown }>(STORY_SUPPLEMENT);
+    events = raw?.events;
+  } catch {
+    return table;
+  }
+  if (!Array.isArray(events)) return table;
+  const merged: RawReviewTable = { ...table };
+  for (const event of events) {
+    if (!event || typeof event !== "object") continue;
+    const ev = event as {
+      event_id?: unknown;
+      entry_type?: unknown;
+      name?: unknown;
+      chapters?: unknown;
+    };
+    const eventId = typeof ev.event_id === "string" ? ev.event_id : "";
+    if (!eventId || eventId in merged) continue;
+    const chapters: RawInfoUnlockData[] = [];
+    const rawChapters = Array.isArray(ev.chapters) ? ev.chapters : [];
+    for (const ch of rawChapters) {
+      if (!ch || typeof ch !== "object") continue;
+      const c = ch as {
+        key?: unknown; name?: unknown; code?: unknown;
+        avg_tag?: unknown; sort?: unknown;
+      };
+      if (typeof c.key !== "string" || !c.key) continue;
+      chapters.push({
+        storyTxt: c.key,
+        storyCode: typeof c.code === "string" ? c.code : "",
+        storyName: typeof c.name === "string" ? c.name : "",
+        avgTag: typeof c.avg_tag === "string" ? c.avg_tag : null,
+        storySort: typeof c.sort === "number" ? c.sort : 0,
+      });
+    }
+    merged[eventId] = {
+      entryType: typeof ev.entry_type === "string" ? ev.entry_type : "ROGUELIKE",
+      name: typeof ev.name === "string" ? ev.name : eventId,
+      infoUnlockDatas: chapters,
+    };
+  }
+  return merged;
+}
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -373,7 +432,7 @@ export function listStoryEventsFromStore(
   category?: string
 ): EventInfo[] {
   const allowedTypes = category ? (CATEGORY_MAP[category] ?? null) : null;
-  const table = store.readJson<RawReviewTable>(STORY_REVIEW_TABLE);
+  const table = loadEventTable(store);
 
   const events: EventInfo[] = [];
   for (const [eventId, entry] of Object.entries(table)) {
@@ -421,7 +480,7 @@ export function listStoriesFromStore(
   store: JsonStore,
   eventId: string
 ): ChapterSummary[] {
-  const table = store.readJson<RawReviewTable>(STORY_REVIEW_TABLE);
+  const table = loadEventTable(store);
 
   const entry = table[eventId];
   if (!entry) throw new Error(`Event not found: "${eventId}"`);

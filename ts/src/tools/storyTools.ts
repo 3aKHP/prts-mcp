@@ -76,10 +76,10 @@ export function registerStoryTools(server: McpServer, channel: OutputChannel = "
     "list_story_events",
     [
       "列出明日方舟剧情活动列表。",
-      "返回格式：每行 `- [类型] 活动ID：名称（N 章）`，类型为 MAINLINE / ACTIVITY / MINI_ACTIVITY / NONE 之一。",
+      "返回格式：每行 `- [类型] 活动ID：名称（N 章）`，类型为 MAINLINE / ACTIVITY / MINI_ACTIVITY / NONE / ROGUELIKE 之一。",
       "获取活动 ID 后可调用 list_stories 查看该活动的章节列表。",
     ].join(" "),
-    { category: z.string().optional().describe("可选过滤分类。\"main\" = 主线章节，\"activities\" = 活动剧情（含联动），\"memoirs\" = 干员密录。不填则返回全部活动。") },
+    { category: z.string().optional().describe("可选过滤分类。\"main\" = 主线章节，\"activities\" = 活动剧情（含联动），\"memoirs\" = 干员密录，\"roguelike\" = 集成战略（肉鸽）剧情。不填则返回全部活动。") },
     ({ category }) => {
       let zipPath: string;
       try {

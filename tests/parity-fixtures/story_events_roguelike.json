@@ -1,0 +1,15 @@
+{
+  "total": 1,
+  "filters": {
+    "category": "roguelike",
+    "category_normalized": "roguelike"
+  },
+  "events": [
+    {
+      "event_id": "rogue_6",
+      "name": "沉沦者的黑流树海",
+      "entry_type": "ROGUELIKE",
+      "story_count": 2
+    }
+  ]
+}

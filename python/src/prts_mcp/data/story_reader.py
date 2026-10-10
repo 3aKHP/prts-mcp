@@ -20,6 +20,7 @@ from prts_mcp.data.stores import JsonStore, ZipStore
 # ---------------------------------------------------------------------------
 
 STORY_REVIEW_TABLE = "zh_CN/gamedata/excel/story_review_table.json"
+STORY_SUPPLEMENT = "zh_CN/story_supplement.json"
 STORYINFO = "zh_CN/storyinfo.json"
 EVENT_SUMMARIES = "zh_CN/event_summaries.json"
 SUMMARIES = "zh_CN/summaries.json"
@@ -30,6 +31,7 @@ CATEGORY_MAP: dict[str, list[str]] = {
     "main": ["MAINLINE"],
     "activities": ["ACTIVITY", "MINI_ACTIVITY"],
     "memoirs": ["NONE"],
+    "roguelike": ["ROGUELIKE"],
 }
 
 _logger = logging.getLogger("prts_mcp.story")
@@ -335,13 +337,73 @@ def read_activity(
 # ---------------------------------------------------------------------------
 
 
+def load_event_table(store: JsonStore) -> dict:
+    """story_review_table merged with the optional story supplement overlay.
+
+    The supplement (roguelike catalog, additive in prts-mcp-data/v1) is
+    projected into review-table entry shape and merged *under* the review
+    table: on event_id collision the review entry wins. A missing or
+    invalid supplement degrades to the plain review table (old behavior).
+    """
+    table: dict = load_json(store, STORY_REVIEW_TABLE)  # type: ignore[assignment]
+    try:
+        if not store.exists(STORY_SUPPLEMENT):
+            return table
+        raw = load_json(store, STORY_SUPPLEMENT)
+        events = raw.get("events") if isinstance(raw, dict) else None
+        if not isinstance(events, list):
+            return table
+    except Exception as exc:
+        _logger.debug("读取剧情补充目录失败：%s", exc)
+        return table
+    merged = dict(table)
+    for event in events:
+        if not isinstance(event, dict):
+            continue
+        event_id = event.get("event_id")
+        if not isinstance(event_id, str) or not event_id or event_id in merged:
+            continue
+        raw_chapters = event.get("chapters")
+        if not isinstance(raw_chapters, list):
+            raw_chapters = []  # TS parity: event survives with zero chapters
+        chapters = []
+        for ch in raw_chapters:
+            if not isinstance(ch, dict):
+                continue
+            key = ch.get("key")
+            if not isinstance(key, str) or not key:
+                continue
+            # mirror the TS typeof checks exactly: wrong-typed fields degrade
+            # to defaults instead of leaking into sorting or rendering
+            code = ch.get("code")
+            name = ch.get("name")
+            avg_tag = ch.get("avg_tag")
+            sort = ch.get("sort")
+            chapters.append({
+                "storyTxt": key,
+                "storyCode": code if isinstance(code, str) else "",
+                "storyName": name if isinstance(name, str) else "",
+                "avgTag": avg_tag if isinstance(avg_tag, str) else None,
+                "storySort": sort if isinstance(sort, (int, float))
+                and not isinstance(sort, bool) else 0,
+            })
+        entry_type = event.get("entry_type")
+        event_name = event.get("name")
+        merged[event_id] = {
+            "entryType": entry_type if isinstance(entry_type, str) else "ROGUELIKE",
+            "name": event_name if isinstance(event_name, str) else event_id,
+            "infoUnlockDatas": chapters,
+        }
+    return merged
+
+
 def list_story_events_from_store(
     store: JsonStore,
     category: str | None = None,
 ) -> list[EventInfo]:
     """Return a list of events from story_review_table.json using a JSON store."""
     allowed_types: list[str] | None = CATEGORY_MAP.get(category) if category else None
-    table: dict = load_json(store, STORY_REVIEW_TABLE)  # type: ignore[assignment]
+    table: dict = load_event_table(store)
 
     events = []
     for event_id, entry in table.items():
@@ -391,7 +453,7 @@ def build_story_events_listing_from_store(
 
 def list_stories_from_store(store: JsonStore, event_id: str) -> list[ChapterSummary]:
     """Return ordered chapter list for an event using a JSON store."""
-    table: dict = load_json(store, STORY_REVIEW_TABLE)  # type: ignore[assignment]
+    table: dict = load_event_table(store)
 
     entry = table.get(event_id)
     if entry is None:
