@@ -361,22 +361,37 @@ def load_event_table(store: JsonStore) -> dict:
         if not isinstance(event, dict):
             continue
         event_id = event.get("event_id")
-        if not event_id or event_id in merged:
+        if not isinstance(event_id, str) or not event_id or event_id in merged:
             continue
+        raw_chapters = event.get("chapters")
+        if not isinstance(raw_chapters, list):
+            raw_chapters = []  # TS parity: event survives with zero chapters
         chapters = []
-        for ch in event.get("chapters") or []:
-            if not isinstance(ch, dict) or not ch.get("key"):
+        for ch in raw_chapters:
+            if not isinstance(ch, dict):
                 continue
+            key = ch.get("key")
+            if not isinstance(key, str) or not key:
+                continue
+            # mirror the TS typeof checks exactly: wrong-typed fields degrade
+            # to defaults instead of leaking into sorting or rendering
+            code = ch.get("code")
+            name = ch.get("name")
+            avg_tag = ch.get("avg_tag")
+            sort = ch.get("sort")
             chapters.append({
-                "storyTxt": ch["key"],
-                "storyCode": ch.get("code") or "",
-                "storyName": ch.get("name") or "",
-                "avgTag": ch.get("avg_tag"),
-                "storySort": ch.get("sort", 0),
+                "storyTxt": key,
+                "storyCode": code if isinstance(code, str) else "",
+                "storyName": name if isinstance(name, str) else "",
+                "avgTag": avg_tag if isinstance(avg_tag, str) else None,
+                "storySort": sort if isinstance(sort, (int, float))
+                and not isinstance(sort, bool) else 0,
             })
+        entry_type = event.get("entry_type")
+        event_name = event.get("name")
         merged[event_id] = {
-            "entryType": event.get("entry_type") or "ROGUELIKE",
-            "name": event.get("name") or event_id,
+            "entryType": entry_type if isinstance(entry_type, str) else "ROGUELIKE",
+            "name": event_name if isinstance(event_name, str) else event_id,
             "infoUnlockDatas": chapters,
         }
     return merged

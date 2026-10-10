@@ -183,3 +183,35 @@ def test_invalid_supplement_degrades_to_review(tmp_path):
     (tmp_path / STORY_SUPPLEMENT_PATH).write_text("{not json", encoding="utf-8")
     events = list_story_events_from_store(store)
     assert [ev.event_id for ev in events] == ["act_test"]
+
+
+def test_malformed_supplement_fields_degrade(tmp_path):
+    """Wrong-typed fields degrade to defaults, mirroring TS typeof checks."""
+    store = _make_store(tmp_path, "directory")
+    bad = {
+        "version": 1,
+        "events": [
+            {"event_id": 123, "chapters": []},              # non-string id: skipped
+            {"event_id": "rogue_9", "chapters": 5},         # non-list: event with 0 chapters
+            {"event_id": "rogue_7", "name": None, "entry_type": 7, "chapters": [
+                {"key": ROGUE_KEY, "name": None, "code": None, "avg_tag": 3,
+                 "sort": None},
+            ]},
+        ],
+    }
+    (tmp_path / STORY_SUPPLEMENT_PATH).write_text(
+        json.dumps(bad, ensure_ascii=False), encoding="utf-8")
+
+    events = list_story_events_from_store(store)
+    by_id = {ev.event_id: ev for ev in events}
+    assert "rogue_9" in by_id and by_id["rogue_9"].story_count == 0
+    assert "rogue_7" in by_id
+    assert by_id["rogue_7"].entry_type == "ROGUELIKE"
+    assert not any(not isinstance(ev.event_id, str) for ev in events)
+
+    chapters = list_stories_from_store(store, "rogue_7")  # sort=None must not raise
+    assert [(c.story_code, c.story_name, c.avg_tag, c.sort_order) for c in chapters] == [
+        ("", "", None, 0)
+    ]
+    # search index build must survive the malformed event too
+    assert "你好" in search_stories_from_store(store, "你好", max_results=5)
