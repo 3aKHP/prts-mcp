@@ -21,13 +21,14 @@ _logger = logging.getLogger(__name__)
 _TAG_PREFIX = "data-"
 _DATAREV_TAG_PREFIX = "datarev-"
 
-#: a data versionId is fixed-width "YY-MM-DD-HH-MM-SS_hash", so lexicographic
-#: order is chronological order and (versionId, revision) tuples order
-#: without any date parsing
-_VID_RE = re.compile(r"^\d{2}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}_[0-9a-f]+$")
+#: a data versionId is fixed-width "YY-MM-DD-HH-MM-SS" plus a lowercase hex
+#: hash, joined by "_" before 2026-10 and "-" since; the fixed-width timestamp
+#: prefix dominates, so lexicographic order stays chronological across both
+#: shapes and (versionId, revision) tuples order without any date parsing
+_VID_RE = re.compile(r"^\d{2}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}[_-][0-9a-f]+$")
 _DATAREV_TAG_RE = re.compile(r"^datarev-(?P<vid>.+)-r(?P<rev>\d+)$")
 _DATAREV_SUFFIX_RE = re.compile(
-    r"^(?P<vid>\d{2}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}_[0-9a-f]+)-r(?P<rev>\d+)$"
+    r"^(?P<vid>\d{2}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}[_-][0-9a-f]+)-r(?P<rev>\d+)$"
 )
 
 
