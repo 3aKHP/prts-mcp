@@ -1,19 +1,19 @@
 # PRTS-MCP Roadmap
 
-_Last updated: 2026-10-09_ · [中文版](ROADMAP.zh-CN.md)
+_Last updated: 2026-10-10_ · [中文版](ROADMAP.zh-CN.md)
 
 PRTS-MCP is past 1.0. Version 1.7.0 is the final 1.x feature release and the 1.7 LTS baseline. This document tracks **what comes next** — not what has shipped. For shipped features, see the Python and TypeScript CHANGELOGs.
 
 ## Current Release
 
-- Python: `2.7.4` _(latest stable)_
-- TypeScript: `2.7.4` _(latest stable)_
+- Python: `2.8.0` _(latest stable)_
+- TypeScript: `2.8.0` _(latest stable)_
 - `1.7.0` LTS remains the maintenance line — compatibility, security, data-sync, and critical fixes only.
 - 24 public MCP tools on the 2.x line (CI-enforced); 32 public MCP tools frozen on the 1.7 LTS line.
 - See [migration guide 0.x → 1.0](docs/migration-0.x-to-1.0.md) and [migration guide 1.x → 2.0](docs/migration-1.x-to-2.0.md).
 - 2.6.0 retains legacy MCP clients while adding opt-in `2026-07-28` support; see [2.5 → 2.6](docs/migration-2.5-to-2.6.md) before changing client protocol configuration.
 
-## 2.7.x Stable Maintenance
+## 2.8.x Stable Maintenance
 
 - Security, compatibility, data-sync, release-pipeline, documentation, and critical correctness/operational fixes only; the compatible additions below are the documented exception.
 - Exception — new MCP tools, including tools that open new data domains, are scheduled for Minor releases by convention (narrative rule: [`docs/dev/VERSIONING.md`](docs/dev/VERSIONING.md)); a Patch that carries a new tool stays blind-upgrade compatible. Required-parameter and output-format changes in a Patch remain limited to VERSIONING.md's closed Patch whitelist.
@@ -37,7 +37,7 @@ Reopen the SQLite decision only if production evidence shows that derived JSON a
 
 ## 2.8+ Non-Binding Working Draft
 
-> **Draft status:** Every **un-opened candidate** in this 2.8+ section is a candidate direction only. The version numbers, ordering, scope, tool shape, and inclusion of individual items are planning placeholders. The project does not commit to releasing later versions according to this draft. Items may be reordered, merged, split, deferred, replaced, or dropped as source contracts, implementation review, maintenance capacity, ecosystem changes, and real-consumer evidence evolve. **Exception: sections marked "In Development" (e.g. 2.8.0) are themes already opened on `develop`; their scope is a settled decision, not a placeholder.**
+> **Draft status:** Every **un-opened candidate** in this 2.8+ section is a candidate direction only. The version numbers, ordering, scope, tool shape, and inclusion of individual items are planning placeholders. The project does not commit to releasing later versions according to this draft. Items may be reordered, merged, split, deferred, replaced, or dropped as source contracts, implementation review, maintenance capacity, ecosystem changes, and real-consumer evidence evolve. **Exception: sections marked "In Development" (currently none) are themes already opened on `develop`; their scope is a settled decision, not a placeholder.**
 
 Where a candidate remains useful, subsequent 2.x development preserves the current 24-tool surface by extending existing tools and enums when their schema remains coherent. A candidate becomes release scope only through a separate implementation and release decision.
 
@@ -45,9 +45,9 @@ Where a candidate remains useful, subsequent 2.x development preserves the curre
 
 The former draft items for operator base skills (`get_operator_basic_info` carrying a bounded `building_skills` section, plus a `building_skills` scope on `search`) and skin/artwork metadata shipped in 2.7.0 — see the Python and TypeScript CHANGELOGs for details. The `operator_artwork(action="list")` skin-metadata enrichment under `LOCAL_IMAGE=true` was pulled forward from the former 2.8.0 candidate; that 2.8.0 placeholder was a target version only and never carried a theme.
 
-### 2.8.0 — Operator Deep Stats (In Development)
+### 2.8.0 — Shipped 2026-10-10
 
-Theme: close the three gaps in operator numeric queries — level-specific panels, per-level skill effects, and per-tier talent effects. `develop` has switched its target version to `2.8.0.dev0` per [`docs/dev/VERSIONING.md`](docs/dev/VERSIONING.md).
+Theme: closed the three gaps in operator numeric queries — level-specific panels, per-level skill effects, and per-tier talent effects. See the Python and TypeScript CHANGELOGs for the shipped details.
 
 - `get_operator_basic_info(name, action="skills")`: per-level effects of an operator's combat skills (Lv1-7 plus each mastery rank). `skill_table.json` is promoted to a validated dataset-contract entry.
 - `get_operator_basic_info(name, action="stats", phase?, level?)`: an operator's panel at a specific elite phase and level, linearly interpolated between keyframes and calibrated against published PRTS Wiki panel values. Omitting phase/level returns every elite phase's Lv1/max panels plus trust/potential bonus summaries.

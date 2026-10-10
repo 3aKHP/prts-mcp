@@ -29,7 +29,7 @@ Two release lines ship in parallel:
 
 | Line | Version | Tools | Status |
 |------|---------|-------|--------|
-| **2.7** (`main`) | `2.7.4` | 24 | Operator base skills, local artwork skin metadata, repair-aware data sync, consistent chapter summaries, and aligned HTTP session idle eviction. |
+| **2.8** (`main`) | `2.8.0` | 24 | Operator deep stats — level-specific panels, per-level skill effects, and per-tier talent effects via `get_operator_basic_info` actions — plus hyphen-format data-revision compatibility. |
 | **1.7 LTS** (`lts/1.7`) | `1.7.0` | 32 | Stable maintenance line. 1.7.x accepts only compatibility, security, data-sync, and critical bug fixes. |
 
 The `main` and `develop` lines use the self-built `arknights-data-pipeline` Release exclusively for default Auto-Sync. The 1.7 LTS line retains its legacy upstream compatibility until a separate, backwards-compatible migration; changes to the new factory path must not be backported to LTS as an implicit source switch.
@@ -157,7 +157,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and [`doc
 
 | 版本线 | 版本 | 工具数 | 状态 |
 |--------|------|--------|------|
-| **2.7**（`main`） | `2.7.4` | 24 | 干员基建技能、本地立绘皮肤元数据、数据修订同步、章节摘要一致性修复、HTTP 会话空闲淘汰双实现一致。 |
+| **2.8**（`main`） | `2.8.0` | 24 | 干员深度数值——`get_operator_basic_info` 统一入口的面板插值、技能逐等级、天赋逐档；数据同步兼容连字符 versionId 修订。 |
 | **1.7 LTS**（`lts/1.7`） | `1.7.0` | 32 | 稳定维护线。1.7.x 仅接受兼容性、安全性、数据同步和关键缺陷修复。 |
 
 | 范围 | Python | TypeScript |
