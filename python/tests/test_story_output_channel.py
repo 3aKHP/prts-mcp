@@ -36,6 +36,7 @@ STORY_REVIEW_PATH = "zh_CN/gamedata/excel/story_review_table.json"
 CHARDICT_PATH = "zh_CN/chardict.json"
 STORYINFO_PATH = "zh_CN/storyinfo.json"
 EVENT_SUMMARIES_PATH = "zh_CN/event_summaries.json"
+STORY_SUPPLEMENT_PATH = "zh_CN/story_supplement.json"
 
 FIRST_STORY_KEY = "activities/act_test/level_act_test_01_beg"
 SECOND_STORY_KEY = "activities/act_test/level_act_test_02_end"
@@ -43,6 +44,8 @@ NO_SUMMARY_STORY_KEY = "activities/act_no_summary/level_act_no_summary_01"
 NO_SUMMARY_SECOND_STORY_KEY = "activities/act_no_summary/level_act_no_summary_02"
 NARRATION_STORY_KEY = "activities/act_narration/level_act_narration_01"
 MEMOIR_STORY_KEY = "memory/amiya/level_amiya_01"
+ROGUE_ENDING_KEY = "Obt/Roguelike/RO6/level_rogue6_ending_1"
+ROGUE_MONTH_KEY = "Obt/Rogue/rogue_6/MonthRecord/month_record_rogue_6_4_1"
 
 
 @pytest.mark.parametrize("llm", [" LLM summary. ", " ", "", None, 42])
@@ -168,6 +171,31 @@ def _story_files() -> dict[str, object]:
                 ],
             },
         },
+        # roguelike supplement catalog (additive in prts-mcp-data/v1);
+        # must not leak into any review-table golden
+        STORY_SUPPLEMENT_PATH: {
+            "version": 1,
+            "generated_from": {
+                "tables": ["gamedata/excel/roguelike_topic_table.json"],
+                "source_version": "v-test",
+            },
+            "events": [
+                {
+                    "event_id": "rogue_6",
+                    "name": "沉沦者的黑流树海",
+                    "entry_type": "ROGUELIKE",
+                    "sort": 6,
+                    "chapters": [
+                        {"key": ROGUE_ENDING_KEY, "name": "强制重启", "code": "RO6-E1",
+                         "avg_tag": "结局", "sort": 110, "group": "ending",
+                         "source": "topic:endbook.avgId"},
+                        {"key": ROGUE_MONTH_KEY, "name": "南方往事·1", "code": "RO6-M4-1",
+                         "avg_tag": "月度记录·南方往事", "sort": 10401, "group": "month",
+                         "source": "topic:chat.chatStoryId"},
+                    ],
+                },
+            ],
+        },
         STORYINFO_PATH: {
             FIRST_STORY_KEY: "第一章梗概",
             SECOND_STORY_KEY: "第二章梗概",
@@ -232,6 +260,27 @@ def _story_files() -> dict[str, object]:
                 {"prop": "sticker", "attributes": {"content": "只有旁白文本。"}},
             ],
         },
+        _story_path(ROGUE_ENDING_KEY): {
+            "storyCode": "RO6-E1",
+            "storyName": "强制重启",
+            "avgTag": "结局",
+            "eventName": "沉沦者的黑流树海",
+            "storyInfo": "官方梗概：强制重启。",
+            "storyList": [
+                {"prop": "name", "attributes": {"name": "卡德霍", "content": "落幕。"}},
+            ],
+        },
+        _story_path(ROGUE_MONTH_KEY): {
+            "storyCode": "RO6-M4-1",
+            "storyName": "南方往事·1",
+            "avgTag": "月度记录·南方往事",
+            "eventName": "沉沦者的黑流树海",
+            "storyInfo": "",
+            "storyList": [
+                {"prop": "name", "attributes": {"name": "", "content": "独特旁白词项xyz。"}},
+                {"prop": "name", "attributes": {"name": "帕尤卡卡", "content": "蛋糕烤好了。"}},
+            ],
+        },
     }
 
 
@@ -265,6 +314,29 @@ def test_list_story_events_golden_and_empty(story_zip: Path) -> None:
     assert empty["total"] == 0
     assert empty["events"] == []
     assert render_story_events_listing(empty) == "未找到符合条件的活动（category='main'）。"
+
+
+def test_list_story_events_roguelike_golden(story_zip: Path) -> None:
+    data = build_story_events_listing(story_zip, category="roguelike")
+
+    assert data == _load_parity_fixture("story_events_roguelike.json")
+    assert data["filters"] == {
+        "category": "roguelike",
+        "category_normalized": "roguelike",
+    }
+    assert render_story_events_listing(data) == (
+        "- [ROGUELIKE] rogue_6：沉沦者的黑流树海（2 章）"
+    )
+
+
+def test_list_stories_roguelike_golden(story_zip: Path) -> None:
+    data = build_stories_listing(story_zip, "rogue_6", include_summaries=False)
+
+    assert data == _load_parity_fixture("list_stories_roguelike.json")
+    assert render_stories_listing(data) == (
+        f"- RO6-E1 [结局] 强制重启（key: {ROGUE_ENDING_KEY}）\n"
+        f"- RO6-M4-1 [月度记录·南方往事] 南方往事·1（key: {ROGUE_MONTH_KEY}）"
+    )
 
 
 def test_list_stories_without_summaries_golden(story_zip: Path) -> None:
