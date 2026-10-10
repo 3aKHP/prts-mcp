@@ -83,3 +83,50 @@ test("storyjson zip validation accepts metadata and referenced stories", () => {
 
   assert.deepEqual(validateStoryjsonZip(zipPath), []);
 });
+
+test("storyjson zip validation checks supplement chapter references", () => {
+  const zipPath = tempZipPath();
+  writeZip(zipPath, {
+    "zh_CN/storyinfo.json": {},
+    [STORY_REVIEW_PATH]: { act_test: { infoUnlockDatas: [] } },
+    "zh_CN/story_supplement.json": {
+      version: 1,
+      events: [{
+        event_id: "rogue_6", name: "黑流树海", entry_type: "ROGUELIKE",
+        chapters: [{ key: "Obt/Roguelike/RO6/level_rogue6_entry", name: "开幕", sort: 1 }],
+      }],
+    },
+  });
+  assert.deepEqual(validateStoryjsonZip(zipPath), [
+    "zh_CN/gamedata/story/Obt/Roguelike/RO6/level_rogue6_entry.json",
+  ]);
+});
+
+test("storyjson zip validation accepts a complete supplement", () => {
+  const zipPath = tempZipPath();
+  writeZip(zipPath, {
+    "zh_CN/storyinfo.json": {},
+    [STORY_REVIEW_PATH]: { act_test: { infoUnlockDatas: [] } },
+    "zh_CN/story_supplement.json": {
+      version: 1,
+      events: [{
+        event_id: "rogue_6", name: "黑流树海", entry_type: "ROGUELIKE",
+        chapters: [{ key: "Obt/Roguelike/RO6/level_rogue6_entry", name: "开幕", sort: 1 }],
+      }],
+    },
+    "zh_CN/gamedata/story/Obt/Roguelike/RO6/level_rogue6_entry.json": {},
+  });
+  assert.deepEqual(validateStoryjsonZip(zipPath), []);
+});
+
+test("storyjson zip validation rejects a malformed supplement", () => {
+  const zipPath = tempZipPath();
+  const zip = new AdmZip();
+  zip.addFile("zh_CN/storyinfo.json", Buffer.from("{}", "utf-8"));
+  zip.addFile(STORY_REVIEW_PATH, Buffer.from(JSON.stringify({ act_test: { infoUnlockDatas: [] } }), "utf-8"));
+  zip.addFile("zh_CN/story_supplement.json", Buffer.from("{not json", "utf-8"));
+  zip.writeZip(zipPath);
+  const errors = validateStoryjsonZip(zipPath);
+  assert.equal(errors.length, 1);
+  assert.ok(errors[0].includes("story_supplement.json is unreadable"));
+});

@@ -20,6 +20,13 @@ import {
   renderStoryEventsListing,
 } from "../src/data/story.ts";
 
+import {
+  ROGUE_ENDING_KEY,
+  ROGUE_MONTH_KEY,
+  STORY_SUPPLEMENT_PATH,
+  storySupplementFiles,
+} from "./fixtures/storySupplement.ts";
+
 const STORY_REVIEW_PATH = "zh_CN/gamedata/excel/story_review_table.json";
 const CHARDICT_PATH = "zh_CN/chardict.json";
 const STORYINFO_PATH = "zh_CN/storyinfo.json";
@@ -31,9 +38,6 @@ const NO_SUMMARY_STORY_KEY = "activities/act_no_summary/level_act_no_summary_01"
 const NO_SUMMARY_SECOND_STORY_KEY = "activities/act_no_summary/level_act_no_summary_02";
 const NARRATION_STORY_KEY = "activities/act_narration/level_act_narration_01";
 const MEMOIR_STORY_KEY = "memory/amiya/level_amiya_01";
-const STORY_SUPPLEMENT_PATH = "zh_CN/story_supplement.json";
-const ROGUE_ENDING_KEY = "Obt/Roguelike/RO6/level_rogue6_ending_1";
-const ROGUE_MONTH_KEY = "Obt/Rogue/rogue_6/MonthRecord/month_record_rogue_6_4_1";
 
 for (const llm of [" LLM summary. ", " ", "", null, 42]) {
   test(`listing and summary share fallbacks: ${JSON.stringify(llm)}`, () => {
@@ -134,33 +138,7 @@ function storyFiles(): Record<string, unknown> {
     },
     // roguelike supplement catalog (additive in prts-mcp-data/v1);
     // must not leak into any review-table golden
-    [STORY_SUPPLEMENT_PATH]: {
-      version: 1,
-      generated_from: {
-        tables: ["gamedata/excel/roguelike_topic_table.json"],
-        source_version: "v-test",
-      },
-      events: [
-        {
-          event_id: "rogue_6",
-          name: "沉沦者的黑流树海",
-          entry_type: "ROGUELIKE",
-          sort: 6,
-          chapters: [
-            {
-              key: ROGUE_ENDING_KEY, name: "强制重启", code: "RO6-E1",
-              avg_tag: "结局", sort: 110, group: "ending",
-              source: "topic:endbook.avgId",
-            },
-            {
-              key: ROGUE_MONTH_KEY, name: "南方往事·1", code: "RO6-M4-1",
-              avg_tag: "月度记录·南方往事", sort: 10401, group: "month",
-              source: "topic:chat.chatStoryId",
-            },
-          ],
-        },
-      ],
-    },
+    ...storySupplementFiles(),
     [STORYINFO_PATH]: {
       [FIRST_STORY_KEY]: "第一章梗概",
       [SECOND_STORY_KEY]: "第二章梗概",
@@ -222,27 +200,6 @@ function storyFiles(): Record<string, unknown> {
       storyInfo: "",
       storyList: [
         { prop: "sticker", attributes: { content: "只有旁白文本。" } },
-      ],
-    },
-    [storyPath(ROGUE_ENDING_KEY)]: {
-      storyCode: "RO6-E1",
-      storyName: "强制重启",
-      avgTag: "结局",
-      eventName: "沉沦者的黑流树海",
-      storyInfo: "官方梗概：强制重启。",
-      storyList: [
-        { prop: "name", attributes: { name: "卡德霍", content: "落幕。" } },
-      ],
-    },
-    [storyPath(ROGUE_MONTH_KEY)]: {
-      storyCode: "RO6-M4-1",
-      storyName: "南方往事·1",
-      avgTag: "月度记录·南方往事",
-      eventName: "沉沦者的黑流树海",
-      storyInfo: "",
-      storyList: [
-        { prop: "name", attributes: { name: "", content: "独特旁白词项xyz。" } },
-        { prop: "name", attributes: { name: "帕尤卡卡", content: "蛋糕烤好了。" } },
       ],
     },
   };

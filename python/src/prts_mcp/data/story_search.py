@@ -19,7 +19,6 @@ from prts_mcp.data.story_reader import (
     StoryLine,
     is_memoir_event,
     load_event_table,
-    load_json,
     read_story_from_store,
     story_store,
 )

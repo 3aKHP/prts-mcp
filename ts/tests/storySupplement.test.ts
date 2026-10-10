@@ -5,6 +5,9 @@
  * by loadEventTable so listing/search/character tools treat rogue chapters
  * like regular ones — without changing any existing output when the file
  * is absent.
+ *
+ * The supplement payload itself lives in fixtures/storySupplement.ts
+ * (shared with the output-channel parity suite so the two cannot drift).
  */
 
 import assert from "node:assert/strict";
@@ -23,11 +26,14 @@ import {
 } from "../src/data/storyReader.ts";
 import { findSpeakersInFromStore } from "../src/data/storyCharacter.ts";
 import { searchStoriesFromStore } from "../src/data/storySearch.ts";
+import {
+  ROGUE_ENDING_KEY,
+  ROGUE_MONTH_KEY,
+  STORY_SUPPLEMENT_PATH,
+  storySupplementFiles,
+} from "./fixtures/storySupplement.ts";
 
 const STORY_REVIEW_PATH = "zh_CN/gamedata/excel/story_review_table.json";
-const STORY_SUPPLEMENT_PATH = "zh_CN/story_supplement.json";
-const ROGUE_KEY = "Obt/Rogue/rogue_6/MonthRecord/month_record_rogue_6_4_1";
-const ROGUE_ENDING_KEY = "Obt/Roguelike/RO6/level_rogue6_ending_1";
 
 function storyFiles(withSupplement: boolean): Record<string, unknown> {
   const files: Record<string, unknown> = {
@@ -53,66 +59,27 @@ function storyFiles(withSupplement: boolean): Record<string, unknown> {
       storyList: [{ prop: "name", attributes: { name: "阿米娅", content: "你好。" } }],
     },
   };
-  if (withSupplement) {
-    files[STORY_SUPPLEMENT_PATH] = {
-      version: 1,
-      generated_from: { tables: [], source_version: "v-test" },
-      events: [
-        {
-          event_id: "rogue_6",
-          name: "沉沦者的黑流树海",
-          entry_type: "ROGUELIKE",
-          sort: 6,
-          chapters: [
-            {
-              key: ROGUE_ENDING_KEY, name: "强制重启", code: "RO6-E1",
-              avg_tag: "结局", sort: 110, group: "ending",
-              source: "topic:endbook.avgId",
-            },
-            {
-              key: ROGUE_KEY, name: "南方往事·1", code: "RO6-M4-1",
-              avg_tag: "月度记录·南方往事", sort: 10401, group: "month",
-              source: "topic:chat.chatStoryId",
-            },
-          ],
-        },
-      ],
-    };
-    files[`zh_CN/gamedata/story/${ROGUE_KEY}.json`] = {
-      storyCode: "RO6-M4-1",
-      storyName: "南方往事·1",
-      eventName: "沉沦者的黑流树海",
-      storyList: [
-        { prop: "name", attributes: { name: "", content: "独特旁白词项xyz。" } },
-        { prop: "name", attributes: { name: "帕尤卡卡", content: "蛋糕烤好了。" } },
-      ],
-    };
-    files[`zh_CN/gamedata/story/${ROGUE_ENDING_KEY}.json`] = {
-      storyCode: "RO6-E1",
-      storyName: "强制重启",
-      eventName: "沉沦者的黑流树海",
-      storyInfo: "官方梗概。",
-      storyList: [
-        { prop: "name", attributes: { name: "卡德霍", content: "落幕。" } },
-      ],
-    };
-  }
+  if (withSupplement) Object.assign(files, storySupplementFiles());
   return files;
+}
+
+function writeStore(root: string, files: Record<string, unknown>): void {
+  for (const [rel, data] of Object.entries(files)) {
+    const target = join(root, rel);
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, typeof data === "string" ? data : JSON.stringify(data), "utf-8");
+  }
 }
 
 function makeStore(root: string, kind: "directory" | "zip", withSupplement = true): JsonStore {
   const files = storyFiles(withSupplement);
   if (kind === "directory") {
-    for (const [rel, data] of Object.entries(files)) {
-      const target = join(root, rel);
-      mkdirSync(dirname(target), { recursive: true });
-      writeFileSync(target, JSON.stringify(data), "utf-8");
-    }
+    writeStore(root, files);
     return new DirectoryStore(root);
   }
   const zip = new AdmZip();
   for (const [rel, data] of Object.entries(files)) {
-    zip.addFile(rel, Buffer.from(JSON.stringify(data), "utf-8"));
+    zip.addFile(rel, Buffer.from(typeof data === "string" ? data : JSON.stringify(data), "utf-8"));
   }
   const zipPath = join(root, "zh_CN.zip");
   zip.writeZip(zipPath);
@@ -152,7 +119,7 @@ for (const kind of ["directory", "zip"] as const) {
       ]),
       [
         [ROGUE_ENDING_KEY, "RO6-E1", "强制重启", "结局"],
-        [ROGUE_KEY, "RO6-M4-1", "南方往事·1", "月度记录·南方往事"],
+        [ROGUE_MONTH_KEY, "RO6-M4-1", "南方往事·1", "月度记录·南方往事"],
       ],
     );
   });
@@ -167,8 +134,16 @@ for (const kind of ["directory", "zip"] as const) {
 
   test(`supplement searchable (${kind})`, () => {
     const store = makeStore(mkdtempSync(join(tmpdir(), "prts-supp-")), kind);
-    assert.ok(searchStoriesFromStore(store, "独特旁白词项xyz", undefined, undefined, 1, 5).includes("rogue_6"));
-    assert.ok(searchStoriesFromStore(store, "你好", undefined, undefined, 1, 5).includes("你好"));
+    assert.ok(
+      searchStoriesFromStore(store, "独特旁白词项xyz", undefined, undefined, 1, 5)
+        .includes("rogue_6"),
+    );
+    // review content stays searchable; the oracle is the result-line marker
+    // (the pattern itself is echoed in both hit and miss renderings)
+    assert.ok(
+      searchStoriesFromStore(store, "你好", undefined, undefined, 1, 5)
+        .includes("act_test/TEST-1"),
+    );
   });
 
   test(`supplement speakers via character index (${kind})`, () => {
@@ -185,19 +160,37 @@ for (const kind of ["directory", "zip"] as const) {
       ["act_test"],
     );
     assert.throws(() => listStoriesFromStore(store, "rogue_6"));
-    assert.ok(!searchStoriesFromStore(store, "独特旁白词项xyz", undefined, undefined, 1, 5).includes("rogue_6"));
+    assert.ok(
+      !searchStoriesFromStore(store, "独特旁白词项xyz", undefined, undefined, 1, 5)
+        .includes("rogue_6"),
+    );
+  });
+
+  test(`invalid supplement degrades to review (${kind})`, () => {
+    const root = mkdtempSync(join(tmpdir(), "prts-supp-"));
+    const files = storyFiles(true);
+    files[STORY_SUPPLEMENT_PATH] = "{not json";
+    const store = makeStore(root, kind, false); // base files only…
+    store.close();
+    // …then layer the corrupt supplement in per store kind
+    if (kind === "directory") {
+      writeStore(root, { [STORY_SUPPLEMENT_PATH]: "{not json" });
+    } else {
+      const zip = new AdmZip();
+      for (const [rel, data] of Object.entries(files)) {
+        zip.addFile(rel, Buffer.from(typeof data === "string" ? data : JSON.stringify(data), "utf-8"));
+      }
+      zip.writeZip(join(root, "zh_CN.zip"));
+    }
+    const reopened = kind === "directory"
+      ? new DirectoryStore(root)
+      : new ZipStore(join(root, "zh_CN.zip"));
+    assert.deepEqual(
+      listStoryEventsFromStore(reopened).map((ev) => ev.eventId),
+      ["act_test"],
+    );
   });
 }
-
-test("invalid supplement degrades to review (directory)", () => {
-  const root = mkdtempSync(join(tmpdir(), "prts-supp-"));
-  const store = makeStore(root, "directory");
-  writeFileSync(join(root, STORY_SUPPLEMENT_PATH), "{not json", "utf-8");
-  assert.deepEqual(
-    listStoryEventsFromStore(store).map((ev) => ev.eventId),
-    ["act_test"],
-  );
-});
 
 test("malformed supplement fields degrade (directory)", () => {
   // mirrors the Python test: wrong-typed fields degrade to defaults
@@ -211,7 +204,7 @@ test("malformed supplement fields degrade (directory)", () => {
       {
         event_id: "rogue_7", name: null, entry_type: 7,
         chapters: [
-          { key: ROGUE_KEY, name: null, code: null, avg_tag: 3, sort: null },
+          { key: ROGUE_MONTH_KEY, name: null, code: null, avg_tag: 3, sort: null },
         ],
       },
     ],
@@ -230,7 +223,10 @@ test("malformed supplement fields degrade (directory)", () => {
     chapters.map((c) => [c.storyCode, c.storyName, c.avgTag, c.sortOrder]),
     [["", "", null, 0]],
   );
-  assert.ok(searchStoriesFromStore(store, "你好", undefined, undefined, 1, 5).includes("你好"));
+  assert.ok(
+    searchStoriesFromStore(store, "你好", undefined, undefined, 1, 5)
+      .includes("act_test/TEST-1"),
+  );
 });
 
 test("directory store invalidates index when only the supplement changes", () => {
@@ -244,7 +240,7 @@ test("directory store invalidates index when only the supplement changes", () =>
   const suppPath = join(root, STORY_SUPPLEMENT_PATH);
   const supp = JSON.parse(readFileSync(suppPath, "utf-8"));
   supp.events[0].chapters = supp.events[0].chapters.filter(
-    (c: { key: string }) => c.key !== ROGUE_KEY,
+    (c: { key: string }) => c.key !== ROGUE_MONTH_KEY,
   );
   writeFileSync(suppPath, JSON.stringify(supp, null, 2), "utf-8");
 

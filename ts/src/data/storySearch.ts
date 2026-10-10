@@ -22,7 +22,6 @@ import {
   readStoryFromStore,
   storyStore,
   withStoryStore,
-  type RawReviewTable,
 } from "./storyReader.js";
 
 // ---------------------------------------------------------------------------

@@ -13,6 +13,7 @@ STORYJSON_REQUIRED_FILES: tuple[str, ...] = (
     "zh_CN/storyinfo.json",
 )
 STORYJSON_REVIEW_TABLE = "zh_CN/gamedata/excel/story_review_table.json"
+STORYJSON_SUPPLEMENT = "zh_CN/story_supplement.json"
 LEVELS_REQUIRED_FILES: tuple[str, ...] = (
     "zh_CN/gamedata/levels/enemydata/enemy_database.json",
 )
@@ -67,7 +68,14 @@ def _story_path(story_key: str) -> str:
 
 
 def validate_storyjson_zip(zf: ZipFile) -> list[str]:
-    """Validate story metadata and referenced chapter JSON entries."""
+    """Validate story metadata and referenced chapter JSON entries.
+
+    Review-table references are always checked; when the optional
+    story_supplement.json (roguelike catalog) is present, its chapter keys
+    are checked too — a pack carrying a catalog that points at missing
+    chapters is broken and should be rejected like any review gap. Old
+    packs without the file are unaffected.
+    """
     missing = _missing_entries(zf, STORYJSON_REQUIRED_FILES)
     if STORYJSON_REVIEW_TABLE in missing:
         return missing
@@ -78,13 +86,30 @@ def validate_storyjson_zip(zf: ZipFile) -> list[str]:
         return [*missing, f"{STORYJSON_REVIEW_TABLE} is unreadable: {exc}"]
 
     names = set(zf.namelist())
-    story_paths = sorted({
+    story_paths = {
         _story_path(story_key)
         for entry in table.values()
         for data in (entry.get("infoUnlockDatas") or [])
         if (story_key := data.get("storyTxt"))
-    })
-    missing.extend(path for path in story_paths if path not in names)
+    }
+    if STORYJSON_SUPPLEMENT in names:
+        try:
+            supplement = json.loads(zf.read(STORYJSON_SUPPLEMENT).decode("utf-8"))
+            supp_events = supplement.get("events") if isinstance(supplement, dict) else None
+            if not isinstance(supp_events, list):
+                raise ValueError("events is not a list")
+        except (json.JSONDecodeError, UnicodeDecodeError, ValueError) as exc:
+            return [*missing, f"{STORYJSON_SUPPLEMENT} is unreadable: {exc}"]
+        story_paths |= {
+            _story_path(chapter_key)
+            for event in supp_events
+            if isinstance(event, dict)
+            for chapter in (event.get("chapters") or [])
+            if isinstance(chapter, dict)
+            and isinstance(chapter.get("key"), str)
+            and (chapter_key := chapter["key"])
+        }
+    missing.extend(path for path in sorted(story_paths) if path not in names)
     return missing
 
 
