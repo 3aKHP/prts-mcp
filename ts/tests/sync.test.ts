@@ -1141,41 +1141,43 @@ test("syncRelease downloads a datarev revision and stores the revision suffix", 
   assert.equal(meta.commit_sha, `${REV_VID}-r2`);
 });
 
-test("syncRelease stays up_to_date on the installed revision", async () => {
-  const spec = tempSpec();
-  writeRevCache(spec, `${REV_VID}-r2`);
-  let fetchCalls = 0;
-  await withFetchMock((async () => {
-    fetchCalls += 1;
-    return new Response(JSON.stringify([
-      releaseEntry(`data-${REV_VID}`),
-      releaseEntry(`datarev-${REV_VID}-r2`),
-    ]), { headers: { "content-type": "application/json" } });
-  }) as typeof fetch, async () => {
-    const result = await syncRelease(spec, true);
-    assert.equal(result.status, "up_to_date");
-    assert.equal(result.commitSha, `${REV_VID}-r2`);
+for (const vid of [REV_VID, REV_VID_HYPHEN]) {
+  test(`syncRelease stays up_to_date on the installed revision: ${vid}`, async () => {
+    const spec = tempSpec();
+    writeRevCache(spec, `${vid}-r2`);
+    let fetchCalls = 0;
+    await withFetchMock((async () => {
+      fetchCalls += 1;
+      return new Response(JSON.stringify([
+        releaseEntry(`data-${vid}`),
+        releaseEntry(`datarev-${vid}-r2`),
+      ]), { headers: { "content-type": "application/json" } });
+    }) as typeof fetch, async () => {
+      const result = await syncRelease(spec, true);
+      assert.equal(result.status, "up_to_date");
+      assert.equal(result.commitSha, `${vid}-r2`);
+    });
+    assert.equal(fetchCalls, 1);
+    assert.equal(readFileSync(spec.localZip, "utf-8"), "cached");
   });
-  assert.equal(fetchCalls, 1);
-  assert.equal(readFileSync(spec.localZip, "utf-8"), "cached");
-});
 
-test("syncRelease refuses downgrade to an older release", async () => {
-  const spec = tempSpec();
-  writeRevCache(spec, `${REV_VID}-r2`);
-  let fetchCalls = 0;
-  await withFetchMock((async () => {
-    fetchCalls += 1;
-    return new Response(JSON.stringify([
-      releaseEntry(`data-${REV_VID}`),
-    ]), { headers: { "content-type": "application/json" } });
-  }) as typeof fetch, async () => {
-    const result = await syncRelease(spec, true);
-    assert.equal(result.status, "up_to_date");
-    assert.equal(result.commitSha, `${REV_VID}-r2`);
+  test(`syncRelease refuses downgrade to an older release: ${vid}`, async () => {
+    const spec = tempSpec();
+    writeRevCache(spec, `${vid}-r2`);
+    let fetchCalls = 0;
+    await withFetchMock((async () => {
+      fetchCalls += 1;
+      return new Response(JSON.stringify([
+        releaseEntry(`data-${vid}`),
+      ]), { headers: { "content-type": "application/json" } });
+    }) as typeof fetch, async () => {
+      const result = await syncRelease(spec, true);
+      assert.equal(result.status, "up_to_date");
+      assert.equal(result.commitSha, `${vid}-r2`);
+    });
+    assert.equal(fetchCalls, 1);
   });
-  assert.equal(fetchCalls, 1);
-});
+}
 
 async function syncDatarevManifestCase(manifest: unknown): Promise<{ status: string; zip: string }> {
   const spec = { ...tempSpec(), verifyManifest: true };

@@ -3,6 +3,7 @@
   {"name":"new source wins", "tags":["datarev-V-r10", "data-W"], "expected":"data-W"},
   {"name":"hyphen versionId wins", "tags":["datarev-26-09-03-04-06-00_ed95a2-r10", "data-26-10-08-04-51-28-56071834"], "expected":"data-26-10-08-04-51-28-56071834"},
   {"name":"duplicate identity", "tags":["data-V", "datarev-V-r1"], "error":true},
+  {"name":"duplicate identity hyphen", "tags":["data-26-10-08-04-51-28-56071834", "datarev-26-10-08-04-51-28-56071834-r1"], "error":true},
   {"name":"duplicate revision", "tags":["datarev-V-r2", "datarev-V-r02"], "error":true},
   {"name":"empty", "tags":["images-V"], "expected":null},
   {"name":"draft excluded", "tags":["data-V", "datarev-V-r2"], "draft":"datarev-V-r2", "expected":"data-V"},
