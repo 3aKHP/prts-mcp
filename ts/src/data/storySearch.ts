@@ -15,7 +15,9 @@ import { DirectoryStore, type JsonStore, ZipStore } from "./stores.js";
 import {
   type StoryLine,
   STORY_REVIEW_TABLE,
+  STORY_SUPPLEMENT,
   isMemoirEvent,
+  loadEventTable,
   pyRepr,
   readStoryFromStore,
   storyStore,
@@ -307,7 +309,18 @@ function storyStoreDescriptor(store: JsonStore): string | null {
     const review = join(store.root, STORY_REVIEW_TABLE);
     try {
       const stat = statSync(review, { bigint: true });
-      return `directory:${store.root}:${stat.size}:${stat.mtimeNs}`;
+      let size = stat.size;
+      let mtimeNs = stat.mtimeNs;
+      // the supplement catalog (if present) is part of the indexed corpus —
+      // its changes must invalidate the cached index for directory stores
+      try {
+        const sstat = statSync(join(store.root, STORY_SUPPLEMENT), { bigint: true });
+        size += sstat.size;
+        if (sstat.mtimeNs > mtimeNs) mtimeNs = sstat.mtimeNs;
+      } catch {
+        // no supplement — nothing to mix in
+      }
+      return `directory:${store.root}:${size}:${mtimeNs}`;
     } catch {
       return null;
     }
@@ -316,7 +329,7 @@ function storyStoreDescriptor(store: JsonStore): string | null {
 }
 
 function buildStorySearchIndex(store: JsonStore): StorySearchIndex {
-  const table = store.readJson<RawReviewTable>(STORY_REVIEW_TABLE);
+  const table = loadEventTable(store);
   const eventIds = new Set<string>();
   const chapters: StorySearchChapter[] = [];
   const records: StorySearchRecord[] = [];
