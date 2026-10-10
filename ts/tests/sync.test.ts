@@ -1005,6 +1005,8 @@ test("concurrent archive activation keeps the authoritative tree", async () => {
 
 const REV_VID = "26-09-03-04-06-00_ed95a2";
 const REV_VID2 = "26-10-01-11-22-33_aabbcc";
+// upstream joined the hash with "_" before 2026-10 and "-" since
+const REV_VID_HYPHEN = "26-10-08-04-51-28-56071834";
 
 function releaseEntry(tag: string, created = "2026-01-01T00:00:00Z") {
   return {
@@ -1018,6 +1020,8 @@ test("parseDataTag parses both data namespaces", () => {
   assert.deepEqual(parseDataTag(`data-${REV_VID}`), { versionId: REV_VID, revision: 1 });
   assert.deepEqual(parseDataTag(`datarev-${REV_VID}-r2`), { versionId: REV_VID, revision: 2 });
   assert.deepEqual(parseDataTag(`datarev-${REV_VID}-r10`), { versionId: REV_VID, revision: 10 });
+  assert.deepEqual(parseDataTag(`data-${REV_VID_HYPHEN}`), { versionId: REV_VID_HYPHEN, revision: 1 });
+  assert.deepEqual(parseDataTag(`datarev-${REV_VID_HYPHEN}-r2`), { versionId: REV_VID_HYPHEN, revision: 2 });
   assert.equal(parseDataTag("images-v1"), null);
   assert.equal(parseDataTag("datarev-x-r2-extra"), null);
   assert.equal(parseDataTag("datarev-vid"), null);
@@ -1026,12 +1030,17 @@ test("parseDataTag parses both data namespaces", () => {
 test("parseReleaseSuffix and tagSuffix handle stored commitSha values", () => {
   assert.deepEqual(parseReleaseSuffix(REV_VID), { versionId: REV_VID, revision: 1 });
   assert.deepEqual(parseReleaseSuffix(`${REV_VID}-r3`), { versionId: REV_VID, revision: 3 });
+  assert.deepEqual(parseReleaseSuffix(REV_VID_HYPHEN), { versionId: REV_VID_HYPHEN, revision: 1 });
+  assert.deepEqual(parseReleaseSuffix(`${REV_VID_HYPHEN}-r2`), { versionId: REV_VID_HYPHEN, revision: 2 });
+  assert.deepEqual(parseReleaseSuffix(`${REV_VID_HYPHEN}-r10`), { versionId: REV_VID_HYPHEN, revision: 10 });
   for (const sentinel of ["unknown", "legacy", "local-abc123", "manual"]) {
     assert.equal(parseReleaseSuffix(sentinel), null);
   }
   assert.equal(parseReleaseSuffix("abc123"), null);
   assert.equal(tagSuffix(`data-${REV_VID}`), REV_VID);
   assert.equal(tagSuffix(`datarev-${REV_VID}-r2`), `${REV_VID}-r2`);
+  assert.equal(tagSuffix(`data-${REV_VID_HYPHEN}`), REV_VID_HYPHEN);
+  assert.equal(tagSuffix(`datarev-${REV_VID_HYPHEN}-r2`), `${REV_VID_HYPHEN}-r2`);
   assert.equal(tagSuffix("unknown"), "unknown");
 });
 
@@ -1053,6 +1062,12 @@ test("latestDataRelease orders by (versionId, revision) tuple", () => {
     releaseEntry(`datarev-${REV_VID}-r10`),
   ]);
   assert.equal(numeric?.["tag_name"], `datarev-${REV_VID}-r10`);
+
+  const hyphen = latestDataRelease([
+    releaseEntry(`datarev-${REV_VID}-r10`),
+    releaseEntry(`data-${REV_VID_HYPHEN}`),
+  ]);
+  assert.equal(hyphen?.["tag_name"], `data-${REV_VID_HYPHEN}`);
 
   assert.equal(latestDataRelease([releaseEntry("images-v1")]), null);
 });
@@ -1186,55 +1201,80 @@ async function syncDatarevManifestCase(manifest: unknown): Promise<{ status: str
   return { status, zip: readFileSync(spec.localZip, "utf-8") };
 }
 
-for (const upstream of [null, `data-${REV_VID}`]) {
-  for (const invalidZip of [false, true]) {
-    test(`recorded revision prevents downgrade without valid zip: ${upstream}/${invalidZip}`, async () => {
-      const spec = { ...tempSpec(), ...(invalidZip ? { validateZip: () => ["invalid zip"] } : {}) };
-      writeRevCache(spec, `${REV_VID}-r2`);
-      if (!invalidZip) unlinkSync(spec.localZip);
-      const metaPath = join(dirname(spec.localZip), "release_meta.json");
-      const before = readFileSync(metaPath, "utf-8");
-      const oldMirrors = process.env["GITHUB_MIRRORS"];
-      process.env["GITHUB_MIRRORS"] = "https://mirror.test";
-      const urls: string[] = [];
-      try {
-        await withFetchMock((async (input) => {
-          const url = String(input);
-          urls.push(url);
-          if (upstream === null) throw new Error("offline");
-          return new Response(JSON.stringify([releaseEntry(upstream)]));
-        }) as typeof fetch, async () => {
-          const result = await syncRelease(spec, true);
-          assert.equal(result.status, "no_data");
-          assert.equal(result.commitSha, `${REV_VID}-r2`);
-        });
-      } finally {
-        if (oldMirrors === undefined) delete process.env["GITHUB_MIRRORS"];
-        else process.env["GITHUB_MIRRORS"] = oldMirrors;
-      }
-      assert(urls.every(url => url.includes("api.github.com")), JSON.stringify(urls));
-      assert.equal(readFileSync(metaPath, "utf-8"), before);
+for (const vid of [REV_VID, REV_VID_HYPHEN]) {
+  for (const upstream of [null, `data-${vid}`]) {
+    for (const invalidZip of [false, true]) {
+      test(`recorded revision prevents downgrade without valid zip: ${vid}/${upstream}/${invalidZip}`, async () => {
+        const spec = { ...tempSpec(), ...(invalidZip ? { validateZip: () => ["invalid zip"] } : {}) };
+        writeRevCache(spec, `${vid}-r2`);
+        if (!invalidZip) unlinkSync(spec.localZip);
+        const metaPath = join(dirname(spec.localZip), "release_meta.json");
+        const before = readFileSync(metaPath, "utf-8");
+        const oldMirrors = process.env["GITHUB_MIRRORS"];
+        process.env["GITHUB_MIRRORS"] = "https://mirror.test";
+        const urls: string[] = [];
+        try {
+          await withFetchMock((async (input) => {
+            const url = String(input);
+            urls.push(url);
+            if (upstream === null) throw new Error("offline");
+            return new Response(JSON.stringify([releaseEntry(upstream)]));
+          }) as typeof fetch, async () => {
+            const result = await syncRelease(spec, true);
+            assert.equal(result.status, "no_data");
+            assert.equal(result.commitSha, `${vid}-r2`);
+          });
+        } finally {
+          if (oldMirrors === undefined) delete process.env["GITHUB_MIRRORS"];
+          else process.env["GITHUB_MIRRORS"] = oldMirrors;
+        }
+        assert(urls.every(url => url.includes("api.github.com")), JSON.stringify(urls));
+        assert.equal(readFileSync(metaPath, "utf-8"), before);
+      });
+    }
+  }
+}
+
+for (const vid of [REV_VID, REV_VID_HYPHEN]) {
+  for (const revision of [2, 3]) {
+    test(`recorded revision permits replacement without zip: ${vid} r${revision}`, async () => {
+      const spec = tempSpec();
+      writeRevCache(spec, `${vid}-r2`);
+      unlinkSync(spec.localZip);
+      await withFetchMock((async (input) => {
+        return String(input).includes("api.github.com")
+          ? new Response(JSON.stringify([releaseEntry(`datarev-${vid}-r${revision}`)]))
+          : new Response("replacement");
+      }) as typeof fetch, async () => {
+        const result = await syncRelease(spec, true);
+        assert.equal(result.status, "updated");
+        assert.equal(result.commitSha, `${vid}-r${revision}`);
+      });
+      assert.equal(readFileSync(spec.localZip, "utf-8"), "replacement");
     });
   }
 }
 
-for (const revision of [2, 3]) {
-  test(`recorded revision permits replacement without zip: r${revision}`, async () => {
-    const spec = tempSpec();
-    writeRevCache(spec, `${REV_VID}-r2`);
-    unlinkSync(spec.localZip);
-    await withFetchMock((async (input) => {
-      return String(input).includes("api.github.com")
-        ? new Response(JSON.stringify([releaseEntry(`datarev-${REV_VID}-r${revision}`)]))
-        : new Response("replacement");
-    }) as typeof fetch, async () => {
-      const result = await syncRelease(spec, true);
-      assert.equal(result.status, "updated");
-      assert.equal(result.commitSha, `${REV_VID}-r${revision}`);
-    });
-    assert.equal(readFileSync(spec.localZip, "utf-8"), "replacement");
+test("syncRelease updates an underscore-format install from a hyphen-format source", async () => {
+  const spec = tempSpec();
+  writeRevCache(spec, `${REV_VID}-r2`);
+  const content = "new-source-content";
+  let call = 0;
+  await withFetchMock((async () => {
+    call += 1;
+    if (call === 1) {
+      return new Response(JSON.stringify([
+        releaseEntry(`data-${REV_VID_HYPHEN}`),
+      ]), { headers: { "content-type": "application/json" } });
+    }
+    return new Response(content);
+  }) as typeof fetch, async () => {
+    const result = await syncRelease(spec, true);
+    assert.equal(result.status, "updated");
+    assert.equal(result.commitSha, REV_VID_HYPHEN);
   });
-}
+  assert.equal(readFileSync(spec.localZip, "utf-8"), content);
+});
 
 test("syncRelease fails closed when manifest revision mismatches the tag", async () => {
   const content = Buffer.from("rev2-verified", "utf-8");
