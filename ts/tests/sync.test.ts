@@ -1203,36 +1203,41 @@ async function syncDatarevManifestCase(manifest: unknown): Promise<{ status: str
   return { status, zip: readFileSync(spec.localZip, "utf-8") };
 }
 
+async function recordedRevDowngradeCase(
+  vid: string, upstream: string | null, invalidZip: boolean,
+): Promise<void> {
+  const spec = { ...tempSpec(), ...(invalidZip ? { validateZip: () => ["invalid zip"] } : {}) };
+  writeRevCache(spec, `${vid}-r2`);
+  if (!invalidZip) unlinkSync(spec.localZip);
+  const metaPath = join(dirname(spec.localZip), "release_meta.json");
+  const before = readFileSync(metaPath, "utf-8");
+  const oldMirrors = process.env["GITHUB_MIRRORS"];
+  process.env["GITHUB_MIRRORS"] = "https://mirror.test";
+  const urls: string[] = [];
+  try {
+    await withFetchMock((async (input) => {
+      const url = String(input);
+      urls.push(url);
+      if (upstream === null) throw new Error("offline");
+      return new Response(JSON.stringify([releaseEntry(upstream)]));
+    }) as typeof fetch, async () => {
+      const result = await syncRelease(spec, true);
+      assert.equal(result.status, "no_data");
+      assert.equal(result.commitSha, `${vid}-r2`);
+    });
+  } finally {
+    if (oldMirrors === undefined) delete process.env["GITHUB_MIRRORS"];
+    else process.env["GITHUB_MIRRORS"] = oldMirrors;
+  }
+  assert(urls.every(url => url.includes("api.github.com")), JSON.stringify(urls));
+  assert.equal(readFileSync(metaPath, "utf-8"), before);
+}
+
 for (const vid of [REV_VID, REV_VID_HYPHEN]) {
   for (const upstream of [null, `data-${vid}`]) {
     for (const invalidZip of [false, true]) {
-      test(`recorded revision prevents downgrade without valid zip: ${vid}/${upstream}/${invalidZip}`, async () => {
-        const spec = { ...tempSpec(), ...(invalidZip ? { validateZip: () => ["invalid zip"] } : {}) };
-        writeRevCache(spec, `${vid}-r2`);
-        if (!invalidZip) unlinkSync(spec.localZip);
-        const metaPath = join(dirname(spec.localZip), "release_meta.json");
-        const before = readFileSync(metaPath, "utf-8");
-        const oldMirrors = process.env["GITHUB_MIRRORS"];
-        process.env["GITHUB_MIRRORS"] = "https://mirror.test";
-        const urls: string[] = [];
-        try {
-          await withFetchMock((async (input) => {
-            const url = String(input);
-            urls.push(url);
-            if (upstream === null) throw new Error("offline");
-            return new Response(JSON.stringify([releaseEntry(upstream)]));
-          }) as typeof fetch, async () => {
-            const result = await syncRelease(spec, true);
-            assert.equal(result.status, "no_data");
-            assert.equal(result.commitSha, `${vid}-r2`);
-          });
-        } finally {
-          if (oldMirrors === undefined) delete process.env["GITHUB_MIRRORS"];
-          else process.env["GITHUB_MIRRORS"] = oldMirrors;
-        }
-        assert(urls.every(url => url.includes("api.github.com")), JSON.stringify(urls));
-        assert.equal(readFileSync(metaPath, "utf-8"), before);
-      });
+      test(`recorded revision prevents downgrade without valid zip: ${vid}/${upstream}/${invalidZip}`,
+        () => recordedRevDowngradeCase(vid, upstream, invalidZip));
     }
   }
 }
