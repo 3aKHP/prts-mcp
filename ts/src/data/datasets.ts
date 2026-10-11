@@ -7,6 +7,7 @@ export const STORYJSON_REQUIRED_FILES = [
   "zh_CN/storyinfo.json",
 ] as const;
 const STORYJSON_REVIEW_TABLE = "zh_CN/gamedata/excel/story_review_table.json";
+const STORYJSON_SUPPLEMENT = "zh_CN/story_supplement.json";
 
 export const LEVELS_REQUIRED_FILES = [
   "zh_CN/gamedata/levels/enemydata/enemy_database.json",
@@ -104,13 +105,39 @@ export function validateStoryjsonZip(zipPath: string): string[] {
   }
 
   const names = new Set(zip.getEntries().map((entry) => entry.entryName));
-  const storyPaths = [...new Set(
+  const storyPaths = new Set(
     Object.values(table)
       .flatMap((entry) => entry.infoUnlockDatas ?? [])
       .map((data) => data.storyTxt)
       .filter((storyKey): storyKey is string => Boolean(storyKey))
       .map(storyPath),
-  )].sort();
+  );
 
-  return [...missing, ...storyPaths.filter((path) => !names.has(path))];
+  // when the optional supplement (roguelike catalog) is present, its chapter
+  // keys are validated too — a catalog pointing at missing chapters is a
+  // broken pack; old packs without the file are unaffected
+  if (names.has(STORYJSON_SUPPLEMENT)) {
+    let events: unknown;
+    try {
+      const entry = zip.getEntry(STORYJSON_SUPPLEMENT)!;
+      const supplement = JSON.parse(entry.getData().toString("utf-8"));
+      events = supplement?.events;
+      if (!Array.isArray(events)) throw new Error("events is not a list");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return [...missing, `${STORYJSON_SUPPLEMENT} is unreadable: ${message}`];
+    }
+    for (const event of events) {
+      if (!event || typeof event !== "object") continue;
+      const chapters = (event as { chapters?: unknown }).chapters;
+      if (!Array.isArray(chapters)) continue;
+      for (const chapter of chapters) {
+        if (!chapter || typeof chapter !== "object") continue;
+        const key = (chapter as { key?: unknown }).key;
+        if (typeof key === "string" && key) storyPaths.add(storyPath(key));
+      }
+    }
+  }
+
+  return [...missing, ...[...storyPaths].sort().filter((path) => !names.has(path))];
 }

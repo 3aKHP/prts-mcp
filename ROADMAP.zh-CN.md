@@ -1,13 +1,13 @@
 # PRTS-MCP 路线图
 
-_最近更新：2026-10-09_ · [English](ROADMAP.md)
+_最近更新：2026-10-11_ · [English](ROADMAP.md)
 
 PRTS-MCP 已越过 1.x 时代。1.7.0 是最后一个 1.x 功能版本和 1.7 LTS 基线。本文档记录**接下来要做什么**——已发布的内容请查看 Python 和 TypeScript 各自的 CHANGELOG。
 
 ## 当前发布
 
-- Python：`2.8.0` _（最新稳定版）_
-- TypeScript：`2.8.0` _（最新稳定版）_
+- Python：`2.8.1` _（最新稳定版）_
+- TypeScript：`2.8.1` _（最新稳定版）_
 - `1.7.0` LTS 仍为维护线——仅兼容性、安全性、数据同步和关键缺陷修复。
 - 2.x 线为 24 个公共 MCP 工具（CI 强制检查）；1.7 LTS 线冻结 32 个公共 MCP 工具。
 - 迁移说明：[0.x → 1.0](docs/migration-0.x-to-1.0.md)、[1.x → 2.0](docs/migration-1.x-to-2.0.md)。
@@ -44,6 +44,10 @@ SQLite 迁移不分配给任何版本。根据 2026 年 8 月的只读评估，�
 ### 2.7.0 — 已于 2026-08-15 发布
 
 原草案中的干员基建技能（`get_operator_basic_info` 携带有界 `building_skills` 区，以及 `search` 新增 `building_skills` scope）与时装/立绘元数据条目已随 2.7.0 发布——详见 Python 与 TypeScript CHANGELOG。`LOCAL_IMAGE=true` 下 `operator_artwork(action="list")` 的皮肤元数据富化是从原 2.8.0 候选提前的条目；该次 2.8.0 占位仅为目标版本号，未承载主题。
+
+### 2.8.1 — 已于 2026-10-11 发布
+
+肉鸽剧情补充目录接入既有剧情工具，支持六个事件的发现、章节读取、搜索与角色追踪；兼容不携带可选目录的旧数据包，工具面保持 24。
 
 ### 2.8.0 — 已于 2026-10-10 发布
 

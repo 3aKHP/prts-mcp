@@ -28,6 +28,8 @@ from prts_mcp.tools_prts import (
     register_prts_tools,
 )
 from prts_mcp.tools_story import register_story_tools
+
+from tests.fixtures import ROGUE_ENDING_KEY, ROGUE_MONTH_KEY, story_supplement_files
 from prts_mcp.data.stores import DirectoryStore
 from prts_mcp.data.story_reader import build_stories_listing_from_store
 from prts_mcp.data.story_summary import get_story_summary_from_store
@@ -168,6 +170,9 @@ def _story_files() -> dict[str, object]:
                 ],
             },
         },
+        # roguelike supplement catalog (additive in prts-mcp-data/v1);
+        # must not leak into any review-table golden
+        **story_supplement_files(),
         STORYINFO_PATH: {
             FIRST_STORY_KEY: "第一章梗概",
             SECOND_STORY_KEY: "第二章梗概",
@@ -265,6 +270,37 @@ def test_list_story_events_golden_and_empty(story_zip: Path) -> None:
     assert empty["total"] == 0
     assert empty["events"] == []
     assert render_story_events_listing(empty) == "未找到符合条件的活动（category='main'）。"
+
+
+def test_list_story_events_unfiltered_golden(story_zip: Path) -> None:
+    """Pin the ordering contract: review events keep their order, the
+    supplement appends after them."""
+    data = build_story_events_listing(story_zip)
+    assert data == _load_parity_fixture("story_events_all.json")
+    assert data["events"][-1]["event_id"] == "rogue_6"
+
+
+def test_list_story_events_roguelike_golden(story_zip: Path) -> None:
+    data = build_story_events_listing(story_zip, category="roguelike")
+
+    assert data == _load_parity_fixture("story_events_roguelike.json")
+    assert data["filters"] == {
+        "category": "roguelike",
+        "category_normalized": "roguelike",
+    }
+    assert render_story_events_listing(data) == (
+        "- [ROGUELIKE] rogue_6：沉沦者的黑流树海（2 章）"
+    )
+
+
+def test_list_stories_roguelike_golden(story_zip: Path) -> None:
+    data = build_stories_listing(story_zip, "rogue_6", include_summaries=False)
+
+    assert data == _load_parity_fixture("list_stories_roguelike.json")
+    assert render_stories_listing(data) == (
+        f"- RO6-E1 [结局] 强制重启（key: {ROGUE_ENDING_KEY}）\n"
+        f"- RO6-M4-1 [月度记录·南方往事] 南方往事·1（key: {ROGUE_MONTH_KEY}）"
+    )
 
 
 def test_list_stories_without_summaries_golden(story_zip: Path) -> None:

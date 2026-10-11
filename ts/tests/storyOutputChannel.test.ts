@@ -20,6 +20,13 @@ import {
   renderStoryEventsListing,
 } from "../src/data/story.ts";
 
+import {
+  ROGUE_ENDING_KEY,
+  ROGUE_MONTH_KEY,
+  STORY_SUPPLEMENT_PATH,
+  storySupplementFiles,
+} from "./fixtures/storySupplement.ts";
+
 const STORY_REVIEW_PATH = "zh_CN/gamedata/excel/story_review_table.json";
 const CHARDICT_PATH = "zh_CN/chardict.json";
 const STORYINFO_PATH = "zh_CN/storyinfo.json";
@@ -129,6 +136,9 @@ function storyFiles(): Record<string, unknown> {
         ],
       },
     },
+    // roguelike supplement catalog (additive in prts-mcp-data/v1);
+    // must not leak into any review-table golden
+    ...storySupplementFiles(),
     [STORYINFO_PATH]: {
       [FIRST_STORY_KEY]: "第一章梗概",
       [SECOND_STORY_KEY]: "第二章梗概",
@@ -204,6 +214,31 @@ function writeStoryZip(): string {
   zip.writeZip(zipPath);
   return zipPath;
 }
+
+test("story supplement payloads match shared parity fixtures", () => {
+  const zipPath = writeStoryZip();
+
+  const data = buildStoryEventsListing(zipPath, "roguelike");
+  assert.deepStrictEqual(data, loadParityFixture("story_events_roguelike.json"));
+  assert.equal(
+    renderStoryEventsListing(data),
+    "- [ROGUELIKE] rogue_6：沉沦者的黑流树海（2 章）",
+  );
+
+  // pin the ordering contract: review events keep their order,
+  // the supplement appends after them
+  const all = buildStoryEventsListing(zipPath);
+  assert.deepStrictEqual(all, loadParityFixture("story_events_all.json"));
+  assert.equal(all.events[all.events.length - 1]?.event_id, "rogue_6");
+
+  const stories = buildStoriesListing(zipPath, "rogue_6", false);
+  assert.deepStrictEqual(stories, loadParityFixture("list_stories_roguelike.json"));
+  assert.equal(
+    renderStoriesListing(stories),
+    `- RO6-E1 [结局] 强制重启（key: ${ROGUE_ENDING_KEY}）\n` +
+      `- RO6-M4-1 [月度记录·南方往事] 南方往事·1（key: ${ROGUE_MONTH_KEY}）`,
+  );
+});
 
 test("story structural payloads match shared parity fixtures", () => {
   const zipPath = writeStoryZip();

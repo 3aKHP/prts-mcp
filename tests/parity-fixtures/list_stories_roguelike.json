@@ -1,0 +1,19 @@
+{
+  "event_id": "rogue_6",
+  "total": 2,
+  "include_summaries": false,
+  "chapters": [
+    {
+      "story_code": "RO6-E1",
+      "story_name": "强制重启",
+      "story_key": "Obt/Roguelike/RO6/level_rogue6_ending_1",
+      "avg_tag": "结局"
+    },
+    {
+      "story_code": "RO6-M4-1",
+      "story_name": "南方往事·1",
+      "story_key": "Obt/Rogue/rogue_6/MonthRecord/month_record_rogue_6_4_1",
+      "avg_tag": "月度记录·南方往事"
+    }
+  ]
+}

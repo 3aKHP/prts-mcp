@@ -15,9 +15,10 @@ from pathlib import Path
 from prts_mcp.data.stores import DirectoryStore, JsonStore, ZipStore
 from prts_mcp.data.story_reader import (
     STORY_REVIEW_TABLE,
+    STORY_SUPPLEMENT,
     StoryLine,
     is_memoir_event,
-    load_json,
+    load_event_table,
     read_story_from_store,
     story_store,
 )
@@ -305,28 +306,40 @@ def story_search_index(store: JsonStore) -> _StorySearchIndex:
     return index
 
 
-def _story_store_descriptor(store: JsonStore) -> tuple[str, str, int, int] | None:
+def _story_store_descriptor(
+    store: JsonStore,
+) -> tuple[str, str, int, int, tuple[int, int] | None] | None:
     if isinstance(store, ZipStore):
         path = store.zip_path.resolve()
         if not path.is_file():
             return None
         stat = path.stat()
-        return ("zip", str(path), stat.st_size, stat.st_mtime_ns)
+        return ("zip", str(path), stat.st_size, stat.st_mtime_ns, None)
     if isinstance(store, DirectoryStore):
         root = store.root.resolve()
         review = root / STORY_REVIEW_TABLE
         if not review.is_file():
             return None
         stat = review.stat()
-        return ("directory", str(root), stat.st_size, stat.st_mtime_ns)
+        # the supplement catalog (if present) is part of the indexed corpus —
+        # its changes must invalidate the cached index for directory stores
+        supplement = root / STORY_SUPPLEMENT
+        supplement_stat = None
+        if supplement.is_file():
+            sstat = supplement.stat()
+            supplement_stat = (sstat.st_size, sstat.st_mtime_ns)
+        return (
+            "directory", str(root), stat.st_size, stat.st_mtime_ns,
+            supplement_stat,
+        )
     return None
 
 
 @lru_cache(maxsize=4)
 def _cached_story_search_index(
-    descriptor: tuple[str, str, int, int],
+    descriptor: tuple[str, str, int, int, tuple[int, int] | None],
 ) -> _StorySearchIndex:
-    kind, source, _size, _mtime_ns = descriptor
+    kind, source, _size, _mtime_ns, _supplement_stat = descriptor
     store: JsonStore
     if kind == "zip":
         store = ZipStore(source)
@@ -339,7 +352,7 @@ def _cached_story_search_index(
 
 
 def _build_story_search_index(store: JsonStore) -> _StorySearchIndex:
-    table: dict = load_json(store, STORY_REVIEW_TABLE)  # type: ignore[assignment]
+    table: dict = load_event_table(store)
     event_ids: set[str] = set()
     chapters: list[StorySearchChapter] = []
     records: list[_StorySearchRecord] = []
