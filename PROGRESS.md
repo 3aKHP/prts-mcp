@@ -25,6 +25,7 @@
 
 ## 交接入口
 
-- 分支 `rust-local`；HEAD `ff38665`；工作树除本文档提交外干净。
+- 分支 `rust-local`；HEAD 见 `git log -1`（tag local/p1-complete）；工作树干净。
+- 阶段 bundle：`artifacts/p0.bundle`、`artifacts/p1.bundle`（hash 以最终文件为准，因 bundle 含其自身说明提交而自我递归，此处不内嵌 hash；请维护者另存备份并自行记录）。
 - 差分重跑：`node tools/verify.mjs --phase P1`（Rust 需 `cargo build --locked --release`）；oracle 重建见 P0 报告。
 - P2 首个任务：DirectoryStore/ZipStore/FallbackStore 完整化 + `.gamedata_pair.json` 双指针接入（config.rs 已留 `activated_root` 单指针接入点）+ Release 状态机。
