@@ -14,3 +14,4 @@ pub mod search;
 pub mod skill;
 pub mod stage;
 pub mod stage_enemy;
+pub mod story;

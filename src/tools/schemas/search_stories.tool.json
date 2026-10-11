@@ -1,0 +1,43 @@
+{
+ "name": "search_stories",
+ "description": "在剧情台词中执行全文正则搜索，支持角色和台词类型过滤。 返回格式：以 `[stories/活动ID/章节编号 L行号]` 标注位置，命中行前缀 `>>> ` 标记，上下文行以 4 空格缩进显示。",
+ "inputSchema": {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+   "pattern": {
+    "type": "string",
+    "description": "正则表达式搜索模式，大小写不敏感。"
+   },
+   "character": {
+    "description": "按说话角色名过滤（仅匹配 dialog 行），如「博士」、「阿米娅」。",
+    "type": "string"
+   },
+   "line_type": {
+    "description": "台词类型过滤：dialog（对话）、narration（旁白）、choice（选项）。",
+    "type": "string"
+   },
+   "context_lines": {
+    "default": 1,
+    "description": "匹配行前后的上下文行数，默认 1。",
+    "type": "integer",
+    "minimum": 0,
+    "maximum": 5
+   },
+   "max_results": {
+    "default": 30,
+    "description": "最多返回条数，默认 30。",
+    "type": "integer",
+    "minimum": 1,
+    "maximum": 100
+   },
+   "event_id": {
+    "description": "限定活动 ID，如「act31side」。不填则搜索全部活动。",
+    "type": "string"
+   }
+  },
+  "required": [
+   "pattern"
+  ]
+ }
+}

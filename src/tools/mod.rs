@@ -2,6 +2,7 @@
 
 pub mod gamedata_tools;
 pub mod output;
+pub mod story_tools;
 pub mod zodish;
 
 use serde_json::Value;
@@ -70,6 +71,11 @@ impl AppHandle {
     pub fn levels_path(&self) -> std::path::PathBuf {
         self.data.config().levels_path.clone()
     }
+
+    /// Static configured story zip path (missing-data message wording).
+    pub fn storyjson_path(&self) -> std::path::PathBuf {
+        self.data.config().storyjson_zip.clone()
+    }
 }
 
 /// Embed a tool declaration captured from the oracle (name/description/
@@ -116,5 +122,17 @@ pub fn registry() -> Vec<ToolEntry> {
         tool!("list_items", gamedata_tools::list_items),
         tool!("get_item_info", gamedata_tools::get_item_info),
         tool!("search", gamedata_tools::search),
+        tool!("list_story_events", story_tools::list_story_events),
+        tool!("list_stories", story_tools::list_stories),
+        tool!("get_story_summary", story_tools::get_story_summary),
+        tool!("read_story", story_tools::read_story),
+        tool!("read_activity", story_tools::read_activity),
+        tool!("search_stories", story_tools::search_stories),
+        tool!("get_operator_memoirs", story_tools::get_operator_memoirs),
+        tool!(
+            "find_character_appearances",
+            story_tools::find_character_appearances
+        ),
+        tool!("find_speakers_in", story_tools::find_speakers_in),
     ]
 }
