@@ -1,0 +1,256 @@
+{
+  "oracle": "bun 1.3.14",
+  "captured_at": "2026-10-11T11:12:15.040Z",
+  "flags": "iu",
+  "results": [
+    {
+      "id": "R01-empty",
+      "match": true,
+      "rejected": false
+    },
+    {
+      "id": "R02-case-fold",
+      "match": true,
+      "rejected": false
+    },
+    {
+      "id": "R02b-case-fold-nonascii",
+      "match": true,
+      "rejected": false
+    },
+    {
+      "id": "R03-word-han",
+      "match": true,
+      "rejected": false
+    },
+    {
+      "id": "R03b-word-mixed",
+      "match": false,
+      "rejected": false
+    },
+    {
+      "id": "R04-digit-ascii",
+      "match": true,
+      "rejected": false
+    },
+    {
+      "id": "R04b-digit-fullwidth",
+      "match": false,
+      "rejected": false
+    },
+    {
+      "id": "R05-space-fullwidth",
+      "match": true,
+      "rejected": false
+    },
+    {
+      "id": "R05b-space-ascii",
+      "match": true,
+      "rejected": false
+    },
+    {
+      "id": "R06-word-boundary",
+      "match": true,
+      "rejected": false
+    },
+    {
+      "id": "R06b-word-boundary-hit",
+      "match": true,
+      "rejected": false
+    },
+    {
+      "id": "R07-astral-dot",
+      "match": true,
+      "rejected": false
+    },
+    {
+      "id": "R07b-astral-dot-two",
+      "match": false,
+      "rejected": false
+    },
+    {
+      "id": "R08-script-han",
+      "match": true,
+      "rejected": false
+    },
+    {
+      "id": "R08b-script-han-miss",
+      "match": false,
+      "rejected": false
+    },
+    {
+      "id": "R08c-script-latin",
+      "match": true,
+      "rejected": false
+    },
+    {
+      "id": "R09-lookahead",
+      "match": true,
+      "rejected": false
+    },
+    {
+      "id": "R09b-lookahead-miss",
+      "match": false,
+      "rejected": false
+    },
+    {
+      "id": "R10-lookbehind",
+      "match": true,
+      "rejected": false
+    },
+    {
+      "id": "R10b-lookbehind-miss",
+      "match": false,
+      "rejected": false
+    },
+    {
+      "id": "R11-named-backref",
+      "match": true,
+      "rejected": false
+    },
+    {
+      "id": "R11b-named-backref-miss",
+      "match": false,
+      "rejected": false
+    },
+    {
+      "id": "R12-numeric-backref-unmatched",
+      "match": true,
+      "rejected": false
+    },
+    {
+      "id": "R12b-numeric-backref",
+      "match": true,
+      "rejected": false
+    },
+    {
+      "id": "R13-inline-flags",
+      "rejected": true,
+      "match": null,
+      "engine_message": "Invalid regular expression: unrecognized character after (?"
+    },
+    {
+      "id": "R14-case-folding-sharp-s",
+      "match": true,
+      "rejected": false
+    },
+    {
+      "id": "R14b-case-folding-kelvin",
+      "match": true,
+      "rejected": false
+    },
+    {
+      "id": "R15-combining",
+      "match": false,
+      "rejected": false
+    },
+    {
+      "id": "R15b-combining-nfc",
+      "match": true,
+      "rejected": false
+    },
+    {
+      "id": "R16-invalid-open-bracket",
+      "rejected": true,
+      "match": null,
+      "engine_message": "Invalid regular expression: missing terminating ] for character class"
+    },
+    {
+      "id": "R16b-invalid-open-paren",
+      "rejected": true,
+      "match": null,
+      "engine_message": "Invalid regular expression: missing )"
+    },
+    {
+      "id": "R16c-invalid-star",
+      "rejected": true,
+      "match": null,
+      "engine_message": "Invalid regular expression: nothing to repeat"
+    },
+    {
+      "id": "R17-anchor-multiline",
+      "match": false,
+      "rejected": false
+    },
+    {
+      "id": "R17b-anchor-single-line",
+      "match": true,
+      "rejected": false
+    },
+    {
+      "id": "E01-dotall-off",
+      "match": false,
+      "rejected": false
+    },
+    {
+      "id": "E02-char-class-range",
+      "match": true,
+      "rejected": false
+    },
+    {
+      "id": "E03-negated-class",
+      "match": true,
+      "rejected": false
+    },
+    {
+      "id": "E04-quantifier-greedy",
+      "match": true,
+      "rejected": false
+    },
+    {
+      "id": "E05-alternation",
+      "match": true,
+      "rejected": false
+    },
+    {
+      "id": "E06-escape-slash",
+      "match": true,
+      "rejected": false
+    },
+    {
+      "id": "E07-unicode-escape",
+      "match": true,
+      "rejected": false
+    },
+    {
+      "id": "E08-hex-escape",
+      "match": true,
+      "rejected": false
+    },
+    {
+      "id": "E09-null-escape",
+      "match": true,
+      "rejected": false
+    },
+    {
+      "id": "E10-control-escape",
+      "match": true,
+      "rejected": false
+    },
+    {
+      "id": "E11-lazy-quantifier",
+      "match": true,
+      "rejected": false
+    },
+    {
+      "id": "E12-lookahead-neg",
+      "match": true,
+      "rejected": false
+    },
+    {
+      "id": "E13-class-backslash-d",
+      "match": true,
+      "rejected": false
+    },
+    {
+      "id": "E14-dollar-end",
+      "match": true,
+      "rejected": false
+    },
+    {
+      "id": "E15-caret-start-miss",
+      "match": false,
+      "rejected": false
+    }
+  ]
+}

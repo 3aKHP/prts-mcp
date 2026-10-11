@@ -41,6 +41,7 @@ if (!PHASE_ARG && !flag("--update-golden")) {
   process.exit(2);
 }
 
+const TS_RUNTIME = flagValue("--ts-runtime") ?? "bun";
 const MANIFEST = JSON.parse(readFileSync(join(CASES, "manifest.json"), "utf-8"));
 const SERVER_VERSION = JSON.parse(readFileSync(join(TS, "package.json"), "utf-8")).version;
 const BUN_VERSION = execFileSync("bun", ["--version"], { encoding: "utf-8" }).trim();
@@ -84,7 +85,7 @@ function childEnv(dataset, extra = {}) {
 async function startHttp(kind, dataset, extraEnv = {}) {
   const port = await freePort();
   const command = kind === "ts"
-    ? { cmd: "bun", argv: [join(TS, "dist", "server.js")] }
+    ? { cmd: TS_RUNTIME, argv: [join(TS, "dist", "server.js")] }
     : { cmd: RUST_BIN, argv: ["--transport", "http"] };
   if (!command.cmd) throw new Error("no Rust binary found; build it or pass --rust-bin");
   const child = spawn(command.cmd, command.argv, {
@@ -173,7 +174,7 @@ async function httpPost(origin, path, body, headers = {}) {
 
 function startStdio(kind, dataset, extraEnv = {}) {
   const command = kind === "ts"
-    ? { cmd: "bun", argv: [join(TS, "dist", "server-stdio.js")] }
+    ? { cmd: TS_RUNTIME, argv: [join(TS, "dist", "server-stdio.js")] }
     : { cmd: RUST_BIN, argv: ["--transport", "stdio"] };
   if (!command.cmd) throw new Error("no Rust binary found");
   const child = spawn(command.cmd, command.argv, {
@@ -459,13 +460,13 @@ async function updateGolden() {
 const PHASE_ORDER = ["P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8"];
 function phaseRank(p) { return PHASE_ORDER.indexOf(p); }
 
-function selectableCases(phase, { live = false }) {
+function selectableCases(phase, { live = false, deferSurface = true }) {
   return MANIFEST.cases.filter((c) => {
     if (ONLY && !c.id.includes(ONLY)) return false;
     if (!!c.live !== live) return false;
-    // diff_phase defers full-surface cases (e.g. 24-tool tools/list) until the
-    // registry catches up; oracle self-checks still use `phase`.
-    const cp = c.diff_phase ?? c.phase ?? "P0";
+    // diff_phase defers full-surface cases (e.g. 24-tool tools/list) until
+    // the registry catches up; oracle self-checks always use `phase`.
+    const cp = deferSurface ? (c.diff_phase ?? c.phase ?? "P0") : (c.phase ?? "P0");
     if (phase === "ALL" || phaseRank(phase) >= phaseRank(cp)) return true;
     return false;
   });
@@ -489,7 +490,7 @@ function writeJson(path, value) {
 
 /** P0 oracle self-check: same TS twice → equal; mutated capture → comparator fires. */
 async function selfCheckP0() {
-  const cases = selectableCases("P0", { live: false });
+  const cases = selectableCases("P0", { live: false, deferSurface: false });
   if (cases.length === 0) throw new Error("no P0 cases selected");
   const dir = artifactDir();
   const startedAt = Date.now();
@@ -548,7 +549,7 @@ async function selfCheckP0() {
     command: `node tools/verify.mjs ${args.join(" ")}`,
     started_at: new Date(startedAt).toISOString(),
     duration_ms: Date.now() - startedAt,
-    ts: { runtime: `bun ${BUN_VERSION}`, server_version: SERVER_VERSION },
+    ts: { runtime: `${TS_RUNTIME} ${TS_RUNTIME === "bun" ? BUN_VERSION : process.version}`, server_version: SERVER_VERSION },
     dataset: "minimal-gamedata-v1 (+empty)",
     counts: { total: cases.length, pass: passed, fail: repeatFailures, blocked: goldenMissing, not_run: 0 },
     mutation_check: { target: target.id, mutation: mutatedNote, detected: mutationCaught },
@@ -632,7 +633,7 @@ async function differential(phase) {
     command: `node tools/verify.mjs ${args.join(" ")}`,
     started_at: new Date(startedAt).toISOString(),
     duration_ms: Date.now() - startedAt,
-    ts: { runtime: `bun ${BUN_VERSION}`, server_version: SERVER_VERSION },
+    ts: { runtime: `${TS_RUNTIME} ${TS_RUNTIME === "bun" ? BUN_VERSION : process.version}`, server_version: SERVER_VERSION },
     rust: useRust ? RUST_BIN : null,
     dataset: "minimal-gamedata-v1 (+empty)",
     counts: { total: cases.length, pass, fail, blocked, not_run: 0 },

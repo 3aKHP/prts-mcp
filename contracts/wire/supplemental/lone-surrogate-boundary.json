@@ -1,0 +1,17 @@
+{
+  "capture_meta": {
+    "captured_at": "2026-10-11T11:14:00Z",
+    "note": "J1 input-boundary probe from docs/02: lone leading surrogate (escaped \ud83d) inside a tools/call string argument"
+  },
+  "ts_oracle": {
+    "status": 200,
+    "body_text": "event: message\ndata: {\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"没有匹配的关卡（filter: zoneId=\\ud83d）。\"}]},\"jsonrpc\":\"2.0\",\"id\":2}\n\n",
+    "behavior": "Bun JSON.parse accepts the lone surrogate escape; the filter runs with it and the response JSON re-escapes it verbatim"
+  },
+  "rust_adapter": {
+    "status": 400,
+    "body_text": "{\"jsonrpc\":\"2.0\",\"id\":null,\"error\":{\"code\":-32700,\"message\":\"Parse error\"}}",
+    "behavior": "serde_json rejects unpaired surrogate escapes, so the whole request body fails to parse"
+  },
+  "disposition": "Registered as P1 decision item D-P1-INPUT-SURROGATE: whether to implement a surrogate-tolerant JSON layer (JS strings are UTF-16; Rust strings are UTF-8) is a contract-input-set change requiring maintainer sign-off per docs/01. Not silently dropped; no differential case exercises lone surrogates."
+}
