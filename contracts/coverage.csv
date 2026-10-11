@@ -1,18 +1,18 @@
 id,phase,required,status,evidence,acceptance
 TOOL-search_prts,P5,yes,not-started,,search_prts: all declared parameters; success empty/error and channel contract
 TOOL-prts_page,P5,yes,not-started,,prts_page: all declared parameters; success empty/error and channel contract
-TOOL-get_operator_archives,P3,yes,not-started,,get_operator_archives: all declared parameters; success empty/error and channel contract
-TOOL-get_operator_voicelines,P3,yes,not-started,,get_operator_voicelines: all declared parameters; success empty/error and channel contract
-TOOL-get_operator_basic_info,P3,yes,not-started,,get_operator_basic_info: all declared parameters; success empty/error and channel contract
-TOOL-list_enemies,P3,yes,not-started,,list_enemies: all declared parameters; success empty/error and channel contract
-TOOL-get_enemy_info,P3,yes,not-started,,get_enemy_info: all declared parameters; success empty/error and channel contract
-TOOL-get_stage_enemies,P3,yes,not-started,,get_stage_enemies: all declared parameters; success empty/error and channel contract
-TOOL-get_enemy_appearances,P3,yes,not-started,,get_enemy_appearances: all declared parameters; success empty/error and channel contract
-TOOL-list_stages,P3,yes,not-started,,list_stages: all declared parameters; success empty/error and channel contract
-TOOL-get_stage_info,P3,yes,not-started,,get_stage_info: all declared parameters; success empty/error and channel contract
-TOOL-list_items,P3,yes,not-started,,list_items: all declared parameters; success empty/error and channel contract
-TOOL-get_item_info,P3,yes,not-started,,get_item_info: all declared parameters; success empty/error and channel contract
-TOOL-search,P3,yes,not-started,,search: all declared parameters; success empty/error and channel contract
+TOOL-get_operator_archives,P3,yes,verified,diff cases operator.archives.* (5: default/no-handbook/not-found/channel-structured/missing-data) golden-exact,get_operator_archives: all declared parameters; success empty/error and channel contract
+TOOL-get_operator_voicelines,P3,yes,verified,diff cases operator.voicelines.* (2) + unit corpus operator-query-cases,get_operator_voicelines: all declared parameters; success empty/error and channel contract
+TOOL-get_operator_basic_info,P3,yes,verified,diff cases operator.basic.* (17: basic/skills/stats±level/decimal/nullish/errors/channels/missing) + query corpus + talent notes + tool-bounds,get_operator_basic_info: all declared parameters; success empty/error and channel contract
+TOOL-list_enemies,P3,yes,verified,diff cases enemy.list.* (8: default/boss/invalid-filter/offset-oob/full/channels/missing) + 4-cell matrix,list_enemies: all declared parameters; success empty/error and channel contract
+TOOL-get_enemy_info,P3,yes,verified,diff cases enemy.info.* (9: default/dup-name/raw-id-no-stats/stage paths/not-found) + 4-cell matrix,get_enemy_info: all declared parameters; success empty/error and channel contract
+TOOL-get_stage_enemies,P3,yes,verified,diff cases enemy.stage-enemies.* (9: default/no-levelid/placeholders/not-found/channels/missing) + 4-cell matrix,get_stage_enemies: all declared parameters; success empty/error and channel contract
+TOOL-get_enemy_appearances,P3,yes,verified,diff cases enemy.appearances.* (7: default/by-id/no-match/offset-oob/channel/missing) + 4-cell matrix,get_enemy_appearances: all declared parameters; success empty/error and channel contract
+TOOL-list_stages,P3,yes,verified,P1 cells retained + P3: diff stage.list.* (P0-P1 set) + 4-cell matrix already present,list_stages: all declared parameters; success empty/error and channel contract
+TOOL-get_stage_info,P3,yes,verified,diff cases stage.info.* (6: default/null-apcost/not-found/channels) + 4-cell matrix,get_stage_info: all declared parameters; success empty/error and channel contract
+TOOL-list_items,P3,yes,verified,diff cases item.list.* (8: default/category-alias/raw/no-match/offset-oob/channels/missing) + 4-cell matrix,list_items: all declared parameters; success empty/error and channel contract
+TOOL-get_item_info,P3,yes,verified,diff cases item.info.* (5: by-name/by-id/not-found/channel) + 4-cell matrix,get_item_info: all declared parameters; success empty/error and channel contract
+TOOL-search,P3,yes,verified,diff cases search.* (15: six scopes/empty/max-results/bad-regex normalized D-level/schema-reject/channels/missing) + 4-cell matrix,search: all declared parameters; success empty/error and channel contract
 TOOL-list_story_events,P4,yes,not-started,,list_story_events: all declared parameters; success empty/error and channel contract
 TOOL-list_stories,P4,yes,not-started,,list_stories: all declared parameters; success empty/error and channel contract
 TOOL-get_story_summary,P4,yes,not-started,,get_story_summary: all declared parameters; success empty/error and channel contract
@@ -32,15 +32,15 @@ BRANCH-prts_page-action-links,P5,yes,not-started,,action=links: behavior result 
 BRANCH-prts_page-action-template,P5,yes,not-started,,action=template: behavior result and relevant failure cases
 BRANCH-prts_page-direction-outbound,P5,yes,not-started,,direction=outbound: behavior result and relevant failure cases
 BRANCH-prts_page-direction-inbound,P5,yes,not-started,,direction=inbound: behavior result and relevant failure cases
-BRANCH-get_operator_basic_info-action-basic,P3,yes,not-started,,action=basic: behavior result and relevant failure cases
-BRANCH-get_operator_basic_info-action-skills,P3,yes,not-started,,action=skills: behavior result and relevant failure cases
-BRANCH-get_operator_basic_info-action-stats,P3,yes,not-started,,action=stats: behavior result and relevant failure cases
-BRANCH-search-scope-operators,P3,yes,not-started,,scope=operators: behavior result and relevant failure cases
-BRANCH-search-scope-enemies,P3,yes,not-started,,scope=enemies: behavior result and relevant failure cases
-BRANCH-search-scope-stages,P3,yes,not-started,,scope=stages: behavior result and relevant failure cases
-BRANCH-search-scope-items,P3,yes,not-started,,scope=items: behavior result and relevant failure cases
-BRANCH-search-scope-building_skills,P3,yes,not-started,,scope=building_skills: behavior result and relevant failure cases
-BRANCH-search-scope-skills,P3,yes,not-started,,scope=skills: behavior result and relevant failure cases
+BRANCH-get_operator_basic_info-action-basic,P3,yes,verified,diff operator.basic.default/talents/nullish,action=basic: behavior result and relevant failure cases
+BRANCH-get_operator_basic_info-action-skills,P3,yes,verified,diff operator.basic.skills/no-skills; unit corpus 专三 label; blackboard formats (0%/0.0%/negation/string twin/zero value/passive sentinel),action=skills: behavior result and relevant failure cases
+BRANCH-get_operator_basic_info-action-stats,P3,yes,verified,diff operator.basic.stats/stats-level/stats-decimal/level-oob/phase-oob; corpus 生命上限：1337 & Lv1 1198/Lv满 1480; half-away + decimal interpolation,action=stats: behavior result and relevant failure cases
+BRANCH-search-scope-operators,P3,yes,verified,diff search.operators(.empty)/max-results; name+archives+voicelines records,scope=operators: behavior result and relevant failure cases
+BRANCH-search-scope-enemies,P3,yes,verified,"diff search.enemies; hidden filtered, tags searchable",scope=enemies: behavior result and relevant failure cases
+BRANCH-search-scope-stages,P3,yes,verified,diff search.stages; description cleaned in haystack,scope=stages: behavior result and relevant failure cases
+BRANCH-search-scope-items,P3,yes,verified,"diff search.items; sorted records, name/desc/usage/obtain/classify/type/id haystack",scope=items: behavior result and relevant failure cases
+BRANCH-search-scope-building_skills,P3,yes,verified,diff search.building-skills; best-phase slot pick,scope=building_skills: behavior result and relevant failure cases
+BRANCH-search-scope-skills,P3,yes,verified,"diff search.skills(.skills-string-blackboard); all-level haystack, top-level display",scope=skills: behavior result and relevant failure cases
 BRANCH-operator_artwork-action-list,P6,yes,not-started,,action=list: behavior result and relevant failure cases
 BRANCH-operator_artwork-action-get,P6,yes,not-started,,action=get: behavior result and relevant failure cases
 BRANCH-operator_artwork-variant-original,P6,yes,not-started,,variant=original: behavior result and relevant failure cases
@@ -71,7 +71,7 @@ SYNC-lock,P2,yes,verified,"sync::activation tests (serialize, timeout leaves liv
 SYNC-idempotence,P2,yes,verified,"pair_manifest_is_stable_until_the_generation_changes (ino/mtime/ctime equality, no cache clear); forced_check_refreshes_fetched_at; no-change bench samples 454ms/20.7MB",Unchanged cycle metadata bytes and caches stay unchanged
 SYNC-scheduler,P2,yes,verified,"sync::scheduler tests (interval parsing, pair retry rule); process_sync::stdio_exit_with_pending_retries (<10s exit with 30s retries armed); single-flight via SlowTransport max-active=1 test",Startup single-flight retries and periodic timing
 SYNC-ts-interop,P2,yes,verified,"tests/interop_ts.rs 5/5 (TS writes->Rust reads, Rust writes->TS reads, story swap visible, release_meta byte equality, cross-process lock contention); differential stage.list.pair-activated on TS-written fixture",TS and Rust alternating readers writers on isolated volume
-DATA-game-boundaries,P3,yes,not-started,,Operator identity stats skills talent building enemy overrides sorting
+DATA-game-boundaries,P3,yes,verified,"unit tests: interpolation half-away/negative-zero, pythonFloatString/withThousands, m_defined merge, level0 projection, ICU localeCompare probes (15 oracle-pinned), spawn/refs parser, sanitizer passes (incl. dead category pass), zodish probes",Operator identity stats skills talent building enemy overrides sorting
 STORY-supplement,P4,yes,not-started,,Old optional pack invalid catalog and complete roguelike chain
 STORY-index,P4,yes,not-started,,Full-data search correct identity and old index release
 WIKI-replay,P5,yes,not-started,,Deterministic request and response replay including templates

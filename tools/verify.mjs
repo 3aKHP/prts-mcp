@@ -64,6 +64,8 @@ function freePort() {
 function datasetDir(name) {
   if (name === "empty") return join(ROOT, ".runtime", "fixtures", "empty-gamedata-v1");
   if (name === "minimal-gamedata-v1") return join(ROOT, ".runtime", "fixtures", "minimal-gamedata-v1");
+  // P3: full GameData surface fixture (excel + levels under one root).
+  if (name === "minimal-gamedata-v2") return join(ROOT, ".runtime", "fixtures", "minimal-gamedata-v2");
   // P2: TS-sync-written generation volume — GAMEDATA_PATH is its gamedata
   // root, so both implementations must resolve the pair pointer.
   if (name === "activated-minimal-v1") {
@@ -220,7 +222,7 @@ function stdioRecv(child, id, timeoutMs = 15000) {
     };
     const timer = setTimeout(() => {
       child.stdout.off("data", onData);
-      reject(new Error(`stdio recv timeout for id=${id}; buffer=${JSON.stringify(buffer.slice(0, 300))}`));
+      reject(new Error(`stdio recv timeout for id=${id}; buffer=${JSON.stringify(buffer.slice(0, 300))}; childKilled=${child.killed}; exitCode=${child.exitCode}`));
     }, timeoutMs);
     child.stdout.on("data", onData);
   });
@@ -312,7 +314,14 @@ async function runCase(kind, c) {
       request = modernizeRequest(c.request);
     }
     stdioSend(proc.child, request);
-    const response = await stdioRecv(proc.child, c.request.id);
+    let response;
+    try {
+      response = await stdioRecv(proc.child, c.request.id);
+    } catch (err) {
+      writeFileSync("/tmp/stdio-hang-stderr.log", proc.stderr());
+      writeFileSync("/tmp/stdio-hang-pollution.log", proc.stdoutPollution());
+      throw err;
+    }
     return normalizeObservable({
       status: 200, content_type: "stdio", session_id: null, body: response,
     }, c, dataset);
@@ -378,6 +387,22 @@ function normalizeObservable(observed, c, dataset) {
       return out;
     };
     body = replaceVersion(body);
+  }
+  if (c.normalizations?.includes("map-regex-error-detail")) {
+    // Engine detail after 正则表达式无效： is runtime-specific (bun/node/
+    // QuickJS each phrase it differently); the shared contract is the prefix
+    // plus a non-empty engine error. Normalize the detail to a category.
+    const mapRegexError = (value) => {
+      if (typeof value === "string") {
+        return value.replace(/(正则表达式无效：).+$/, "$1<engine-detail>");
+      }
+      if (value === null || typeof value !== "object") return value;
+      if (Array.isArray(value)) return value.map(mapRegexError);
+      const out = {};
+      for (const [k, v] of Object.entries(value)) out[k] = mapRegexError(v);
+      return out;
+    };
+    body = mapRegexError(body);
   }
   return { ...observed, body };
 }

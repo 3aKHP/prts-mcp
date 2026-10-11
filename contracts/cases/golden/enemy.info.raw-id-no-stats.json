@@ -1,0 +1,26 @@
+{
+  "case": "enemy.info.raw-id-no-stats",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "c96830be-41c2-427c-bd01-f9e029bc3f59",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "未找到敌人 'enemy_1004_mslime'。请使用游戏内名称。"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9331
+    }
+  }
+}

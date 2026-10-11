@@ -1,0 +1,26 @@
+{
+  "case": "enemy.stage-enemies.missing-data",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "empty",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "3f29d7c4-182a-472e-8e79-c713955c5dc2",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "关卡战斗数据暂不可用。请等待服务器自动从 GitHub Release 同步 zh_CN-levels.zip 完成后重试。（当前同步目标路径：/home/asus/projects/2026-Spring/PRTS-MCP/dev/rust-rewrite/.runtime/fixtures/gamedata-levels）"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9348
+    }
+  }
+}

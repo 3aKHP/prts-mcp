@@ -1,0 +1,26 @@
+{
+  "case": "operator.basic.stats",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "af2378cd-c8a3-47bd-918c-f9a3151204f0",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "# 阿米娅 - 面板数值\n\n## 精英0（Lv1-50）\n\n- 生命上限：Lv1 699 / Lv满 958\n- 攻击：Lv1 276 / Lv满 390\n- 防御：Lv1 48 / Lv满 81\n- 法术抗性：Lv1 10 / Lv满 10\n- 部署费用：Lv1 18 / Lv满 18\n- 阻挡数：Lv1 1 / Lv满 1\n- 攻击速度：Lv1 100 / Lv满 100\n- 攻击间隔（秒）：Lv1 1.6 / Lv满 1.6\n- 再部署时间（秒）：Lv1 70 / Lv满 70\n\n## 精英1（Lv1-70）\n\n- 生命上限：Lv1 958 / Lv满 1198\n- 攻击：Lv1 390 / Lv满 514\n- 防御：Lv1 81 / Lv满 110\n- 法术抗性：Lv1 15 / Lv满 15\n- 部署费用：Lv1 19 / Lv满 20\n- 阻挡数：Lv1 1 / Lv满 1\n- 攻击速度：Lv1 100 / Lv满 100\n- 攻击间隔（秒）：Lv1 1.6 / Lv满 2\n- 再部署时间（秒）：Lv1 70 / Lv满 70\n\n## 精英2（Lv1-80）\n\n- 生命上限：Lv1 1198 / Lv满 1480\n- 攻击：Lv1 514 / Lv满 612\n- 防御：Lv1 110 / Lv满 121\n- 法术抗性：Lv1 20 / Lv满 20\n- 部署费用：Lv1 20 / Lv满 20\n- 阻挡数：Lv1 1 / Lv满 1\n- 攻击速度：Lv1 100 / Lv满 100\n- 攻击间隔（秒）：Lv1 1.6 / Lv满 1.6\n- 再部署时间（秒）：Lv1 70 / Lv满 70\n\n## 满信赖加成\n\n- 生命上限+200，攻击+70\n\n## 潜能加成\n\n- 部署费用-2\n- 攻击力+25"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9308
+    }
+  }
+}

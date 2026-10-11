@@ -1,6 +1,6 @@
 {
   "schema_version": "prts-rust-plan/data-manifest/v1",
-  "recorded_at": "2026-10-11T14:13:45.636Z",
+  "recorded_at": "2026-10-11T18:00:17.037Z",
   "baseline_commit": "e0ba36096cdd46640166b0a5db02902fa9a6a24c",
   "datasets": {
     "minimal-gamedata-v1": {
@@ -43,6 +43,80 @@
           "path": "zh_CN/gamedata/excel/zone_table.json",
           "bytes": 284,
           "sha256": "a9120d68d1daa732905dc7e24e360408fa6a809fd62392e7ab336d87e61a3dcb"
+        }
+      ]
+    },
+    "minimal-gamedata-v2": {
+      "purpose": "P3 differential fixture: full GameData tool surface (operator/enemy/stage/item/search)",
+      "source": "derived from tests/fixtures/operatorData.ts + enemy/item/stageEnemy test fixtures @ baseline commit",
+      "root": ".runtime/fixtures/minimal-gamedata-v2",
+      "excel_dir": "zh_CN/gamedata/excel",
+      "levels_dir": "zh_CN/gamedata/levels",
+      "files": [
+        {
+          "path": "zh_CN/gamedata/excel/building_data.json",
+          "bytes": 1091,
+          "sha256": "dd56ea8e6ca42536c938e6116bd65a29f9c92153abe28e17c595146d2fc56085"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/character_table.json",
+          "bytes": 4189,
+          "sha256": "26f4fe7d3f54de5505db8df80e9ccf519a233402321a68445afc599521c20c53"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/charword_table.json",
+          "bytes": 361,
+          "sha256": "ee1115078577737f597b9f36dd5baeae7bd430507d7dc05666a027abb3d345a7"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/enemy_handbook_table.json",
+          "bytes": 1198,
+          "sha256": "caa949a7e89393af5112d12a7e4dc02de7e88e7afa6fa452bdf049d5853eaffb"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/handbook_info_table.json",
+          "bytes": 379,
+          "sha256": "754d71eaa1efe364ce97efbb51e5806855b78b8bae6f3d6a4d37f1ea5fa924cd"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/item_table.json",
+          "bytes": 1288,
+          "sha256": "44db3c4296c0d9d3414b92f363bb8fbab7b59d01bef7e8d1493921d9a803a87e"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/skill_table.json",
+          "bytes": 5531,
+          "sha256": "bfbe52ad95b2d2ed4935e99f8bdbf0b27a262ec85e54c373a3d8efa8452dcd89"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/stage_table.json",
+          "bytes": 2290,
+          "sha256": "2c482e0cc0c906c0380d3044d397bb056c7d2365935d35394758c40dea168301"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/story_review_table.json",
+          "bytes": 2,
+          "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/zone_table.json",
+          "bytes": 284,
+          "sha256": "a9120d68d1daa732905dc7e24e360408fa6a809fd62392e7ab336d87e61a3dcb"
+        },
+        {
+          "path": "zh_CN/gamedata/levels/enemydata/enemy_database.json",
+          "bytes": 1170,
+          "sha256": "e5af8842bfdf91cfbafcbd4db68da1995036a3f06f8d35a47edabdb741dab009"
+        },
+        {
+          "path": "zh_CN/gamedata/levels/obt/main/level_act42side_10.json",
+          "bytes": 76,
+          "sha256": "3cdd6072cbb09ca215ca2ba90bbfc5688671c68461325a33e01bc83690ed8c56"
+        },
+        {
+          "path": "zh_CN/gamedata/levels/obt/main/level_main_00-01.json",
+          "bytes": 785,
+          "sha256": "085e9285080278c8c4e1b7203ad08ce7a6119e898b4d76298737d3dac75119ad"
         }
       ]
     },
@@ -99,7 +173,7 @@
         {
           "path": "gamedata/archives/zh_CN-excel.zip",
           "bytes": 2688,
-          "sha256": "d8798358c866f0fa477a0ab12527c01f77b5b646a9ea5294e9dfcfb022208c7e"
+          "sha256": "1103aa7b255aaab9faf500ea7fa3ce8c581ad64bcfd43fce7c59f29cb0a8893d"
         },
         {
           "path": "gamedata/archives/release_meta.json",
@@ -109,7 +183,7 @@
         {
           "path": "gamedata-levels/archives/zh_CN-levels.zip",
           "bytes": 204,
-          "sha256": "f8aae3a04f74d640fc01fb840e498558604445495973e8652221ac428edbbd3c"
+          "sha256": "3783ab90adad78e878430327ed754f2ad824fb559820318ccf39a332474c3063"
         },
         {
           "path": "gamedata-levels/archives/release_meta.json",
@@ -119,7 +193,7 @@
         {
           "path": ".gamedata_pair.json",
           "bytes": 215,
-          "sha256": "142ad2449f4469ddbed6e00c8241a8d2d4acfe7a1f16de25228eb99ce3144a37"
+          "sha256": "36bef9ce145cc53f2d082594be9b5ad2e7dc012a7f3803f79811a565384028bc"
         }
       ],
       "generation_content": [

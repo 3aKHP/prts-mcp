@@ -169,6 +169,564 @@ rmSync(EMPTY_ROOT, { recursive: true, force: true });
 mkdirSync(EMPTY_ROOT, { recursive: true });
 writeFileSync(join(EMPTY_ROOT, ".keep"), "", "utf-8");
 
+// --- minimal-gamedata-v2: the P3 GameData differential fixture. Combines the
+// frozen TS test fixtures (tests/fixtures/operatorData.ts @ e0ba360, the
+// enemy/item/stageEnemy writeFixtures) into one volume whose excel AND levels
+// sides live under a single GAMEDATA_PATH root, so both implementations
+// resolve the same dataset. Covers: talent candidate tiers, decimal
+// interpolation, blackboard placeholder formats, passive sentinels, building
+// slot best-phase picks, duplicate name folding (operator trap exclusion,
+// enemy last-wins, item first-wins), hidden entries, level overrides and the
+// AKDP {} placeholder quirk.
+
+const V2_ROOT = join(ROOT, ".runtime", "fixtures", "minimal-gamedata-v2");
+rmSync(V2_ROOT, { recursive: true, force: true });
+
+function writeV2(relPath, data) {
+  const target = join(V2_ROOT, relPath);
+  mkdirSync(dirname(target), { recursive: true });
+  writeFileSync(target, typeof data === "string" ? data : JSON.stringify(data), "utf-8");
+}
+
+const V2_EXCEL = "zh_CN/gamedata/excel";
+const V2_LEVELS = "zh_CN/gamedata/levels";
+
+// character_table: Amiya verbatim from operatorData.ts (talent tiers,
+// keyframes incl. the E1 attackTime 2.0 decimal interpolation case, favor and
+// potential frames); 银灰 carries the 4-candidate 领袖 talent from
+// operator-talent-cases.json; 夜刀 the single-candidate case; the trap entry
+// shares Amiya's name to pin the char_-prefix priority.
+writeV2(join(V2_EXCEL, "character_table.json"), {
+  char_002_amiya: {
+    name: "阿米娅",
+    appellation: "Amiya",
+    displayNumber: "R001",
+    description: "<@ba.kw>法术伤害</>",
+    rarity: "TIER_5",
+    profession: "CASTER",
+    subProfessionId: "corecaster",
+    position: "RANGED",
+    nationId: "rhodes",
+    groupId: "",
+    teamId: "",
+    tagList: ["输出", "支援"],
+    itemUsage: "罗德岛的公开领袖。",
+    itemDesc: "阿米娅的信物。",
+    itemObtainApproach: "主线获得",
+    talents: [
+      {
+        candidates: [
+          { name: "？？？", description: "" },
+          { name: "情绪吸收", description: "攻击回复技力", unlockCondition: { phase: "PHASE_1", level: 1 }, requiredPotentialRank: 0 },
+          { name: "情绪吸收", description: "攻击回复技力<@ba.talpu>（+2）</>", unlockCondition: { phase: "PHASE_2", level: 1 }, requiredPotentialRank: 4 },
+        ],
+      },
+    ],
+    skills: [
+      { skillId: "skchr_amiya_1" },
+      { skillId: "skchr_amiya_2" },
+      { skillId: "skchr_amiya_3" },
+    ],
+    phases: [
+      {
+        maxLevel: 50,
+        attributesKeyFrames: [
+          { level: 1, data: { maxHp: 699, atk: 276, def: 48, magicResistance: 10.0, cost: 18, blockCnt: 1, attackSpeed: 100.0, baseAttackTime: 1.6, respawnTime: 70 } },
+          { level: 50, data: { maxHp: 958, atk: 390, def: 81, magicResistance: 10.0, cost: 18, blockCnt: 1, attackSpeed: 100.0, baseAttackTime: 1.6, respawnTime: 70 } },
+        ],
+      },
+      {
+        maxLevel: 70,
+        attributesKeyFrames: [
+          { level: 1, data: { maxHp: 958, atk: 390, def: 81, magicResistance: 15.0, cost: 19, blockCnt: 1, attackSpeed: 100.0, baseAttackTime: 1.6, respawnTime: 70 } },
+          { level: 70, data: { maxHp: 1198, atk: 514, def: 110, magicResistance: 15.0, cost: 20, blockCnt: 1, attackSpeed: 100.0, baseAttackTime: 2.0, respawnTime: 70 } },
+        ],
+      },
+      {
+        maxLevel: 80,
+        attributesKeyFrames: [
+          { level: 1, data: { maxHp: 1198, atk: 514, def: 110, magicResistance: 20.0, cost: 20, blockCnt: 1, attackSpeed: 100.0, baseAttackTime: 1.6, respawnTime: 70 } },
+          { level: 80, data: { maxHp: 1480, atk: 612, def: 121, magicResistance: 20.0, cost: 20, blockCnt: 1, attackSpeed: 100.0, baseAttackTime: 1.6, respawnTime: 70 } },
+        ],
+      },
+    ],
+    favorKeyFrames: [
+      { level: 0, data: { maxHp: 0, atk: 0, def: 0 } },
+      { level: 50, data: { maxHp: 200, atk: 70 } },
+    ],
+    potentialRanks: [
+      { type: "BUFF", description: "部署费用-2" },
+      { type: "BUFF", description: "攻击力+25" },
+    ],
+  },
+  char_291_aglbln: {
+    name: "银灰",
+    appellation: "SilverAsh",
+    displayNumber: "HK01",
+    description: "能够自如运用剑技的感染者。",
+    rarity: "TIER_6",
+    profession: "WARRIOR",
+    subProfessionId: "lord",
+    position: "MELEE",
+    nationId: "kazimierz",
+    groupId: "karlan",
+    teamId: "",
+    tagList: ["输出", "支援"],
+    talents: [
+      {
+        candidates: [
+          { name: "领袖", description: "攻击力+5%", unlockCondition: { phase: "PHASE_1", level: 1 }, requiredPotentialRank: 0 },
+          { name: "领袖", description: "攻击力+7%", unlockCondition: { phase: "PHASE_1", level: 1 }, requiredPotentialRank: 4 },
+          { name: "领袖", description: "攻击力+10%", unlockCondition: { phase: "PHASE_2", level: 1 }, requiredPotentialRank: 0 },
+          { name: "领袖", description: "攻击力+12%", unlockCondition: { phase: "PHASE_2", level: 1 }, requiredPotentialRank: 4 },
+        ],
+      },
+    ],
+    skills: [
+      { skillId: "skchr_aglbln_2" },
+      null,
+    ],
+    phases: [
+      {
+        maxLevel: 50,
+        attributesKeyFrames: [
+          { level: 1, data: { maxHp: 903, atk: 245, def: 137, magicResistance: 0, cost: 12, blockCnt: 2, attackSpeed: 100.0, baseAttackTime: 1.3, respawnTime: 70 } },
+          { level: 50, data: { maxHp: 1235, atk: 352, def: 200, magicResistance: 0, cost: 12, blockCnt: 2, attackSpeed: 100.0, baseAttackTime: 1.3, respawnTime: 70 } },
+        ],
+      },
+    ],
+    favorKeyFrames: [{ level: 50, data: { atk: 60 } }],
+    potentialRanks: [{ type: "BUFF", description: "攻击力+30" }],
+  },
+  char_502_nblade: {
+    name: "夜刀",
+    appellation: "Yato",
+    displayNumber: "A41",
+    rarity: "TIER_3",
+    profession: "PIONEER",
+    subProfessionId: "charger",
+    position: "MELEE",
+    talents: [
+      {
+        candidates: [
+          { name: "快速重新部署", description: "再部署时间-30秒", unlockCondition: { phase: "PHASE_0", level: 30 }, requiredPotentialRank: 0 },
+        ],
+      },
+    ],
+    skills: [],
+    phases: [
+      {
+        maxLevel: 40,
+        attributesKeyFrames: [
+          { level: 1, data: { maxHp: 684, atk: 178, def: 141, cost: 9, blockCnt: 1, attackSpeed: 100.0, baseAttackTime: 1.05, respawnTime: 18 } },
+          { level: 40, data: { maxHp: 972, atk: 261, def: 205, cost: 9, blockCnt: 1, attackSpeed: 100.0, baseAttackTime: 1.05, respawnTime: 18 } },
+        ],
+      },
+    ],
+  },
+  trap_012_lynx: { name: "阿米娅", appellation: "Lynx" },
+});
+
+writeV2(join(V2_EXCEL, "handbook_info_table.json"), {
+  handbookDict: {
+    char_002_amiya: {
+      storyTextAudio: [
+        { storyTitle: "档案资料一", stories: [{ storyText: "阿米娅的档案文本。" }] },
+        { storyTitle: "档案资料二", stories: [{ storyText: "" }, { storyText: "第二段有效文本{{Trim|边缘}}" }] },
+      ],
+    },
+    char_291_aglbln: {
+      storyTextAudio: [
+        { storyTitle: "档案资料一", stories: [{ storyText: "雪境的往事。" }] },
+      ],
+    },
+  },
+});
+
+writeV2(join(V2_EXCEL, "charword_table.json"), {
+  charWords: {
+    amiya_001: { charId: "char_002_amiya", voiceTitle: "任命助理", voiceText: "博士，今天也请多指教。" },
+    amiya_002: { charId: "char_002_amiya", voiceTitle: "信赖提升后交谈", voiceText: "博士，[[罗德岛|这片土地]]需要我们。" },
+    aglbln_001: { charId: "char_291_aglbln", voiceTitle: "闲置", voiceText: "无聊。" },
+  },
+});
+
+writeV2(join(V2_EXCEL, "story_review_table.json"), {});
+
+writeV2(join(V2_EXCEL, "skill_table.json"), {
+  skchr_amiya_1: {
+    skillId: "skchr_amiya_1",
+    iconId: null,
+    hidden: false,
+    levels: [
+      [30, 40, 0], [35, 40, 0], [40, 40, 0], [45, 35, 5], [50, 35, 5],
+      [55, 35, 5], [60, 32, 10], [70, 32, 10], [80, 32, 10], [90, 30, 15],
+    ].map(([attackSpeed, spCost, initSp]) => ({
+      name: "战术咏唱",
+      description: "攻击速度<@ba.vup>+{attack_speed}</>，持续{duration}秒",
+      skillType: "MANUAL",
+      durationType: "NONE",
+      duration: 30.0,
+      spData: { spType: "INCREASE_WITH_TIME", spCost, initSp, maxChargeTime: 1, levelUpCost: null, increment: 1.0 },
+      blackboard: [
+        { key: "attack_speed", value: attackSpeed, valueStr: null },
+        { key: "duration", value: 30.0, valueStr: null },
+      ],
+    })),
+  },
+  skchr_amiya_2: {
+    skillId: "skchr_amiya_2",
+    iconId: null,
+    hidden: false,
+    levels: [
+      {
+        name: "精神爆发",
+        description: "攻击力<@ba.vup>+{atk:0%}</>，移动速度<@ba.vdown>-{-move_speed:0%}</>，有{prob:0.0%}概率使目标<$ba.stun>晕眩</>{ABILITY_RANGE_FORWARD_EXTEND}",
+        skillType: "AUTO",
+        durationType: "AMMO",
+        duration: 6.0,
+        spData: { spType: "INCREASE_WHEN_ATTACK", spCost: 12, initSp: 0, maxChargeTime: 3, levelUpCost: null, increment: 1.0 },
+        blackboard: [
+          { key: "atk", value: 0.1, valueStr: null },
+          { key: "prob", value: 0.275, valueStr: null },
+          { key: "move_speed", value: -0.35, valueStr: null },
+        ],
+      },
+      {
+        name: "精神爆发",
+        description: "伤害类型变为{damage_type}，连击{times:0}次，倍率{atk_scale:0.0%}，另有{extra_hits}次追击",
+        skillType: "AUTO",
+        durationType: "AMMO",
+        duration: 8.0,
+        spData: { spType: "INCREASE_WHEN_ATTACK", spCost: 10, initSp: 0, maxChargeTime: 3, levelUpCost: null, increment: 1.0 },
+        blackboard: [
+          { key: "damage_type", value: null, valueStr: "法术" },
+          { key: "times", value: 6.0, valueStr: null },
+          { key: "atk_scale", value: 1.15, valueStr: null },
+          { key: "extra_hits", value: 0, valueStr: null },
+        ],
+      },
+    ],
+  },
+  skchr_amiya_3: {
+    skillId: "skchr_amiya_3",
+    iconId: null,
+    hidden: false,
+    levels: [
+      {
+        name: "奇美拉",
+        description: "被动效果：每击使敌人防御力-{-def}，并使其晕眩{stun}秒",
+        skillType: "PASSIVE",
+        durationType: "NONE",
+        duration: -1,
+        spData: { spType: 8, spCost: null, initSp: null, maxChargeTime: null, levelUpCost: null, increment: null },
+        blackboard: [
+          { key: "def", value: -330.0, valueStr: null },
+          { key: "stun", value: 2.0, valueStr: null },
+        ],
+      },
+    ],
+  },
+});
+
+writeV2(join(V2_EXCEL, "building_data.json"), {
+  chars: {
+    char_002_amiya: {
+      buffChar: [
+        { buffData: [{ buffId: "control_tra_spd[000]", cond: { phase: "PHASE_0", level: 1 } }] },
+        {
+          buffData: [
+            { buffId: "dorm_rec_all[000]", cond: { phase: "PHASE_0", level: 1 } },
+            { buffId: "dorm_rec_all[010]", cond: { phase: "PHASE_2", level: 1 } },
+          ],
+        },
+      ],
+    },
+    char_291_aglbln: {
+      buffChar: [
+        { buffData: [{ buffId: "manu_prod_spd[000]", cond: { phase: "PHASE_1", level: 1 } }] },
+      ],
+    },
+  },
+  buffs: {
+    "control_tra_spd[000]": { buffId: "control_tra_spd[000]", buffName: "合作协议", roomType: "CONTROL", description: "进驻控制中枢时，所有贸易站订单效率<@cc.vup>+7%</>（同种效果取最高）" },
+    "dorm_rec_all[000]": { buffId: "dorm_rec_all[000]", buffName: "热情", roomType: "DORMITORY", description: "进驻宿舍时，恢复<@cc.vup>+0.1</>" },
+    "dorm_rec_all[010]": { buffId: "dorm_rec_all[010]", buffName: "热情", roomType: "DORMITORY", description: "进驻宿舍时，恢复<@cc.vup>+0.25</>" },
+    "manu_prod_spd[000]": { buffId: "manu_prod_spd[000]", buffName: "雪境守望", roomType: "MANUFACTURE", description: "进驻制造站时，生产力<@cc.vup>+15%</>" },
+  },
+});
+
+// item_table: item.test.ts entries plus the P0 TKT_RECRUIT drop target.
+writeV2(join(V2_EXCEL, "item_table.json"), {
+  items: {
+    "30011": {
+      itemId: "30011",
+      name: "源岩",
+      description: "常见于源石挥发殆尽后的地区。",
+      rarity: "TIER_1",
+      iconId: "MTL_SL_G1",
+      sortId: 100040,
+      usage: "可用于多种强化场合。",
+      obtainApproach: null,
+      hideInItemGet: false,
+      classifyType: "MATERIAL",
+      itemType: "MATERIAL",
+      stageDropList: [
+        { stageId: "main_00-01", occPer: "ALWAYS", sortId: 0 },
+        { stageId: "main_00-02", occPer: "SOMETIMES", sortId: 1 },
+      ],
+      buildingProductList: [],
+      voucherRelateList: null,
+      shopRelateInfoList: null,
+    },
+    "7001": {
+      itemId: "7001",
+      name: "招聘许可",
+      description: "人事部颁发的许可书。",
+      rarity: "TIER_4",
+      iconId: "TKT_RECRUIT",
+      sortId: 40012,
+      usage: "可从公开渠道招聘一位干员。",
+      obtainApproach: "采购中心、任务奖励",
+      hideInItemGet: false,
+      classifyType: "NORMAL",
+      itemType: "TKT_RECRUIT",
+      stageDropList: [],
+      buildingProductList: [],
+      voucherRelateList: null,
+      shopRelateInfoList: [{ shopId: "credit", itemId: "7001" }],
+    },
+    hidden: {
+      itemId: "hidden",
+      name: "隐藏物品",
+      hideInItemGet: true,
+      classifyType: "NONE",
+      itemType: "PLOT_ITEM",
+      sortId: 1,
+    },
+    "dup-source-rock": {
+      itemId: "dup-source-rock",
+      name: "源岩",
+      description: "重复名称条目不应覆盖先出现的物品。",
+      hideInItemGet: true,
+      classifyType: "NONE",
+      itemType: "PLOT_ITEM",
+      sortId: 2,
+    },
+  },
+});
+
+// stage/zone tables: P0's shapes plus a six-star link and a null-apCost stage
+// for get_stage_info branches.
+writeV2(join(V2_EXCEL, "stage_table.json"), {
+  stages: {
+    ...STAGE_TABLE.stages,
+    act42side_10: {
+      stageId: "act42side_10",
+      code: "AS-10",
+      name: "空对象占位关",
+      stageType: "ACTIVITY",
+      difficulty: "NORMAL",
+      zoneId: "act31side_zone1",
+      levelId: "Obt/Main/level_act42side_10",
+      apCost: 12,
+      dangerLevel: "NORMAL",
+      description: "关卡文件内数组字段为 {} 占位。",
+      stageDropInfo: null,
+      unlockCondition: [],
+      hardStagedId: null,
+      sixStarStageId: null,
+      bossMark: false,
+    },
+    "main_00-02": {
+      stageId: "main_00-02",
+      code: "0-2",
+      name: "死线",
+      stageType: "MAIN",
+      difficulty: "NORMAL",
+      zoneId: "main_0",
+      levelId: null,
+      apCost: null,
+      dangerLevel: null,
+      description: "",
+      stageDropInfo: null,
+      unlockCondition: [],
+      hardStagedId: null,
+      sixStarStageId: "main_00-01#f#",
+      bossMark: false,
+    },
+  },
+});
+writeV2(join(V2_EXCEL, "zone_table.json"), ZONE_TABLE);
+
+writeV2(join(V2_EXCEL, "enemy_handbook_table.json"), {
+  enemyData: {
+    enemy_1505_frstar: {
+      enemyId: "enemy_1505_frstar",
+      enemyIndex: "FN",
+      name: "霜星",
+      enemyLevel: "BOSS",
+      sortId: 100,
+      description: "整合运动法术部队干部。",
+      attackType: "远程 法术",
+      ability: "冰爆控场",
+      damageType: ["MAGIC"],
+      enemyTags: ["隐匿"],
+      hideInHandbook: false,
+    },
+    enemy_1004_mslime: {
+      enemyId: "enemy_1004_mslime",
+      enemyIndex: "B0",
+      name: "源石虫",
+      enemyLevel: "NORMAL",
+      sortId: 1,
+      description: "野生的被感染生物。",
+      damageType: ["PHYSIC", "MAGIC"],
+      hideInHandbook: false,
+    },
+    enemy_hidden: {
+      enemyId: "enemy_hidden",
+      name: "隐藏敌人",
+      enemyLevel: "ELITE",
+      sortId: 50,
+      description: "应被过滤。",
+      hideInHandbook: true,
+    },
+    enemy_1007_slime: {
+      enemyId: "enemy_1007_slime",
+      enemyIndex: "B1",
+      name: "源石虫",
+      enemyLevel: "NORMAL",
+      sortId: 2,
+      description: "野生的被感染生物（重复名条目，覆盖前者）。",
+      hideInHandbook: false,
+    },
+    enemy_1002_nsabr: { enemyId: "enemy_1002_nsabr", name: "士兵", sortId: 3, enemyLevel: "NORMAL" },
+    enemy_unused: { enemyId: "enemy_unused", name: "未出场敌人", sortId: 4, enemyLevel: "NORMAL" },
+    enemy_custom: { enemyId: "enemy_custom", name: "特殊敌人", sortId: 5, enemyLevel: "NORMAL" },
+  },
+});
+
+writeV2(join(V2_LEVELS, "enemydata", "enemy_database.json"), {
+  enemies: [
+    {
+      Key: "enemy_1505_frstar",
+      Value: [
+        {
+          level: 0,
+          enemyData: {
+            attributes: {
+              maxHp: { m_defined: true, m_value: 25000 },
+              atk: { m_defined: true, m_value: 420 },
+              def: { m_defined: true, m_value: 250 },
+              magicResistance: { m_defined: true, m_value: 50.0 },
+              moveSpeed: { m_defined: true, m_value: 0.5 },
+              baseAttackTime: { m_defined: true, m_value: 3.7 },
+              stunImmune: { m_defined: true, m_value: true },
+              frozenImmune: { m_defined: true, m_value: true },
+            },
+            skills: [
+              {
+                prefabKey: "ArcticBlast",
+                cooldown: 8.5,
+                blackboard: [
+                  { key: "duration", value: 8.0 },
+                  { key: "atk_scale", value: 1.5 },
+                ],
+              },
+            ],
+          },
+        },
+      ],
+    },
+    {
+      Key: "enemy_1007_slime",
+      Value: [
+        {
+          level: 0,
+          enemyData: {
+            attributes: {
+              maxHp: { m_defined: true, m_value: 550 },
+              atk: { m_defined: true, m_value: 130 },
+              def: { m_defined: true, m_value: 0 },
+              magicResistance: { m_defined: true, m_value: 0 },
+              moveSpeed: { m_defined: true, m_value: 1.0 },
+              baseAttackTime: { m_defined: true, m_value: 1.7 },
+            },
+          },
+        },
+      ],
+    },
+    {
+      Key: "enemy_1002_nsabr",
+      Value: [
+        {
+          level: "bad",
+          enemyData: {
+            attributes: {
+              maxHp: { m_defined: true, m_value: 1650 },
+              atk: { m_defined: true, m_value: 200 },
+              def: { m_defined: true, m_value: 0 },
+              magicResistance: { m_defined: true, m_value: 0 },
+            },
+          },
+        },
+      ],
+    },
+  ],
+});
+
+const V2_LEVEL_ROOT = join(V2_LEVELS, "obt", "main");
+writeV2(join(V2_LEVEL_ROOT, "level_main_00-01.json"), {
+  enemyDbRefs: [
+    { id: "enemy_1007_slime", level: 0, overwrittenData: null },
+    {
+      id: "enemy_1002_nsabr",
+      level: "bad",
+      overwrittenData: {
+        attributes: {
+          def: { m_defined: true, m_value: 30 },
+          atk: { m_defined: false, m_value: 0 },
+        },
+      },
+    },
+    { id: "enemy_unused", level: 0, overwrittenData: null },
+    {
+      id: "enemy_custom",
+      level: 0,
+      overwrittenData: {
+        name: { m_defined: true, m_value: "关卡特化敌人" },
+        attributes: {
+          maxHp: { m_defined: true, m_value: 1234 },
+          atk: { m_defined: true, m_value: 321 },
+          def: { m_defined: true, m_value: 45 },
+          magicResistance: { m_defined: true, m_value: 10 },
+        },
+      },
+    },
+  ],
+  waves: [
+    {
+      fragments: [
+        {
+          actions: [
+            { actionType: "SPAWN", key: "enemy_1007_slime", count: 6 },
+            { actionType: "SPAWN", key: "enemy_1002_nsabr", count: 1 },
+            { actionType: "SPAWN", key: "enemy_custom", count: 1 },
+          ],
+        },
+      ],
+    },
+  ],
+});
+writeV2(join(V2_LEVEL_ROOT, "level_act42side_10.json"), {
+  enemyDbRefs: [],
+  waves: [
+    { fragments: {} },
+    { fragments: [{ actions: {} }] },
+  ],
+});
+
 // --- activated-minimal-v1: a generation volume written by the REAL frozen TS
 // sync code (dist syncReleaseArchivePair, offline, local zips + fresh
 // release_meta), so differential cases prove both implementations resolve the
@@ -264,6 +822,12 @@ const fixtureFiles = walkFiles(FIXTURE_ROOT).map((p) => ({
   sha256: sha256(p),
 }));
 
+const v2Files = walkFiles(V2_ROOT).map((p) => ({
+  path: relative(V2_ROOT, p),
+  bytes: statSync(p).size,
+  sha256: sha256(p),
+}));
+
 // --- bundled sample data (repo `data/gamedata`, fixed tag) --------------------
 
 const bundledDir = join(REFERENCE, "data", "gamedata");
@@ -324,6 +888,14 @@ const manifest = {
       root: ".runtime/fixtures/minimal-gamedata-v1",
       excel_dir: "zh_CN/gamedata/excel",
       files: fixtureFiles,
+    },
+    "minimal-gamedata-v2": {
+      purpose: "P3 differential fixture: full GameData tool surface (operator/enemy/stage/item/search)",
+      source: "derived from tests/fixtures/operatorData.ts + enemy/item/stageEnemy test fixtures @ baseline commit",
+      root: ".runtime/fixtures/minimal-gamedata-v2",
+      excel_dir: "zh_CN/gamedata/excel",
+      levels_dir: "zh_CN/gamedata/levels",
+      files: v2Files,
     },
     "bundled-sample-gamedata": {
       purpose: "repo-bundled partial excel sample shipped with the fixed tag; reference only",

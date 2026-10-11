@@ -880,6 +880,3047 @@
       "normalizations": [
         "bind-session-id"
       ]
+    },
+    {
+      "id": "operator.archives.default",
+      "contract": "TOOL-get_operator_archives",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_operator_archives",
+          "arguments": {
+            "name": "阿米娅"
+          }
+        },
+        "id": 9300
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-sandbox-path"
+      ]
+    },
+    {
+      "id": "operator.archives.no-handbook",
+      "contract": "TOOL-get_operator_archives",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_operator_archives",
+          "arguments": {
+            "name": "夜刀"
+          }
+        },
+        "id": 9301
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "operator.archives.not-found",
+      "contract": "TOOL-get_operator_archives",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_operator_archives",
+          "arguments": {
+            "name": "不存在"
+          }
+        },
+        "id": 9302
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "operator.archives.channel-structured",
+      "contract": "TOOL-get_operator_archives",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "structured",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_operator_archives",
+          "arguments": {
+            "name": "阿米娅"
+          }
+        },
+        "id": 9303
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "operator.voicelines.default",
+      "contract": "TOOL-get_operator_voicelines",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_operator_voicelines",
+          "arguments": {
+            "name": "阿米娅"
+          }
+        },
+        "id": 9304
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "operator.voicelines.none",
+      "contract": "TOOL-get_operator_voicelines",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_operator_voicelines",
+          "arguments": {
+            "name": "夜刀"
+          }
+        },
+        "id": 9305
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "operator.basic.default",
+      "contract": "TOOL-get_operator_basic_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_operator_basic_info",
+          "arguments": {
+            "name": "阿米娅"
+          }
+        },
+        "id": 9306
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "operator.basic.skills",
+      "contract": "TOOL-get_operator_basic_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_operator_basic_info",
+          "arguments": {
+            "name": "阿米娅",
+            "action": "skills"
+          }
+        },
+        "id": 9307
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "operator.basic.stats",
+      "contract": "TOOL-get_operator_basic_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_operator_basic_info",
+          "arguments": {
+            "name": "阿米娅",
+            "action": "stats"
+          }
+        },
+        "id": 9308
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "operator.basic.stats-level",
+      "contract": "TOOL-get_operator_basic_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_operator_basic_info",
+          "arguments": {
+            "name": "阿米娅",
+            "action": "stats",
+            "phase": 2,
+            "level": 40
+          }
+        },
+        "id": 9309
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "operator.basic.stats-decimal",
+      "contract": "TOOL-get_operator_basic_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_operator_basic_info",
+          "arguments": {
+            "name": "阿米娅",
+            "action": "stats",
+            "phase": 1,
+            "level": 35
+          }
+        },
+        "id": 9310
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "operator.basic.phase-mismatch",
+      "contract": "TOOL-get_operator_basic_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_operator_basic_info",
+          "arguments": {
+            "name": "阿米娅",
+            "phase": 0
+          }
+        },
+        "id": 9311
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "operator.basic.stats-level-oob",
+      "contract": "TOOL-get_operator_basic_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_operator_basic_info",
+          "arguments": {
+            "name": "阿米娅",
+            "action": "stats",
+            "phase": 2,
+            "level": 81
+          }
+        },
+        "id": 9312
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "operator.basic.phase-oob",
+      "contract": "TOOL-get_operator_basic_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_operator_basic_info",
+          "arguments": {
+            "name": "阿米娅",
+            "action": "stats",
+            "phase": 5,
+            "level": 1
+          }
+        },
+        "id": 9313
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "operator.basic.nullish",
+      "contract": "TOOL-get_operator_basic_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_operator_basic_info",
+          "arguments": {
+            "name": "阿米娅",
+            "action": "stats",
+            "phase": null,
+            "level": null
+          }
+        },
+        "id": 9314
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "operator.basic.channel-structured",
+      "contract": "TOOL-get_operator_basic_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "structured",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_operator_basic_info",
+          "arguments": {
+            "name": "阿米娅"
+          }
+        },
+        "id": 9315
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "operator.basic.channel-both",
+      "contract": "TOOL-get_operator_basic_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "both",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_operator_basic_info",
+          "arguments": {
+            "name": "阿米娅"
+          }
+        },
+        "id": 9316
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "operator.basic.talents",
+      "contract": "TOOL-get_operator_basic_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_operator_basic_info",
+          "arguments": {
+            "name": "银灰"
+          }
+        },
+        "id": 9317
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "operator.basic.no-skills",
+      "contract": "TOOL-get_operator_basic_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_operator_basic_info",
+          "arguments": {
+            "name": "夜刀",
+            "action": "skills"
+          }
+        },
+        "id": 9318
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "operator.basic.schema-reject",
+      "contract": "TOOL-get_operator_basic_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_operator_basic_info",
+          "arguments": {
+            "name": "阿米娅",
+            "action": "nope"
+          }
+        },
+        "id": 9319
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "operator.basic.missing-data",
+      "contract": "TOOL-get_operator_basic_info",
+      "dataset": "empty",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_operator_basic_info",
+          "arguments": {
+            "name": "阿米娅"
+          }
+        },
+        "id": 9320
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-sandbox-path"
+      ]
+    },
+    {
+      "id": "operator.archives.missing-data",
+      "contract": "TOOL-get_operator_archives",
+      "dataset": "empty",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_operator_archives",
+          "arguments": {
+            "name": "阿米娅"
+          }
+        },
+        "id": 9321
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-sandbox-path"
+      ]
+    },
+    {
+      "id": "enemy.list.default",
+      "contract": "TOOL-list_enemies",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "list_enemies",
+          "arguments": {}
+        },
+        "id": 9322
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "enemy.list.boss",
+      "contract": "TOOL-list_enemies",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "list_enemies",
+          "arguments": {
+            "threat_level": "boss"
+          }
+        },
+        "id": 9323
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "enemy.list.invalid-filter",
+      "contract": "TOOL-list_enemies",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "list_enemies",
+          "arguments": {
+            "threat_level": "mega"
+          }
+        },
+        "id": 9324
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "enemy.list.offset-oob",
+      "contract": "TOOL-list_enemies",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "list_enemies",
+          "arguments": {
+            "offset": 99
+          }
+        },
+        "id": 9325
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "enemy.list.full",
+      "contract": "TOOL-list_enemies",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "list_enemies",
+          "arguments": {
+            "full": true,
+            "limit": 1,
+            "offset": 2
+          }
+        },
+        "id": 9326
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "enemy.list.channel-structured",
+      "contract": "TOOL-list_enemies",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "structured",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "list_enemies",
+          "arguments": {}
+        },
+        "id": 9327
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "enemy.list.channel-both",
+      "contract": "TOOL-list_enemies",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "both",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "list_enemies",
+          "arguments": {}
+        },
+        "id": 9328
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "enemy.info.default",
+      "contract": "TOOL-get_enemy_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_enemy_info",
+          "arguments": {
+            "name": "霜星"
+          }
+        },
+        "id": 9329
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "enemy.info.dup-name",
+      "contract": "TOOL-get_enemy_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_enemy_info",
+          "arguments": {
+            "name": "源石虫"
+          }
+        },
+        "id": 9330
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "enemy.info.raw-id-no-stats",
+      "contract": "TOOL-get_enemy_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_enemy_info",
+          "arguments": {
+            "name": "enemy_1004_mslime"
+          }
+        },
+        "id": 9331
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "enemy.info.not-found",
+      "contract": "TOOL-get_enemy_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_enemy_info",
+          "arguments": {
+            "name": "无"
+          }
+        },
+        "id": 9332
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "enemy.info.stage",
+      "contract": "TOOL-get_enemy_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_enemy_info",
+          "arguments": {
+            "name": "源石虫",
+            "stage_id": "main_00-01"
+          }
+        },
+        "id": 9333
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "enemy.info.stage-not-spawning",
+      "contract": "TOOL-get_enemy_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_enemy_info",
+          "arguments": {
+            "name": "霜星",
+            "stage_id": "main_00-01"
+          }
+        },
+        "id": 9334
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "enemy.info.stage-not-found",
+      "contract": "TOOL-get_enemy_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_enemy_info",
+          "arguments": {
+            "name": "源石虫",
+            "stage_id": "nope"
+          }
+        },
+        "id": 9335
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "enemy.stage-enemies.default",
+      "contract": "TOOL-get_stage_enemies",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_stage_enemies",
+          "arguments": {
+            "stage_id": "main_00-01"
+          }
+        },
+        "id": 9336
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "enemy.stage-enemies.no-levelid",
+      "contract": "TOOL-get_stage_enemies",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_stage_enemies",
+          "arguments": {
+            "stage_id": "act31side_01"
+          }
+        },
+        "id": 9337
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "enemy.stage-enemies.placeholders",
+      "contract": "TOOL-get_stage_enemies",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_stage_enemies",
+          "arguments": {
+            "stage_id": "act42side_10"
+          }
+        },
+        "id": 9338
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "enemy.stage-enemies.not-found",
+      "contract": "TOOL-get_stage_enemies",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_stage_enemies",
+          "arguments": {
+            "stage_id": "nope"
+          }
+        },
+        "id": 9339
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "enemy.stage-enemies.channel-structured",
+      "contract": "TOOL-get_stage_enemies",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "structured",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_stage_enemies",
+          "arguments": {
+            "stage_id": "main_00-01"
+          }
+        },
+        "id": 9340
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "enemy.stage-enemies.channel-both",
+      "contract": "TOOL-get_stage_enemies",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "both",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_stage_enemies",
+          "arguments": {
+            "stage_id": "main_00-01"
+          }
+        },
+        "id": 9341
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "enemy.appearances.default",
+      "contract": "TOOL-get_enemy_appearances",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_enemy_appearances",
+          "arguments": {
+            "name": "源石虫"
+          }
+        },
+        "id": 9342
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "enemy.appearances.by-id",
+      "contract": "TOOL-get_enemy_appearances",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_enemy_appearances",
+          "arguments": {
+            "name": "enemy_1002_nsabr"
+          }
+        },
+        "id": 9343
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "enemy.appearances.no-match",
+      "contract": "TOOL-get_enemy_appearances",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_enemy_appearances",
+          "arguments": {
+            "name": "enemy_unused"
+          }
+        },
+        "id": 9344
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "enemy.appearances.offset-oob",
+      "contract": "TOOL-get_enemy_appearances",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_enemy_appearances",
+          "arguments": {
+            "name": "源石虫",
+            "offset": 5
+          }
+        },
+        "id": 9345
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "enemy.appearances.channel-structured",
+      "contract": "TOOL-get_enemy_appearances",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "structured",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_enemy_appearances",
+          "arguments": {
+            "name": "源石虫"
+          }
+        },
+        "id": 9346
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "enemy.list.missing-data",
+      "contract": "TOOL-list_enemies",
+      "dataset": "empty",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "list_enemies",
+          "arguments": {}
+        },
+        "id": 9347
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-sandbox-path"
+      ]
+    },
+    {
+      "id": "enemy.stage-enemies.missing-data",
+      "contract": "TOOL-get_stage_enemies",
+      "dataset": "empty",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_stage_enemies",
+          "arguments": {
+            "stage_id": "main_00-01"
+          }
+        },
+        "id": 9348
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-sandbox-path"
+      ]
+    },
+    {
+      "id": "stage.info.default",
+      "contract": "TOOL-get_stage_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_stage_info",
+          "arguments": {
+            "stage_id": "main_00-01"
+          }
+        },
+        "id": 9349
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "stage.info.null-apcost",
+      "contract": "TOOL-get_stage_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_stage_info",
+          "arguments": {
+            "stage_id": "main_00-02"
+          }
+        },
+        "id": 9350
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "stage.info.not-found",
+      "contract": "TOOL-get_stage_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_stage_info",
+          "arguments": {
+            "stage_id": "nope"
+          }
+        },
+        "id": 9351
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "stage.info.channel-structured",
+      "contract": "TOOL-get_stage_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "structured",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_stage_info",
+          "arguments": {
+            "stage_id": "main_00-01"
+          }
+        },
+        "id": 9352
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "stage.info.channel-both",
+      "contract": "TOOL-get_stage_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "both",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_stage_info",
+          "arguments": {
+            "stage_id": "main_00-01"
+          }
+        },
+        "id": 9353
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "item.list.default",
+      "contract": "TOOL-list_items",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "list_items",
+          "arguments": {}
+        },
+        "id": 9354
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "item.list.category-alias",
+      "contract": "TOOL-list_items",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "list_items",
+          "arguments": {
+            "category": "材料"
+          }
+        },
+        "id": 9355
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "item.list.category-raw",
+      "contract": "TOOL-list_items",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "list_items",
+          "arguments": {
+            "category": "MATERIAL"
+          }
+        },
+        "id": 9356
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "item.list.no-match",
+      "contract": "TOOL-list_items",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "list_items",
+          "arguments": {
+            "category": "CONSUME"
+          }
+        },
+        "id": 9357
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "item.list.offset-oob",
+      "contract": "TOOL-list_items",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "list_items",
+          "arguments": {
+            "offset": 99
+          }
+        },
+        "id": 9358
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "item.list.channel-structured",
+      "contract": "TOOL-list_items",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "structured",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "list_items",
+          "arguments": {}
+        },
+        "id": 9359
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "item.list.channel-both",
+      "contract": "TOOL-list_items",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "both",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "list_items",
+          "arguments": {}
+        },
+        "id": 9360
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "item.info.by-name",
+      "contract": "TOOL-get_item_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_item_info",
+          "arguments": {
+            "name": "源岩"
+          }
+        },
+        "id": 9361
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "item.info.by-id",
+      "contract": "TOOL-get_item_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_item_info",
+          "arguments": {
+            "name": "30011"
+          }
+        },
+        "id": 9362
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "item.info.not-found",
+      "contract": "TOOL-get_item_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_item_info",
+          "arguments": {
+            "name": "龙门币"
+          }
+        },
+        "id": 9363
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "item.info.channel-structured",
+      "contract": "TOOL-get_item_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "structured",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_item_info",
+          "arguments": {
+            "name": "源岩"
+          }
+        },
+        "id": 9364
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "item.list.missing-data",
+      "contract": "TOOL-list_items",
+      "dataset": "empty",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "list_items",
+          "arguments": {}
+        },
+        "id": 9365
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-sandbox-path"
+      ]
+    },
+    {
+      "id": "search.operators",
+      "contract": "TOOL-search",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "search",
+          "arguments": {
+            "scope": "operators",
+            "pattern": "阿米娅"
+          }
+        },
+        "id": 9366
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "search.operators.empty",
+      "contract": "TOOL-search",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "search",
+          "arguments": {
+            "scope": "operators",
+            "pattern": "不存在的干员xyz"
+          }
+        },
+        "id": 9367
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "search.enemies",
+      "contract": "TOOL-search",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "search",
+          "arguments": {
+            "scope": "enemies",
+            "pattern": "源石"
+          }
+        },
+        "id": 9368
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "search.stages",
+      "contract": "TOOL-search",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "search",
+          "arguments": {
+            "scope": "stages",
+            "pattern": "坍塌"
+          }
+        },
+        "id": 9369
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "search.items",
+      "contract": "TOOL-search",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "search",
+          "arguments": {
+            "scope": "items",
+            "pattern": "源岩"
+          }
+        },
+        "id": 9370
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "search.building-skills",
+      "contract": "TOOL-search",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "search",
+          "arguments": {
+            "scope": "building_skills",
+            "pattern": "贸易"
+          }
+        },
+        "id": 9371
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "search.skills",
+      "contract": "TOOL-search",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "search",
+          "arguments": {
+            "scope": "skills",
+            "pattern": "晕眩"
+          }
+        },
+        "id": 9372
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "search.skills-string-blackboard",
+      "contract": "TOOL-search",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "search",
+          "arguments": {
+            "scope": "skills",
+            "pattern": "法术"
+          }
+        },
+        "id": 9373
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "search.max-results",
+      "contract": "TOOL-search",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "search",
+          "arguments": {
+            "scope": "operators",
+            "pattern": "阿米娅|银灰|夜刀",
+            "max_results": 2
+          }
+        },
+        "id": 9374
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "search.bad-regex",
+      "contract": "TOOL-search",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "search",
+          "arguments": {
+            "scope": "items",
+            "pattern": "(["
+          }
+        },
+        "id": 9375
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-regex-error-detail"
+      ]
+    },
+    {
+      "id": "search.scope-schema-reject",
+      "contract": "TOOL-search",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "search",
+          "arguments": {
+            "scope": "nope",
+            "pattern": "x"
+          }
+        },
+        "id": 9376
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "search.channel-structured",
+      "contract": "TOOL-search",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "structured",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "search",
+          "arguments": {
+            "scope": "enemies",
+            "pattern": "源石"
+          }
+        },
+        "id": 9377
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "search.channel-both",
+      "contract": "TOOL-search",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "both",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "search",
+          "arguments": {
+            "scope": "enemies",
+            "pattern": "源石"
+          }
+        },
+        "id": 9378
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "search.missing-data",
+      "contract": "TOOL-search",
+      "dataset": "empty",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "search",
+          "arguments": {
+            "scope": "operators",
+            "pattern": "x"
+          }
+        },
+        "id": 9379
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-sandbox-path"
+      ]
+    },
+    {
+      "id": "matrix.operator_archives.http-legacy",
+      "contract": "TOOL-get_operator_archives",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_operator_archives",
+          "arguments": {
+            "name": "阿米娅"
+          }
+        },
+        "id": 9380
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.operator_archives.http-modern",
+      "contract": "TOOL-get_operator_archives",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_operator_archives",
+          "arguments": {
+            "name": "阿米娅"
+          }
+        },
+        "id": 9381
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.operator_archives.stdio-legacy",
+      "contract": "TOOL-get_operator_archives",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_operator_archives",
+          "arguments": {
+            "name": "阿米娅"
+          }
+        },
+        "id": 9382
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.operator_archives.stdio-modern",
+      "contract": "TOOL-get_operator_archives",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_operator_archives",
+          "arguments": {
+            "name": "阿米娅"
+          }
+        },
+        "id": 9383
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.operator_voicelines.http-legacy",
+      "contract": "TOOL-get_operator_voicelines",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_operator_voicelines",
+          "arguments": {
+            "name": "阿米娅"
+          }
+        },
+        "id": 9384
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.operator_voicelines.http-modern",
+      "contract": "TOOL-get_operator_voicelines",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_operator_voicelines",
+          "arguments": {
+            "name": "阿米娅"
+          }
+        },
+        "id": 9385
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.operator_voicelines.stdio-legacy",
+      "contract": "TOOL-get_operator_voicelines",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_operator_voicelines",
+          "arguments": {
+            "name": "阿米娅"
+          }
+        },
+        "id": 9386
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.operator_voicelines.stdio-modern",
+      "contract": "TOOL-get_operator_voicelines",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_operator_voicelines",
+          "arguments": {
+            "name": "阿米娅"
+          }
+        },
+        "id": 9387
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.operator_basic_info.http-legacy",
+      "contract": "TOOL-get_operator_basic_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_operator_basic_info",
+          "arguments": {
+            "name": "阿米娅"
+          }
+        },
+        "id": 9388
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.operator_basic_info.http-modern",
+      "contract": "TOOL-get_operator_basic_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_operator_basic_info",
+          "arguments": {
+            "name": "阿米娅"
+          }
+        },
+        "id": 9389
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.operator_basic_info.stdio-legacy",
+      "contract": "TOOL-get_operator_basic_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_operator_basic_info",
+          "arguments": {
+            "name": "阿米娅"
+          }
+        },
+        "id": 9390
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.operator_basic_info.stdio-modern",
+      "contract": "TOOL-get_operator_basic_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_operator_basic_info",
+          "arguments": {
+            "name": "阿米娅"
+          }
+        },
+        "id": 9391
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.enemies.http-legacy",
+      "contract": "TOOL-list_enemies",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "list_enemies",
+          "arguments": {}
+        },
+        "id": 9392
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.enemies.http-modern",
+      "contract": "TOOL-list_enemies",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "list_enemies",
+          "arguments": {}
+        },
+        "id": 9393
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.enemies.stdio-legacy",
+      "contract": "TOOL-list_enemies",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "list_enemies",
+          "arguments": {}
+        },
+        "id": 9394
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.enemies.stdio-modern",
+      "contract": "TOOL-list_enemies",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "list_enemies",
+          "arguments": {}
+        },
+        "id": 9395
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.enemy_info.http-legacy",
+      "contract": "TOOL-get_enemy_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_enemy_info",
+          "arguments": {
+            "name": "霜星"
+          }
+        },
+        "id": 9396
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.enemy_info.http-modern",
+      "contract": "TOOL-get_enemy_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_enemy_info",
+          "arguments": {
+            "name": "霜星"
+          }
+        },
+        "id": 9397
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.enemy_info.stdio-legacy",
+      "contract": "TOOL-get_enemy_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_enemy_info",
+          "arguments": {
+            "name": "霜星"
+          }
+        },
+        "id": 9398
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.enemy_info.stdio-modern",
+      "contract": "TOOL-get_enemy_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_enemy_info",
+          "arguments": {
+            "name": "霜星"
+          }
+        },
+        "id": 9399
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.stage_enemies.http-legacy",
+      "contract": "TOOL-get_stage_enemies",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_stage_enemies",
+          "arguments": {
+            "stage_id": "main_00-01"
+          }
+        },
+        "id": 9400
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.stage_enemies.http-modern",
+      "contract": "TOOL-get_stage_enemies",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_stage_enemies",
+          "arguments": {
+            "stage_id": "main_00-01"
+          }
+        },
+        "id": 9401
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.stage_enemies.stdio-legacy",
+      "contract": "TOOL-get_stage_enemies",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_stage_enemies",
+          "arguments": {
+            "stage_id": "main_00-01"
+          }
+        },
+        "id": 9402
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.stage_enemies.stdio-modern",
+      "contract": "TOOL-get_stage_enemies",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_stage_enemies",
+          "arguments": {
+            "stage_id": "main_00-01"
+          }
+        },
+        "id": 9403
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.enemy_appearances.http-legacy",
+      "contract": "TOOL-get_enemy_appearances",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_enemy_appearances",
+          "arguments": {
+            "name": "源石虫"
+          }
+        },
+        "id": 9404
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.enemy_appearances.http-modern",
+      "contract": "TOOL-get_enemy_appearances",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_enemy_appearances",
+          "arguments": {
+            "name": "源石虫"
+          }
+        },
+        "id": 9405
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.enemy_appearances.stdio-legacy",
+      "contract": "TOOL-get_enemy_appearances",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_enemy_appearances",
+          "arguments": {
+            "name": "源石虫"
+          }
+        },
+        "id": 9406
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.enemy_appearances.stdio-modern",
+      "contract": "TOOL-get_enemy_appearances",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_enemy_appearances",
+          "arguments": {
+            "name": "源石虫"
+          }
+        },
+        "id": 9407
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.stage_info.http-legacy",
+      "contract": "TOOL-get_stage_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_stage_info",
+          "arguments": {
+            "stage_id": "main_00-01"
+          }
+        },
+        "id": 9408
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.stage_info.http-modern",
+      "contract": "TOOL-get_stage_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_stage_info",
+          "arguments": {
+            "stage_id": "main_00-01"
+          }
+        },
+        "id": 9409
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.stage_info.stdio-legacy",
+      "contract": "TOOL-get_stage_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_stage_info",
+          "arguments": {
+            "stage_id": "main_00-01"
+          }
+        },
+        "id": 9410
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.stage_info.stdio-modern",
+      "contract": "TOOL-get_stage_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_stage_info",
+          "arguments": {
+            "stage_id": "main_00-01"
+          }
+        },
+        "id": 9411
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.items.http-legacy",
+      "contract": "TOOL-list_items",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "list_items",
+          "arguments": {}
+        },
+        "id": 9412
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.items.http-modern",
+      "contract": "TOOL-list_items",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "list_items",
+          "arguments": {}
+        },
+        "id": 9413
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.items.stdio-legacy",
+      "contract": "TOOL-list_items",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "list_items",
+          "arguments": {}
+        },
+        "id": 9414
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.items.stdio-modern",
+      "contract": "TOOL-list_items",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "list_items",
+          "arguments": {}
+        },
+        "id": 9415
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.item_info.http-legacy",
+      "contract": "TOOL-get_item_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_item_info",
+          "arguments": {
+            "name": "源岩"
+          }
+        },
+        "id": 9416
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.item_info.http-modern",
+      "contract": "TOOL-get_item_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_item_info",
+          "arguments": {
+            "name": "源岩"
+          }
+        },
+        "id": 9417
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.item_info.stdio-legacy",
+      "contract": "TOOL-get_item_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_item_info",
+          "arguments": {
+            "name": "源岩"
+          }
+        },
+        "id": 9418
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.item_info.stdio-modern",
+      "contract": "TOOL-get_item_info",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "get_item_info",
+          "arguments": {
+            "name": "源岩"
+          }
+        },
+        "id": 9419
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.search.http-legacy",
+      "contract": "TOOL-search",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "search",
+          "arguments": {
+            "scope": "enemies",
+            "pattern": "源石"
+          }
+        },
+        "id": 9420
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.search.http-modern",
+      "contract": "TOOL-search",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "search",
+          "arguments": {
+            "scope": "enemies",
+            "pattern": "源石"
+          }
+        },
+        "id": 9421
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.search.stdio-legacy",
+      "contract": "TOOL-search",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "search",
+          "arguments": {
+            "scope": "enemies",
+            "pattern": "源石"
+          }
+        },
+        "id": 9422
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.search.stdio-modern",
+      "contract": "TOOL-search",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P3",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "search",
+          "arguments": {
+            "scope": "enemies",
+            "pattern": "源石"
+          }
+        },
+        "id": 9423
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
     }
   ]
 }

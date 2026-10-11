@@ -1,0 +1,26 @@
+{
+  "case": "operator.basic.talents",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "a7142af0-fd41-4c52-81c6-266cc24382f8",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "# 银灰 - 干员基本信息\n\n- **编号**：HK01\n- **英文名**：SilverAsh\n- **稀有度**：6★\n- **职业**：近卫（lord）\n- **站位**：近战\n- **所属**：kazimierz / karlan\n- **招募标签**：输出、支援\n- **攻击属性**：能够自如运用剑技的感染者。\n\n## 天赋\n- **领袖**：攻击力+12%\n  （精英1解锁；精英2强化；潜能5档强化）\n\n## 基建技能\n- **雪境守望**（制造站，精英1解锁）：进驻制造站时，生产力+15%"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9317
+    }
+  }
+}

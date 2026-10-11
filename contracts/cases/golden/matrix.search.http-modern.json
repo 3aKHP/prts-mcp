@@ -1,0 +1,33 @@
+{
+  "case": "matrix.search.http-modern",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "application/json",
+    "session_id": null,
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "# 搜索结果：源石（共 2 个）\n\n# 源石虫 - 敌人图鉴\n\n- **编号**：B0\n- **威胁等级**：普通\n- **描述**：野生的被感染生物。\n- **伤害类型**：物理、法术\n\n# 源石虫 - 敌人图鉴\n\n- **编号**：B1\n- **威胁等级**：普通\n- **描述**：野生的被感染生物（重复名条目，覆盖前者）。"
+          }
+        ],
+        "resultType": "complete",
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "PRTS_Wiki_Assistant",
+            "version": "<server-version>"
+          }
+        }
+      },
+      "jsonrpc": "2.0",
+      "id": 9421
+    }
+  }
+}

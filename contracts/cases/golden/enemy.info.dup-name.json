@@ -1,0 +1,26 @@
+{
+  "case": "enemy.info.dup-name",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "3c56da07-74cf-483b-b3c6-40569299f82a",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "# 源石虫 - 敌人图鉴\n\n- **ID**：enemy_1007_slime\n- **编号**：B1\n- **威胁等级**：普通\n- **描述**：野生的被感染生物（重复名条目，覆盖前者）。\n## 战斗属性\n- **最大生命**：550\n- **攻击力**：130\n- **法术抗性**：0.0\n- **移动速度**：1.0\n- **攻击间隔**：1.7s"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9330
+    }
+  }
+}
