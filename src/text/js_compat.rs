@@ -8,6 +8,77 @@
 
 use std::cmp::Ordering;
 
+/// ICU (en-US root) collation order for printable ASCII, derived by pairwise
+/// probing the oracle's node — `String.prototype.localeCompare` with no
+/// arguments. The stageEnemy count tie-break uses this order, which differs
+/// from both codepoint order and `compareIds` (punctuation interleaves
+/// before digits, letters are case-insensitive at primary strength with
+/// lowercase first). Weights are table positions; non-ASCII characters map
+/// past everything (an approximation for ids that never occur in the data).
+const ICU_ASCII_ORDER: [u8; 95] = [
+    b' ', b'_', b'-', b',', b';', b':', b'!', b'?', b'.', b'\'', b'"', b'(', b')', b'[', b']',
+    b'{', b'}', b'@', b'*', b'/', b'\\', b'&', b'#', b'%', b'`', b'^', b'+', b'<', b'=', b'>',
+    b'|', b'~', b'$', b'0', b'1', b'2', b'3', b'4', b'5', b'6', b'7', b'8', b'9', b'a', b'A', b'b',
+    b'B', b'c', b'C', b'd', b'D', b'e', b'E', b'f', b'F', b'g', b'G', b'h', b'H', b'i', b'I', b'j',
+    b'J', b'k', b'K', b'l', b'L', b'm', b'M', b'n', b'N', b'o', b'O', b'p', b'P', b'q', b'Q', b'r',
+    b'R', b's', b'S', b't', b'T', b'u', b'U', b'v', b'V', b'w', b'W', b'x', b'X', b'y', b'Y', b'z',
+    b'Z',
+];
+
+fn icu_primary(c: char) -> u32 {
+    if c.is_ascii() {
+        let idx = ICU_ASCII_ORDER
+            .iter()
+            .position(|&p| p as char == c)
+            .expect("ASCII table covers all 95 printable chars") as u32;
+        // Controls (including \t\n) sort before everything, as whitespace.
+        idx + 1
+    } else {
+        1000 + c as u32
+    }
+}
+
+fn icu_case_weight(c: char) -> u8 {
+    if c.is_lowercase() {
+        0
+    } else if c.is_uppercase() {
+        1
+    } else {
+        2
+    }
+}
+
+/// `a.localeCompare(b)` under the oracle's default ICU collation for the
+/// ASCII id strings the enemy tie-break sorts: primary pass over collation
+/// weights (prefix rule: shorter first), then case level at the first
+/// differing character (lowercase first).
+pub fn locale_compare(a: &str, b: &str) -> Ordering {
+    let mut ia = a.chars();
+    let mut ib = b.chars();
+    loop {
+        match (ia.next(), ib.next()) {
+            (None, None) => break Ordering::Equal,
+            (None, Some(_)) => break Ordering::Less,
+            (Some(_), None) => break Ordering::Greater,
+            (Some(ca), Some(cb)) => {
+                let (wa, wb) = (icu_primary(ca), icu_primary(cb));
+                if wa != wb {
+                    break wa.cmp(&wb);
+                }
+            }
+        }
+    }
+    .then_with(|| {
+        // Case level over equal-primary strings.
+        for (ca, cb) in a.chars().zip(b.chars()) {
+            if ca != cb {
+                return icu_case_weight(ca).cmp(&icu_case_weight(cb));
+            }
+        }
+        Ordering::Equal
+    })
+}
+
 /// JS `<`/`>` relational comparison on UTF-16 code units (compareIds).
 pub fn compare_ids(a: &str, b: &str) -> Ordering {
     let mut ia = a.chars();
@@ -99,6 +170,32 @@ pub fn json_number_as_integer(n: &serde_json::Number) -> Option<i64> {
 mod tests {
     use super::*;
     use std::cmp::Ordering;
+
+    #[test]
+    fn locale_compare_matches_icu_probes() {
+        // Each pair probed on the oracle's node (env-clean, en-US root).
+        use Ordering::*;
+        let probes: &[(&str, &str, Ordering)] = &[
+            ("enemy_1002_nsabr", "enemy_1007_slime", Less),
+            ("enemy_A", "enemy_a", Greater), // lowercase first — inverse of codepoint order
+            ("enemy_a", "enemy_B", Less),    // case-insensitive primary
+            ("enemy_1_a", "enemy_1a", Less),
+            ("enemy-x", "enemy_x", Greater), // '_' < '-' — inverse of codepoint order
+            ("enemy_2", "enemy_10", Greater),
+            ("enemy_1007_slime", "enemy_1007_slime2", Less),
+            ("enemy.z", "enemy_z", Greater),
+            ("enemy_1", "enemy_1z", Less),
+            ("ENEMY_x", "enemy_x", Greater),
+            ("enemy_9", "enemy_a", Less),
+            ("enemy__x", "enemy_1x", Less),   // '_' < digits
+            ("enemy!x", "enemy_1x", Greater), // '!' > '_' but < digits
+            ("enemy_Ab", "enemy_aB", Greater),
+            ("enemy_ab", "enemy_Ab", Less),
+        ];
+        for (a, b, expect) in probes {
+            assert_eq!(&locale_compare(a, b), expect, "localeCompare({a}, {b})");
+        }
+    }
 
     #[test]
     fn utf16_order_matches_js_examples() {

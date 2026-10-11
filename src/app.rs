@@ -22,11 +22,15 @@ use crate::sync::transport::ReqwestTransport;
 use crate::tools::{registry, AppHandle};
 
 /// The dynamic data view: what each dataset should actually read right now.
-#[derive(Debug, Clone)]
+/// `datasets` is the per-generation parsed-table cache (TS datasetAccess
+/// slots keyed by activation generation): swapping the view swaps the cache,
+/// releasing the old generation's parsed tables with the last reference.
+#[derive(Clone)]
 pub struct DataView {
     pub excel_root: Option<PathBuf>,
     pub levels_root: Option<PathBuf>,
     pub story_zip: Option<PathBuf>,
+    pub datasets: Arc<crate::domain::datasets::Datasets>,
 }
 
 /// TS `loadConfig`'s data-path half: pair pointer first, extract_meta
@@ -58,6 +62,7 @@ fn resolve_view(config: &RuntimeConfig) -> DataView {
         excel_root,
         levels_root,
         story_zip,
+        datasets: Arc::new(crate::domain::datasets::Datasets::new()),
     }
 }
 

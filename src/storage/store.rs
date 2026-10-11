@@ -66,7 +66,10 @@ impl DirectoryStore {
         &self.root
     }
 
-    fn resolve(&self, path: &str) -> Result<PathBuf, StoreError> {
+    /// Resolve a dataset path (TS `resolvePath`): normalize, join under the
+    /// root, reject escapes. Public because diagnostics messages print the
+    /// same absolute path the oracle's resolveForDiagnostics shows.
+    pub fn resolve(&self, path: &str) -> Result<PathBuf, StoreError> {
         let normalized = normalize_path(path)?;
         // The normalized form contains no absolute or parent segments, so
         // joining cannot escape the root; the component walk makes that
