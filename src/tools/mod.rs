@@ -1,7 +1,8 @@
 //! Tool parameter boundaries, thin dispatch and unified result wrapping.
 
-pub mod list_stages;
+pub mod gamedata_tools;
 pub mod output;
+pub mod zodish;
 
 use serde_json::Value;
 
@@ -24,9 +25,10 @@ pub enum DispatchResult {
     RpcError(i64, String),
 }
 
-/// Read-only handle the tool layer needs: dynamic data state + the
-/// missing-data wording (built from the static sync-target path, exactly the
-/// TS `cfg.excelPath` the oracle prints).
+/// Read-only handle the tool layer needs: dynamic data state + the static
+/// sync-target paths the missing-data messages print (exactly the TS
+/// `cfg.excelPath`/`cfg.levelsPath` the oracle shows, not the effective
+/// generation directory).
 pub struct AppHandle {
     pub data: std::sync::Arc<crate::app::DataState>,
     pub excel_missing_message: String,
@@ -58,13 +60,61 @@ impl AppHandle {
     pub fn snapshot(&self) -> std::sync::Arc<crate::app::DataView> {
         self.data.snapshot()
     }
+
+    /// Static sync target for excel (missing-data message wording).
+    pub fn excel_path(&self) -> std::path::PathBuf {
+        self.data.config().excel_path.clone()
+    }
+
+    /// Static sync target for zh_CN-levels.
+    pub fn levels_path(&self) -> std::path::PathBuf {
+        self.data.config().levels_path.clone()
+    }
+}
+
+/// Embed a tool declaration captured from the oracle (name/description/
+/// inputSchema with the captured key order).
+macro_rules! tool {
+    ($name:literal, $dispatch:path) => {
+        ToolEntry {
+            name: $name,
+            declaration: serde_json::from_str(include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/src/tools/schemas/",
+                $name,
+                ".tool.json"
+            )))
+            .expect(concat!("embedded declaration parses: ", $name)),
+            dispatch: $dispatch,
+        }
+    };
 }
 
 pub fn registry() -> Vec<ToolEntry> {
-    vec![ToolEntry {
-        name: "list_stages",
-        declaration: serde_json::from_str(include_str!("schemas/list_stages.tool.json"))
-            .expect("embedded list_stages declaration parses"),
-        dispatch: list_stages::dispatch,
-    }]
+    vec![
+        tool!(
+            "get_operator_archives",
+            gamedata_tools::get_operator_archives
+        ),
+        tool!(
+            "get_operator_voicelines",
+            gamedata_tools::get_operator_voicelines
+        ),
+        tool!(
+            "get_operator_basic_info",
+            gamedata_tools::get_operator_basic_info
+        ),
+        tool!("list_enemies", gamedata_tools::list_enemies),
+        tool!("get_enemy_info", gamedata_tools::get_enemy_info),
+        tool!("get_stage_enemies", gamedata_tools::get_stage_enemies),
+        tool!(
+            "get_enemy_appearances",
+            gamedata_tools::get_enemy_appearances
+        ),
+        tool!("list_stages", gamedata_tools::list_stages),
+        tool!("get_stage_info", gamedata_tools::get_stage_info),
+        tool!("list_items", gamedata_tools::list_items),
+        tool!("get_item_info", gamedata_tools::get_item_info),
+        tool!("search", gamedata_tools::search),
+    ]
 }

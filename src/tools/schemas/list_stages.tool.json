@@ -1,32 +1,32 @@
 {
-  "name": "list_stages",
-  "description": "列出关卡列表，支持按章节和类型过滤。 返回格式：每行 `- **关卡名** [类型] 编号 — 难度 — 区域`。 获取 stage_id 后可传入 get_stage_info 查看详情。",
-  "inputSchema": {
-    "type": "object",
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "properties": {
-      "chapter": {
-        "description": "按所属章节（zoneId）过滤，如 'main_0'。不填则返回全部。",
-        "type": "string"
-      },
-      "type": {
-        "description": "按关卡类型过滤：MAIN（主线）/ ACTIVITY（活动）/ SUB（支线）/ DAILY（每日）/ CAMPAIGN（剿灭）/ CLIMB_TOWER（爬塔）/ SPECIAL_STORY（特殊故事）/ GUIDE（教程）。",
-        "type": "string"
-      },
-      "limit": {
-        "default": 50,
-        "description": "返回数量上限，默认 50。",
-        "type": "integer",
-        "minimum": 1,
-        "maximum": 200
-      },
-      "offset": {
-        "default": 0,
-        "description": "分页偏移量，默认 0。",
-        "type": "integer",
-        "minimum": 0,
-        "maximum": 9007199254740991
-      }
-    }
+ "name": "list_stages",
+ "description": "列出关卡列表，支持按章节和类型过滤。 返回格式：每行 `- **关卡名** [类型] 编号 — 难度 — 区域`。 获取 stage_id 后可传入 get_stage_info 查看详情。",
+ "inputSchema": {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+   "chapter": {
+    "description": "按所属章节（zoneId）过滤，如 'main_0'。不填则返回全部。",
+    "type": "string"
+   },
+   "type": {
+    "description": "按关卡类型过滤：MAIN（主线）/ ACTIVITY（活动）/ SUB（支线）/ DAILY（每日）/ CAMPAIGN（剿灭）/ CLIMB_TOWER（爬塔）/ SPECIAL_STORY（特殊故事）/ GUIDE（教程）。",
+    "type": "string"
+   },
+   "limit": {
+    "default": 50,
+    "description": "返回数量上限，默认 50。",
+    "type": "integer",
+    "minimum": 1,
+    "maximum": 200
+   },
+   "offset": {
+    "default": 0,
+    "description": "分页偏移量，默认 0。",
+    "type": "integer",
+    "minimum": 0,
+    "maximum": 9007199254740991
+   }
   }
+ }
 }

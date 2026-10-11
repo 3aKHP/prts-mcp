@@ -1,0 +1,17 @@
+{
+ "name": "get_stage_enemies",
+ "description": "获取指定关卡实际出场的敌人列表。 只统计关卡内真正刷出的敌人，并附上其在该关卡等级下的战斗属性。 反向查询某敌人出现在哪些关卡见 get_enemy_appearances。",
+ "inputSchema": {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+   "stage_id": {
+    "type": "string",
+    "description": "关卡 ID，如 'main_00-01'（可从 list_stages 获取）。"
+   }
+  },
+  "required": [
+   "stage_id"
+  ]
+ }
+}

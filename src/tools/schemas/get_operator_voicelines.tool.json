@@ -1,0 +1,17 @@
+{
+ "name": "get_operator_voicelines",
+ "description": "获取指定干员的所有语音台词记录。 返回触发条件（如「交谈1」、「晋升后交谈」、「信赖提升后交谈」）及对应台词文本的完整列表。 背景故事与客观履历见 get_operator_archives。",
+ "inputSchema": {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+   "name": {
+    "type": "string",
+    "description": "干员的游戏内中文名，如「阿米娅」、「能天使」。"
+   }
+  },
+  "required": [
+   "name"
+  ]
+ }
+}
