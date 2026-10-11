@@ -126,11 +126,18 @@ pub fn dispatch(app: &AppHandle, arguments: &Value) -> DispatchResult {
             )))
         }
     };
-    let Some(store) = app.excel.as_ref() else {
+    // Snapshot the active generation once for the whole call.
+    let view = app.snapshot();
+    let Some(excel_root) = view.excel_root.as_ref() else {
         return DispatchResult::Outcome(ToolOutcome::text(format!(
             "{}（关卡数据文件不存在：stage_table.json）",
             app.excel_missing_message
         )));
     };
-    DispatchResult::Outcome(stage::list_stages(store, &app.excel_missing_message, &args))
+    let store = crate::storage::DirectoryStore::new(excel_root);
+    DispatchResult::Outcome(stage::list_stages(
+        &store,
+        &app.excel_missing_message,
+        &args,
+    ))
 }

@@ -1,12 +1,14 @@
 //! Startup option parsing (docs/04-runtime-contracts.md).
 //!
-//! `RuntimeConfig` mirrors the once-parsed startup half of TS `config.ts`.
-//! The TS `config.ts ↔ activation.ts` cycle does not exist here: dynamic
-//! data-view state lives in `app`, and `config` only parses inputs — it must
-//! stay free of downstream imports.
+//! `RuntimeConfig` mirrors the once-parsed startup half of TS `config.ts`:
+//! paths and switches only. The TS `config.ts ↔ activation.ts` cycle does
+//! not exist here — dynamic generation-pointer resolution lives in
+//! `app::DataState`, and `config` stays free of downstream imports.
 
 use std::path::{Path, PathBuf};
 
+use crate::sync::scheduler::resolve_auto_sync_interval_ms;
+use crate::sync::transport::parse_mirrors;
 use crate::tools::output::OutputChannel;
 
 /// Files whose presence marks an excel dataset "complete" (config.ts
@@ -26,17 +28,24 @@ pub struct RuntimeConfig {
     pub is_custom_gamedata: bool,
     pub excel_path: PathBuf,
     pub levels_path: PathBuf,
-    /// The excel directory tools should actually read from; None when no
-    /// complete dataset exists (service still starts — missing data is a
-    /// per-tool concern, not a startup failure).
-    pub effective_excel_path: Option<PathBuf>,
+    /// Configured storyjson zip (STORYJSON_PATH or the default sibling).
+    /// The sync target — what is actually readable is a DataView concern.
     pub storyjson_zip: PathBuf,
-    pub effective_storyjson_zip: Option<PathBuf>,
+    /// STORYJSON_PATH unset or empty → the release sync runs (JS falsy rule:
+    /// an empty string does NOT disable story sync).
+    pub story_sync_enabled: bool,
     pub images_enabled: bool,
     pub local_image: bool,
     pub original_image: bool,
     pub prts_image_cache: bool,
     pub images_path: PathBuf,
+    /// PRTS_AUTO_SYNC_INTERVAL_SECONDS: 0 = startup sync only; invalid
+    /// spellings fall back to the 3600s default.
+    pub auto_sync_interval_ms: u64,
+    /// GITHUB_TOKEN — used for GitHub request auth; never logged.
+    pub github_token: Option<String>,
+    /// GITHUB_MIRRORS parsed at startup.
+    pub github_mirrors: Vec<String>,
     /// SESSION_IDLE_TIMEOUT_MS: None disables idle eviction (`<= 0` sentinel);
     /// unset defaults to 24h. Fractional seconds are legal (positive finite
     /// decimal), so this stays f64.
@@ -100,10 +109,15 @@ fn parse_session_idle_timeout(raw: &str) -> Option<f64> {
     }
 }
 
-fn files_complete(excel: &Path) -> bool {
+pub fn files_complete(excel: &Path) -> bool {
     REQUIRED_OPERATOR_FILES
         .iter()
         .all(|f| excel.join(f).is_file())
+}
+
+pub fn levels_complete(root: &Path) -> bool {
+    root.join("zh_CN/gamedata/levels/enemydata/enemy_database.json")
+        .is_file()
 }
 
 fn home_local_share() -> PathBuf {
@@ -124,47 +138,24 @@ fn default_gamedata_path() -> PathBuf {
     base.join("prts-mcp").join("gamedata")
 }
 
-fn levels_complete(root: &Path) -> bool {
-    root.join("zh_CN/gamedata/levels/enemydata/enemy_database.json")
-        .is_file()
-}
-
-fn resolve_levels_path(gamedata_root: &Path, gamedata_env_set: bool) -> PathBuf {
-    if gamedata_env_set && levels_complete(gamedata_root) {
-        return gamedata_root.to_path_buf();
-    }
+fn levels_path_of(gamedata_root: &Path) -> PathBuf {
     gamedata_root
         .parent()
         .unwrap_or(gamedata_root)
         .join("gamedata-levels")
 }
 
-/// Read the `data_root` pointer from `<root>/archives/extract_meta.json` and
-/// resolve it with the same containment rules as `config.ts:activatedRoot`.
-fn activated_root(root: &Path) -> PathBuf {
-    let meta_path = root.join("archives").join("extract_meta.json");
-    let Ok(text) = std::fs::read_to_string(&meta_path) else {
-        return root.to_path_buf();
-    };
-    let Ok(value) = serde_json::from_str::<serde_json::Value>(&text) else {
-        return root.to_path_buf();
-    };
-    let Some(data_root) = value.get("data_root").and_then(|v| v.as_str()) else {
-        return root.to_path_buf();
-    };
-    if data_root.is_empty() {
-        return root.to_path_buf();
+fn resolve_levels_path(gamedata_root: &Path, gamedata_env_set: bool) -> PathBuf {
+    if gamedata_env_set {
+        if levels_complete(gamedata_root) {
+            return gamedata_root.to_path_buf();
+        }
+        return levels_path_of(gamedata_root);
     }
-    let Ok(base) = std::fs::canonicalize(root) else {
-        return root.to_path_buf();
-    };
-    let Ok(activated) = std::fs::canonicalize(root.join(data_root)) else {
-        return root.to_path_buf();
-    };
-    if !activated.starts_with(&base) || !activated.is_dir() {
-        return root.to_path_buf();
+    if std::env::var("PRTS_MCP_ROOT").as_deref() == Ok("/app") {
+        return PathBuf::from("/data/gamedata-levels");
     }
-    activated
+    levels_path_of(gamedata_root)
 }
 
 fn excel_path_of(root: &Path) -> PathBuf {
@@ -186,27 +177,19 @@ impl RuntimeConfig {
         let excel_path = excel_path_of(&gamedata_path);
         let levels_path = resolve_levels_path(&gamedata_path, is_custom_gamedata);
 
-        // P1 scope: activated-root pointer resolution via extract_meta.json;
-        // the paired `.gamedata_pair.json` pointer joins in P2 with the sync
-        // state machine that writes it.
-        let active_excel = excel_path_of(&activated_root(&gamedata_path));
-        let effective_excel_path = files_complete(&active_excel).then_some(active_excel);
-
         let default_storyjson_zip = gamedata_path
             .parent()
             .unwrap_or(&gamedata_path)
             .join("storyjson")
             .join("zh_CN.zip");
-        let storyjson_zip = lookup("STORYJSON_PATH")
+        let storyjson_env = lookup("STORYJSON_PATH");
+        let storyjson_zip = storyjson_env
+            .clone()
             .map(PathBuf::from)
             .unwrap_or(default_storyjson_zip);
-        let effective_storyjson_zip = if storyjson_zip.is_file() {
-            Some(storyjson_zip.clone())
-        } else if Path::new("/data/storyjson/zh_CN.zip").is_file() {
-            Some(PathBuf::from("/data/storyjson/zh_CN.zip"))
-        } else {
-            None
-        };
+        // JS `!process.env["STORYJSON_PATH"]`: unset OR empty string runs the
+        // release sync; only a non-empty value disables it.
+        let story_sync_enabled = storyjson_env.as_deref().is_none_or(str::is_empty);
 
         let images_path = lookup("PRTS_IMAGE_DIR")
             .map(PathBuf::from)
@@ -222,14 +205,18 @@ impl RuntimeConfig {
             is_custom_gamedata,
             excel_path,
             levels_path,
-            effective_excel_path,
             storyjson_zip,
-            effective_storyjson_zip,
+            story_sync_enabled,
             images_enabled: env_bool_from(&lookup, "IMAGES_ENABLED", true),
             local_image: env_bool_from(&lookup, "LOCAL_IMAGE", false),
             original_image: env_bool_from(&lookup, "ORIGINAL_IMAGE", false),
             prts_image_cache: env_bool_from(&lookup, "PRTS_IMAGE_CACHE", true),
             images_path,
+            auto_sync_interval_ms: resolve_auto_sync_interval_ms(
+                lookup("PRTS_AUTO_SYNC_INTERVAL_SECONDS").as_deref(),
+            ),
+            github_token: lookup("GITHUB_TOKEN").filter(|t| !t.is_empty()),
+            github_mirrors: parse_mirrors(lookup("GITHUB_MIRRORS").as_deref().unwrap_or("")),
             session_idle_timeout_ms: match lookup("SESSION_IDLE_TIMEOUT_MS") {
                 None => Some(86_400_000.0),
                 Some(raw) => parse_session_idle_timeout(&raw),
@@ -276,6 +263,8 @@ mod tests {
         assert!(c.is_custom_gamedata);
         assert_eq!(c.gamedata_path, PathBuf::from("/tmp/x"));
         assert_eq!(c.excel_path, PathBuf::from("/tmp/x/zh_CN/gamedata/excel"));
+        // Custom root without levels data → sibling gamedata-levels.
+        assert_eq!(c.levels_path, PathBuf::from("/tmp/gamedata-levels"));
     }
 
     #[test]
@@ -283,6 +272,41 @@ mod tests {
         let c = cfg(&[("GAMEDATA_PATH", "")]);
         assert!(c.is_custom_gamedata);
         assert_eq!(c.gamedata_path, PathBuf::from(""));
+    }
+
+    #[test]
+    fn story_sync_enabled_follows_js_falsy_rule() {
+        // Unset → enabled, default sibling path.
+        let c = cfg(&[("GAMEDATA_PATH", "/tmp/x")]);
+        assert!(c.story_sync_enabled);
+        assert_eq!(c.storyjson_zip, PathBuf::from("/tmp/storyjson/zh_CN.zip"));
+        // Empty string → STILL enabled (falsy value), but the target is "".
+        let c = cfg(&[("GAMEDATA_PATH", "/tmp/x"), ("STORYJSON_PATH", "")]);
+        assert!(c.story_sync_enabled);
+        assert_eq!(c.storyjson_zip, PathBuf::from(""));
+        // Non-empty → disabled.
+        let c = cfg(&[("GAMEDATA_PATH", "/tmp/x"), ("STORYJSON_PATH", "/my/zip")]);
+        assert!(!c.story_sync_enabled);
+        assert_eq!(c.storyjson_zip, PathBuf::from("/my/zip"));
+    }
+
+    #[test]
+    fn mirrors_and_token_parse_at_startup() {
+        let c = cfg(&[
+            ("GAMEDATA_PATH", "/tmp/x"),
+            (
+                "GITHUB_MIRRORS",
+                " https://a.example/ ,, https://b.example// ",
+            ),
+            ("GITHUB_TOKEN", "secret"),
+        ]);
+        assert_eq!(
+            c.github_mirrors,
+            vec!["https://a.example", "https://b.example"]
+        );
+        assert_eq!(c.github_token.as_deref(), Some("secret"));
+        let none = cfg(&[("GAMEDATA_PATH", "/tmp/x"), ("GITHUB_TOKEN", "")]);
+        assert_eq!(none.github_token, None);
     }
 
     #[test]
@@ -330,5 +354,21 @@ mod tests {
         assert_eq!(parse_port("0x10"), None);
         assert_eq!(parse_port("abc"), None);
         assert_eq!(parse_port("70000"), None);
+    }
+
+    #[test]
+    fn auto_sync_interval_from_env() {
+        let c = cfg(&[("GAMEDATA_PATH", "/tmp/x")]);
+        assert_eq!(c.auto_sync_interval_ms, 3_600_000);
+        let c = cfg(&[
+            ("GAMEDATA_PATH", "/tmp/x"),
+            ("PRTS_AUTO_SYNC_INTERVAL_SECONDS", "0"),
+        ]);
+        assert_eq!(c.auto_sync_interval_ms, 0);
+        let c = cfg(&[
+            ("GAMEDATA_PATH", "/tmp/x"),
+            ("PRTS_AUTO_SYNC_INTERVAL_SECONDS", "nonsense"),
+        ]);
+        assert_eq!(c.auto_sync_interval_ms, 3_600_000);
     }
 }
