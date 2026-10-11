@@ -1,13 +1,13 @@
 # 执行进度
 
-最后更新：2026-10-11（P2 完成）。
+最后更新：2026-10-11（P3 完成）。
 
 | 阶段 | 状态 | 报告 | 下一步 |
 |---|---|---|---|
 | P0 | complete (tag local/p0-complete) | [reports/P0.md](reports/P0.md)、[reports/P0-audit.md](reports/P0-audit.md) | — |
 | P1 | complete (tag local/p1-complete) | [reports/P1.md](reports/P1.md) | — |
 | P2 | complete (tag local/p2-complete) | [reports/P2.md](reports/P2.md) | — |
-| P3 | not-started | — | 完整12个GameData工具 |
+| P3 | complete (tag local/p3-complete) | [reports/P3.md](reports/P3.md) | — |
 | P4 | not-started | — | 完整9个Story工具 |
 | P5 | not-started | — | 完整2个Wiki工具 |
 | P6 | not-started | — | 图片工具与完整图片同步 |
@@ -37,9 +37,21 @@
 - **门禁**：fmt/clippy(-D)/112 测试/release 全过；P0 自检 29/29、P1 32/32、P2 33/33 差分。
 - 工具数 1（阶段契约）。图片完整链（baseline/delta/.images.lock）按计划留 P6；bundle 回退与入口 profiles 留 P7。
 
+## P3 交付摘要（2026-10-11）
+
+- **12 个 GameData 工具全部实现**：operator 档案/语音/basic（basic/skills/stats 三 action）、list/get enemy、stage-enemies、appearances、get_stage_info、list/get item、六 scope 统一 search；list_stages 分支补齐。声明字节取自 oracle tools/list 捕获；注册顺序=oracle 顺序。
+- **数值/文本保真内核**：roundHalfAway、JS Number→string（最短往返+指数阈值）、V8 实测 toFixed（精确二进制值半离零、-0）、pythonFloatString/千分位、stripWikitext 六遍（含 oracle 实证的 category 死代码遍）、QuickJS `iu` 正则复用。
+- **ICU localeCompare**：stageEnemy 计数并列 tie-break —— 从 oracle 逐对探测导出 95 字符 ASCII 权重表（零传递矛盾），15 探针单测钉死；与 compareIds（UTF-16）按 docs/02 分离实现。
+- **Zod 4.3.6 等价校验**：11 条探针文案（enum/boolean/nullish/int/bounds/多字段顺序）单测钉死；协议层 -32602 record 校验复用 P1。
+- **每代数据集缓存**：datasetAccess 对应物挂 DataView（成功缓存/失败重试/换代释放）；levelsStore `zh_CN/gamedata/levels` 根与 excelStore null 文案差分钉死。
+- **差分 157/157**（P3 124 新例）：四格矩阵 44、S 工具三通道全覆盖、成功/空/缺数据/参数分支齐备；`minimal-gamedata-v2` fixture（13 文件）登记 data-manifest；`map-regex-error-detail` 归一化（引擎详情差异，docs/06 依赖详情规则）。
+- **语料单测**：operator-query-cases 16 例、operator-talent-cases 3 例、tool-bounds、trap 同名优先级、同代缓存——语料入库 contracts/cases/。
+- **门禁**：fmt/clippy(-D)/136 测试/release；P0 自检 29/29+变异、P1 32/32、P2 33/33 全保持。
+- 全规模 GameData 差分与冷/热测量按计划归 P4；`/debug/cache` 映射留 P7。
+
 ## 交接入口
 
-- 分支 `rust-local`；HEAD 见 `git log -1`（tag local/p2-complete）；工作树干净。
-- 阶段 bundle：`artifacts/p0.bundle`、`artifacts/p1.bundle`（hash 以最终文件为准，因 bundle 含其自身说明提交而自我递归，此处不内嵌 hash；请维护者另存备份并自行记录）。
-- 差分重跑：`node tools/verify.mjs --phase P2`（Rust 需 `cargo build --locked --release`）；oracle 重建见 P0 报告；峰值 `node tools/bench-p2.mjs`。
-- P3 首个任务：operator 身份/档案/台词/basic 工具（docs/07 P3 顺序），复用 P2 的 DataView 快照与存储层；`LocaleCompare`（stageEnemy）与排序碰撞案例按 docs/02 在 P3 验证。
+- 分支 `rust-local`；HEAD 见 `git log -1`（tag local/p3-complete）；工作树干净。
+- 阶段 bundle：`artifacts/p0.bundle` … `artifacts/p3.bundle`（hash 以最终文件为准；请维护者另存备份并自行记录）。
+- 差分重跑：`node tools/verify.mjs --phase P3`（Rust 需 `cargo build --locked --release`）；oracle 重建见 P0 报告。
+- P4 首个任务：story 域读取（story_review_table/storyinfo/zip 条目，ZipStore 复用）与 `list_story_events`/`list_stories`；supplement 整链、共享单份索引（换包重建一次/释放旧索引）、全规模与冷/热测量都在 P4 内完成（docs/07 P4）。
