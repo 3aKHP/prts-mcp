@@ -1,0 +1,56 @@
+[package]
+name = "prts-mcp-rust"
+version = "0.1.0+ts2.8.1.local"
+edition = "2021"
+publish = false
+description = "Local Rust replication of PRTS-MCP TS v2.8.1 (dev/rust-rewrite sandbox; not for publication)"
+license = "MIT"
+
+[lib]
+name = "prts_mcp_rust"
+path = "src/lib.rs"
+
+# ---------------------------------------------------------------------------
+# Dependency policy (docs/02-architecture.md): precise versions are pinned by
+# the committed Cargo.lock; the requirements below stay conservative. rmcp and
+# rquickjs are the two high-risk integrations validated by the P1 probes.
+# ---------------------------------------------------------------------------
+
+[dependencies]
+# MCP SDK candidate — pinned in P0, validated against the oracle wire captures
+# in P1 before any business layer is wired to it. Non-default feature set:
+# just the server core plus the two transports the oracle exposes.
+rmcp = { version = "3.5.1", default-features = false, features = ["server", "transport-io", "transport-streamable-http-server"] }
+
+# Async runtime + HTTP server.
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "time", "signal", "io-util", "sync", "fs", "process"] }
+axum = { version = "0.8", default-features = false, features = ["http1", "json", "query", "tokio"] }
+
+# JSON: preserve_order keeps object key insertion order (JS semantics) for
+# structuredContent rendering parity.
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+
+# HTTP client (sync layer uses, P2+).
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "gzip", "stream"] }
+
+# Archive + hashing (sync layer, P2+).
+zip = { version = "6", default-features = false, features = ["deflate"] }
+sha2 = "0.10"
+
+# XML/HTML parsing for the Wiki template renderer (P5).
+quick-xml = "0.38"
+
+# Diagnostics/errors.
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+thiserror = "2"
+
+# JS regex compatibility component (narrow adapter: compile + is_match only).
+rquickjs = { version = "0.14", default-features = false, features = ["std"] }
+
+[features]
+default = []
+
+[profile.release]
+debug = false

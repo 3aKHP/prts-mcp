@@ -1,0 +1,88 @@
+{
+  "schema_version": "prts-rust-plan/dependency-licenses/v1",
+  "recorded_at": "2026-10-11",
+  "toolchain": "1.96.1 (rust-toolchain.toml)",
+  "lockfile": "Cargo.lock (committed)",
+  "lock_package_count": 214,
+  "note": "Direct dependencies only; transitive closure is pinned by Cargo.lock. rmcp and rquickjs are P1 high-risk probes — selection is not compatibility acceptance.",
+  "direct_dependencies": [
+    {
+      "name": "axum",
+      "version": "0.8.9",
+      "license": "MIT",
+      "repository": "https://github.com/tokio-rs/axum"
+    },
+    {
+      "name": "quick-xml",
+      "version": "0.38.4",
+      "license": "MIT",
+      "repository": "https://github.com/tafia/quick-xml"
+    },
+    {
+      "name": "reqwest",
+      "version": "0.12.28",
+      "license": "MIT OR Apache-2.0",
+      "repository": "https://github.com/seanmonstar/reqwest"
+    },
+    {
+      "name": "rmcp",
+      "version": "3.5.1",
+      "license": "Apache-2.0",
+      "repository": "https://github.com/modelcontextprotocol/rust-sdk/"
+    },
+    {
+      "name": "rquickjs",
+      "version": "0.14.0",
+      "license": "MIT",
+      "repository": "https://github.com/DelSkayn/rquickjs.git"
+    },
+    {
+      "name": "serde",
+      "version": "1.0.229",
+      "license": "MIT OR Apache-2.0",
+      "repository": "https://github.com/serde-rs/serde"
+    },
+    {
+      "name": "serde_json",
+      "version": "1.0.152",
+      "license": "MIT OR Apache-2.0",
+      "repository": "https://github.com/serde-rs/json"
+    },
+    {
+      "name": "sha2",
+      "version": "0.10.9",
+      "license": "MIT OR Apache-2.0",
+      "repository": "https://github.com/RustCrypto/hashes"
+    },
+    {
+      "name": "thiserror",
+      "version": "2.0.21",
+      "license": "MIT OR Apache-2.0",
+      "repository": "https://github.com/dtolnay/thiserror"
+    },
+    {
+      "name": "tokio",
+      "version": "1.53.2",
+      "license": "MIT",
+      "repository": "https://github.com/tokio-rs/tokio"
+    },
+    {
+      "name": "tracing",
+      "version": "0.1.44",
+      "license": "MIT",
+      "repository": "https://github.com/tokio-rs/tracing"
+    },
+    {
+      "name": "tracing-subscriber",
+      "version": "0.3.23",
+      "license": "MIT",
+      "repository": "https://github.com/tokio-rs/tracing"
+    },
+    {
+      "name": "zip",
+      "version": "6.0.0",
+      "license": "MIT",
+      "repository": "https://github.com/zip-rs/zip2.git"
+    }
+  ]
+}

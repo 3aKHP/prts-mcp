@@ -1,0 +1,26 @@
+{
+  "case": "stage.list.filtered",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v1",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "014198c7-6b39-4adb-9f9f-a4bcdd07a0bf",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "# 关卡列表（共 2 个）\n- **坍塌** [主线] 0-1 — 普通 — 序章-黑暗时代·上（id: main_00-01）\n\n（显示第 1–1 条，共 2 条。使用 offset=1 查看下一页）"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9007
+    }
+  }
+}

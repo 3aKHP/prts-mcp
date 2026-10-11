@@ -1,0 +1,251 @@
+{
+  "capture_meta": {
+    "runtime": "bun 1.3.14",
+    "server_entry": "dist/server.js",
+    "server_version": "2.8.1",
+    "fixture": "minimal-gamedata-v1",
+    "captured_at": "2026-10-11T10:29:31.421Z"
+  },
+  "steps": [
+    {
+      "label": "initialize protocolVersion=2024-11-05",
+      "request": {
+        "body": {
+          "jsonrpc": "2.0",
+          "method": "initialize",
+          "id": 1,
+          "params": {
+            "protocolVersion": "2024-11-05",
+            "capabilities": {},
+            "clientInfo": {
+              "name": "wire-capture",
+              "version": "1.0"
+            }
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "text/event-stream",
+          "mcp-session-id": "1b2c5b18-d687-4ba4-a765-d2c7e1134ec5"
+        },
+        "body_text": "event: message\ndata: {\"result\":{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{\"tools\":{\"listChanged\":true}},\"serverInfo\":{\"name\":\"PRTS_Wiki_Assistant\",\"version\":\"2.8.1\"}},\"jsonrpc\":\"2.0\",\"id\":1}\n\n"
+      }
+    },
+    {
+      "label": "DELETE session(2024-11-05)",
+      "request": {
+        "method": "DELETE",
+        "headers": {
+          "mcp-session-id": "«sid»"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {},
+        "body_text": ""
+      }
+    },
+    {
+      "label": "initialize protocolVersion=2025-03-26",
+      "request": {
+        "body": {
+          "jsonrpc": "2.0",
+          "method": "initialize",
+          "id": 2,
+          "params": {
+            "protocolVersion": "2025-03-26",
+            "capabilities": {},
+            "clientInfo": {
+              "name": "wire-capture",
+              "version": "1.0"
+            }
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "text/event-stream",
+          "mcp-session-id": "27569f12-bb4d-4a3f-ac69-ce0cd500d642"
+        },
+        "body_text": "event: message\ndata: {\"result\":{\"protocolVersion\":\"2025-03-26\",\"capabilities\":{\"tools\":{\"listChanged\":true}},\"serverInfo\":{\"name\":\"PRTS_Wiki_Assistant\",\"version\":\"2.8.1\"}},\"jsonrpc\":\"2.0\",\"id\":2}\n\n"
+      }
+    },
+    {
+      "label": "DELETE session(2025-03-26)",
+      "request": {
+        "method": "DELETE",
+        "headers": {
+          "mcp-session-id": "«sid»"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {},
+        "body_text": ""
+      }
+    },
+    {
+      "label": "initialize protocolVersion=2025-06-18",
+      "request": {
+        "body": {
+          "jsonrpc": "2.0",
+          "method": "initialize",
+          "id": 3,
+          "params": {
+            "protocolVersion": "2025-06-18",
+            "capabilities": {},
+            "clientInfo": {
+              "name": "wire-capture",
+              "version": "1.0"
+            }
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "text/event-stream",
+          "mcp-session-id": "26f36558-804c-4c65-88ae-7fb290b56889"
+        },
+        "body_text": "event: message\ndata: {\"result\":{\"protocolVersion\":\"2025-06-18\",\"capabilities\":{\"tools\":{\"listChanged\":true}},\"serverInfo\":{\"name\":\"PRTS_Wiki_Assistant\",\"version\":\"2.8.1\"}},\"jsonrpc\":\"2.0\",\"id\":3}\n\n"
+      }
+    },
+    {
+      "label": "DELETE session(2025-06-18)",
+      "request": {
+        "method": "DELETE",
+        "headers": {
+          "mcp-session-id": "«sid»"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {},
+        "body_text": ""
+      }
+    },
+    {
+      "label": "initialize protocolVersion=2025-11-25",
+      "request": {
+        "body": {
+          "jsonrpc": "2.0",
+          "method": "initialize",
+          "id": 4,
+          "params": {
+            "protocolVersion": "2025-11-25",
+            "capabilities": {},
+            "clientInfo": {
+              "name": "wire-capture",
+              "version": "1.0"
+            }
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "text/event-stream",
+          "mcp-session-id": "1756bfea-8fd8-408c-9142-5af3e7737505"
+        },
+        "body_text": "event: message\ndata: {\"result\":{\"protocolVersion\":\"2025-11-25\",\"capabilities\":{\"tools\":{\"listChanged\":true}},\"serverInfo\":{\"name\":\"PRTS_Wiki_Assistant\",\"version\":\"2.8.1\"}},\"jsonrpc\":\"2.0\",\"id\":4}\n\n"
+      }
+    },
+    {
+      "label": "DELETE session(2025-11-25)",
+      "request": {
+        "method": "DELETE",
+        "headers": {
+          "mcp-session-id": "«sid»"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {},
+        "body_text": ""
+      }
+    },
+    {
+      "label": "initialize protocolVersion=2026-07-28",
+      "request": {
+        "body": {
+          "jsonrpc": "2.0",
+          "method": "initialize",
+          "id": 5,
+          "params": {
+            "protocolVersion": "2026-07-28",
+            "capabilities": {},
+            "clientInfo": {
+              "name": "wire-capture",
+              "version": "1.0"
+            }
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "text/event-stream",
+          "mcp-session-id": "cdfd7cf8-9cc7-468e-8685-d001183b7468"
+        },
+        "body_text": "event: message\ndata: {\"result\":{\"protocolVersion\":\"2025-11-25\",\"capabilities\":{\"tools\":{\"listChanged\":true}},\"serverInfo\":{\"name\":\"PRTS_Wiki_Assistant\",\"version\":\"2.8.1\"}},\"jsonrpc\":\"2.0\",\"id\":5}\n\n"
+      }
+    },
+    {
+      "label": "DELETE session(2026-07-28)",
+      "request": {
+        "method": "DELETE",
+        "headers": {
+          "mcp-session-id": "«sid»"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {},
+        "body_text": ""
+      }
+    },
+    {
+      "label": "initialize protocolVersion=1999-01-01",
+      "request": {
+        "body": {
+          "jsonrpc": "2.0",
+          "method": "initialize",
+          "id": 6,
+          "params": {
+            "protocolVersion": "1999-01-01",
+            "capabilities": {},
+            "clientInfo": {
+              "name": "wire-capture",
+              "version": "1.0"
+            }
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "text/event-stream",
+          "mcp-session-id": "3e37d7c8-db10-4554-af6b-b2f759295df4"
+        },
+        "body_text": "event: message\ndata: {\"result\":{\"protocolVersion\":\"2025-11-25\",\"capabilities\":{\"tools\":{\"listChanged\":true}},\"serverInfo\":{\"name\":\"PRTS_Wiki_Assistant\",\"version\":\"2.8.1\"}},\"jsonrpc\":\"2.0\",\"id\":6}\n\n"
+      }
+    },
+    {
+      "label": "DELETE session(1999-01-01)",
+      "request": {
+        "method": "DELETE",
+        "headers": {
+          "mcp-session-id": "«sid»"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {},
+        "body_text": ""
+      }
+    }
+  ]
+}

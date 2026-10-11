@@ -1,0 +1,96 @@
+{
+  "schema_version": "prts-rust-plan/data-manifest/v1",
+  "recorded_at": "2026-10-11T10:32:58.085Z",
+  "baseline_commit": "e0ba36096cdd46640166b0a5db02902fa9a6a24c",
+  "datasets": {
+    "minimal-gamedata-v1": {
+      "purpose": "P0/P1 differential fixture for list_stages and protocol cases",
+      "source": "derived from ts/tests/stage.test.ts writeFixtures @ baseline commit",
+      "root": ".runtime/fixtures/minimal-gamedata-v1",
+      "excel_dir": "zh_CN/gamedata/excel",
+      "files": [
+        {
+          "path": "zh_CN/gamedata/excel/character_table.json",
+          "bytes": 2,
+          "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/charword_table.json",
+          "bytes": 2,
+          "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/handbook_info_table.json",
+          "bytes": 2,
+          "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/item_table.json",
+          "bytes": 129,
+          "sha256": "c5a68023d308877e229e9af2b4a0a29f157294cc69f4c8c27b68ca4feec1f23d"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/stage_table.json",
+          "bytes": 1594,
+          "sha256": "b24ad3b4dfca63fab834fd72e9fbf2ee6469ea81abb44526b1d470cbab8c0f42"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/story_review_table.json",
+          "bytes": 2,
+          "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/zone_table.json",
+          "bytes": 284,
+          "sha256": "a9120d68d1daa732905dc7e24e360408fa6a809fd62392e7ab336d87e61a3dcb"
+        }
+      ]
+    },
+    "bundled-sample-gamedata": {
+      "purpose": "repo-bundled partial excel sample shipped with the fixed tag; reference only",
+      "source": "git archive e0ba360:data/gamedata",
+      "root": ".reference/ts-v2.8.1/data/gamedata",
+      "files": [
+        {
+          "path": "cache_meta.json",
+          "bytes": 384,
+          "sha256": "baa5b6195535ac451aa30cef9def2b227cdcc8356ee9ecb8978f698cf4388db8"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/character_table.json",
+          "bytes": 13278702,
+          "sha256": "024e0dbae29b5cc6d1db02c97c5c814de7dfc7aa3c1fee08854bd6b63e2a4331"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/charword_table.json",
+          "bytes": 10628587,
+          "sha256": "201844f3fc5f39df6f7ae3189688279baeb5714a4370e1ef7b414232e3cb3c62"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/handbook_info_table.json",
+          "bytes": 5470806,
+          "sha256": "ec2a4a0f3f4240a45da008749b180ed34089534df4e304f5f7d8bf97c74c721f"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/story_review_table.json",
+          "bytes": 1735098,
+          "sha256": "fe70abee91e9f4b383aea2d644103ccde84c2cff7a4c227a103de256a5883b55"
+        }
+      ]
+    }
+  },
+  "upstream_release_probe": {
+    "repo": "3aKHP/arknights-data-pipeline",
+    "note": "version axis of data packages, independent of server release dates; no archives downloaded in P0",
+    "status": "not-run",
+    "reason": "--skip-release-probe"
+  },
+  "wiki_response_fixtures": {
+    "status": "not-started",
+    "note": "P5 scope; P0 records the slot only"
+  },
+  "image_assets": {
+    "status": "not-started",
+    "note": "P6 scope; P0 records the slot only"
+  }
+}
