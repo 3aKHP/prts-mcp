@@ -33,6 +33,12 @@ reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"
 zip = { version = "6", default-features = false, features = ["deflate"] }
 sha2 = "0.10"
 
+# Sync layer (P2): async trait objects for the injectable transport, and
+# mtime/utimes for the cross-process lock lease protocol (TS uses
+# fs.promises.utimes; std has no setter).
+async-trait = "0.1"
+filetime = "0.2"
+
 # XML/HTML parsing for the Wiki template renderer (P5).
 quick-xml = "0.38"
 
