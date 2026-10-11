@@ -1,0 +1,10 @@
+/target/
+/.reference/
+/.runtime/
+/artifacts/
+/node_modules/
+**/node_modules/
+.env
+.env.*
+*.log
+*.core

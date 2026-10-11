@@ -1,0 +1,18 @@
+{
+  "schema_version": "prts-rust-plan/v1",
+  "recorded_at": "2026-10-11",
+  "tag": "ts/v2.8.1",
+  "commit": "e0ba36096cdd46640166b0a5db02902fa9a6a24c",
+  "primary_runtime": "bun 1.3.14",
+  "secondary_runtime": "node 24.18.0",
+  "observed_rust_toolchain": "1.96.1",
+  "ghcr_deployment_reference": "python/v2.8.1",
+  "ghcr_reference_commit": "e0ba36096cdd46640166b0a5db02902fa9a6a24c",
+  "target_platform": "x86_64-unknown-linux-gnu; WSL2 Linux and Linux containers",
+  "runtime_business_oracle": "typescript-only",
+  "data_snapshot": null,
+  "data_snapshot_status": "P0 must populate a separate immutable manifest with hashes before full-data differential runs",
+  "wire_snapshot_status": "P0 pending; tool-declarations.json is not a wire snapshot",
+  "approved_differences": ["D-001-runtime-identity", "D-002-native-diagnostics", "D-003-dependency-error-details", "D-004-local-packaging"],
+  "rust_implementation_status": "not-started"
+}
