@@ -1,12 +1,12 @@
 # 执行进度
 
-最后更新：2026-10-11（P1 完成）。
+最后更新：2026-10-11（P2 完成）。
 
 | 阶段 | 状态 | 报告 | 下一步 |
 |---|---|---|---|
 | P0 | complete (tag local/p0-complete) | [reports/P0.md](reports/P0.md)、[reports/P0-audit.md](reports/P0-audit.md) | — |
 | P1 | complete (tag local/p1-complete) | [reports/P1.md](reports/P1.md) | — |
-| P2 | not-started | — | 存储、同步、恢复与共享卷 |
+| P2 | complete (tag local/p2-complete) | [reports/P2.md](reports/P2.md) | — |
 | P3 | not-started | — | 完整12个GameData工具 |
 | P4 | not-started | — | 完整9个Story工具 |
 | P5 | not-started | — | 完整2个Wiki工具 |
@@ -24,9 +24,22 @@
 - 工具数 1（阶段契约）；24 工具面 tools/list 差分以 `diff_phase=P8` 推迟（07 明示允许）。
 - **维护者 2026-10-11 批准差异**：D-005-input-surrogate-rejection（拒孤立代理码元+明确解析错误）、D-006-unparseable-body-json-error（400+JSON-RPC 解析错误替代 HTML 页）——已登记 baseline.json 并配回归测试；有效代理对/正常 Unicode 由 `stage.list.chapter-astral-pair` 差分与截断单测守护。
 
+## P2 交付摘要（2026-10-11）
+
+- **存储**：Directory/Zip/Fallback 三存储完整读路径（primary 坏 JSON 不静默回退、不安全路径报错传播）+ 代际指针读取器（activatedRoot/activatedPair，realpath 逃逸拒绝）。
+- **Release 状态机**：fresh 跳过、离线/no_data 分支、盲下载（仅镜像+无记录版本）、防降级（tuple 比较、记录版本阻止替换、重复身份 fail-closed）、manifest 全错误族校验；`data-release-selection` 9 例共享发布语料通过。
+- **锁**：目录 owner 租约协议（心跳 utimes、陈旧隔离、释放前 owner 校验）与 `.gamedata-pair → activation → release` 层级；跨进程（Rust↔真实 TS dist）双向争用验证。
+- **成对代际**：双幂等守卫（#152 activationSha 短路、#155 pair 无变化不重写——inode/mtime 级断言）；混合代不发布；Story 原子换包。
+- **架构**：TS `config↔activation` 循环按计划消解——RuntimeConfig 静态 + DataState 签名缓存快照，单次工具调用单代一致，缺数据→后台激活→不重启可读（输出与 TS golden 逐字节一致）。
+- **调度**：single-flight、30/120/600s 密集重试（仅启动轮）、周期不重叠、interval=0 仅启动；stdio EOF 在重试已武装时 <10s 退 0。
+- **互操作**：TS 写↔Rust 读 / Rust 写↔TS 读 / 元数据字节一致 / 锁争用 5 案例全过；差分案例 `stage.list.pair-activated`（TS 同步代码写入的 fixture 卷）33/33。
+- **峰值**：3 轮实测（artifacts/p2-bench.json）：Rust 冷同步峰值 RSS ~23MB（流式，不随 60.6MB 包体增长）vs TS ~321MB（整包缓冲）；无变化周期 454ms。
+- **门禁**：fmt/clippy(-D)/112 测试/release 全过；P0 自检 29/29、P1 32/32、P2 33/33 差分。
+- 工具数 1（阶段契约）。图片完整链（baseline/delta/.images.lock）按计划留 P6；bundle 回退与入口 profiles 留 P7。
+
 ## 交接入口
 
-- 分支 `rust-local`；HEAD 见 `git log -1`（tag local/p1-complete）；工作树干净。
+- 分支 `rust-local`；HEAD 见 `git log -1`（tag local/p2-complete）；工作树干净。
 - 阶段 bundle：`artifacts/p0.bundle`、`artifacts/p1.bundle`（hash 以最终文件为准，因 bundle 含其自身说明提交而自我递归，此处不内嵌 hash；请维护者另存备份并自行记录）。
-- 差分重跑：`node tools/verify.mjs --phase P1`（Rust 需 `cargo build --locked --release`）；oracle 重建见 P0 报告。
-- P2 首个任务：DirectoryStore/ZipStore/FallbackStore 完整化 + `.gamedata_pair.json` 双指针接入（config.rs 已留 `activated_root` 单指针接入点）+ Release 状态机。
+- 差分重跑：`node tools/verify.mjs --phase P2`（Rust 需 `cargo build --locked --release`）；oracle 重建见 P0 报告；峰值 `node tools/bench-p2.mjs`。
+- P3 首个任务：operator 身份/档案/台词/basic 工具（docs/07 P3 顺序），复用 P2 的 DataView 快照与存储层；`LocaleCompare`（stageEnemy）与排序碰撞案例按 docs/02 在 P3 验证。
