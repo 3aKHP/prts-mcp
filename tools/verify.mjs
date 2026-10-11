@@ -244,6 +244,14 @@ async function runCase(kind, c) {
       if (c.transport_option === "header-channel") headers = { "x-prts-output-channel": c.channel };
 
       if (c.era === "legacy") {
+        if (c.env?.DIFF_STALE_INIT_SESSION === "1") {
+          // Stale-session initialize recovery: the handshake request itself
+          // carries an unknown session id the server must strip.
+          const res = await httpPost(server.origin, path, c.request, {
+            ...headers, "mcp-session-id": "00000000-0000-4000-8000-000000000000",
+          });
+          return normalizeObservable(normalizeHttp(res, c, c.request.id), c, dataset);
+        }
         if (c.request.method === "initialize") {
           // The case's observable is the initialize response itself — it IS
           // the handshake; no pre-established session.
@@ -254,6 +262,7 @@ async function runCase(kind, c) {
         const sid = init.headers["mcp-session-id"];
         if (!sid) throw new Error("no session id from initialize");
         await httpPost(server.origin, path, INITIALIZED, { "mcp-session-id": sid });
+        if (c.wait_ms) await new Promise((r) => setTimeout(r, c.wait_ms));
         const headers2 = { ...headers, "mcp-session-id": sid };
         if (c.env?.DIFF_FORCE_UNKNOWN_SESSION === "1") {
           // Stale-session probe: the observable is the 404 the server must
@@ -334,19 +343,37 @@ function normalizeHttp(res, c, wantId) {
   };
 }
 
+const D001_VERSIONS = new Set(["2.8.1", "0.1.0+ts2.8.1.local"]);
+
 /** Apply the case's declared allow-list normalizations to an observable. */
 function normalizeObservable(observed, c, dataset) {
-  if (!c.normalizations?.includes("map-sandbox-path")) return observed;
-  const root = datasetDir(dataset);
-  const replaceRoot = (value) => {
-    if (typeof value === "string") return value.split(root).join("<gamedata-root>");
-    if (value === null || typeof value !== "object") return value;
-    if (Array.isArray(value)) return value.map(replaceRoot);
-    const out = {};
-    for (const [k, v] of Object.entries(value)) out[k] = replaceRoot(v);
-    return out;
-  };
-  return { ...observed, body: replaceRoot(observed.body) };
+  let body = observed.body;
+  if (c.normalizations?.includes("map-sandbox-path")) {
+    const root = datasetDir(dataset);
+    const replaceRoot = (value) => {
+      if (typeof value === "string") return value.split(root).join("<gamedata-root>");
+      if (value === null || typeof value !== "object") return value;
+      if (Array.isArray(value)) return value.map(replaceRoot);
+      const out = {};
+      for (const [k, v] of Object.entries(value)) out[k] = replaceRoot(v);
+      return out;
+    };
+    body = replaceRoot(body);
+  }
+  if (c.normalizations?.includes("map-version-d001")) {
+    // D-001: Rust's local build identity differs from the TS release number
+    // by design; serverInfo.version placeholders make both comparable.
+    const replaceVersion = (value) => {
+      if (typeof value === "string") return D001_VERSIONS.has(value) ? "<server-version>" : value;
+      if (value === null || typeof value !== "object") return value;
+      if (Array.isArray(value)) return value.map(replaceVersion);
+      const out = {};
+      for (const [k, v] of Object.entries(value)) out[k] = replaceVersion(v);
+      return out;
+    };
+    body = replaceVersion(body);
+  }
+  return { ...observed, body };
 }
 
 // ---------------------------------------------------------------------------
@@ -436,7 +463,9 @@ function selectableCases(phase, { live = false }) {
   return MANIFEST.cases.filter((c) => {
     if (ONLY && !c.id.includes(ONLY)) return false;
     if (!!c.live !== live) return false;
-    const cp = c.phase ?? "P0";
+    // diff_phase defers full-surface cases (e.g. 24-tool tools/list) until the
+    // registry catches up; oracle self-checks still use `phase`.
+    const cp = c.diff_phase ?? c.phase ?? "P0";
     if (phase === "ALL" || phaseRank(phase) >= phaseRank(cp)) return true;
     return false;
   });

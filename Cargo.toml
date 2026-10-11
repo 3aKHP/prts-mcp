@@ -17,13 +17,8 @@ path = "src/lib.rs"
 # ---------------------------------------------------------------------------
 
 [dependencies]
-# MCP SDK candidate — pinned in P0, validated against the oracle wire captures
-# in P1 before any business layer is wired to it. Non-default feature set:
-# just the server core plus the two transports the oracle exposes.
-rmcp = { version = "3.5.1", default-features = false, features = ["server", "transport-io", "transport-streamable-http-server"] }
-
 # Async runtime + HTTP server.
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "time", "signal", "io-util", "sync", "fs", "process"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "time", "signal", "io-util", "io-std", "sync", "fs", "process"] }
 axum = { version = "0.8", default-features = false, features = ["http1", "json", "query", "tokio"] }
 
 # JSON: preserve_order keeps object key insertion order (JS semantics) for
@@ -41,6 +36,10 @@ sha2 = "0.10"
 # XML/HTML parsing for the Wiki template renderer (P5).
 quick-xml = "0.38"
 
+# SSE hold streams for GET /mcp (session channel with no server push).
+tokio-stream = { version = "0.1", features = ["sync"] }
+uuid = { version = "1", features = ["v4"] }
+
 # Diagnostics/errors.
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
@@ -51,6 +50,14 @@ rquickjs = { version = "0.14", default-features = false, features = ["std"] }
 
 [features]
 default = []
+
+[dev-dependencies]
+# MCP SDK evaluated by the P1 probe (examples/rmcp_probe.rs): rmcp 3.5.1 could
+# not reproduce the oracle's wire behavior (SSE framing, priming events,
+# unknown-session body, discover version set, modern JSON responses); the
+# product uses the thin adapter in src/protocol instead. Kept as a
+# dev-dependency so the selection evidence stays reproducible.
+rmcp = { version = "3.5.1", default-features = false, features = ["server", "transport-io", "transport-streamable-http-server", "transport-streamable-http-server-session", "macros", "schemars"] }
 
 [profile.release]
 debug = false

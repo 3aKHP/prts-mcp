@@ -7,16 +7,24 @@
   },
   "dataset": "empty",
   "expected": {
-    "status": 400,
-    "content_type": "application/json",
-    "session_id": null,
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "c16d4c2d-f8f5-46bd-891d-39e14f1bd8f1",
     "body": {
-      "jsonrpc": "2.0",
-      "error": {
-        "code": -32600,
-        "message": "Invalid Request: Server already initialized"
+      "result": {
+        "protocolVersion": "2025-03-26",
+        "capabilities": {
+          "tools": {
+            "listChanged": true
+          }
+        },
+        "serverInfo": {
+          "name": "PRTS_Wiki_Assistant",
+          "version": "<server-version>"
+        }
       },
-      "id": null
+      "jsonrpc": "2.0",
+      "id": 9016
     }
   }
 }

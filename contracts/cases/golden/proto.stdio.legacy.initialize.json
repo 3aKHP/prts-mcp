@@ -20,7 +20,7 @@
         },
         "serverInfo": {
           "name": "PRTS_Wiki_Assistant",
-          "version": "2.8.1"
+          "version": "<server-version>"
         }
       },
       "jsonrpc": "2.0",

@@ -1,7 +1,6 @@
-//! stdio compatibility entry; no HTTP listener. P0 skeleton — identity only.
+//! `prts-mcp-ts-stdio` compatibility entry: stdio only, never binds a port.
+
 fn main() {
-    eprintln!(
-        "prts-mcp-rust {} skeleton (prts-mcp-ts-stdio)",
-        prts_mcp_rust::SERVER_VERSION
-    );
+    let app = prts_mcp_rust::app::App::from_env();
+    std::process::exit(app.run_stdio());
 }

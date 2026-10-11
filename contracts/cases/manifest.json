@@ -10,9 +10,24 @@
       "era": "legacy",
       "channel": "content",
       "phase": "P0",
-      "request": { "jsonrpc": "2.0", "method": "initialize", "id": 9001, "params": { "protocolVersion": "2025-03-26", "capabilities": {}, "clientInfo": { "name": "diff-runner", "version": "1.0" } } },
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "initialize",
+        "id": 9001,
+        "params": {
+          "protocolVersion": "2025-03-26",
+          "capabilities": {},
+          "clientInfo": {
+            "name": "diff-runner",
+            "version": "1.0"
+          }
+        }
+      },
       "compare": "exact-tool-result",
-      "normalizations": ["bind-session-id"]
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
     },
     {
       "id": "proto.http.legacy.tools-list",
@@ -22,9 +37,18 @@
       "era": "legacy",
       "channel": "content",
       "phase": "P0",
-      "request": { "jsonrpc": "2.0", "method": "tools/list", "id": 9002, "params": {} },
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/list",
+        "id": 9002,
+        "params": {}
+      },
       "compare": "exact-tool-result",
-      "normalizations": ["bind-session-id"]
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "diff_phase": "P8",
+      "diff_note": "full 24-tool surface: joins differentials only when the registry is complete (07-phases P1 allows 1 tool)"
     },
     {
       "id": "proto.http.legacy.unknown-method",
@@ -34,9 +58,16 @@
       "era": "legacy",
       "channel": "content",
       "phase": "P0",
-      "request": { "jsonrpc": "2.0", "method": "resources/list", "id": 9003, "params": {} },
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "resources/list",
+        "id": 9003,
+        "params": {}
+      },
       "compare": "exact-tool-result",
-      "normalizations": ["bind-session-id"]
+      "normalizations": [
+        "bind-session-id"
+      ]
     },
     {
       "id": "proto.http.legacy.unknown-tool",
@@ -46,9 +77,19 @@
       "era": "legacy",
       "channel": "content",
       "phase": "P0",
-      "request": { "jsonrpc": "2.0", "method": "tools/call", "id": 9004, "params": { "name": "no_such_tool", "arguments": {} } },
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9004,
+        "params": {
+          "name": "no_such_tool",
+          "arguments": {}
+        }
+      },
       "compare": "exact-tool-result",
-      "normalizations": ["bind-session-id"]
+      "normalizations": [
+        "bind-session-id"
+      ]
     },
     {
       "id": "proto.http.legacy.unknown-session-404",
@@ -58,10 +99,19 @@
       "era": "legacy",
       "channel": "content",
       "phase": "P0",
-      "request": { "jsonrpc": "2.0", "method": "tools/list", "id": 9005, "params": {} },
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/list",
+        "id": 9005,
+        "params": {}
+      },
       "compare": "exact-tool-result",
-      "normalizations": ["bind-session-id"],
-      "env": { "DIFF_FORCE_UNKNOWN_SESSION": "1" }
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "env": {
+        "DIFF_FORCE_UNKNOWN_SESSION": "1"
+      }
     },
     {
       "id": "proto.http.modern.discover",
@@ -71,9 +121,16 @@
       "era": "modern",
       "channel": "content",
       "phase": "P0",
-      "request": { "jsonrpc": "2.0", "method": "server/discover", "id": 9101, "params": {} },
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "server/discover",
+        "id": 9101,
+        "params": {}
+      },
       "compare": "exact-tool-result",
-      "normalizations": []
+      "normalizations": [
+        "map-version-d001"
+      ]
     },
     {
       "id": "proto.http.modern.tools-list",
@@ -83,9 +140,18 @@
       "era": "modern",
       "channel": "content",
       "phase": "P0",
-      "request": { "jsonrpc": "2.0", "method": "tools/list", "id": 9102, "params": {} },
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/list",
+        "id": 9102,
+        "params": {}
+      },
       "compare": "exact-tool-result",
-      "normalizations": []
+      "normalizations": [
+        "map-version-d001"
+      ],
+      "diff_phase": "P8",
+      "diff_note": "full 24-tool surface: joins differentials only when the registry is complete (07-phases P1 allows 1 tool)"
     },
     {
       "id": "proto.http.modern.malformed-envelope",
@@ -95,10 +161,17 @@
       "era": "modern",
       "channel": "content",
       "phase": "P0",
-      "request": { "jsonrpc": "2.0", "method": "tools/list", "id": 9103, "params": {} },
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/list",
+        "id": 9103,
+        "params": {}
+      },
       "compare": "exact-tool-result",
       "normalizations": [],
-      "env": { "DIFF_STRIP_ENVELOPE": "1" }
+      "env": {
+        "DIFF_STRIP_ENVELOPE": "1"
+      }
     },
     {
       "id": "proto.stdio.legacy.initialize",
@@ -108,9 +181,23 @@
       "era": "legacy",
       "channel": "content",
       "phase": "P0",
-      "request": { "jsonrpc": "2.0", "method": "initialize", "id": 9200, "params": { "protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": { "name": "diff-runner", "version": "1.0" } } },
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "initialize",
+        "id": 9200,
+        "params": {
+          "protocolVersion": "2024-11-05",
+          "capabilities": {},
+          "clientInfo": {
+            "name": "diff-runner",
+            "version": "1.0"
+          }
+        }
+      },
       "compare": "exact-tool-result",
-      "normalizations": []
+      "normalizations": [
+        "map-version-d001"
+      ]
     },
     {
       "id": "proto.stdio.legacy.tools-list",
@@ -120,9 +207,18 @@
       "era": "legacy",
       "channel": "content",
       "phase": "P0",
-      "request": { "jsonrpc": "2.0", "method": "tools/list", "id": 9201, "params": {} },
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/list",
+        "id": 9201,
+        "params": {}
+      },
       "compare": "exact-tool-result",
-      "normalizations": []
+      "normalizations": [
+        "map-version-d001"
+      ],
+      "diff_phase": "P8",
+      "diff_note": "full 24-tool surface: joins differentials only when the registry is complete (07-phases P1 allows 1 tool)"
     },
     {
       "id": "proto.stdio.modern.discover",
@@ -132,9 +228,16 @@
       "era": "modern",
       "channel": "content",
       "phase": "P0",
-      "request": { "jsonrpc": "2.0", "method": "server/discover", "id": 9211, "params": {} },
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "server/discover",
+        "id": 9211,
+        "params": {}
+      },
       "compare": "exact-tool-result",
-      "normalizations": []
+      "normalizations": [
+        "map-version-d001"
+      ]
     },
     {
       "id": "proto.stdio.modern.tools-list",
@@ -144,9 +247,18 @@
       "era": "modern",
       "channel": "content",
       "phase": "P0",
-      "request": { "jsonrpc": "2.0", "method": "tools/list", "id": 9213, "params": {} },
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/list",
+        "id": 9213,
+        "params": {}
+      },
       "compare": "exact-tool-result",
-      "normalizations": []
+      "normalizations": [
+        "map-version-d001"
+      ],
+      "diff_phase": "P8",
+      "diff_note": "full 24-tool surface: joins differentials only when the registry is complete (07-phases P1 allows 1 tool)"
     },
     {
       "id": "stage.list.default",
@@ -156,9 +268,19 @@
       "era": "legacy",
       "channel": "content",
       "phase": "P0",
-      "request": { "jsonrpc": "2.0", "method": "tools/call", "id": 9006, "params": { "name": "list_stages", "arguments": {} } },
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9006,
+        "params": {
+          "name": "list_stages",
+          "arguments": {}
+        }
+      },
       "compare": "exact-tool-result",
-      "normalizations": ["bind-session-id"]
+      "normalizations": [
+        "bind-session-id"
+      ]
     },
     {
       "id": "stage.list.filtered",
@@ -168,9 +290,22 @@
       "era": "legacy",
       "channel": "content",
       "phase": "P0",
-      "request": { "jsonrpc": "2.0", "method": "tools/call", "id": 9007, "params": { "name": "list_stages", "arguments": { "chapter": "main_0", "limit": 1 } } },
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9007,
+        "params": {
+          "name": "list_stages",
+          "arguments": {
+            "chapter": "main_0",
+            "limit": 1
+          }
+        }
+      },
       "compare": "exact-tool-result",
-      "normalizations": ["bind-session-id"]
+      "normalizations": [
+        "bind-session-id"
+      ]
     },
     {
       "id": "stage.list.type-lowercase",
@@ -180,9 +315,21 @@
       "era": "legacy",
       "channel": "content",
       "phase": "P0",
-      "request": { "jsonrpc": "2.0", "method": "tools/call", "id": 9008, "params": { "name": "list_stages", "arguments": { "type": "main" } } },
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9008,
+        "params": {
+          "name": "list_stages",
+          "arguments": {
+            "type": "main"
+          }
+        }
+      },
       "compare": "exact-tool-result",
-      "normalizations": ["bind-session-id"]
+      "normalizations": [
+        "bind-session-id"
+      ]
     },
     {
       "id": "stage.list.bad-type",
@@ -192,9 +339,21 @@
       "era": "legacy",
       "channel": "content",
       "phase": "P0",
-      "request": { "jsonrpc": "2.0", "method": "tools/call", "id": 9009, "params": { "name": "list_stages", "arguments": { "type": "NOT_A_TYPE" } } },
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9009,
+        "params": {
+          "name": "list_stages",
+          "arguments": {
+            "type": "NOT_A_TYPE"
+          }
+        }
+      },
       "compare": "exact-tool-result",
-      "normalizations": ["bind-session-id"]
+      "normalizations": [
+        "bind-session-id"
+      ]
     },
     {
       "id": "stage.list.offset-out-of-range",
@@ -204,9 +363,21 @@
       "era": "legacy",
       "channel": "content",
       "phase": "P0",
-      "request": { "jsonrpc": "2.0", "method": "tools/call", "id": 9010, "params": { "name": "list_stages", "arguments": { "offset": 999 } } },
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9010,
+        "params": {
+          "name": "list_stages",
+          "arguments": {
+            "offset": 999
+          }
+        }
+      },
       "compare": "exact-tool-result",
-      "normalizations": ["bind-session-id"]
+      "normalizations": [
+        "bind-session-id"
+      ]
     },
     {
       "id": "stage.list.limit-schema-reject",
@@ -216,9 +387,21 @@
       "era": "legacy",
       "channel": "content",
       "phase": "P0",
-      "request": { "jsonrpc": "2.0", "method": "tools/call", "id": 9011, "params": { "name": "list_stages", "arguments": { "limit": 999 } } },
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9011,
+        "params": {
+          "name": "list_stages",
+          "arguments": {
+            "limit": 999
+          }
+        }
+      },
       "compare": "exact-tool-result",
-      "normalizations": ["bind-session-id"]
+      "normalizations": [
+        "bind-session-id"
+      ]
     },
     {
       "id": "stage.list.channel-structured",
@@ -229,9 +412,21 @@
       "channel": "structured",
       "transport_option": "query-channel",
       "phase": "P0",
-      "request": { "jsonrpc": "2.0", "method": "tools/call", "id": 9012, "params": { "name": "list_stages", "arguments": { "limit": 2 } } },
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9012,
+        "params": {
+          "name": "list_stages",
+          "arguments": {
+            "limit": 2
+          }
+        }
+      },
       "compare": "exact-tool-result",
-      "normalizations": ["bind-session-id"]
+      "normalizations": [
+        "bind-session-id"
+      ]
     },
     {
       "id": "stage.list.channel-both",
@@ -242,9 +437,21 @@
       "channel": "both",
       "transport_option": "query-channel",
       "phase": "P0",
-      "request": { "jsonrpc": "2.0", "method": "tools/call", "id": 9013, "params": { "name": "list_stages", "arguments": { "limit": 2 } } },
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9013,
+        "params": {
+          "name": "list_stages",
+          "arguments": {
+            "limit": 2
+          }
+        }
+      },
       "compare": "exact-tool-result",
-      "normalizations": ["bind-session-id"]
+      "normalizations": [
+        "bind-session-id"
+      ]
     },
     {
       "id": "stage.list.channel-header-structured",
@@ -255,9 +462,21 @@
       "channel": "structured",
       "transport_option": "header-channel",
       "phase": "P0",
-      "request": { "jsonrpc": "2.0", "method": "tools/call", "id": 9014, "params": { "name": "list_stages", "arguments": { "limit": 2 } } },
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9014,
+        "params": {
+          "name": "list_stages",
+          "arguments": {
+            "limit": 2
+          }
+        }
+      },
       "compare": "exact-tool-result",
-      "normalizations": ["bind-session-id"]
+      "normalizations": [
+        "bind-session-id"
+      ]
     },
     {
       "id": "stage.list.modern.default",
@@ -267,9 +486,19 @@
       "era": "modern",
       "channel": "content",
       "phase": "P0",
-      "request": { "jsonrpc": "2.0", "method": "tools/call", "id": 9104, "params": { "name": "list_stages", "arguments": {} } },
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9104,
+        "params": {
+          "name": "list_stages",
+          "arguments": {}
+        }
+      },
       "compare": "exact-tool-result",
-      "normalizations": []
+      "normalizations": [
+        "map-version-d001"
+      ]
     },
     {
       "id": "stage.list.modern.channel-structured",
@@ -280,9 +509,21 @@
       "channel": "structured",
       "transport_option": "query-channel",
       "phase": "P0",
-      "request": { "jsonrpc": "2.0", "method": "tools/call", "id": 9105, "params": { "name": "list_stages", "arguments": { "limit": 2 } } },
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9105,
+        "params": {
+          "name": "list_stages",
+          "arguments": {
+            "limit": 2
+          }
+        }
+      },
       "compare": "exact-tool-result",
-      "normalizations": []
+      "normalizations": [
+        "map-version-d001"
+      ]
     },
     {
       "id": "stage.list.stdio-legacy",
@@ -292,7 +533,15 @@
       "era": "legacy",
       "channel": "content",
       "phase": "P0",
-      "request": { "jsonrpc": "2.0", "method": "tools/call", "id": 9202, "params": { "name": "list_stages", "arguments": {} } },
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9202,
+        "params": {
+          "name": "list_stages",
+          "arguments": {}
+        }
+      },
       "compare": "exact-tool-result",
       "normalizations": []
     },
@@ -304,9 +553,19 @@
       "era": "modern",
       "channel": "content",
       "phase": "P0",
-      "request": { "jsonrpc": "2.0", "method": "tools/call", "id": 9212, "params": { "name": "list_stages", "arguments": {} } },
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9212,
+        "params": {
+          "name": "list_stages",
+          "arguments": {}
+        }
+      },
       "compare": "exact-tool-result",
-      "normalizations": []
+      "normalizations": [
+        "map-version-d001"
+      ]
     },
     {
       "id": "stage.list.stdio-legacy.channel-structured",
@@ -316,7 +575,17 @@
       "era": "legacy",
       "channel": "structured",
       "phase": "P0",
-      "request": { "jsonrpc": "2.0", "method": "tools/call", "id": 9203, "params": { "name": "list_stages", "arguments": { "limit": 2 } } },
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9203,
+        "params": {
+          "name": "list_stages",
+          "arguments": {
+            "limit": 2
+          }
+        }
+      },
       "compare": "exact-tool-result",
       "normalizations": []
     },
@@ -328,9 +597,20 @@
       "era": "legacy",
       "channel": "content",
       "phase": "P0",
-      "request": { "jsonrpc": "2.0", "method": "tools/call", "id": 9015, "params": { "name": "list_stages", "arguments": {} } },
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9015,
+        "params": {
+          "name": "list_stages",
+          "arguments": {}
+        }
+      },
       "compare": "exact-tool-result",
-      "normalizations": ["bind-session-id", "map-sandbox-path"]
+      "normalizations": [
+        "bind-session-id",
+        "map-sandbox-path"
+      ]
     },
     {
       "id": "proto.http.empty-data.initialize",
@@ -340,9 +620,24 @@
       "era": "legacy",
       "channel": "content",
       "phase": "P0",
-      "request": { "jsonrpc": "2.0", "method": "initialize", "id": 9016, "params": { "protocolVersion": "2025-03-26", "capabilities": {}, "clientInfo": { "name": "diff-runner", "version": "1.0" } } },
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "initialize",
+        "id": 9016,
+        "params": {
+          "protocolVersion": "2025-03-26",
+          "capabilities": {},
+          "clientInfo": {
+            "name": "diff-runner",
+            "version": "1.0"
+          }
+        }
+      },
       "compare": "exact-tool-result",
-      "normalizations": ["bind-session-id"]
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
     },
     {
       "id": "proto.http.empty-data.tools-list",
@@ -352,9 +647,192 @@
       "era": "legacy",
       "channel": "content",
       "phase": "P0",
-      "request": { "jsonrpc": "2.0", "method": "tools/list", "id": 9017, "params": {} },
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/list",
+        "id": 9017,
+        "params": {}
+      },
       "compare": "exact-tool-result",
-      "normalizations": ["bind-session-id"]
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ],
+      "diff_phase": "P8",
+      "diff_note": "full 24-tool surface: joins differentials only when the registry is complete (07-phases P1 allows 1 tool)"
+    },
+    {
+      "id": "proto.http.legacy.stale-initialize-recovery",
+      "contract": "PROTO-session",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P1",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "initialize",
+        "id": 9021,
+        "params": {
+          "protocolVersion": "2025-03-26",
+          "capabilities": {},
+          "clientInfo": {
+            "name": "diff-runner",
+            "version": "1.0"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ],
+      "env": {
+        "DIFF_STALE_INIT_SESSION": "1"
+      }
+    },
+    {
+      "id": "proto.http.legacy.idle-eviction",
+      "contract": "PROTO-session",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P1",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/list",
+        "id": 9022,
+        "params": {}
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "map-version-d001"
+      ],
+      "env": {
+        "SESSION_IDLE_TIMEOUT_MS": "1200"
+      },
+      "wait_ms": 2500
+    },
+    {
+      "id": "stage.list.modern.limit-schema-reject",
+      "contract": "TOOL-list_stages",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P1",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9106,
+        "params": {
+          "name": "list_stages",
+          "arguments": {
+            "limit": 999
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "stage.list.zod-multi-error",
+      "contract": "TOOL-list_stages",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P1",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9023,
+        "params": {
+          "name": "list_stages",
+          "arguments": {
+            "chapter": 5,
+            "limit": "x",
+            "offset": -1
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "stage.list.arguments-null",
+      "contract": "TOOL-list_stages",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P1",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9024,
+        "params": {
+          "name": "list_stages",
+          "arguments": null
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "stage.list.limit-float-integral",
+      "contract": "TOOL-list_stages",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P1",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9025,
+        "params": {
+          "name": "list_stages",
+          "arguments": {
+            "limit": 1.0
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "stage.list.limit-fractional",
+      "contract": "TOOL-list_stages",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P1",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9026,
+        "params": {
+          "name": "list_stages",
+          "arguments": {
+            "limit": 1.5
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
     }
   ]
 }

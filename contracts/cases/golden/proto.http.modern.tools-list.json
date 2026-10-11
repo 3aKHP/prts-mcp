@@ -683,7 +683,7 @@
         "_meta": {
           "io.modelcontextprotocol/serverInfo": {
             "name": "PRTS_Wiki_Assistant",
-            "version": "2.8.1"
+            "version": "<server-version>"
           }
         }
       },

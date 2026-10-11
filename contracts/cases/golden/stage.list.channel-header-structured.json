@@ -9,7 +9,7 @@
   "expected": {
     "status": 200,
     "content_type": "text/event-stream",
-    "session_id": "7093e491-3ea9-4636-a3e4-07fcd2c118a9",
+    "session_id": "d0adab0b-52df-4162-ad19-bbfae1e1c2c0",
     "body": {
       "result": {
         "content": [
