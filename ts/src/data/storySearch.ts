@@ -308,18 +308,16 @@ function storyStoreDescriptor(store: JsonStore): string | null {
     const review = join(store.root, STORY_REVIEW_TABLE);
     try {
       const stat = statSync(review, { bigint: true });
-      let size = stat.size;
-      let mtimeNs = stat.mtimeNs;
+      let supplementStat = "missing";
       // the supplement catalog (if present) is part of the indexed corpus —
       // its changes must invalidate the cached index for directory stores
       try {
         const sstat = statSync(join(store.root, STORY_SUPPLEMENT), { bigint: true });
-        size += sstat.size;
-        if (sstat.mtimeNs > mtimeNs) mtimeNs = sstat.mtimeNs;
+        supplementStat = `${sstat.size}:${sstat.mtimeNs}`;
       } catch {
         // no supplement — nothing to mix in
       }
-      return `directory:${store.root}:${size}:${mtimeNs}`;
+      return `directory:${store.root}:${stat.size}:${stat.mtimeNs}:${supplementStat}`;
     } catch {
       return null;
     }

@@ -119,6 +119,18 @@ test("storyjson zip validation accepts a complete supplement", () => {
   assert.deepEqual(validateStoryjsonZip(zipPath), []);
 });
 
+test("storyjson zip validation ignores non-list supplement chapters", () => {
+  const zipPath = tempZipPath();
+  writeZip(zipPath, {
+    "zh_CN/storyinfo.json": {},
+    [STORY_REVIEW_PATH]: { act_test: { infoUnlockDatas: [] } },
+    "zh_CN/story_supplement.json": {
+      events: [{ event_id: "rogue_6", chapters: 5 }],
+    },
+  });
+  assert.deepEqual(validateStoryjsonZip(zipPath), []);
+});
+
 test("storyjson zip validation rejects a malformed supplement", () => {
   const zipPath = tempZipPath();
   const zip = new AdmZip();

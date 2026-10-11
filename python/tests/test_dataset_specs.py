@@ -121,3 +121,13 @@ def test_storyjson_zip_malformed_supplement_rejected(tmp_path):
     _write_story_zip(zip_path, {"zh_CN/story_supplement.json": "{not json"})
     errors = STORY_ZH_CN.validate_zip(zip_path)
     assert len(errors) == 1 and "story_supplement.json is unreadable" in errors[0]
+
+
+def test_storyjson_zip_non_list_supplement_chapters_ignored(tmp_path):
+    zip_path = tmp_path / "zh_CN.zip"
+    _write_story_zip(zip_path, {
+        "zh_CN/story_supplement.json": {
+            "events": [{"event_id": "rogue_6", "chapters": 5}],
+        },
+    })
+    assert STORY_ZH_CN.validate_zip(zip_path) == []

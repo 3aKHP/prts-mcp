@@ -13,6 +13,7 @@ the two cannot drift (mirror: ts/tests/fixtures/storySupplement.ts).
 from __future__ import annotations
 
 import json
+import os
 import zipfile
 from pathlib import Path
 
@@ -158,6 +159,22 @@ def test_directory_descriptor_tracks_supplement(tmp_path):
     supp.write_text(supp.read_text(encoding="utf-8") + " ", encoding="utf-8")
     d2 = _story_store_descriptor(store)
     assert d2 is not None and d2 != d1
+
+
+def test_directory_cache_tracks_older_catalog_equal_size_edit(tmp_path):
+    store = _make_store(tmp_path, "directory")
+    review = tmp_path / STORY_REVIEW_PATH
+    supplement = tmp_path / STORY_SUPPLEMENT_PATH
+    os.utime(review, (200, 200))
+    os.utime(supplement, (100, 100))
+    assert "rogue_6" in search_stories_from_store(store, "独特旁白词项xyz")
+    original = supplement.read_text(encoding="utf-8")
+    updated = original.replace('"event_id": "rogue_6"', '"event_id": "rogue_7"')
+    assert len(updated.encode()) == len(original.encode())
+    supplement.write_text(updated, encoding="utf-8")
+    os.utime(supplement, (150, 150))
+    result = search_stories_from_store(store, "独特旁白词项xyz")
+    assert "rogue_7" in result and "rogue_6" not in result
 
 
 @pytest.mark.parametrize("kind", ["directory", "zip"])
