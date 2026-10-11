@@ -13,15 +13,15 @@ TOOL-get_stage_info,P3,yes,verified,diff cases stage.info.* (6: default/null-apc
 TOOL-list_items,P3,yes,verified,diff cases item.list.* (8: default/category-alias/raw/no-match/offset-oob/channels/missing) + 4-cell matrix,list_items: all declared parameters; success empty/error and channel contract
 TOOL-get_item_info,P3,yes,verified,diff cases item.info.* (5: by-name/by-id/not-found/channel) + 4-cell matrix,get_item_info: all declared parameters; success empty/error and channel contract
 TOOL-search,P3,yes,verified,diff cases search.* (15: six scopes/empty/max-results/bad-regex normalized D-level/schema-reject/channels/missing) + 4-cell matrix,search: all declared parameters; success empty/error and channel contract
-TOOL-list_story_events,P4,yes,not-started,,list_story_events: all declared parameters; success empty/error and channel contract
-TOOL-list_stories,P4,yes,not-started,,list_stories: all declared parameters; success empty/error and channel contract
-TOOL-get_story_summary,P4,yes,not-started,,get_story_summary: all declared parameters; success empty/error and channel contract
-TOOL-read_story,P4,yes,not-started,,read_story: all declared parameters; success empty/error and channel contract
-TOOL-read_activity,P4,yes,not-started,,read_activity: all declared parameters; success empty/error and channel contract
-TOOL-search_stories,P4,yes,not-started,,search_stories: all declared parameters; success empty/error and channel contract
-TOOL-get_operator_memoirs,P4,yes,not-started,,get_operator_memoirs: all declared parameters; success empty/error and channel contract
-TOOL-find_character_appearances,P4,yes,not-started,,find_character_appearances: all declared parameters; success empty/error and channel contract
-TOOL-find_speakers_in,P4,yes,not-started,,find_speakers_in: all declared parameters; success empty/error and channel contract
+TOOL-list_story_events,P4,yes,verified,diff story.events.* (11: 全部/main/activities/memoirs/roguelike/非法category/channels/missing) + fs.story.events.* + 4-cell matrix,list_story_events: all declared parameters; success empty/error and channel contract
+TOOL-list_stories,P4,yes,verified,diff story.list.* (6: default/summaries/roguelike/not-found/empty-event/channel) + fs.story.list(.summaries) + matrix,list_stories: all declared parameters; success empty/error and channel contract
+TOOL-get_story_summary,P4,yes,verified,diff story.summary.* (4: LLM/官方回退/storyInfo 回退/not-found) + fs.story.summary,get_story_summary: all declared parameters; success empty/error and channel contract
+TOOL-read_story,P4,yes,verified,diff story.read.* (4: default/no-narration/not-found/memoir) + fs.story.read + matrix,read_story: all declared parameters; success empty/error and channel contract
+TOOL-read_activity,P4,yes,verified,diff activity.read.* (7: default/page1/page2/page-oob/not-found/no-narration/empty-event) + fs.activity.page1 + matrix,read_activity: all declared parameters; success empty/error and channel contract
+TOOL-search_stories,P4,yes,verified,diff story.search.* (16: character/line-type/context 0与5/event-scope/unknown/max-results/empty/invalid-line-type/bad-regex 归一化/channels/missing/NONE排除) + fs.story.search.scoped(.character) + matrix,search_stories: all declared parameters; success empty/error and channel contract
+TOOL-get_operator_memoirs,P4,yes,verified,diff memoir.* (4: default/unknown/无密录/chardict缺失经由unknown) + fs.memoir + matrix,get_operator_memoirs: all declared parameters; success empty/error and channel contract
+TOOL-find_character_appearances,P4,yes,verified,diff appearances.* (8: default/mentioned-only/scope/unknown/max-events/空名/no-match/channel) + fs.appearances + matrix,find_character_appearances: all declared parameters; success empty/error and channel contract
+TOOL-find_speakers_in,P4,yes,verified,diff speakers.* (5: default/并列排序/not-found/empty-event/channel) + fs.speakers + matrix,find_speakers_in: all declared parameters; success empty/error and channel contract
 TOOL-operator_artwork,P6,yes,not-started,,operator_artwork: all declared parameters; success empty/error and channel contract
 BRANCH-search_prts-search_mode-text,P5,yes,not-started,,search_mode=text: behavior result and relevant failure cases
 BRANCH-search_prts-search_mode-title,P5,yes,not-started,,search_mode=title: behavior result and relevant failure cases
@@ -72,8 +72,8 @@ SYNC-idempotence,P2,yes,verified,"pair_manifest_is_stable_until_the_generation_c
 SYNC-scheduler,P2,yes,verified,"sync::scheduler tests (interval parsing, pair retry rule); process_sync::stdio_exit_with_pending_retries (<10s exit with 30s retries armed); single-flight via SlowTransport max-active=1 test",Startup single-flight retries and periodic timing
 SYNC-ts-interop,P2,yes,verified,"tests/interop_ts.rs 5/5 (TS writes->Rust reads, Rust writes->TS reads, story swap visible, release_meta byte equality, cross-process lock contention); differential stage.list.pair-activated on TS-written fixture",TS and Rust alternating readers writers on isolated volume
 DATA-game-boundaries,P3,yes,verified,"unit tests: interpolation half-away/negative-zero, pythonFloatString/withThousands, m_defined merge, level0 projection, ICU localeCompare probes (15 oracle-pinned), spawn/refs parser, sanitizer passes (incl. dead category pass), zodish probes",Operator identity stats skills talent building enemy overrides sorting
-STORY-supplement,P4,yes,not-started,,Old optional pack invalid catalog and complete roguelike chain
-STORY-index,P4,yes,not-started,,Full-data search correct identity and old index release
+STORY-supplement,P4,yes,verified,发现→列表→读取→搜索→角色追踪整链：story.events.roguelike、story.list.roguelike、fs 同链、review 碰撞不覆盖（fixture act_test 碰撞案）、坏 supplement 降级（load_event_table 单元行为，golden rogue_6 列表）、NONE 非密录不入索引（story.search.none-event-excluded）,Old optional pack invalid catalog and complete roguelike chain
+STORY-index,P4,yes,verified,tests/story_index.rs 3 案（换包重建恰一次+内容切换/4 并发单飞共享一次构建/Arc 释放）+ bench rust-swap RSS 110.7→104.3MB 释放证据 + rust-share wall=1.13×cold（两会话一次构建）+ VmHWM 稳定,Full-data search correct identity and old index release
 WIKI-replay,P5,yes,not-started,,Deterministic request and response replay including templates
 WIKI-live,P5,yes,not-started,,Public Wiki successful real request
 IMAGE-local,P6,yes,not-started,,List get forms ownership variants metadata and realpath

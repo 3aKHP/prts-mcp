@@ -1,0 +1,26 @@
+{
+  "case": "story.list.empty-event",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "83bdbb09-61b2-4a1b-9bbf-4f1c51043f2c",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "活动 'main_test' 暂无剧情章节。"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9614
+    }
+  }
+}

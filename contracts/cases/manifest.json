@@ -3921,6 +3921,2900 @@
         "bind-session-id",
         "map-version-d001"
       ]
+    },
+    {
+      "id": "story.events.default",
+      "contract": "TOOL-list_story_events",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9601,
+        "params": {
+          "name": "list_story_events",
+          "arguments": {}
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "story.events.main",
+      "contract": "TOOL-list_story_events",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9602,
+        "params": {
+          "name": "list_story_events",
+          "arguments": {
+            "category": "main"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "story.events.activities",
+      "contract": "TOOL-list_story_events",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9603,
+        "params": {
+          "name": "list_story_events",
+          "arguments": {
+            "category": "activities"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "story.events.memoirs",
+      "contract": "TOOL-list_story_events",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9604,
+        "params": {
+          "name": "list_story_events",
+          "arguments": {
+            "category": "memoirs"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "story.events.roguelike",
+      "contract": "TOOL-list_story_events",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9605,
+        "params": {
+          "name": "list_story_events",
+          "arguments": {
+            "category": "roguelike"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "story.events.invalid-category",
+      "contract": "TOOL-list_story_events",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9606,
+        "params": {
+          "name": "list_story_events",
+          "arguments": {
+            "category": "nope"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "story.events.channel-structured",
+      "contract": "TOOL-list_story_events",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "structured",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9607,
+        "params": {
+          "name": "list_story_events",
+          "arguments": {}
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "story.events.channel-both",
+      "contract": "TOOL-list_story_events",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "both",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9608,
+        "params": {
+          "name": "list_story_events",
+          "arguments": {}
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "story.events.missing-data",
+      "contract": "TOOL-list_story_events",
+      "dataset": "empty",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9609,
+        "params": {
+          "name": "list_story_events",
+          "arguments": {}
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "story.list.default",
+      "contract": "TOOL-list_stories",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9610,
+        "params": {
+          "name": "list_stories",
+          "arguments": {
+            "event_id": "act_test"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "story.list.summaries",
+      "contract": "TOOL-list_stories",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9611,
+        "params": {
+          "name": "list_stories",
+          "arguments": {
+            "event_id": "act_test",
+            "include_summaries": true
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "story.list.roguelike",
+      "contract": "TOOL-list_stories",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9612,
+        "params": {
+          "name": "list_stories",
+          "arguments": {
+            "event_id": "rogue_6"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "story.list.not-found",
+      "contract": "TOOL-list_stories",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9613,
+        "params": {
+          "name": "list_stories",
+          "arguments": {
+            "event_id": "nope"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "story.list.empty-event",
+      "contract": "TOOL-list_stories",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9614,
+        "params": {
+          "name": "list_stories",
+          "arguments": {
+            "event_id": "main_test"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "story.list.channel-structured",
+      "contract": "TOOL-list_stories",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "structured",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9615,
+        "params": {
+          "name": "list_stories",
+          "arguments": {
+            "event_id": "act_test"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "story.summary.llm",
+      "contract": "TOOL-get_story_summary",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9616,
+        "params": {
+          "name": "get_story_summary",
+          "arguments": {
+            "story_key": "activities/act_test/level_act_test_01_beg"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "story.summary.official-fallback",
+      "contract": "TOOL-get_story_summary",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9617,
+        "params": {
+          "name": "get_story_summary",
+          "arguments": {
+            "story_key": "activities/act_test/level_act_test_02_end"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "story.summary.storyinfo-fallback",
+      "contract": "TOOL-get_story_summary",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9618,
+        "params": {
+          "name": "get_story_summary",
+          "arguments": {
+            "story_key": "memoir/amy_set_1_1"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "story.summary.not-found",
+      "contract": "TOOL-get_story_summary",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9619,
+        "params": {
+          "name": "get_story_summary",
+          "arguments": {
+            "story_key": "nope/nope"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "story.read.default",
+      "contract": "TOOL-read_story",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9620,
+        "params": {
+          "name": "read_story",
+          "arguments": {
+            "story_key": "activities/act_test/level_act_test_01_beg"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "story.read.no-narration",
+      "contract": "TOOL-read_story",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9621,
+        "params": {
+          "name": "read_story",
+          "arguments": {
+            "story_key": "activities/act_test/level_act_test_01_beg",
+            "include_narration": false
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "story.read.not-found",
+      "contract": "TOOL-read_story",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9622,
+        "params": {
+          "name": "read_story",
+          "arguments": {
+            "story_key": "nope"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "story.read.memoir",
+      "contract": "TOOL-read_story",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9623,
+        "params": {
+          "name": "read_story",
+          "arguments": {
+            "story_key": "memoir/amy_set_2_1"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "activity.read.default",
+      "contract": "TOOL-read_activity",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9624,
+        "params": {
+          "name": "read_activity",
+          "arguments": {
+            "event_id": "act_test"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "activity.read.page1",
+      "contract": "TOOL-read_activity",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9625,
+        "params": {
+          "name": "read_activity",
+          "arguments": {
+            "event_id": "act_big",
+            "page": 1,
+            "page_size": 5
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "activity.read.page2",
+      "contract": "TOOL-read_activity",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9626,
+        "params": {
+          "name": "read_activity",
+          "arguments": {
+            "event_id": "act_big",
+            "page": 2,
+            "page_size": 5
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "activity.read.page-oob",
+      "contract": "TOOL-read_activity",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9627,
+        "params": {
+          "name": "read_activity",
+          "arguments": {
+            "event_id": "act_big",
+            "page": 9,
+            "page_size": 5
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "activity.read.not-found",
+      "contract": "TOOL-read_activity",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9628,
+        "params": {
+          "name": "read_activity",
+          "arguments": {
+            "event_id": "nope"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "activity.read.no-narration",
+      "contract": "TOOL-read_activity",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9629,
+        "params": {
+          "name": "read_activity",
+          "arguments": {
+            "event_id": "act_big",
+            "page": 1,
+            "page_size": 2,
+            "include_narration": false
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "activity.read.empty-event",
+      "contract": "TOOL-read_activity",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9630,
+        "params": {
+          "name": "read_activity",
+          "arguments": {
+            "event_id": "main_test"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "story.search.default",
+      "contract": "TOOL-search_stories",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9631,
+        "params": {
+          "name": "search_stories",
+          "arguments": {
+            "pattern": "博士"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "story.search.character",
+      "contract": "TOOL-search_stories",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9632,
+        "params": {
+          "name": "search_stories",
+          "arguments": {
+            "pattern": ".",
+            "character": "阿米娅"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "story.search.line-type",
+      "contract": "TOOL-search_stories",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9633,
+        "params": {
+          "name": "search_stories",
+          "arguments": {
+            "pattern": "场景",
+            "line_type": "narration"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "story.search.context-zero",
+      "contract": "TOOL-search_stories",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9634,
+        "params": {
+          "name": "search_stories",
+          "arguments": {
+            "pattern": "回应一",
+            "context_lines": 0
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "story.search.context-max",
+      "contract": "TOOL-search_stories",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9635,
+        "params": {
+          "name": "search_stories",
+          "arguments": {
+            "pattern": "回应一",
+            "context_lines": 5
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "story.search.event-scope",
+      "contract": "TOOL-search_stories",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9636,
+        "params": {
+          "name": "search_stories",
+          "arguments": {
+            "pattern": "梦",
+            "event_id": "story_amiya_set_2"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "story.search.event-unknown",
+      "contract": "TOOL-search_stories",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9637,
+        "params": {
+          "name": "search_stories",
+          "arguments": {
+            "pattern": "x",
+            "event_id": "nope"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "story.search.max-results",
+      "contract": "TOOL-search_stories",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9638,
+        "params": {
+          "name": "search_stories",
+          "arguments": {
+            "pattern": "。",
+            "max_results": 2
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "story.search.empty",
+      "contract": "TOOL-search_stories",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9639,
+        "params": {
+          "name": "search_stories",
+          "arguments": {
+            "pattern": "不存在的台词xyz"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "story.search.invalid-line-type",
+      "contract": "TOOL-search_stories",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9640,
+        "params": {
+          "name": "search_stories",
+          "arguments": {
+            "pattern": "x",
+            "line_type": "nope"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "story.search.bad-regex",
+      "contract": "TOOL-search_stories",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9641,
+        "params": {
+          "name": "search_stories",
+          "arguments": {
+            "pattern": "(["
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-regex-error-detail"
+      ]
+    },
+    {
+      "id": "story.search.channel-structured",
+      "contract": "TOOL-search_stories",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "structured",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9642,
+        "params": {
+          "name": "search_stories",
+          "arguments": {
+            "pattern": "博士"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "story.search.channel-both",
+      "contract": "TOOL-search_stories",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "both",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9643,
+        "params": {
+          "name": "search_stories",
+          "arguments": {
+            "pattern": "博士"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "story.search.missing-data",
+      "contract": "TOOL-search_stories",
+      "dataset": "empty",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9644,
+        "params": {
+          "name": "search_stories",
+          "arguments": {
+            "pattern": "x"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "story.search.none-event-excluded",
+      "contract": "TOOL-search_stories",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9645,
+        "params": {
+          "name": "search_stories",
+          "arguments": {
+            "pattern": "不应进入索引"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "memoir.default",
+      "contract": "TOOL-get_operator_memoirs",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9646,
+        "params": {
+          "name": "get_operator_memoirs",
+          "arguments": {
+            "name": "阿米娅"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "memoir.unknown-operator",
+      "contract": "TOOL-get_operator_memoirs",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9647,
+        "params": {
+          "name": "get_operator_memoirs",
+          "arguments": {
+            "name": "不存在的干员"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "memoir.no-memoirs",
+      "contract": "TOOL-get_operator_memoirs",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9648,
+        "params": {
+          "name": "get_operator_memoirs",
+          "arguments": {
+            "name": "凯尔希"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "memoir.channel-structured",
+      "contract": "TOOL-get_operator_memoirs",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "structured",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9649,
+        "params": {
+          "name": "get_operator_memoirs",
+          "arguments": {
+            "name": "阿米娅"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "appearances.default",
+      "contract": "TOOL-find_character_appearances",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9650,
+        "params": {
+          "name": "find_character_appearances",
+          "arguments": {
+            "name": "阿米娅"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "appearances.mentioned-only",
+      "contract": "TOOL-find_character_appearances",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9651,
+        "params": {
+          "name": "find_character_appearances",
+          "arguments": {
+            "name": "凯尔希"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "appearances.scope",
+      "contract": "TOOL-find_character_appearances",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9652,
+        "params": {
+          "name": "find_character_appearances",
+          "arguments": {
+            "name": "阿米娅",
+            "scope": "act_test"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "appearances.scope-unknown",
+      "contract": "TOOL-find_character_appearances",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9653,
+        "params": {
+          "name": "find_character_appearances",
+          "arguments": {
+            "name": "阿米娅",
+            "scope": "nope"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "appearances.max-events",
+      "contract": "TOOL-find_character_appearances",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9654,
+        "params": {
+          "name": "find_character_appearances",
+          "arguments": {
+            "name": "阿米娅",
+            "max_events": 1
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "appearances.empty-name",
+      "contract": "TOOL-find_character_appearances",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9655,
+        "params": {
+          "name": "find_character_appearances",
+          "arguments": {
+            "name": ""
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "appearances.no-match",
+      "contract": "TOOL-find_character_appearances",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9656,
+        "params": {
+          "name": "find_character_appearances",
+          "arguments": {
+            "name": "无名角色"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "appearances.channel-structured",
+      "contract": "TOOL-find_character_appearances",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "structured",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9657,
+        "params": {
+          "name": "find_character_appearances",
+          "arguments": {
+            "name": "阿米娅"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "speakers.default",
+      "contract": "TOOL-find_speakers_in",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9658,
+        "params": {
+          "name": "find_speakers_in",
+          "arguments": {
+            "event_id": "act_test"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "speakers.big-tie-order",
+      "contract": "TOOL-find_speakers_in",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9659,
+        "params": {
+          "name": "find_speakers_in",
+          "arguments": {
+            "event_id": "act_big"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "speakers.not-found",
+      "contract": "TOOL-find_speakers_in",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9660,
+        "params": {
+          "name": "find_speakers_in",
+          "arguments": {
+            "event_id": "nope"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "speakers.empty-event",
+      "contract": "TOOL-find_speakers_in",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9661,
+        "params": {
+          "name": "find_speakers_in",
+          "arguments": {
+            "event_id": "main_test"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "speakers.channel-structured",
+      "contract": "TOOL-find_speakers_in",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "structured",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9662,
+        "params": {
+          "name": "find_speakers_in",
+          "arguments": {
+            "event_id": "act_test"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "matrix.story_events.http-legacy",
+      "contract": "TOOL-list_story_events",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9663,
+        "params": {
+          "name": "list_story_events",
+          "arguments": {}
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.story_events.http-modern",
+      "contract": "TOOL-list_story_events",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9664,
+        "params": {
+          "name": "list_story_events",
+          "arguments": {}
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.story_events.stdio-legacy",
+      "contract": "TOOL-list_story_events",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9665,
+        "params": {
+          "name": "list_story_events",
+          "arguments": {}
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.story_events.stdio-modern",
+      "contract": "TOOL-list_story_events",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9666,
+        "params": {
+          "name": "list_story_events",
+          "arguments": {}
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.stories.http-legacy",
+      "contract": "TOOL-list_stories",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9667,
+        "params": {
+          "name": "list_stories",
+          "arguments": {
+            "event_id": "act_test"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.stories.http-modern",
+      "contract": "TOOL-list_stories",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9668,
+        "params": {
+          "name": "list_stories",
+          "arguments": {
+            "event_id": "act_test"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.stories.stdio-legacy",
+      "contract": "TOOL-list_stories",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9669,
+        "params": {
+          "name": "list_stories",
+          "arguments": {
+            "event_id": "act_test"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.stories.stdio-modern",
+      "contract": "TOOL-list_stories",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9670,
+        "params": {
+          "name": "list_stories",
+          "arguments": {
+            "event_id": "act_test"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.story_summary.http-legacy",
+      "contract": "TOOL-get_story_summary",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9671,
+        "params": {
+          "name": "get_story_summary",
+          "arguments": {
+            "story_key": "activities/act_test/level_act_test_01_beg"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.story_summary.http-modern",
+      "contract": "TOOL-get_story_summary",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9672,
+        "params": {
+          "name": "get_story_summary",
+          "arguments": {
+            "story_key": "activities/act_test/level_act_test_01_beg"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.story_summary.stdio-legacy",
+      "contract": "TOOL-get_story_summary",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9673,
+        "params": {
+          "name": "get_story_summary",
+          "arguments": {
+            "story_key": "activities/act_test/level_act_test_01_beg"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.story_summary.stdio-modern",
+      "contract": "TOOL-get_story_summary",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9674,
+        "params": {
+          "name": "get_story_summary",
+          "arguments": {
+            "story_key": "activities/act_test/level_act_test_01_beg"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.story.http-legacy",
+      "contract": "TOOL-read_story",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9675,
+        "params": {
+          "name": "read_story",
+          "arguments": {
+            "story_key": "activities/act_test/level_act_test_01_beg"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.story.http-modern",
+      "contract": "TOOL-read_story",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9676,
+        "params": {
+          "name": "read_story",
+          "arguments": {
+            "story_key": "activities/act_test/level_act_test_01_beg"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.story.stdio-legacy",
+      "contract": "TOOL-read_story",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9677,
+        "params": {
+          "name": "read_story",
+          "arguments": {
+            "story_key": "activities/act_test/level_act_test_01_beg"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.story.stdio-modern",
+      "contract": "TOOL-read_story",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9678,
+        "params": {
+          "name": "read_story",
+          "arguments": {
+            "story_key": "activities/act_test/level_act_test_01_beg"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.activity.http-legacy",
+      "contract": "TOOL-read_activity",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9679,
+        "params": {
+          "name": "read_activity",
+          "arguments": {
+            "event_id": "act_test"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.activity.http-modern",
+      "contract": "TOOL-read_activity",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9680,
+        "params": {
+          "name": "read_activity",
+          "arguments": {
+            "event_id": "act_test"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.activity.stdio-legacy",
+      "contract": "TOOL-read_activity",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9681,
+        "params": {
+          "name": "read_activity",
+          "arguments": {
+            "event_id": "act_test"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.activity.stdio-modern",
+      "contract": "TOOL-read_activity",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9682,
+        "params": {
+          "name": "read_activity",
+          "arguments": {
+            "event_id": "act_test"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.search_stories.http-legacy",
+      "contract": "TOOL-search_stories",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9683,
+        "params": {
+          "name": "search_stories",
+          "arguments": {
+            "pattern": "博士"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.search_stories.http-modern",
+      "contract": "TOOL-search_stories",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9684,
+        "params": {
+          "name": "search_stories",
+          "arguments": {
+            "pattern": "博士"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.search_stories.stdio-legacy",
+      "contract": "TOOL-search_stories",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9685,
+        "params": {
+          "name": "search_stories",
+          "arguments": {
+            "pattern": "博士"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.search_stories.stdio-modern",
+      "contract": "TOOL-search_stories",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9686,
+        "params": {
+          "name": "search_stories",
+          "arguments": {
+            "pattern": "博士"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.operator_memoirs.http-legacy",
+      "contract": "TOOL-get_operator_memoirs",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9687,
+        "params": {
+          "name": "get_operator_memoirs",
+          "arguments": {
+            "name": "阿米娅"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.operator_memoirs.http-modern",
+      "contract": "TOOL-get_operator_memoirs",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9688,
+        "params": {
+          "name": "get_operator_memoirs",
+          "arguments": {
+            "name": "阿米娅"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.operator_memoirs.stdio-legacy",
+      "contract": "TOOL-get_operator_memoirs",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9689,
+        "params": {
+          "name": "get_operator_memoirs",
+          "arguments": {
+            "name": "阿米娅"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.operator_memoirs.stdio-modern",
+      "contract": "TOOL-get_operator_memoirs",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9690,
+        "params": {
+          "name": "get_operator_memoirs",
+          "arguments": {
+            "name": "阿米娅"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.character_appearances.http-legacy",
+      "contract": "TOOL-find_character_appearances",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9691,
+        "params": {
+          "name": "find_character_appearances",
+          "arguments": {
+            "name": "阿米娅"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.character_appearances.http-modern",
+      "contract": "TOOL-find_character_appearances",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9692,
+        "params": {
+          "name": "find_character_appearances",
+          "arguments": {
+            "name": "阿米娅"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.character_appearances.stdio-legacy",
+      "contract": "TOOL-find_character_appearances",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9693,
+        "params": {
+          "name": "find_character_appearances",
+          "arguments": {
+            "name": "阿米娅"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.character_appearances.stdio-modern",
+      "contract": "TOOL-find_character_appearances",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9694,
+        "params": {
+          "name": "find_character_appearances",
+          "arguments": {
+            "name": "阿米娅"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.speakers_in.http-legacy",
+      "contract": "TOOL-find_speakers_in",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9695,
+        "params": {
+          "name": "find_speakers_in",
+          "arguments": {
+            "event_id": "act_test"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.speakers_in.http-modern",
+      "contract": "TOOL-find_speakers_in",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "http",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9696,
+        "params": {
+          "name": "find_speakers_in",
+          "arguments": {
+            "event_id": "act_test"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.speakers_in.stdio-legacy",
+      "contract": "TOOL-find_speakers_in",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9697,
+        "params": {
+          "name": "find_speakers_in",
+          "arguments": {
+            "event_id": "act_test"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "matrix.speakers_in.stdio-modern",
+      "contract": "TOOL-find_speakers_in",
+      "dataset": "minimal-gamedata-v2",
+      "transport": "stdio",
+      "era": "modern",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9698,
+        "params": {
+          "name": "find_speakers_in",
+          "arguments": {
+            "event_id": "act_test"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ]
+    },
+    {
+      "id": "fs.story.events.main",
+      "contract": "TOOL-list_story_events",
+      "dataset": "full-story-r2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9801,
+        "params": {
+          "name": "list_story_events",
+          "arguments": {
+            "category": "main"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "fs.story.events.roguelike",
+      "contract": "TOOL-list_story_events",
+      "dataset": "full-story-r2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9802,
+        "params": {
+          "name": "list_story_events",
+          "arguments": {
+            "category": "roguelike"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "fs.story.list",
+      "contract": "TOOL-list_stories",
+      "dataset": "full-story-r2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9803,
+        "params": {
+          "name": "list_stories",
+          "arguments": {
+            "event_id": "act9d0"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "fs.story.list.summaries",
+      "contract": "TOOL-list_stories",
+      "dataset": "full-story-r2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9804,
+        "params": {
+          "name": "list_stories",
+          "arguments": {
+            "event_id": "act9d0",
+            "include_summaries": true
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "fs.story.read",
+      "contract": "TOOL-read_story",
+      "dataset": "full-story-r2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9805,
+        "params": {
+          "name": "read_story",
+          "arguments": {
+            "story_key": "activities/act9d0/level_act9d0_01_beg"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "fs.story.summary",
+      "contract": "TOOL-get_story_summary",
+      "dataset": "full-story-r2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9806,
+        "params": {
+          "name": "get_story_summary",
+          "arguments": {
+            "story_key": "activities/act9d0/level_act9d0_01_beg"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "fs.activity.page1",
+      "contract": "TOOL-read_activity",
+      "dataset": "full-story-r2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9807,
+        "params": {
+          "name": "read_activity",
+          "arguments": {
+            "event_id": "act9d0",
+            "page": 1,
+            "page_size": 3
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "fs.story.search.scoped",
+      "contract": "TOOL-search_stories",
+      "dataset": "full-story-r2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9808,
+        "params": {
+          "name": "search_stories",
+          "arguments": {
+            "pattern": "罗德岛",
+            "event_id": "act9d0",
+            "max_results": 5
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "fs.story.search.character",
+      "contract": "TOOL-search_stories",
+      "dataset": "full-story-r2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9809,
+        "params": {
+          "name": "search_stories",
+          "arguments": {
+            "pattern": "博士",
+            "character": "阿米娅",
+            "event_id": "act9d0",
+            "max_results": 3
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "fs.speakers",
+      "contract": "TOOL-find_speakers_in",
+      "dataset": "full-story-r2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9810,
+        "params": {
+          "name": "find_speakers_in",
+          "arguments": {
+            "event_id": "act9d0"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "fs.memoir",
+      "contract": "TOOL-get_operator_memoirs",
+      "dataset": "full-story-r2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9811,
+        "params": {
+          "name": "get_operator_memoirs",
+          "arguments": {
+            "name": "12F"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "fs.appearances",
+      "contract": "TOOL-find_character_appearances",
+      "dataset": "full-story-r2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9812,
+        "params": {
+          "name": "find_character_appearances",
+          "arguments": {
+            "name": "阿米娅",
+            "scope": "act9d0"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "fs.item.list",
+      "contract": "TOOL-list_items",
+      "dataset": "full-story-r2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9813,
+        "params": {
+          "name": "list_items",
+          "arguments": {
+            "limit": 5
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "fs.item.info",
+      "contract": "TOOL-get_item_info",
+      "dataset": "full-story-r2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9814,
+        "params": {
+          "name": "get_item_info",
+          "arguments": {
+            "name": "固源岩"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "fs.search.items",
+      "contract": "TOOL-search",
+      "dataset": "full-story-r2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9815,
+        "params": {
+          "name": "search",
+          "arguments": {
+            "scope": "items",
+            "pattern": "源岩",
+            "max_results": 3
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "fs.operator.stats",
+      "contract": "TOOL-get_operator_basic_info",
+      "dataset": "full-story-r2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9816,
+        "params": {
+          "name": "get_operator_basic_info",
+          "arguments": {
+            "name": "阿米娅",
+            "action": "stats",
+            "phase": 2,
+            "level": 40
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "fs.operator.skills",
+      "contract": "TOOL-get_operator_basic_info",
+      "dataset": "full-story-r2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9817,
+        "params": {
+          "name": "get_operator_basic_info",
+          "arguments": {
+            "name": "阿米娅",
+            "action": "skills"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "fs.search.skills",
+      "contract": "TOOL-search",
+      "dataset": "full-story-r2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9818,
+        "params": {
+          "name": "search",
+          "arguments": {
+            "scope": "skills",
+            "pattern": "晕眩",
+            "max_results": 3
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "fs.enemy.list",
+      "contract": "TOOL-list_enemies",
+      "dataset": "full-story-r2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9819,
+        "params": {
+          "name": "list_enemies",
+          "arguments": {
+            "threat_level": "boss",
+            "limit": 5
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
+    },
+    {
+      "id": "fs.stage.list",
+      "contract": "TOOL-list_stages",
+      "dataset": "full-story-r2",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P4",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9820,
+        "params": {
+          "name": "list_stages",
+          "arguments": {
+            "chapter": "main_0",
+            "limit": 5
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
     }
   ]
 }

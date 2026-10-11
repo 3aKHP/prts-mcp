@@ -1,0 +1,26 @@
+{
+  "case": "activity.read.page1",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "0e55b4f8-6a4f-469d-84b6-2af389fca4a3",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "# 大型活动（共 7 章，当前为部分内容）\n\n=== BIG-01 大活动第1章 ===\n阿米娅：第三章第1段对话。\n博士：回应一。\n凯尔希：医学报告。\n阿米娅：再次发言。\n*场景转换1。*\n\n=== BIG-02 大活动第2章 ===\n阿米娅：第三章第2段对话。\n博士：回应一。\n凯尔希：医学报告。\n阿米娅：再次发言。\n*场景转换2。*\n\n=== BIG-03 大活动第3章 ===\n阿米娅：第三章第3段对话。\n博士：回应一。\n凯尔希：医学报告。\n阿米娅：再次发言。\n*场景转换3。*\n\n=== BIG-04 大活动第4章 ===\n阿米娅：第三章第4段对话。\n博士：回应一。\n凯尔希：医学报告。\n阿米娅：再次发言。\n*场景转换4。*\n\n=== BIG-05 大活动第5章 ===\n阿米娅：第三章第5段对话。\n博士：回应一。\n凯尔希：医学报告。\n阿米娅：再次发言。\n*场景转换5。*\n\n[还有更多章节，请调用 read_activity(event_id=\"act_big\", page=2)]"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9625
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "case": "story.search.line-type",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "b9b0d36b-aab6-492d-ad31-aa6816188156",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "# 搜索 \"场景\" 的结果（共 8 条）\n\n---\n\n[stories/act_test/TEST-1 L2]\n    阿米娅：你好，博士。\n>>> *场景描述*\n    【选项】选项一\n\n---\n\n[stories/act_big/BIG-01 L5]\n    阿米娅：再次发言。\n>>> *场景转换1。*\n\n---\n\n[stories/act_big/BIG-02 L5]\n    阿米娅：再次发言。\n>>> *场景转换2。*\n\n---\n\n[stories/act_big/BIG-03 L5]\n    阿米娅：再次发言。\n>>> *场景转换3。*\n\n---\n\n[stories/act_big/BIG-04 L5]\n    阿米娅：再次发言。\n>>> *场景转换4。*\n\n---\n\n[stories/act_big/BIG-05 L5]\n    阿米娅：再次发言。\n>>> *场景转换5。*\n\n---\n\n[stories/act_big/BIG-06 L5]\n    阿米娅：再次发言。\n>>> *场景转换6。*\n\n---\n\n[stories/act_big/BIG-07 L5]\n    阿米娅：再次发言。\n>>> *场景转换7。*"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9633
+    }
+  }
+}

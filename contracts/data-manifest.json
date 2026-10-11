@@ -1,6 +1,6 @@
 {
   "schema_version": "prts-rust-plan/data-manifest/v1",
-  "recorded_at": "2026-10-11T18:00:17.037Z",
+  "recorded_at": "2026-10-11T18:29:20.642Z",
   "baseline_commit": "e0ba36096cdd46640166b0a5db02902fa9a6a24c",
   "datasets": {
     "minimal-gamedata-v1": {
@@ -53,6 +53,11 @@
       "excel_dir": "zh_CN/gamedata/excel",
       "levels_dir": "zh_CN/gamedata/levels",
       "files": [
+        {
+          "path": "storyjson/zh_CN.zip",
+          "bytes": 8441,
+          "sha256": "3f422f244472ff7558716b6d3d431c08bfaea26844d532a5f0c741bf42e6f6cf"
+        },
         {
           "path": "zh_CN/gamedata/excel/building_data.json",
           "bytes": 1091,
@@ -173,7 +178,7 @@
         {
           "path": "gamedata/archives/zh_CN-excel.zip",
           "bytes": 2688,
-          "sha256": "1103aa7b255aaab9faf500ea7fa3ce8c581ad64bcfd43fce7c59f29cb0a8893d"
+          "sha256": "79988a101714948a4ec58f24195cd5c2117a78ff9781cc15450f67a569fac646"
         },
         {
           "path": "gamedata/archives/release_meta.json",
@@ -183,7 +188,7 @@
         {
           "path": "gamedata-levels/archives/zh_CN-levels.zip",
           "bytes": 204,
-          "sha256": "3783ab90adad78e878430327ed754f2ad824fb559820318ccf39a332474c3063"
+          "sha256": "82e795f389aaefc11943b314ed1e24e4ff299c0310b0aa94b795b4b1c10c258b"
         },
         {
           "path": "gamedata-levels/archives/release_meta.json",
@@ -193,7 +198,7 @@
         {
           "path": ".gamedata_pair.json",
           "bytes": 215,
-          "sha256": "36bef9ce145cc53f2d082594be9b5ad2e7dc012a7f3803f79811a565384028bc"
+          "sha256": "958a0adcb7ebddd6a647f6eb6ed77608eac942bd72bc5783528c46a19b7bcd89"
         }
       ],
       "generation_content": [
@@ -258,6 +263,16 @@
           "sha256": "a9120d68d1daa732905dc7e24e360408fa6a809fd62392e7ab336d87e61a3dcb"
         }
       ]
+    },
+    "full-story-r2": {
+      "purpose": "P4 full-scale differential: pinned real datarev excel + story package",
+      "source": ".runtime/data/datarev-26-10-08-04-51-28-56071834-r2 (zips pinned by fetch-data)",
+      "root": ".runtime/fixtures/full-story-r2",
+      "excel_dir": "zh_CN/gamedata/excel",
+      "story_zip": "storyjson/zh_CN.zip",
+      "story_zip_sha256": "f987b360d72e7de270ee00ad4998e6bc3d88a192db52fe35ac98864299070eb5",
+      "excel_files": 59,
+      "excel_bytes": 104320411
     }
   },
   "upstream_release_probe": {

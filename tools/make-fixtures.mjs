@@ -26,6 +26,10 @@ const MANIFEST_PATH = join(ROOT, "contracts", "data-manifest.json");
 const UPSTREAM_REPO = "3aKHP/arknights-data-pipeline";
 const SKIP_RELEASE_PROBE = process.argv.includes("--skip-release-probe");
 
+const AdmZip = (await import(
+  join(REFERENCE, "ts", "node_modules", "adm-zip", "adm-zip.js")
+)).default;
+
 function sha256(path) {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
 }
@@ -676,6 +680,196 @@ writeV2(join(V2_LEVELS, "enemydata", "enemy_database.json"), {
   ],
 });
 
+
+// --- minimal story zip (P4): the frozen TS story fixtures combined into
+// zh_CN.zip — story.test.ts's act_test/main_test chapters, the
+// storySupplement.ts roguelike catalog, a chardict with 阿米娅 memoir events,
+// summary sources with both override tiers, a pagination-heavy act_big, and
+// a NONE non-memoir event that must stay out of the index.
+
+const FIRST_KEY = "activities/act_test/level_act_test_01_beg";
+const SECOND_KEY = "activities/act_test/level_act_test_02_end";
+const ROGUE_ENDING_KEY = "Obt/Roguelike/RO6/level_rogue6_ending_1";
+const ROGUE_MONTH_KEY = "Obt/Rogue/rogue_6/MonthRecord/month_record_rogue_6_4_1";
+
+function bigChapter(n) {
+  return {
+    storyCode: `BIG-${String(n).padStart(2, "0")}`,
+    storyName: `大活动第${n}章`,
+    avgTag: null,
+    eventName: "大型活动",
+    storyInfo: "",
+    storyList: [
+      { prop: "name", attributes: { name: "阿米娅", content: `第三章第${n}段对话。` } },
+      { prop: "name", attributes: { name: "博士", content: "回应一。" } },
+      { prop: "name", attributes: { name: "凯尔希", content: "医学报告。" } },
+      { prop: "name", attributes: { name: "阿米娅", content: "再次发言。" } },
+      { prop: "subtitle", attributes: { text: `场景转换${n}。` } },
+    ],
+  };
+}
+
+const STORY_ZIP_ROOT = join(V2_ROOT, "storyjson");
+const storyEntries = [];
+const addStory = (path, data) => storyEntries.push([path, JSON.stringify(data)]);
+
+addStory("zh_CN/gamedata/excel/story_review_table.json", {
+  act_test: {
+    name: "测试活动",
+    entryType: "ACTIVITY",
+    infoUnlockDatas: [
+      { storyTxt: SECOND_KEY, storyCode: "TEST-2", storyName: "终章", avgTag: "END", storySort: 2 },
+      { storyTxt: FIRST_KEY, storyCode: "TEST-1", storyName: "开端", avgTag: "BEG", storySort: 1 },
+    ],
+  },
+  main_test: { name: "测试主线", entryType: "MAINLINE", infoUnlockDatas: [] },
+  act_big: {
+    name: "大型活动",
+    entryType: "ACTIVITY",
+    infoUnlockDatas: Array.from({ length: 7 }, (_, i) => ({
+      storyTxt: `activities/act_big/level_big_${String(i + 1).padStart(2, "0")}`,
+      storyCode: `BIG-${String(i + 1).padStart(2, "0")}`,
+      storyName: `大活动第${i + 1}章`,
+      avgTag: null,
+      storySort: i + 1,
+    })),
+  },
+  none_plain: {
+    name: "无类型杂项",
+    entryType: "NONE",
+    infoUnlockDatas: [
+      { storyTxt: "misc/none_plain_1", storyCode: "MISC-1", storyName: "杂项一", avgTag: null, storySort: 1 },
+    ],
+  },
+  story_amiya_set_1: {
+    name: "阿米娅的糖",
+    entryType: "NONE",
+    infoUnlockDatas: [
+      { storyTxt: "memoir/amy_set_1_1", storyCode: "MS1-1", storyName: "糖之一", avgTag: null, storySort: 1 },
+    ],
+  },
+  story_amiya_set_2: {
+    name: "阿米娅的梦",
+    entryType: "NONE",
+    infoUnlockDatas: [
+      { storyTxt: "memoir/amy_set_2_1", storyCode: "MS2-1", storyName: "梦之一", avgTag: null, storySort: 1 },
+      { storyTxt: "memoir/amy_set_2_2", storyCode: "MS2-2", storyName: "梦之二", avgTag: null, storySort: 2 },
+    ],
+  },
+});
+
+addStory(`zh_CN/gamedata/story/${FIRST_KEY}.json`, {
+  storyCode: "TEST-1",
+  storyName: "开端",
+  avgTag: "BEG",
+  eventName: "测试活动",
+  storyInfo: "测试简介",
+  storyList: [
+    { prop: "name", attributes: { name: "阿米娅", content: "你好，{@nickname}。" } },
+    { prop: "sticker", attributes: { content: "<b>场景描述</b>" } },
+    { prop: "decision", attributes: { options: ["选项一"] } },
+    { prop: "decision", attributes: { options: "我相信它们。相信你，凯尔希。" } },
+  ],
+});
+addStory(`zh_CN/gamedata/story/${SECOND_KEY}.json`, {
+  storyCode: "TEST-2",
+  storyName: "终章",
+  avgTag: "END",
+  eventName: "测试活动",
+  storyInfo: "",
+  storyList: [{ prop: "name", attributes: { name: "博士", content: "结束。" } }],
+});
+for (let i = 1; i <= 7; i++) {
+  addStory(`zh_CN/gamedata/story/activities/act_big/level_big_${String(i).padStart(2, "0")}.json`, bigChapter(i));
+}
+addStory("zh_CN/gamedata/story/misc/none_plain_1.json", {
+  storyCode: "MISC-1",
+  storyName: "杂项一",
+  avgTag: null,
+  eventName: "无类型杂项",
+  storyInfo: "",
+  storyList: [{ prop: "name", attributes: { name: "杂项角色", content: "不应进入索引。" } }],
+});
+addStory("zh_CN/gamedata/story/memoir/amy_set_1_1.json", {
+  storyCode: "MS1-1",
+  storyName: "糖之一",
+  avgTag: null,
+  eventName: "阿米娅的糖",
+  storyInfo: "密录官方一句话。",
+  storyList: [{ prop: "name", attributes: { name: "阿米娅", content: "糖很好吃。" } }],
+});
+addStory("zh_CN/gamedata/story/memoir/amy_set_2_1.json", {
+  storyCode: "MS2-1",
+  storyName: "梦之一",
+  avgTag: null,
+  eventName: "阿米娅的梦",
+  storyInfo: "",
+  storyList: [{ prop: "name", attributes: { name: "阿米娅", content: "梦里出现了罗德岛。" } }],
+});
+addStory("zh_CN/gamedata/story/memoir/amy_set_2_2.json", {
+  storyCode: "MS2-2",
+  storyName: "梦之二",
+  avgTag: null,
+  eventName: "阿米娅的梦",
+  storyInfo: "",
+  storyList: [{ prop: "name", attributes: { name: "阿米娅", content: "梦醒了。" } }],
+});
+// The supplement fixture's two rogue chapters (storySupplement.ts).
+addStory(`zh_CN/gamedata/story/${ROGUE_ENDING_KEY}.json`, {
+  storyCode: "RO6-E1",
+  storyName: "强制重启",
+  avgTag: "结局",
+  eventName: "沉沦者的黑流树海",
+  storyInfo: "官方梗概：强制重启。",
+  storyList: [{ prop: "name", attributes: { name: "卡德霍", content: "落幕。" } }],
+});
+addStory(`zh_CN/gamedata/story/${ROGUE_MONTH_KEY}.json`, {
+  storyCode: "RO6-M4-1",
+  storyName: "南方往事·1",
+  avgTag: "月度记录·南方往事",
+  eventName: "沉沦者的黑流树海",
+  storyInfo: "",
+  storyList: [
+    { prop: "name", attributes: { name: "", content: "独特旁白词项xyz。" } },
+    { prop: "name", attributes: { name: "帕尤卡卡", content: "蛋糕烤好了。" } },
+  ],
+});
+addStory("zh_CN/story_supplement.json", {
+  version: 1,
+  generated_from: { tables: ["gamedata/excel/roguelike_topic_table.json"], source_version: "v-test" },
+  events: [
+    {
+      event_id: "rogue_6",
+      name: "沉沦者的黑流树海",
+      entry_type: "ROGUELIKE",
+      sort: 6,
+      chapters: [
+        { key: ROGUE_ENDING_KEY, name: "强制重启", code: "RO6-E1", avg_tag: "结局", sort: 110, group: "ending", source: "topic:endbook.avgId" },
+        { key: ROGUE_MONTH_KEY, name: "南方往事·1", code: "RO6-M4-1", avg_tag: "月度记录·南方往事", sort: 10401, group: "month", source: "topic:chat.chatStoryId" },
+      ],
+    },
+    // Review-collision case: act_test already exists → supplement ignored.
+    { event_id: "act_test", name: "不应覆盖", entry_type: "ROGUELIKE", chapters: [] },
+  ],
+});
+addStory("zh_CN/storyinfo.json", {
+  [SECOND_KEY]: "官方级：终章一句话。",
+});
+addStory("zh_CN/summaries.json", {
+  [FIRST_KEY]: "LLM 长摘要：开端发生了什么。",
+  [ROGUE_MONTH_KEY]: "LLM：南方往事月度记录。",
+});
+addStory("zh_CN/event_summaries.json", {
+  act_test: "活动级长摘要：测试活动全貌。",
+});
+addStory("zh_CN/chardict.json", {
+  amiya: { name: "阿米娅", id: "char_002_amiya" },
+  kalts: { name: "凯尔希", id: "char_003_kalts" },
+});
+
+mkdirSync(STORY_ZIP_ROOT, { recursive: true });
+buildZip(join(STORY_ZIP_ROOT, "zh_CN.zip"), storyEntries);
+
 const V2_LEVEL_ROOT = join(V2_LEVELS, "obt", "main");
 writeV2(join(V2_LEVEL_ROOT, "level_main_00-01.json"), {
   enemyDbRefs: [
@@ -737,9 +931,6 @@ const ACTIVATED_ROOT = join(ROOT, ".runtime", "fixtures", "activated-minimal-v1"
 const ACTIVATED_TAG = "26-10-10-00-00-00_cafe01";
 rmSync(ACTIVATED_ROOT, { recursive: true, force: true });
 
-const AdmZip = (await import(
-  join(REFERENCE, "ts", "node_modules", "adm-zip", "adm-zip.js")
-)).default;
 
 function buildZip(zipPath, entries) {
   const zip = new AdmZip();

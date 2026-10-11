@@ -1,0 +1,26 @@
+{
+  "case": "appearances.empty-name",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "bee26178-4d68-40b0-89fd-3c06546e9a92",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "name 不能为空。"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9655
+    }
+  }
+}

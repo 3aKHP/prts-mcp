@@ -1,0 +1,26 @@
+{
+  "case": "story.read.not-found",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "12497777-f63e-438b-9054-53a39f22596e",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "未找到剧情：\"nope\"。请通过 list_stories 确认章节 key。"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9622
+    }
+  }
+}

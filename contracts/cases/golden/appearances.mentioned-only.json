@@ -1,0 +1,26 @@
+{
+  "case": "appearances.mentioned-only",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "3fb6cbbb-2de3-4e36-b711-a39f9638652a",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "# 「凯尔希」的出场（共 8 章）\n- [mentioned] act_test / TEST-1 开端（key: activities/act_test/level_act_test_01_beg）\n- [speaks] act_big / BIG-01 大活动第1章（key: activities/act_big/level_big_01）\n- [speaks] act_big / BIG-02 大活动第2章（key: activities/act_big/level_big_02）\n- [speaks] act_big / BIG-03 大活动第3章（key: activities/act_big/level_big_03）\n- [speaks] act_big / BIG-04 大活动第4章（key: activities/act_big/level_big_04）\n- [speaks] act_big / BIG-05 大活动第5章（key: activities/act_big/level_big_05）\n- [speaks] act_big / BIG-06 大活动第6章（key: activities/act_big/level_big_06）\n- [speaks] act_big / BIG-07 大活动第7章（key: activities/act_big/level_big_07）"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9651
+    }
+  }
+}

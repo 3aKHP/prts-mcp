@@ -1,0 +1,26 @@
+{
+  "case": "story.events.roguelike",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "fe058be6-c74f-49f5-9822-4043343fd582",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "- [ROGUELIKE] rogue_6：沉沦者的黑流树海（2 章）"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9605
+    }
+  }
+}

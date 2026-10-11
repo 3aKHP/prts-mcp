@@ -66,6 +66,8 @@ function datasetDir(name) {
   if (name === "minimal-gamedata-v1") return join(ROOT, ".runtime", "fixtures", "minimal-gamedata-v1");
   // P3: full GameData surface fixture (excel + levels under one root).
   if (name === "minimal-gamedata-v2") return join(ROOT, ".runtime", "fixtures", "minimal-gamedata-v2");
+  // P4: full-scale pinned real data (excel extracted + real story zip).
+  if (name === "full-story-r2") return join(ROOT, ".runtime", "fixtures", "full-story-r2");
   // P2: TS-sync-written generation volume — GAMEDATA_PATH is its gamedata
   // root, so both implementations must resolve the pair pointer.
   if (name === "activated-minimal-v1") {
@@ -77,11 +79,13 @@ function datasetDir(name) {
 /** Clean-env whitelist for oracle/rust children — no inherited tokens or data roots. */
 function childEnv(dataset, extra = {}) {
   const data = datasetDir(dataset);
+  // Datasets with a bundled story zip (P4+) route STORYJSON_PATH to it.
+  const storyZip = join(data, "storyjson", "zh_CN.zip");
   return {
     PATH: process.env.PATH,
     HOME: process.env.HOME,
     GAMEDATA_PATH: data,
-    STORYJSON_PATH: join(data, "does-not-exist.zip"),
+    STORYJSON_PATH: existsSync(storyZip) ? storyZip : join(data, "does-not-exist.zip"),
     GITHUB_MIRRORS: "",
     IMAGES_ENABLED: "true",
     HOST: "127.0.0.1",
