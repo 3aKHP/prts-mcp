@@ -153,7 +153,9 @@ fn release_zip_error(spec: &ReleaseSpec) -> Option<String> {
 /// `downloadReleaseAsset`: stream to a temp file (incremental sha256),
 /// validate entries, optionally verify the factory manifest, then atomically
 /// replace the zip and persist release metadata. Failures keep the old zip.
-async fn download_release_asset(
+/// `downloadReleaseAsset` — public for interop tests that need the exact
+/// writer (zip + release_meta) the state machine uses.
+pub async fn download_release_asset(
     transport: &dyn Transport,
     spec: &ReleaseSpec,
     tag: &str,

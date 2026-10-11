@@ -1,6 +1,6 @@
 {
   "schema_version": "prts-rust-plan/data-manifest/v1",
-  "recorded_at": "2026-10-11T10:32:58.085Z",
+  "recorded_at": "2026-10-11T14:13:45.636Z",
   "baseline_commit": "e0ba36096cdd46640166b0a5db02902fa9a6a24c",
   "datasets": {
     "minimal-gamedata-v1": {
@@ -75,6 +75,113 @@
           "path": "zh_CN/gamedata/excel/story_review_table.json",
           "bytes": 1735098,
           "sha256": "fe70abee91e9f4b383aea2d644103ccde84c2cff7a4c227a103de256a5883b55"
+        }
+      ]
+    },
+    "activated-minimal-v1": {
+      "purpose": "P2 differential fixture: TS-sync-written generation volume with pair pointer",
+      "source": "ts dist syncReleaseArchivePair (offline) over minimal-gamedata-v1 content",
+      "root": ".runtime/fixtures/activated-minimal-v1",
+      "gamedata_root": "gamedata",
+      "pair_commit_sha": "26-10-10-00-00-00_cafe01",
+      "activation": {
+        "result": "ok",
+        "statuses": [
+          "updated",
+          "updated"
+        ],
+        "commitShas": [
+          "26-10-10-00-00-00_cafe01",
+          "26-10-10-00-00-00_cafe01"
+        ]
+      },
+      "files": [
+        {
+          "path": "gamedata/archives/zh_CN-excel.zip",
+          "bytes": 2688,
+          "sha256": "d8798358c866f0fa477a0ab12527c01f77b5b646a9ea5294e9dfcfb022208c7e"
+        },
+        {
+          "path": "gamedata/archives/release_meta.json",
+          "bytes": 197,
+          "sha256": "104c45cea5c1d673294990175ba1b190c6bb5b771133c1939e786d829a680e8e"
+        },
+        {
+          "path": "gamedata-levels/archives/zh_CN-levels.zip",
+          "bytes": 204,
+          "sha256": "f8aae3a04f74d640fc01fb840e498558604445495973e8652221ac428edbbd3c"
+        },
+        {
+          "path": "gamedata-levels/archives/release_meta.json",
+          "bytes": 198,
+          "sha256": "9044c9a16045b1339c4a8c88b44835bdc4f53c7520a2b94179d5b0d5c1f617d6"
+        },
+        {
+          "path": ".gamedata_pair.json",
+          "bytes": 215,
+          "sha256": "142ad2449f4469ddbed6e00c8241a8d2d4acfe7a1f16de25228eb99ce3144a37"
+        }
+      ],
+      "generation_content": [
+        {
+          "path": "gamedata-levels/.releases/<gen>/zh_CN/gamedata/levels/enemydata/enemy_database.json",
+          "bytes": 2,
+          "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+        },
+        {
+          "path": "gamedata/.releases/<gen>/zh_CN/gamedata/excel/building_data.json",
+          "bytes": 2,
+          "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+        },
+        {
+          "path": "gamedata/.releases/<gen>/zh_CN/gamedata/excel/character_table.json",
+          "bytes": 2,
+          "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+        },
+        {
+          "path": "gamedata/.releases/<gen>/zh_CN/gamedata/excel/charword_table.json",
+          "bytes": 2,
+          "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+        },
+        {
+          "path": "gamedata/.releases/<gen>/zh_CN/gamedata/excel/enemy_handbook_table.json",
+          "bytes": 2,
+          "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+        },
+        {
+          "path": "gamedata/.releases/<gen>/zh_CN/gamedata/excel/handbook_info_table.json",
+          "bytes": 2,
+          "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+        },
+        {
+          "path": "gamedata/.releases/<gen>/zh_CN/gamedata/excel/item_table.json",
+          "bytes": 129,
+          "sha256": "c5a68023d308877e229e9af2b4a0a29f157294cc69f4c8c27b68ca4feec1f23d"
+        },
+        {
+          "path": "gamedata/.releases/<gen>/zh_CN/gamedata/excel/skill_table.json",
+          "bytes": 2,
+          "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+        },
+        {
+          "path": "gamedata/.releases/<gen>/zh_CN/gamedata/excel/skin_table.json",
+          "bytes": 2,
+          "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+        },
+        {
+          "path": "gamedata/.releases/<gen>/zh_CN/gamedata/excel/stage_table.json",
+          "bytes": 1594,
+          "sha256": "b24ad3b4dfca63fab834fd72e9fbf2ee6469ea81abb44526b1d470cbab8c0f42"
+        },
+        {
+          "path": "gamedata/.releases/<gen>/zh_CN/gamedata/excel/story_review_table.json",
+          "bytes": 2,
+          "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+        },
+        {
+          "path": "gamedata/.releases/<gen>/zh_CN/gamedata/excel/zone_table.json",
+          "bytes": 284,
+          "sha256": "a9120d68d1daa732905dc7e24e360408fa6a809fd62392e7ab336d87e61a3dcb"
         }
       ]
     }

@@ -64,6 +64,11 @@ function freePort() {
 function datasetDir(name) {
   if (name === "empty") return join(ROOT, ".runtime", "fixtures", "empty-gamedata-v1");
   if (name === "minimal-gamedata-v1") return join(ROOT, ".runtime", "fixtures", "minimal-gamedata-v1");
+  // P2: TS-sync-written generation volume — GAMEDATA_PATH is its gamedata
+  // root, so both implementations must resolve the pair pointer.
+  if (name === "activated-minimal-v1") {
+    return join(ROOT, ".runtime", "fixtures", "activated-minimal-v1", "gamedata");
+  }
   throw new Error(`unknown dataset ${name}`);
 }
 

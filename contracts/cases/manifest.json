@@ -858,6 +858,28 @@
         "bind-session-id"
       ],
       "note": "D-005 scope guard: valid surrogate pairs (complete astral characters) must flow through both implementations identically"
+    },
+    {
+      "id": "stage.list.pair-activated",
+      "contract": "TOOL-list_stages",
+      "dataset": "activated-minimal-v1",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P2",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9010,
+        "params": {
+          "name": "list_stages",
+          "arguments": {}
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
     }
   ]
 }

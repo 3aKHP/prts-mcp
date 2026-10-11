@@ -14,7 +14,7 @@
  *                         manifest then records the probe as not-run.
  */
 import { createHash } from "node:crypto";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync, existsSync, rmSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -169,6 +169,85 @@ rmSync(EMPTY_ROOT, { recursive: true, force: true });
 mkdirSync(EMPTY_ROOT, { recursive: true });
 writeFileSync(join(EMPTY_ROOT, ".keep"), "", "utf-8");
 
+// --- activated-minimal-v1: a generation volume written by the REAL frozen TS
+// sync code (dist syncReleaseArchivePair, offline, local zips + fresh
+// release_meta), so differential cases prove both implementations resolve the
+// same pair-pointer layout (P2). The generation UUIDs are random; the served
+// content equals minimal-gamedata-v1, so list_stages output stays stable.
+
+const ACTIVATED_ROOT = join(ROOT, ".runtime", "fixtures", "activated-minimal-v1");
+const ACTIVATED_TAG = "26-10-10-00-00-00_cafe01";
+rmSync(ACTIVATED_ROOT, { recursive: true, force: true });
+
+const AdmZip = (await import(
+  join(REFERENCE, "ts", "node_modules", "adm-zip", "adm-zip.js")
+)).default;
+
+function buildZip(zipPath, entries) {
+  const zip = new AdmZip();
+  for (const [name, content] of entries) {
+    zip.addFile(name, Buffer.from(content, "utf-8"));
+  }
+  mkdirSync(dirname(zipPath), { recursive: true });
+  zip.writeZip(zipPath);
+}
+
+const excelZipPath = join(ACTIVATED_ROOT, "gamedata", "archives", "zh_CN-excel.zip");
+const levelsZipPath = join(ACTIVATED_ROOT, "gamedata-levels", "archives", "zh_CN-levels.zip");
+const fixtureFile = (name) => readFileSync(join(FIXTURE_ROOT, EXCEL, name), "utf-8");
+buildZip(
+  excelZipPath,
+  [
+    "character_table.json",
+    "handbook_info_table.json",
+    "charword_table.json",
+    "story_review_table.json",
+    "enemy_handbook_table.json",
+    "building_data.json",
+    "skin_table.json",
+    "skill_table.json",
+  ].map((name) => [`zh_CN/gamedata/excel/${name}`, "{}"])
+    .concat([
+      ["zh_CN/gamedata/excel/stage_table.json", fixtureFile("stage_table.json")],
+      ["zh_CN/gamedata/excel/zone_table.json", fixtureFile("zone_table.json")],
+      ["zh_CN/gamedata/excel/item_table.json", fixtureFile("item_table.json")],
+    ]),
+);
+buildZip(levelsZipPath, [
+  ["zh_CN/gamedata/levels/enemydata/enemy_database.json", "{}"],
+]);
+for (const [zipDir, asset] of [
+  [dirname(excelZipPath), "zh_CN-excel.zip"],
+  [dirname(levelsZipPath), "zh_CN-levels.zip"],
+]) {
+  writeFileSync(
+    join(zipDir, "release_meta.json"),
+    JSON.stringify({
+      repo: UPSTREAM_REPO,
+      branch: "releases",
+      commit_sha: ACTIVATED_TAG,
+      fetched_at: "2099-01-01T00:00:00.000Z",
+      files: [asset],
+    }, null, 2),
+    "utf-8",
+  );
+}
+
+const peerRun = spawnSync(
+  process.execPath,
+  [join(ROOT, "tools", "ts-interop-peer.mjs"), "write-pair", ACTIVATED_ROOT],
+  { encoding: "utf-8", env: { PATH: process.env.PATH, HOME: process.env.HOME } },
+);
+if (peerRun.status !== 0) {
+  throw new Error(`write-pair peer failed: ${peerRun.stderr}`);
+}
+const pairActivation = JSON.parse(
+  peerRun.stdout.trim().split("\n").filter((l) => l.startsWith("{")).pop(),
+);
+if (pairActivation.statuses.some((s) => s !== "updated")) {
+  throw new Error(`unexpected activation statuses: ${peerRun.stdout}`);
+}
+
 function walkFiles(dir) {
   const out = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -251,6 +330,34 @@ const manifest = {
       source: "git archive e0ba360:data/gamedata",
       root: ".reference/ts-v2.8.1/data/gamedata",
       files: bundledFiles,
+    },
+    "activated-minimal-v1": {
+      purpose: "P2 differential fixture: TS-sync-written generation volume with pair pointer",
+      source: "ts dist syncReleaseArchivePair (offline) over minimal-gamedata-v1 content",
+      root: ".runtime/fixtures/activated-minimal-v1",
+      gamedata_root: "gamedata",
+      pair_commit_sha: ACTIVATED_TAG,
+      activation: pairActivation,
+      files: [
+        "gamedata/archives/zh_CN-excel.zip",
+        "gamedata/archives/release_meta.json",
+        "gamedata-levels/archives/zh_CN-levels.zip",
+        "gamedata-levels/archives/release_meta.json",
+        ".gamedata_pair.json",
+      ].map((rel) => ({
+        path: rel,
+        bytes: statSync(join(ACTIVATED_ROOT, rel)).size,
+        sha256: sha256(join(ACTIVATED_ROOT, rel)),
+      })),
+      // Generation dir names carry random UUIDs; the CONTENT under them is
+      // hashed with the generation segment masked so runs stay comparable.
+      generation_content: walkFiles(ACTIVATED_ROOT)
+        .filter((p) => p.includes(`${join("", ".releases")}${p.includes("/") ? "/" : "/"}`) || p.includes("/.releases/") || p.split("/").includes(".releases"))
+        .map((p) => ({
+          path: relative(ACTIVATED_ROOT, p).replace(/\.releases\/[^/]+\//, ".releases/<gen>/"),
+          bytes: statSync(p).size,
+          sha256: sha256(p),
+        })),
     },
   },
   upstream_release_probe: {
