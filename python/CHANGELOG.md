@@ -4,11 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project follows the versioning convention documented in [`docs/dev/VERSIONING.md`](https://github.com/3aKHP/prts-mcp/blob/main/docs/dev/VERSIONING.md).
 
-## [Unreleased]
+## [2.8.1] - 2026-10-11
 
 ### Added
 
 - **Roguelike story supplement catalog support.** When the story pack carries `story_supplement.json` (an additive file within the `prts-mcp-data/v1` contract, produced by arknights-data-pipeline), the six `rogue_N` roguelike events become first-class story content: `list_story_events` lists them (with a new `category="roguelike"` filter), `list_stories` / `read_activity` order their chapters, `search_stories` and the two character tools index them through the shared search index, and `read_story` / `get_story_summary` resolve their keys. Packs without the file behave exactly as before; directory-store caches now track the supplement file so self-hosted directory trees invalidate correctly, and the story-pack validator checks the catalog's chapter references when the file is present. The MCP tool surface stays at 24.
+
+### Fixed
+
+- Directory story-search caches track each catalog file independently, so an equal-size edit with a timestamp older than the other catalog still invalidates the index. Python story-pack validation now skips non-list supplement chapter fields consistently with TypeScript.
 
 ## [2.8.0] - 2026-10-10
 

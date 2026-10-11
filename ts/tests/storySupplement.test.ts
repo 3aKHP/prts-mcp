@@ -11,7 +11,7 @@
  */
 
 import assert from "node:assert/strict";
-import { mkdtempSync, writeFileSync, mkdirSync, readFileSync } from "node:fs";
+import { mkdtempSync, writeFileSync, mkdirSync, readFileSync, utimesSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
@@ -227,6 +227,22 @@ test("malformed supplement fields degrade (directory)", () => {
     searchStoriesFromStore(store, "你好", undefined, undefined, 1, 5)
       .includes("act_test/TEST-1"),
   );
+});
+
+test("directory cache tracks an older catalog equal-size edit", () => {
+  const root = mkdtempSync(join(tmpdir(), "prts-supp-"));
+  const store = makeStore(root, "directory");
+  const supplement = join(root, STORY_SUPPLEMENT_PATH);
+  utimesSync(join(root, STORY_REVIEW_PATH), 200, 200);
+  utimesSync(supplement, 100, 100);
+  assert.ok(searchStoriesFromStore(store, "独特旁白词项xyz").includes("rogue_6"));
+  const original = readFileSync(supplement, "utf-8");
+  const updated = original.replace(/("event_id"\s*:\s*")rogue_6"/, '$1rogue_7"');
+  assert.equal(Buffer.byteLength(updated), Buffer.byteLength(original));
+  writeFileSync(supplement, updated, "utf-8");
+  utimesSync(supplement, 150, 150);
+  const result = searchStoriesFromStore(store, "独特旁白词项xyz");
+  assert.ok(result.includes("rogue_7") && !result.includes("rogue_6"));
 });
 
 test("directory store invalidates index when only the supplement changes", () => {

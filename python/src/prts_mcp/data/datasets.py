@@ -104,6 +104,7 @@ def validate_storyjson_zip(zf: ZipFile) -> list[str]:
             _story_path(chapter_key)
             for event in supp_events
             if isinstance(event, dict)
+            and isinstance(event.get("chapters"), list)
             for chapter in (event.get("chapters") or [])
             if isinstance(chapter, dict)
             and isinstance(chapter.get("key"), str)

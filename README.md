@@ -29,7 +29,7 @@ Two release lines ship in parallel:
 
 | Line | Version | Tools | Status |
 |------|---------|-------|--------|
-| **2.8** (`main`) | `2.8.0` | 24 | Operator deep stats — level-specific panels, per-level skill effects, and per-tier talent effects via `get_operator_basic_info` actions — plus hyphen-format data-revision compatibility. |
+| **2.8** (`main`) | `2.8.1` | 24 | Operator deep stats — level-specific panels, per-level skill effects, and per-tier talent effects via `get_operator_basic_info` actions — plus roguelike story discovery, reading, search, and character tracking. |
 | **1.7 LTS** (`lts/1.7`) | `1.7.0` | 32 | Stable maintenance line. 1.7.x accepts only compatibility, security, data-sync, and critical bug fixes. |
 
 The `main` and `develop` lines use the self-built `arknights-data-pipeline` Release exclusively for default Auto-Sync. The 1.7 LTS line retains its legacy upstream compatibility until a separate, backwards-compatible migration; changes to the new factory path must not be backported to LTS as an implicit source switch.
@@ -66,7 +66,7 @@ Both implementations expose the same tool set:
 | `get_operator_archives(name)` | Retrieve operator archive records (Chinese name) |
 | `get_operator_voicelines(name)` | Retrieve operator voice lines (Chinese name) |
 | `get_operator_basic_info(name, action="basic", phase?, level?)` | Query an operator's profile/talents/base skills (`basic`, default), per-level combat skills (`skills`), or stat panels (`stats`); `phase`/`level` apply only to `stats` (Chinese name) |
-| `list_story_events(category?)` | List story events; optional filter: `main` (main story) or `activities` |
+| `list_story_events(category?)` | List story events; optional filter: `main` (main story), `activities`, or `roguelike` |
 | `list_stories(event_id, include_summaries?)` | List chapters of an event in official order; `include_summaries` adds the event-level overview + per-chapter summaries |
 | `get_story_summary(story_key)` | Single-chapter summary (LLM long summary or official one-liner) |
 | `read_story(story_key, include_narration)` | Read full dialogue for a single chapter |
@@ -157,7 +157,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and [`doc
 
 | 版本线 | 版本 | 工具数 | 状态 |
 |--------|------|--------|------|
-| **2.8**（`main`） | `2.8.0` | 24 | 干员深度数值——`get_operator_basic_info` 统一入口的面板插值、技能逐等级、天赋逐档；数据同步兼容连字符 versionId 修订。 |
+| **2.8**（`main`） | `2.8.1` | 24 | 干员深度数值——`get_operator_basic_info` 统一入口的面板插值、技能逐等级、天赋逐档；新增肉鸽剧情发现、读取、搜索与角色追踪。 |
 | **1.7 LTS**（`lts/1.7`） | `1.7.0` | 32 | 稳定维护线。1.7.x 仅接受兼容性、安全性、数据同步和关键缺陷修复。 |
 
 | 范围 | Python | TypeScript |
@@ -192,7 +192,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and [`doc
 | `get_operator_archives(name)` | 获取干员档案资料（中文名） |
 | `get_operator_voicelines(name)` | 获取干员语音记录（中文名） |
 | `get_operator_basic_info(name, action="basic", phase?, level?)` | 查询定位/天赋/基建技能（`basic`，默认）、战斗技能各等级效果（`skills`）或面板数值（`stats`）；`phase`/`level` 仅用于 `stats`（中文名） |
-| `list_story_events(category?)` | 列出剧情活动，可选过滤：`main`（主线）或 `activities`（活动） |
+| `list_story_events(category?)` | 列出剧情活动，可选过滤：`main`（主线）、`activities`（活动）或 `roguelike`（集成战略） |
 | `list_stories(event_id, include_summaries?)` | 列出指定活动的章节（按官方顺序）；`include_summaries` 附活动级概览 + 每章梗概 |
 | `get_story_summary(story_key)` | 获取单章梗概（LLM 长摘要或官方一句话简介） |
 | `read_story(story_key, include_narration)` | 读取单章完整台词 |

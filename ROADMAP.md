@@ -1,13 +1,13 @@
 # PRTS-MCP Roadmap
 
-_Last updated: 2026-10-10_ · [中文版](ROADMAP.zh-CN.md)
+_Last updated: 2026-10-11_ · [中文版](ROADMAP.zh-CN.md)
 
 PRTS-MCP is past 1.0. Version 1.7.0 is the final 1.x feature release and the 1.7 LTS baseline. This document tracks **what comes next** — not what has shipped. For shipped features, see the Python and TypeScript CHANGELOGs.
 
 ## Current Release
 
-- Python: `2.8.0` _(latest stable)_
-- TypeScript: `2.8.0` _(latest stable)_
+- Python: `2.8.1` _(latest stable)_
+- TypeScript: `2.8.1` _(latest stable)_
 - `1.7.0` LTS remains the maintenance line — compatibility, security, data-sync, and critical fixes only.
 - 24 public MCP tools on the 2.x line (CI-enforced); 32 public MCP tools frozen on the 1.7 LTS line.
 - See [migration guide 0.x → 1.0](docs/migration-0.x-to-1.0.md) and [migration guide 1.x → 2.0](docs/migration-1.x-to-2.0.md).
@@ -44,6 +44,10 @@ Where a candidate remains useful, subsequent 2.x development preserves the curre
 ### 2.7.0 — Shipped 2026-08-15
 
 The former draft items for operator base skills (`get_operator_basic_info` carrying a bounded `building_skills` section, plus a `building_skills` scope on `search`) and skin/artwork metadata shipped in 2.7.0 — see the Python and TypeScript CHANGELOGs for details. The `operator_artwork(action="list")` skin-metadata enrichment under `LOCAL_IMAGE=true` was pulled forward from the former 2.8.0 candidate; that 2.8.0 placeholder was a target version only and never carried a theme.
+
+### 2.8.1 — Shipped 2026-10-11
+
+Roguelike story supplement catalogs now expose six events through existing story tools, including discovery, chapter reading, search, and character tracking. Older packs without the optional catalog remain supported; the tool count stays at 24.
 
 ### 2.8.0 — Shipped 2026-10-10
 
