@@ -1,6 +1,6 @@
 # 执行进度
 
-最后更新：2026-10-11（P3 完成）。
+最后更新：2026-10-12（P4 完成）。
 
 | 阶段 | 状态 | 报告 | 下一步 |
 |---|---|---|---|
@@ -8,7 +8,7 @@
 | P1 | complete (tag local/p1-complete) | [reports/P1.md](reports/P1.md) | — |
 | P2 | complete (tag local/p2-complete) | [reports/P2.md](reports/P2.md) | — |
 | P3 | complete (tag local/p3-complete) | [reports/P3.md](reports/P3.md) | — |
-| P4 | not-started | — | 完整9个Story工具 |
+| P4 | complete (tag local/p4-complete) | [reports/P4.md](reports/P4.md) | — |
 | P5 | not-started | — | 完整2个Wiki工具 |
 | P6 | not-started | — | 图片工具与完整图片同步 |
 | P7 | not-started | — | 配置、诊断、部署和本地分发 |
@@ -49,9 +49,19 @@
 - **门禁**：fmt/clippy(-D)/136 测试/release；P0 自检 29/29+变异、P1 32/32、P2 33/33 全保持。
 - 全规模 GameData 差分与冷/热测量按计划归 P4；`/debug/cache` 映射留 P7。
 
+## P4 交付摘要（2026-10-12）
+
+- **9 个 Story 工具全部实现**（累计 21，`registry_has_21_tools_at_p4` 钉死）：events/list/summary/read/activity/search/memoir/appearances/speakers；T/S 通道与 oracle 摘要覆盖（memoir 自定义 summary）一致。
+- **保真内核**：cleanText（`{@nickname}`→博士+去标签）、Decision 标量/数组/对象、sticker content/text、pyRepr、摘要三级回退（summaries 覆盖 storyinfo→storyInfo）、read_activity 分页与坏章跳过、错误分层（未找到裸返回 vs `读取…失败：` 前缀）、发言计数降序+码点并列。
+- **supplement 整链**：发现→列表→读取→搜索→角色追踪（roguelike 案例集）；review 碰撞不覆盖、坏 supplement 降级、NONE 非密录不入索引。
+- **共享单份索引**：进程级单例按 zip stat descriptor 身份缓存；换包重建恰一次（计数断言）+ 旧索引随末位读者释放（RSS 110.7→104.3MB 证据）+ 4 线程单飞（构建恰一次）；多会话共享（bench wall=1.13× 单建）。
+- **差分 275/275**（P4 +118：story 98 + 全规模 20）：四格 36 cell、S 工具三通道、全分支；`full-story-r2`（真实 datarev excel+story zip，hash 入 manifest）全规模搜索顺序与 golden 逐字节一致；P3 遗留的 GameData 全规模代表 8 例一并通过。
+- **性能**（artifacts/p4-bench.json）：冷建索引 Rust p50 1828ms/峰值 108MB vs TS(bun) 1216ms/427MB（冷慢 0.6s 如实记录，热查 2.7ms vs 4.0ms 占优）；换包 28ms/1929ms 恰一次。
+- **门禁**：fmt/clippy(-D)/140 测试/release；P0 自检 29/29+变异、P1 32/32、P2 33/33、P3 157/157 全保持；`--all` 275/280（5 个 P8 全工具面案例按计划）。
+
 ## 交接入口
 
-- 分支 `rust-local`；HEAD 见 `git log -1`（tag local/p3-complete）；工作树干净。
-- 阶段 bundle：`artifacts/p0.bundle` … `artifacts/p3.bundle`（hash 以最终文件为准；请维护者另存备份并自行记录）。
-- 差分重跑：`node tools/verify.mjs --phase P3`（Rust 需 `cargo build --locked --release`）；oracle 重建见 P0 报告。
-- P4 首个任务：story 域读取（story_review_table/storyinfo/zip 条目，ZipStore 复用）与 `list_story_events`/`list_stories`；supplement 整链、共享单份索引（换包重建一次/释放旧索引）、全规模与冷/热测量都在 P4 内完成（docs/07 P4）。
+- 分支 `rust-local`；HEAD 见 `git log -1`（tag local/p4-complete）；工作树干净。
+- 阶段 bundle：`artifacts/p0.bundle` … `artifacts/p4.bundle`（hash 以最终文件为准；请维护者另存备份并自行记录）。
+- 差分重跑：`node tools/verify.mjs --phase P4`（Rust 需 `cargo build --locked --release`；全规模数据集 `node tools/make-fullscale.mjs`）；性能 `node tools/bench-p4.mjs`。
+- P5 首个任务：`search_prts` 全部搜索模式与 `prts_page` 5 action——固定 Wiki 响应回放差分优先，节流/代理与模板提取随后（docs/07 P5）。
