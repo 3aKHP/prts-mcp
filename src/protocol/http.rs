@@ -195,11 +195,17 @@ async fn mcp_endpoint(
 
     let body: Value = match serde_json::from_slice(&body) {
         Ok(v) => v,
-        Err(_) => {
-            // The oracle answers with an Express HTML error page here; that
-            // page is a framework artifact (reported in P1, outside the case
-            // set) — this adapter answers with the JSON error family.
-            return transport_error(StatusCode::BAD_REQUEST, -32700, "Parse error", Value::Null);
+        Err(err) => {
+            // D-005/D-006 (approved 2026-10-11): unparseable bodies — including
+            // lone UTF-16 surrogate escapes, which JS JSON.parse accepts — get
+            // an explicit JSON-RPC -32700 parse error instead of the oracle's
+            // Express HTML page or silent acceptance.
+            return transport_error(
+                StatusCode::BAD_REQUEST,
+                -32700,
+                &format!("Parse error: {err}"),
+                Value::Null,
+            );
         }
     };
 

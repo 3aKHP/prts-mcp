@@ -10,9 +10,33 @@
   "ghcr_reference_commit": "e0ba36096cdd46640166b0a5db02902fa9a6a24c",
   "target_platform": "x86_64-unknown-linux-gnu; WSL2 Linux and Linux containers",
   "runtime_business_oracle": "typescript-only",
-  "data_snapshot": null,
-  "data_snapshot_status": "P0 must populate a separate immutable manifest with hashes before full-data differential runs",
-  "wire_snapshot_status": "P0 pending; tool-declarations.json is not a wire snapshot",
-  "approved_differences": ["D-001-runtime-identity", "D-002-native-diagnostics", "D-003-dependency-error-details", "D-004-local-packaging"],
-  "rust_implementation_status": "not-started"
+  "data_snapshot": ".runtime/data per contracts/data-manifest.json (pinned tags)",
+  "data_snapshot_status": "P0 populated; see contracts/data-manifest.json",
+  "wire_snapshot_status": "P0 populated; see contracts/wire/",
+  "approved_differences": [
+    "D-001-runtime-identity",
+    "D-002-native-diagnostics",
+    "D-003-dependency-error-details",
+    "D-004-local-packaging",
+    "D-005-input-surrogate-rejection",
+    "D-006-unparseable-body-json-error"
+  ],
+  "approved_differences_log": {
+    "D-005-input-surrogate-rejection": {
+      "approved_by": "maintainer",
+      "approved_at": "2026-10-11",
+      "scope": "HTTP request bodies containing lone (unpaired) UTF-16 surrogate code units are rejected with HTTP 400 and JSON-RPC -32700 carrying an explicit parse message. stdio lines with lone surrogates are treated like any other unparseable line (silent skip per the framing contract). Valid surrogate pairs and all other normal Unicode text remain accepted and must keep matching the oracle (differential case stage.list.chapter-astral-pair).",
+      "evidence": "contracts/wire/supplemental/lone-surrogate-boundary.json",
+      "decision": "reject-with-explicit-parse-error"
+    },
+    "D-006-unparseable-body-json-error": {
+      "approved_by": "maintainer",
+      "approved_at": "2026-10-11",
+      "scope": "HTTP request bodies that fail JSON parsing return HTTP 400 with a JSON-RPC -32700 parse error instead of the Express HTML error page the oracle emits. Applies to the parse failure itself only; no other error shape, status code, or body family changes.",
+      "evidence": "contracts/wire/http-legacy/transport-edges.json (POST malformed JSON) and contracts/wire/supplemental/parse-error-difference.json",
+      "decision": "json-rpc-parse-error-replaces-html-page"
+    }
+  },
+  "rust_implementation_status": "P0+P1 complete (thin adapter, list_stages, 1 tool)"
+}
 }

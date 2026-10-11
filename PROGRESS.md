@@ -22,6 +22,7 @@
 - **语言探针**：QuickJS 正则适配器 49 例语料与 Bun 零差异；UTF-16 排序/切片、浮点整数语义差分；J1 孤立代理对边界实证并登记维护者决策项。
 - **验证**：差分 31/31（四格×三通道+会话生命周期+空数据启动）；进程测试（无监听、双会话通道隔离）；fmt/clippy(-D)/test(28)/release 全过；Node 辅助对照 2 案例；性能基线入 `artifacts/p1-bench.json`。
 - 工具数 1（阶段契约）；24 工具面 tools/list 差分以 `diff_phase=P8` 推迟（07 明示允许）。
+- **维护者 2026-10-11 批准差异**：D-005-input-surrogate-rejection（拒孤立代理码元+明确解析错误）、D-006-unparseable-body-json-error（400+JSON-RPC 解析错误替代 HTML 页）——已登记 baseline.json 并配回归测试；有效代理对/正常 Unicode 由 `stage.list.chapter-astral-pair` 差分与截断单测守护。
 
 ## 交接入口
 

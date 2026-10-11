@@ -186,3 +186,119 @@ async fn two_sessions_isolated_channels() {
     child.kill().unwrap();
     let _ = child.wait();
 }
+
+/// D-005 (approved 2026-10-11): lone UTF-16 surrogate escapes are rejected
+/// with an explicit parse error; this must stay a 400 + JSON-RPC -32700 with
+/// a message that says what failed.
+#[tokio::test]
+async fn lone_surrogate_body_rejected_with_explicit_parse_error() {
+    let port = free_port();
+    let mut child = spawn_http(port, &[]);
+    let origin = format!("http://127.0.0.1:{port}");
+    wait_health(&origin).await;
+
+    let client = reqwest::Client::new();
+    let res = client
+        .post(format!("{origin}/mcp"))
+        .header("content-type", "application/json")
+        .header("accept", "application/json, text/event-stream")
+        .body(r#"{"jsonrpc":"2.0","method":"tools/call","id":1,"params":{"name":"list_stages","arguments":{"chapter":"\ud83d"}}}"#)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status().as_u16(), 400);
+    assert!(res.headers()["content-type"]
+        .to_str()
+        .unwrap()
+        .starts_with("application/json"));
+    let body: Value = res.json().await.unwrap();
+    assert_eq!(body["error"]["code"], -32700);
+    let message = body["error"]["message"].as_str().unwrap();
+    assert!(
+        message.starts_with("Parse error"),
+        "message must be an explicit parse error: {message}"
+    );
+    // Explicitness: serde names the failure mode and position (wording varies
+    // with where the lone surrogate sits — e.g. "unexpected end of hex escape
+    // at line 1 column N" / "lone leading surrogate in hex escape …").
+    assert!(
+        message.contains("hex escape") && message.contains("line 1"),
+        "message should carry the failure mode and position: {message}"
+    );
+
+    child.kill().unwrap();
+    let _ = child.wait();
+}
+
+/// D-006 (approved 2026-10-11): unparseable bodies get the JSON-RPC parse
+/// error family, not the oracle's Express HTML page.
+#[tokio::test]
+async fn unparseable_body_returns_json_rpc_parse_error() {
+    let port = free_port();
+    let mut child = spawn_http(port, &[]);
+    let origin = format!("http://127.0.0.1:{port}");
+    wait_health(&origin).await;
+
+    let client = reqwest::Client::new();
+    let res = client
+        .post(format!("{origin}/mcp"))
+        .header("content-type", "application/json")
+        .header("accept", "application/json, text/event-stream")
+        .body("{not json")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status().as_u16(), 400);
+    assert!(res.headers()["content-type"]
+        .to_str()
+        .unwrap()
+        .starts_with("application/json"));
+    let body: Value = res.json().await.unwrap();
+    assert_eq!(body["error"]["code"], -32700);
+    assert!(body["error"]["message"]
+        .as_str()
+        .unwrap()
+        .starts_with("Parse error"));
+
+    child.kill().unwrap();
+    let _ = child.wait();
+}
+
+/// Guard rail for D-005's scope: complete characters — including valid
+/// surrogate pairs — must flow through untouched and match normal filtering
+/// semantics (no filter hit -> the exact empty-filter message).
+#[tokio::test]
+async fn paired_surrogates_flow_through() {
+    let port = free_port();
+    let mut child = spawn_http(port, &[]);
+    let origin = format!("http://127.0.0.1:{port}");
+    wait_health(&origin).await;
+
+    let (status, sid, _) = post(&origin, init_body(1), None, "").await;
+    assert_eq!(status, 200);
+    let sid = sid.expect("session id");
+    post(
+        &origin,
+        json!({"jsonrpc":"2.0","method":"notifications/initialized"}),
+        Some(&sid),
+        "",
+    )
+    .await;
+    // U+20BB7 as a valid escaped surrogate pair in the JSON text.
+    let (status, _, body) = post(
+        &origin,
+        json!({"jsonrpc":"2.0","method":"tools/call","id":2,"params":{"name":"list_stages","arguments":{"chapter":"\u{20BB7}"}}}),
+        Some(&sid),
+        "",
+    )
+    .await;
+    assert_eq!(status, 200);
+    let text = body["result"]["content"][0]["text"].as_str().unwrap();
+    assert_eq!(
+        text,
+        format!("没有匹配的关卡（filter: zoneId={}）。", "\u{20BB7}")
+    );
+
+    child.kill().unwrap();
+    let _ = child.wait();
+}

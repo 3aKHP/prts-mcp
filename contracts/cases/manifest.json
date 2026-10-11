@@ -833,6 +833,31 @@
       "normalizations": [
         "bind-session-id"
       ]
+    },
+    {
+      "id": "stage.list.chapter-astral-pair",
+      "contract": "TOOL-list_stages",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "channel": "content",
+      "phase": "P1",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9027,
+        "params": {
+          "name": "list_stages",
+          "arguments": {
+            "chapter": "𠮷"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "note": "D-005 scope guard: valid surrogate pairs (complete astral characters) must flow through both implementations identically"
     }
   ]
 }

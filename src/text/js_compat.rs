@@ -137,6 +137,26 @@ mod tests {
     }
 
     #[test]
+    fn js_slice_preserves_complete_characters() {
+        // Truncation on code-unit boundaries that do not split a surrogate
+        // pair must preserve the exact characters (D-005 scope guard).
+        let astral = "\u{20BB7}\u{20BB7}x";
+        assert_eq!(js_slice(astral, 0, 2), "\u{20BB7}"); // one whole pair
+        assert_eq!(js_slice(astral, 2, 4), "\u{20BB7}"); // second whole pair
+        assert_eq!(js_slice(astral, 0, 5), "\u{20BB7}\u{20BB7}x"); // everything
+        assert_eq!(js_slice(astral, 4, 5), "x"); // trailing BMP char
+                                                 // BMP-heavy text truncates exactly.
+        let bmp = "龙门近卫局";
+        assert_eq!(js_slice(bmp, 0, 2), "龙门");
+        assert_eq!(js_slice(bmp, 2, 5), "近卫局");
+        // Mixed: cut just before and just after a pair.
+        let mixed = "a\u{20BB7}b";
+        assert_eq!(js_slice(mixed, 0, 1), "a");
+        assert_eq!(js_slice(mixed, 0, 3), "a\u{20BB7}");
+        assert_eq!(js_slice(mixed, 1, 4), "\u{20BB7}b");
+    }
+
+    #[test]
     fn integral_floats_are_integers() {
         let one_point_zero: serde_json::Number =
             serde_json::from_str::<serde_json::Number>("1.0").unwrap();
