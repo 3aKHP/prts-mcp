@@ -260,7 +260,9 @@ fn render_listing(
 }
 
 fn load_stage_table(store: &DirectoryStore) -> Result<Value, String> {
-    if !store.exists(STAGE_FILE) {
+    // Dataset paths here are fixed file names, so `exists` cannot be an
+    // unsafe-path error; only presence matters.
+    if !store.exists(STAGE_FILE).unwrap_or(false) {
         return Err(format!("关卡数据文件不存在：{STAGE_FILE}"));
     }
     let raw = store
@@ -273,7 +275,7 @@ fn load_stage_table(store: &DirectoryStore) -> Result<Value, String> {
 }
 
 fn load_zone_table(store: &DirectoryStore) -> Option<Value> {
-    if !store.exists(ZONE_FILE) {
+    if !store.exists(ZONE_FILE).unwrap_or(false) {
         return None;
     }
     let raw = store.read_json(ZONE_FILE).ok()?;

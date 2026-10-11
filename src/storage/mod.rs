@@ -1,6 +1,9 @@
 //! Directory/ZIP/fallback stores, generation pointers, snapshots.
-//! P1: DirectoryStore read path only; ZIP/fallback and generations are P2.
 
+pub mod generation;
 mod store;
 
-pub use store::{DirectoryStore, JsonStore, StoreError};
+pub use generation::{activated_pair, activated_root, excel_path_of, gamedata_pair_path_for_read};
+pub use store::{
+    write_zip_entries, DirectoryStore, FallbackStore, JsonStore, StoreError, ZipStore,
+};
