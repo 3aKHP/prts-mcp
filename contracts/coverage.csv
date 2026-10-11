@@ -46,12 +46,12 @@ id,phase,required,status,evidence,acceptance
 "BRANCH-operator_artwork-variant-original","P6","yes","not-started","","variant=original: behavior result and relevant failure cases"
 "BRANCH-operator_artwork-variant-large","P6","yes","not-started","","variant=large: behavior result and relevant failure cases"
 "BRANCH-operator_artwork-variant-preview","P6","yes","not-started","","variant=preview: behavior result and relevant failure cases"
-"BASE-oracle","P0","yes","not-started","","Pinned Bun oracle and secondary Node environment"
-"BASE-wire","P0","yes","not-started","","Capture four transport-era paths and actual schema"
-"BASE-data","P0","yes","not-started","","Minimal and full data immutable hash manifests"
-"BASE-diff","P0","yes","not-started","","Independent runner; self-consistency and intentional mismatch detection"
-"BASE-test-triage","P0","yes","not-started","","Map old tests to retained behavior or reason for replacement"
-"BASE-deps","P0","yes","not-started","","Cargo toolchain lockfile features and license inventory"
+"BASE-oracle","P0","yes","verified","reports/P0.md; .reference rebuilt from e0ba360 via bun frozen lockfile; isolated env whitelist","Pinned Bun oracle and secondary Node environment")
+"BASE-wire","P0","yes","verified","contracts/wire/ (15 flows, 4-cell matrix + negotiation + era boundary)","Capture four transport-era paths and actual schema")
+"BASE-data","P0","yes","verified","contracts/data-manifest.json (fixture+snapshot SHA-256, pinned tags)","Minimal and full data immutable hash manifests")
+"BASE-diff","P0","yes","verified","reports/P0.md; verify.mjs P0 selfcheck 29/29 + mutation detected; contracts/cases/golden/","Independent runner; self-consistency and intentional mismatch detection")
+"BASE-test-triage","P0","yes","verified","reports/P0-audit.md §2","Map old tests to retained behavior or reason for replacement")
+"BASE-deps","P0","yes","verified","contracts/dependency-licenses.json; Cargo.lock (214 pkgs); rust-toolchain.toml 1.96.1","Cargo toolchain lockfile features and license inventory")
 "PROTO-http-legacy","P1","yes","not-started","","Initialize list call and invalid requests"
 "PROTO-http-modern","P1","yes","not-started","","Discover stateless envelope and malformed modern rejection"
 "PROTO-stdio-legacy","P1","yes","not-started","","Legacy process handshake and lifecycle"
