@@ -26,6 +26,68 @@ function networkDownFetch() {
 async function main() {
   const [mode, ...args] = process.argv.slice(2);
   switch (mode) {
+    case "images-sync": {
+      // Real fetch, no mock: GITHUB_MIRRORS mirror + a dead https proxy so
+      // ONLY the mirror is reachable (the undici proxy branch).
+      const [imageDir, mirrorPort] = args;
+      process.env["GITHUB_MIRRORS"] = `http://127.0.0.1:${mirrorPort}`;
+      process.env["https_proxy"] = "http://127.0.0.1:9";
+      process.env["HTTPS_PROXY"] = "http://127.0.0.1:9";
+      const { syncImages } = await import(`${DIST}/sync/imagesSync.js`);
+      const result = await syncImages(imageDir, { includeOriginal: false, forceCheck: false });
+      console.log(JSON.stringify({ result: { status: result.status, commitSha: result.commitSha, error: result.error } }));
+      return;
+    }
+    case "images-active": {
+      const [imageDir] = args;
+      const { activeGenerationSync } = await import(`${DIST}/sync/generationStore.js`);
+      const { parseIndex } = await import(`${DIST}/data/images.js`);
+      const fs = await import("node:fs/promises");
+      const { createHash } = await import("node:crypto");
+      const gen = activeGenerationSync(imageDir);
+      if (gen === null) {
+        console.log(JSON.stringify({ result: { active: null } }));
+        return;
+      }
+      const index = parseIndex(JSON.parse(await fs.readFile(`${gen}/index.json`, "utf8")));
+      const ids = index ? Object.keys(index.artworks).sort() : null;
+      // Hash every PNG to prove the full tree is readable.
+      const hashes = {};
+      if (index) {
+        for (const sid of ids) {
+          for (const [v, meta] of Object.entries(index.artworks[sid].variants)) {
+            const bytes = await fs.readFile(`${gen}/${meta.file}`);
+            hashes[`${sid}|${v}`] = createHash("sha256").update(bytes).digest("hex").slice(0, 16);
+          }
+        }
+      }
+      console.log(JSON.stringify({
+        result: {
+          active: gen,
+          currentVersion: index?.currentVersion ?? null,
+          baselineVersion: index?.baselineVersion ?? null,
+          artworks: ids,
+          hashes,
+        },
+      }));
+      return;
+    }
+    case "images-fullsync": {
+      // Real network full-scale sync (P6 measurement): direct GitHub, no
+      // mirror, no proxy. Prints the sync result plus VmHWM/VmRSS.
+      const [imageDir, includeOriginal] = args;
+      process.env["GITHUB_MIRRORS"] = "";
+      delete process.env["https_proxy"];
+      delete process.env["HTTPS_PROXY"];
+      const started = Date.now();
+      const { syncImages } = await import(`${DIST}/sync/imagesSync.js`);
+      const result = await syncImages(imageDir, { includeOriginal: includeOriginal === "true", forceCheck: false });
+      const status = await import("node:fs/promises").then((fs) => fs.readFile("/proc/self/status", "utf8"));
+      const hwm = status.match(/^VmHWM:\s+(\d+) kB/m)?.[1];
+      const rss = status.match(/^VmRSS:\s+(\d+) kB/m)?.[1];
+      console.log(JSON.stringify({ result: { status: result.status, commitSha: result.commitSha, error: result.error }, durationMs: Date.now() - started, vmHwmKb: Number(hwm), vmRssKb: Number(rss) }));
+      return;
+    }
     case "sync-bench": {
       // Real transport (no fetch mock): runStartupSync against the local
       // mirror via GITHUB_MIRRORS + a dead https proxy (undici proxy branch).

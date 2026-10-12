@@ -8463,6 +8463,1116 @@
         "bind-session-id"
       ],
       "live": true
+    },
+    {
+      "id": "artwork.local.list",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-images-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9951,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "阿米娅",
+            "action": "list"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_dead_proxy": true,
+      "env": {
+        "LOCAL_IMAGE": "true"
+      }
+    },
+    {
+      "id": "artwork.local.list.form",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-images-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9952,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "阿米娅(近卫)",
+            "action": "list"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_dead_proxy": true,
+      "env": {
+        "LOCAL_IMAGE": "true"
+      }
+    },
+    {
+      "id": "artwork.local.list.form-fullwidth",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-images-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9953,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "阿米娅（近卫）",
+            "action": "list"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_dead_proxy": true,
+      "env": {
+        "LOCAL_IMAGE": "true"
+      }
+    },
+    {
+      "id": "artwork.local.list.not-found",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-images-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9954,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "凯尔希",
+            "action": "list"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_dead_proxy": true,
+      "env": {
+        "LOCAL_IMAGE": "true"
+      }
+    },
+    {
+      "id": "artwork.local.list.no-images",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9955,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "阿米娅",
+            "action": "list"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_dead_proxy": true,
+      "env": {
+        "LOCAL_IMAGE": "true"
+      }
+    },
+    {
+      "id": "artwork.local.get.large",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-images-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9956,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "阿米娅",
+            "action": "get",
+            "artwork_id": "char_002_amiya#1",
+            "variant": "large"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_dead_proxy": true,
+      "env": {
+        "LOCAL_IMAGE": "true"
+      }
+    },
+    {
+      "id": "artwork.local.get.preview",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-images-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9957,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "阿米娅",
+            "action": "get",
+            "artwork_id": "char_002_amiya#1",
+            "variant": "preview"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_dead_proxy": true,
+      "env": {
+        "LOCAL_IMAGE": "true"
+      }
+    },
+    {
+      "id": "artwork.local.get.default-variant",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-images-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9958,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "阿米娅",
+            "action": "get",
+            "artwork_id": "char_002_amiya#2"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_dead_proxy": true,
+      "env": {
+        "LOCAL_IMAGE": "true"
+      }
+    },
+    {
+      "id": "artwork.local.get.skin",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-images-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9959,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "阿米娅",
+            "action": "get",
+            "artwork_id": "char_002_amiya@theme1#1"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_dead_proxy": true,
+      "env": {
+        "LOCAL_IMAGE": "true"
+      }
+    },
+    {
+      "id": "artwork.local.get.original-missing",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-images-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9960,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "阿米娅",
+            "action": "get",
+            "artwork_id": "char_002_amiya#1",
+            "variant": "original"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_dead_proxy": true,
+      "env": {
+        "LOCAL_IMAGE": "true"
+      }
+    },
+    {
+      "id": "artwork.local.get.wrong-owner",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-images-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9961,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "阿米娅",
+            "action": "get",
+            "artwork_id": "char_1001_amiya2#1"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_dead_proxy": true,
+      "env": {
+        "LOCAL_IMAGE": "true"
+      }
+    },
+    {
+      "id": "artwork.local.get.cross-form",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-images-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9962,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "阿米娅（近卫）",
+            "action": "get",
+            "artwork_id": "char_002_amiya#1"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_dead_proxy": true,
+      "env": {
+        "LOCAL_IMAGE": "true"
+      }
+    },
+    {
+      "id": "artwork.local.get.unknown-id",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-images-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9963,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "阿米娅",
+            "action": "get",
+            "artwork_id": "char_999_x#1"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_dead_proxy": true,
+      "env": {
+        "LOCAL_IMAGE": "true"
+      }
+    },
+    {
+      "id": "artwork.local.get.no-token",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-images-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9964,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "阿米娅",
+            "action": "get"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_dead_proxy": true,
+      "env": {
+        "LOCAL_IMAGE": "true"
+      }
+    },
+    {
+      "id": "artwork.local.get.no-images",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9965,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "阿米娅",
+            "action": "get",
+            "artwork_id": "char_002_amiya#1"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_dead_proxy": true,
+      "env": {
+        "LOCAL_IMAGE": "true"
+      }
+    },
+    {
+      "id": "artwork.local.channel-structured",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-images-v1",
+      "transport": "stdio",
+      "era": "modern",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9966,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "阿米娅",
+            "action": "get",
+            "artwork_id": "char_002_amiya#1"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ],
+      "channel": "structured",
+      "wiki_dead_proxy": true,
+      "env": {
+        "LOCAL_IMAGE": "true"
+      }
+    },
+    {
+      "id": "artwork.local.channel-both",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-images-v1",
+      "transport": "stdio",
+      "era": "legacy",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9967,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "阿米娅",
+            "action": "get",
+            "artwork_id": "char_002_amiya#1"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "channel": "both",
+      "wiki_dead_proxy": true,
+      "env": {
+        "LOCAL_IMAGE": "true"
+      }
+    },
+    {
+      "id": "artwork.local.list.stdio-legacy",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-images-v1",
+      "transport": "stdio",
+      "era": "legacy",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9968,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "阿米娅",
+            "action": "list"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_dead_proxy": true,
+      "env": {
+        "LOCAL_IMAGE": "true"
+      }
+    },
+    {
+      "id": "artwork.mw.list",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-images-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9969,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "阿米娅",
+            "action": "list"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "artwork-mw"
+    },
+    {
+      "id": "artwork.mw.list.form",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-images-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9970,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "阿米娅(近卫)",
+            "action": "list"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "artwork-mw"
+    },
+    {
+      "id": "artwork.mw.list.empty",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-images-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9971,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "无立绘干员",
+            "action": "list"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "artwork-mw"
+    },
+    {
+      "id": "artwork.mw.get.large",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-images-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9972,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "阿米娅",
+            "action": "get",
+            "artwork_id": "立绘_阿米娅_1.png"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "artwork-mw"
+    },
+    {
+      "id": "artwork.mw.get.preview",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-images-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9973,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "阿米娅",
+            "action": "get",
+            "artwork_id": "立绘_阿米娅_1.png",
+            "variant": "preview"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "artwork-mw"
+    },
+    {
+      "id": "artwork.mw.get.skin",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-images-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9974,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "阿米娅",
+            "action": "get",
+            "artwork_id": "立绘_阿米娅_skin1.png"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "artwork-mw"
+    },
+    {
+      "id": "artwork.mw.get.original-rejected",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-images-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9975,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "阿米娅",
+            "action": "get",
+            "artwork_id": "立绘_阿米娅_1.png",
+            "variant": "original"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "artwork-mw"
+    },
+    {
+      "id": "artwork.mw.get.wrong-owner",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-images-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9976,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "阿米娅",
+            "action": "get",
+            "artwork_id": "立绘_凯尔希_1.png"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "artwork-mw"
+    },
+    {
+      "id": "artwork.mw.get.no-token",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-images-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9977,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "阿米娅",
+            "action": "get"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "artwork-mw"
+    },
+    {
+      "id": "artwork.mw.get.disallowed-host",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-images-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9978,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "阿米娅",
+            "action": "get",
+            "artwork_id": "立绘_阿米娅_2.png"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "artwork-mw"
+    },
+    {
+      "id": "artwork.mw.get.bad-magic",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-images-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9979,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "阿米娅",
+            "action": "get",
+            "artwork_id": "立绘_阿米娅_8.png"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "artwork-mw"
+    },
+    {
+      "id": "artwork.mw.get.bad-mime",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-images-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9980,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "阿米娅",
+            "action": "get",
+            "artwork_id": "立绘_阿米娅_9.png"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "artwork-mw"
+    },
+    {
+      "id": "artwork.mw.get.oversize",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-images-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9981,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "阿米娅",
+            "action": "get",
+            "artwork_id": "立绘_阿米娅_7.png"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "artwork-mw"
+    },
+    {
+      "id": "artwork.mw.get.file-missing",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-images-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9982,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "阿米娅",
+            "action": "get",
+            "artwork_id": "立绘_阿米娅_6.png"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "artwork-mw"
+    },
+    {
+      "id": "artwork.mw.channel-structured",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-images-v1",
+      "transport": "stdio",
+      "era": "modern",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9983,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "阿米娅",
+            "action": "get",
+            "artwork_id": "立绘_阿米娅_1.png"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ],
+      "channel": "structured",
+      "wiki_replay": "artwork-mw"
+    },
+    {
+      "id": "artwork.mw.list.modern",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-images-v1",
+      "transport": "http",
+      "era": "modern",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9984,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "阿米娅",
+            "action": "list"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ],
+      "wiki_replay": "artwork-mw"
+    },
+    {
+      "id": "artwork.param.action-missing",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-images-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9985,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "阿米娅"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "artwork-mw"
+    },
+    {
+      "id": "artwork.param.action-invalid",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-images-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9986,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "阿米娅",
+            "action": "browse"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "artwork-mw"
+    },
+    {
+      "id": "artwork.param.variant-invalid",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-images-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9987,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "阿米娅",
+            "action": "get",
+            "artwork_id": "x",
+            "variant": "huge"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "artwork-mw"
+    },
+    {
+      "id": "artwork.param.variant-null",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-images-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9988,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "阿米娅",
+            "action": "get",
+            "artwork_id": "x",
+            "variant": null
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "artwork-mw"
+    },
+    {
+      "id": "artwork.param.artwork-id-null",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-images-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9989,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "operator_name": "阿米娅",
+            "action": "get",
+            "artwork_id": null
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "artwork-mw"
+    },
+    {
+      "id": "artwork.param.name-missing",
+      "contract": "TOOL-operator_artwork",
+      "dataset": "minimal-images-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P6",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9990,
+        "params": {
+          "name": "operator_artwork",
+          "arguments": {
+            "action": "list"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "artwork-mw"
+    },
+    {
+      "id": "artwork.tools-list.images-disabled-23",
+      "contract": "PROTO-tools/list",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P6",
+      "env": {
+        "IMAGES_ENABLED": "false"
+      },
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/list",
+        "id": 9971
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ]
     }
   ]
 }

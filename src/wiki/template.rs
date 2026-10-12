@@ -546,6 +546,9 @@ mod tests {
             async fn get(&self, _: &[(String, String)]) -> Result<Value, String> {
                 unreachable!("batch is POST-only")
             }
+            async fn download_image(&self, _: &str) -> Result<Vec<u8>, String> {
+                unreachable!("template fakes never download images")
+            }
             async fn post(&self, params: &[(String, String)]) -> Result<Value, String> {
                 let text = &params
                     .iter()
@@ -583,6 +586,9 @@ mod tests {
                     Value::Null => Err("network down".into()),
                     ref v => Ok(v.clone()),
                 }
+            }
+            async fn download_image(&self, _: &str) -> Result<Vec<u8>, String> {
+                unreachable!("error-shape fakes never download images")
             }
         }
         // Transport failure.

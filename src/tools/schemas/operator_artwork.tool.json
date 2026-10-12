@@ -1,0 +1,39 @@
+{
+  "name": "operator_artwork",
+  "description": "查询干员立绘（精英化立绘、时装等）并获取图片。 先用 action=\"list\" 拿到该干员所有立绘的 artwork_id 与元数据（不返回图片）， 再用 action=\"get\" + artwork_id 获取一张图片（base64 编码，默认 large 变体）。 单次 get 最多返回一张图片。",
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "operator_name": {
+        "type": "string",
+        "description": "干员名称（中文），如「阿米娅」。"
+      },
+      "action": {
+        "type": "string",
+        "enum": [
+          "list",
+          "get"
+        ],
+        "description": "操作（必填）：list=列出该干员所有立绘及 artwork_id；get=按 artwork_id 获取一张图片。"
+      },
+      "artwork_id": {
+        "description": "仅 action=get 必填：list 返回的不透明 token，原样回传即可，不可自行构造。",
+        "type": "string"
+      },
+      "variant": {
+        "description": "仅 action=get 生效：图片变体。large=max 1024px（默认），preview=max 256px，original=原图（需服务端开启 ORIGINAL_IMAGE 同步）。",
+        "type": "string",
+        "enum": [
+          "original",
+          "large",
+          "preview"
+        ]
+      }
+    },
+    "required": [
+      "operator_name",
+      "action"
+    ]
+  }
+}

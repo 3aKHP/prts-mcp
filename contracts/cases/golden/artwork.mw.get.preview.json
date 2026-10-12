@@ -1,0 +1,26 @@
+{
+  "case": "artwork.mw.get.preview",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-images-v1",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "4483d46b-a307-4ff9-ae9f-28c9876b7265",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "下载图片失败：image fetch HTTP 404"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9973
+    }
+  }
+}

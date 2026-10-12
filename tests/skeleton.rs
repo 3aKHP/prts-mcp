@@ -6,12 +6,24 @@ fn server_identity_matches_plan() {
     assert_eq!(prts_mcp_rust::SERVER_VERSION, "0.1.0+ts2.8.1.local");
 }
 
-/// docs/07 phase tool-count contract: P5 ends at 23 real tools (12 GameData
-/// + 9 Story + 2 Wiki); P6 adds the artwork tool (24/23 final).
+/// docs/07 phase tool-count contract: the final surface is 24 real tools
+/// with IMAGES_ENABLED and exactly 23 without (artwork is the only gated
+/// registration — data availability never hides a tool).
 #[test]
-fn registry_has_23_tools_at_p5() {
+fn registry_24_with_images_23_without() {
     let tools = prts_mcp_rust::tools::registry();
-    assert_eq!(tools.len(), 23, "phase contract: P5 = 23 tools");
+    assert_eq!(tools.len(), 24, "phase contract: full surface = 24 tools");
+    let names: Vec<&str> = tools.iter().map(|t| t.name).collect();
+    assert_eq!(names.last().copied(), Some("operator_artwork"));
+    let disabled = prts_mcp_rust::tools::registry_for(false);
+    assert_eq!(
+        disabled.len(),
+        23,
+        "IMAGES_ENABLED=false removes only artwork"
+    );
+    let disabled_names: Vec<&str> = disabled.iter().map(|t| t.name).collect();
+    assert!(!disabled_names.contains(&"operator_artwork"));
+    assert!(names.starts_with(&["search_prts", "prts_page"]));
     let names: Vec<&str> = tools.iter().map(|t| t.name).collect();
     for expected in [
         "get_operator_archives",

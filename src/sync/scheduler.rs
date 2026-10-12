@@ -171,7 +171,7 @@ async fn run_cycle(
 ) -> Vec<(&'static str, bool)> {
     // TS pushes all dataset tasks and awaits Promise.all — datasets run
     // concurrently, each serialized per-label by single-flight.
-    let (gamedata, story) = tokio::join!(
+    let (gamedata_res, story_res) = tokio::join!(
         async {
             if cfg.is_custom_gamedata {
                 log_info(&format!(
@@ -205,16 +205,77 @@ async fn run_cycle(
         },
     );
 
-    // Images sync (IMAGES_ENABLED && LOCAL_IMAGE) joins in P6 with the full
-    // baseline/delta chain; the shared primitives are already in place.
+    // Images artwork sync (2.5.0) — LOCAL_IMAGE mode consumes AKDP assets.
+    let images_outcome = async {
+        if cfg.images_enabled && cfg.local_image {
+            let outcome = single_flight
+                .run("Images", run_images_sync(cfg, transport.as_ref(), force))
+                .await;
+            Some(matches!(outcome, FlightOutcome::Retry))
+        } else {
+            None
+        }
+    };
+
     let mut outcomes = Vec::new();
-    if let Some(needs_retry) = gamedata {
+    if let Some(needs_retry) = gamedata_res {
         outcomes.push(("Gamedata", needs_retry));
     }
-    if let Some(needs_retry) = story {
+    if let Some(needs_retry) = story_res {
         outcomes.push(("Storyjson", needs_retry));
     }
+    if let Some(needs_retry) = images_outcome.await {
+        outcomes.push(("Images", needs_retry));
+    }
     outcomes
+}
+
+/// One images cycle: full baseline/delta chain, ORIGINAL_IMAGE picks the
+/// shard set; offline/no_data arm the dense retry chain like the others.
+async fn run_images_sync(cfg: &RuntimeConfig, transport: &dyn Transport, force: bool) -> bool {
+    let result = super::images_sync::sync_images(
+        &cfg.images_path,
+        transport,
+        super::images_sync::ImagesSyncOpts {
+            include_original: cfg.original_image,
+            force_check: force,
+        },
+    )
+    .await;
+    let sha = result
+        .commit_sha
+        .as_deref()
+        .map(|s| &s[..s.len().min(8)])
+        .unwrap_or("unknown")
+        .to_string();
+    match result.status {
+        SyncStatus::Updated => {
+            log_info(&format!(
+                "Images updated from GitHub Release (arknights-data-pipeline @ {sha})."
+            ));
+        }
+        SyncStatus::UpToDate => {
+            log_info(&format!(
+                "Images are up to date (arknights-data-pipeline @ {sha})."
+            ));
+        }
+        SyncStatus::OfflineFallback => {
+            log_warn(&format!(
+                "Network unavailable; using cached images (arknights-data-pipeline @ {sha}). Error: {}",
+                result.error.unwrap_or_default()
+            ));
+        }
+        SyncStatus::NoData => {
+            log_warn(&format!(
+                "Images sync failed — no data. Error: {}",
+                result.error.unwrap_or_default()
+            ));
+        }
+    }
+    matches!(
+        result.status,
+        SyncStatus::OfflineFallback | SyncStatus::NoData
+    )
 }
 
 /// `scheduleSyncRetry`: dense retry chain 30s → 120s → 600s, then wait for

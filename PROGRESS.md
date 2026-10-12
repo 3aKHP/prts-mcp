@@ -70,9 +70,20 @@
 - **公开 live 互操作 4/4**（`--live` 首次实装：TS vs Rust 同源真实数据精确比较，离线=blocked 不计通过）：search 阿米娅、sections、**template 阿米娅 CharinfoV2 全量渲染**、read 分节——两实现字节一致。
 - **门禁**：fmt/clippy 0 警告/165 测试/release；P0 29/29+变异、P1 32/32、P2 33/33、P3 157/157、P4 275/275 全保持；`--all` 337/342（5 个全工具面 tools/list 案例仅剩 数量24≠23 一项差异，P6 落地 artwork 后转绿）。
 
+## P6 交付摘要（2026-10-13）
+
+- **operator_artwork 落地，24/23 工具面收口**：`registry_for(images_enabled)` 与 TS 同门（IMAGES_ENABLED=false 仅摘 artwork=23）；`--all` 383/383 全绿，P0 起延迟的 5 个全工具面 tools/list 案例转绿（oracle 顺序 prts→gamedata→story→artwork）。
+- **local 后端**：AKDP index 解析复用 P2 `parse_index`；阿米娅(近卫)/(医疗) 表单别名（全/半角括号归一）；label 三级（displaySkin.skinName→theme 占位→#N 程序化）；skin_table 经每代 dataset 缓存；get 的 realpath 双解析包含守卫（symlink 逃逸拒绝单测）；变体缺失/归属错误/未知 token/无代目录全分支。
+- **MediaWiki 后端**：allimages 分页(≤50页 continue 合并)+CharinfoV2 标签 join（list）+imageinfo（get）+download_image_safe（HTTPS+media.prts.wiki+重定向终 URL 复查+MIME 三类+**HTTP body 字节 1MiB 上限**+PNG/JPEG/WebP magic）；256MiB LRU（PRTS_IMAGE_CACHE 开关）；文件名解析（skinN→时装N名称、Nb 建筑小人剔除、(形态)后缀）。
+- **图片块输出**：ToolOutcome 携 image block——所有通道 text 后附 image；structured 摘要文本+structuredContent；base64 标准 RFC4648（含 0..255 全字节向量单测）。
+- **完整同步链**（src/sync/images_sync.rs）：tag 隔离发现（latest images- 前缀排除 baseline）、index 权威 currentVersion 对账（漂移 fail-closed）、delta 链枚举（定宽字典序、重复 fail-closed、>100 release 翻页覆盖链首）、缺 delta 资产 **在 baseline 下载前** 快速失败、baseline 4/6 分片（original 开关）或 fast path 复制前代+仅增量 delta、逐文件 sha256 校验（缺失即失配）、权威 index.json 字节直写、原子激活、.images.lock 复用 P2 租约协议、24h 清理。
+- **状态机 8 场景单测** + **TS↔Rust 互操作**（真 TS syncImages 经本地镜像写卷→Rust 工具读；Rust 写→TS activeGenerationSync+全 PNG hash 读回；index.json/PNG 字节跨实现一致）。
+- **差分 P6 378/378（+41 例）**：local/MW 双后端全分支、图片 base64 逐字节、边界注入（host/MIME/magic/gzip 解码后 1MiB 超限）、通道矩阵、参数面、IMAGES_ENABLED=false=23；单测 189 全绿、clippy 0、fmt 干净。
+- **完整规模真实同步测量**：见 artifacts/p6-images-bench.json（TS 与 Rust 双实现、真实上游、时长/内存/文件数字节）。
+
 ## 交接入口
 
 - 分支 `rust-local`；HEAD 见 `git log -1`（tag local/p4-complete）；工作树干净。
 - 阶段 bundle：`artifacts/p0.bundle` … `artifacts/p4.bundle`（hash 以最终文件为准；请维护者另存备份并自行记录）。
-- 差分重跑：`node tools/verify.mjs --phase P5`（Rust 需 `cargo build --locked --release`；全规模数据集 `node tools/make-fullscale.mjs`）；live 互操作 `node tools/verify.mjs --live`（需公网）；性能 `node tools/bench-p4.mjs`。
-- P6 首个任务：读 `data/images.ts / artworkLocal.ts / artworkMediawiki.ts / artworkFormat.ts / sync/imagesSync.ts`，实现 local/Wiki 两后端 `operator_artwork` 与完整图片同步链（docs/05 图片同步两节 + docs/07 P6）；P2 发布原语与 P5 Wiki 客户端（下载边界/magic/MIME）直接复用。
+- 差分重跑：`node tools/verify.mjs --phase P6`（Rust 需 `cargo build --locked --release`；fixture `node tools/make-fixtures.mjs && node tools/make-fullscale.mjs && node tools/make-images-fixture.mjs`）；live `node tools/verify.mjs --live`；性能 `node tools/bench-p4.mjs`、图片全规模 `node tools/bench-p6-images.mjs`。
+- P7 首个任务：补齐 docs/04 全部环境变量与入口 profiles；Rust metrics/cache 映射；native 发布目录、Docker profile、npm 薄包装 3bin；信号/EOF/退出；bundle fallback 与相对路径；独立安装目录（docs/07 P7）。

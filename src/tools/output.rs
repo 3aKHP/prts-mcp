@@ -59,12 +59,21 @@ pub fn parse_channel_with(
 }
 
 /// A tool result before channel wrapping: full Markdown, optional structured
-/// payload, optional explicit summary override, isError flag.
+/// payload, optional explicit summary override, isError flag, and the
+/// artwork image block (kept after the text block on EVERY channel).
 pub struct ToolOutcome {
     pub markdown: String,
     pub structured: Option<Value>,
     pub summary_override: Option<String>,
     pub is_error: bool,
+    pub image: Option<ImageBlock>,
+}
+
+/// One MCP image content block: standard base64 + MIME.
+#[derive(Clone)]
+pub struct ImageBlock {
+    pub data: String,
+    pub mime: String,
 }
 
 impl ToolOutcome {
@@ -74,6 +83,24 @@ impl ToolOutcome {
             structured: None,
             summary_override: None,
             is_error: false,
+            image: None,
+        }
+    }
+
+    /// `renderImageResult`: image block after the text on every channel;
+    /// structured mode summarizes the text and keeps structuredContent.
+    pub fn image_result(
+        markdown: impl Into<String>,
+        structured: Option<Value>,
+        summary: Option<String>,
+        image: ImageBlock,
+    ) -> Self {
+        Self {
+            markdown: markdown.into(),
+            structured,
+            summary_override: summary,
+            is_error: false,
+            image: Some(image),
         }
     }
 
@@ -83,6 +110,7 @@ impl ToolOutcome {
             structured: Some(structured),
             summary_override: None,
             is_error: false,
+            image: None,
         }
     }
 
@@ -96,9 +124,20 @@ impl ToolOutcome {
     /// Wrap into a CallToolResult JSON object with the oracle's key order
     /// (content, structuredContent, isError — serde_json preserve_order).
     pub fn render(&self, channel: OutputChannel) -> Value {
+        let image_block = self
+            .image
+            .as_ref()
+            .map(|image| json!({ "type": "image", "data": image.data, "mimeType": image.mime }));
+        let text_body = |text: &str| -> Value {
+            let mut blocks = vec![content_block(text)];
+            if let Some(image) = &image_block {
+                blocks.push(image.clone());
+            }
+            Value::Array(blocks)
+        };
         let Some(data) = self.structured.as_ref() else {
             let mut map = Map::new();
-            map.insert("content".into(), json!([content_block(&self.markdown)]));
+            map.insert("content".into(), text_body(&self.markdown));
             if self.is_error {
                 map.insert("isError".into(), Value::Bool(true));
             }
@@ -107,7 +146,7 @@ impl ToolOutcome {
         match channel {
             OutputChannel::Content => {
                 let mut map = Map::new();
-                map.insert("content".into(), json!([content_block(&self.markdown)]));
+                map.insert("content".into(), text_body(&self.markdown));
                 if self.is_error {
                     map.insert("isError".into(), Value::Bool(true));
                 }
@@ -115,7 +154,7 @@ impl ToolOutcome {
             }
             OutputChannel::Both => {
                 let mut map = Map::new();
-                map.insert("content".into(), json!([content_block(&self.markdown)]));
+                map.insert("content".into(), text_body(&self.markdown));
                 map.insert("structuredContent".into(), data.clone());
                 if self.is_error {
                     map.insert("isError".into(), Value::Bool(true));
@@ -126,10 +165,7 @@ impl ToolOutcome {
                 let mut map = Map::new();
                 map.insert(
                     "content".into(),
-                    json!([content_block(&summarize(
-                        data,
-                        self.summary_override.as_deref()
-                    ))]),
+                    text_body(&summarize(data, self.summary_override.as_deref())),
                 );
                 map.insert("structuredContent".into(), data.clone());
                 if self.is_error {

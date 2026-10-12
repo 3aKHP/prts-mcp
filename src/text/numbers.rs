@@ -217,6 +217,18 @@ fn pow5(digits: usize) -> u128 {
     v
 }
 
+/// Serialize an f64 with JS JSON number semantics: integral values (within
+/// the safe-integer range) print without a fractional part.
+pub fn json_number_value(f: f64) -> serde_json::Value {
+    if f.fract() == 0.0 && f.is_finite() && f.abs() < 9.007199254740992e15 {
+        serde_json::Value::from(f as i64)
+    } else {
+        serde_json::Number::from_f64(f)
+            .map(serde_json::Value::Number)
+            .unwrap_or(serde_json::Value::Null)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

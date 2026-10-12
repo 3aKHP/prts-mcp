@@ -70,6 +70,8 @@ function datasetDir(name) {
   if (name === "minimal-gamedata-v2") return join(ROOT, ".runtime", "fixtures", "minimal-gamedata-v2");
   // P4: full-scale pinned real data (excel extracted + real story zip).
   if (name === "full-story-r2") return join(ROOT, ".runtime", "fixtures", "full-story-r2");
+  // P6: local artwork backend fixture (skin_table + activated images generation).
+  if (name === "minimal-images-v1") return join(ROOT, ".runtime", "fixtures", "minimal-images-v1");
   // P2: TS-sync-written generation volume — GAMEDATA_PATH is its gamedata
   // root, so both implementations must resolve the pair pointer.
   if (name === "activated-minimal-v1") {

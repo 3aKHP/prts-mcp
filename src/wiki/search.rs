@@ -205,6 +205,9 @@ pub(crate) mod tests {
                 .push(("POST".into(), params.to_vec()));
             self.responses.lock().unwrap().pop_front().unwrap()
         }
+        async fn download_image(&self, _: &str) -> Result<Vec<u8>, String> {
+            unreachable!("search fakes never download images")
+        }
     }
 
     fn search_item(title: &str, snippet: &str) -> Value {

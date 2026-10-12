@@ -522,3 +522,353 @@ async fn cross_process_lock_contention() {
     assert_eq!(acquired["result"], "acquired");
     let _ = std::fs::remove_dir_all(&root);
 }
+
+// ---------------------------------------------------------------------------
+// P6: images sync interop — TS-written generation read by Rust and vice
+// versa, against the REAL frozen TS sync via a local GitHub mirror.
+// ---------------------------------------------------------------------------
+
+mod images_interop {
+    use super::*;
+    use prts_mcp_rust::sync::images_meta::{active_generation, load_meta, parse_index};
+    use prts_mcp_rust::sync::images_sync::{sync_images, ImagesSyncOpts};
+    use prts_mcp_rust::sync::transport::{DownloadStats, Transport, TransportError};
+    use sha2::Digest as _;
+
+    struct MirrorOnlyTransport {
+        mirror: String,
+        assets: std::collections::HashMap<String, std::path::PathBuf>,
+        releases: Value,
+    }
+
+    #[async_trait]
+    impl Transport for MirrorOnlyTransport {
+        async fn fetch_json(&self, url: &str, _t: u64) -> Result<Value, TransportError> {
+            if url.starts_with("https://api.github.com/") {
+                return Ok(self.releases.clone());
+            }
+            // Asset keys are the plain upstream URLs; the mirror prefix is
+            // only used by the real HTTP transport candidates.
+            let path = self
+                .assets
+                .get(url)
+                .ok_or_else(|| TransportError::Http(404))?;
+            let bytes = std::fs::read(path).map_err(|e| TransportError::Network(e.to_string()))?;
+            serde_json::from_slice(&bytes).map_err(|e| TransportError::InvalidJson(e.to_string()))
+        }
+        async fn download(
+            &self,
+            url: &str,
+            dest: &Path,
+            _t: u64,
+        ) -> Result<DownloadStats, TransportError> {
+            let path = self
+                .assets
+                .get(url)
+                .ok_or_else(|| TransportError::Http(404))?
+                .clone();
+            std::fs::copy(&path, dest).map_err(|e| TransportError::Network(e.to_string()))?;
+            let bytes = std::fs::read(&path).unwrap();
+            Ok(DownloadStats {
+                bytes: bytes.len() as u64,
+                sha256: format!("{:x}", {
+                    let mut h = sha2::Sha256::new();
+                    sha2::Digest::update(&mut h, &bytes);
+                    sha2::Digest::finalize(h)
+                }),
+            })
+        }
+        fn mirrors(&self) -> Vec<String> {
+            vec![self.mirror.clone()]
+        }
+        fn github_headers(&self) -> Vec<(String, String)> {
+            Vec::new()
+        }
+    }
+
+    struct FixtureWorld {
+        dir: PathBuf,
+        releases: Value,
+        assets: std::collections::HashMap<String, PathBuf>,
+    }
+
+    /// The shared world: baseline + d1 + d2, identical bytes for both sides.
+    fn build_fixture(name: &str) -> FixtureWorld {
+        use std::io::Write as _;
+        let dir =
+            std::env::temp_dir().join(format!("prts-images-interop-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+
+        let png = |p: &str| {
+            let mut v = vec![0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+            v.extend_from_slice(p.as_bytes());
+            v
+        };
+        let sha = |b: &[u8]| {
+            format!("{:x}", {
+                let mut h = sha2::Sha256::new();
+                sha2::Digest::update(&mut h, b);
+                sha2::Digest::finalize(h)
+            })
+        };
+        let zip_of = |files: &[(&str, Vec<u8>)]| {
+            let mut cursor = std::io::Cursor::new(Vec::new());
+            {
+                let mut zip = zip::ZipWriter::new(&mut cursor);
+                let options: zip::write::SimpleFileOptions = Default::default();
+                for (name, data) in files {
+                    zip.start_file(*name, options).unwrap();
+                    zip.write_all(data).unwrap();
+                }
+                zip.finish().unwrap();
+            }
+            cursor.into_inner()
+        };
+
+        let a1l = png("interop:amiya#1:large");
+        let a1p = png("interop:amiya#1:preview");
+        let a2l = png("interop:amiya#2:large");
+        let a2p = png("interop:amiya#2:preview");
+        let skl = png("interop:skin:large");
+        let skp = png("interop:skin:preview");
+
+        let base_tag = "images-baseline-26-01-01-00-00-00_base";
+        let d1_tag = "images-26-02-01-00-00-00_d1";
+        let d2_tag = "images-26-03-01-00-00-00_d2";
+
+        let index = json!({
+            "schemaVersion": "akdp-images/v1",
+            "baselineVersion": "26-01-01-00-00-00_base",
+            "currentVersion": "26-03-01-00-00-00_d2",
+            "shards": {
+                "chararts-large": "chararts-large.zip",
+                "chararts-preview": "chararts-preview.zip",
+                "skinpack-large": "skinpack-large.zip",
+                "skinpack-preview": "skinpack-preview.zip",
+            },
+            "artworks": {
+                "char_002_amiya#1": { "kind": "base", "shard": "chararts", "sinceVersion": "26-01-01-00-00-00_base",
+                    "large": {"file": "chararts/char_002_amiya#1.large.png", "w": 1024, "h": 1024, "bytes": a1l.len(), "sha256": sha(&a1l)},
+                    "preview": {"file": "chararts/char_002_amiya#1.preview.png", "w": 256, "h": 256, "bytes": a1p.len(), "sha256": sha(&a1p)} },
+                "char_002_amiya#2": { "kind": "base", "shard": "chararts", "sinceVersion": "26-02-01-00-00-00_d1",
+                    "large": {"file": "chararts/char_002_amiya#2.large.png", "w": 1024, "h": 1024, "bytes": a2l.len(), "sha256": sha(&a2l)},
+                    "preview": {"file": "chararts/char_002_amiya#2.preview.png", "w": 256, "h": 256, "bytes": a2p.len(), "sha256": sha(&a2p)} },
+                "char_002_amiya@t1#1": { "kind": "skin", "shard": "skinpack", "sinceVersion": "26-03-01-00-00-00_d2",
+                    "large": {"file": "skinpack/char_002_amiya@t1#1.large.png", "w": 1024, "h": 1024, "bytes": skl.len(), "sha256": sha(&skl)},
+                    "preview": {"file": "skinpack/char_002_amiya@t1#1.preview.png", "w": 256, "h": 256, "bytes": skp.len(), "sha256": sha(&skp)} },
+            },
+        });
+
+        let mut assets: std::collections::HashMap<String, PathBuf> = Default::default();
+        let mut asset_lines: Vec<String> = Vec::new();
+        let put = |dir: &Path,
+                   url: String,
+                   bytes: Vec<u8>,
+                   assets: &mut std::collections::HashMap<String, PathBuf>,
+                   lines: &mut Vec<String>| {
+            let file = format!("asset-{}", assets.len());
+            std::fs::write(dir.join(&file), bytes).unwrap();
+            assets.insert(url.clone(), dir.join(&file));
+            lines.push(format!("{url} {file}"));
+        };
+
+        let gh = |tag: &str, name: &str| {
+            format!(
+                "https://github.com/3aKHP/arknights-data-pipeline/releases/download/{tag}/{name}"
+            )
+        };
+        put(
+            &dir,
+            gh(base_tag, "chararts-large.zip"),
+            zip_of(&[("chararts/char_002_amiya#1.large.png", a1l.clone())]),
+            &mut assets,
+            &mut asset_lines,
+        );
+        put(
+            &dir,
+            gh(base_tag, "chararts-preview.zip"),
+            zip_of(&[("chararts/char_002_amiya#1.preview.png", a1p.clone())]),
+            &mut assets,
+            &mut asset_lines,
+        );
+        put(
+            &dir,
+            gh(base_tag, "skinpack-large.zip"),
+            zip_of(&[]),
+            &mut assets,
+            &mut asset_lines,
+        );
+        put(
+            &dir,
+            gh(base_tag, "skinpack-preview.zip"),
+            zip_of(&[]),
+            &mut assets,
+            &mut asset_lines,
+        );
+        put(
+            &dir,
+            gh(d1_tag, "images-delta-26-02-01-00-00-00_d1.zip"),
+            zip_of(&[
+                ("chararts/char_002_amiya#2.large.png", a2l.clone()),
+                ("chararts/char_002_amiya#2.preview.png", a2p.clone()),
+            ]),
+            &mut assets,
+            &mut asset_lines,
+        );
+        put(
+            &dir,
+            gh(d2_tag, "images-delta-26-03-01-00-00-00_d2.zip"),
+            zip_of(&[
+                ("skinpack/char_002_amiya@t1#1.large.png", skl.clone()),
+                ("skinpack/char_002_amiya@t1#1.preview.png", skp.clone()),
+            ]),
+            &mut assets,
+            &mut asset_lines,
+        );
+        put(
+            &dir,
+            gh(d2_tag, "index.json"),
+            serde_json::to_vec(&index).unwrap(),
+            &mut assets,
+            &mut asset_lines,
+        );
+
+        let releases = json!([
+            { "tag_name": d2_tag, "created_at": "2026-03-01T05:00:00Z", "assets": [
+                { "name": "index.json", "browser_download_url": gh(d2_tag, "index.json") },
+                { "name": "images-delta-26-03-01-00-00-00_d2.zip", "browser_download_url": gh(d2_tag, "images-delta-26-03-01-00-00-00_d2.zip") } ] },
+            { "tag_name": d1_tag, "created_at": "2026-02-01T05:00:00Z", "assets": [
+                { "name": "images-delta-26-02-01-00-00-00_d1.zip", "browser_download_url": gh(d1_tag, "images-delta-26-02-01-00-00-00_d1.zip") } ] },
+            { "tag_name": base_tag, "created_at": "2026-01-01T05:00:00Z", "assets": [
+                { "name": "chararts-large.zip", "browser_download_url": gh(base_tag, "chararts-large.zip") },
+                { "name": "chararts-preview.zip", "browser_download_url": gh(base_tag, "chararts-preview.zip") },
+                { "name": "skinpack-large.zip", "browser_download_url": gh(base_tag, "skinpack-large.zip") },
+                { "name": "skinpack-preview.zip", "browser_download_url": gh(base_tag, "skinpack-preview.zip") } ] },
+        ]);
+        std::fs::write(
+            dir.join("releases.json"),
+            serde_json::to_vec(&releases).unwrap(),
+        )
+        .unwrap();
+        std::fs::write(dir.join("assets.txt"), asset_lines.join("\n") + "\n").unwrap();
+
+        FixtureWorld {
+            dir,
+            releases,
+            assets,
+        }
+    }
+
+    #[tokio::test]
+    async fn ts_images_sync_volume_is_readable_by_rust_and_vice_versa() {
+        let fixture = build_fixture("main");
+
+        // Start the mirror via a shell line and parse its port from stdout.
+        let mirror = std::process::Command::new(node())
+            .arg(repo_root().join("tools/images-mirror.mjs"))
+            .arg(&fixture.dir)
+            .env_clear()
+            .env("PATH", std::env::var("PATH").unwrap_or_default())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .spawn()
+            .expect("spawn mirror");
+        let mut mirror = mirror;
+        let port: u16 = {
+            use std::io::BufRead as _;
+            let stdout = mirror.stdout.take().unwrap();
+            let reader = std::io::BufReader::new(stdout);
+            let line = reader
+                .lines()
+                .next()
+                .expect("mirror prints one line")
+                .expect("line");
+            serde_json::from_str::<Value>(&line)
+                .unwrap()
+                .get("port")
+                .and_then(|p| p.as_u64())
+                .unwrap() as u16
+        };
+
+        // --- TS writes via the real frozen syncImages through the mirror.
+        let ts_volume = fixture.dir.join("ts-volume");
+        let result = peer(
+            "images-sync",
+            &[ts_volume.to_str().unwrap(), &port.to_string()],
+        );
+        assert_eq!(result["result"]["status"], "updated", "{result}");
+        assert_eq!(result["result"]["commitSha"], "26-03-01-00-00-00_d2");
+
+        // Rust reads the TS-written volume.
+        let gen = active_generation(&ts_volume).expect("TS volume readable by Rust");
+        let index_bytes = std::fs::read(gen.join("index.json")).unwrap();
+        let index = parse_index(&serde_json::from_slice(&index_bytes).unwrap()).expect("index");
+        assert_eq!(index.current_version, "26-03-01-00-00-00_d2");
+        assert_eq!(index.artworks.len(), 3);
+        let meta = load_meta(&ts_volume).unwrap();
+        assert_eq!(
+            meta.get("shardsSynced").unwrap(),
+            &json!([
+                "chararts-large",
+                "chararts-preview",
+                "skinpack-large",
+                "skinpack-preview"
+            ])
+        );
+        assert!(gen.join("chararts/char_002_amiya#1.large.png").is_file());
+        assert!(gen.join("skinpack/char_002_amiya@t1#1.large.png").is_file());
+
+        // --- Rust writes via the same mirror, then TS reads it.
+        let rust_volume = fixture.dir.join("rust-volume");
+        let transport = MirrorOnlyTransport {
+            mirror: format!("http://127.0.0.1:{port}"),
+            assets: fixture.assets.clone(),
+            releases: fixture.releases.clone(),
+        };
+        let result = sync_images(
+            &rust_volume,
+            &transport,
+            ImagesSyncOpts {
+                include_original: false,
+                force_check: false,
+            },
+        )
+        .await;
+        assert_eq!(result.status.as_str(), "updated", "{result:?}");
+
+        let ts_read = peer("images-active", &[rust_volume.to_str().unwrap()]);
+        let read = &ts_read["result"];
+        assert!(read["active"].as_str().is_some());
+        assert_eq!(read["currentVersion"], "26-03-01-00-00-00_d2");
+        assert_eq!(read["artworks"].as_array().map(Vec::len), Some(3));
+        // Every PNG the TS side reads hashes to the expected value.
+        let hashes = read["hashes"].as_object().unwrap();
+        assert_eq!(hashes.len(), 6);
+        assert!(hashes.contains_key("char_002_amiya@t1#1|large"));
+
+        // Cross-volume: identical index bytes and PNG bytes.
+        let rust_gen = active_generation(&rust_volume).unwrap();
+        let ts_index_bytes = index_bytes;
+        assert_eq!(
+            std::fs::read(rust_gen.join("index.json")).unwrap(),
+            ts_index_bytes,
+            "authoritative index.json bytes identical across writers"
+        );
+        for rel in [
+            "chararts/char_002_amiya#1.large.png",
+            "chararts/char_002_amiya#2.preview.png",
+            "skinpack/char_002_amiya@t1#1.large.png",
+        ] {
+            assert_eq!(
+                std::fs::read(rust_gen.join(rel)).unwrap(),
+                std::fs::read(gen.join(rel)).unwrap(),
+                "PNG bytes identical across writers: {rel}"
+            );
+        }
+
+        let _ = mirror.kill();
+        let _ = mirror.wait();
+        let _ = std::fs::remove_dir_all(&fixture.dir);
+    }
+}

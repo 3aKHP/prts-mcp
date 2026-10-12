@@ -52,6 +52,10 @@ impl RateLimiter {
 pub trait WikiTransport: Send + Sync {
     async fn get(&self, params: &[(String, String)]) -> Result<Value, String>;
     async fn post(&self, params: &[(String, String)]) -> Result<Value, String>;
+    /// `downloadImageSafe` raw path: same rate limiter, UA, redirect-follow,
+    /// 30 s timeout; all boundary checks (host/MIME/cap/magic) run inside —
+    /// the message strings are the pinned oracle wordings.
+    async fn download_image(&self, url: &str) -> Result<Vec<u8>, String>;
 }
 
 pub struct ReqwestWikiTransport {
@@ -147,11 +151,86 @@ impl ReqwestWikiTransport {
 const TIMEOUT_MESSAGE: &str = "The operation timed out.";
 const INVALID_JSON_MESSAGE: &str = "Failed to parse JSON";
 
+/// `downloadImageSafe` boundary set (prtsWiki.ts): HTTPS only, the single
+/// allowed image host, final-URL recheck after redirects, MIME allow-list,
+/// and the 1 MiB cap counted on the HTTP response body bytes.
+const ALLOWED_IMAGE_HOSTS: [&str; 1] = ["media.prts.wiki"];
+const ALLOWED_IMAGE_MIMES: [&str; 3] = ["image/png", "image/jpeg", "image/webp"];
+const MAX_IMAGE_BYTES: usize = 1024 * 1024;
+const IMAGE_TIMEOUT_MS: u64 = 30_000;
+
+/// `imageMagicOk`: PNG/JPEG/WebP signature bytes.
+pub fn image_magic_ok(data: &[u8], mime: &str) -> bool {
+    match mime {
+        "image/png" => data.starts_with(&[0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+        "image/jpeg" => data.len() >= 3 && data[..3] == [0xff, 0xd8, 0xff],
+        "image/webp" => data.len() >= 12 && &data[..4] == b"RIFF" && &data[8..12] == b"WEBP",
+        _ => false,
+    }
+}
+
 /// Map reqwest failures onto the oracle runtime's phrasing (bun 1.3.14
 /// collapses its fetch rejection to this message regardless of the
 /// underlying socket cause; verified against the dead-proxy golden).
 fn map_network_error(_e: &reqwest::Error) -> String {
     "Unable to connect. Is the computer able to access the url?".to_string()
+}
+
+impl ReqwestWikiTransport {
+    /// `downloadImageSafe` — full boundary chain with the pinned messages.
+    pub async fn download_image_safe(&self, url: &str) -> Result<Vec<u8>, String> {
+        let parsed = reqwest::Url::parse(url).map_err(|_| {
+            format!(
+                "image URL host not allowed: {}",
+                url.split('/').nth(2).unwrap_or("")
+            )
+        })?;
+        let host = parsed.host_str().unwrap_or("");
+        if parsed.scheme() != "https" || !ALLOWED_IMAGE_HOSTS.contains(&host) {
+            return Err(format!("image URL host not allowed: {host}"));
+        }
+        self.sleep_until_slot().await;
+        let request = self.client.get(url).header("User-Agent", USER_AGENT);
+        let response =
+            tokio::time::timeout(Duration::from_millis(IMAGE_TIMEOUT_MS), request.send())
+                .await
+                .map_err(|_| TIMEOUT_MESSAGE.to_string())?
+                .map_err(|e| map_network_error(&e))?;
+        if !response.status().is_success() {
+            return Err(format!("image fetch HTTP {}", response.status().as_u16()));
+        }
+        let final_url = response.url().clone();
+        let final_host = final_url.host_str().unwrap_or("");
+        if final_url.scheme() != "https" || !ALLOWED_IMAGE_HOSTS.contains(&final_host) {
+            return Err(format!("redirected to disallowed URL: {final_url}"));
+        }
+        let ctype = response
+            .headers()
+            .get(reqwest::header::CONTENT_TYPE)
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("")
+            .split(';')
+            .next()
+            .unwrap_or("")
+            .trim()
+            .to_lowercase();
+        if !ALLOWED_IMAGE_MIMES.contains(&ctype.as_str()) {
+            return Err(format!("bad content-type: {}\"", ctype));
+        }
+        // The cap counts the response body bytes as they stream in.
+        let mut stream = response;
+        let mut body: Vec<u8> = Vec::new();
+        while let Some(chunk) = stream.chunk().await.map_err(|e| map_network_error(&e))? {
+            body.extend_from_slice(&chunk);
+            if body.len() > MAX_IMAGE_BYTES {
+                return Err(format!("image exceeds {MAX_IMAGE_BYTES} byte cap"));
+            }
+        }
+        if !image_magic_ok(&body, &ctype) {
+            return Err(format!("magic bytes mismatch for \"{ctype}\""));
+        }
+        Ok(body)
+    }
 }
 
 #[async_trait]
@@ -162,6 +241,10 @@ impl WikiTransport for ReqwestWikiTransport {
 
     async fn post(&self, params: &[(String, String)]) -> Result<Value, String> {
         self.request(reqwest::Method::POST, params).await
+    }
+
+    async fn download_image(&self, url: &str) -> Result<Vec<u8>, String> {
+        self.download_image_safe(url).await
     }
 }
 

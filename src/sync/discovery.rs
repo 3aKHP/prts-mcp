@@ -201,6 +201,66 @@ pub async fn list_releases(
     data.as_array().cloned()
 }
 
+/// `listReleasesPaginated`: page until *stop* matches a release in the
+/// current page or a short page ends the list; None on failure or when
+/// maxPages passes without a match (fail closed — the history window is
+/// unproven).
+pub async fn list_releases_paginated(
+    transport: &dyn Transport,
+    owner: &str,
+    repo: &str,
+    stop: impl Fn(&Value) -> bool,
+) -> Option<Vec<Value>> {
+    const MAX_PAGES: usize = 20;
+    let mut releases: Vec<Value> = Vec::new();
+    for page in 1..=MAX_PAGES {
+        let url = format!(
+            "https://api.github.com/repos/{owner}/{repo}/releases?per_page=100&page={page}"
+        );
+        let data = transport.fetch_json(&url, 10_000).await.ok()?;
+        let page_items = data.as_array()?.clone();
+        releases.extend(page_items.clone());
+        if page_items.iter().any(&stop) {
+            return Some(releases);
+        }
+        if page_items.len() < 100 {
+            return Some(releases);
+        }
+    }
+    None
+}
+
+/// `latestReleaseByPrefix`: newest release whose tag starts with `prefix`
+/// (optionally excluding `exclude_prefix`), sorted by created_at desc.
+pub fn latest_release_by_prefix(
+    releases: &[Value],
+    prefix: &str,
+    exclude_prefix: Option<&str>,
+) -> Option<Value> {
+    let mut candidates: Vec<&Value> = releases
+        .iter()
+        .filter(|release| {
+            let tag = release.get("tag_name").and_then(|t| t.as_str());
+            match tag {
+                Some(tag) if tag.starts_with(prefix) => match exclude_prefix {
+                    Some(excl) => !tag.starts_with(excl),
+                    None => true,
+                },
+                _ => false,
+            }
+        })
+        .collect();
+    // String(b.created_at ?? "").localeCompare(String(a.created_at ?? "")):
+    // empty strings sort first ascending — with the default en-US collator
+    // this matches UTF-16 code-unit order for ISO timestamps.
+    candidates.sort_by(|a, b| {
+        let av = a.get("created_at").and_then(|v| v.as_str()).unwrap_or("");
+        let bv = b.get("created_at").and_then(|v| v.as_str()).unwrap_or("");
+        bv.cmp(av)
+    });
+    candidates.into_iter().next().cloned()
+}
+
 /// `assetUrl`: the browser_download_url for `asset_name` in a release object.
 pub fn asset_url(release: &Value, asset_name: &str) -> Option<String> {
     let assets = release.get("assets")?.as_array()?;

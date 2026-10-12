@@ -128,6 +128,29 @@ impl<'a> Args<'a> {
         }
     }
 
+    /// `z.enum([...]).optional()`: missing is fine; present-but-invalid or
+    /// null yields the Invalid-option wording.
+    pub fn optional_enum(&mut self, field: &str, options: &[&str]) -> Option<String> {
+        match self.obj.and_then(|o| o.get(field)) {
+            None => None,
+            Some(Value::String(s)) if options.contains(&s.as_str()) => Some(s.clone()),
+            Some(_) => {
+                self.issue(
+                    field,
+                    format!(
+                        "Invalid option: expected one of {}",
+                        options
+                            .iter()
+                            .map(|o| format!("\"{o}\""))
+                            .collect::<Vec<_>>()
+                            .join("|")
+                    ),
+                );
+                None
+            }
+        }
+    }
+
     /// `z.enum([...])` (required): a MISSING value already yields the
     /// Invalid-option wording (probed on prts_page.action).
     pub fn required_enum(&mut self, field: &str, options: &[&str]) -> Option<String> {

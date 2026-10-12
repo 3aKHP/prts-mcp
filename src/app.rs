@@ -19,7 +19,7 @@ use crate::storage::generation::{
 };
 use crate::sync::scheduler::start_background_sync;
 use crate::sync::transport::ReqwestTransport;
-use crate::tools::{registry, AppHandle};
+use crate::tools::{registry_for, AppHandle};
 
 /// The dynamic data view: what each dataset should actually read right now.
 /// `datasets` is the per-generation parsed-table cache (TS datasetAccess
@@ -161,7 +161,7 @@ impl App {
         let handle = AppHandle::from_parts(Arc::clone(&data), &config);
         Self {
             handle,
-            tools: Arc::new(registry()),
+            tools: Arc::new(registry_for(config.images_enabled)),
             config,
             data,
         }

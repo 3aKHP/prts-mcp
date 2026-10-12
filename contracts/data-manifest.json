@@ -273,6 +273,155 @@
       "story_zip_sha256": "f987b360d72e7de270ee00ad4998e6bc3d88a192db52fe35ac98864299070eb5",
       "excel_files": 59,
       "excel_bytes": 104320411
+    },
+    "minimal-images-v1": {
+      "purpose": "P6 differential fixture: operator_artwork local backend (skin_table + activated images generation)",
+      "source": "minimal-gamedata-v2 copy + skin_table.json + synthetic akdp-images/v1 generation",
+      "root": ".runtime/fixtures/minimal-images-v1",
+      "excel_dir": "zh_CN/gamedata/excel",
+      "images_generation": "images/.releases/2ff20f8da19f3c77-fiximg0011223344",
+      "files": [
+        {
+          "path": "images/.images_meta.json",
+          "bytes": 301,
+          "sha256": "faaa548df6df420975f6ccfe9076b45cd0fca7b12c38b054e1611f22a7317dc0"
+        },
+        {
+          "path": "images/.releases/2ff20f8da19f3c77-fiximg0011223344/.images_meta.json",
+          "bytes": 234,
+          "sha256": "9c68c766e8746fb864a6b225f02b7100556cb704545ecb21025c714883aabe2a"
+        },
+        {
+          "path": "images/.releases/2ff20f8da19f3c77-fiximg0011223344/chararts/char_002_amiya#1.large.png",
+          "bytes": 38,
+          "sha256": "00ad961227ea520bcca5fa61e1cb2f1c44b2d91dca093d287e05992f9f909ec2"
+        },
+        {
+          "path": "images/.releases/2ff20f8da19f3c77-fiximg0011223344/chararts/char_002_amiya#1.preview.png",
+          "bytes": 40,
+          "sha256": "79d3e7e23b71044c9778127cfedcab3b6c075765e95244623bfb990b3c3c98f9"
+        },
+        {
+          "path": "images/.releases/2ff20f8da19f3c77-fiximg0011223344/chararts/char_002_amiya#2.large.png",
+          "bytes": 38,
+          "sha256": "873558a8b64cb1224eb2e14bd5b8289c29f0c51dece9ed6fd6f1c0bf451c4585"
+        },
+        {
+          "path": "images/.releases/2ff20f8da19f3c77-fiximg0011223344/chararts/char_002_amiya#2.preview.png",
+          "bytes": 40,
+          "sha256": "b02d6c6b4ac2aa2a8c9757338d08a58a367fa53bff50b1e8369430373c1cd146"
+        },
+        {
+          "path": "images/.releases/2ff20f8da19f3c77-fiximg0011223344/chararts/char_1001_amiya2#1.large.png",
+          "bytes": 40,
+          "sha256": "e4caffaa536a32763620943752fb96903d991f2b427031c9bd0f203945fa5444"
+        },
+        {
+          "path": "images/.releases/2ff20f8da19f3c77-fiximg0011223344/chararts/char_1001_amiya2#1.preview.png",
+          "bytes": 42,
+          "sha256": "ef76805321292f6b7fdc81d7240c51e162841c61657e0a06788c4d543fdc1666"
+        },
+        {
+          "path": "images/.releases/2ff20f8da19f3c77-fiximg0011223344/chararts/char_1001_amiya2#2.large.png",
+          "bytes": 40,
+          "sha256": "bcd29e0976a2c13f8f116865beb1bb70bd8e994be946326b9a189f56eed5c1e5"
+        },
+        {
+          "path": "images/.releases/2ff20f8da19f3c77-fiximg0011223344/chararts/char_1001_amiya2#2.preview.png",
+          "bytes": 42,
+          "sha256": "e3b2c0f6357668965a32a4f1233f52e6857b84d9769df14a10f2a8db3076c6e0"
+        },
+        {
+          "path": "images/.releases/2ff20f8da19f3c77-fiximg0011223344/index.json",
+          "bytes": 2949,
+          "sha256": "df3ebfab43f2d619fbeb9bdb499bf502108708156ceda7e9438420c918c048ad"
+        },
+        {
+          "path": "images/.releases/2ff20f8da19f3c77-fiximg0011223344/skinpack/char_002_amiya@theme1#1.large.png",
+          "bytes": 45,
+          "sha256": "80bf15fd0db466705c3d8bab30d8c196c6cff632e8e5f2fbddfbca157195fc54"
+        },
+        {
+          "path": "images/.releases/2ff20f8da19f3c77-fiximg0011223344/skinpack/char_002_amiya@theme1#1.preview.png",
+          "bytes": 47,
+          "sha256": "a6dcc2a18f249ad51df4f44394aa9d1601c8a32feb9e03219f6e6ac7f2e2469e"
+        },
+        {
+          "path": "storyjson/zh_CN.zip",
+          "bytes": 8441,
+          "sha256": "3f422f244472ff7558716b6d3d431c08bfaea26844d532a5f0c741bf42e6f6cf"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/building_data.json",
+          "bytes": 1091,
+          "sha256": "dd56ea8e6ca42536c938e6116bd65a29f9c92153abe28e17c595146d2fc56085"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/character_table.json",
+          "bytes": 4189,
+          "sha256": "26f4fe7d3f54de5505db8df80e9ccf519a233402321a68445afc599521c20c53"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/charword_table.json",
+          "bytes": 361,
+          "sha256": "ee1115078577737f597b9f36dd5baeae7bd430507d7dc05666a027abb3d345a7"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/enemy_handbook_table.json",
+          "bytes": 1198,
+          "sha256": "caa949a7e89393af5112d12a7e4dc02de7e88e7afa6fa452bdf049d5853eaffb"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/handbook_info_table.json",
+          "bytes": 379,
+          "sha256": "754d71eaa1efe364ce97efbb51e5806855b78b8bae6f3d6a4d37f1ea5fa924cd"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/item_table.json",
+          "bytes": 1288,
+          "sha256": "44db3c4296c0d9d3414b92f363bb8fbab7b59d01bef7e8d1493921d9a803a87e"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/skill_table.json",
+          "bytes": 5531,
+          "sha256": "bfbe52ad95b2d2ed4935e99f8bdbf0b27a262ec85e54c373a3d8efa8452dcd89"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/skin_table.json",
+          "bytes": 264,
+          "sha256": "6155ef6e7d9ff2afc9e84b43b89e2669402e555bbbc3c62f7a2019d7660ee926"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/stage_table.json",
+          "bytes": 2290,
+          "sha256": "2c482e0cc0c906c0380d3044d397bb056c7d2365935d35394758c40dea168301"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/story_review_table.json",
+          "bytes": 2,
+          "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/zone_table.json",
+          "bytes": 284,
+          "sha256": "a9120d68d1daa732905dc7e24e360408fa6a809fd62392e7ab336d87e61a3dcb"
+        },
+        {
+          "path": "zh_CN/gamedata/levels/enemydata/enemy_database.json",
+          "bytes": 1170,
+          "sha256": "e5af8842bfdf91cfbafcbd4db68da1995036a3f06f8d35a47edabdb741dab009"
+        },
+        {
+          "path": "zh_CN/gamedata/levels/obt/main/level_act42side_10.json",
+          "bytes": 76,
+          "sha256": "3cdd6072cbb09ca215ca2ba90bbfc5688671c68461325a33e01bc83690ed8c56"
+        },
+        {
+          "path": "zh_CN/gamedata/levels/obt/main/level_main_00-01.json",
+          "bytes": 785,
+          "sha256": "085e9285080278c8c4e1b7203ad08ce7a6119e898b4d76298737d3dac75119ad"
+        }
+      ]
     }
   },
   "upstream_release_probe": {
@@ -286,7 +435,8 @@
     "note": "P5 scope; P0 records the slot only"
   },
   "image_assets": {
-    "status": "not-started",
-    "note": "P6 scope; P0 records the slot only"
+    "status": "recorded",
+    "note": "minimal-images-v1 synthetic generation (5 artworks × large/preview); full-scale real sync measured separately in P6",
+    "oversized_download_body_b64_gzip_bytes": 1063
   }
 }

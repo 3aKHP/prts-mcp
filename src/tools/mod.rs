@@ -1,5 +1,6 @@
 //! Tool parameter boundaries, thin dispatch and unified result wrapping.
 
+pub mod artwork_tools;
 pub mod gamedata_tools;
 pub mod output;
 pub mod story_tools;
@@ -78,6 +79,11 @@ impl AppHandle {
         self.data.config().excel_path.clone()
     }
 
+    /// Startup config (images switches for the artwork backend).
+    pub fn config(&self) -> &crate::config::RuntimeConfig {
+        self.data.config()
+    }
+
     /// Static sync target for zh_CN-levels.
     pub fn levels_path(&self) -> std::path::PathBuf {
         self.data.config().levels_path.clone()
@@ -126,8 +132,14 @@ macro_rules! tool_async {
     };
 }
 
+/// The full tool surface: `operator_artwork` is registered only when
+/// IMAGES_ENABLED (TS registers artwork behind the same gate; 24 vs 23).
 pub fn registry() -> Vec<ToolEntry> {
-    vec![
+    registry_for(true)
+}
+
+pub fn registry_for(images_enabled: bool) -> Vec<ToolEntry> {
+    let mut tools = vec![
         // Oracle tools/list order: the two Wiki tools register FIRST (TS
         // server.ts registers prts tools before gamedata/story/artwork).
         tool_async!("search_prts", wiki_tools::search_prts),
@@ -168,5 +180,12 @@ pub fn registry() -> Vec<ToolEntry> {
             story_tools::find_character_appearances
         ),
         tool!("find_speakers_in", story_tools::find_speakers_in),
-    ]
+    ];
+    if images_enabled {
+        tools.push(tool_async!(
+            "operator_artwork",
+            artwork_tools::operator_artwork
+        ));
+    }
+    tools
 }

@@ -102,21 +102,28 @@ export async function startWikiReplay(scriptName) {
         socket.end(head + body);
         return;
       }
-      let body;
+      let body = Buffer.alloc(0);
       let contentType = respond.content_type;
       if (respond.json !== undefined) {
-        body = JSON.stringify(respond.json);
+        body = Buffer.from(JSON.stringify(respond.json));
         contentType = contentType ?? "application/json";
+      } else if (respond.body_b64 !== undefined) {
+        body = Buffer.from(respond.body_b64, "base64");
+        contentType = contentType ?? "application/octet-stream";
       } else {
-        body = respond.body ?? "";
+        body = Buffer.from(respond.body ?? "");
         contentType = contentType ?? "application/octet-stream";
       }
       const status = respond.status ?? 200;
       const reason = status === 200 ? "OK" : status === 404 ? "Not Found" : status === 500 ? "Internal Server Error" : "Status";
-      const head =
+      const extra = respond.content_encoding
+        ? `Content-Encoding: ${respond.content_encoding}\r\n`
+        : "";
+      const head = Buffer.from(
         `HTTP/1.1 ${status} ${reason}\r\nContent-Type: ${contentType}\r\n` +
-        `Content-Length: ${Buffer.byteLength(body)}\r\nConnection: close\r\n\r\n`;
-      socket.end(head + body);
+        `${extra}Content-Length: ${body.length}\r\nConnection: close\r\n\r\n`,
+      );
+      socket.end(Buffer.concat([head, body]));
     };
     if (respond.delay_ms) {
       setTimeout(send, respond.delay_ms);
@@ -125,7 +132,7 @@ export async function startWikiReplay(scriptName) {
     }
   };
 
-  const findRule = (method, params) => {
+  const findRule = (method, params, host, path) => {
     const sorted = (obj) => {
       const keys = Object.keys(obj ?? {}).sort();
       return keys.map((k) => `${k}=${obj[k]}`);
@@ -133,6 +140,9 @@ export async function startWikiReplay(scriptName) {
     const requestPairs = new Set(sorted(params));
     for (const rule of script.rules ?? []) {
       if ((rule.match?.method ?? "GET") !== method) continue;
+      if (rule.match?.host !== undefined && rule.match.host !== host) continue;
+      if (rule.match?.path !== undefined && rule.match.path !== path) continue;
+      if (rule.match?.host !== undefined || rule.match?.path !== undefined) return rule.respond;
       const rulePairs = sorted(rule.match?.query ?? rule.match?.form);
       if (method === "GET") {
         // GET rules pin the exact parameter set — the differential also
@@ -190,11 +200,21 @@ export async function startWikiReplay(scriptName) {
             params[decodeURIComponent(pair.slice(0, eq))] = decodeURIComponent(pair.slice(eq + 1).replace(/\+/g, "%20"));
           }
         }
-        const request = { params, text: method === "POST" ? (params.text ?? "") : undefined };
+        const noQuery = path.split("?")[0];
+        const host = (() => {
+          const hp = noQuery.startsWith("/") ? noQuery.slice(1) : noQuery;
+          return hp.split("/")[0];
+        })();
+        const requestPath = (() => {
+          const hp = noQuery.startsWith("/") ? noQuery.slice(1) : noQuery;
+          const slash = hp.indexOf("/");
+          return slash === -1 ? "/" : hp.slice(slash);
+        })();
+        const request = { params, text: method === "POST" ? (params.text ?? "") : undefined, host, path: requestPath };
         log(method, "params:", JSON.stringify(Object.fromEntries(
           Object.entries(params).filter(([k]) => k !== "text").map(([k, v]) => [k, typeof v === "string" ? v.slice(0, 30) : v]),
         )), "text:", JSON.stringify(request.text?.slice(0, 80)));
-        respondWith(socket, findRule(method, params), request);
+        respondWith(socket, findRule(method, params, request.host, request.path), request);
       }
     });
     socket.on("error", () => {});

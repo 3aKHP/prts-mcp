@@ -22,7 +22,7 @@ TOOL-search_stories,P4,yes,verified,diff story.search.* (16: character/line-type
 TOOL-get_operator_memoirs,P4,yes,verified,diff memoir.* (4: default/unknown/无密录/chardict缺失经由unknown) + fs.memoir + matrix,get_operator_memoirs: all declared parameters; success empty/error and channel contract
 TOOL-find_character_appearances,P4,yes,verified,diff appearances.* (8: default/mentioned-only/scope/unknown/max-events/空名/no-match/channel) + fs.appearances + matrix,find_character_appearances: all declared parameters; success empty/error and channel contract
 TOOL-find_speakers_in,P4,yes,verified,diff speakers.* (5: default/并列排序/not-found/empty-event/channel) + fs.speakers + matrix,find_speakers_in: all declared parameters; success empty/error and channel contract
-TOOL-operator_artwork,P6,yes,not-started,,operator_artwork: all declared parameters; success empty/error and channel contract
+TOOL-operator_artwork,P6,yes,verified,diff artwork.* (40: local list/表单别名全半角/未找到/无images; local get large/preview/默认/skin/original未同步提示/不属于/跨形态拒绝/未知id/缺token/无images/三通道; MW list/list-form/list-empty/get三变体/original拒绝/不属于/缺token/host拒绝/magic/MIME/1MiB gzip超限/文件缺失/structured通道/http-modern; 参数6例; IMAGES_ENABLED=false=23) + 单测 format/local/mediawiki/base64/labels/LRU/路径守卫,operator_artwork: all declared parameters; success empty/error and channel contract
 BRANCH-search_prts-search_mode-text,P5,yes,verified,diff wiki.search.default / .empty / .http500 等 text 模式用例；live.wiki.search,search_mode=text: behavior result and relevant failure cases
 BRANCH-search_prts-search_mode-title,P5,yes,verified,diff wiki.search.title-mode（srwhat=title 精确参数集由回放规则钉死）,search_mode=title: behavior result and relevant failure cases
 BRANCH-prts_page-action-read,P5,yes,verified,diff wiki.page.read.* (basic/section/section-null/missing/empty/channel-structured/error-http),action=read: behavior result and relevant failure cases
@@ -41,11 +41,11 @@ BRANCH-search-scope-stages,P3,yes,verified,diff search.stages; description clean
 BRANCH-search-scope-items,P3,yes,verified,"diff search.items; sorted records, name/desc/usage/obtain/classify/type/id haystack",scope=items: behavior result and relevant failure cases
 BRANCH-search-scope-building_skills,P3,yes,verified,diff search.building-skills; best-phase slot pick,scope=building_skills: behavior result and relevant failure cases
 BRANCH-search-scope-skills,P3,yes,verified,"diff search.skills(.skills-string-blackboard); all-level haystack, top-level display",scope=skills: behavior result and relevant failure cases
-BRANCH-operator_artwork-action-list,P6,yes,not-started,,action=list: behavior result and relevant failure cases
-BRANCH-operator_artwork-action-get,P6,yes,not-started,,action=get: behavior result and relevant failure cases
-BRANCH-operator_artwork-variant-original,P6,yes,not-started,,variant=original: behavior result and relevant failure cases
-BRANCH-operator_artwork-variant-large,P6,yes,not-started,,variant=large: behavior result and relevant failure cases
-BRANCH-operator_artwork-variant-preview,P6,yes,not-started,,variant=preview: behavior result and relevant failure cases
+BRANCH-operator_artwork-action-list,P6,yes,verified,diff artwork.local.list* (5) + artwork.mw.list* (3) + 单测 mediawiki filename_labels/operator_and_ownership,action=list: behavior result and relevant failure cases
+BRANCH-operator_artwork-action-get,P6,yes,verified,diff artwork.local.get* (11) + artwork.mw.get* (10) + artwork.local.get.no-token/mw.no-token,action=get: behavior result and relevant failure cases
+BRANCH-operator_artwork-variant-original,P6,yes,verified,local 未同步提示（original 变体缺失→可用 large、preview）+ MW 拒绝文案（1MiB 上限理由）双例,variant=original: behavior result and relevant failure cases
+BRANCH-operator_artwork-variant-large,P6,yes,verified,diff artwork.local.get.large/.default-variant + artwork.mw.get.large（base64 字节与 fixture 逐字节一致）,variant=large: behavior result and relevant failure cases
+BRANCH-operator_artwork-variant-preview,P6,yes,verified,diff artwork.local.get.preview + artwork.mw.get.preview（iiurlwidth=256 精确参数集回放钉死）,variant=preview: behavior result and relevant failure cases
 BASE-oracle,P0,yes,verified,reports/P0.md; .reference rebuilt from e0ba360 via bun frozen lockfile; isolated env whitelist,Pinned Bun oracle and secondary Node environment)
 BASE-wire,P0,yes,verified,"contracts/wire/ (15 flows, 4-cell matrix + negotiation + era boundary)",Capture four transport-era paths and actual schema)
 BASE-data,P0,yes,verified,"contracts/data-manifest.json (fixture+snapshot SHA-256, pinned tags)",Minimal and full data immutable hash manifests)
@@ -76,10 +76,10 @@ STORY-supplement,P4,yes,verified,发现→列表→读取→搜索→角色追�
 STORY-index,P4,yes,verified,tests/story_index.rs 3 案（换包重建恰一次+内容切换/4 并发单飞共享一次构建/Arc 释放）+ bench rust-swap RSS 110.7→104.3MB 释放证据 + rust-share wall=1.13×cold（两会话一次构建）+ VmHWM 稳定,Full-data search correct identity and old index release
 WIKI-replay,P5,yes,verified,tools/wiki-replay.mjs MITM 回放（bun 小写 https_proxy + NODE_EXTRA_CA_CERTS；reqwest system-proxy 同源）；GET 规则精确参数集匹配钉死请求形状；POST 子集匹配 + render_segments 动态回显随机 marker；62 wiki 用例 golden 全部经真实 HTTP/TLS,Deterministic request and response replay including templates
 WIKI-live,P5,yes,verified,node tools/verify.mjs --live → 4/4 pass（search/sections/template/read 于 prts.wiki 真实数据，TS 与 Rust 字节一致）,Public Wiki successful real request
-IMAGE-local,P6,yes,not-started,,List get forms ownership variants metadata and realpath
-IMAGE-wiki,P6,yes,not-started,,List get LRU host MIME magic and size cap
-IMAGE-chain,P6,yes,not-started,,Baseline complete deltas originals and failed activation
-IMAGE-live,P6,yes,not-started,,Both backends real image read and frozen bytes evidence
+IMAGE-local,P6,yes,verified,list→get 及跨形态拒绝（diff 40 例）+ realpath 守卫单测（symlink 逃逸拒绝）+ IMAGES_ENABLED=false 仅摘除 artwork=23,List get forms ownership variants metadata and realpath
+IMAGE-wiki,P6,yes,verified,host/MIME/magic/1MiB(gzip 解码后计) 边界差分 + LRU 256MiB 单测（命中提升/超限淘汰/自逐出）+ 30s/节流复用 P5 客户端,List get LRU host MIME magic and size cap
+IMAGE-chain,P6,yes,verified,tests/images_sync.rs 8 场景（首建 4 分片+2 delta+index=7 次下载/tag 捷径零下载/original 6 分片/fast path 仅增量 delta+index=2 次下载/sha 篡改不激活且旧代完好且无 staging 残留/缺 delta 资产在 baseline 前失败且仅下载 index/重复版本 fail-closed/离线保代 no_data 无代）+ tests/interop_ts.rs images 互操作（真 TS syncImages 经本地镜像写卷→Rust 读；Rust 写→TS activeGenerationSync+parseIndex+全 PNG hash 读回；index.json 与 PNG 字节跨实现一致）,Baseline complete deltas originals and failed activation
+IMAGE-live,P6,yes,verified,artifacts/p6-images-bench.json（真实上游完整规模同步测量：TS 与 Rust 双实现时长/VmHWM/VmRSS/文件数与字节）,Both backends real image read and frozen bytes evidence
 CONFIG-all,P7,yes,not-started,,All runtime variables unset empty valid invalid priority cases
 DEBUG-native,P7,yes,not-started,,Authentication aggregate counters and explicit Rust schema mapping
 PACK-native,P7,yes,not-started,,Relocatable Linux native layout without JS/Python
