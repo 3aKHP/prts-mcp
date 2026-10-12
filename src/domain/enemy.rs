@@ -47,61 +47,79 @@ pub fn handbook(view: &DataView) -> Result<Arc<Value>, String> {
         return Err(messages::excel_missing_message("敌人图鉴", Path::new("")));
     };
     let store = DirectoryStore::new(&root);
-    view.datasets.get_or_load("enemy:enemy_handbook", move || {
-        if !store.exists(HANDBOOK_FILE).unwrap_or(false) {
-            let shown = store
-                .resolve(HANDBOOK_FILE)
-                .map(|p| p.display().to_string())
-                .unwrap_or_else(|_| HANDBOOK_FILE.to_string());
-            return Err(format!("敌人图鉴数据文件不存在：{shown}。"));
-        }
-        store.read_json(HANDBOOK_FILE).map_err(|e| e.to_string())
-    })
+    view.datasets.get_or_load_counted(
+        "enemy:enemy_handbook",
+        move || {
+            if !store.exists(HANDBOOK_FILE).unwrap_or(false) {
+                let shown = store
+                    .resolve(HANDBOOK_FILE)
+                    .map(|p| p.display().to_string())
+                    .unwrap_or_else(|_| HANDBOOK_FILE.to_string());
+                return Err(format!("敌人图鉴数据文件不存在：{shown}。"));
+            }
+            store.read_json(HANDBOOK_FILE).map_err(|e| e.to_string())
+        },
+        |raw| {
+            raw.pointer("/enemyData")
+                .and_then(serde_json::Value::as_object)
+                .map(|m| m.len() as u64)
+                .unwrap_or(0)
+        },
+    )
 }
 
 /// Raw normalized levels map (empty when the levels side is absent).
 pub fn db_levels(
     view: &DataView,
 ) -> Result<Arc<OrderedMap<crate::domain::enemy_db::LevelMap>>, String> {
-    view.datasets.get_or_load("enemy:enemy_database", || {
-        if !has_database(view) {
-            return Ok(OrderedMap::new());
-        }
-        let Some(root) = view.levels_root.clone() else {
-            return Ok(OrderedMap::new());
-        };
-        let store = DirectoryStore::new(root.join("zh_CN").join("gamedata").join("levels"));
-        let raw = store.read_json(DATABASE_FILE).map_err(|e| e.to_string())?;
-        normalize_enemy_database(&raw)
-    })
+    view.datasets.get_or_load_counted(
+        "enemy:enemy_database",
+        || {
+            if !has_database(view) {
+                return Ok(OrderedMap::new());
+            }
+            let Some(root) = view.levels_root.clone() else {
+                return Ok(OrderedMap::new());
+            };
+            let store = DirectoryStore::new(root.join("zh_CN").join("gamedata").join("levels"));
+            let raw = store.read_json(DATABASE_FILE).map_err(|e| e.to_string())?;
+            normalize_enemy_database(&raw)
+        },
+        |db| db.len() as u64,
+    )
 }
 
 /// name → enemyId over the handbook's enemyData (last duplicate wins, first
 /// position kept — JS Map).
 pub fn name_to_enemy_id(view: &DataView) -> Result<Arc<Vec<(String, String)>>, String> {
-    view.datasets.get_or_load("enemy:enemy_name_to_id", || {
-        let raw = handbook(view)?;
-        let mut folded: Vec<(String, String)> = Vec::new();
-        let mut index: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
-        for (eid, info) in raw
-            .pointer("/enemyData")
-            .and_then(Value::as_object)
-            .into_iter()
-            .flat_map(|m| m.iter())
-        {
-            let Some(name) = info.get("name").and_then(Value::as_str) else {
-                continue;
-            };
-            match index.get(name) {
-                Some(&pos) => folded[pos].1 = eid.clone(),
-                None => {
-                    index.insert(name.to_string(), folded.len());
-                    folded.push((name.to_string(), eid.clone()));
+    view.datasets.get_or_load_counted(
+        "enemy:enemy_name_to_id",
+        || {
+            let raw = handbook(view)?;
+            let mut folded: Vec<(String, String)> = Vec::new();
+            let mut index: std::collections::HashMap<String, usize> =
+                std::collections::HashMap::new();
+            for (eid, info) in raw
+                .pointer("/enemyData")
+                .and_then(Value::as_object)
+                .into_iter()
+                .flat_map(|m| m.iter())
+            {
+                let Some(name) = info.get("name").and_then(Value::as_str) else {
+                    continue;
+                };
+                match index.get(name) {
+                    Some(&pos) => folded[pos].1 = eid.clone(),
+                    None => {
+                        index.insert(name.to_string(), folded.len());
+                        folded.push((name.to_string(), eid.clone()));
+                    }
                 }
             }
-        }
-        Ok(folded)
-    })
+            Ok(folded)
+        },
+        |folded| folded.len() as u64,
+    )
 }
 
 fn resolve_enemy_id(view: &DataView, name: &str) -> Result<Option<String>, String> {
@@ -112,49 +130,53 @@ fn resolve_enemy_id(view: &DataView, name: &str) -> Result<Option<String>, Strin
 }
 
 fn search_records(view: &DataView) -> Result<Arc<Vec<Value>>, String> {
-    view.datasets.get_or_load("enemy:enemy_search_records", || {
-        let raw = handbook(view)?;
-        let mut records = Vec::new();
-        for (enemy_id, info) in raw
-            .pointer("/enemyData")
-            .and_then(Value::as_object)
-            .into_iter()
-            .flat_map(|m| m.iter())
-        {
-            if info.get("hideInHandbook") == Some(&Value::Bool(true)) {
-                continue;
+    view.datasets.get_or_load_counted(
+        "enemy:enemy_search_records",
+        || {
+            let raw = handbook(view)?;
+            let mut records = Vec::new();
+            for (enemy_id, info) in raw
+                .pointer("/enemyData")
+                .and_then(Value::as_object)
+                .into_iter()
+                .flat_map(|m| m.iter())
+            {
+                if info.get("hideInHandbook") == Some(&Value::Bool(true)) {
+                    continue;
+                }
+                let tags = info
+                    .get("enemyTags")
+                    .and_then(Value::as_array)
+                    .cloned()
+                    .unwrap_or_default();
+                let search_text = [
+                    info.get("name")
+                        .and_then(Value::as_str)
+                        .unwrap_or("")
+                        .to_string(),
+                    info.get("description")
+                        .and_then(Value::as_str)
+                        .unwrap_or("")
+                        .to_string(),
+                    info.get("ability")
+                        .and_then(Value::as_str)
+                        .unwrap_or("")
+                        .to_string(),
+                ]
+                .into_iter()
+                .chain(tags.iter().filter_map(|t| t.as_str().map(str::to_string)))
+                .collect::<Vec<_>>()
+                .join(" ");
+                records.push(json!({
+                    "enemy_id": enemy_id,
+                    "info": info,
+                    "search_text": search_text,
+                }));
             }
-            let tags = info
-                .get("enemyTags")
-                .and_then(Value::as_array)
-                .cloned()
-                .unwrap_or_default();
-            let search_text = [
-                info.get("name")
-                    .and_then(Value::as_str)
-                    .unwrap_or("")
-                    .to_string(),
-                info.get("description")
-                    .and_then(Value::as_str)
-                    .unwrap_or("")
-                    .to_string(),
-                info.get("ability")
-                    .and_then(Value::as_str)
-                    .unwrap_or("")
-                    .to_string(),
-            ]
-            .into_iter()
-            .chain(tags.iter().filter_map(|t| t.as_str().map(str::to_string)))
-            .collect::<Vec<_>>()
-            .join(" ");
-            records.push(json!({
-                "enemy_id": enemy_id,
-                "info": info,
-                "search_text": search_text,
-            }));
-        }
-        Ok(records)
-    })
+            Ok(records)
+        },
+        |records| records.len() as u64,
+    )
 }
 
 // ---------------------------------------------------------------------------

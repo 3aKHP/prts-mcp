@@ -15,6 +15,7 @@ use axum::Router;
 use serde_json::{json, Map, Value};
 use tokio_stream::wrappers::ReceiverStream;
 
+use crate::diagnostics::RuntimeMetrics;
 use crate::protocol::dispatch::{self, ConnectionState, StatusHint, WireOutcome};
 use crate::protocol::jsonrpc;
 use crate::protocol::session::SessionTable;
@@ -26,6 +27,35 @@ pub struct Shared {
     pub tools: Arc<Vec<ToolEntry>>,
     pub sessions: Arc<SessionTable>,
     pub env_channel: OutputChannel,
+    pub metrics: Option<Arc<RuntimeMetrics>>,
+    pub debug_token: Option<String>,
+}
+
+impl Shared {
+    /// `debugAuthorized`: exact `Bearer <token>` compare, length check
+    /// first, then constant-time over equal lengths. No token configured →
+    /// always denied (debug endpoints stay 404).
+    fn debug_authorized(&self, headers: &HeaderMap) -> bool {
+        let Some(expected) = &self.debug_token else {
+            return false;
+        };
+        let Some(authorization) = headers
+            .get(header::AUTHORIZATION)
+            .and_then(|v| v.to_str().ok())
+        else {
+            return false;
+        };
+        let expected = format!("Bearer {expected}");
+        let (a, b) = (authorization.as_bytes(), expected.as_bytes());
+        if a.len() != b.len() {
+            return false;
+        }
+        let mut diff = 0u8;
+        for (x, y) in a.iter().zip(b.iter()) {
+            diff |= x ^ y;
+        }
+        diff == 0
+    }
 }
 
 fn json_response(status: StatusCode, value: Value) -> Response {
@@ -119,16 +149,20 @@ fn messages_of(body: &Value) -> Vec<&Value> {
     }
 }
 
-pub async fn run_http(shared: Arc<Shared>, host: &str, port: u16) -> std::io::Result<()> {
+pub async fn run_http(
+    shared: Arc<Shared>,
+    host: &str,
+    bind_port: u16,
+    startup_log_line: String,
+) -> std::io::Result<()> {
     let app = Router::new()
         .route("/mcp", any(mcp_endpoint))
         .route("/health", axum::routing::get(health))
+        .route("/debug/cache", axum::routing::get(debug_cache))
+        .route("/debug/metrics", axum::routing::get(debug_metrics))
         .with_state(shared);
-    let listener = tokio::net::TcpListener::bind((host, port)).await?;
-    crate::log_info(&format!(
-        "PRTS MCP Server {} listening on {host}:{port} (StreamableHTTP at /mcp)",
-        crate::SERVER_VERSION
-    ));
+    let listener = tokio::net::TcpListener::bind((host, bind_port)).await?;
+    crate::log_info(&startup_log_line);
     axum::serve(listener, app).await
 }
 
@@ -136,8 +170,63 @@ async fn health() -> Response {
     json_response(StatusCode::OK, json!({ "status": "ok" }))
 }
 
+/// Express `res.sendStatus(404)` parity: text/plain "Not Found".
+fn not_found() -> Response {
+    let mut response = Response::new(Body::from("Not Found"));
+    *response.status_mut() = StatusCode::NOT_FOUND;
+    response.headers_mut().insert(
+        header::CONTENT_TYPE,
+        header::HeaderValue::from_static("text/plain; charset=utf-8"),
+    );
+    response
+}
+
+async fn debug_cache(State(shared): State<Arc<Shared>>, headers: HeaderMap) -> Response {
+    if !shared.debug_authorized(&headers) {
+        return not_found();
+    }
+    json_response(StatusCode::OK, crate::diagnostics::cache_snapshot())
+}
+
+async fn debug_metrics(State(shared): State<Arc<Shared>>, headers: HeaderMap) -> Response {
+    // TS order: metrics disabled and bad auth are indistinguishable 404s.
+    let Some(metrics) = shared.metrics.clone() else {
+        return not_found();
+    };
+    if !shared.debug_authorized(&headers) {
+        return not_found();
+    }
+    let observations = shared.sessions.observations().await;
+    let idle_timeout = shared.sessions.idle_timeout_ms();
+    let snapshot = metrics.snapshot(crate::SERVER_VERSION, idle_timeout, &observations);
+    json_response(StatusCode::OK, snapshot)
+}
+
 async fn mcp_endpoint(
-    State(shared): State<Arc<Shared>>,
+    state: State<Arc<Shared>>,
+    method: Method,
+    query: Query<std::collections::HashMap<String, String>>,
+    headers: HeaderMap,
+    body: Bytes,
+) -> Response {
+    let shared = state.0.clone();
+    let request_token = shared.metrics.as_ref().map(|metrics| {
+        let parsed = if method == Method::POST {
+            serde_json::from_slice::<Value>(&body).unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        };
+        metrics.begin_request(&parsed)
+    });
+    let response = mcp_endpoint_inner(Arc::clone(&shared), method, query, headers, body).await;
+    if let (Some(metrics), Some(token)) = (shared.metrics.as_ref(), request_token) {
+        metrics.finish_request(token, response.status().as_u16());
+    }
+    response
+}
+
+async fn mcp_endpoint_inner(
+    shared: Arc<Shared>,
     method: Method,
     Query(query): Query<std::collections::HashMap<String, String>>,
     headers: HeaderMap,

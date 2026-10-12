@@ -7,8 +7,10 @@ fn main() {
         .unwrap_or_default();
     let app = prts_mcp_rust::app::App::from_env();
     if requested == "http" {
-        if let Err(err) = app.run_http() {
-            prts_mcp_rust::log_err(&format!("HTTP server failed: {err}"));
+        // PORT is parsed only on the HTTP branch (python server.main());
+        // a non-numeric value logs and exits 1, bind failures exit 1.
+        if let Err(err) = app.run_http_profile(prts_mcp_rust::app::HttpProfile::Ghcr) {
+            prts_mcp_rust::log_err(&err.to_string());
             std::process::exit(1);
         }
     } else {

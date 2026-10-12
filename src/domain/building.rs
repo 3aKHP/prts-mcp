@@ -43,7 +43,7 @@ fn building_table(view: &DataView) -> Result<Arc<Value>, String> {
         return Err("__missing__基建技能".to_string());
     };
     let store = DirectoryStore::new(&root);
-    view.datasets.get_or_load("building:building_table", move || {
+    view.datasets.get_or_load_counted("building:building_table", move || {
         if !store.exists("building_data.json").unwrap_or(false) {
             let shown = store
                 .resolve("building_data.json")
@@ -54,7 +54,7 @@ fn building_table(view: &DataView) -> Result<Arc<Value>, String> {
             ));
         }
         store.read_json("building_data.json").map_err(|e| e.to_string())
-    })
+    }, |raw| raw.pointer("/buffs").and_then(serde_json::Value::as_object).map(|m| m.len() as u64).unwrap_or(0))
 }
 
 fn clean_description(desc: &str) -> String {
@@ -138,8 +138,9 @@ pub fn building_skills_for(view: &DataView, char_id: &str) -> Result<Vec<Value>,
 // ---------------------------------------------------------------------------
 
 fn building_skill_records(view: &DataView) -> Result<Arc<Vec<Value>>, String> {
-    view.datasets
-        .get_or_load("building:building_skill_records", || {
+    view.datasets.get_or_load_counted(
+        "building:building_skill_records",
+        || {
             if !has_building_data(view) {
                 // Older data roots lack building_data.json: the scope reports no
                 // matches rather than a data error.
@@ -159,7 +160,9 @@ fn building_skill_records(view: &DataView) -> Result<Arc<Vec<Value>>, String> {
                 }
             }
             Ok(records)
-        })
+        },
+        |records| records.len() as u64,
+    )
 }
 
 /// `buildBuildingSkillSearch`: Err carries the exact message text.

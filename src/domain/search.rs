@@ -19,106 +19,110 @@ struct OperatorSearchRecord {
 }
 
 fn operator_search_records(view: &DataView) -> Result<Arc<Vec<OperatorSearchRecord>>, String> {
-    view.datasets.get_or_load("search:search_records", || {
-        let ct = character_table(view)?;
-        let handbook = handbook_table(view)?;
-        let charwords = charword_table(view)?;
+    view.datasets.get_or_load_counted(
+        "search:search_records",
+        || {
+            let ct = character_table(view)?;
+            let handbook = handbook_table(view)?;
+            let charwords = charword_table(view)?;
 
-        // charId → voice entries with text (insertion order).
-        let mut charid_to_voices: std::collections::HashMap<String, Vec<&Value>> =
-            std::collections::HashMap::new();
-        let mut voice_order: Vec<String> = Vec::new();
-        if let Some(words) = charwords.pointer("/charWords").and_then(Value::as_object) {
-            for entry in words.values() {
-                let Some(char_id) = entry.get("charId").and_then(Value::as_str) else {
+            // charId → voice entries with text (insertion order).
+            let mut charid_to_voices: std::collections::HashMap<String, Vec<&Value>> =
+                std::collections::HashMap::new();
+            let mut voice_order: Vec<String> = Vec::new();
+            if let Some(words) = charwords.pointer("/charWords").and_then(Value::as_object) {
+                for entry in words.values() {
+                    let Some(char_id) = entry.get("charId").and_then(Value::as_str) else {
+                        continue;
+                    };
+                    if entry.get("voiceText").and_then(Value::as_str).is_none() {
+                        continue;
+                    }
+                    if !charid_to_voices.contains_key(char_id) {
+                        voice_order.push(char_id.to_string());
+                    }
+                    charid_to_voices
+                        .entry(char_id.to_string())
+                        .or_default()
+                        .push(entry);
+                }
+            }
+
+            let mut records = Vec::new();
+            for (name, char_id) in name_to_char_id(view)?.iter() {
+                let Some(info) = ct.as_object().and_then(|m| m.get(char_id)) else {
                     continue;
                 };
-                if entry.get("voiceText").and_then(Value::as_str).is_none() {
-                    continue;
+                records.push(OperatorSearchRecord {
+                    operator: name.clone(),
+                    category: "basic".to_string(),
+                    field: "干员名称".to_string(),
+                    text: name.clone(),
+                });
+                if let Some(desc) = info.get("description").and_then(Value::as_str) {
+                    if !desc.is_empty() {
+                        records.push(OperatorSearchRecord {
+                            operator: name.clone(),
+                            category: "basic".to_string(),
+                            field: "攻击属性".to_string(),
+                            text: strip_wikitext(desc),
+                        });
+                    }
                 }
-                if !charid_to_voices.contains_key(char_id) {
-                    voice_order.push(char_id.to_string());
-                }
-                charid_to_voices
-                    .entry(char_id.to_string())
-                    .or_default()
-                    .push(entry);
-            }
-        }
-
-        let mut records = Vec::new();
-        for (name, char_id) in name_to_char_id(view)?.iter() {
-            let Some(info) = ct.as_object().and_then(|m| m.get(char_id)) else {
-                continue;
-            };
-            records.push(OperatorSearchRecord {
-                operator: name.clone(),
-                category: "basic".to_string(),
-                field: "干员名称".to_string(),
-                text: name.clone(),
-            });
-            if let Some(desc) = info.get("description").and_then(Value::as_str) {
-                if !desc.is_empty() {
-                    records.push(OperatorSearchRecord {
-                        operator: name.clone(),
-                        category: "basic".to_string(),
-                        field: "攻击属性".to_string(),
-                        text: strip_wikitext(desc),
-                    });
-                }
-            }
-            if let Some(hb) = handbook
-                .pointer("/handbookDict")
-                .and_then(Value::as_object)
-                .and_then(|d| d.get(char_id))
-            {
-                for story in hb
-                    .get("storyTextAudio")
-                    .and_then(Value::as_array)
-                    .map(Vec::as_slice)
-                    .unwrap_or(&[])
+                if let Some(hb) = handbook
+                    .pointer("/handbookDict")
+                    .and_then(Value::as_object)
+                    .and_then(|d| d.get(char_id))
                 {
-                    let title = story
-                        .get("storyTitle")
-                        .and_then(Value::as_str)
-                        .unwrap_or("");
-                    for s in story
-                        .get("stories")
+                    for story in hb
+                        .get("storyTextAudio")
                         .and_then(Value::as_array)
                         .map(Vec::as_slice)
                         .unwrap_or(&[])
                     {
-                        let text = s.get("storyText").and_then(Value::as_str).unwrap_or("");
-                        if !text.is_empty() {
-                            records.push(OperatorSearchRecord {
-                                operator: name.clone(),
-                                category: "archives".to_string(),
-                                field: title.to_string(),
-                                text: text.to_string(),
-                            });
+                        let title = story
+                            .get("storyTitle")
+                            .and_then(Value::as_str)
+                            .unwrap_or("");
+                        for s in story
+                            .get("stories")
+                            .and_then(Value::as_array)
+                            .map(Vec::as_slice)
+                            .unwrap_or(&[])
+                        {
+                            let text = s.get("storyText").and_then(Value::as_str).unwrap_or("");
+                            if !text.is_empty() {
+                                records.push(OperatorSearchRecord {
+                                    operator: name.clone(),
+                                    category: "archives".to_string(),
+                                    field: title.to_string(),
+                                    text: text.to_string(),
+                                });
+                            }
                         }
                     }
                 }
+                for v in charid_to_voices.get(char_id).into_iter().flatten() {
+                    records.push(OperatorSearchRecord {
+                        operator: name.clone(),
+                        category: "voicelines".to_string(),
+                        field: v
+                            .get("voiceTitle")
+                            .and_then(Value::as_str)
+                            .unwrap_or("未知")
+                            .to_string(),
+                        text: v
+                            .get("voiceText")
+                            .and_then(Value::as_str)
+                            .unwrap_or_default()
+                            .to_string(),
+                    });
+                }
             }
-            for v in charid_to_voices.get(char_id).into_iter().flatten() {
-                records.push(OperatorSearchRecord {
-                    operator: name.clone(),
-                    category: "voicelines".to_string(),
-                    field: v
-                        .get("voiceTitle")
-                        .and_then(Value::as_str)
-                        .unwrap_or("未知")
-                        .to_string(),
-                    text: v
-                        .get("voiceText")
-                        .and_then(Value::as_str)
-                        .unwrap_or_default()
-                        .to_string(),
-                });
-            }
-        }
-        Ok(records)
-    })
+            Ok(records)
+        },
+        |records| records.len() as u64,
+    )
 }
 
 /// `buildOperatorSearch`: Err carries the exact message text.

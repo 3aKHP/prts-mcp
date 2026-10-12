@@ -1,6 +1,6 @@
 # 执行进度
 
-最后更新：2026-10-12（P4 完成）。
+最后更新：2026-10-13（P7 完成）。
 
 | 阶段 | 状态 | 报告 | 下一步 |
 |---|---|---|---|
@@ -9,9 +9,9 @@
 | P2 | complete (tag local/p2-complete) | [reports/P2.md](reports/P2.md) | — |
 | P3 | complete (tag local/p3-complete) | [reports/P3.md](reports/P3.md) | — |
 | P4 | complete (tag local/p4-complete) | [reports/P4.md](reports/P4.md) | — |
-| P5 | not-started | — | 完整2个Wiki工具 |
-| P6 | not-started | — | 图片工具与完整图片同步 |
-| P7 | not-started | — | 配置、诊断、部署和本地分发 |
+| P5 | complete (tag local/p5-complete) | [reports/P5.md](reports/P5.md) | — |
+| P6 | complete (tag local/p6-complete) | [reports/P6.md](reports/P6.md) | — |
+| P7 | complete | [reports/P7.md](reports/P7.md) | — |
 | P8 | not-started | — | 最终全范围验收与转正评估 |
 
 ## P1 交付摘要（2026-10-11）
@@ -81,9 +81,18 @@
 - **差分 P6 378/378（+41 例）**：local/MW 双后端全分支、图片 base64 逐字节、边界注入（host/MIME/magic/gzip 解码后 1MiB 超限）、通道矩阵、参数面、IMAGES_ENABLED=false=23；单测 189 全绿、clippy 0、fmt 干净。
 - **完整规模真实同步测量**：见 artifacts/p6-images-bench.json（TS 与 Rust 双实现、真实上游、时长/内存/文件数字节）。
 
+## P7 交付摘要（2026-10-13）
+
+- **入口 profiles + PORT 语义**：4 类入口按 docs/04 落地；PORT 按 profile 分裂——TS profile 完整 JS Number 语义（hex/科学计数/Infinity/NaN/0/-1，bun 实测钉死：NaN/0/-1 绑临时端口、3000.5 截断、70000→65535、日志逐字回显）；GHCR profile python int() 语义（非法退出 1+原文案、stdio 不解析）。
+- **诊断 D-002**：/debug/cache（11 域真实缓存计数，含 Rust 专有 stage.stages_map 映射说明）+ /debug/metrics（prts-mcp.rust.metrics/v1，/proc RSS 真值、无 V8 堆字段）；Bearer 常量时间认证、错误一律 404 "Not Found"；PRTS_METRICS_ENABLED 严格 true。
+- **信号/EOF**：不装 handler（与 oracle 一致）——SIGTERM/SIGINT 即时信号终止（下载不阻塞）、stdio EOF=0；进程测试钉死。
+- **Bundle fallback**：--bundle-root > Docker /app/data > bin/../data 三级解析；TS BUNDLED_* 语义复刻（pair→extract_meta→完整性门）；独立目录进程测试双路验证。
+- **本地分发**：package-native.mjs 产出独立目录 + npm tarball + 双 Docker context；npm 薄包装 3bin（launcher 传 bundle root、argv/stdio/信号/退出码全透传，private:true）；两 Docker profile（TS=HTTP:3000 / GHCR=stdio+PRTS_TRANSPORT）本地构建验证；容器内经本地镜像真实同步 4 卷，旧 TS（bun dist）与旧 GHCR（python）读 Rust 卷成功。
+- **验证**：205 单测/进程测试（+16）、差分 383/383 保持、verify-p7-npm 10/10、verify-p7-local 6/6（空 PATH 纯 native 全本地业务）、verify-p7-docker 11/11；coverage P7 7/7 verified。
+
 ## 交接入口
 
 - 分支 `rust-local`；HEAD 见 `git log -1`（tag local/p4-complete）；工作树干净。
 - 阶段 bundle：`artifacts/p0.bundle` … `artifacts/p4.bundle`（hash 以最终文件为准；请维护者另存备份并自行记录）。
 - 差分重跑：`node tools/verify.mjs --phase P6`（Rust 需 `cargo build --locked --release`；fixture `node tools/make-fixtures.mjs && node tools/make-fullscale.mjs && node tools/make-images-fixture.mjs`）；live `node tools/verify.mjs --live`；性能 `node tools/bench-p4.mjs`、图片全规模 `node tools/bench-p6-images.mjs`。
-- P7 首个任务：补齐 docs/04 全部环境变量与入口 profiles；Rust metrics/cache 映射；native 发布目录、Docker profile、npm 薄包装 3bin；信号/EOF/退出；bundle fallback 与相对路径；独立安装目录（docs/07 P7）。
+- P8 输入：coverage 仅剩 FINAL-* 6 行；差分 --all 383/383 与 live 4/4 可直接复跑；性能对照需统一口径重测（docs/06）；独立重建从 build/package 复制目录或 `package-native.mjs --skip-build` 重新产出；许可证审计基于 contracts/dependency-licenses.json + 打包产物 LICENSE/NOTICE。

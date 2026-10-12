@@ -80,50 +80,68 @@ pub fn stage_table(view: &DataView) -> Result<Arc<Value>, String> {
         return Err(format!("关卡数据文件不存在：{STAGE_FILE}"));
     };
     let store = DirectoryStore::new(&root);
-    view.datasets.get_or_load("stage:stage_table", move || {
-        if !store.exists(STAGE_FILE).unwrap_or(false) {
-            return Err(format!("关卡数据文件不存在：{STAGE_FILE}"));
-        }
-        let raw = store
-            .read_json(STAGE_FILE)
-            .map_err(|_| format!("{STAGE_FILE} 格式异常"))?;
-        if !raw.pointer("/stages").is_some_and(Value::is_object) {
-            return Err(format!("{STAGE_FILE} 格式异常"));
-        }
-        Ok(raw)
-    })
+    view.datasets.get_or_load_counted(
+        "stage:stage_table",
+        move || {
+            if !store.exists(STAGE_FILE).unwrap_or(false) {
+                return Err(format!("关卡数据文件不存在：{STAGE_FILE}"));
+            }
+            let raw = store
+                .read_json(STAGE_FILE)
+                .map_err(|_| format!("{STAGE_FILE} 格式异常"))?;
+            if !raw.pointer("/stages").is_some_and(Value::is_object) {
+                return Err(format!("{STAGE_FILE} 格式异常"));
+            }
+            Ok(raw)
+        },
+        |raw| raw.as_object().map(|m| m.len() as u64).unwrap_or(0),
+    )
 }
 
 /// `stages` inner mapping extracted from the raw table.
 pub fn stages_map(view: &DataView) -> Result<Arc<Map<String, Value>>, String> {
-    view.datasets.get_or_load("stage:stages_map", || {
-        let raw = stage_table(view)?;
-        let map = raw
-            .pointer("/stages")
-            .and_then(Value::as_object)
-            .cloned()
-            .unwrap_or_default();
-        Ok(map)
-    })
+    view.datasets.get_or_load_counted(
+        "stage:stages_map",
+        || {
+            let raw = stage_table(view)?;
+            let map = raw
+                .pointer("/stages")
+                .and_then(Value::as_object)
+                .cloned()
+                .unwrap_or_default();
+            Ok(map)
+        },
+        |stages| stages.len() as u64,
+    )
 }
 
 /// zone table, or None when absent/malformed (loaded-null contract).
 fn zone_table(view: &DataView) -> Result<Arc<Option<Map<String, Value>>>, String> {
-    view.datasets.get_or_load("stage:zone_table", || {
-        let Some(root) = view.excel_root.clone() else {
-            return Ok(None);
-        };
-        let store = DirectoryStore::new(&root);
-        if !store.exists(ZONE_FILE).unwrap_or(false) {
-            return Ok(None);
-        }
-        // Malformed zone JSON is a loaded-null, not an error.
-        let zones = store
-            .read_json(ZONE_FILE)
-            .ok()
-            .and_then(|raw| raw.pointer("/zones").and_then(Value::as_object).cloned());
-        Ok(zones)
-    })
+    let cached = view.datasets.get_or_load_counted(
+        "stage:zone_table",
+        || {
+            let Some(root) = view.excel_root.clone() else {
+                return Ok(None);
+            };
+            let store = DirectoryStore::new(&root);
+            if !store.exists(ZONE_FILE).unwrap_or(false) {
+                return Ok(None);
+            }
+            // Malformed zone JSON is a loaded-null, not an error.
+            let zones = store
+                .read_json(ZONE_FILE)
+                .ok()
+                .and_then(|raw| raw.pointer("/zones").and_then(Value::as_object).cloned());
+            Ok(zones)
+        },
+        |z| z.as_ref().map(|m| m.len() as u64).unwrap_or(0),
+    )?;
+    // TS loaded-null contract: a cached None is NOT "loaded" for the debug
+    // projection (datasetAccess snapshotLoaded).
+    if cached.is_none() {
+        crate::diagnostics::record_loaded_absent("stage:zone_table");
+    }
+    Ok(cached)
 }
 
 fn zone_display(zone_id: &str, zones: Option<&Map<String, Value>>) -> String {
@@ -603,26 +621,30 @@ struct StageSearchRecord {
 }
 
 fn stage_search_records(view: &DataView) -> Result<Arc<Vec<StageSearchRecord>>, String> {
-    view.datasets.get_or_load("stage:stage_search_records", || {
-        let stages = stages_map(view)?;
-        let mut entries: Vec<(&String, &Value)> = stages.iter().collect();
-        entries.sort_by(|a, b| compare_ids(a.0, b.0));
-        Ok(entries
-            .into_iter()
-            .map(|(stage_id, entry)| StageSearchRecord {
-                stage_id: stage_id.clone(),
-                entry: entry.clone(),
-                search_text: [
-                    get_str(entry, "name").unwrap_or(""),
-                    get_str(entry, "code").unwrap_or(""),
-                    &clean_description(get_str(entry, "description").unwrap_or("")),
-                    get_str(entry, "stageType").unwrap_or(""),
-                    stage_id,
-                ]
-                .join(" "),
-            })
-            .collect())
-    })
+    view.datasets.get_or_load_counted(
+        "stage:stage_search_records",
+        || {
+            let stages = stages_map(view)?;
+            let mut entries: Vec<(&String, &Value)> = stages.iter().collect();
+            entries.sort_by(|a, b| compare_ids(a.0, b.0));
+            Ok(entries
+                .into_iter()
+                .map(|(stage_id, entry)| StageSearchRecord {
+                    stage_id: stage_id.clone(),
+                    entry: entry.clone(),
+                    search_text: [
+                        get_str(entry, "name").unwrap_or(""),
+                        get_str(entry, "code").unwrap_or(""),
+                        &clean_description(get_str(entry, "description").unwrap_or("")),
+                        get_str(entry, "stageType").unwrap_or(""),
+                        stage_id,
+                    ]
+                    .join(" "),
+                })
+                .collect())
+        },
+        |records: &Vec<StageSearchRecord>| records.len() as u64,
+    )
 }
 
 /// `buildStageSearch`: Err carries the exact message text.

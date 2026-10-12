@@ -51,46 +51,50 @@ pub fn data_not_ready_message() -> String {
 /// cache; empty when excel is unavailable or the file is missing.
 pub fn get_char_skins(view: &DataView) -> CharSkins {
     let view = view.clone();
-    let skins = view.datasets.get_or_load("images:char_skins", move || {
-        let Some(excel) = view.excel_root.clone() else {
-            return Ok(CharSkins::new());
-        };
-        let store = crate::storage::DirectoryStore::new(excel);
-        if !store.exists("skin_table.json").unwrap_or(false) {
-            return Ok(CharSkins::new());
-        }
-        let table = store
-            .read_json("skin_table.json")
-            .map_err(|e| format!("skin_table: {e}"))?;
-        let mut out = CharSkins::new();
-        if let Some(raw) = table.get("charSkins").and_then(|c| c.as_object()) {
-            for (sid, entry) in raw {
-                let display = entry.get("displaySkin");
-                out.insert(
-                    sid.clone(),
-                    super::format::DisplaySkin {
-                        skin_name: display
-                            .and_then(|d| d.get("skinName"))
-                            .and_then(|v| v.as_str())
-                            .map(str::to_string),
-                        skin_group_name: display
-                            .and_then(|d| d.get("skinGroupName"))
-                            .and_then(|v| v.as_str())
-                            .map(str::to_string),
-                        obtain_approach: display
-                            .and_then(|d| d.get("obtainApproach"))
-                            .and_then(|v| v.as_str())
-                            .map(str::to_string),
-                        description: display
-                            .and_then(|d| d.get("description"))
-                            .and_then(|v| v.as_str())
-                            .map(str::to_string),
-                    },
-                );
+    let skins = view.datasets.get_or_load_counted(
+        "images:char_skins",
+        move || {
+            let Some(excel) = view.excel_root.clone() else {
+                return Ok(CharSkins::new());
+            };
+            let store = crate::storage::DirectoryStore::new(excel);
+            if !store.exists("skin_table.json").unwrap_or(false) {
+                return Ok(CharSkins::new());
             }
-        }
-        Ok(out)
-    });
+            let table = store
+                .read_json("skin_table.json")
+                .map_err(|e| format!("skin_table: {e}"))?;
+            let mut out = CharSkins::new();
+            if let Some(raw) = table.get("charSkins").and_then(|c| c.as_object()) {
+                for (sid, entry) in raw {
+                    let display = entry.get("displaySkin");
+                    out.insert(
+                        sid.clone(),
+                        super::format::DisplaySkin {
+                            skin_name: display
+                                .and_then(|d| d.get("skinName"))
+                                .and_then(|v| v.as_str())
+                                .map(str::to_string),
+                            skin_group_name: display
+                                .and_then(|d| d.get("skinGroupName"))
+                                .and_then(|v| v.as_str())
+                                .map(str::to_string),
+                            obtain_approach: display
+                                .and_then(|d| d.get("obtainApproach"))
+                                .and_then(|v| v.as_str())
+                                .map(str::to_string),
+                            description: display
+                                .and_then(|d| d.get("description"))
+                                .and_then(|v| v.as_str())
+                                .map(str::to_string),
+                        },
+                    );
+                }
+            }
+            Ok(out)
+        },
+        |skins| skins.len() as u64,
+    );
     (*skins.unwrap_or_else(|_: String| std::sync::Arc::new(CharSkins::new()))).clone()
 }
 

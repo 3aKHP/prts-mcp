@@ -97,37 +97,45 @@ fn items(view: &DataView) -> Result<Arc<Map<String, Value>>, String> {
         return Err("effectiveExcelPath is null — GAMEDATA_PATH may be unset".to_string());
     };
     let store = DirectoryStore::new(&root);
-    view.datasets.get_or_load("item:items", move || {
-        if !store.exists(ITEM_FILE).unwrap_or(false) {
-            let shown = store
-                .resolve(ITEM_FILE)
-                .map(|p| p.display().to_string())
-                .unwrap_or_else(|_| ITEM_FILE.to_string());
-            return Err(format!("物品数据文件不存在：{shown}。"));
-        }
-        let raw = store.read_json(ITEM_FILE).map_err(|e| e.to_string())?;
-        let map = raw
-            .pointer("/items")
-            .and_then(Value::as_object)
-            .cloned()
-            .ok_or_else(|| format!("{ITEM_FILE} missing 'items' dict"))?;
-        Ok(map)
-    })
+    view.datasets.get_or_load_counted(
+        "item:items",
+        move || {
+            if !store.exists(ITEM_FILE).unwrap_or(false) {
+                let shown = store
+                    .resolve(ITEM_FILE)
+                    .map(|p| p.display().to_string())
+                    .unwrap_or_else(|_| ITEM_FILE.to_string());
+                return Err(format!("物品数据文件不存在：{shown}。"));
+            }
+            let raw = store.read_json(ITEM_FILE).map_err(|e| e.to_string())?;
+            let map = raw
+                .pointer("/items")
+                .and_then(Value::as_object)
+                .cloned()
+                .ok_or_else(|| format!("{ITEM_FILE} missing 'items' dict"))?;
+            Ok(map)
+        },
+        |items| items.len() as u64,
+    )
 }
 
 fn item_lookup(view: &DataView) -> Result<Arc<std::collections::HashMap<String, String>>, String> {
-    view.datasets.get_or_load("item:item_lookup", || {
-        let mut lookup = std::collections::HashMap::new();
-        for (item_id, info) in items(view)?.iter() {
-            lookup.insert(item_id.clone(), item_id.clone());
-            if let Some(name) = info.get("name").and_then(Value::as_str) {
-                if !name.is_empty() && !lookup.contains_key(name) {
-                    lookup.insert(name.to_string(), item_id.clone());
+    view.datasets.get_or_load_counted(
+        "item:item_lookup",
+        || {
+            let mut lookup = std::collections::HashMap::new();
+            for (item_id, info) in items(view)?.iter() {
+                lookup.insert(item_id.clone(), item_id.clone());
+                if let Some(name) = info.get("name").and_then(Value::as_str) {
+                    if !name.is_empty() && !lookup.contains_key(name) {
+                        lookup.insert(name.to_string(), item_id.clone());
+                    }
                 }
             }
-        }
-        Ok(lookup)
-    })
+            Ok(lookup)
+        },
+        |lookup| lookup.len() as u64,
+    )
 }
 
 /// `getItemNameById`: null on missing/empty ids or unreadable tables —
@@ -509,34 +517,38 @@ struct ItemSearchRecord {
 }
 
 fn item_search_records(view: &DataView) -> Result<Arc<Vec<ItemSearchRecord>>, String> {
-    view.datasets.get_or_load("item:item_search_records", || {
-        let mut entries = visible_items(view)?;
-        sort_entries(&mut entries);
-        Ok(entries
-            .into_iter()
-            .map(|(item_id, info)| {
-                let mut parts: Vec<String> = [
-                    "name",
-                    "description",
-                    "usage",
-                    "obtainApproach",
-                    "classifyType",
-                    "itemType",
-                ]
-                .iter()
-                .filter_map(|key| info.get(*key).and_then(Value::as_str))
-                .filter(|s| !s.is_empty())
-                .map(str::to_string)
-                .collect();
-                parts.push(item_id.clone());
-                ItemSearchRecord {
-                    item_id,
-                    info,
-                    search_text: parts.join(" "),
-                }
-            })
-            .collect())
-    })
+    view.datasets.get_or_load_counted(
+        "item:item_search_records",
+        || {
+            let mut entries = visible_items(view)?;
+            sort_entries(&mut entries);
+            Ok(entries
+                .into_iter()
+                .map(|(item_id, info)| {
+                    let mut parts: Vec<String> = [
+                        "name",
+                        "description",
+                        "usage",
+                        "obtainApproach",
+                        "classifyType",
+                        "itemType",
+                    ]
+                    .iter()
+                    .filter_map(|key| info.get(*key).and_then(Value::as_str))
+                    .filter(|s| !s.is_empty())
+                    .map(str::to_string)
+                    .collect();
+                    parts.push(item_id.clone());
+                    ItemSearchRecord {
+                        item_id,
+                        info,
+                        search_text: parts.join(" "),
+                    }
+                })
+                .collect())
+        },
+        |records: &Vec<ItemSearchRecord>| records.len() as u64,
+    )
 }
 
 /// `buildItemSearch`: Err carries the exact message text.

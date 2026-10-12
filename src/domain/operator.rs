@@ -74,18 +74,34 @@ fn load_excel_table(
     slot: &str,
     file: &str,
     label: &str,
+    count_key: Option<&str>,
 ) -> Result<Arc<Value>, String> {
     let Some(root) = view.excel_root.clone() else {
         return Err(format!("__missing__{label}"));
     };
     let store = DirectoryStore::new(&root);
-    view.datasets.get_or_load(slot, move || {
-        let exists = store.exists(file).unwrap_or(false);
-        if !exists {
-            return Err(operator_file_error(label, &store, file));
-        }
-        store.read_json(file).map_err(|e| e.to_string())
-    })
+    view.datasets.get_or_load_counted(
+        slot,
+        move || {
+            let exists = store.exists(file).unwrap_or(false);
+            if !exists {
+                return Err(operator_file_error(label, &store, file));
+            }
+            store.read_json(file).map_err(|e| e.to_string())
+        },
+        move |table| {
+            match count_key {
+                // TS loader count overrides (operator.ts): handbookDict /
+                // charWords keys rather than the file root.
+                Some(key) => table
+                    .pointer(key)
+                    .and_then(Value::as_object)
+                    .map(|m| m.len() as u64)
+                    .unwrap_or(0),
+                None => table.as_object().map(|m| m.len() as u64).unwrap_or(0),
+            }
+        },
+    )
 }
 
 pub fn character_table(view: &DataView) -> Result<Arc<Value>, String> {
@@ -94,6 +110,7 @@ pub fn character_table(view: &DataView) -> Result<Arc<Value>, String> {
         "operator:character_table",
         "character_table.json",
         "干员",
+        None,
     )
 }
 
@@ -103,6 +120,7 @@ pub fn handbook_table(view: &DataView) -> Result<Arc<Value>, String> {
         "operator:handbook_table",
         "handbook_info_table.json",
         "干员",
+        Some("/handbookDict"),
     )
 }
 
@@ -112,6 +130,7 @@ pub fn charword_table(view: &DataView) -> Result<Arc<Value>, String> {
         "operator:charword_table",
         "charword_table.json",
         "干员",
+        Some("/charWords"),
     )
 }
 
@@ -120,43 +139,48 @@ pub fn charword_table(view: &DataView) -> Result<Arc<Value>, String> {
 /// JS Map.set keeps first-insertion position (later set overwrites value,
 /// not position).
 pub fn name_to_char_id(view: &DataView) -> Result<Arc<Vec<(String, String)>>, String> {
-    view.datasets.get_or_load("operator:name_to_id", || {
-        let ct = character_table(view)?;
-        let map = ct
-            .as_object()
-            .map(|m| {
-                m.iter()
-                    .filter(|(cid, info)| {
-                        cid.starts_with("char_")
-                            && info.get("name").and_then(Value::as_str).is_some()
-                    })
-                    .map(|(cid, info)| {
-                        (
-                            info.get("name")
-                                .and_then(Value::as_str)
-                                .unwrap()
-                                .to_string(),
-                            cid.clone(),
-                        )
-                    })
-                    .collect::<Vec<_>>()
-            })
-            .unwrap_or_default();
-        // JS Map: later duplicate names replace the value at the original
-        // insertion position — fold to last value keeping first position.
-        let mut folded: Vec<(String, String)> = Vec::new();
-        let mut index: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
-        for (name, cid) in map {
-            match index.get(&name) {
-                Some(&pos) => folded[pos].1 = cid,
-                None => {
-                    index.insert(name.clone(), folded.len());
-                    folded.push((name, cid));
+    view.datasets.get_or_load_counted(
+        "operator:name_to_id",
+        || {
+            let ct = character_table(view)?;
+            let map = ct
+                .as_object()
+                .map(|m| {
+                    m.iter()
+                        .filter(|(cid, info)| {
+                            cid.starts_with("char_")
+                                && info.get("name").and_then(Value::as_str).is_some()
+                        })
+                        .map(|(cid, info)| {
+                            (
+                                info.get("name")
+                                    .and_then(Value::as_str)
+                                    .unwrap()
+                                    .to_string(),
+                                cid.clone(),
+                            )
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default();
+            // JS Map: later duplicate names replace the value at the original
+            // insertion position — fold to last value keeping first position.
+            let mut folded: Vec<(String, String)> = Vec::new();
+            let mut index: std::collections::HashMap<String, usize> =
+                std::collections::HashMap::new();
+            for (name, cid) in map {
+                match index.get(&name) {
+                    Some(&pos) => folded[pos].1 = cid,
+                    None => {
+                        index.insert(name.clone(), folded.len());
+                        folded.push((name, cid));
+                    }
                 }
             }
-        }
-        Ok(folded)
-    })
+            Ok(folded)
+        },
+        |folded| folded.len() as u64,
+    )
 }
 
 pub fn resolve_char_id(view: &DataView, name: &str) -> Result<Option<String>, String> {

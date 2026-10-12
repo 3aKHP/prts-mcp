@@ -37,7 +37,7 @@ fn skill_table(view: &DataView) -> Result<Arc<Value>, String> {
         return Err("__missing__战斗技能".to_string());
     };
     let store = DirectoryStore::new(&root);
-    view.datasets.get_or_load("skill:skill_table", move || {
+    view.datasets.get_or_load_counted("skill:skill_table", move || {
         if !store.exists("skill_table.json").unwrap_or(false) {
             let shown = store
                 .resolve("skill_table.json")
@@ -48,7 +48,7 @@ fn skill_table(view: &DataView) -> Result<Arc<Value>, String> {
             ));
         }
         store.read_json("skill_table.json").map_err(|e| e.to_string())
-    })
+    }, |raw| raw.as_object().map(|m| m.len() as u64).unwrap_or(0))
 }
 
 // ---------------------------------------------------------------------------
@@ -414,47 +414,51 @@ pub fn render_operator_skills(data: &Value) -> String {
 // ---------------------------------------------------------------------------
 
 fn skill_search_records(view: &DataView) -> Result<Arc<Vec<Value>>, String> {
-    view.datasets.get_or_load("skill:skill_search_records", || {
-        if !has_skill_data(view) {
-            // Older data roots may lack skill_table.json: the scope then
-            // reports no matches rather than a data error.
-            return Ok(Vec::new());
-        }
-        let table = skill_table(view)?;
-        if !table.is_object() {
-            return Err("skill_table.json 顶层不是 JSON 对象".to_string());
-        }
-        let ct = character_table(view)?;
-        let mut records = Vec::new();
-        for (op_name, char_id) in name_to_char_id(view)?.iter() {
-            let info = ct
-                .as_object()
-                .and_then(|m| m.get(char_id))
-                .cloned()
-                .unwrap_or_else(|| json!({}));
-            for (_skill_id, levels) in collect_operator_skills(&info, &table) {
-                let top = top_level(&levels).clone();
-                let haystack = levels
-                    .iter()
-                    .map(|lv| {
-                        format!(
-                            "{} {}",
-                            lv["name"].as_str().unwrap_or(""),
-                            lv["description"].as_str().unwrap_or("")
-                        )
-                    })
-                    .collect::<Vec<_>>()
-                    .join(" ");
-                records.push(json!({
-                    "operator": op_name,
-                    "skill": skill_display_name(&levels),
-                    "text": top["description"].clone(),
-                    "haystack": haystack,
-                }));
+    view.datasets.get_or_load_counted(
+        "skill:skill_search_records",
+        || {
+            if !has_skill_data(view) {
+                // Older data roots may lack skill_table.json: the scope then
+                // reports no matches rather than a data error.
+                return Ok(Vec::new());
             }
-        }
-        Ok(records)
-    })
+            let table = skill_table(view)?;
+            if !table.is_object() {
+                return Err("skill_table.json 顶层不是 JSON 对象".to_string());
+            }
+            let ct = character_table(view)?;
+            let mut records = Vec::new();
+            for (op_name, char_id) in name_to_char_id(view)?.iter() {
+                let info = ct
+                    .as_object()
+                    .and_then(|m| m.get(char_id))
+                    .cloned()
+                    .unwrap_or_else(|| json!({}));
+                for (_skill_id, levels) in collect_operator_skills(&info, &table) {
+                    let top = top_level(&levels).clone();
+                    let haystack = levels
+                        .iter()
+                        .map(|lv| {
+                            format!(
+                                "{} {}",
+                                lv["name"].as_str().unwrap_or(""),
+                                lv["description"].as_str().unwrap_or("")
+                            )
+                        })
+                        .collect::<Vec<_>>()
+                        .join(" ");
+                    records.push(json!({
+                        "operator": op_name,
+                        "skill": skill_display_name(&levels),
+                        "text": top["description"].clone(),
+                        "haystack": haystack,
+                    }));
+                }
+            }
+            Ok(records)
+        },
+        |records| records.len() as u64,
+    )
 }
 
 /// `buildSkillSearch`: Err carries the exact message text.

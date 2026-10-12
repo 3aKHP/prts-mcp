@@ -42,6 +42,6 @@ const server = createServer((req, res) => {
   res.end(JSON.stringify({ message: "mirror: not found" }));
 });
 
-server.listen(0, "127.0.0.1", () => {
+server.listen(0, process.env.MIRROR_HOST ?? "127.0.0.1", () => {
   console.log(JSON.stringify({ port: server.address().port }));
 });

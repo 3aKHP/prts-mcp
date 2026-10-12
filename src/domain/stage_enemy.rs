@@ -228,8 +228,9 @@ pub fn render_stage_enemies(data: &Value) -> String {
 // ---------------------------------------------------------------------------
 
 fn enemy_appearance_index(view: &DataView) -> Result<Arc<AppearanceIndex>, String> {
-    view.datasets
-        .get_or_load("stage_enemy:enemy_appearance_index", || {
+    view.datasets.get_or_load_counted(
+        "stage_enemy:enemy_appearance_index",
+        || {
             let stages = stages_map(view)?;
             let Some(store) = levels_store(view) else {
                 return Ok(crate::domain::enemy_db::OrderedMap::new());
@@ -262,7 +263,9 @@ fn enemy_appearance_index(view: &DataView) -> Result<Arc<AppearanceIndex>, Strin
                 }
             }
             Ok(index)
-        })
+        },
+        |index| index.len() as u64,
+    )
 }
 
 /// enemyId → [(stageId, spawn count)] in stage-table + level-file order.

@@ -75,24 +75,30 @@ pub fn story_search_index(
     zip_path: &Path,
     store: &ZipStore,
 ) -> Result<Arc<StorySearchIndex>, String> {
+    const SLOT: &str = "story_search:story_search_index";
     let descriptor = zip_descriptor(zip_path);
     {
         let guard = cache().lock().expect("story index lock");
         if let Some(shared) = guard.as_ref() {
             if Some(&shared.descriptor) == descriptor.as_ref() {
+                crate::diagnostics::record_hit(SLOT);
+                crate::diagnostics::record_loaded(SLOT, shared.index.chapters.len() as u64);
                 return Ok(Arc::clone(&shared.index));
             }
         }
     }
+    crate::diagnostics::record_miss(SLOT);
     let index = Arc::new(build_story_search_index(store)?);
     let mut guard = cache().lock().expect("story index lock");
     // Another thread may have won the race — first builder's index stays.
     match guard.as_ref() {
         Some(shared) if Some(&shared.descriptor) == descriptor.as_ref() => {
+            crate::diagnostics::record_hit(SLOT);
             Ok(Arc::clone(&shared.index))
         }
         _ => {
             let builds = guard.as_ref().map(|s| s.builds + 1).unwrap_or(1);
+            crate::diagnostics::record_loaded(SLOT, index.chapters.len() as u64);
             *guard = Some(SharedIndex {
                 descriptor: descriptor.unwrap_or_default(),
                 index: Arc::clone(&index),

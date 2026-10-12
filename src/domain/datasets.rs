@@ -30,15 +30,38 @@ impl Datasets {
         name: &str,
         load: impl FnOnce() -> Result<T, String>,
     ) -> Result<Arc<T>, String> {
+        self.get_or_load_counted(name, load, |_| 0)
+    }
+
+    /// `get_or_load` with a `count_of` hook feeding the /debug/cache
+    /// projection (entry count of the cached value, TS `count` semantics).
+    /// Hit/miss/load-failure accounting is identical for both entry points.
+    pub fn get_or_load_counted<T: Send + Sync + 'static>(
+        &self,
+        name: &str,
+        load: impl FnOnce() -> Result<T, String>,
+        count_of: impl FnOnce(&T) -> u64,
+    ) -> Result<Arc<T>, String> {
         {
             let slots = self.slots.lock().expect("datasets lock");
             if let Some(hit) = slots.get(name) {
                 if let Ok(typed) = Arc::clone(hit).downcast::<T>() {
+                    crate::diagnostics::record_hit(name);
                     return Ok(typed);
                 }
             }
         }
-        let value = Arc::new(load()?);
+        crate::diagnostics::record_miss(name);
+        let value = match load() {
+            Ok(value) => value,
+            Err(err) => {
+                crate::diagnostics::record_load_failed(name);
+                return Err(err);
+            }
+        };
+        let count = count_of(&value);
+        let value = Arc::new(value);
+        crate::diagnostics::record_loaded(name, count);
         self.slots.lock().expect("datasets lock").insert(
             name.to_string(),
             Arc::clone(&value) as Arc<dyn Any + Send + Sync>,

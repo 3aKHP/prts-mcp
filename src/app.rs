@@ -10,7 +10,8 @@
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
-use crate::config::RuntimeConfig;
+use crate::config::{BundleRoots, RuntimeConfig};
+use crate::diagnostics::RuntimeMetrics;
 use crate::protocol::http::{self, Shared};
 use crate::protocol::session::SessionTable;
 use crate::protocol::stdio;
@@ -57,6 +58,36 @@ fn resolve_view(config: &RuntimeConfig) -> DataView {
     } else {
         None
     };
+
+    // Bundled read-only fallback (TS loadConfig's BUNDLED_*_PATH half):
+    // only when the sync target is incomplete; resolution mirrors the sync
+    // path (pair pointer first, extract_meta fallback, completeness gates).
+    let bundles = config.bundle_root.as_deref().map(BundleRoots::of);
+    let excel_root = excel_root.or_else(|| {
+        let roots = bundles.as_ref()?;
+        let pair = activated_pair(&roots.gamedata, &roots.levels);
+        let bundled_root = pair
+            .clone()
+            .map(|(excel, _)| excel)
+            .unwrap_or_else(|| activated_root(&roots.gamedata));
+        let bundled_excel = excel_path_of(&bundled_root);
+        crate::config::files_complete(&bundled_excel).then_some(bundled_excel)
+    });
+    let levels_root = levels_root.or_else(|| {
+        let roots = bundles.as_ref()?;
+        let pair = activated_pair(&roots.gamedata, &roots.levels);
+        let bundled_root = pair
+            .map(|(_, levels)| levels)
+            .unwrap_or_else(|| activated_root(&roots.levels));
+        crate::config::levels_complete(&bundled_root).then_some(bundled_root)
+    });
+    let story_zip = story_zip.or_else(|| {
+        let roots = bundles.as_ref()?;
+        roots
+            .storyjson_zip
+            .is_file()
+            .then(|| roots.storyjson_zip.clone())
+    });
 
     DataView {
         excel_root,
@@ -143,6 +174,14 @@ impl DataState {
     }
 }
 
+/// Which HTTP entry flavor is starting (docs/04).
+pub enum HttpProfile {
+    /// `prts-mcp-rust` / `prts-mcp-ts` / `prts-mcp-ts-bun`.
+    Ts,
+    /// GHCR-compatible `prts-mcp` with PRTS_TRANSPORT=http.
+    Ghcr,
+}
+
 pub struct App {
     pub config: Arc<RuntimeConfig>,
     pub data: Arc<DataState>,
@@ -152,7 +191,7 @@ pub struct App {
 
 impl App {
     pub fn from_env() -> Self {
-        Self::with_config(RuntimeConfig::from_env())
+        Self::with_config(RuntimeConfig::from_env_with_bundle())
     }
 
     pub fn with_config(config: RuntimeConfig) -> Self {
@@ -178,18 +217,77 @@ impl App {
     }
 
     pub fn run_http(self) -> std::io::Result<()> {
+        self.run_http_profile(HttpProfile::Ts)
+    }
+
+    /// HTTP entry flavors (docs/04 入口 profiles): TS-profile bins keep
+    /// `Number(PORT)` + the server.ts startup line; the GHCR-compatible
+    /// `prts-mcp` bin parses PORT like python `int()` and exits 1 on a
+    /// non-numeric value (only reached when PRTS_TRANSPORT=http).
+    pub fn run_http_profile(self, profile: HttpProfile) -> std::io::Result<()> {
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()?;
         runtime.block_on(async move {
             self.spawn_background_sync();
+            let metrics = self.config.metrics_enabled.then(|| {
+                Arc::new(RuntimeMetrics::new(
+                    self.tools.iter().map(|t| t.name.to_string()),
+                ))
+            });
             let shared = Arc::new(Shared {
                 app: self.handle,
-                tools: self.tools,
-                sessions: Arc::new(SessionTable::new(self.config.session_idle_timeout_ms)),
+                sessions: Arc::new(SessionTable::with_metrics(
+                    self.config.session_idle_timeout_ms,
+                    metrics.clone(),
+                )),
                 env_channel: self.config.output_channel,
+                metrics,
+                debug_token: self.config.debug_token.clone(),
+                tools: self.tools,
             });
-            http::run_http(shared, &self.config.host, self.config.port).await
+            let host = self.config.host.clone();
+            let (bind_port, startup_line) = match profile {
+                HttpProfile::Ts => {
+                    let value = self
+                        .config
+                        .port_raw
+                        .as_deref()
+                        .map(crate::config::js_parse_number)
+                        .unwrap_or(3000.0);
+                    let display = crate::text::numbers::js_number_to_string(value);
+                    let bind = crate::config::ts_bind_port(value);
+                    let line = format!(
+                        "PRTS MCP Server {} listening on {host}:{display} (StreamableHTTP at /mcp)",
+                        crate::SERVER_VERSION
+                    );
+                    (bind, line)
+                }
+                HttpProfile::Ghcr => {
+                    let port: u16 = match self.config.port_raw.as_deref() {
+                        None => 3000,
+                        Some(raw) => match crate::config::python_int_port(raw) {
+                            Ok(v) if (0..=65535).contains(&v) => v as u16,
+                            Ok(v) => {
+                                return Err(std::io::Error::new(
+                                    std::io::ErrorKind::InvalidInput,
+                                    format!("invalid port {v}"),
+                                ));
+                            }
+                            Err(_) => {
+                                return Err(std::io::Error::new(
+                                    std::io::ErrorKind::InvalidInput,
+                                    format!("PORT must be numeric, got '{raw}'. Exiting."),
+                                ));
+                            }
+                        },
+                    };
+                    let line =
+                        format!("PRTS-MCP Streamable HTTP listening on {host}:{port} (/mcp)");
+                    (port, line)
+                }
+            };
+            http::run_http(shared, &host, bind_port, startup_line).await
         })
     }
 

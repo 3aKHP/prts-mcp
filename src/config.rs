@@ -54,7 +54,62 @@ pub struct RuntimeConfig {
     /// HTTP layers layer query/header overrides on top per their own rules).
     pub output_channel: OutputChannel,
     pub host: String,
-    pub port: u16,
+    /// Raw PORT env value — binding semantics are per entry profile (TS
+    /// `Number(PORT)` vs GHCR `int(PORT)`), resolved by the HTTP runner.
+    pub port_raw: Option<String>,
+    /// PRTS_DEBUG_TOKEN — debug-endpoint bearer token; unset or empty
+    /// disables the endpoints (JS falsy rule). Never logged.
+    pub debug_token: Option<String>,
+    /// PRTS_METRICS_ENABLED — only the exact string "true" enables metrics
+    /// (no trim/lowercase: TRUE/1/empty are all off).
+    pub metrics_enabled: bool,
+    /// Bundled read-only data fallback (package `data/` layout): resolved
+    /// from `--bundle-root <dir>`, Docker `/app/data`, or the directory
+    /// beside the executable's parent (`bin/` + `data/` package layout).
+    pub bundle_root: Option<PathBuf>,
+}
+
+/// Read-only bundle paths derived from a bundle root (TS BUNDLED_*_PATH).
+#[derive(Debug, Clone)]
+pub struct BundleRoots {
+    pub gamedata: PathBuf,
+    pub levels: PathBuf,
+    pub storyjson_zip: PathBuf,
+}
+
+impl BundleRoots {
+    pub fn of(root: &Path) -> Self {
+        Self {
+            gamedata: root.join("gamedata"),
+            levels: root.join("gamedata-levels"),
+            storyjson_zip: root.join("storyjson").join("zh_CN.zip"),
+        }
+    }
+}
+
+/// Internal `--bundle-root <dir>` launcher argument (npm shims pass it
+/// explicitly; not a public environment variable — docs/04).
+pub fn bundle_root_from_argv() -> Option<PathBuf> {
+    let args: Vec<String> = std::env::args().collect();
+    let idx = args.iter().position(|a| a == "--bundle-root")?;
+    args.get(idx + 1).map(PathBuf::from)
+}
+
+/// Bundle-root resolution order: explicit launcher argument, Docker layout
+/// (`PRTS_MCP_ROOT == "/app"` → `/app/data`), then the native package
+/// layout (`<exe_dir>/../data` — `bin/` beside `data/`). A dev-tree binary
+/// finds no `data/` and gets no bundle, matching the TS dev layout.
+pub fn resolve_bundle_root() -> Option<PathBuf> {
+    if let Some(root) = bundle_root_from_argv() {
+        return Some(root);
+    }
+    if std::env::var("PRTS_MCP_ROOT").as_deref() == Ok("/app") {
+        return Some(PathBuf::from("/app/data"));
+    }
+    let exe = std::env::current_exe().ok()?;
+    let dir = exe.parent()?;
+    let candidate = dir.parent()?.join("data");
+    candidate.is_dir().then_some(candidate)
 }
 
 /// Strict-decimal check for SESSION_IDLE_TIMEOUT_MS: `[+-]?(digits[.digits]? | .digits)(e[+-]?digits)?`
@@ -225,8 +280,18 @@ impl RuntimeConfig {
                 lookup("PRTS_OUTPUT_CHANNEL").as_deref(),
             ),
             host: lookup("HOST").unwrap_or_else(|| "0.0.0.0".to_string()),
-            port: lookup("PORT").and_then(|p| parse_port(&p)).unwrap_or(3000),
+            port_raw: lookup("PORT"),
+            debug_token: lookup("PRTS_DEBUG_TOKEN").filter(|t| !t.is_empty()),
+            metrics_enabled: lookup("PRTS_METRICS_ENABLED").as_deref() == Some("true"),
+            bundle_root: None,
         }
+    }
+
+    /// `from_env` plus the argv-dependent bundle root.
+    pub fn from_env_with_bundle() -> Self {
+        let mut config = Self::from_env();
+        config.bundle_root = resolve_bundle_root();
+        config
     }
 }
 
@@ -237,12 +302,130 @@ fn env_bool_from(lookup: &impl Fn(&str) -> Option<String>, name: &str, default: 
     }
 }
 
-fn parse_port(raw: &str) -> Option<u16> {
-    raw.trim()
-        .parse::<f64>()
-        .ok()
-        .filter(|v| v.fract() == 0.0 && (0.0..=65535.0).contains(v))
-        .map(|v| v as u16)
+/// JS `Number(string)` for the PORT input space: whitespace-trimmed decimal
+/// (with exponent), `0x/0o/0b` literals, `Infinity`, and `""` → 0. Anything
+/// else is NaN. (docs/04: TS profiles keep `Number(PORT)` semantics.)
+pub fn js_parse_number(raw: &str) -> f64 {
+    let trimmed = raw.trim_matches(|c: char| c.is_whitespace() || c == '\u{feff}');
+    if trimmed.is_empty() {
+        return 0.0;
+    }
+    let lower = trimmed.to_ascii_lowercase();
+    if let Some(hex) = lower.strip_prefix("0x") {
+        return if hex.is_empty() || !hex.bytes().all(|b| b.is_ascii_hexdigit()) {
+            f64::NAN
+        } else {
+            i64::from_str_radix(hex, 16)
+                .map(|v| v as f64)
+                .unwrap_or(f64::INFINITY)
+        };
+    }
+    if let Some(oct) = lower.strip_prefix("0o") {
+        return if oct.is_empty() || !oct.bytes().all(|b| (b'0'..=b'7').contains(&b)) {
+            f64::NAN
+        } else {
+            i64::from_str_radix(oct, 8)
+                .map(|v| v as f64)
+                .unwrap_or(f64::INFINITY)
+        };
+    }
+    if let Some(bin) = lower.strip_prefix("0b") {
+        return if bin.is_empty() || !bin.bytes().all(|b| b == b'0' || b == b'1') {
+            f64::NAN
+        } else {
+            i64::from_str_radix(bin, 2)
+                .map(|v| v as f64)
+                .unwrap_or(f64::INFINITY)
+        };
+    }
+    match lower.as_str() {
+        "infinity" | "+infinity" => return f64::INFINITY,
+        "-infinity" => return f64::NEG_INFINITY,
+        _ => {}
+    }
+    // Decimal + exponent; reject strings JS rejects (trailing garbage,
+    // hex-float spellings, underscores).
+    let bytes = trimmed.as_bytes();
+    let mut i = 0;
+    if i < bytes.len() && (bytes[i] == b'+' || bytes[i] == b'-') {
+        i += 1;
+    }
+    let int_digits = {
+        let start = i;
+        while i < bytes.len() && bytes[i].is_ascii_digit() {
+            i += 1;
+        }
+        i - start
+    };
+    let mut frac_digits = 0;
+    if i < bytes.len() && bytes[i] == b'.' {
+        i += 1;
+        let start = i;
+        while i < bytes.len() && bytes[i].is_ascii_digit() {
+            i += 1;
+        }
+        frac_digits = i - start;
+    }
+    if int_digits == 0 && frac_digits == 0 {
+        return f64::NAN;
+    }
+    if i < bytes.len() && (bytes[i] == b'e' || bytes[i] == b'E') {
+        i += 1;
+        if i < bytes.len() && (bytes[i] == b'+' || bytes[i] == b'-') {
+            i += 1;
+        }
+        let start = i;
+        while i < bytes.len() && bytes[i].is_ascii_digit() {
+            i += 1;
+        }
+        if i - start == 0 {
+            return f64::NAN;
+        }
+    }
+    if i != bytes.len() {
+        return f64::NAN;
+    }
+    trimmed.parse::<f64>().unwrap_or(f64::NAN)
+}
+
+/// Bun's listen() interpretation of `Number(PORT)` output, pinned by the
+/// oracle probes: NaN / negative / 0 bind an ephemeral port, fractions
+/// truncate, >65535 clamps to 65535, and nothing exits on a weird value.
+pub fn ts_bind_port(value: f64) -> u16 {
+    if !value.is_finite() || value < 0.0 {
+        return 0;
+    }
+    value.trunc().min(65535.0) as u16
+}
+
+/// Python `int(PORT)` parse failure marker (GHCR profile). Only the
+/// message differs — callers log and exit 1.
+#[derive(Debug, PartialEq, Eq)]
+pub struct PortNotNumeric;
+
+/// Python `int(PORT)` (GHCR profile): `[+-]?digits` with surrounding
+/// whitespace allowed; anything else is a startup error. The value may be
+/// out of socket range — binding then fails and the process exits 1.
+pub fn python_int_port(raw: &str) -> Result<i64, PortNotNumeric> {
+    let trimmed = raw.trim();
+    let body = trimmed
+        .strip_prefix('+')
+        .or_else(|| trimmed.strip_prefix('-'))
+        .unwrap_or(trimmed);
+    if body.is_empty() || !body.bytes().all(|b| b.is_ascii_digit()) {
+        return Err(PortNotNumeric);
+    }
+    trimmed.parse::<i64>().map_err(|_| PortNotNumeric)
+}
+
+/// Windows default data base (pure parsing fixture — docs/04: no Windows
+/// real-machine claim from this Linux host). `LOCALAPPDATA ?? ~/AppData/Local`
+/// uses the value even when empty (JS `??`, not truthiness).
+pub fn windows_default_gamedata(localappdata: Option<&str>, home: &Path) -> PathBuf {
+    let base = localappdata
+        .map(PathBuf::from)
+        .unwrap_or_else(|| home.join("AppData").join("Local"));
+    base.join("prts-mcp").join("gamedata")
 }
 
 #[cfg(test)]
@@ -349,11 +532,69 @@ mod tests {
 
     #[test]
     fn port_uses_number_semantics() {
-        assert_eq!(parse_port("3000"), Some(3000));
-        assert_eq!(parse_port(" 80 "), Some(80));
-        assert_eq!(parse_port("0x10"), None);
-        assert_eq!(parse_port("abc"), None);
-        assert_eq!(parse_port("70000"), None);
+        assert_eq!(js_parse_number("3000"), 3000.0);
+        assert_eq!(js_parse_number(" 3000 "), 3000.0);
+        assert_eq!(js_parse_number("0x10"), 16.0);
+        assert_eq!(js_parse_number("0o17"), 15.0);
+        assert_eq!(js_parse_number("0b101"), 5.0);
+        assert_eq!(js_parse_number("1e2"), 100.0);
+        assert_eq!(js_parse_number("3000.5"), 3000.5);
+        assert_eq!(js_parse_number(""), 0.0);
+        assert!(js_parse_number("abc").is_nan());
+        assert!(js_parse_number("1_000").is_nan());
+        assert_eq!(js_parse_number("Infinity"), f64::INFINITY);
+        // Bun bind interpretation (oracle-pinned).
+        assert_eq!(ts_bind_port(3000.0), 3000);
+        assert_eq!(ts_bind_port(3000.5), 3000);
+        assert_eq!(ts_bind_port(70000.0), 65535);
+        assert_eq!(ts_bind_port(-1.0), 0);
+        assert_eq!(ts_bind_port(f64::NAN), 0);
+        assert_eq!(ts_bind_port(0.0), 0);
+        // GHCR int() semantics.
+        assert_eq!(python_int_port("3000"), Ok(3000));
+        assert_eq!(python_int_port(" 3000 "), Ok(3000));
+        assert_eq!(python_int_port("+3000"), Ok(3000));
+        assert!(python_int_port("3000.5").is_err());
+        assert!(python_int_port("0x10").is_err());
+        assert!(python_int_port("abc").is_err());
+        assert_eq!(python_int_port("70000"), Ok(70000));
+    }
+
+    #[test]
+    fn windows_default_is_a_parsing_fixture() {
+        let home = Path::new("/home/dev");
+        assert_eq!(
+            windows_default_gamedata(Some("C:\\Users\\dev\\AppData\\Local"), home),
+            PathBuf::from("C:\\Users\\dev\\AppData\\Local/prts-mcp/gamedata")
+        );
+        assert_eq!(
+            windows_default_gamedata(None, home),
+            PathBuf::from("/home/dev/AppData/Local/prts-mcp/gamedata")
+        );
+        // JS `??`: an empty LOCALAPPDATA is used as-is, not treated as unset.
+        assert_eq!(
+            windows_default_gamedata(Some(""), home),
+            PathBuf::from("prts-mcp/gamedata")
+        );
+    }
+
+    #[test]
+    fn debug_and_metrics_flags_parse() {
+        let c = cfg(&[
+            ("GAMEDATA_PATH", "/tmp/x"),
+            ("PRTS_DEBUG_TOKEN", "sekrit"),
+            ("PRTS_METRICS_ENABLED", "true"),
+        ]);
+        assert_eq!(c.debug_token.as_deref(), Some("sekrit"));
+        assert!(c.metrics_enabled);
+        // TRUE / 1 / empty are NOT true (no envBool reuse).
+        for bad in ["TRUE", "1", "", "yes", " true"] {
+            let c = cfg(&[("GAMEDATA_PATH", "/tmp/x"), ("PRTS_METRICS_ENABLED", bad)]);
+            assert!(!c.metrics_enabled, "{bad:?} must not enable metrics");
+        }
+        // Empty token disables (JS falsy).
+        let c = cfg(&[("GAMEDATA_PATH", "/tmp/x"), ("PRTS_DEBUG_TOKEN", "")]);
+        assert_eq!(c.debug_token, None);
     }
 
     #[test]

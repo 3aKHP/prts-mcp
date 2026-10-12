@@ -41,6 +41,14 @@ impl LruCache {
         }
     }
 
+    fn total_bytes(&self) -> usize {
+        self.total
+    }
+
+    fn len(&self) -> usize {
+        self.entries.len()
+    }
+
     fn get(&mut self, key: &str) -> Option<Vec<u8>> {
         let pos = *self.index.get(key)?;
         let value = self.entries.remove(pos)?.1;
@@ -82,18 +90,29 @@ impl LruCache {
 use std::sync::Mutex;
 static IMAGE_CACHE: Mutex<Option<LruCache>> = Mutex::new(None);
 
+const IMAGE_CACHE_SLOT: &str = "artwork_mediawiki:image_cache";
+
 fn image_cache_get(artwork_id: &str, variant: &str) -> Option<Vec<u8>> {
     let mut guard = IMAGE_CACHE.lock().expect("image cache lock");
-    guard
-        .get_or_insert_with(LruCache::new)
-        .get(&format!("{artwork_id}|{variant}"))
+    let cache = guard.get_or_insert_with(LruCache::new);
+    let hit = cache.get(&format!("{artwork_id}|{variant}"));
+    if hit.is_some() {
+        crate::diagnostics::record_hit(IMAGE_CACHE_SLOT);
+    } else {
+        crate::diagnostics::record_miss(IMAGE_CACHE_SLOT);
+    }
+    hit
 }
 
 fn image_cache_put(artwork_id: &str, variant: &str, data: Vec<u8>) {
     let mut guard = IMAGE_CACHE.lock().expect("image cache lock");
-    guard
-        .get_or_insert_with(LruCache::new)
-        .put(format!("{artwork_id}|{variant}"), data);
+    let cache = guard.get_or_insert_with(LruCache::new);
+    cache.put(format!("{artwork_id}|{variant}"), data);
+    crate::diagnostics::record_bytes(
+        IMAGE_CACHE_SLOT,
+        cache.total_bytes() as u64,
+        cache.len() as u64,
+    );
 }
 
 // ---------------------------------------------------------------------------
