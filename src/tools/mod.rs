@@ -3,11 +3,22 @@
 pub mod gamedata_tools;
 pub mod output;
 pub mod story_tools;
+pub mod wiki_tools;
 pub mod zodish;
+
+use std::future::Future;
+use std::pin::Pin;
 
 use serde_json::Value;
 
 pub use output::OutputChannel;
+
+/// A tool call's future: the Wiki/image dispatchers await network I/O, so the
+/// dispatch entry is an async fn behind a boxed future (TS handlers are
+/// async functions on the same boundary).
+pub type DispatchFuture<'a> = Pin<Box<dyn Future<Output = DispatchResult> + Send + 'a>>;
+
+pub type DispatchFn = for<'a> fn(&'a AppHandle, &'a Value) -> DispatchFuture<'a>;
 
 /// A registered tool: name + description + input schema published verbatim
 /// from the oracle's tools/list capture (contracts/cases/golden), plus the
@@ -16,7 +27,7 @@ pub use output::OutputChannel;
 pub struct ToolEntry {
     pub name: &'static str,
     pub declaration: Value,
-    pub dispatch: fn(&AppHandle, &Value) -> DispatchResult,
+    pub dispatch: DispatchFn,
 }
 
 pub enum DispatchResult {
@@ -79,8 +90,27 @@ impl AppHandle {
 }
 
 /// Embed a tool declaration captured from the oracle (name/description/
-/// inputSchema with the captured key order).
+/// inputSchema with the captured key order) and wrap a synchronous
+/// dispatcher into the boxed-future slot.
 macro_rules! tool {
+    ($name:literal, $dispatch:path) => {
+        ToolEntry {
+            name: $name,
+            declaration: serde_json::from_str(include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/src/tools/schemas/",
+                $name,
+                ".tool.json"
+            )))
+            .expect(concat!("embedded declaration parses: ", $name)),
+            dispatch: |app, args| Box::pin(std::future::ready(($dispatch)(app, args))),
+        }
+    };
+}
+
+/// Same declaration embedding, but `$dispatch` already returns the boxed
+/// future itself (async Wiki dispatchers).
+macro_rules! tool_async {
     ($name:literal, $dispatch:path) => {
         ToolEntry {
             name: $name,
@@ -98,6 +128,10 @@ macro_rules! tool {
 
 pub fn registry() -> Vec<ToolEntry> {
     vec![
+        // Oracle tools/list order: the two Wiki tools register FIRST (TS
+        // server.ts registers prts tools before gamedata/story/artwork).
+        tool_async!("search_prts", wiki_tools::search_prts),
+        tool_async!("prts_page", wiki_tools::prts_page),
         tool!(
             "get_operator_archives",
             gamedata_tools::get_operator_archives

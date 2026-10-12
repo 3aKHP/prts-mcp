@@ -1,0 +1,351 @@
+{
+  "rules": [
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "parse",
+          "page": "测试页面",
+          "prop": "text",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "parse": {
+            "text": {
+              "*": "<style>.x{color:red}</style><p>第一段 &amp; 引号&quot;</p><script>window.evil()</script><p>第二段&#20013;文</p>\n\n\n\n<p>第三段</p>"
+            }
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "parse",
+          "page": "测试页面",
+          "prop": "text",
+          "section": "2",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "parse": {
+            "text": {
+              "*": "<h2>第二节</h2><p>内容</p>"
+            }
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "parse",
+          "page": "不存在页面",
+          "prop": "text",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "error": {
+            "info": "The page you specified doesn't exist."
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "parse",
+          "page": "空白页面",
+          "prop": "text",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "parse": {
+            "text": {
+              "*": ""
+            }
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "parse",
+          "page": "目录页面",
+          "prop": "sections",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "parse": {
+            "sections": [
+              {
+                "index": "1",
+                "level": "2",
+                "line": "基础",
+                "fromtitle": "目录页面"
+              },
+              {
+                "index": "2",
+                "level": "3",
+                "line": "进阶",
+                "fromtitle": "目录页面"
+              },
+              {
+                "index": "T-1",
+                "level": "2",
+                "line": "嵌入节",
+                "fromtitle": "模板:信息"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "parse",
+          "page": "无目录页面",
+          "prop": "sections",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "parse": {
+            "sections": []
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "parse",
+          "page": "分类页面",
+          "prop": "categories",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "parse": {
+            "categories": [
+              {
+                "*": "干员"
+              },
+              {
+                "*": "主角"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "parse",
+          "page": "无分类页面",
+          "prop": "categories",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "parse": {
+            "categories": []
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "parse",
+          "page": "链出页面",
+          "prop": "links",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "parse": {
+            "links": [
+              {
+                "*": "链接一"
+              },
+              {
+                "*": "链接二"
+              },
+              {
+                "*": "链接三"
+              },
+              {
+                "*": "链接四"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "parse",
+          "page": "链出正好",
+          "prop": "links",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "parse": {
+            "links": [
+              {
+                "*": "甲"
+              },
+              {
+                "*": "乙"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "parse",
+          "page": "无链出页面",
+          "prop": "links",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "parse": {
+            "links": []
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "query",
+          "list": "backlinks",
+          "bltitle": "被引页面",
+          "bllimit": "30",
+          "blnamespace": "0",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "query": {
+            "backlinks": [
+              {
+                "title": "引用一"
+              },
+              {
+                "title": "引用二"
+              }
+            ]
+          },
+          "continue": {
+            "blcontinue": "0|x",
+            "continue": "gblcontinue||"
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "query",
+          "list": "backlinks",
+          "bltitle": "被引单页",
+          "bllimit": "1",
+          "blnamespace": "0",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "query": {
+            "backlinks": [
+              {
+                "title": "唯一引用"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "parse",
+          "page": "丢失目录页",
+          "prop": "sections",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "error": {
+            "info": "missing"
+          }
+        }
+      }
+    }
+  ],
+  "default": {
+    "status": 404,
+    "json": {
+      "error": {
+        "code": "replay-unmatched",
+        "info": "no replay rule matched this request"
+      }
+    }
+  }
+}

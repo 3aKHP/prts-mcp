@@ -332,7 +332,8 @@ async fn handle_modern(
             worst = worst.max(StatusHint::BadRequest);
             continue;
         }
-        let dispatched = dispatch::handle_http_modern(message, channel, &shared.app, &shared.tools);
+        let dispatched =
+            dispatch::handle_http_modern(message, channel, &shared.app, &shared.tools).await;
         let status = dispatched.status_hint;
         match dispatched.outcome {
             WireOutcome::Response(v) => {
@@ -392,7 +393,8 @@ async fn handle_legacy_post(
                     channel,
                     &shared.app,
                     &shared.tools,
-                );
+                )
+                .await;
                 match dispatched.status_hint {
                     StatusHint::BadRequest => {
                         // e.g. double initialize: plain JSON 400, no SSE.
@@ -469,7 +471,7 @@ async fn run_fresh_initialize(
     crate::log_info(&format!("Session {session_id} initialized."));
     let mut state = ConnectionState::default();
     let dispatched =
-        dispatch::handle_http_legacy(&mut state, body, channel, &shared.app, &shared.tools);
+        dispatch::handle_http_legacy(&mut state, body, channel, &shared.app, &shared.tools).await;
     shared.sessions.set_state(&session_id, state).await;
     match dispatched.outcome {
         WireOutcome::Response(v) => sse_response(&[v], Some(session_id)),

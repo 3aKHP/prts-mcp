@@ -129,7 +129,7 @@ fn modernize_result(mut result: Value, include_cache_fields: bool) -> Value {
 }
 
 /// Handle one already-classified legacy message on an established connection.
-fn handle_legacy_message(
+async fn handle_legacy_message(
     state: &mut ConnectionState,
     message: &Value,
     channel: OutputChannel,
@@ -226,7 +226,7 @@ fn handle_legacy_message(
                     status_hint: StatusHint::Ok,
                 };
             };
-            let result = (tool.dispatch)(app, &arguments);
+            let result = (tool.dispatch)(app, &arguments).await;
             let rendered = match result {
                 crate::tools::DispatchResult::Outcome(outcome) => outcome.render(channel),
                 crate::tools::DispatchResult::RpcError(code, message) => {
@@ -299,7 +299,7 @@ fn validate_modern_envelope(message: &Value) -> Result<(), (Value, StatusHint)> 
 }
 
 /// Handle a modern-envelope message (stateless).
-fn handle_modern_message(
+async fn handle_modern_message(
     message: &Value,
     channel: OutputChannel,
     app: &AppHandle,
@@ -385,7 +385,7 @@ fn handle_modern_message(
                     status_hint: StatusHint::Ok,
                 };
             };
-            let result = (tool.dispatch)(app, &arguments);
+            let result = (tool.dispatch)(app, &arguments).await;
             let rendered = match result {
                 crate::tools::DispatchResult::Outcome(outcome) => outcome.render(channel),
                 crate::tools::DispatchResult::RpcError(code, message) => {
@@ -417,7 +417,7 @@ fn handle_modern_message(
 /// Entry point for stdio: one line = one message; era follows the observed
 /// rules (modern envelope works on a legacy connection; a legacy initialize
 /// after modern is established is rejected with -32022).
-pub fn handle_stdio_message(
+pub async fn handle_stdio_message(
     state: &mut ConnectionState,
     message: &Value,
     channel: OutputChannel,
@@ -426,7 +426,7 @@ pub fn handle_stdio_message(
 ) -> Option<Value> {
     if jsonrpc::has_modern_envelope(message) {
         state.modern_established = true;
-        let dispatched = handle_modern_message(message, channel, app, tools);
+        let dispatched = handle_modern_message(message, channel, app, tools).await;
         return match dispatched.outcome {
             WireOutcome::Response(v) => Some(v),
             WireOutcome::Accepted => None,
@@ -446,7 +446,7 @@ pub fn handle_stdio_message(
             Some(json!({ "supported": [MODERN_PROTOCOL_VERSION], "requested": requested })),
         ));
     }
-    let dispatched = handle_legacy_message(state, message, channel, app, tools);
+    let dispatched = handle_legacy_message(state, message, channel, app, tools).await;
     match dispatched.outcome {
         WireOutcome::Response(v) => Some(v),
         WireOutcome::Accepted => None,
@@ -454,24 +454,24 @@ pub fn handle_stdio_message(
 }
 
 /// Legacy HTTP entry point on a live session.
-pub fn handle_http_legacy(
+pub async fn handle_http_legacy(
     state: &mut ConnectionState,
     message: &Value,
     channel: OutputChannel,
     app: &AppHandle,
     tools: &[ToolEntry],
 ) -> Dispatched {
-    handle_legacy_message(state, message, channel, app, tools)
+    handle_legacy_message(state, message, channel, app, tools).await
 }
 
 /// Modern HTTP entry point (stateless).
-pub fn handle_http_modern(
+pub async fn handle_http_modern(
     message: &Value,
     channel: OutputChannel,
     app: &AppHandle,
     tools: &[ToolEntry],
 ) -> Dispatched {
-    handle_modern_message(message, channel, app, tools)
+    handle_modern_message(message, channel, app, tools).await
 }
 
 /// JSON of a Map helper used by tests to keep imports tidy.

@@ -1,0 +1,76 @@
+{
+  "rules": [
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "query",
+          "list": "search",
+          "srsearch": "http500",
+          "srlimit": "10",
+          "srnamespace": "0",
+          "srinfo": "totalhits",
+          "srprop": "snippet|redirecttitle",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 500,
+        "body": "boom"
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "query",
+          "list": "search",
+          "srsearch": "badjson",
+          "srlimit": "10",
+          "srnamespace": "0",
+          "srinfo": "totalhits",
+          "srprop": "snippet|redirecttitle",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "body": "this is not json",
+        "content_type": "application/json"
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "query",
+          "list": "search",
+          "srsearch": "slow",
+          "srlimit": "10",
+          "srnamespace": "0",
+          "srinfo": "totalhits",
+          "srprop": "snippet|redirecttitle",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "query": {
+            "search": []
+          }
+        },
+        "delay_ms": 15500
+      }
+    }
+  ],
+  "default": {
+    "status": 404,
+    "json": {
+      "error": {
+        "code": "replay-unmatched",
+        "info": "no replay rule matched this request"
+      }
+    }
+  }
+}

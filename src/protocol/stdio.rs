@@ -42,7 +42,7 @@ pub async fn run_stdio(app: AppHandle, tools: Vec<ToolEntry>, channel: OutputCha
             continue;
         }
         if let Some(response) =
-            dispatch::handle_stdio_message(&mut state, &message, channel, &app, &tools)
+            dispatch::handle_stdio_message(&mut state, &message, channel, &app, &tools).await
         {
             let mut payload = serde_json::to_string(&response).unwrap_or_default();
             payload.push('\n');

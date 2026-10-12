@@ -15,6 +15,8 @@
  * artifacts/runs/. Exit code is non-zero when any case fails.
  */
 import { spawn } from "node:child_process";
+import { startWikiReplay, ensureWikiCerts, WIKI_PROXY_DIR } from "./wiki-replay.mjs";
+import { join as pathJoin } from "node:path";
 import { createServer } from "node:net";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -36,7 +38,7 @@ const RUST_BIN = flagValue("--rust-bin")
   ?? [join(ROOT, "target", "release", "prts-mcp-rust"), join(ROOT, "target", "debug", "prts-mcp-rust")].find((p) => existsSync(p))
   ?? null;
 
-if (!PHASE_ARG && !flag("--update-golden")) {
+if (!PHASE_ARG && !flag("--update-golden") && !flag("--live")) {
   console.error("usage: node tools/verify.mjs --phase Pn | --all | --live | --bench | --update-golden [--only substr] [--rust-bin path]");
   process.exit(2);
 }
@@ -91,6 +93,42 @@ function childEnv(dataset, extra = {}) {
     HOST: "127.0.0.1",
     ...extra,
   };
+}
+
+// Wiki replay servers, one per script name (port is stable while cases run).
+const wikiReplays = new Map();
+async function wikiReplayFor(script) {
+  if (!wikiReplays.has(script)) {
+    wikiReplays.set(script, await startWikiReplay(script));
+  }
+  return wikiReplays.get(script);
+}
+async function closeWikiReplays() {
+  for (const replay of wikiReplays.values()) await replay.close();
+  wikiReplays.clear();
+}
+
+/**
+ * Case-declared network posture for wiki/image cases:
+ *   wiki_replay: "<script>"  → route the child through the MITM replay
+ *   wiki_dead_proxy: true    → proxy env points at a refused port
+ * The envs are the same for both runtimes: bun wants lowercase https_proxy
+ * and NODE_EXTRA_CA_CERTS; Rust reqwest reads the proxy envs itself and
+ * honors NODE_EXTRA_CA_CERTS for parity.
+ */
+async function wikiNetworkEnv(c) {
+  if (c.wiki_dead_proxy) {
+    return { https_proxy: "http://127.0.0.1:9", HTTPS_PROXY: "http://127.0.0.1:9" };
+  }
+  if (c.wiki_replay) {
+    const replay = await wikiReplayFor(c.wiki_replay);
+    return {
+      https_proxy: `http://127.0.0.1:${replay.port}`,
+      HTTPS_PROXY: `http://127.0.0.1:${replay.port}`,
+      NODE_EXTRA_CA_CERTS: replay.caPath,
+    };
+  }
+  return {};
 }
 
 async function startHttp(kind, dataset, extraEnv = {}) {
@@ -165,12 +203,12 @@ function parseBody(bodyText, contentType) {
   try { return { sse: false, body: JSON.parse(bodyText) }; } catch { return { sse: false, unparsable: bodyText }; }
 }
 
-async function httpPost(origin, path, body, headers = {}) {
+async function httpPost(origin, path, body, headers = {}, timeoutMs = 15000) {
   const res = await fetch(`${origin}${path}`, {
     method: "POST",
     headers: { "content-type": "application/json", accept: "application/json, text/event-stream", ...headers },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(15000),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   const text = await res.text();
   const outHeaders = {};
@@ -245,9 +283,14 @@ async function runCase(kind, c) {
   const channelEnv = c.channel && c.channel !== "content" && c.transport === "stdio"
     ? { PRTS_OUTPUT_CHANNEL: c.channel } : {};
   const dataset = c.dataset ?? "minimal-gamedata-v1";
+  const wikiEnv = await wikiNetworkEnv(c);
+  const withWiki = (extra = {}) => ({ ...extra, ...wikiEnv });
+  // Cases whose tool waits out its own upstream timeout (wiki.search.timeout)
+  // need a longer runner budget than the default 15 s.
+  const caseTimeout = c.timeout_ms ?? 15000;
 
   if (c.transport === "http") {
-    const extraEnv = { ...channelEnv, ...(c.env ?? {}) };
+    const extraEnv = withWiki({ ...channelEnv, ...(c.env ?? {}) });
     const server = await startHttp(kind, dataset, extraEnv);
     try {
       const query = c.transport_option === "query-channel" ? `?output_channel=${c.channel}` : "";
@@ -261,28 +304,28 @@ async function runCase(kind, c) {
           // carries an unknown session id the server must strip.
           const res = await httpPost(server.origin, path, c.request, {
             ...headers, "mcp-session-id": "00000000-0000-4000-8000-000000000000",
-          });
+          }, caseTimeout);
           return normalizeObservable(normalizeHttp(res, c, c.request.id), c, dataset);
         }
         if (c.request.method === "initialize") {
           // The case's observable is the initialize response itself — it IS
           // the handshake; no pre-established session.
-          const res = await httpPost(server.origin, path, c.request, headers);
+          const res = await httpPost(server.origin, path, c.request, headers, caseTimeout);
           return normalizeObservable(normalizeHttp(res, c, c.request.id), c, dataset);
         }
-        const init = await httpPost(server.origin, path, LEGACY_INIT("2025-03-26", 9001), headers);
+        const init = await httpPost(server.origin, path, LEGACY_INIT("2025-03-26", 9001), headers, caseTimeout);
         const sid = init.headers["mcp-session-id"];
         if (!sid) throw new Error("no session id from initialize");
-        await httpPost(server.origin, path, INITIALIZED, { "mcp-session-id": sid });
+        await httpPost(server.origin, path, INITIALIZED, { "mcp-session-id": sid }, caseTimeout);
         if (c.wait_ms) await new Promise((r) => setTimeout(r, c.wait_ms));
         const headers2 = { ...headers, "mcp-session-id": sid };
         if (c.env?.DIFF_FORCE_UNKNOWN_SESSION === "1") {
           // Stale-session probe: the observable is the 404 the server must
           // return for a non-initialize request carrying an unknown id.
-          const res = await httpPost(server.origin, path, c.request, { "mcp-session-id": "00000000-0000-4000-8000-000000000000" });
+          const res = await httpPost(server.origin, path, c.request, { "mcp-session-id": "00000000-0000-4000-8000-000000000000" }, caseTimeout);
           return normalizeObservable(normalizeHttp(res, c, c.request.id), c, dataset);
         }
-        const res = await httpPost(server.origin, path, c.request, headers2);
+        const res = await httpPost(server.origin, path, c.request, headers2, caseTimeout);
         return normalizeObservable(normalizeHttp(res, c, c.request.id), c, dataset);
       }
       // modern
@@ -297,7 +340,7 @@ async function runCase(kind, c) {
         // the request must NOT be silently downgraded to the legacy router.
         req = c.request;
       }
-      const res = await httpPost(server.origin, path, req, mHeaders);
+      const res = await httpPost(server.origin, path, req, mHeaders, caseTimeout);
       return normalizeObservable(normalizeHttp(res, c, c.request.id), c, dataset);
     } finally {
       server.child.kill();
@@ -306,7 +349,7 @@ async function runCase(kind, c) {
   }
 
   // stdio
-  const proc = startStdio(kind, dataset, channelEnv);
+  const proc = startStdio(kind, dataset, withWiki(channelEnv));
   try {
     if (c.era === "legacy" && c.request.method !== "initialize") {
       stdioSend(proc.child, LEGACY_INIT("2024-11-05", 9001));
@@ -320,7 +363,7 @@ async function runCase(kind, c) {
     stdioSend(proc.child, request);
     let response;
     try {
-      response = await stdioRecv(proc.child, c.request.id);
+      response = await stdioRecv(proc.child, c.request.id, caseTimeout);
     } catch (err) {
       writeFileSync("/tmp/stdio-hang-stderr.log", proc.stderr());
       writeFileSync("/tmp/stdio-hang-pollution.log", proc.stdoutPollution());
@@ -472,7 +515,13 @@ async function updateGolden() {
   mkdirSync(join(CASES, "golden"), { recursive: true });
   let n = 0;
   for (const c of cases) {
-    const observed = await runCase("ts", c);
+    let observed;
+    try {
+      observed = await runCase("ts", c);
+    } catch (err) {
+      console.log(`golden ${c.id} FAILED: ${String(err?.message ?? err).slice(0, 200)}`);
+      continue;
+    }
     const golden = {
       case: c.id,
       source: "ts-oracle",
@@ -681,14 +730,72 @@ async function differential(phase) {
 }
 
 // ---------------------------------------------------------------------------
+// Live interop (opt-in): TS and Rust both hit the real public wiki; the
+// comparison is TS-vs-Rust on the same live data (no goldens — live content
+// changes over time). Network unavailability is `blocked`, never `fail`.
+// ---------------------------------------------------------------------------
+
+async function liveMode() {
+  let cases = MANIFEST.cases.filter((c) => c.live);
+  if (ONLY) cases = cases.filter((c) => c.id.includes(ONLY));
+  if (cases.length === 0) {
+    console.log("live: no live cases defined — not-run (nothing claimed)");
+    return 0;
+  }
+  if (!RUST_BIN) {
+    console.error("live: no Rust binary found");
+    return 2;
+  }
+  const dir = artifactDir();
+  const results = [];
+  let pass = 0, fail = 0, blocked = 0;
+  for (const c of cases) {
+    try {
+      const tsObserved = await runCase("ts", c);
+      const rustObserved = await runCase("rust", c);
+      writeJson(join(dir, `${c.id}.ts.json`), tsObserved);
+      writeJson(join(dir, `${c.id}.rust.json`), rustObserved);
+      const diffs = compareObservables(tsObserved, rustObserved, c);
+      if (diffs.length === 0) {
+        pass++;
+        results.push({ id: c.id, status: "pass" });
+        console.log(`ok   ${c.id} (live)`);
+      } else {
+        fail++;
+        writeJson(join(dir, `${c.id}.live-diff.json`), diffs);
+        results.push({ id: c.id, status: "fail", diffs });
+        console.log(`FAIL ${c.id}: ${diffs.length} live diffs → ${join(dir, `${c.id}.live-diff.json`)}`);
+      }
+    } catch (err) {
+      blocked++;
+      results.push({ id: c.id, status: "blocked", reason: String(err?.message ?? err).slice(0, 300) });
+      console.log(`BLOCKED ${c.id}: ${String(err?.message ?? err).slice(0, 160)}`);
+    }
+  }
+  const report = {
+    mode: "live-interop",
+    command: `node tools/verify.mjs ${args.join(" ")}`,
+    started_at: new Date().toISOString(),
+    ts: { runtime: `${TS_RUNTIME} ${TS_RUNTIME === "bun" ? BUN_VERSION : process.version}`, server_version: SERVER_VERSION },
+    rust: RUST_BIN,
+    counts: { total: cases.length, pass, fail, blocked, not_run: 0 },
+    artifacts_dir: dir,
+    results,
+  };
+  writeJson(join(dir, "live.json"), report);
+  console.log(`\nlive: ${pass}/${cases.length} pass, ${fail} fail, ${blocked} blocked (offline ⇒ blocked, never counted as pass)`);
+  console.log(`artifacts: ${dir}`);
+  return fail === 0 ? 0 : 1;
+}
+
+// ---------------------------------------------------------------------------
 
 let exitCode;
 if (flag("--update-golden")) {
   await updateGolden();
   exitCode = 0;
 } else if (PHASE_ARG === "--live" || flag("--live")) {
-  console.log("live: no live cases defined in this phase — not-run (nothing claimed)");
-  exitCode = 0;
+  exitCode = await liveMode();
 } else if (flag("--bench")) {
   console.log("bench: no bench cases defined in this phase — not-run (nothing claimed)");
   exitCode = 0;
@@ -697,4 +804,5 @@ if (flag("--update-golden")) {
 } else {
   exitCode = await differential(PHASE_ARG);
 }
+await closeWikiReplays();
 process.exit(exitCode);

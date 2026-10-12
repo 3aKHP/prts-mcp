@@ -150,7 +150,11 @@ impl Fixture {
             .into_iter()
             .find(|t| t.name == name)
             .unwrap_or_else(|| panic!("tool {name} registered"));
-        match (tool.dispatch)(&self.handle, &args) {
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .build()
+            .expect("test runtime");
+        let result = rt.block_on(async { (tool.dispatch)(&self.handle, &args).await });
+        match result {
             prts_mcp_rust::tools::DispatchResult::Outcome(outcome) => outcome
                 .render(OutputChannel::Content)["content"][0]["text"]
                 .as_str()

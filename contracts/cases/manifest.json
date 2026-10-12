@@ -6815,6 +6815,1654 @@
       "normalizations": [
         "bind-session-id"
       ]
+    },
+    {
+      "id": "wiki.search.default",
+      "contract": "TOOL-search_prts",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9901,
+        "params": {
+          "name": "search_prts",
+          "arguments": {
+            "query": "阿米娅"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "search.json"
+    },
+    {
+      "id": "wiki.search.title-mode",
+      "contract": "TOOL-search_prts",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9902,
+        "params": {
+          "name": "search_prts",
+          "arguments": {
+            "query": "罗德岛",
+            "search_mode": "title"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "search.json"
+    },
+    {
+      "id": "wiki.search.no-filter",
+      "contract": "TOOL-search_prts",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9903,
+        "params": {
+          "name": "search_prts",
+          "arguments": {
+            "query": "数据页",
+            "filter_technical": false
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "search.json"
+    },
+    {
+      "id": "wiki.search.limit-clamp",
+      "contract": "TOOL-search_prts",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9904,
+        "params": {
+          "name": "search_prts",
+          "arguments": {
+            "query": "多个结果",
+            "limit": 2
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "search.json"
+    },
+    {
+      "id": "wiki.search.empty",
+      "contract": "TOOL-search_prts",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9905,
+        "params": {
+          "name": "search_prts",
+          "arguments": {
+            "query": "不存在的词条xyzzy"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "search.json"
+    },
+    {
+      "id": "wiki.search.redirect-follow",
+      "contract": "TOOL-search_prts",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9906,
+        "params": {
+          "name": "search_prts",
+          "arguments": {
+            "query": "重定向一"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "search.json"
+    },
+    {
+      "id": "wiki.search.redirect-fail-open",
+      "contract": "TOOL-search_prts",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9907,
+        "params": {
+          "name": "search_prts",
+          "arguments": {
+            "query": "重定向二"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "search.json"
+    },
+    {
+      "id": "wiki.search.redirecttitle-present",
+      "contract": "TOOL-search_prts",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9908,
+        "params": {
+          "name": "search_prts",
+          "arguments": {
+            "query": "重定向三"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "search.json"
+    },
+    {
+      "id": "wiki.search.limit-too-small",
+      "contract": "TOOL-search_prts",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9909,
+        "params": {
+          "name": "search_prts",
+          "arguments": {
+            "query": "x",
+            "limit": 0
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "search.json"
+    },
+    {
+      "id": "wiki.search.limit-too-big",
+      "contract": "TOOL-search_prts",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9910,
+        "params": {
+          "name": "search_prts",
+          "arguments": {
+            "query": "x",
+            "limit": 21
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "search.json"
+    },
+    {
+      "id": "wiki.search.limit-float",
+      "contract": "TOOL-search_prts",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9911,
+        "params": {
+          "name": "search_prts",
+          "arguments": {
+            "query": "x",
+            "limit": 2.5
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "search.json"
+    },
+    {
+      "id": "wiki.search.bad-mode",
+      "contract": "TOOL-search_prts",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9912,
+        "params": {
+          "name": "search_prts",
+          "arguments": {
+            "query": "x",
+            "search_mode": "weird"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "search.json"
+    },
+    {
+      "id": "wiki.search.query-missing",
+      "contract": "TOOL-search_prts",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9913,
+        "params": {
+          "name": "search_prts",
+          "arguments": {}
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "search.json"
+    },
+    {
+      "id": "wiki.search.query-type",
+      "contract": "TOOL-search_prts",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9914,
+        "params": {
+          "name": "search_prts",
+          "arguments": {
+            "query": 123
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "search.json"
+    },
+    {
+      "id": "wiki.search.filter-type",
+      "contract": "TOOL-search_prts",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9915,
+        "params": {
+          "name": "search_prts",
+          "arguments": {
+            "query": "x",
+            "filter_technical": "yes"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "search.json"
+    },
+    {
+      "id": "wiki.search.extra-field",
+      "contract": "TOOL-search_prts",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9916,
+        "params": {
+          "name": "search_prts",
+          "arguments": {
+            "query": "阿米娅",
+            "extra": 1
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "search.json"
+    },
+    {
+      "id": "wiki.search.channel-structured",
+      "contract": "TOOL-search_prts",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "stdio",
+      "era": "modern",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9917,
+        "params": {
+          "name": "search_prts",
+          "arguments": {
+            "query": "阿米娅"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ],
+      "channel": "structured",
+      "wiki_replay": "search.json"
+    },
+    {
+      "id": "wiki.search.channel-both",
+      "contract": "TOOL-search_prts",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "stdio",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9918,
+        "params": {
+          "name": "search_prts",
+          "arguments": {
+            "query": "阿米娅"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "channel": "both",
+      "wiki_replay": "search.json"
+    },
+    {
+      "id": "wiki.search.http500",
+      "contract": "TOOL-search_prts",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9919,
+        "params": {
+          "name": "search_prts",
+          "arguments": {
+            "query": "http500"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "errs.json"
+    },
+    {
+      "id": "wiki.search.bad-json",
+      "contract": "TOOL-search_prts",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9920,
+        "params": {
+          "name": "search_prts",
+          "arguments": {
+            "query": "badjson"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "errs.json"
+    },
+    {
+      "id": "wiki.search.dead-proxy",
+      "contract": "TOOL-search_prts",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9921,
+        "params": {
+          "name": "search_prts",
+          "arguments": {
+            "query": "阿米娅"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_dead_proxy": true
+    },
+    {
+      "id": "wiki.search.timeout",
+      "contract": "TOOL-search_prts",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9922,
+        "params": {
+          "name": "search_prts",
+          "arguments": {
+            "query": "slow"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "errs.json",
+      "timeout_ms": 25000
+    },
+    {
+      "id": "wiki.page.read.basic",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9923,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "测试页面",
+            "action": "read"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "page.json"
+    },
+    {
+      "id": "wiki.page.read.section",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9924,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "测试页面",
+            "action": "read",
+            "section_index": 2
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "page.json"
+    },
+    {
+      "id": "wiki.page.read.section-null",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9925,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "测试页面",
+            "action": "read",
+            "section_index": null
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "page.json"
+    },
+    {
+      "id": "wiki.page.read.missing",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9926,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "不存在页面",
+            "action": "read"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "page.json"
+    },
+    {
+      "id": "wiki.page.read.empty",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9927,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "空白页面",
+            "action": "read"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "page.json"
+    },
+    {
+      "id": "wiki.page.sections.basic",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9928,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "目录页面",
+            "action": "sections"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "page.json"
+    },
+    {
+      "id": "wiki.page.sections.empty",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9929,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "无目录页面",
+            "action": "sections"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "page.json"
+    },
+    {
+      "id": "wiki.page.sections.missing",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9930,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "丢失目录页",
+            "action": "sections"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "page.json"
+    },
+    {
+      "id": "wiki.page.categories.basic",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9931,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "分类页面",
+            "action": "categories"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "page.json"
+    },
+    {
+      "id": "wiki.page.categories.empty",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9932,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "无分类页面",
+            "action": "categories"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "page.json"
+    },
+    {
+      "id": "wiki.page.links.outbound-more",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9933,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "链出页面",
+            "action": "links",
+            "limit": 2
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "page.json"
+    },
+    {
+      "id": "wiki.page.links.outbound-exact",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9934,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "链出正好",
+            "action": "links"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "page.json"
+    },
+    {
+      "id": "wiki.page.links.outbound-empty",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9935,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "无链出页面",
+            "action": "links"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "page.json"
+    },
+    {
+      "id": "wiki.page.links.inbound-continue",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9936,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "被引页面",
+            "action": "links",
+            "direction": "inbound"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "page.json"
+    },
+    {
+      "id": "wiki.page.links.inbound-limit",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9937,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "被引单页",
+            "action": "links",
+            "direction": "inbound",
+            "limit": 1
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "page.json"
+    },
+    {
+      "id": "wiki.page.action-missing",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9938,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "x"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "page.json"
+    },
+    {
+      "id": "wiki.page.action-invalid",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9939,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "x",
+            "action": "edit"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "page.json"
+    },
+    {
+      "id": "wiki.page.title-missing",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9940,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "action": "read"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "page.json"
+    },
+    {
+      "id": "wiki.page.direction-invalid",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9941,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "x",
+            "action": "links",
+            "direction": "sideways"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "page.json"
+    },
+    {
+      "id": "wiki.page.read.error-http",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9942,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "测试页面",
+            "action": "read"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_dead_proxy": true
+    },
+    {
+      "id": "wiki.page.read.channel-structured",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "stdio",
+      "era": "modern",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9943,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "测试页面",
+            "action": "read"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ],
+      "channel": "structured",
+      "wiki_replay": "page.json"
+    },
+    {
+      "id": "wiki.page.sections.stdio-legacy",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "stdio",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9944,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "目录页面",
+            "action": "sections"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "page.json"
+    },
+    {
+      "id": "wiki.page.categories.modern",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "modern",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9945,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "分类页面",
+            "action": "categories"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id",
+        "map-version-d001"
+      ],
+      "wiki_replay": "page.json"
+    },
+    {
+      "id": "wiki.tpl.flat",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9946,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "道具页",
+            "action": "template"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "template.json"
+    },
+    {
+      "id": "wiki.tpl.positional",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9947,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "敌人页",
+            "action": "template"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "template.json"
+    },
+    {
+      "id": "wiki.tpl.comment-in-value",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9948,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "注释页",
+            "action": "template"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "template.json"
+    },
+    {
+      "id": "wiki.tpl.needs-render",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9949,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "嵌套页",
+            "action": "template"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "template.json"
+    },
+    {
+      "id": "wiki.tpl.mixed",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9950,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "混合页",
+            "action": "template"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "template.json"
+    },
+    {
+      "id": "wiki.tpl.no-templates",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9951,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "无模板页",
+            "action": "template"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "template.json"
+    },
+    {
+      "id": "wiki.tpl.missing-page",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9952,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "模板不存在",
+            "action": "template"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "template.json"
+    },
+    {
+      "id": "wiki.tpl.no-parsetree",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9953,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "空树页面",
+            "action": "template"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "template.json"
+    },
+    {
+      "id": "wiki.tpl.bad-xml",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9954,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "坏XML页",
+            "action": "template"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "template.json"
+    },
+    {
+      "id": "wiki.tpl.unsupported-node",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9955,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "坏节点页",
+            "action": "template"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "template.json"
+    },
+    {
+      "id": "wiki.tpl.render-empty",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9956,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "空渲染页",
+            "action": "template"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "template.json"
+    },
+    {
+      "id": "wiki.tpl.render-scramble",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9957,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "乱序页",
+            "action": "template"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "template.json"
+    },
+    {
+      "id": "wiki.tpl.render-drop-marker",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9958,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "缺标记页",
+            "action": "template"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "template.json"
+    },
+    {
+      "id": "wiki.tpl.render-bad-shape",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9959,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "错形页",
+            "action": "template"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "template.json"
+    },
+    {
+      "id": "wiki.tpl.render-error-info",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9960,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "渲染失败页",
+            "action": "template"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "template.json"
+    },
+    {
+      "id": "wiki.tpl.render-network",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9961,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "渲染网络页",
+            "action": "template"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "template.json"
+    },
+    {
+      "id": "wiki.tpl.stdio-legacy",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "stdio",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9962,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "混合页",
+            "action": "template"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "wiki_replay": "template.json"
+    },
+    {
+      "id": "live.wiki.search",
+      "contract": "TOOL-search_prts",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9963,
+        "params": {
+          "name": "search_prts",
+          "arguments": {
+            "query": "阿米娅",
+            "limit": 3
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "live": true
+    },
+    {
+      "id": "live.wiki.page.sections",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9964,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "阿米娅",
+            "action": "sections"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "live": true
+    },
+    {
+      "id": "live.wiki.page.template",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9965,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "阿米娅",
+            "action": "template"
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "live": true
+    },
+    {
+      "id": "live.wiki.page.read",
+      "contract": "TOOL-prts_page",
+      "dataset": "minimal-gamedata-v1",
+      "transport": "http",
+      "era": "legacy",
+      "phase": "P5",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "id": 9966,
+        "params": {
+          "name": "prts_page",
+          "arguments": {
+            "page_title": "阿米娅",
+            "action": "read",
+            "section_index": 1
+          }
+        }
+      },
+      "compare": "exact-tool-result",
+      "normalizations": [
+        "bind-session-id"
+      ],
+      "live": true
     }
   ]
 }

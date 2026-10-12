@@ -1,0 +1,27 @@
+{
+  "case": "wiki.search.filter-type",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v1",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "4cd66da7-07e8-477b-bad1-d8f69a305b5b",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Input validation error: Invalid arguments for tool search_prts: filter_technical: Invalid input: expected boolean, received string"
+          }
+        ],
+        "isError": true
+      },
+      "jsonrpc": "2.0",
+      "id": 9915
+    }
+  }
+}

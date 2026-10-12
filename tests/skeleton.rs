@@ -6,12 +6,12 @@ fn server_identity_matches_plan() {
     assert_eq!(prts_mcp_rust::SERVER_VERSION, "0.1.0+ts2.8.1.local");
 }
 
-/// docs/07 phase tool-count contract: P4 ends at 21 real tools (12 GameData
-/// + 9 Story); P5 adds the 2 Wiki tools, P6 the artwork tool (24/23 final).
+/// docs/07 phase tool-count contract: P5 ends at 23 real tools (12 GameData
+/// + 9 Story + 2 Wiki); P6 adds the artwork tool (24/23 final).
 #[test]
-fn registry_has_21_tools_at_p4() {
+fn registry_has_23_tools_at_p5() {
     let tools = prts_mcp_rust::tools::registry();
-    assert_eq!(tools.len(), 21, "phase contract: P4 = 21 tools");
+    assert_eq!(tools.len(), 23, "phase contract: P5 = 23 tools");
     let names: Vec<&str> = tools.iter().map(|t| t.name).collect();
     for expected in [
         "get_operator_archives",
@@ -35,6 +35,8 @@ fn registry_has_21_tools_at_p4() {
         "get_operator_memoirs",
         "find_character_appearances",
         "find_speakers_in",
+        "search_prts",
+        "prts_page",
     ] {
         assert!(names.contains(&expected), "missing {expected}");
     }

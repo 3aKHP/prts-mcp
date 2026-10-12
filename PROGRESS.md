@@ -59,9 +59,20 @@
 - **性能**（artifacts/p4-bench.json）：冷建索引 Rust p50 1828ms/峰值 108MB vs TS(bun) 1216ms/427MB（冷慢 0.6s 如实记录，热查 2.7ms vs 4.0ms 占优）；换包 28ms/1929ms 恰一次。
 - **门禁**：fmt/clippy(-D)/140 测试/release；P0 自检 29/29+变异、P1 32/32、P2 33/33、P3 157/157 全保持；`--all` 275/280（5 个 P8 全工具面案例按计划）。
 
+## P5 交付摘要（2026-10-12）
+
+- **2 个 Wiki 工具全部实现**（累计 23，注册顺序=oracle 实测 tools/list 顺序：prts → gamedata → story → artwork(P6)）：`search_prts`（S 三通道）与 `prts_page`（T 全通道纯文本，5 action）。工具层 dispatch 升级为 boxed-future 异步插槽（TS handler 异步对应物），21 个既有同步 dispatcher 经宏包装零改动。
+- **Wiki 客户端**：进程级 1.5s 节流（先占槽后等待，并发各自独立槽位——并发单测断言最小间隔）、每请求 15s 超时、`PRTS API error: HTTP <n>`；代理与 CA 走环境（bun 小写 `https_proxy`+`NODE_EXTRA_CA_CERTS` 对应 reqwest system-proxy + 同名 CA 钩子）；bun 1.3.14 的网络/JSON/超时报错文案逐条探针钉死（Unable to connect… / Failed to parse JSON / The operation timed out.）。
+- **文本管线 = QuickJS 内嵌 oracle 原文**：unescapeHTMLEntities（命名表+数值/十六进制、未知保留）、cleanSnippet、stripHtml（CSS/JS/RLQ/style/script 块 + 标签 + 实体 + 空白折叠）、isTechnicalPage、isRedirectLike —— TS 正则源码原样运行于 QuickJS（与 regex_compat 同一安全姿势），探针单测钉死。
+- **模板链完整**：FXP 行为等价的宽容 XML 解析器（错配闭合接受/EOF 自动闭合/`<<<<` 抛错——三条行为均对 FXP 实测）；parsetree→wikitext 重建（template `{{…}}`、tplarg **三开二闭 oracle 实证怪癖**、link、comment 元素）；needsRender 判定（`<comment>` 元素在跳过表——实证）；PRTSMCP uuid marker 批量单 POST 渲染+顺序/唯一/边界五重校验+切片；`_positional`/`_comment`/空值跳过；TemplateRenderError 与裸错误双层（工具层固定建议文案）。
+- **MITM 回放差分装置**（tools/wiki-replay.mjs）：本地 CA+SAN 证书（openssl）、CONNECT 隧道 TLS 终结（ALPN http/1.1——rustls 需要）、固定脚本 `contracts/wiki-replay/*.json`；GET 规则**精确参数集匹配**（把请求形状本身钉进 golden——"不用 extracts" 由 prop=text 规则反证）；POST 子集匹配 + render_segments 按请求 marker 动态回显（乱序/缺标记/空渲染注错）；死代理/HTTP500/坏JSON/15.5s 延迟超时全注入。
+- **差分 P5 337/337**（+62 wiki 用例，goldens 全经真实 HTTP/TLS 录制）：search 22（text/title/技术页过滤/limit 夹取/redirect 三链/边界与类型错误/三通道/四类网络失败）、page 24（read/sections/categories/links 出入链/enum 缺失新文案/action 非法/section_index=null 拒绝）、template 17（解析重建/批量渲染/五类渲染失败/两通道）。
+- **公开 live 互操作 4/4**（`--live` 首次实装：TS vs Rust 同源真实数据精确比较，离线=blocked 不计通过）：search 阿米娅、sections、**template 阿米娅 CharinfoV2 全量渲染**、read 分节——两实现字节一致。
+- **门禁**：fmt/clippy 0 警告/165 测试/release；P0 29/29+变异、P1 32/32、P2 33/33、P3 157/157、P4 275/275 全保持；`--all` 337/342（5 个全工具面 tools/list 案例仅剩 数量24≠23 一项差异，P6 落地 artwork 后转绿）。
+
 ## 交接入口
 
 - 分支 `rust-local`；HEAD 见 `git log -1`（tag local/p4-complete）；工作树干净。
 - 阶段 bundle：`artifacts/p0.bundle` … `artifacts/p4.bundle`（hash 以最终文件为准；请维护者另存备份并自行记录）。
-- 差分重跑：`node tools/verify.mjs --phase P4`（Rust 需 `cargo build --locked --release`；全规模数据集 `node tools/make-fullscale.mjs`）；性能 `node tools/bench-p4.mjs`。
-- P5 首个任务：`search_prts` 全部搜索模式与 `prts_page` 5 action——固定 Wiki 响应回放差分优先，节流/代理与模板提取随后（docs/07 P5）。
+- 差分重跑：`node tools/verify.mjs --phase P5`（Rust 需 `cargo build --locked --release`；全规模数据集 `node tools/make-fullscale.mjs`）；live 互操作 `node tools/verify.mjs --live`（需公网）；性能 `node tools/bench-p4.mjs`。
+- P6 首个任务：读 `data/images.ts / artworkLocal.ts / artworkMediawiki.ts / artworkFormat.ts / sync/imagesSync.ts`，实现 local/Wiki 两后端 `operator_artwork` 与完整图片同步链（docs/05 图片同步两节 + docs/07 P6）；P2 发布原语与 P5 Wiki 客户端（下载边界/magic/MIME）直接复用。

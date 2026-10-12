@@ -128,13 +128,21 @@ impl<'a> Args<'a> {
         }
     }
 
-    /// `z.enum([...])` (required).
+    /// `z.enum([...])` (required): a MISSING value already yields the
+    /// Invalid-option wording (probed on prts_page.action).
     pub fn required_enum(&mut self, field: &str, options: &[&str]) -> Option<String> {
         match self.obj.and_then(|o| o.get(field)) {
             None => {
                 self.issue(
                     field,
-                    "Invalid input: expected string, received undefined".to_string(),
+                    format!(
+                        "Invalid option: expected one of {}",
+                        options
+                            .iter()
+                            .map(|o| format!("\"{o}\""))
+                            .collect::<Vec<_>>()
+                            .join("|")
+                    ),
                 );
                 None
             }
@@ -200,6 +208,20 @@ impl<'a> Args<'a> {
             }
         }
         value
+    }
+
+    /// `z.number().int().optional()`: missing is fine, null is REJECTED
+    /// (unlike nullish); no bounds on this field.
+    pub fn optional_int(&mut self, field: &str) -> Option<i64> {
+        let v = self.obj.and_then(|o| o.get(field))?;
+        if v.is_null() {
+            self.issue(
+                field,
+                "Invalid input: expected number, received null".to_string(),
+            );
+            return None;
+        }
+        self.int_value(field, v)
     }
 
     /// `z.number().int().min().max().nullish()`: missing and null both

@@ -1,0 +1,485 @@
+{
+  "rules": [
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "parse",
+          "page": "渲染网络页",
+          "prop": "parsetree",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "parse": {
+            "parsetree": {
+              "*": "<root><template><title>外层模板</title><part><name>嵌套</name><value><template><title>内层</title><part><value>值甲</value></part></template></value></part><part><name>链接</name><value><link><target>目标页</target></link></value></part><part><name>纯文本</name><value>保留原文</value></part></template></root>"
+            }
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "parse",
+          "page": "渲染失败页",
+          "prop": "parsetree",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "parse": {
+            "parsetree": {
+              "*": "<root><template><title>外层模板</title><part><name>嵌套</name><value><template><title>内层</title><part><value>值甲</value></part></template></value></part><part><name>链接</name><value><link><target>目标页</target></link></value></part><part><name>纯文本</name><value>保留原文</value></part></template></root>"
+            }
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "parse",
+          "page": "错形页",
+          "prop": "parsetree",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "parse": {
+            "parsetree": {
+              "*": "<root><template><title>外层模板</title><part><name>嵌套</name><value><template><title>内层</title><part><value>值甲</value></part></template></value></part><part><name>链接</name><value><link><target>目标页</target></link></value></part><part><name>纯文本</name><value>保留原文</value></part></template></root>"
+            }
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "parse",
+          "page": "缺标记页",
+          "prop": "parsetree",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "parse": {
+            "parsetree": {
+              "*": "<root><template><title>外层模板</title><part><name>嵌套</name><value><template><title>内层</title><part><value>值甲</value></part></template></value></part><part><name>链接</name><value><link><target>目标页</target></link></value></part><part><name>纯文本</name><value>保留原文</value></part></template></root>"
+            }
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "parse",
+          "page": "乱序页",
+          "prop": "parsetree",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "parse": {
+            "parsetree": {
+              "*": "<root><template><title>外层模板</title><part><name>嵌套</name><value><template><title>内层</title><part><value>值甲</value></part></template></value></part><part><name>链接</name><value><link><target>目标页</target></link></value></part><part><name>纯文本</name><value>保留原文</value></part></template></root>"
+            }
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "parse",
+          "page": "空渲染页",
+          "prop": "parsetree",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "parse": {
+            "parsetree": {
+              "*": "<root><template><title>外层模板</title><part><name>嵌套</name><value><template><title>内层</title><part><value>值甲</value></part></template></value></part><part><name>链接</name><value><link><target>目标页</target></link></value></part><part><name>纯文本</name><value>保留原文</value></part></template></root>"
+            }
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "parse",
+          "page": "道具页",
+          "prop": "parsetree",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "parse": {
+            "parsetree": {
+              "*": "<root><template><title>道具信息</title><part><name>名称</name><value>急救箱</value></part><part><name>稀有度</name><value>2</value></part></template></root>"
+            }
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "parse",
+          "page": "敌人页",
+          "prop": "parsetree",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "parse": {
+            "parsetree": {
+              "*": "<root><template><title>敌人信息</title><part><name index=\"1\"/><value>源石虫</value></part><part><value>普通</value></part></template></root>"
+            }
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "parse",
+          "page": "注释页",
+          "prop": "parsetree",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "parse": {
+            "parsetree": {
+              "*": "<root><template><title>注释模板</title><part><name>字段</name><value>文本<comment>尾注</comment></value></part></template></root>"
+            }
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "parse",
+          "page": "嵌套页",
+          "prop": "parsetree",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "parse": {
+            "parsetree": {
+              "*": "<root><template><title>外层模板</title><part><name>嵌套</name><value><template><title>内层</title><part><value>值甲</value></part></template></value></part><part><name>链接</name><value><link><target>目标页</target></link></value></part><part><name>纯文本</name><value>保留原文</value></part></template></root>"
+            }
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "parse",
+          "page": "混合页",
+          "prop": "parsetree",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "parse": {
+            "parsetree": {
+              "*": "<root><template><title>模板甲</title><part><name index=\"1\"/><value>位置一</value></part><part><name>渲染</name><value><tplarg><title>参数</title></tplarg></value></part></template><template><title>模板乙<comment>模板注释</comment></title><part><name>乙字段</name><value>乙值</value></part></template></root>"
+            }
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "parse",
+          "page": "无模板页",
+          "prop": "parsetree",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "parse": {
+            "parsetree": {
+              "*": "<root><h>标题</h>纯文本段落</root>"
+            }
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "parse",
+          "page": "坏XML页",
+          "prop": "parsetree",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "parse": {
+            "parsetree": {
+              "*": "not xml at all <<<<"
+            }
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "parse",
+          "page": "坏节点页",
+          "prop": "parsetree",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "parse": {
+            "parsetree": {
+              "*": "<root><template><title>坏模板</title><part><name>字段</name><value><ext><title>扩展</title></ext></value></part></template></root>"
+            }
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "parse",
+          "page": "空树页面",
+          "prop": "parsetree",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "parse": {
+            "parsetree": {
+              "*": ""
+            }
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "parse",
+          "page": "模板不存在",
+          "prop": "parsetree",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "error": {
+            "info": "missing"
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "POST",
+        "form": {
+          "action": "parse",
+          "title": "嵌套页",
+          "prop": "text",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "render_segments": {
+          "prefix": "「",
+          "suffix": "」"
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "POST",
+        "form": {
+          "action": "parse",
+          "title": "混合页",
+          "prop": "text",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "render_segments": {
+          "prefix": "",
+          "suffix": "（渲染）"
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "POST",
+        "form": {
+          "action": "parse",
+          "title": "空渲染页",
+          "prop": "text",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "render_segments": {
+          "empty": true
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "POST",
+        "form": {
+          "action": "parse",
+          "title": "乱序页",
+          "prop": "text",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "render_segments": {
+          "scramble": true
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "POST",
+        "form": {
+          "action": "parse",
+          "title": "缺标记页",
+          "prop": "text",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "render_segments": {
+          "drop_end": true
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "POST",
+        "form": {
+          "action": "parse",
+          "title": "错形页",
+          "prop": "text",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "unexpected": "shape"
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "POST",
+        "form": {
+          "action": "parse",
+          "title": "渲染失败页",
+          "prop": "text",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "error": {
+            "info": "internal_api_error_DBQueryError"
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "POST",
+        "form": {
+          "action": "parse",
+          "title": "渲染网络页",
+          "prop": "text",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 500,
+        "body": "boom"
+      }
+    }
+  ],
+  "default": {
+    "status": 404,
+    "json": {
+      "error": {
+        "code": "replay-unmatched",
+        "info": "no replay rule matched this request"
+      }
+    }
+  }
+}
