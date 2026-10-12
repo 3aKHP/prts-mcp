@@ -4,7 +4,7 @@
 
 ## 硬规则
 
-- 一切改动经 PR；不直推 `main` / `develop` / `lts/1.7`（本仓库不引入 Develop Direct）。
+- 一切改动经 PR；不直推 `main` / `develop` / `lts/1.7` / `lts/2.8`（本仓库不引入 Develop Direct）。
 - 一个分支或 PR 只承载一个主要意图；大变更先拆分。
 - 行为、配置、协议、部署契约或用户文档变化时，同一变更更新拥有该事实的文档。
 - 难以判断属于哪一级时，**向上分级**。
@@ -70,6 +70,8 @@ reviewer 独立性、不可信输入处理、交叉核对与 finding 处置的�
 
 按 `CLAUDE.md` 路径 D / F 执行；评审至少 Standard，命中 Huge 条件时按 Huge 执行；合并前完成 CD 产物核对。全量 E2E 不构成发布前置项——发布内容命中 [`E2E.md`](E2E.md) 建议场景时，是否执行由维护者按"高风险域"一节的裁量规则当次决定。回灌完成后核对 develop 的下一目标版本（规则见 [`VERSIONING.md`](VERSIONING.md)）。
 
+**LTS 例外路径**：2.8 维护变更和 release PR 的目标为 `lts/2.8`，稳定成对 tag 按 [`LTS.md`](LTS.md) 校验该维护分支与固定渠道；不合并到 main，也不更新 latest。1.7 沿用既有维护路径。旧版修复适用于 Rust 时另行实现，不把旧树整体合入 Rust develop。
+
 ## KHPilot Bot Review 机制
 
 KHPilot 是 PR 侧的自动评审 Bot，行为特征：
@@ -105,7 +107,7 @@ gh pr view "$pr" --json reviews \
 
 | 改动类型 | 最小验证 |
 |---|---|
-| 仅文档 | 术语 / 链接 targeted grep；引用代码时按需 `pytest -k <topic>`。CI 仅在改动命中 paths 过滤（`python/**` 与 `ts/**`——含两实现的 CHANGELOG——以及 `.github/workflows/{ci,cd,cd-ts}.yml`、`scripts/test-shared-volume-sync.sh`）时运行；`docs/**` 与根目录 .md 不触发 CI |
+| 仅文档 | 术语 / 链接 targeted grep；引用代码时按需 `pytest -k <topic>`。CI 仅在改动命中 paths 过滤（`python/**` 与 `ts/**`——含两实现的 CHANGELOG——以及 `.github/workflows/{ci,cd,cd-ts}.yml`、`.github/scripts/{verify,test}-lts-release.sh`、`scripts/test-shared-volume-sync.sh`）时运行；`docs/**` 与根目录 .md 不触发 CI |
 | 小代码（单实现） | 对应实现的全量单测（Python pytest 或 TS build + test + typecheck） |
 | 工具面 / 数据 / sync 运行时 | 双实现全量 + `./scripts/check-runtime.sh --full` |
 | 高风险域改动 | 双实现全量 + check-runtime --full；全量 E2E 强烈建议，维护者可按上节规则当次裁量（替代时 PR 披露范围与未执行环节） |

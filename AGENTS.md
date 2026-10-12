@@ -4,26 +4,30 @@ This file is intentionally repo-local so a fresh Codex session starts with the k
 
 ## Branch Model
 
-Long-lived branches after the 1.7.0 LTS release:
+Long-lived branches during the Rust migration:
 
 | Branch | Purpose | Version suffix |
 |--------|---------|---------------|
 | `main` | Latest stable release. Currently `2.8.1`. | (none) |
 | `lts/1.7` | 1.7.x long-term maintenance. Created from the 1.7.0 release commit (EOL 2027-07-02). | (none) |
+| `lts/2.8` | Python/TypeScript 2.8.x long-term maintenance, from stable 2.8.1 (EOL 2027-07-02). | (none) |
 | `develop` | Development integration. All non-LTS changes land here. | Next release target + `.dev0` (rule: `docs/dev/VERSIONING.md`) |
 
 - Feature / refactor / perf / non-urgent fix / general docs / chore -> branch from `develop`, PR to `develop`.
 - 1.7.x LTS fix -> branch from `lts/1.7`, PR to `lts/1.7`, then cherry-pick or reimplement on `develop` if applicable.
+- 2.8.x LTS fix -> branch from `lts/2.8`, PR to `lts/2.8`; keep both legacy implementations aligned and reimplement applicable fixes separately in Rust.
 - Hotfix for the latest stable line -> branch from `main`, PR to `main`, then forward-merge/cherry-pick to `develop`.
 - Release -> branch from `develop` as `release/vX.Y.Z`, merge the release branch to `main` by PR, tag on `main`, then merge the same release branch back to `develop` by PR.
 
-Never push directly to `main`, `develop`, or `lts/1.7`. Always create a feature/fix branch and open a PR. See `CLAUDE.md` and `docs/dev/LTS.md` for the detailed iteration cycles. Version semantics and the compatibility commitment live in `docs/dev/VERSIONING.md`; change grading (Quick / Standard / Huge / Hot-Fix / Release) and the dual-track review workflow (independent CR + KHPilot Bot Review) live in `docs/dev/WORKFLOW.md`.
+Never push changes directly to `main`, `develop`, `lts/1.7`, or `lts/2.8`. Always create a feature/fix branch and open a PR. See `CLAUDE.md` and `docs/dev/LTS.md` for the detailed iteration cycles. Version semantics and the compatibility commitment live in `docs/dev/VERSIONING.md`; change grading (Quick / Standard / Huge / Hot-Fix / Release) and the dual-track review workflow (independent CR + KHPilot Bot Review) live in `docs/dev/WORKFLOW.md`.
+
+The `lts/2.8` tree retains `python/` and `ts/`. Their removal and the root Cargo layout belong to the subsequent Rust import. Once `develop` is Rust, port fixes from legacy branches without merging the whole Python/TS tree back into it. Both LTS lines end on 2027-07-02.
 
 ## Startup Reads
 
 - Read `CLAUDE.md` and `docs/dev/STYLE.md` before non-trivial code changes.
 - Read `docs/dev/VERSIONING.md` and `docs/dev/WORKFLOW.md` before versioning, release, or review-process work.
-- Read `docs/dev/LTS.md` before 1.7.x compatibility, security, or release work.
+- Read `docs/dev/LTS.md` before 1.7.x or 2.8.x compatibility, security, or release work.
 - Use `STATUS.md` for current project shape and version state.
 - Use `ROADMAP.md` / `ROADMAP.zh-CN.md` when planning feature work.
 

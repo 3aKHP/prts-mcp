@@ -1,10 +1,12 @@
 # PRTS MCP Server — TypeScript 实现
 
+本目录属于 `lts/2.8`，保留 TS 维护实现，EOL 2027-07-02。运行发布包时固定 `@2`，首次维护发布后也可使用 `@lts-2.8`；不指定版本的安装在 3.0 发布后会取得 Rust。详见 [LTS 政策](../docs/dev/LTS.md)。
+
 明日方舟同人创作辅助 MCP Server，TypeScript 版本。支持 **Streamable HTTP** （单端点 `/mcp`）与 **stdio**，既可部署为 HTTP 服务，也可接入本地 MCP 客户端。
 
 提供 24 个 MCP 工具（2.x）：PRTS 词条检索与页面结构、干员档案/语音/基础信息/战斗技能/面板数值、剧情活动与台词、角色出场追踪、全文搜索（含基建/战斗技能跨干员反查）、敌人图鉴、关卡查询、关卡敌人融合、物品/材料查询，以及干员立绘。完整清单见仓库根目录 [`README.md`](../README.md)。
 
-TypeScript 实现正式支持 Bun 与 Node.js 双运行时。自 2.2.0 起 **Bun 是默认生产运行时**：默认 `ts/Dockerfile`、CI 主验证链与推荐 Docker 部署均在 Bun 下运行（最低验证版本 Bun `1.3.14`）。Node.js 保留为受支持的 legacy/可选运行时，通过 `prts-mcp-ts` npm bin、`npx prts-mcp-ts` 与 `ts/Dockerfile.node` 构建路径提供。npm 发布路径仍走 npm CLI （`npm publish --provenance`，与运行时无关）。
+TypeScript 实现正式支持 Bun 与 Node.js 双运行时。自 2.2.0 起 **Bun 是默认生产运行时**：默认 `ts/Dockerfile`、CI 主验证链与推荐 Docker 部署均在 Bun 下运行（最低验证版本 Bun `1.3.14`）。Node.js 保留为受支持的 legacy/可选运行时，通过 `prts-mcp-ts` npm bin、`npx prts-mcp-ts@2` 与 `ts/Dockerfile.node` 构建路径提供。npm 发布路径仍走 npm CLI （`npm publish --provenance`，与运行时无关）。
 
 > **2.0 变更**：工具面由 1.x 的 32 个合并为 23 个（详见 [1.x → 2.0 迁移指南](../docs/migration-1.x-to-2.0.md)）；新增可选的 output channel（查询字符串 `?output_channel=` / 请求头 `x-prts-output-channel` / `PRTS_OUTPUT_CHANNEL` 环境变量，默认 `content`，与 1.x 行为一致）。
 
@@ -48,13 +50,13 @@ http://localhost:3000/mcp
 无需克隆仓库，直接运行（Node.js 入口，最低试用门槛，无需额外安装运行时）：
 
 ```bash
-npx prts-mcp-ts
+npx prts-mcp-ts@2
 ```
 
 需要 Bun 运行时试用：
 
 ```bash
-bunx --bun -p prts-mcp-ts prts-mcp-ts-bun
+bunx --bun -p prts-mcp-ts@2 prts-mcp-ts-bun
 ```
 
 服务启动后 MCP 端点为 `http://localhost:3000/mcp`。
@@ -85,7 +87,7 @@ bun run start      # 运行 dist/server-bun.js
 无需克隆仓库的一次性运行：
 
 ```bash
-bunx --bun -p prts-mcp-ts prts-mcp-ts-bun
+bunx --bun -p prts-mcp-ts@2 prts-mcp-ts-bun
 ```
 
 全局安装后运行：
@@ -110,11 +112,11 @@ TypeScript 单元测试仍由 Node 的 `node:test` 路径覆盖（见下方 Node
 
 ### Node legacy 运行路径
 
-Node.js 仍是受支持的运行时，但自 2.2.0 起降级为 legacy/可选路径。npm bin `prts-mcp-ts` 保持 Node 入口（`npx prts-mcp-ts` 仍零额外运行时依赖）。
+Node.js 仍是受支持的运行时，但自 2.2.0 起降级为 legacy/可选路径。npm bin `prts-mcp-ts` 保持 Node 入口（`npx prts-mcp-ts@2` 仍零额外运行时依赖）。
 
 ```bash
 # npm 入口（Node）
-npx prts-mcp-ts
+npx prts-mcp-ts@2
 # 或本地编译后运行
 npm run start:node    # node dist/server.js
 npm run smoke:http:fixture:node

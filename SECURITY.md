@@ -2,12 +2,12 @@
 
 ## Supported Versions
 
-PRTS-MCP maintains security fixes for the latest stable release line and the 1.7 LTS line.
+PRTS-MCP maintains security fixes for the latest stable release line and the 1.7/2.8 LTS lines.
 
 | Version line | Security support |
 |--------------|------------------|
-| 2.x | Supported once released as the latest stable line. |
-| 1.7.x | Supported as the LTS line for security, compatibility, data-sync, and critical fixes. |
+| 2.8.x | Supported as the LTS line through 2027-07-02; Python/TS retained on `lts/2.8`. |
+| 1.7.x | Supported as the LTS line through 2027-07-02 for security, compatibility, data-sync, and critical fixes. |
 | < 1.7 | Not supported. Please upgrade before reporting. |
 | `dev` / prerelease builds | Best-effort fixes before release; not a production support line. |
 
@@ -51,7 +51,7 @@ The following are generally out of scope:
 
 ## Coordinated Disclosure
 
-We aim to acknowledge valid reports within 7 days, then coordinate a fix and release plan based on severity and affected release lines. Security fixes may be released as patch versions on the latest stable line and, when applicable, the 1.7 LTS line.
+We aim to acknowledge valid reports within 7 days, then coordinate a fix and release plan based on severity and affected release lines. Security fixes may be released as patch versions on the latest stable line and, when applicable, either supported LTS line.
 
 Please give the maintainer reasonable time to investigate and publish a fix before public disclosure. Credit can be included in release notes or advisories if you want to be acknowledged.
 

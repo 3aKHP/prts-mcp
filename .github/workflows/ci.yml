@@ -6,6 +6,7 @@ on:
       - main
       - master
       - develop
+      - lts/2.8
       - release/**
       - feat/**
       - refactor/**
@@ -16,6 +17,8 @@ on:
       - '.github/workflows/ci.yml'
       - '.github/workflows/cd.yml'
       - '.github/workflows/cd-ts.yml'
+      - '.github/scripts/verify-lts-release.sh'
+      - '.github/scripts/test-lts-release.sh'
   pull_request:
     paths:
       - 'python/**'
@@ -24,6 +27,8 @@ on:
       - '.github/workflows/ci.yml'
       - '.github/workflows/cd.yml'
       - '.github/workflows/cd-ts.yml'
+      - '.github/scripts/verify-lts-release.sh'
+      - '.github/scripts/test-lts-release.sh'
 
 jobs:
   workflow-lint:
@@ -46,9 +51,12 @@ jobs:
 
       - name: Shellcheck CD helper scripts
         run: |
-          for f in ts/scripts/*.sh; do
+          for f in ts/scripts/*.sh .github/scripts/*lts-release.sh; do
             docker run --rm -v "$PWD":/mnt:ro koalaman/shellcheck:stable "/mnt/$f"
           done
+
+      - name: Test LTS release guard
+        run: bash .github/scripts/test-lts-release.sh
 
   # ---------------------------------------------------------------------------
   # Python implementation

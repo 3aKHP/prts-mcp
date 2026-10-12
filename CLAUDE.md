@@ -18,7 +18,7 @@ PRTS-MCP 是面向明日方舟同人创作的 MCP Server，包含 Python 和 Typ
 | 变更分级、双轨 CR 机制与验证矩阵 | [`docs/dev/WORKFLOW.md`](docs/dev/WORKFLOW.md) |
 | 路线图与未来规划 | [`ROADMAP.md`](ROADMAP.md) |
 | 1.x → 2.0 迁移（破坏性变更） | [`docs/migration-1.x-to-2.0.md`](docs/migration-1.x-to-2.0.md) |
-| 1.7 LTS 维护规则 | [`docs/dev/LTS.md`](docs/dev/LTS.md) |
+| 1.7 / 2.8 LTS 维护规则 | [`docs/dev/LTS.md`](docs/dev/LTS.md) |
 | 外部贡献者指南 | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | Python 实现 | [`python/`](python/) |
 | TypeScript 实现 | [`ts/`](ts/) |
@@ -55,12 +55,13 @@ PRTS-MCP 是面向明日方舟同人创作的 MCP Server，包含 Python 和 Typ
 
 ## 分支模型
 
-1.7.0 LTS 发布后三条长期分支：
+Rust 迁移期间的长期分支（根目录 Rust 导入在后续 PR 实施）：
 
 | 分支 | 用途 | 版本号后缀 |
 |------|------|-----------|
 | `main` | 最新稳定发布。当前为 2.8.1 | （无） |
 | `lts/1.7` | 1.7.x 长期维护线，从 1.7.0 发布提交创建（EOL 2027-07-02） | （无） |
+| `lts/2.8` | Python/TS 2.8.x 长期维护线，从 2.8.1 稳定提交创建（EOL 2027-07-02） | （无） |
 | `develop` | 开发集成线。所有非 LTS 改动 PR 到这里 | 下一发布目标 + `.dev0`（规则见 [`docs/dev/VERSIONING.md`](docs/dev/VERSIONING.md)） |
 
 变更分级（Quick / Standard / Huge / Hot-Fix / Release）、双轨 CR 机制与最小验证矩阵见 [`docs/dev/WORKFLOW.md`](docs/dev/WORKFLOW.md)。
@@ -71,10 +72,11 @@ PRTS-MCP 是面向明日方舟同人创作的 MCP Server，包含 Python 和 Typ
 feat/refactor/perf/docs/* ───────→ develop
 release/* ───────────────────────→ main + develop
 fix/docs/*（1.7 LTS）────────────→ lts/1.7 ──→ develop（适用时 cherry-pick）
+fix/docs/*（2.8 LTS）────────────→ lts/2.8 ──→ develop（适用时单独重做 Rust 修复）
 fix/*（最新稳定 hotfix）────────→ main ──→ develop（forward merge / cherry-pick）
 ```
 
-不允许反向合并。允许的同步方向只有：`release/* → main`、`release/* → develop`、`main → develop`（hotfix forward merge）和 `lts/1.7 → develop`（适用时 cherry-pick / reimplement）。
+不允许反向合并。发布分支按既有流程合入目标；LTS 修复仅按适用性 cherry-pick/reimplement。`develop` 转为 Rust 后，旧版 hotfix 与 LTS 修复必须在 Rust 中重做，不能整体 forward merge 旧树并带回 python/、ts/。
 
 ## 启动准则
 
@@ -82,6 +84,7 @@ fix/*（最新稳定 hotfix）────────→ main ──→ develop
 
 - **需明确指令才 Commit**。对话里讨论到"要提交"不算指令，必须出现"请提交 / 请 commit / 请开 PR"这类明确祈使句
 - **不在长期分支直接工作**。所有非 LTS feat / refactor / perf / 非紧急 fix / docs / chore 都 PR 到 `develop`；1.7.x 兼容性、安全性、数据同步和关键缺陷修复 PR 到 `lts/1.7`；最新稳定 hotfix 才 PR 到 `main`
+- **2.8 LTS 改动归 lts/2.8**。从该维护分支拉短分支，PR 回 lts/2.8；发布门禁、渠道及 EOL 以 docs/dev/LTS.md 为准。
 - **不主动 push**。即使刚 commit 完，也等用户说"请推"
 - **不提交敏感物与本地产物**。不提交 secrets、token、凭据、密钥，也不提交本地运行时产物（`.venv`、`node_modules`、会话/缓存状态）；安全漏洞细节按 [`SECURITY.md`](SECURITY.md) 私下处理，不在公开 commit / PR / issue 中复现
 
@@ -91,6 +94,7 @@ fix/*（最新稳定 hotfix）────────→ main ──→ develop
 
 - PR 到 `develop`：version = 下个目标版本（如 `feat/v2.4.0-new-domain`）
 - PR 到 `lts/1.7`：version = 即将发布的 1.7 patch（如 `fix/v1.7.1-sync-schema`）
+- PR 到 `lts/2.8`：version = 下一维护 patch（如 `fix/v2.8.2-sync-schema`）
 - PR 到 `main`（最新稳定 hotfix）：version = 即将发布的 patch（如 `fix/v2.3.1-critical-bug`）
 
 例：
@@ -118,7 +122,9 @@ fix/*（最新稳定 hotfix）────────→ main ──→ develop
 8. **人类 merge**：Claude 不做 merge，等用户确认合并到 `develop`
 9. **本地清扫**：`git checkout develop && git pull && git branch -d <branch> && git remote prune origin`
 
-### 路径 B：1.7 LTS 修复（→ lts/1.7）
+### 路径 B：LTS 修复（→ lts/1.7 或 lts/2.8）
+
+2.8.x 使用 docs/dev/LTS.md 的 2.8.x Fix Flow：起点和目标均为 lts/2.8，稳定成对 tag 必须属于该分支，npm 使用 lts-2.8，GHCR 只推进精确版本和 :2，GitHub Release 不成为 Latest。2.8 CD 拒绝预发布及 EOL 后发布。下列步骤保留 1.7 的命名示例。
 
 用于 1.7.x 兼容性、安全性、数据同步、关键缺陷和文档修复。先读 [`docs/dev/LTS.md`](docs/dev/LTS.md)。
 
@@ -304,7 +310,8 @@ git push origin python/v2.6.0-alpha.1 ts/v2.6.0-alpha.1
 ```
 
 - `python/v*` → PyPI 发布
-- `ts/v*` → npm + Docker 发布
+- 本维护分支 `python/v2.8.*` → PyPI + GHCR 精确版本 / `:2` + GitHub Release
+- 本维护分支 `ts/v2.8.*` → npm `lts-2.8` + GitHub Release；TS Docker 仅本地构建
 - 不要打裸 `v*` tag（不会触发任何 CD）
 
 ## 双实现开发规则

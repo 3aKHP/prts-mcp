@@ -3,12 +3,13 @@ name: CD (TypeScript)
 on:
   push:
     tags:
-      - "ts/v[0-9]*.[0-9]*.[0-9]*"
-      - "ts/v[0-9]*.[0-9]*.[0-9]*-*"
+      - "ts/v2.8.*"
 
 jobs:
   verify:
     runs-on: ubuntu-latest
+    outputs:
+      npm_dist_tag: ${{ steps.scope.outputs.npm_dist_tag }}
 
     steps:
       - name: Checkout repository
@@ -16,21 +17,9 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Verify tag scope vs branch
-        run: |
-          VERSION="${GITHUB_REF_NAME#ts/v}"
-          if [[ "${VERSION}" != *-* ]]; then
-            if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
-              echo "::error::Stable tag (no -suffix) must be on main. Use -alpha.1 / -beta.1 / -rc.1 for pre-release tags on develop."
-              exit 1
-            fi
-          else
-            if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/develop; then
-              echo "::error::Pre-release tag (-suffix) must be on develop."
-              exit 1
-            fi
-          fi
-          echo "Tag scope verification passed."
+      - name: Verify LTS tag and maintenance branch
+        id: scope
+        run: bash .github/scripts/verify-lts-release.sh
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
@@ -179,7 +168,7 @@ jobs:
 
   publish-npm:
     runs-on: ubuntu-latest
-    needs: package
+    needs: [verify, package]
     environment: npm
     permissions:
       contents: read
@@ -201,17 +190,6 @@ jobs:
           name: ts-release-package
           path: ts
 
-      - name: Resolve npm dist-tag
-        id: dist_tag
-        run: |
-          VERSION="${GITHUB_REF_NAME#ts/v}"
-          if [[ "${VERSION}" == *-* ]]; then
-            PRERELEASE="${VERSION#*-}"
-            echo "value=${PRERELEASE%%.*}" >> "$GITHUB_OUTPUT"
-          else
-            echo "value=latest" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Publish to npm (Trusted Publishing)
         run: |
           TARBALL=$(find . -maxdepth 1 -name 'prts-mcp-ts-*.tgz' -type f -print -quit)
@@ -224,7 +202,7 @@ jobs:
           if npm view "prts-mcp-ts@${VERSION}" version >/dev/null 2>&1; then
             echo "prts-mcp-ts@${VERSION} already published; skipping npm publish."
           else
-            npm publish "$TARBALL" --provenance --access public --tag "${{ steps.dist_tag.outputs.value }}"
+            npm publish "$TARBALL" --provenance --access public --tag "${{ needs.verify.outputs.npm_dist_tag }}"
           fi
         working-directory: ts
 
@@ -296,7 +274,7 @@ jobs:
         run: |
           # Markdown code spans are intentionally literal.
           # shellcheck disable=SC2016
-          printf '\n---\n\n**Install**\n```bash\n# Run directly with npx (Node.js entrypoint, zero extra runtime install)\nnpx prts-mcp-ts\n\n# Or install globally\nnpm install -g prts-mcp-ts@%s\n\n# Bun runtime (default production runtime since 2.2.0)\nbunx --bun -p prts-mcp-ts@%s prts-mcp-ts-bun\n```\n\nThe default Docker image (`prts-mcp-ts:latest`) runs under Bun since 2.2.0;\n`ts/Dockerfile.node` provides the legacy Node.js image.\n\nMCP endpoint: `http://localhost:3000/mcp`\n' \
+          printf '\n---\n\n**2.8 LTS — EOL 2027-07-02**\n```bash\n# Install this exact maintenance version\nnpx prts-mcp-ts@%s\n\n# Or follow the maintenance channel\nnpm install -g prts-mcp-ts@lts-2.8\n\n# Bun entrypoint for this exact version\nbunx --bun -p prts-mcp-ts@%s prts-mcp-ts-bun\n```\n\nThis release does not update npm latest or GitHub Latest.\nThe TS Dockerfile is locally buildable; GHCR publishes the Python image on the 2 channel.\nMCP endpoint: `http://localhost:3000/mcp`\n' \
             "$VERSION" \
             "$VERSION" >> release_notes.txt
 
@@ -307,4 +285,4 @@ jobs:
           files: ts/prts-mcp-ts-*.tgz
           fail_on_unmatched_files: true
           prerelease: ${{ steps.version.outputs.prerelease }}
-          make_latest: ${{ steps.version.outputs.prerelease == 'true' && 'false' || 'true' }}
+          make_latest: false

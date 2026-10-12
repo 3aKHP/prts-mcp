@@ -1,6 +1,6 @@
 # PRTS-MCP 项目状态
 
-_Last updated: 2026-10-11_
+_Last updated: 2026-10-13_
 
 ## 当前版本
 
@@ -10,6 +10,7 @@ _Last updated: 2026-10-11_
 | TypeScript | 2.8.1 | Stable release |
 
 - 当前稳定发布：2.8.1（24 个 MCP 工具）
+- 2.8 LTS 基线：2.8.1；Python/TS 保留在 `lts/2.8`，EOL 2027-07-02，与 1.7 同日结束。
 - 当前 LTS 发布：1.7.0（32 个 MCP 工具，剧情角色追踪）
 - 下一开发目标：2.8.2
 - 当前稳定补丁线：2.8.x
@@ -87,8 +88,11 @@ _Last updated: 2026-10-11_
 ## 当前分支
 
 - `main`：2.8.1（最新稳定发布线）
+- `lts/2.8`：2.8.x Python/TS LTS 维护线（从稳定 2.8.1 创建；EOL 2027-07-02）
 - `lts/1.7`：1.7.x LTS 维护线（从 1.7.0 发布提交创建；EOL 2027-07-02）
 - `develop`：2.8.2 开发线（`.dev0`）
+
+3.0 仅完成 Rust 迁移，管理 CLI、产品增补和 AKDP 专项另行开题。后续源码导入 PR 将 develop 改为根目录 Cargo 工程，并移除 python/、ts/；main 在 3.0 正式发布时切换。本次 LTS 准备不导入 Rust、不升版本或发布发行物。
 
 1.7.0 是最后一个 1.x 功能版本和 LTS 基线。它将 server.py/server.ts 和 story.py/story.ts 单体文件拆分为聚焦子模块，保留向后兼容垫片（shim），并新增剧情角色追踪工具：`find_character_appearances`、`find_speakers_in`。后续功能开发转向 2.0；1.7.x 仅做兼容性、安全性、数据同步和关键缺陷修复。
 

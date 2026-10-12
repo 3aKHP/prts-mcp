@@ -1,6 +1,6 @@
 # PRTS-MCP Roadmap
 
-_Last updated: 2026-10-11_ · [中文版](ROADMAP.zh-CN.md)
+_Last updated: 2026-10-13_ · [中文版](ROADMAP.zh-CN.md)
 
 PRTS-MCP is past 1.0. Version 1.7.0 is the final 1.x feature release and the 1.7 LTS baseline. This document tracks **what comes next** — not what has shipped. For shipped features, see the Python and TypeScript CHANGELOGs.
 
@@ -9,15 +9,23 @@ PRTS-MCP is past 1.0. Version 1.7.0 is the final 1.x feature release and the 1.7
 - Python: `2.8.1` _(latest stable)_
 - TypeScript: `2.8.1` _(latest stable)_
 - `1.7.0` LTS remains the maintenance line — compatibility, security, data-sync, and critical fixes only.
+- `2.8.1` is the baseline for `lts/2.8`, retaining Python and TypeScript. Both LTS lines end on 2027-07-02; see [LTS policy](docs/dev/LTS.md).
 - 24 public MCP tools on the 2.x line (CI-enforced); 32 public MCP tools frozen on the 1.7 LTS line.
 - See [migration guide 0.x → 1.0](docs/migration-0.x-to-1.0.md) and [migration guide 1.x → 2.0](docs/migration-1.x-to-2.0.md).
 - 2.6.0 retains legacy MCP clients while adding opt-in `2026-07-28` support; see [2.5 → 2.6](docs/migration-2.5-to-2.6.md) before changing client protocol configuration.
 
 ## 2.8.x Stable Maintenance
 
-- Security, compatibility, data-sync, release-pipeline, documentation, and critical correctness/operational fixes only; the compatible additions below are the documented exception.
-- Exception — new MCP tools, including tools that open new data domains, are scheduled for Minor releases by convention (narrative rule: [`docs/dev/VERSIONING.md`](docs/dev/VERSIONING.md)); a Patch that carries a new tool stays blind-upgrade compatible. Required-parameter and output-format changes in a Patch remain limited to VERSIONING.md's closed Patch whitelist.
+- Compatibility, security, data-sync, critical defects and related documentation only. The LTS line does not accept new tools, data domains or product capabilities.
 - Exercise the exact-artifact promotion path on the next real release and keep Python/TypeScript package provenance aligned.
+
+## 3.0 Rust Migration
+
+3.0 replaces the active implementations with a root Rust project while retaining existing tools, configuration and data compatibility. npm adds the `prts-mcp` main package and keeps `prts-mcp-ts` as a compatibility entry. The new main entry defaults to Streamable HTTP; existing stdio and GHCR entry profiles remain compatible. Target platforms are Linux x64/arm64 glibc, Windows x64 and macOS x64/arm64.
+
+Preserve and isolate `lts/2.8` first, then import Rust, complete packaging and release automation, run real-client E2E plus upgrade/rollback verification, and switch stable channels at the 3.0 release. Root Rust import and public distribution are subsequent changes, not completed by LTS setup. Both legacy implementations remain on maintenance branches rather than in the 3.x main/develop tree.
+
+Management CLI, feature candidates and AKDP projects are deferred until after migration. crates.io source packaging is prepared during migration; public crates.io distribution is a separate task after 3.0 migration completes and does not block the first release.
 
 ## Cross-Version Policies
 
@@ -35,11 +43,11 @@ For derived reverse lookups, the current working position is to prefer the small
 
 Reopen the SQLite decision only if production evidence shows that derived JSON and targeted in-memory indexing are insufficient, such as sustained cold-build latency, unacceptable RSS under the deployment budget, materially larger datasets, or a growing set of compound reverse queries requiring indexed filtering, pagination, aggregation, and sorting. Any proposal must remain rebuildable from AKDP Release artifacts and prove that its measured benefit outweighs cross-runtime parity and operational cost.
 
-## 2.8+ Non-Binding Working Draft
+## Post-Migration Candidates and Historical Draft
 
 > **Draft status:** Every **un-opened candidate** in this 2.8+ section is a candidate direction only. The version numbers, ordering, scope, tool shape, and inclusion of individual items are planning placeholders. The project does not commit to releasing later versions according to this draft. Items may be reordered, merged, split, deferred, replaced, or dropped as source contracts, implementation review, maintenance capacity, ecosystem changes, and real-consumer evidence evolve. **Exception: sections marked "In Development" (currently none) are themes already opened on `develop`; their scope is a settled decision, not a placeholder.**
 
-Where a candidate remains useful, subsequent 2.x development preserves the current 24-tool surface by extending existing tools and enums when their schema remains coherent. A candidate becomes release scope only through a separate implementation and release decision.
+The un-opened candidates below are deferred until after 3.0 migration. The current 24-tool surface remains the starting point; a candidate becomes release scope only through a separate implementation and release decision.
 
 ### 2.7.0 — Shipped 2026-08-15
 
@@ -60,7 +68,7 @@ Theme: closed the three gaps in operator numeric queries — level-specific pane
 - The tool surface stays at 24. Skills and panels use an optional action on `get_operator_basic_info`; default `basic` retains the existing short profile, and each call returns only the selected content.
 - Non-goals: skill upgrade material costs, modules, and attack-range shapes stay future candidates; the 1.7 LTS tool surface does not change. Implementation-level details (data paths, placeholder syntax, interpolation and calibration specifics) live in the feature PRs' CHANGELOG entries.
 
-### 2.9.0 Candidate — Recruitment Lookup
+### Recruitment Lookup — Reassess After Migration
 
 - Evaluate a structured reverse lookup from recruitment tag combinations to eligible operators.
 - Treat tag-combination semantics as distinct from regex full-text search; evaluate an entry point within the existing tools and schemas, preserving 24 tools. The exact shape requires a separate decision.

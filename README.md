@@ -30,9 +30,12 @@ Two release lines ship in parallel:
 | Line | Version | Tools | Status |
 |------|---------|-------|--------|
 | **2.8** (`main`) | `2.8.1` | 24 | Operator deep stats — level-specific panels, per-level skill effects, and per-tier talent effects via `get_operator_basic_info` actions — plus roguelike story discovery, reading, search, and character tracking. |
+| **2.8 LTS** (`lts/2.8`) | `2.8.1` baseline | 24 | Python/TypeScript maintenance only, EOL 2027-07-02. Rust migration is separate. |
 | **1.7 LTS** (`lts/1.7`) | `1.7.0` | 32 | Stable maintenance line. 1.7.x accepts only compatibility, security, data-sync, and critical bug fixes. |
 
-The `main` and `develop` lines use the self-built `arknights-data-pipeline` Release exclusively for default Auto-Sync. The 1.7 LTS line retains its legacy upstream compatibility until a separate, backwards-compatible migration; changes to the new factory path must not be backported to LTS as an implicit source switch.
+The 2.8 LTS line consumes `arknights-data-pipeline` Releases directly. The 1.7 line reads its existing compatibility repositories, whose releases are AKDP projections; their addresses and interface remain unchanged until EOL. See [LTS policy](docs/dev/LTS.md).
+
+On this maintenance branch, use `prts-mcp-ts@2` (or `@lts-2.8` after the first LTS publish), Python `prts-mcp>=2.8,<2.9`, and an exact Docker version (or `:2` after the first LTS image publish). Unversioned npm installs and Docker `latest` follow the active stable product and switch to Rust at 3.0.
 
 | Area | Python | TypeScript |
 |------|--------|------------|
@@ -115,11 +118,11 @@ Zero-config: the tool works immediately via MediaWiki with caching. For the full
 
 Since 2.3.0 both implementations support both transports — pick by use case, not by language:
 
-- **Local stdio** (Claude Desktop / Claude Code) → Python `prts-mcp` (stdio, default) or TypeScript `npx prts-mcp-ts-stdio`
-- **HTTP server** (self-hosted, remote access) → Python `PRTS_TRANSPORT=http prts-mcp` or TypeScript `npx prts-mcp-ts`
+- **Local stdio** (Claude Desktop / Claude Code) → Python `prts-mcp` (stdio, default) or TypeScript `npx --package prts-mcp-ts@2 prts-mcp-ts-stdio`
+- **HTTP server** (self-hosted, remote access) → Python `PRTS_TRANSPORT=http prts-mcp` or TypeScript `npx prts-mcp-ts@2`
 - See [`python/`](python/) and [`ts/`](ts/) for per-implementation details
 
-The TypeScript implementation supports Bun and Node.js. Since 2.2.0 **Bun is the default production runtime**: the default `ts/Dockerfile`, the primary CI verification path, and the recommended Docker deployment all run under Bun (verified against Bun `1.3.14`). Node.js remains a supported legacy/optional runtime via the `prts-mcp-ts` npm bin (so `npx prts-mcp-ts` stays zero-dependency), `npm install -g`, and the `ts/Dockerfile.node` build path. The npm publishing path still uses npm CLI (`npm publish --provenance`, runtime-agnostic).
+The TypeScript implementation supports Bun and Node.js. Since 2.2.0 **Bun is the default production runtime**: the default `ts/Dockerfile`, the primary CI verification path, and the recommended Docker deployment all run under Bun (verified against Bun `1.3.14`). Node.js remains a supported legacy/optional runtime via the `prts-mcp-ts` npm bin (so `npx prts-mcp-ts@2` stays zero-dependency), `npm install -g`, and the `ts/Dockerfile.node` build path. The npm publishing path still uses npm CLI (`npm publish --provenance`, runtime-agnostic).
 
 ### Data Sources
 
@@ -158,7 +161,10 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and [`doc
 | 版本线 | 版本 | 工具数 | 状态 |
 |--------|------|--------|------|
 | **2.8**（`main`） | `2.8.1` | 24 | 干员深度数值——`get_operator_basic_info` 统一入口的面板插值、技能逐等级、天赋逐档；新增肉鸽剧情发现、读取、搜索与角色追踪。 |
+| **2.8 LTS**（`lts/2.8`） | `2.8.1` 基线 | 24 | Python/TypeScript 仅做维护，EOL 2027-07-02；Rust 迁移另行实施。 |
 | **1.7 LTS**（`lts/1.7`） | `1.7.0` | 32 | 稳定维护线。1.7.x 仅接受兼容性、安全性、数据同步和关键缺陷修复。 |
+
+本维护分支使用 `prts-mcp-ts@2`（首次 LTS 发布后也可用 `@lts-2.8`）、Python `prts-mcp>=2.8,<2.9` 和精确 Docker 版本（首次 LTS 镜像发布后也可用 `:2`）。不指定版本的 npm 安装和 Docker latest 跟随活跃稳定产品，在 3.0 发布时切到 Rust。两条 LTS 的维护范围见 [LTS 政策](docs/dev/LTS.md)。
 
 | 范围 | Python | TypeScript |
 |------|--------|------------|
@@ -241,11 +247,11 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and [`doc
 
 自 2.3.0 起两个实现都支持双传输——按场景选择，而非按语言：
 
-- **本地 stdio 接入**（Claude Desktop / Claude Code）→ Python `prts-mcp`（stdio，默认）或 TypeScript `npx prts-mcp-ts-stdio`
-- **HTTP 服务部署**（自建服务器，供他人调用）→ Python `PRTS_TRANSPORT=http prts-mcp` 或 TypeScript `npx prts-mcp-ts`
+- **本地 stdio 接入**（Claude Desktop / Claude Code）→ Python `prts-mcp`（stdio，默认）或 TypeScript `npx --package prts-mcp-ts@2 prts-mcp-ts-stdio`
+- **HTTP 服务部署**（自建服务器，供他人调用）→ Python `PRTS_TRANSPORT=http prts-mcp` 或 TypeScript `npx prts-mcp-ts@2`
 - 详见 [`python/`](python/) 和 [`ts/`](ts/)
 
-TypeScript 实现支持 Bun 与 Node.js。自 2.2.0 起 **Bun 是默认生产运行时**：默认 `ts/Dockerfile`、CI 主验证链与推荐 Docker 部署均在 Bun 下运行（最低验证版本 Bun `1.3.14`）。Node.js 保留为受支持的 legacy/可选运行时，通过 `prts-mcp-ts` npm bin（因此 `npx prts-mcp-ts` 仍零额外运行时依赖）、`npm install -g` 与 `ts/Dockerfile.node` 构建路径提供。npm 发布路径仍走 npm CLI（`npm publish --provenance`，与运行时无关）。
+TypeScript 实现支持 Bun 与 Node.js。自 2.2.0 起 **Bun 是默认生产运行时**：默认 `ts/Dockerfile`、CI 主验证链与推荐 Docker 部署均在 Bun 下运行（最低验证版本 Bun `1.3.14`）。Node.js 保留为受支持的 legacy/可选运行时，通过 `prts-mcp-ts` npm bin（因此 `npx prts-mcp-ts@2` 仍零额外运行时依赖）、`npm install -g` 与 `ts/Dockerfile.node` 构建路径提供。npm 发布路径仍走 npm CLI（`npm publish --provenance`，与运行时无关）。
 
 ### 数据源
 

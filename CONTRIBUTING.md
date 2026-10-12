@@ -6,7 +6,7 @@
 
 - [`docs/dev/ENVIRONMENT.md`](docs/dev/ENVIRONMENT.md)：本机工具链与平台入口
 - [`docs/dev/STYLE.md`](docs/dev/STYLE.md)：架构边界、代码规范与测试要求
-- [`docs/dev/LTS.md`](docs/dev/LTS.md)：1.7 LTS 维护范围
+- [`docs/dev/LTS.md`](docs/dev/LTS.md)：1.7 / 2.8 LTS 维护范围与发布隔离
 - [`SECURITY.md`](SECURITY.md)：安全问题报告方式
 
 ## Choose The Target Branch
@@ -15,9 +15,12 @@
 |------|---------------|
 | 功能、重构、性能、非紧急修复、一般或非 LTS 文档、chore | `develop` -> `develop` |
 | 1.7 兼容性、安全性、数据同步、关键修复及对应文档纠正 | `lts/1.7` -> `lts/1.7` |
+| 2.8 兼容性、安全性、数据同步、关键修复及对应文档纠正 | `lts/2.8` -> `lts/2.8` |
 | 最新稳定版紧急 hotfix | `main` -> `main`，之后同步到 `develop` |
 
 不要直接 push 长期分支。工作分支使用 `<type>/v<version>-<topic>` 命名，并通过 PR 合并。当前版本与分支状态以 [`STATUS.md`](STATUS.md) 为准。
+
+两条 LTS 均于 2027-07-02 EOL，不接收新能力。Rust 导入后，适用的旧版修复应单独在 Rust 中实现，不能整分支合并并恢复 python/、ts/。
 
 ## Make And Verify Changes
 

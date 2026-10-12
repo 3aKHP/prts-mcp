@@ -1,6 +1,6 @@
 # 版本号约定与兼容性承诺
 
-本文件是 PRTS-MCP 版本语义与兼容性承诺的单一事实源，面向下游部署者与协作者。分支、评审、验证与发布的操作流程见 [`WORKFLOW.md`](WORKFLOW.md)；1.7 LTS 线的专门规则见 [`LTS.md`](LTS.md)。
+本文件是 PRTS-MCP 版本语义与兼容性承诺的单一事实源，面向下游部署者与协作者。分支、评审、验证与发布的操作流程见 [`WORKFLOW.md`](WORKFLOW.md)；1.7 与 2.8 LTS 线的专门规则见 [`LTS.md`](LTS.md)。
 
 > **Core promise (EN):** PRTS-MCP follows SemVer-shaped versioning with a closed, enumerated set of deviations declared in this document — not maintainer discretion. For every Patch and Minor release within a Major line, the default goal is a blind upgrade: `pip install -U` / `npm install -g` with no configuration change, without end users noticing anything.
 
@@ -40,6 +40,8 @@ Patch 与 Minor 共享同一个默认姿态。**兼容** = 同时满足：
 **叙事惯例（非兼容规则）**：新增公共工具面优先安排在 Minor——README 与 CI 锚定工具数，值得一个主题版本。Patch 中新增工具不违反兼容承诺。
 
 ## 版本号操作规则
+
+**2.8 LTS 分支约束**：本分支保留 Python/TS 双实现、既有版本锁步及成对 tag，维护发布仅使用稳定 `2.8.x`。发布目标是 `lts/2.8`，而非 `main` 或 `develop`；npm 使用 `lts-2.8`、Docker 使用精确版本与 `:2`，不更新稳定 latest。EOL 固定为 2027-07-02，不从 3.0 发布日重新计时。LTS 不接受新能力，下面关于一般 Patch/Minor 可容纳增补的规则不扩大其维护范围。Rust 单实现及新 tag 规则由后续主线迁移 PR 同步，本次不提前改变旧分支规则。
 
 - **三段式 `Major.Minor.Patch`**。**预发布后缀与归一化**：tag 始终使用连字符后缀（`-alpha.N` / `-beta.N` / `-rc.N`），Python 和 TS 统一；`pyproject.toml` 内用 PEP 440（`2.6.0a1`），CD 的 version check 自动归一化 `-alpha.` → `a`；`package.json` 内用与 tag 相同的 semver 形式（`2.6.0-alpha.1`）。
 - **双实现版本锁步**：`python/pyproject.toml` 与 `ts/package.json` 版本号始终一致（格式分别遵循 PEP 440 与 semver）；tag 成对（`python/vX.Y.Z` + `ts/vX.Y.Z`）。

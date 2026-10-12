@@ -1,5 +1,7 @@
 # PRTS MCP Server — Python 实现
 
+本目录属于 `lts/2.8`，保留 Python 维护实现，EOL 2027-07-02。Rust 3.x 使用另一主线布局；本分支的维护范围和发行渠道见 [LTS 政策](../docs/dev/LTS.md)。
+
 明日方舟同人创作辅助 MCP Server，Python 版本。支持 **stdio** 与 **Streamable HTTP**，可接入本地 MCP 客户端或作为 HTTP 服务部署。
 
 提供 24 个 MCP 工具（2.x）：PRTS 词条检索与页面结构、干员档案/语音/基础信息/战斗技能/面板数值、剧情活动与台词、角色出场追踪、全文搜索（含基建/战斗技能跨干员反查）、敌人图鉴、关卡查询、关卡敌人融合、物品/材料查询，以及干员立绘。完整清单见仓库根目录 [`README.md`](../README.md)。
@@ -49,7 +51,7 @@ GAMEDATA_PATH=/path/to/ArknightsGameData uv run --directory python --locked prts
 安装正式发布包时仍支持 pip：
 
 ```bash
-pip install prts-mcp
+pip install 'prts-mcp>=2.8,<2.9'
 
 GAMEDATA_PATH=/path/to/ArknightsGameData prts-mcp
 ```

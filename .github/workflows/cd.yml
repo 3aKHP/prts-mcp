@@ -3,12 +3,13 @@ name: CD
 on:
   push:
     tags:
-      - "python/v[0-9]*.[0-9]*.[0-9]*"
-      - "python/v[0-9]*.[0-9]*.[0-9]*-*"
+      - "python/v2.8.*"
 
 jobs:
   verify:
     runs-on: ubuntu-latest
+    outputs:
+      docker_alias: ${{ steps.scope.outputs.docker_alias }}
 
     steps:
       - name: Checkout repository
@@ -16,21 +17,9 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Verify tag scope vs branch
-        run: |
-          VERSION="${GITHUB_REF_NAME#python/v}"
-          if [[ "${VERSION}" != *-* ]]; then
-            if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
-              echo "::error::Stable tag (no -suffix) must be on main. Use -alpha.1 / -beta.1 / -rc.1 for pre-release tags on develop."
-              exit 1
-            fi
-          else
-            if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/develop; then
-              echo "::error::Pre-release tag (-suffix) must be on develop."
-              exit 1
-            fi
-          fi
-          echo "Tag scope verification passed."
+      - name: Verify LTS tag and maintenance branch
+        id: scope
+        run: bash .github/scripts/verify-lts-release.sh
 
       - name: Set up Python
         uses: actions/setup-python@v7
@@ -247,10 +236,8 @@ jobs:
           VERSION="${{ steps.version.outputs.value }}"
           docker tag prts-mcp:release "${IMAGE}:${VERSION}"
           docker push "${IMAGE}:${VERSION}"
-          if [[ "${{ steps.version.outputs.prerelease }}" != "true" ]]; then
-            docker tag prts-mcp:release "${IMAGE}:latest"
-            docker push "${IMAGE}:latest"
-          fi
+          docker tag prts-mcp:release "${IMAGE}:${{ needs.verify.outputs.docker_alias }}"
+          docker push "${IMAGE}:${{ needs.verify.outputs.docker_alias }}"
 
   github-release:
     runs-on: ubuntu-latest
@@ -308,7 +295,7 @@ jobs:
           files: python/dist/*
           fail_on_unmatched_files: true
           prerelease: ${{ needs.build-and-push.outputs.prerelease }}
-          make_latest: ${{ needs.build-and-push.outputs.prerelease == 'true' && 'false' || 'true' }}
+          make_latest: false
 
   publish-pypi:
     runs-on: ubuntu-latest
