@@ -75,6 +75,7 @@ const calls = [
   [11, "search", { pattern: "阿米娅", scope: "operators", limit: 3 }],
   [12, "list_story_events", {}],
   [13, "operator_artwork", { action: "list", operator_name: "阿米娅" }],
+  [14, "search_stories", { pattern: "(?<=阿米)娅", max_results: 1 }],
 ];
 const { out, err } = await stdioRound(calls);
 const responseOf = (id) => {
@@ -114,6 +115,10 @@ check(
   artworkText.includes("的立绘"),
   artworkText.slice(0, 90),
 );
+const nativeRegex = responseOf(14);
+check("native lookbehind search works without a JS runtime or C-library setup",
+  !nativeRegex?.result?.isError && nativeRegex?.result?.content?.[0]?.text?.includes("共 1 条"),
+  nativeRegex?.result?.content?.[0]?.text?.slice(0, 90));
 
 console.log(failures === 0 ? "LOCAL_VERIFY_PASS" : `LOCAL_VERIFY_FAIL(${failures})`);
 process.exit(failures === 0 ? 0 : 1);

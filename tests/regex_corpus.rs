@@ -1,4 +1,4 @@
-//! Regex corpus differential: Rust QuickJS adapter vs the Bun oracle golden
+//! Original regex corpus differential: native adapter vs the Bun oracle golden
 //! (contracts/cases/golden/regex-oracle.json).
 //!
 //! Accept/reject and match booleans must agree on every case. Engine error
@@ -9,7 +9,7 @@ use prts_mcp_rust::text::regex_compat::JsRegex;
 use serde_json::Value;
 
 #[test]
-fn quickjs_matches_bun_oracle_corpus() {
+fn native_component_matches_original_bun_oracle_corpus() {
     let root = env!("CARGO_MANIFEST_DIR");
     let corpus: Value = serde_json::from_str(include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
@@ -49,7 +49,7 @@ fn quickjs_matches_bun_oracle_corpus() {
             Ok(re) => {
                 if oracle_rejected {
                     mismatches.push(format!(
-                        "{id}: oracle rejected the pattern, QuickJS accepted it"
+                        "{id}: oracle rejected the pattern, native engine accepted it"
                     ));
                     continue;
                 }
@@ -67,7 +67,7 @@ fn quickjs_matches_bun_oracle_corpus() {
             Err(message) => {
                 if !oracle_rejected {
                     mismatches.push(format!(
-                        "{id}: oracle accepted the pattern, QuickJS rejected it: {message}"
+                        "{id}: oracle accepted the pattern, native engine rejected it: {message}"
                     ));
                 }
                 // D-003: rejection wording is engine-specific; both rejected.

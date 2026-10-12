@@ -13,7 +13,7 @@ path = "src/lib.rs"
 # ---------------------------------------------------------------------------
 # Dependency policy (docs/02-architecture.md): precise versions are pinned by
 # the committed Cargo.lock; the requirements below stay conservative. rmcp and
-# rquickjs are the two high-risk integrations validated by the P1 probes.
+# the native ECMAScript regex component are validated by oracle probes.
 # ---------------------------------------------------------------------------
 
 [dependencies]
@@ -51,8 +51,11 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 thiserror = "2"
 
-# JS regex compatibility component (narrow adapter: compile + is_match only).
-rquickjs = { version = "0.14", default-features = false, features = ["std"] }
+# Mandatory-literal scanning; native regexp sources are pinned under vendor/.
+memchr = "2"
+
+[build-dependencies]
+cc = "1"
 
 [features]
 default = []

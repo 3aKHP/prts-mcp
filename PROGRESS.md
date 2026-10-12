@@ -1,6 +1,6 @@
 # 执行进度
 
-最后更新：2026-10-13（P8 完成，全阶段收口）。
+最后更新：2026-10-13（P0–P8 已完成；P9 原生性能专项完成，见独立报告）。
 
 | 阶段 | 状态 | 报告 | 下一步 |
 |---|---|---|---|
@@ -13,6 +13,7 @@
 | P6 | complete (tag local/p6-complete) | [reports/P6.md](reports/P6.md) | — |
 | P7 | complete | [reports/P7.md](reports/P7.md) | — |
 | P8 | complete (tag local/p8-complete) | [reports/P8-final.md](reports/P8-final.md) | — |
+| P9 | complete（原生性能与分发） | [reports/P9-native-performance.md](reports/P9-native-performance.md) | 转正/平台扩展仍由维护者决定 |
 
 ## P1 交付摘要（2026-10-11）
 
@@ -99,9 +100,18 @@
 - **许可证审计**：dependency-licenses v2 全闭包 225 包全宽松许可（唯一 LGPL 字样为 r-efi OR 备选未选择；QuickJS MIT 系随源保留）；打包产物随附 LICENSE/NOTICE。
 - **结论**（reports/P8-final.md）：Linux 本地 TS/v2.8.1 完整复刻验收通过，D-001…D-006 全映射，转正待决清单移交维护者；未支持平台如实列明。
 
+## P9 交付摘要（2026-10-13）
+
+- 产品移除 JavaScript VM：静态链接独立 C regexp/Unicode，Wiki helper 业务改为 Rust；发行包无需用户额外配置 C 库。
+- 冷索引借用字段、减少分配、最多四线程解析并恢复原始顺序；首次并发请求真的只构建一次，非重复构建后只发布一份。
+- 相同四 CPU 亲和性下，冷搜索 p50 Rust 464ms / TS 1264ms；六项热查询 p50/p95 全部占优。单核冷查询仅接近持平，不认领任意硬件全面领先。
+- 原始 49 项正则严格一致；扩展 3276 项中 3190 严格一致 + 86 项原有差异由维护者批准保留，登记 D-007；325 项 Wiki helper 全等。
+- 2285 章 / 424281 条完整索引 digest 与 TS 一致；211 Rust 测试、384/384 离线差分、4/4 live、ASan/UBSan 和原生链接验证通过。
+- 分发重新验证：npm 10/10、独立目录 7/7（增加无 JS 环境 native lookbehind）、Docker 11/11。许可证随包；未开展新的跨平台或独立 reviewer/E2E 全流程。
+
 ## 交接入口
 
-- 分支 `rust-local`；HEAD 见 `git log -1`（tag local/p4-complete）；工作树干净。
-- 阶段 bundle：`artifacts/p0.bundle` … `artifacts/p4.bundle`（hash 以最终文件为准；请维护者另存备份并自行记录）。
-- 差分重跑：`node tools/verify.mjs --phase P6`（Rust 需 `cargo build --locked --release`；fixture `node tools/make-fixtures.mjs && node tools/make-fullscale.mjs && node tools/make-images-fixture.mjs`）；live `node tools/verify.mjs --live`；性能 `node tools/bench-p4.mjs`、图片全规模 `node tools/bench-p6-images.mjs`。
-- P8 输入：coverage 仅剩 FINAL-* 6 行；差分 --all 383/383 与 live 4/4 可直接复跑；性能对照需统一口径重测（docs/06）；独立重建从 build/package 复制目录或 `package-native.mjs --skip-build` 重新产出；许可证审计基于 contracts/dependency-licenses.json + 打包产物 LICENSE/NOTICE。
+- 本地集成分支 `rust-local`；本轮任务分支 `phase/p9-native-performance`，版本点以本地 Git/tag 和 P9 报告为准。
+- 阶段 bundle：`artifacts/p0.bundle` … `artifacts/p9.bundle`，请维护者另存；原始本轮证据在 `artifacts/native-performance/`，可提交摘要在 `reports/P9-measurements.json`。
+- 重跑：`node tools/verify.mjs --all` / `--live`；专项性能：`node tools/bench-native-performance.mjs --cpus 2-5`。固定 oracle、fixture 和构建准备见 P9 报告。
+- 所有原 P0–P8 coverage 仍 verified；P9 追加真实性能、native 组件、分发证据行，D-007 逐例守护。不要用历史 P8 少量样本作为当前性能结论。

@@ -117,6 +117,10 @@ fn concurrent_first_calls_share_one_build() {
 
     let builds_before = index_build_count();
     let barrier = Arc::new(std::sync::Barrier::new(4));
+    let misses_before = prts_mcp_rust::diagnostics::cache_snapshot()["story_search"]
+        ["story_search_index"]["misses"]
+        .as_u64()
+        .unwrap();
     let mut handles = Vec::new();
     for _ in 0..4 {
         let barrier = Arc::clone(&barrier);
@@ -135,6 +139,14 @@ fn concurrent_first_calls_share_one_build() {
         index_build_count(),
         builds_before + 1,
         "single-flight shared build"
+    );
+    assert_eq!(
+        prts_mcp_rust::diagnostics::cache_snapshot()["story_search"]["story_search_index"]
+            ["misses"]
+            .as_u64()
+            .unwrap(),
+        misses_before + 1,
+        "one actual build attempt, not several builds with one winning publication"
     );
 
     let _ = std::fs::remove_dir_all(zip.parent().unwrap());
@@ -161,5 +173,56 @@ fn search_results_follow_zip_identity() {
         .expect("stale search");
     assert_eq!(stale["total"], 0, "old content no longer indexed: {stale}");
 
+    let _ = std::fs::remove_dir_all(zip.parent().unwrap());
+}
+
+/// Independent parsing must preserve insertion/stable-sort order, and keep
+/// skipping corrupt/missing chapters without dropping subsequent good ones.
+#[test]
+fn parallel_build_preserves_chapter_order_and_skip_semantics() {
+    use serde_json::json;
+    let _guard = COUNTER_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let zip = temp_zip("parallel-order");
+    let mut entries = Vec::new();
+    let mut datas = Vec::new();
+    for n in 0..32 {
+        let key = format!("ch/{n}");
+        datas.push(
+            json!({"storyTxt":key,"storyCode":format!("C{n}"),"storyName":key,"storySort":n/2}),
+        );
+        if n == 7 {
+            continue;
+        } // Missing chapter.
+        let contents = if n == 13 {
+            b"{bad".to_vec()
+        } else {
+            serde_json::to_vec(&json!({"storyList":[{"prop":"name","attributes":{"name":"角色","content":format!("line{n}")}}]})).unwrap()
+        };
+        entries.push((format!("zh_CN/gamedata/story/{key}.json"), contents));
+    }
+    entries.push((
+        "zh_CN/gamedata/excel/story_review_table.json".to_owned(),
+        serde_json::to_vec(&json!({"event":{"entryType":"ACTIVITY","infoUnlockDatas":datas}}))
+            .unwrap(),
+    ));
+    let borrowed: Vec<_> = entries
+        .iter()
+        .map(|(p, b)| (p.as_str(), b.as_slice()))
+        .collect();
+    write_zip_entries(&zip, &borrowed).unwrap();
+    let index = story_search_index(&zip, &ZipStore::new(&zip)).unwrap();
+    let expected: Vec<_> = (0..32)
+        .filter(|&n| n != 7 && n != 13)
+        .map(|n| format!("ch/{n}"))
+        .collect();
+    assert_eq!(
+        index
+            .chapters
+            .iter()
+            .map(|c| c.story_key.clone())
+            .collect::<Vec<_>>(),
+        expected
+    );
+    assert_eq!(index.records, (0..30).map(|n| (n, 0)).collect::<Vec<_>>());
     let _ = std::fs::remove_dir_all(zip.parent().unwrap());
 }

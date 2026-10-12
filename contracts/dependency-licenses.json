@@ -3,31 +3,31 @@
   "recorded_at": "2026-10-13",
   "toolchain": "1.96.1 (rust-toolchain.toml)",
   "lockfile": "Cargo.lock (committed)",
-  "lock_package_count": 225,
+  "lock_package_count": 218,
   "source": "cargo metadata --format-version 1 (full transitive closure)",
   "license_summary": {
-    "MIT OR Apache-2.0": 124,
-    "MIT": 45,
-    "Unicode-3.0": 18,
-    "Apache-2.0 OR MIT": 10,
-    "MIT/Apache-2.0": 4,
-    "Apache-2.0": 4,
-    "Unlicense OR MIT": 2,
-    "Zlib": 2,
-    "Apache-2.0 OR ISC OR MIT": 2,
-    "ISC": 2,
     "0BSD OR MIT OR Apache-2.0": 1,
+    "Unlicense OR MIT": 2,
+    "MIT OR Apache-2.0": 122,
+    "Apache-2.0 OR MIT": 10,
+    "MIT": 41,
+    "MIT/Apache-2.0": 4,
+    "Apache-2.0 OR ISC OR MIT": 2,
+    "Unicode-3.0": 18,
     "MIT OR Apache-2.0 OR Zlib": 1,
     "MIT AND BSD-3-Clause": 1,
     "MIT OR Zlib OR Apache-2.0": 1,
     "MIT OR Apache-2.0 OR LGPL-2.1-or-later": 1,
     "Apache-2.0 AND ISC": 1,
+    "Apache-2.0": 4,
+    "ISC": 2,
     "Apache-2.0 OR BSL-1.0": 1,
     "BSD-3-Clause": 1,
     "Zlib OR Apache-2.0 OR MIT": 1,
     "(MIT OR Apache-2.0) AND Unicode-3.0": 1,
     "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT": 1,
-    "CDLA-Permissive-2.0": 1
+    "CDLA-Permissive-2.0": 1,
+    "Zlib": 1
   },
   "flagged": [
     {
@@ -41,18 +41,12 @@
       "version": "1.0.9",
       "license": "CDLA-Permissive-2.0",
       "disposition": "Permissive data license (Mozilla root store); redistribution allowed with notice. Bundled via reqwest rustls-tls."
-    },
-    {
-      "name": "rquickjs-sys (vendored QuickJS)",
-      "version": "0.14.0",
-      "license": "QuickJS MIT-style license (quickjs/LICENSE in the crate)",
-      "disposition": " Vendored C sources compiled into the binary; permissive with copyright notice retained in the crate source."
     }
   ],
   "notes": [
-    "All 225 packages declare permissive licenses (MIT/Apache-2.0/ISC/BSD/Zlib/Unicode-3.0/BSL/CDLA-Permissive-2.0/Unlicense) or OR-choices resolving to permissive.",
     "No GPL/AGPL-only dependency enters the build; the single LGPL mention is an OR alternative of r-efi (not selected).",
-    "Package artifacts ship the outer repo LICENSE (MIT) + NOTICE (third-party content incl. PRTS Wiki CC BY-NC-SA data terms) — see tools/package-native.mjs."
+    "Package artifacts ship the outer repo LICENSE (MIT) + NOTICE (third-party content incl. PRTS Wiki CC BY-NC-SA data terms) — see tools/package-native.mjs.",
+    "All 218 registry packages plus the vendored regexp/Unicode component retain permissive licenses; source-build tools are not required by binary-package users."
   ],
   "packages": [
     {
@@ -66,12 +60,6 @@
       "version": "1.1.5",
       "license": "Unlicense OR MIT",
       "repository": "https://github.com/BurntSushi/aho-corasick"
-    },
-    {
-      "name": "allocator-api2",
-      "version": "0.2.21",
-      "license": "MIT OR Apache-2.0",
-      "repository": "https://github.com/zakarumych/allocator-api2"
     },
     {
       "name": "android_system_properties",
@@ -164,16 +152,16 @@
       "repository": "https://github.com/rust-lang/cc-rs"
     },
     {
-      "name": "cfg-if",
-      "version": "1.0.5",
-      "license": "MIT OR Apache-2.0",
-      "repository": "https://github.com/rust-lang/cfg-if"
-    },
-    {
       "name": "cfg_aliases",
       "version": "0.2.2",
       "license": "MIT",
       "repository": "https://github.com/katharostech/cfg_aliases"
+    },
+    {
+      "name": "cfg-if",
+      "version": "1.0.5",
+      "license": "MIT OR Apache-2.0",
+      "repository": "https://github.com/rust-lang/cfg-if"
     },
     {
       "name": "chacha20",
@@ -306,12 +294,6 @@
       "version": "1.1.10",
       "license": "MIT OR Apache-2.0",
       "repository": "https://github.com/rust-lang/flate2-rs"
-    },
-    {
-      "name": "foldhash",
-      "version": "0.2.0",
-      "license": "Zlib",
-      "repository": "https://github.com/orlp/foldhash"
     },
     {
       "name": "form_urlencoded",
@@ -656,12 +638,6 @@
       "repository": "https://github.com/dtolnay/proc-macro2"
     },
     {
-      "name": "prts-mcp-rust",
-      "version": "0.1.0+ts2.8.1.local",
-      "license": "MIT",
-      "repository": null
-    },
-    {
       "name": "quick-xml",
       "version": "0.38.4",
       "license": "MIT",
@@ -740,12 +716,6 @@
       "repository": "https://github.com/rust-lang/regex"
     },
     {
-      "name": "relative-path",
-      "version": "2.0.2",
-      "license": "MIT OR Apache-2.0",
-      "repository": "https://github.com/udoprog/relative-path"
-    },
-    {
       "name": "reqwest",
       "version": "0.12.28",
       "license": "MIT OR Apache-2.0",
@@ -768,24 +738,6 @@
       "version": "3.5.1",
       "license": "Apache-2.0",
       "repository": "https://github.com/modelcontextprotocol/rust-sdk/"
-    },
-    {
-      "name": "rquickjs",
-      "version": "0.14.0",
-      "license": "MIT",
-      "repository": "https://github.com/DelSkayn/rquickjs.git"
-    },
-    {
-      "name": "rquickjs-core",
-      "version": "0.14.0",
-      "license": "MIT",
-      "repository": "https://github.com/DelSkayn/rquickjs.git"
-    },
-    {
-      "name": "rquickjs-sys",
-      "version": "0.14.0",
-      "license": "MIT",
-      "repository": "https://github.com/DelSkayn/rquickjs.git"
     },
     {
       "name": "rustc-hash",
@@ -1220,6 +1172,54 @@
       "repository": "https://github.com/rustls/webpki-roots"
     },
     {
+      "name": "windows_aarch64_gnullvm",
+      "version": "0.52.6",
+      "license": "MIT OR Apache-2.0",
+      "repository": "https://github.com/microsoft/windows-rs"
+    },
+    {
+      "name": "windows_aarch64_msvc",
+      "version": "0.52.6",
+      "license": "MIT OR Apache-2.0",
+      "repository": "https://github.com/microsoft/windows-rs"
+    },
+    {
+      "name": "windows_i686_gnu",
+      "version": "0.52.6",
+      "license": "MIT OR Apache-2.0",
+      "repository": "https://github.com/microsoft/windows-rs"
+    },
+    {
+      "name": "windows_i686_gnullvm",
+      "version": "0.52.6",
+      "license": "MIT OR Apache-2.0",
+      "repository": "https://github.com/microsoft/windows-rs"
+    },
+    {
+      "name": "windows_i686_msvc",
+      "version": "0.52.6",
+      "license": "MIT OR Apache-2.0",
+      "repository": "https://github.com/microsoft/windows-rs"
+    },
+    {
+      "name": "windows_x86_64_gnu",
+      "version": "0.52.6",
+      "license": "MIT OR Apache-2.0",
+      "repository": "https://github.com/microsoft/windows-rs"
+    },
+    {
+      "name": "windows_x86_64_gnullvm",
+      "version": "0.52.6",
+      "license": "MIT OR Apache-2.0",
+      "repository": "https://github.com/microsoft/windows-rs"
+    },
+    {
+      "name": "windows_x86_64_msvc",
+      "version": "0.52.6",
+      "license": "MIT OR Apache-2.0",
+      "repository": "https://github.com/microsoft/windows-rs"
+    },
+    {
       "name": "windows-core",
       "version": "0.62.2",
       "license": "MIT OR Apache-2.0",
@@ -1275,54 +1275,6 @@
     },
     {
       "name": "windows-targets",
-      "version": "0.52.6",
-      "license": "MIT OR Apache-2.0",
-      "repository": "https://github.com/microsoft/windows-rs"
-    },
-    {
-      "name": "windows_aarch64_gnullvm",
-      "version": "0.52.6",
-      "license": "MIT OR Apache-2.0",
-      "repository": "https://github.com/microsoft/windows-rs"
-    },
-    {
-      "name": "windows_aarch64_msvc",
-      "version": "0.52.6",
-      "license": "MIT OR Apache-2.0",
-      "repository": "https://github.com/microsoft/windows-rs"
-    },
-    {
-      "name": "windows_i686_gnu",
-      "version": "0.52.6",
-      "license": "MIT OR Apache-2.0",
-      "repository": "https://github.com/microsoft/windows-rs"
-    },
-    {
-      "name": "windows_i686_gnullvm",
-      "version": "0.52.6",
-      "license": "MIT OR Apache-2.0",
-      "repository": "https://github.com/microsoft/windows-rs"
-    },
-    {
-      "name": "windows_i686_msvc",
-      "version": "0.52.6",
-      "license": "MIT OR Apache-2.0",
-      "repository": "https://github.com/microsoft/windows-rs"
-    },
-    {
-      "name": "windows_x86_64_gnu",
-      "version": "0.52.6",
-      "license": "MIT OR Apache-2.0",
-      "repository": "https://github.com/microsoft/windows-rs"
-    },
-    {
-      "name": "windows_x86_64_gnullvm",
-      "version": "0.52.6",
-      "license": "MIT OR Apache-2.0",
-      "repository": "https://github.com/microsoft/windows-rs"
-    },
-    {
-      "name": "windows_x86_64_msvc",
       "version": "0.52.6",
       "license": "MIT OR Apache-2.0",
       "repository": "https://github.com/microsoft/windows-rs"
@@ -1404,6 +1356,16 @@
       "version": "0.8.3",
       "license": "Apache-2.0",
       "repository": "https://github.com/zopfli-rs/zopfli"
+    }
+  ],
+  "vendored_components": [
+    {
+      "name": "QuickJS-NG standalone regexp and Unicode (no JS VM)",
+      "source": "crates.io rquickjs-sys 0.14.0 / quickjs",
+      "license": "MIT AND Unicode-3.0",
+      "provenance": "vendor/quickjs-regexp/SOURCE.json",
+      "notices": "vendor/quickjs-regexp/NOTICES.txt",
+      "distribution": "THIRD-PARTY-NOTICES.txt in npm/native directories and both Docker profiles"
     }
   ]
 }

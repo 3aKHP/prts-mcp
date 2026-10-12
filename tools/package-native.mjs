@@ -115,7 +115,7 @@ writeFileSync(
       type: "commonjs",
       bin: Object.fromEntries(LAUNCHERS.map((name) => [name, `bin/${name}.js`])),
       engines: { node: ">=18" },
-      files: ["bin/", "data/", "LICENSE", "NOTICE"],
+      files: ["bin/", "data/", "LICENSE", "NOTICE", "THIRD-PARTY-NOTICES.txt"],
       prtsMcpLocal: {
         note: "private local distribution; the public prts-mcp-ts npm package is NOT replaced (docs/09)",
         binaries: NATIVE_BINS,
@@ -128,6 +128,7 @@ writeFileSync(
 );
 copyFileSync(join(ROOT, "../../LICENSE"), join(stage, "LICENSE"));
 copyFileSync(join(ROOT, "../../NOTICE"), join(stage, "NOTICE"));
+copyFileSync(join(ROOT, "vendor/quickjs-regexp/NOTICES.txt"), join(stage, "THIRD-PARTY-NOTICES.txt"));
 
 // 5. Docker build contexts (two profiles share one payload; local tags).
 function stageDocker(profile, dockerfile) {
@@ -140,6 +141,7 @@ function stageDocker(profile, dockerfile) {
   copyTree(join(stage, "data"), join(ctx, "data"));
   copyFileSync(join(stage, "NOTICE"), join(ctx, "NOTICE"));
   copyFileSync(join(stage, "LICENSE"), join(ctx, "LICENSE"));
+  copyFileSync(join(stage, "THIRD-PARTY-NOTICES.txt"), join(ctx, "THIRD-PARTY-NOTICES.txt"));
   copyFileSync(join(ROOT, "docker", dockerfile), join(ctx, "Dockerfile"));
   return ctx;
 }

@@ -2,7 +2,7 @@
 
 本目录用于将 TypeScript `ts/v2.8.1` 的完整运行时能力逐阶段迁移到 Rust，并积累未来 3.x 可直接复用的工程。目标已经从选型纵向原型扩大为完整复刻；各阶段持续验证，不等全部功能完成才验收。完整复刻不代表已决定公开发布 Rust 或停止 2.x 维护。
 
-基线提交：`e0ba36096cdd46640166b0a5db02902fa9a6a24c`。计划日期：2026-10-11。当前交付只有计划、契约声明快照和调研材料，尚无 Rust 业务实现。阶段状态见 [PROGRESS.md](PROGRESS.md)。
+基线提交：`e0ba36096cdd46640166b0a5db02902fa9a6a24c`。计划日期：2026-10-11。P0–P8 已完成 Linux 本地复刻；P9 已完成首轮原生性能优化，移除 JavaScript VM 并验证无需额外 C 库的分发。阶段状态与证据见 [PROGRESS.md](PROGRESS.md)。
 
 ## 已确定的边界
 
@@ -28,6 +28,7 @@
 | [08-local-workflow.md](docs/08-local-workflow.md) | 本地工程、提交、证据与交接操作 |
 | [09-promotion.md](docs/09-promotion.md) | 未来转正所需的可移植性与独立决策 |
 | [10-research.md](docs/10-research.md) | 源码与外部依赖调研、已发现风险 |
+| [P9-native-performance.md](reports/P9-native-performance.md) | 后续原生性能优化、测量范围和分发证据 |
 | [contracts/baseline.json](contracts/baseline.json) | 机器可读基线和允许差异编号 |
 | [contracts/tool-declarations.json](contracts/tool-declarations.json) | 从已核对发布源码提取的 24 工具描述与输入声明 |
 | [contracts/data-declarations.json](contracts/data-declarations.json) | 三个Release数据集、必要文件与图片分片声明 |

@@ -144,19 +144,19 @@ pub fn strip_html_tags(text: &str) -> String {
 /// `<[^>]+>` — HTML-ish tags.
 fn remove_html_tags(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
-    let chars: Vec<char> = text.chars().collect();
     let mut i = 0;
-    while i < chars.len() {
-        if chars[i] == '<' {
-            if let Some(close) = chars[i + 1..].iter().position(|&c| c == '>') {
+    while i < text.len() {
+        if text.as_bytes()[i] == b'<' {
+            if let Some(close) = text[i + 1..].find('>') {
                 if close >= 1 {
                     i = i + 1 + close + 1;
                     continue;
                 }
             }
         }
-        out.push(chars[i]);
-        i += 1;
+        let ch = text[i..].chars().next().expect("valid character boundary");
+        out.push(ch);
+        i += ch.len_utf8();
     }
     out
 }

@@ -19,7 +19,8 @@
     "D-003-dependency-error-details",
     "D-004-local-packaging",
     "D-005-input-surrogate-rejection",
-    "D-006-unparseable-body-json-error"
+    "D-006-unparseable-body-json-error",
+    "D-007-native-regex-unicode-folding"
   ],
   "approved_differences_log": {
     "D-005-input-surrogate-rejection": {
@@ -35,8 +36,14 @@
       "scope": "HTTP request bodies that fail JSON parsing return HTTP 400 with a JSON-RPC -32700 parse error instead of the Express HTML error page the oracle emits. Applies to the parse failure itself only; no other error shape, status code, or body family changes.",
       "evidence": "contracts/wire/http-legacy/transport-edges.json (POST malformed JSON) and contracts/wire/supplemental/parse-error-difference.json",
       "decision": "json-rpc-parse-error-replaces-html-page"
+    },
+    "D-007-native-regex-unicode-folding": {
+      "approved_by": "maintainer",
+      "approved_at": "2026-10-13",
+      "decision": "retain-existing-rust-semantics",
+      "scope": "Retain the existing Rust Unicode simple case folding behavior for the identified categories: ASCII character ranges and Unicode property escapes (including inverted properties), instead of adding Bun-specific exceptions. This approval does not waive unrelated regex differences.",
+      "evidence": "contracts/cases/native-regex-differences.json; reports/P9-native-performance.md"
     }
   },
-  "rust_implementation_status": "P0+P1 complete (thin adapter, list_stages, 1 tool)"
-}
+  "rust_implementation_status": "P0-P8 complete (24 tools); P9 native performance complete; approved differences D-001 through D-007"
 }

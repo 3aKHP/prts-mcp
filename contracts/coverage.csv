@@ -93,3 +93,8 @@ FINAL-live,P8,yes,verified,verify-p8-lifecycle 5/5（真实 release 完整更新
 FINAL-performance,P8,yes,verified,artifacts/p8-bench.json（同镜像同宿主：冷同步 8.87s/4.10s、热周期 3.35s/2.06s、story 冷 1.28s/2.03s、热 p50 6.6/21.3ms、list_stages 60.9/2.3ms、search 124.6/2.5ms、VmHWM 561/117MB）+ p6-images-bench（151.8s/914MB vs 116.0s/22MB）,Release builds fixed-data cold warm sync and memory comparison
 FINAL-portable,P8,yes,verified,运行时：独立目录空 PATH 全本地业务（verify-p7-local 6/6）；重建：p8.bundle 克隆 cargo build --locked + 测试子集绿（artifacts/p8-rebuild.json）；许可证：dependency-licenses v2 全闭包 225 包宽松许可，无 GPL 独占,Independent rebuild licenses and no outer repo runtime dependencies
 FINAL-differences,P8,yes,verified,reports/P8-final.md §批准差异清单：D-001…D-006 全部映射+验证（D-005/006 维护者批准+回归测试），无未决业务兼容差异,Only approved differences; no unresolved required rows
+PERF-native-story-cold,P9,yes,verified,reports/P9-measurements.json + full-index-check + story_index tests,Same four-CPU affinity cold-search p50/p95 below fixed TS; single-CPU limit disclosed
+PERF-native-story-hot,P9,yes,verified,reports/P9-measurements.json six scenarios 100 calls each,Six pinned representative hot-query p50/p95 below fixed TS with exact results
+LANG-native-regexp,P9,yes,verified,tests/regex_corpus.rs + tests/native_text_corpus.rs + native-regex-differences.json,No JS VM; original 49 exact plus extended 3190 exact and 86 explicitly approved D-007
+LANG-native-wiki,P9,yes,verified,tests/native_text_corpus.rs 325 cases + diff/live Wiki,Rust business cleanup uses native regex with frozen TS output parity
+DIST-native-static-regexp,P9,yes,verified,check-native-binary + ASan/UBSan + npm10/local7/docker11,Static C component and notices included; Linux package users need no additional native-library setup

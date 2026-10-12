@@ -5,6 +5,7 @@
 //! caches live in `search.rs`/`memoir.rs`.
 
 use serde_json::{json, Map, Value};
+use std::borrow::Cow;
 use std::sync::Arc;
 
 use crate::storage::{JsonStore, ZipStore};
@@ -33,7 +34,14 @@ pub fn category_types(category: &str) -> Option<&'static [&'static str]> {
 
 /// `{@nickname}` → 博士, strip rich tags, trim.
 pub fn clean_text(text: &str) -> String {
-    let replaced = text.replace("{@nickname}", "博士");
+    let replaced = if text.contains("{@nickname}") {
+        Cow::Owned(text.replace("{@nickname}", "博士"))
+    } else {
+        Cow::Borrowed(text)
+    };
+    if !replaced.contains('<') {
+        return replaced.trim().to_string();
+    }
     crate::text::sanitizer::strip_html_tags(&replaced)
         .trim()
         .to_string()
@@ -171,11 +179,11 @@ pub struct StoryLine {
     pub text: String,
 }
 
-fn js_string(value: Option<&Value>) -> String {
+fn js_string(value: Option<&Value>) -> Cow<'_, str> {
     match value {
-        None | Some(Value::Null) => String::new(),
-        Some(Value::String(s)) => s.clone(),
-        Some(other) => crate::text::numbers::json_value_to_string(other),
+        None | Some(Value::Null) => Cow::Borrowed(""),
+        Some(Value::String(s)) => Cow::Borrowed(s),
+        Some(other) => Cow::Owned(crate::text::numbers::json_value_to_string(other)),
     }
 }
 
@@ -187,7 +195,7 @@ pub fn parse_story_list(story_list: &Value, include_narration: bool) -> Vec<Stor
             .and_then(Value::as_str)
             .unwrap_or("")
             .to_lowercase();
-        let attrs = item.get("attributes").cloned().unwrap_or(json!({}));
+        let attrs = item.get("attributes").unwrap_or(&Value::Null);
 
         match prop.as_str() {
             "name" => {
@@ -221,13 +229,13 @@ pub fn parse_story_list(story_list: &Value, include_narration: bool) -> Vec<Stor
             }
             "decision" => {
                 let options = match attrs.get("options") {
-                    Some(Value::String(s)) => vec![Value::String(s.clone())],
-                    Some(Value::Array(a)) => a.clone(),
-                    _ => Vec::new(),
+                    Some(value @ Value::String(_)) => std::slice::from_ref(value),
+                    Some(Value::Array(a)) => a.as_slice(),
+                    _ => &[],
                 };
                 for opt in options {
                     let text = match &opt {
-                        Value::String(s) => s.clone(),
+                        Value::String(s) => Cow::Borrowed(s.as_str()),
                         other => js_string(other.get("text")),
                     };
                     if !text.is_empty() {

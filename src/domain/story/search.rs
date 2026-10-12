@@ -77,43 +77,30 @@ pub fn story_search_index(
 ) -> Result<Arc<StorySearchIndex>, String> {
     const SLOT: &str = "story_search:story_search_index";
     let descriptor = zip_descriptor(zip_path);
-    {
-        let guard = cache().lock().expect("story index lock");
-        if let Some(shared) = guard.as_ref() {
-            if Some(&shared.descriptor) == descriptor.as_ref() {
-                crate::diagnostics::record_hit(SLOT);
-                crate::diagnostics::record_loaded(SLOT, shared.index.chapters.len() as u64);
-                return Ok(Arc::clone(&shared.index));
-            }
+    let mut guard = cache().lock().expect("story index lock");
+    if let Some(shared) = guard.as_ref() {
+        if Some(&shared.descriptor) == descriptor.as_ref() {
+            crate::diagnostics::record_hit(SLOT);
+            crate::diagnostics::record_loaded(SLOT, shared.index.chapters.len() as u64);
+            return Ok(Arc::clone(&shared.index));
         }
     }
     crate::diagnostics::record_miss(SLOT);
     let index = Arc::new(build_story_search_index(store)?);
-    let mut guard = cache().lock().expect("story index lock");
-    // Another thread may have won the race — first builder's index stays.
-    match guard.as_ref() {
-        Some(shared) if Some(&shared.descriptor) == descriptor.as_ref() => {
-            crate::diagnostics::record_hit(SLOT);
-            Ok(Arc::clone(&shared.index))
-        }
-        _ => {
-            let builds = guard.as_ref().map(|s| s.builds + 1).unwrap_or(1);
-            crate::diagnostics::record_loaded(SLOT, index.chapters.len() as u64);
-            *guard = Some(SharedIndex {
-                descriptor: descriptor.unwrap_or_default(),
-                index: Arc::clone(&index),
-                builds,
-            });
-            Ok(index)
-        }
-    }
+    let builds = guard.as_ref().map(|s| s.builds + 1).unwrap_or(1);
+    crate::diagnostics::record_loaded(SLOT, index.chapters.len() as u64);
+    *guard = Some(SharedIndex {
+        descriptor: descriptor.unwrap_or_default(),
+        index: Arc::clone(&index),
+        builds,
+    });
+    Ok(index)
 }
 
 fn build_story_search_index(store: &ZipStore) -> Result<StorySearchIndex, String> {
     let table = load_event_table(store)?;
     let mut event_ids = HashSet::new();
-    let mut chapters: Vec<StorySearchChapter> = Vec::new();
-    let mut records: Vec<(usize, usize)> = Vec::new();
+    let mut jobs = Vec::new();
 
     for (ev_id, entry) in table.iter() {
         let Some(datas) = entry
@@ -146,42 +133,85 @@ fn build_story_search_index(store: &ZipStore) -> Result<StorySearchIndex, String
             if story_txt.is_empty() {
                 continue;
             }
-            let chapter = match read_story_from_store(store, story_txt, true) {
-                Ok(chapter) => chapter,
-                Err(message) => {
-                    // Corrupt JSON and missing chapters skip silently.
-                    if message.contains("not found") || message.contains("JSON parse failure") {
-                        continue;
-                    }
-                    return Err(message);
-                }
-            };
-            let chapter_index = chapters.len();
-            chapters.push(StorySearchChapter {
-                event_id: ev_id.clone(),
-                story_key: story_txt.to_string(),
-                story_code: d
-                    .get("storyCode")
-                    .and_then(Value::as_str)
-                    .unwrap_or("")
-                    .to_string(),
-                story_name: d
-                    .get("storyName")
-                    .and_then(Value::as_str)
-                    .unwrap_or("")
-                    .to_string(),
-                lines: chapter.lines,
-            });
-            for i in 0..chapters[chapter_index].lines.len() {
-                records.push((chapter_index, i));
-            }
+            jobs.push((ev_id.as_str(), story_txt, d));
         }
     }
+    let chapters = load_index_chapters(store, &jobs)?;
+    let records = chapters
+        .iter()
+        .enumerate()
+        .flat_map(|(chapter, data)| (0..data.lines.len()).map(move |line| (chapter, line)))
+        .collect();
     Ok(StorySearchIndex {
         event_ids,
         chapters,
         records,
     })
+}
+
+type ChapterJob<'a> = (&'a str, &'a str, &'a Value);
+
+/// At most four readers share serialized ZIP access, then parse independently.
+/// Ordinals restore the exact oracle order, including which failure surfaces.
+fn load_index_chapters(
+    store: &ZipStore,
+    jobs: &[ChapterJob<'_>],
+) -> Result<Vec<StorySearchChapter>, String> {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    let workers = std::thread::available_parallelism()
+        .map_or(1, |n| n.get())
+        .min(4)
+        .min(jobs.len());
+    let next = AtomicUsize::new(0);
+    let mut results = std::thread::scope(|scope| {
+        let handles: Vec<_> = (0..workers)
+            .map(|_| {
+                scope.spawn(|| {
+                    let mut completed = Vec::new();
+                    loop {
+                        let ordinal = next.fetch_add(1, Ordering::Relaxed);
+                        let Some(&(event_id, story_key, data)) = jobs.get(ordinal) else {
+                            break;
+                        };
+                        let result = read_story_from_store(store, story_key, true).map(|chapter| {
+                            StorySearchChapter {
+                                event_id: event_id.to_owned(),
+                                story_key: story_key.to_owned(),
+                                story_code: data
+                                    .get("storyCode")
+                                    .and_then(Value::as_str)
+                                    .unwrap_or("")
+                                    .to_owned(),
+                                story_name: data
+                                    .get("storyName")
+                                    .and_then(Value::as_str)
+                                    .unwrap_or("")
+                                    .to_owned(),
+                                lines: chapter.lines,
+                            }
+                        });
+                        completed.push((ordinal, result));
+                    }
+                    completed
+                })
+            })
+            .collect();
+        handles
+            .into_iter()
+            .flat_map(|h| h.join().expect("story index reader panicked"))
+            .collect::<Vec<_>>()
+    });
+    results.sort_unstable_by_key(|(ordinal, _)| *ordinal);
+    let mut chapters = Vec::with_capacity(results.len());
+    for (_, result) in results {
+        match result {
+            Ok(chapter) => chapters.push(chapter),
+            Err(message)
+                if message.contains("not found") || message.contains("JSON parse failure") => {}
+            Err(message) => return Err(message),
+        }
+    }
+    Ok(chapters)
 }
 
 const VALID_LINE_TYPES: [&str; 3] = ["dialog", "narration", "choice"];

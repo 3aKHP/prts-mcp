@@ -1,149 +1,224 @@
-//! Wiki text cleanup — the regex half of TS `api/prtsWiki.ts`, executed as
-//! the oracle's exact ECMAScript inside QuickJS (values passed as arguments,
-//! never spliced into source; same posture as `text::regex_compat`).
-//!
-//! `stripWikitext` (snippet pre-pass) is the shared `text::sanitizer` port.
-//! Engine error wording on pathological inputs (e.g. `String.fromCodePoint`
-//! out of range) is a D-003 runtime detail; the accepted transformations
-//! are byte-compared by the differential corpus.
+//! Rust implementations of TS Wiki text helpers. Fixed ECMAScript expressions
+//! are executed by the standalone native regex component, without a JS VM.
 
-use std::cell::RefCell;
+use crate::text::regex_compat::{JsRegex, DOT_ALL, IGNORE_CASE};
 
-use rquickjs::{Context, Function, Runtime};
-
-/// The TS helper set, transplanted verbatim from prtsWiki.ts (module-level
-/// functions; `stripHtml` calls `unescapeHTMLEntities` exactly like the
-/// oracle calls its module sibling).
-const WIKI_HELPERS: &str = r#"
-const NAMED_ENTITIES = {
-  quot: '"', amp: "&", lt: "<", gt: ">", apos: "'", nbsp: " ",
-  mdash: "—", ndash: "–", hellip: "…",
-  lsquo: "‘", rsquo: "’", ldquo: "“", rdquo: "”",
-  copy: "©", reg: "®", trade: "™",
-  times: "×", divide: "÷", plusmn: "±",
-  bull: "•", middot: "·", shy: "\u00ad",
-};
-const CSS_JS_RE =
-  /@(font-face|keyframes|media|import|charset|namespace|supports|page)[^{]*\{[^}]*\}|\(window\.RLQ\s*\|\|\s*\[\]\)\.push\([^)]*\)|<style[^>]*>.*?<\/style>|<script[^>]*>.*?<\/script>/gis;
-const HTML_TAG_RE = /<[^>]+>/g;
-const REDIRECT_SNIPPET_RE = /#\s*(?:重定向|REDIRECT)/i;
-const TECHNICAL_PAGE_PATTERNS = [
-  /\/(?:spine|data|db|lua|json|module)(?:$|[/:._-])/i,
-  /\.(?:json|lua)$/i,
-  /^(?:Widget|Template|Module|MediaWiki|模块|模板):/i,
-];
-function unescapeHTMLEntities(text) {
-  return text
-    .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d)))
-    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
-    .replace(/&([a-zA-Z]+);/g, (_, name) => NAMED_ENTITIES[name] ?? `&${name};`);
-}
-function cleanSnippet(snippet) {
-  snippet = snippet.replace(/\s*"[^"]*"\s*:\s*"[^"]*"\s*,?\s*/g, " ");
-  snippet = snippet.replace(/\|[一-鿿\w]+\s*=[^\n]*/g, "");
-  snippet = snippet.replace(REDIRECT_SNIPPET_RE, "");
-  snippet = snippet.replace(/[ \t]+/g, " ");
-  snippet = snippet.replace(/,{2,}/g, "");
-  snippet = snippet.replace(/\n{2,}/g, "\n");
-  return snippet.replace(/^[ ,\n]+|[ ,\n]+$/g, "");
-}
-function stripHtml(text) {
-  let out = text.replace(CSS_JS_RE, "");
-  out = out.replace(HTML_TAG_RE, "");
-  out = unescapeHTMLEntities(out);
-  out = out.replace(/[ \t]+/g, " ");
-  out = out.replace(/\n{3,}/g, "\n\n");
-  return out.trim();
-}
-function isTechnicalPage(title) {
-  return TECHNICAL_PAGE_PATTERNS.some((p) => p.test(title));
-}
-function isRedirectLike(snippet) {
-  return REDIRECT_SNIPPET_RE.test(snippet);
-}
-"#;
-
-/// One QuickJS VM per OS thread (rquickjs handles are !Send); the helpers
-/// are stateless so cross-thread migration of a task is invisible.
-struct HelperVm {
-    #[allow(dead_code)]
-    rt: Runtime,
-    ctx: Context,
+struct Rules {
+    clean: Vec<(JsRegex, &'static str, bool)>,
+    html: Vec<(JsRegex, &'static str, bool)>,
+    named: JsRegex,
+    redirect: JsRegex,
+    technical: Vec<JsRegex>,
 }
 
-thread_local! {
-    static HELPERS: RefCell<Option<HelperVm>> = const { RefCell::new(None) };
-}
-
-/// QuickJS errors (engine detail) surfaced as Err with the engine's message.
-fn with_vm<T>(f: impl FnOnce(&rquickjs::Ctx<'_>) -> Result<T, String>) -> Result<T, String> {
-    HELPERS.with(|cell| {
-        let mut slot = cell.borrow_mut();
-        if slot.is_none() {
-            let rt = Runtime::new().map_err(|e| format!("{e:?}"))?;
-            let ctx = Context::full(&rt).map_err(|e| format!("{e:?}"))?;
-            ctx.with(|ctx| ctx.eval::<(), _>(WIKI_HELPERS))
-                .map_err(|e| format!("{e:?}"))?;
-            *slot = Some(HelperVm { rt, ctx });
-        }
-        let vm = slot.as_ref().expect("just initialized");
-        vm.ctx.with(|ctx| f(&ctx))
-    })
-}
-
-fn js_err_string(err: rquickjs::Error, ctx: &rquickjs::Ctx<'_>) -> String {
-    match err {
-        rquickjs::Error::Exception => {
-            let caught = ctx.catch();
-            let text = caught
-                .as_string()
-                .map(|s| s.to_string().unwrap_or_default());
-            match text {
-                Some(s) if !s.is_empty() => s.to_string(),
-                _ => format!("{err:?}"),
-            }
-        }
-        other => format!("{other:?}"),
+impl Rules {
+    fn new() -> Result<Self, String> {
+        let compile = |p: &str, flags| JsRegex::compile_flags(p, flags);
+        let redirect = r"#\s*(?:重定向|REDIRECT)";
+        let clean = [
+            (r#"\s*"[^"]*"\s*:\s*"[^"]*"\s*,?\s*"#, " ", true, 0),
+            (r"\|[一-鿿\w]+\s*=[^\n]*", "", true, 0),
+            (redirect, "", false, IGNORE_CASE),
+            (r"[ \t]+", " ", true, 0),
+            (r",{2,}", "", true, 0),
+            (r"\n{2,}", "\n", true, 0),
+            (r"^[ ,\n]+|[ ,\n]+$", "", true, 0),
+        ]
+        .into_iter()
+        .map(|(p, replacement, global, flags)| Ok((compile(p, flags)?, replacement, global)))
+        .collect::<Result<_, String>>()?;
+        let html = [
+            (r"@(font-face|keyframes|media|import|charset|namespace|supports|page)[^{]*\{[^}]*\}|\(window\.RLQ\s*\|\|\s*\[\]\)\.push\([^)]*\)|<style[^>]*>.*?</style>|<script[^>]*>.*?</script>", "", true, IGNORE_CASE | DOT_ALL),
+            (r"<[^>]+>", "", true, 0),
+            (r"[ \t]+", " ", true, 0),
+            (r"\n{3,}", "\n\n", true, 0),
+        ].into_iter().map(|(p, replacement, global, flags)|
+            Ok((compile(p, flags)?, replacement, global))).collect::<Result<_, String>>()?;
+        let technical = [
+            r"/(?:spine|data|db|lua|json|module)(?:$|[/:._-])",
+            r"\.(?:json|lua)$",
+            r"^(?:Widget|Template|Module|MediaWiki|模块|模板):",
+        ]
+        .into_iter()
+        .map(|p| compile(p, IGNORE_CASE))
+        .collect::<Result<_, _>>()?;
+        Ok(Self {
+            clean,
+            html,
+            technical,
+            named: compile(r"&([a-zA-Z]+);", 0)?,
+            redirect: compile(redirect, IGNORE_CASE)?,
+        })
     }
 }
 
-/// Call one top-level helper by its TS name with a single string argument.
-fn call_helper(name: &str, arg: &str) -> Result<String, String> {
-    with_vm(|ctx| {
-        let func: Function = ctx.globals().get(name).map_err(|e| format!("{e:?}"))?;
-        func.call((arg.to_string(),))
-            .map_err(|e| js_err_string(e, ctx))
+thread_local! { static RULES: Result<Rules, String> = Rules::new(); }
+
+fn with_rules<T>(f: impl FnOnce(&Rules) -> Result<T, String>) -> Result<T, String> {
+    RULES.with(|r| match r {
+        Ok(r) => f(r),
+        Err(e) => Err(e.clone()),
     })
 }
 
-fn call_helper_bool(name: &str, arg: &str) -> Result<bool, String> {
-    with_vm(|ctx| {
-        let func: Function = ctx.globals().get(name).map_err(|e| format!("{e:?}"))?;
-        func.call((arg.to_string(),))
-            .map_err(|e| js_err_string(e, ctx))
+fn replace_rules(text: &str, rules: &[(JsRegex, &str, bool)]) -> Result<String, String> {
+    let mut out = text.to_owned();
+    for (regex, replacement, global) in rules {
+        out = regex.replace(&out, *global, |_| Ok((*replacement).to_owned()))?;
+    }
+    Ok(out)
+}
+
+/// Preserve intermediate UTF-16 surrogate units until both numeric passes
+/// finish: adjacent surrogate entities can produce a valid astral character.
+fn numeric_entities(text: &[u16], hex: bool) -> Result<Vec<u16>, String> {
+    let mut out = Vec::with_capacity(text.len());
+    let mut i = 0;
+    while i < text.len() {
+        let start = i;
+        if text.get(i..i + 2) == Some(&[b'&' as u16, b'#' as u16]) {
+            let mut p = i + 2;
+            if hex {
+                if !text
+                    .get(p)
+                    .is_some_and(|&c| c == b'x' as u16 || c == b'X' as u16)
+                {
+                    out.push(text[i]);
+                    i += 1;
+                    continue;
+                }
+                p += 1;
+            }
+            let digits = p;
+            let mut codepoint: Option<u32> = Some(0);
+            while let Some(&c) = text.get(p) {
+                let digit =
+                    char::from_u32(c as u32).and_then(|c| c.to_digit(if hex { 16 } else { 10 }));
+                let Some(digit) = digit else {
+                    break;
+                };
+                codepoint = codepoint
+                    .and_then(|v| v.checked_mul(if hex { 16 } else { 10 }))
+                    .and_then(|v| v.checked_add(digit));
+                p += 1;
+            }
+            if p > digits && text.get(p) == Some(&(b';' as u16)) {
+                let value = codepoint
+                    .filter(|&v| v <= 0x10ffff)
+                    .ok_or_else(|| "Invalid code point in HTML entity".to_owned())?;
+                if value < 0x10000 {
+                    out.push(value as u16);
+                } else {
+                    out.push(0xd800 + ((value - 0x10000) >> 10) as u16);
+                    out.push(0xdc00 + ((value - 0x10000) & 1023) as u16);
+                }
+                i = p + 1;
+                continue;
+            }
+        }
+        out.push(text[start]);
+        i += 1;
+    }
+    Ok(out)
+}
+
+fn unescape_with_rules(text: &str, rules: &Rules) -> Result<String, String> {
+    let decimal = numeric_entities(&text.encode_utf16().collect::<Vec<_>>(), false)?;
+    let hex = numeric_entities(&decimal, true)?;
+    let decoded = String::from_utf16(&hex).map_err(|_| "Invalid string encoding in HTML entity")?;
+    rules.named.replace(&decoded, true, |entity| {
+        let name = &entity[1..entity.len() - 1];
+        // The frozen helper's entity table is an ordinary JS object: these
+        // inherited names also resolve, and replace() coerces them to text.
+        // Preserve that observable output without executing any JS.
+        if name == "constructor" {
+            return Ok("function Object() { [native code] }".to_owned());
+        }
+        if matches!(
+            name,
+            "toString"
+                | "toLocaleString"
+                | "valueOf"
+                | "hasOwnProperty"
+                | "isPrototypeOf"
+                | "propertyIsEnumerable"
+        ) {
+            return Ok(format!("function {name}() {{\n    [native code]\n}}"));
+        }
+        let value = match name {
+            "quot" => "\"",
+            "amp" => "&",
+            "lt" => "<",
+            "gt" => ">",
+            "apos" => "'",
+            "nbsp" => " ",
+            "mdash" => "—",
+            "ndash" => "–",
+            "hellip" => "…",
+            "lsquo" => "‘",
+            "rsquo" => "’",
+            "ldquo" => "“",
+            "rdquo" => "”",
+            "copy" => "©",
+            "reg" => "®",
+            "trade" => "™",
+            "times" => "×",
+            "divide" => "÷",
+            "plusmn" => "±",
+            "bull" => "•",
+            "middot" => "·",
+            "shy" => "\u{ad}",
+            _ => entity,
+        };
+        Ok(value.to_owned())
     })
 }
 
 pub fn unescape_html_entities(text: &str) -> Result<String, String> {
-    call_helper("unescapeHTMLEntities", text)
+    with_rules(|r| unescape_with_rules(text, r))
 }
 
 pub fn clean_snippet(snippet: &str) -> Result<String, String> {
-    call_helper("cleanSnippet", snippet)
+    with_rules(|r| replace_rules(snippet, &r.clean))
 }
 
 pub fn strip_html(text: &str) -> Result<String, String> {
-    call_helper("stripHtml", text)
+    with_rules(|r| {
+        let out = replace_rules(text, &r.html[..2])?;
+        let out = unescape_with_rules(&out, r)?;
+        let out = replace_rules(&out, &r.html[2..])?;
+        Ok(out.trim_matches(js_whitespace).to_owned())
+    })
+}
+
+fn js_whitespace(c: char) -> bool {
+    matches!(
+        c,
+        '\t' | '\n' | '\u{b}' | '\u{c}' | '\r' | ' ' | '\u{a0}' | '\u{1680}' | '\u{2000}'
+            ..='\u{200a}'
+                | '\u{2028}'
+                | '\u{2029}'
+                | '\u{202f}'
+                | '\u{205f}'
+                | '\u{3000}'
+                | '\u{feff}'
+    )
 }
 
 pub fn is_technical_page(title: &str) -> Result<bool, String> {
-    call_helper_bool("isTechnicalPage", title)
+    with_rules(|r| {
+        for pattern in &r.technical {
+            if pattern.is_match(title)? {
+                return Ok(true);
+            }
+        }
+        Ok(false)
+    })
 }
 
 pub fn is_redirect_like(snippet: &str) -> Result<bool, String> {
-    call_helper_bool("isRedirectLike", snippet)
+    with_rules(|r| r.redirect.is_match(snippet))
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -9,6 +9,7 @@ COPY bin/ /app/bin/
 COPY data/ /app/data/
 COPY NOTICE /app/NOTICE
 COPY LICENSE /app/LICENSE
+COPY THIRD-PARTY-NOTICES.txt /app/THIRD-PARTY-NOTICES.txt
 
 ENV PRTS_MCP_ROOT=/app
 

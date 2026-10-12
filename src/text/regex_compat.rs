@@ -1,120 +1,335 @@
-//! Narrow QuickJS-backed regex adapter — the user-pattern contract is
-//! `new RegExp(pattern, "iu")` (docs/02-architecture.md).
-//!
-//! Only `compile` + `is_match` are exposed. Patterns enter as API values,
-//! never spliced into executable JS; no files, network, or module loading.
-//! One VM per compiled pattern per query; matching many texts reuses it.
-//! Engine compile-error wording is QuickJS's own (D-003 dependency detail);
-//! accept/reject behavior and the project's message prefix stay compared.
+//! ECMAScript regex semantics, using only the statically linked native
+//! regexp/Unicode components. No JavaScript VM or executable JS is involved.
+//! User patterns retain the `new RegExp(pattern, "iu")` contract.
 
-use rquickjs::{Context, Function, Object, Persistent, Runtime};
+use std::cell::RefCell;
+use std::ffi::{c_char, c_int, CStr};
 
-/// Fixed call-shape helper evaluated once per context; the user pattern is
-/// passed as a value argument, never spliced into source text.
-const TEST_BRIDGE: &str = "(re, text) => re.test(text)";
+unsafe extern "C" {
+    fn prts_re_compile(
+        pattern: *const c_char,
+        length: usize,
+        flags: c_int,
+        length_out: *mut c_int,
+        error: *mut c_char,
+        error_length: c_int,
+    ) -> *mut u8;
+    fn prts_re_free(ptr: *mut std::ffi::c_void);
+    fn prts_re_exec(
+        bytecode: *const u8,
+        text: *const u16,
+        length: c_int,
+        start: c_int,
+        match_start: *mut c_int,
+        match_end: *mut c_int,
+    ) -> c_int;
+    fn prts_re_prefix(
+        bytecode: *const u8,
+        length: c_int,
+        prefix: *mut u32,
+        capacity: c_int,
+        insensitive: *mut c_int,
+        complete: *mut c_int,
+    ) -> c_int;
+    #[cfg(test)]
+    fn prts_re_fold(codepoint: u32) -> c_int;
+}
 
+/// Flags for the crate's fixed Wiki patterns. User patterns always use IU.
+pub(crate) const IGNORE_CASE: i32 = 2;
+pub(crate) const DOT_ALL: i32 = 8;
+const UNICODE: i32 = 16;
+
+enum Prefix {
+    Exact(String),
+    AsciiFold {
+        literal: String,
+        special_folds: bool,
+    },
+}
+
+/// One immutable compiled native regex plus reusable UTF-16 scratch space.
+/// The name denotes ECMAScript semantics, not a JavaScript runtime.
 pub struct JsRegex {
-    ctx: Context,
-    // The RegExp object itself plus the bridge function; `test` must run as
-    // the object's method to keep the JS `this` binding.
-    regexp: Option<Persistent<Object<'static>>>,
-    bridge: Option<Persistent<Function<'static>>>,
-}
-
-impl Drop for JsRegex {
-    fn drop(&mut self) {
-        // Persistent handles do not free themselves; consume the values
-        // inside the context before the runtime is released, or QuickJS
-        // aborts on a non-empty GC list at JS_FreeRuntime.
-        let (regexp, bridge) = (self.regexp.take(), self.bridge.take());
-        self.ctx.with(|ctx| {
-            if let Some(p) = regexp {
-                let _: Option<Object> = p.restore(&ctx).ok();
-            }
-            if let Some(p) = bridge {
-                let _: Option<Function> = p.restore(&ctx).ok();
-            }
-        });
-    }
-}
-
-type CompilePair = (
-    Option<Persistent<Object<'static>>>,
-    Option<Persistent<Function<'static>>>,
-);
-
-fn js_err_string(err: rquickjs::Error, ctx: &rquickjs::Ctx<'_>) -> String {
-    match err {
-        rquickjs::Error::Exception => {
-            let caught = ctx.catch();
-            let text = caught
-                .as_string()
-                .map(|s| s.to_string().unwrap_or_default());
-            match text {
-                Some(s) if !s.is_empty() => s.to_string(),
-                _ => format!("{err:?}"),
-            }
-        }
-        other => format!("{other:?}"),
-    }
+    bytecode: Vec<u8>,
+    scratch: RefCell<Vec<u16>>,
+    prefix: Option<Prefix>,
+    complete_literal: bool,
 }
 
 impl JsRegex {
-    /// Compile `pattern` with JS `iu` flags. `Err` carries the engine's
-    /// rejection message (D-003 normalized at the comparison boundary).
     pub fn compile(pattern: &str) -> Result<Self, String> {
-        let rt = Runtime::new().map_err(|e| format!("{e:?}"))?;
-        let ctx = Context::full(&rt).map_err(|e| format!("{e:?}"))?;
-        let (regexp, bridge) = ctx.with(|ctx| -> Result<CompilePair, String> {
-            let regexp_ctor: Function = ctx
-                .globals()
-                .get("RegExp")
-                .map_err(|e| js_err_string(e, &ctx))?;
-            let re = regexp_ctor
-                .call::<_, rquickjs::Value>((pattern.to_string(), "iu"))
-                .map_err(|e| js_err_string(e, &ctx))?;
-            let re_obj: Object = re.get().map_err(|e| js_err_string(e, &ctx))?;
-            let bridge_fn: Function = ctx
-                .eval::<Function, _>(TEST_BRIDGE)
-                .map_err(|e| js_err_string(e, &ctx))?;
-            Ok((
-                Some(Persistent::save(&ctx, re_obj)),
-                Some(Persistent::save(&ctx, bridge_fn)),
-            ))
-        })?;
+        Self::compile_flags(pattern, IGNORE_CASE | UNICODE)
+    }
+
+    pub(crate) fn compile_flags(pattern: &str, flags: i32) -> Result<Self, String> {
+        let mut source = pattern.as_bytes().to_vec();
+        source.push(0); // The native compiler requires a trailing NUL, with explicit length.
+        let mut length = 0;
+        let mut error = [0 as c_char; 256];
+        // SAFETY: source/error/out pointers are live for the synchronous call;
+        // native bytecode is copied before releasing its C allocator ownership.
+        let ptr = unsafe {
+            prts_re_compile(
+                source.as_ptr().cast(),
+                pattern.len(),
+                flags,
+                &mut length,
+                error.as_mut_ptr(),
+                error.len() as i32,
+            )
+        };
+        if ptr.is_null() {
+            return Err(unsafe { CStr::from_ptr(error.as_ptr()) }
+                .to_string_lossy()
+                .into_owned());
+        }
+        let bytecode = unsafe { std::slice::from_raw_parts(ptr, length as usize) }.to_vec();
+        unsafe { prts_re_free(ptr.cast()) };
+        let (prefix, complete_literal) = Self::literal_prefix(&bytecode, flags);
         Ok(Self {
-            ctx,
-            regexp,
-            bridge,
+            bytecode,
+            scratch: RefCell::new(Vec::new()),
+            prefix,
+            complete_literal,
         })
     }
 
-    /// JS `regex.test(text)` — stateless with the `iu` flag set (no `g`, so
-    /// `lastIndex` never advances between calls).
+    fn literal_prefix(bytecode: &[u8], flags: i32) -> (Option<Prefix>, bool) {
+        // Only IU public searches use the shortcut. Wiki replacement needs exact ranges.
+        if flags != IGNORE_CASE | UNICODE {
+            return (None, false);
+        }
+        let mut points = [0u32; 32];
+        let (mut insensitive, mut complete) = (0, 0);
+        // SAFETY: bytecode comes solely from the pinned compiler; output buffer capacity is exact.
+        let n = unsafe {
+            prts_re_prefix(
+                bytecode.as_ptr(),
+                bytecode.len() as i32,
+                points.as_mut_ptr(),
+                points.len() as i32,
+                &mut insensitive,
+                &mut complete,
+            )
+        };
+        let chars: Option<String> = points[..n as usize]
+            .iter()
+            .map(|&c| char::from_u32(c))
+            .collect();
+        let Some(text) = chars.filter(|s| !s.is_empty()) else {
+            return (None, false);
+        };
+        let prefix = if insensitive == 0
+            || text.chars().all(|c| {
+                ('\u{4e00}'..='\u{9fff}').contains(&c) || (c.is_ascii() && !c.is_ascii_alphabetic())
+            }) {
+            Some(Prefix::Exact(text))
+        } else if text.is_ascii() {
+            let special_folds = text.contains('s') || text.contains('k');
+            Some(Prefix::AsciiFold {
+                literal: text,
+                special_folds,
+            })
+        } else {
+            None
+        };
+        (prefix, complete != 0)
+    }
+
     pub fn is_match(&self, text: &str) -> Result<bool, String> {
-        let regexp = self
-            .regexp
-            .as_ref()
-            .expect("JsRegex invariant: regexp present after compile")
-            .clone();
-        let bridge = self
-            .bridge
-            .as_ref()
-            .expect("JsRegex invariant: bridge present after compile")
-            .clone();
-        self.ctx.with(|ctx| {
-            let re_obj: Object = regexp.restore(&ctx).map_err(|e| format!("{e:?}"))?;
-            let bridge_fn: Function = bridge.restore(&ctx).map_err(|e| format!("{e:?}"))?;
-            bridge_fn
-                .call::<_, bool>((re_obj, text.to_string()))
-                .map_err(|e| js_err_string(e, &ctx))
-        })
+        if let Some(prefix) = &self.prefix {
+            let found = match prefix {
+                Prefix::Exact(literal) => text.contains(literal),
+                Prefix::AsciiFold {
+                    literal,
+                    special_folds,
+                } => {
+                    // Under /iu, long s and Kelvin sign are the only non-ASCII
+                    // folds into ASCII. Keep these equivalent inputs in the native engine.
+                    match ascii_fold_contains(text.as_bytes(), literal.as_bytes(), *special_folds) {
+                        Some(found) => found,
+                        None => return self.native_match(text),
+                    }
+                }
+            };
+            if !found {
+                return Ok(false);
+            }
+            if self.complete_literal {
+                return Ok(true);
+            }
+        }
+        self.native_match(text)
+    }
+
+    fn native_match(&self, text: &str) -> Result<bool, String> {
+        let mut buffer = self.scratch.borrow_mut();
+        buffer.clear();
+        buffer.extend(text.encode_utf16());
+        Ok(self.find_utf16(&buffer, 0)?.is_some())
+    }
+
+    fn find_utf16(&self, buffer: &[u16], start: usize) -> Result<Option<(usize, usize)>, String> {
+        let length =
+            i32::try_from(buffer.len()).map_err(|_| "Regular expression input too long")?;
+        let (mut from, mut to) = (0, 0);
+        // SAFETY: buffer is aligned UTF-16, bytecode is compiler-owned immutable data;
+        // captures remain inside the buffer and the bridge returns offsets only.
+        match unsafe {
+            prts_re_exec(
+                self.bytecode.as_ptr(),
+                buffer.as_ptr(),
+                length,
+                start as i32,
+                &mut from,
+                &mut to,
+            )
+        } {
+            0 => Ok(None),
+            1 => Ok(Some((from as usize, to as usize))),
+            error => Err(format!(
+                "Native regular expression execution failed ({error})"
+            )),
+        }
+    }
+
+    /// Native replacement for the fixed Wiki expressions; no dynamic replacement code.
+    pub(crate) fn replace(
+        &self,
+        text: &str,
+        global: bool,
+        mut replacement: impl FnMut(&str) -> Result<String, String>,
+    ) -> Result<String, String> {
+        let buffer: Vec<u16> = text.encode_utf16().collect();
+        let mut offsets = Vec::with_capacity(buffer.len() + 1);
+        for (byte, c) in text.char_indices() {
+            offsets.push(byte);
+            if c.len_utf16() == 2 {
+                offsets.push(usize::MAX);
+            }
+        }
+        offsets.push(text.len());
+        let (mut cursor, mut copied) = (0, 0);
+        let mut out = String::with_capacity(text.len());
+        while cursor <= buffer.len() {
+            let Some((from, to)) = self.find_utf16(&buffer, cursor)? else {
+                break;
+            };
+            let (begin, end) = (offsets[from], offsets[to]);
+            if begin == usize::MAX || end == usize::MAX {
+                return Err("Replacement splits a Unicode surrogate pair".into());
+            }
+            out.push_str(&text[copied..begin]);
+            out.push_str(&replacement(&text[begin..end])?);
+            copied = end;
+            if !global {
+                break;
+            }
+            cursor = if to == from { to + 1 } else { to };
+        }
+        out.push_str(&text[copied..]);
+        Ok(out)
     }
 }
 
+fn ascii_fold_contains(text: &[u8], literal: &[u8], special_folds: bool) -> Option<bool> {
+    let first = literal[0];
+    if (first == b's' && memchr::memmem::find(text, "ſ".as_bytes()).is_some())
+        || (first == b'k' && memchr::memmem::find(text, "K".as_bytes()).is_some())
+    {
+        return None;
+    }
+    for pos in memchr::memchr2_iter(first.to_ascii_lowercase(), first.to_ascii_uppercase(), text) {
+        if let Some(candidate) = text.get(pos..pos + literal.len()) {
+            if candidate.eq_ignore_ascii_case(literal) {
+                return Some(true);
+            }
+            // A non-ASCII unit can hide an s/k equivalent within a candidate.
+            if special_folds && !candidate.is_ascii() {
+                return None;
+            }
+        }
+    }
+    Some(false)
+}
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn unicode_table_proves_literal_shortcut_folding_assumptions() {
+        // Verify against the exact compiled native table, not Rust's unrelated Unicode version.
+        for c in 0..=0x10ffff {
+            let folded = unsafe { prts_re_fold(c) } as u32;
+            if c >= 128 && folded < 128 {
+                assert!(matches!((c, folded), (0x17f, 0x73) | (0x212a, 0x6b)));
+            }
+            if (0x4e00..=0x9fff).contains(&c) || (0x4e00..=0x9fff).contains(&folded) {
+                assert_eq!(c, folded);
+            }
+        }
+    }
+
+    #[test]
+    fn mandatory_prefix_shortcut_keeps_native_results() {
+        let patterns = [
+            "阿米娅",
+            "阿米娅(?=。)",
+            "阿米娅|罗德岛",
+            "阿米?娅",
+            "(阿)米娅",
+            "(阿米娅)?",
+            "阿{0,2}米娅",
+            "阿{1,2}米娅",
+            "PRTS_BENCH",
+            "ask",
+            "sk",
+            "S",
+            "K",
+            r"\x61sk",
+            r"阿\u7c73娅",
+            "abc(?=d)",
+            "(?-i:Abc)",
+            "a(?-i:B)c",
+        ];
+        let texts = [
+            "",
+            "阿米娅",
+            "阿米娅。",
+            "阿娅",
+            "罗德岛",
+            "阿阿米娅",
+            "博士",
+            "ASK",
+            "aſK",
+            "aſk",
+            "asK",
+            "ſK",
+            "ſ",
+            "K",
+            "abCd",
+            "aBc",
+            "Abc",
+            "A😀",
+            "😀阿米娅",
+        ];
+        for pattern in patterns {
+            let re = JsRegex::compile(pattern).unwrap();
+            for text in texts {
+                assert_eq!(
+                    re.is_match(text).unwrap(),
+                    re.native_match(text).unwrap(),
+                    "unsafe shortcut for pattern={pattern:?}, text={text:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn deeply_nested_patterns_fail_without_overflowing_the_native_stack() {
+        assert!(JsRegex::compile(&"(".repeat(10_000)).is_err());
+    }
 
     #[test]
     fn basic_iu_matching() {

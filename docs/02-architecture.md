@@ -71,7 +71,7 @@ CPU 密集剧情搜索、ZIP 解压和大量 JSON 读取不能阻塞 async react
 | ZIP/hash | zip + sha2，文件流处理 | CRC/损坏、required entries、路径语义、流式校验与重命名 |
 | XML | quick-xml 等成熟 parser | 仅替换解析机制，保留 TS 模板安全渲染规则，不换成通用全文 HTML 转 Markdown |
 | 日志/错误 | tracing + stderr；具名错误 enum，必要时 thiserror | 不把所有失败变为泛化 anyhow 文案；项目文案仍归工具边界 |
-| 正则 | 下节的嵌入 QuickJS 兼容方案 | `iu` 行为差分、生命周期、性能、Unicode |
+| 正则 | P9：静态链接独立 C regexp/Unicode 组件，无 JS VM | `iu` 行为差分、生命周期、性能、Unicode |
 
 除了 rmcp 和正则候选，本计划不虚构尚未实际 resolve 的依赖版本。P0 选取能在 Rust 1.96.1 上编译的稳定版本并写锁文件；无法满足 MSRV 时记录具体冲突，允许在本地固定更新 toolchain，但不得偷偷更改全局默认 toolchain。
 
@@ -79,7 +79,11 @@ CPU 密集剧情搜索、ZIP 解压和大量 JSON 读取不能阻塞 async react
 
 用户 pattern 的契约是 `new RegExp(pattern, "iu")`。Rust `regex` 缺少 look-around/反向引用；`regress 0.12.0` 文档明确存在 Unicode property escapes 缺口，因此二者都不能未经验证作为唯一替代。[regex 文档](https://docs.rs/regex/latest/regex/)、[regress 文档](https://docs.rs/regress/0.12.0/regress/)。
 
-执行默认：P1 以 `rquickjs 0.14.0` 嵌入的 QuickJS 作为正则兼容候选，提供仅 `compile(pattern)` 和 `is_match(text)` 的窄适配层。模式通过 API 参数传入，不拼接为可执行 JS；不开放文件、网络、模块加载，也不运行 TS 业务。每次查询编译一次、匹配多行，不按每行初始化 VM。QuickJS 是库内嵌组件，不要求用户安装 JS 运行时。[rquickjs 文档](https://docs.rs/rquickjs/0.14.0/rquickjs/)。
+P1 的历史默认方案使用 `rquickjs 0.14.0` 内嵌 QuickJS，49 个 Bun 对照案例通过。P9 按维护者 2026-10-13 的授权，改为直接静态链接同一版本中的独立 `libregexp.c`、`libunicode.c`，不编译 `quickjs.c`、不链接或执行 JavaScript VM，删除 rquickjs 依赖。源码、原始文件 hash 与 MIT/Unicode-3.0 声明见 `vendor/quickjs-regexp/`；`cc` 仅是源代码构建依赖，发行包用户不需要编译器或额外 C 正则库。
+
+用户模式仍为 `iu`，不减少后顾、反向引用、属性转义等能力。Rust 适配层复用 UTF-16 scratch，固定 Wiki 文本规则在 Rust 中处理。只从固定引擎编译后的线性字节码提取必需字面量前缀；遇到分支、断言、量词等停止分析，不能把原始 pattern 猜测为普通字符串。Unicode folding 的快捷匹配假设由同一 native Unicode 表的穷举测试验证；不能安全快捷匹配的文本交给同一原生正则组件继续计算，没有第二引擎或 JS fallback。
+
+新增 3,276 个 Bun 对照中，3,190 个严格一致，86 个属于原有 Rust 引擎的两类 Unicode folding 差异。维护者认可保留 Rust 语义，登记为 D-007，具体案例见 `contracts/cases/native-regex-differences.json`。这个决定不豁免其他模式或未来版本差异，不构成全 ECMAScript/所有 Bun 行为一致的证明。
 
 P1 必须覆盖：字面量/空模式、大小写、中文 `\w`、`\d`、`\s`、`\b`、astral `^.$`、`\p{Script=Han}`、lookahead/lookbehind、命名与数字反向引用、未参与匹配的捕获组、锚点和换行、非法模式、Unicode case folding、组合字符。以 Bun 为主 oracle，Node 差异单列，不跟随 Python。引擎编译错误详情属于 D-003，接受/拒绝和匹配集合不属于豁免。
 

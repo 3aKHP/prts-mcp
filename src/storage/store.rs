@@ -160,16 +160,19 @@ impl JsonStore for ZipStore {
 
     fn read_json(&self, path: &str) -> Result<Value, StoreError> {
         let inner = normalize_path(path)?;
-        self.with_archive(|archive| {
+        let text = self.with_archive(|archive| {
             let mut entry = archive
                 .by_name(&inner)
                 .map_err(|_| StoreError::ZipEntryNotFound(path.to_string()))?;
             let mut text = String::new();
             entry.read_to_string(&mut text).map_err(StoreError::Io)?;
-            serde_json::from_str(&text).map_err(|e| StoreError::BadJson {
-                path: path.to_string(),
-                message: e.to_string(),
-            })
+            Ok(text)
+        })?;
+        // Only ZIP access needs serialization. Independent chapter JSON can
+        // parse concurrently without retaining the archive mutex.
+        serde_json::from_str(&text).map_err(|e| StoreError::BadJson {
+            path: path.to_string(),
+            message: e.to_string(),
         })
     }
 }
