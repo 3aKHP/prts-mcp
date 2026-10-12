@@ -87,9 +87,9 @@ PACK-npm,P7,yes,verified,tools/verify-p7-npm.mjs 全绿：tarball 本地 npm ins
 PACK-docker,P7,yes,verified,tools/verify-p7-docker.mjs 全绿：ts/ghcr 双镜像本地构建；ghcr 默认 stdio+/app/data 兜底 list_stages；PRTS_TRANSPORT=http PORT=abc 退出1；ts 默认 HTTP :3000；离线容器兜底；本地镜像真实同步（datarev-…-r2 真实 zip 经本地 GitHub 镜像）写入 4 卷后 HTTP search 30 条,TS and GHCR profiles four volumes and bundle fallback
 PACK-ghcr-rollback,P7,yes,verified,"tools/verify-p7-docker.mjs：Rust 容器写卷后 OLD TS（bun dist/server-stdio, initialize+search 阿米娅）与 OLD GHCR（python Config.load+resolve_char_id('阿米娅')→char_002_amiya + story zip 存在）读取成功",Old GHCR entry config and old image reads Rust-written copied volumes
 LIFECYCLE-exit,P7,yes,verified,进程测试 process_p7.rs signals_and_eof_exit_behavior（HTTP SIGTERM/SIGINT 即时信号终止、同步重试梯 armed；stdio EOF=0）+ ghcr stdio EOF=0；npm launcher 信号镜像（verify-p7-npm）；oracle 探针对照（TS 无 handler 信号终止=一致）,EOF signals task cancellation no stdio leakage
-FINAL-surface,P8,yes,not-started,,24 tools default and 23 with images disabled
-FINAL-matrix,P8,yes,not-started,,Every tool default case across all four protocol cells
-FINAL-live,P8,yes,not-started,,Full local workload update offline recovery and live evidence complete
-FINAL-performance,P8,yes,not-started,,Release builds fixed-data cold warm sync and memory comparison
-FINAL-portable,P8,yes,not-started,,Independent rebuild licenses and no outer repo runtime dependencies
-FINAL-differences,P8,yes,not-started,,Only approved differences; no unresolved required rows
+FINAL-surface,P8,yes,verified,差分 tools/list 全工具面 5 例（含 images-disabled-23=23 工具）+ 单测 registry_24_with_images_23_without + verify-p7-local（独立目录 24 tools）,24 tools default and 23 with images disabled
+FINAL-matrix,P8,yes,verified,artifacts/p8-matrix.json：24 工具 × 四格（http/stdio × legacy/modern）全部 ≥1 tools/call 例（P8 补齐 wiki.search.modern）；差分 --all 384/384,Every tool default case across all four protocol cells
+FINAL-live,P8,yes,verified,verify-p8-lifecycle 5/5（真实 release 完整更新→死镜像离线恢复无破坏性重同步→P2 pair 卷+P6 TS images 卷回读）+ --live 4/4（P8 复跑）,Full local workload update offline recovery and live evidence complete
+FINAL-performance,P8,yes,verified,artifacts/p8-bench.json（同镜像同宿主：冷同步 8.87s/4.10s、热周期 3.35s/2.06s、story 冷 1.28s/2.03s、热 p50 6.6/21.3ms、list_stages 60.9/2.3ms、search 124.6/2.5ms、VmHWM 561/117MB）+ p6-images-bench（151.8s/914MB vs 116.0s/22MB）,Release builds fixed-data cold warm sync and memory comparison
+FINAL-portable,P8,yes,verified,运行时：独立目录空 PATH 全本地业务（verify-p7-local 6/6）；重建：p8.bundle 克隆 cargo build --locked + 测试子集绿（artifacts/p8-rebuild.json）；许可证：dependency-licenses v2 全闭包 225 包宽松许可，无 GPL 独占,Independent rebuild licenses and no outer repo runtime dependencies
+FINAL-differences,P8,yes,verified,reports/P8-final.md §批准差异清单：D-001…D-006 全部映射+验证（D-005/006 维护者批准+回归测试），无未决业务兼容差异,Only approved differences; no unresolved required rows

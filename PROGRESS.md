@@ -1,6 +1,6 @@
 # 执行进度
 
-最后更新：2026-10-13（P7 完成）。
+最后更新：2026-10-13（P8 完成，全阶段收口）。
 
 | 阶段 | 状态 | 报告 | 下一步 |
 |---|---|---|---|
@@ -12,7 +12,7 @@
 | P5 | complete (tag local/p5-complete) | [reports/P5.md](reports/P5.md) | — |
 | P6 | complete (tag local/p6-complete) | [reports/P6.md](reports/P6.md) | — |
 | P7 | complete | [reports/P7.md](reports/P7.md) | — |
-| P8 | not-started | — | 最终全范围验收与转正评估 |
+| P8 | complete (tag local/p8-complete) | [reports/P8-final.md](reports/P8-final.md) | — |
 
 ## P1 交付摘要（2026-10-11）
 
@@ -89,6 +89,15 @@
 - **Bundle fallback**：--bundle-root > Docker /app/data > bin/../data 三级解析；TS BUNDLED_* 语义复刻（pair→extract_meta→完整性门）；独立目录进程测试双路验证。
 - **本地分发**：package-native.mjs 产出独立目录 + npm tarball + 双 Docker context；npm 薄包装 3bin（launcher 传 bundle root、argv/stdio/信号/退出码全透传，private:true）；两 Docker profile（TS=HTTP:3000 / GHCR=stdio+PRTS_TRANSPORT）本地构建验证；容器内经本地镜像真实同步 4 卷，旧 TS（bun dist）与旧 GHCR（python）读 Rust 卷成功。
 - **验证**：205 单测/进程测试（+16）、差分 383/383 保持、verify-p7-npm 10/10、verify-p7-local 6/6（空 PATH 纯 native 全本地业务）、verify-p7-docker 11/11；coverage P7 7/7 verified。
+
+## P8 交付摘要（2026-10-13）
+
+- **全范围验收**：差分 --all **384/384**（+1：wiki.search.modern 补齐 search_prts 的 http-modern 格，四格矩阵 24 工具×4 格全覆盖，artifacts/p8-matrix.json）；--live **4/4** 复跑；coverage **94/94 verified 清零**。
+- **生命周期**（verify-p8-lifecycle 5/5）：真实 release 完整更新 → 死镜像离线恢复（工具照常、.releases/extract_meta 字节不变）→ P2 TS pair 卷 + P6 TS images 卷回读。
+- **统一性能对照**（artifacts/p8-bench.json，同镜像同宿主）：Rust 冷同步 4.10s vs 8.87s、热周期 2.06s vs 3.35s、list_stages 2.3ms vs 60.9ms、search 2.5ms vs 124.6ms、VmHWM 117MB vs 561MB；TS 占优项如实记录（story 冷建 1.28s vs 2.03s、热查 p50 6.6ms vs 21.3ms）。图片全量（P6）：116.0s/22MB vs 151.8s/914MB。
+- **独立重建**：p8.bundle 克隆独立目录 `cargo build --locked --release` + 测试子集绿（artifacts/p8-rebuild.json）；运行时独立 = 独立目录空 PATH 全本地业务（P7）。
+- **许可证审计**：dependency-licenses v2 全闭包 225 包全宽松许可（唯一 LGPL 字样为 r-efi OR 备选未选择；QuickJS MIT 系随源保留）；打包产物随附 LICENSE/NOTICE。
+- **结论**（reports/P8-final.md）：Linux 本地 TS/v2.8.1 完整复刻验收通过，D-001…D-006 全映射，转正待决清单移交维护者；未支持平台如实列明。
 
 ## 交接入口
 
