@@ -297,7 +297,7 @@ KHPilot 也可能在公开 Issue 中提供自动回复。这些回复只作为�
 
 涉及用户可见行为变化时，顺手更新 `README.md`。
 
-**打 tag 时使用实现级前缀**，CI 的 CD workflow 按前缀分发。稳定版 tag（无 `-` 后缀）必须打在 `main` 分支的 merge commit 上；预发布 tag（`-alpha`/`-beta`/`-rc` 后缀）可以打在 `develop` 分支的 merge commit 上（见路径 F）。CD 的 `verify` job 会校验：稳定版 tag 的目标 commit 必须在 `main` 上，预发布 tag 的目标 commit 必须在 `develop` 上，不匹配则拒绝发布：
+**打 tag 时使用实现级前缀**，CI 的 CD workflow 按前缀分发。一般主线稳定 tag 校验 main、预发布 tag 校验 develop；**本维护分支例外**：只接受属于 origin/lts/2.8 的稳定 python/v2.8.x 与 ts/v2.8.x，禁止预发布，且每个公开写入前重新检查分支、tag 和 EOL。下方保留历史主线 tag 命名示例，2.8 LTS 的实际流程以 docs/dev/LTS.md 为准：
 
 ```bash
 # 稳定版（main merge commit）

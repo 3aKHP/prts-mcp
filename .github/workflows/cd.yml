@@ -119,6 +119,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v7
@@ -232,6 +234,8 @@ jobs:
 
       - name: Tag and push Docker image
         run: |
+          # Check at the write boundary, including failed-job reruns.
+          bash .github/scripts/verify-lts-release.sh
           IMAGE="${{ steps.image.outputs.name }}"
           VERSION="${{ steps.version.outputs.value }}"
           docker tag prts-mcp:release "${IMAGE}:${VERSION}"
@@ -248,6 +252,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Download exact release artifacts
         uses: actions/download-artifact@v4
@@ -288,6 +294,9 @@ jobs:
           printf '\n---\n\n**Install**\n```bash\npip install prts-mcp==%s\n```\n\n**Docker**\n```bash\ndocker pull %s:%s\n```\n' \
             "$VERSION" "$IMAGE" "$VERSION" >> release_notes.txt
 
+      - name: Recheck LTS scope before creating release
+        run: bash .github/scripts/verify-lts-release.sh
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
@@ -306,11 +315,19 @@ jobs:
       id-token: write
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
       - name: Download exact release artifacts
         uses: actions/download-artifact@v4
         with:
           name: python-release-package
           path: python/dist
+
+      - name: Recheck LTS scope before publishing
+        run: bash .github/scripts/verify-lts-release.sh
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1

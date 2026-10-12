@@ -79,7 +79,7 @@ Until EOL, 1.7.x receives the fixes listed in [Scope](#scope). After EOL:
 2. Run the relevant checks and `./scripts/check-runtime.sh --full` for runtime-sensitive or release-workflow changes.
 3. Open a PR to `lts/2.8`, complete the review required by WORKFLOW, and have the maintainer merge it.
 4. For a maintenance release, update both versions and CHANGELOGs through a release PR to `lts/2.8`; tag its merged commit with `python/v2.8.x` and `ts/v2.8.x`. Alpha/beta/RC tags are rejected on this line.
-5. CD verifies that the actual tag resolves to the requested commit and that this commit is an ancestor of `origin/lts/2.8`; ancestry on `main` or `develop` alone is insufficient. Tag and package versions must still match.
+5. CD verifies that the actual tag resolves to the requested commit and that this commit is an ancestor of `origin/lts/2.8`; ancestry on `main` or `develop` alone is insufficient. Tag and package versions must still match. Every remote publication rechecks the scope and current UTC date, so an earlier successful verification cannot authorize a publication resumed after EOL.
 6. If a fix also applies to Rust, implement and review it separately on `develop`. Never merge the whole maintenance branch into a Rust branch, which would restore `python/` and `ts/`.
 
 During the transition, a blocking regression in the still-stable 2.x `main` follows the existing hotfix flow, then is ported to `lts/2.8` and to Rust where applicable. Once `develop` has the Rust layout, use a Rust implementation of the fix instead of a whole-branch forward merge. This maintenance setup does not itself publish a new version or bump the 2.8.1 baseline.

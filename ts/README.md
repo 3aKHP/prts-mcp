@@ -93,7 +93,7 @@ bunx --bun -p prts-mcp-ts@2 prts-mcp-ts-bun
 全局安装后运行：
 
 ```bash
-bun add -g prts-mcp-ts
+bun add -g prts-mcp-ts@2
 prts-mcp-ts-bun
 ```
 

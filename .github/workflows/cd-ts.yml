@@ -177,6 +177,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
@@ -192,6 +194,8 @@ jobs:
 
       - name: Publish to npm (Trusted Publishing)
         run: |
+          # Approvals and failed-job reruns may happen after verify finished.
+          bash ../.github/scripts/verify-lts-release.sh
           TARBALL=$(find . -maxdepth 1 -name 'prts-mcp-ts-*.tgz' -type f -print -quit)
           test -n "$TARBALL"
           VERSION="${GITHUB_REF_NAME#ts/v}"
@@ -215,6 +219,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
@@ -277,6 +283,9 @@ jobs:
           printf '\n---\n\n**2.8 LTS — EOL 2027-07-02**\n```bash\n# Install this exact maintenance version\nnpx prts-mcp-ts@%s\n\n# Or follow the maintenance channel\nnpm install -g prts-mcp-ts@lts-2.8\n\n# Bun entrypoint for this exact version\nbunx --bun -p prts-mcp-ts@%s prts-mcp-ts-bun\n```\n\nThis release does not update npm latest or GitHub Latest.\nThe TS Dockerfile is locally buildable; GHCR publishes the Python image on the 2 channel.\nMCP endpoint: `http://localhost:3000/mcp`\n' \
             "$VERSION" \
             "$VERSION" >> release_notes.txt
+
+      - name: Recheck LTS scope before creating release
+        run: bash .github/scripts/verify-lts-release.sh
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
