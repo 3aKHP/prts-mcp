@@ -19,6 +19,8 @@ The new prts-mcp defaults to Streamable HTTP on :3000 (/mcp, /health). PRTS_TRAN
 
 M2B prepares actual npm tarballs for both entries, an exact-version shared launch bridge, five platform payloads and pinned read-only fallback data. Build/install verification and lifecycle boundaries are documented in [npm distribution](docs/dev/NPM-DISTRIBUTION.md); these packages are not yet published to npm. The legacy command containing bun also launches Rust and requires no Bun installation.
 
+M2C Docker packaging uses validated native payloads and fallback data, preserves the GHCR default stdio/:8000 HTTP profile and old writable volumes, and adds tini for PID 1 signal forwarding. Build and validation are in progress; see [Docker distribution](docs/dev/DOCKER-DISTRIBUTION.md). No 3.x image has been publicly published.
+
 Data sync, paths and user settings are documented in [environment variables](docs/user/environment-variables.md). GameData and story data auto-sync from arknights-data-pipeline Releases; explicit data paths disable the corresponding sync. Read-only fallback, atomic activation, lock/lease, generations and offline recovery follow the frozen 2.8.1 contract. LOCAL_IMAGE=false fetches artwork through MediaWiki; LOCAL_IMAGE=true syncs AKDP PNG assets. IMAGES_ENABLED=false removes the artwork tool.
 
 Repository data/ contains ignored local downloads; the former four-table sample is no longer tracked. Source runs use the configured user data directory and startup sync. Validated read-only data bundles for native/npm/Docker releases are required by the 3.0 plan and will be prepared separately during distribution packaging; current M2A CI archives contain no full game-data bundle. See [data layout and distribution policy](data/README.md).
