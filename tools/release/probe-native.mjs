@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawn } from 'node:child_process';
@@ -10,6 +10,14 @@ import { stdio } from '../npm/mcp.mjs';
 const out = join(root,'artifacts/candidate',id), receipt = JSON.parse(readFileSync(join(out,'candidate.json')));
 const archive = join(out,receipt.filename);assert.equal(sha(archive),receipt.sha256);
 const temp = mkdtempSync(join(tmpdir(),'prts-candidate 空格-')), installed = join(temp,'installed');mkdirSync(installed);
+const modes = [];
+function readonly(dir) {
+  for(const entry of readdirSync(dir,{withFileTypes:true})){
+    const path=join(dir,entry.name);if(entry.isDirectory())readonly(path);
+    const mode=statSync(path).mode; modes.push([path,mode]);chmodSync(path,mode & ~0o222);
+  }
+  const mode=statSync(dir).mode;modes.push([dir,mode]);chmodSync(dir,mode & ~0o222);
+}
 try {
   if(config.os==='win32')run('powershell.exe',['-NoProfile','-NonInteractive','-Command',`Expand-Archive -LiteralPath ${psLiteral(archive)} -DestinationPath ${psLiteral(installed)}`]);
   else run('tar',['-xf',archive,'-C',installed]);
@@ -17,6 +25,10 @@ try {
   const candidate = JSON.parse(readFileSync(join(installed,'CANDIDATE.json')));
   assert.equal(candidate.commit,receipt.commit);assert.equal(candidate.version,version);assert.equal(candidate.platform,id);
   verifyBundle(candidate.dataBundle);assert.equal(files.length,receipt.payloadFiles);assert.equal(dataFiles.length,receipt.dataFiles);
+  if(config.os!=='win32'){
+    assert(process.getuid()>0,'POSIX read-only installation evidence requires a non-root test user');
+    readonly(installed);
+  }
   const env = {...process.env};
   for(const key of Object.keys(env))if(/^(PATH|HOME|PRTS_|GAMEDATA_PATH|STORYJSON_PATH|IMAGES_ENABLED|LOCAL_IMAGE|ORIGINAL_IMAGE|HOST|PORT|GITHUB_TOKEN|GITHUB_MIRRORS|XDG_DATA_HOME|LOCALAPPDATA|USERPROFILE|SESSION_IDLE_TIMEOUT_MS|https?_proxy|all_proxy|no_proxy)$/i.test(key)||key.startsWith('PRTS_'))delete env[key];
   Object.assign(env,{PATH:'',HOME:join(temp,'home'),XDG_DATA_HOME:join(temp,'user'),LOCALAPPDATA:join(temp,'user'),USERPROFILE:join(temp,'profile'),
@@ -33,6 +45,10 @@ try {
   checks.push({case:'complete explicit user game data overrides installed fallback',...await stdio(launch({GAMEDATA_PATH:user,STORYJSON_PATH:join(user,'storyjson/zh_CN.zip')}),version,'用户卷阿米娅')});
   verifyExactInventory(installed);verifyExactInventory(join(installed,'data'));
   json(join(out,'candidate-evidence.json'),{platform:id,native:true,arch:process.arch,version,commit:receipt.commit,archiveSha256:receipt.sha256,
-    checks,publicPublication:false,scope:'actual native candidate archive with bundled data; complete real-client upgrades/rollback remain M4'});
+    checks,installationWriteBitsRemoved:config.os!=='win32',executionUid:process.getuid?.(),publicPublication:false,
+    scope:'actual native candidate archive; POSIX installation write bits removed, Windows hash-preservation checked without ACL restrictions; user precedence covers operator Excel; complete real-client upgrades/rollback remain M4'});
   console.log(`NATIVE_CANDIDATE_VERIFY_PASS: ${id} ${checks.length} checks`);
-} finally {rmSync(temp,{recursive:true,force:true});}
+} finally {
+  for(const [path,mode]of modes.reverse())chmodSync(path,mode);
+  rmSync(temp,{recursive:true,force:true});
+}

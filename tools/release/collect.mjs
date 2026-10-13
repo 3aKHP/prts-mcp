@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
-import { root, version, targets, packageNames, verifyVersion, verifyBundle, readJson, json, sha, run } from './common.mjs';
+import { root, version, targets, packageNames, verifyVersion, verifyBundle, verifyNpmEvidence, verifyDockerEvidence, readJson, json, sha, run } from './common.mjs';
 verifyVersion();
 const input = resolve(process.argv[2] ?? join(root,'artifacts/incoming'));
 const output = join(root,'artifacts/release');
@@ -22,13 +22,20 @@ for(const [id,target]of Object.entries(targets)){
   assert.equal(evidence.arch,target.arch);assert.equal(evidence.checks.length,3);assert.equal(evidence.archiveSha256,candidate.sha256);
   const archive=join(dir,safe(candidate.filename));assert.equal(sha(archive),candidate.sha256);
   assert.equal(readFileSync(archive+'.sha256','utf8').trim(),`${candidate.sha256}  ${candidate.filename}`);
+  const nativeJson = name => JSON.parse(candidate.filename.endsWith('.zip')
+    ? run('unzip',['-p',archive,name]) : run('tar',['-xOzf',archive,`./${name}`]));
+  const packedCandidate=nativeJson('CANDIDATE.json'), packedBuild=nativeJson('BUILD.json');
+  assert.equal(packedCandidate.commit,commit);assert.equal(packedCandidate.version,version);assert.equal(packedCandidate.platform,id);
+  assert.equal(packedBuild.commit,commit);assert.equal(packedBuild.version,version);assert.equal(packedBuild.platform,id);assert.equal(packedBuild.dirty,false);
+  verifyBundle(nativeJson('data/BUNDLE.json'));verifyBundle(packedCandidate.dataBundle);
   retain(archive,candidate.filename,'native-candidate');retain(archive+'.sha256',candidate.filename+'.sha256','checksum');
   retain(join(dir,'candidate.json'),`${id}-candidate.json`,'evidence');retain(join(dir,'candidate-evidence.json'),`${id}-candidate-evidence.json`,'evidence');
   platforms.push({platform:id,sha256:candidate.sha256,checks:evidence.checks});
-  const npmDir=join(input,`npm-${id}`), npm=readJson(join(npmDir,'packages.json')), npmEvidence=readJson(join(npmDir,'npm-evidence.json'));
+  // upload-artifact preserves npm/{id} and native/{id} beneath their common artifacts/ root.
+  const npmDir=join(input,`npm-${id}`,'npm',id), npm=readJson(join(npmDir,'packages.json')), npmEvidence=readJson(join(npmDir,'npm-evidence.json'));
   assert.equal(npm.version,version);assert.equal(npm.platform,id);assert.equal(npm.nativeBuild.commit,commit);assert.equal(npm.nativeBuild.dirty,false);
   assert.equal(npm.nativeBuild.version,version);verifyBundle(npm.dataBundle);
-  assert.equal(npmEvidence.version,version);assert.equal(npmEvidence.platform,id);assert.equal(npmEvidence.native,true);assert(npmEvidence.checks.length>=14);
+  verifyNpmEvidence(npm,npmEvidence,id);
   const expected=[`@3akhp/prts-mcp-${id}`,'@3akhp/prts-mcp-data','@3akhp/prts-mcp-runtime','prts-mcp','prts-mcp-ts'];
   assert.deepEqual(npm.packages.map(p=>p.name).sort(),expected.sort());
   for(const p of npm.packages){
@@ -52,9 +59,10 @@ for(const [id,target]of Object.entries(targets)){
   if(target.os==='linux'){
     const dockerDir=join(input,`docker-${id}`), image=readJson(join(dockerDir,'image.json')), docker=readJson(join(dockerDir,'docker-evidence.json'));
     assert.equal(image.commit,commit);assert.equal(image.version,version);assert.equal(image.platform,id);assert.equal(image.nativeBuild.dirty,false);verifyBundle(image.dataBundle);
-    assert.equal(docker.commit,commit);assert.equal(docker.version,version);assert.equal(docker.platform,id);assert.equal(docker.native,true);assert.equal(docker.checks.length,10);assert.equal(docker.imageId,image.imageId);
+    assert.equal(image.nativeBuild.commit,commit);assert.equal(image.nativeBuild.version,version);assert.equal(image.nativeBuild.platform,id);
     const filename=`prts-mcp-${version}-${id}.docker.tar.gz`, file=join(dockerDir,filename);
     assert.equal(readFileSync(file+'.sha256','utf8').trim(),`${sha(file)}  ${filename}`);
+    verifyDockerEvidence(image,docker,sha(file),id);
     retain(file,filename,'docker');retain(file+'.sha256',filename+'.sha256','checksum');
     retain(join(dockerDir,'image.json'),`${id}-image.json`,'evidence');retain(join(dockerDir,'docker-evidence.json'),`${id}-docker-evidence.json`,'evidence');
   }

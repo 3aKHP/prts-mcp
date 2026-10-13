@@ -29,3 +29,14 @@ export function verifyBundle(bundle, product = version) {
   assert.equal(bundle.releaseTag, pin.release_tag);assert.equal(bundle.sourceVersion, pin.source_version);
   assert.deepEqual(bundle.assets, pin.assets, 'Candidate data pin mismatch');
 }
+export function verifyNpmEvidence(receipt, evidence, id) {
+  assert.equal(evidence.version,receipt.version);assert.equal(evidence.platform,id);assert.equal(evidence.native,true);
+  assert.equal(evidence.arch,targets[id].arch);assert(evidence.checks.length>=14);
+  assert.deepEqual(evidence.packages,receipt.packages,'npm runtime evidence must describe the actual tarballs');
+}
+export function verifyDockerEvidence(image, evidence, archiveSha256, id) {
+  assert.equal(evidence.commit,image.commit);assert.equal(evidence.version,image.version);assert.equal(evidence.platform,id);
+  assert.equal(evidence.native,true);assert.equal(evidence.checks.length,10);assert.equal(evidence.imageId,image.imageId);
+  assert.equal(evidence.arch,targets[id].arch==='x64'?'amd64':'arm64');assert.equal(image.arch,evidence.arch);
+  assert.equal(evidence.archiveSha256,archiveSha256,'Docker runtime evidence must bind the actual loaded archive');
+}
