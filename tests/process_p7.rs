@@ -382,22 +382,35 @@ fn wait_stderr_contains(child: &mut Child, needle: &str, limit: Duration) -> Str
 #[tokio::test]
 async fn port_number_semantics_ts_profile() {
     // The startup log echoes Number(PORT) verbatim (oracle-pinned values).
-    // Fractional uses a fresh free port: its truncated bind must not collide
-    // with the 3000-holder in port_invalid_does_not_default_to_3000.
+    // Bind numeric spellings on a fresh non-privileged port so a normal CI
+    // user can exercise the same semantics. Fixed low-value conversions
+    // (1e2 -> 100 and 0x10 -> 16) remain covered by config's parser tests.
     let listener = TcpListener::bind(("127.0.0.1", 0)).expect("free");
     let frac_port = listener.local_addr().unwrap().port();
     drop(listener);
-    let cases: [(String, String); 6] = [
-        ("abc".into(), "NaN".into()),
-        ("".into(), "0".into()),
-        (format!("{frac_port}.5"), format!("{frac_port}.5")),
-        ("1e2".into(), "100".into()),
-        ("0x10".into(), "16".into()),
+    let cases: [(String, String, Option<u16>); 6] = [
+        ("abc".into(), "NaN".into(), None),
+        ("".into(), "0".into(), None),
+        (
+            format!("{frac_port}.5"),
+            format!("{frac_port}.5"),
+            Some(frac_port),
+        ),
+        (
+            format!("{frac_port}e0"),
+            frac_port.to_string(),
+            Some(frac_port),
+        ),
+        (
+            format!("0x{frac_port:x}"),
+            frac_port.to_string(),
+            Some(frac_port),
+        ),
         // ("70000" binds 65535 — asserted in the clamp test below instead,
         // one 65535 holder at a time under parallel tests.)
-        ("-1".into(), "-1".into()),
+        ("-1".into(), "-1".into(), None),
     ];
-    for (raw, display) in cases {
+    for (raw, display, bound_port) in cases {
         let mut guard = spawn_http(env!("CARGO_BIN_EXE_prts-mcp-rust"), raw.as_str(), &[]);
         let stderr = wait_stderr_contains(&mut guard.0, "listening on", Duration::from_secs(10));
         let expected = format!("listening on 127.0.0.1:{display} (StreamableHTTP at /mcp)");
@@ -405,6 +418,9 @@ async fn port_number_semantics_ts_profile() {
             stderr.contains(&expected),
             "PORT {raw:?}: log should contain {expected:?}, got: {stderr}"
         );
+        if let Some(port) = bound_port {
+            wait_origin(&format!("http://127.0.0.1:{port}")).await;
+        }
         drop(guard);
     }
 }

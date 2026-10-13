@@ -11,8 +11,9 @@
  *     on the same volume — data intact, tools serve, no destructive resync.
  *  3. Old-volume read-back:
  *     a. the P2-era PAIR-pointer volume written by the REAL TS sync code;
- *     b. the P6-era images volume written by the REAL TS syncImages
- *        (2802-artwork generation) — Rust serves operator_artwork from it.
+ *     b. by default the P6-era full-size images volume written by REAL TS
+ *        syncImages (2802 artworks). --images-volume overrides that source;
+ *        M1B CI uses five synthetic artworks written by the same TS sync.
  */
 import { spawn } from "node:child_process";
 import { execFileSync } from "node:child_process";
@@ -181,7 +182,8 @@ async function main() {
       out[10]?.result?.content?.[0]?.text?.includes("关卡列表"));
   }
 
-  // 3b. Old images volume written by the REAL TS syncImages (P6 full-scale).
+  // 3b. Real TS-written images volume: historical full-scale by default,
+  // or the explicit representative fixture supplied by M1B validation.
   {
     const arg = process.argv.indexOf("--images-volume");
     const imgVol = arg >= 0 ? process.argv[arg + 1] : join(ROOT, ".runtime/images-fullscale/ts-volume");
