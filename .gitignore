@@ -65,6 +65,7 @@ data/*/zh_CN*.zip
 
 # Rust builds and isolated historical verification
 /target/
+/.native-cache/
 /.reference/
 /.runtime/
 /artifacts/

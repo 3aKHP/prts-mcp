@@ -3,7 +3,7 @@
 | Line | State |
 | --- | --- |
 | Public stable / main | 2.8.1, Python and TS; unchanged by the M1B PR. |
-| This development branch | 3.0.0-dev.0, root Rust/Cargo project; integration awaits PR merge. |
+| This development branch | 3.0.0-dev.0, root Rust/Cargo project; M1B merged as 67722ce, M2A in progress. |
 | lts/2.8 | Both 2.8 implementations preserved; release isolation at 9c84e3eeac7a5f267bc17564e0cdf115a67957cc. |
 | lts/1.7 | Existing 1.7 LTS. |
 | LTS EOL | Both lines: 2027-07-02. |
@@ -16,4 +16,4 @@ Evidence inherited from P0–P9 proves Linux x64 glibc behavior and native perfo
 
 The root owns Cargo files, src/, native/, vendor/, tests/, contracts/, tools/, packaging/ and Dockerfile. Historical implementation documents live under docs/dev/rust-rewrite/; 2.x documentation is archived under docs/dev/legacy/2.x/ and remains authoritative on its own LTS branch. LICENSE and NOTICE retain code/content distinctions.
 
-Next: merge reviewed M1B, then M2A platform builds and runtime evidence. CLI, feature/data-domain additions, AKDP tasks and the older backlog follow 3.0. crates.io publication is a separate task after M5.
+Current: M2A platform builds and detached native archive runtime evidence; see [platform baselines and evidence](docs/dev/NATIVE-PLATFORMS.md). Next: M2B npm entry/platform packages, then M2C Docker. CLI, feature/data-domain additions, AKDP tasks and the older backlog follow 3.0. crates.io publication is a separate task after M5.

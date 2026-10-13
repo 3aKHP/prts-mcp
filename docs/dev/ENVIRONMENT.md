@@ -4,7 +4,7 @@
 
 ## 工具链
 
-rust-toolchain.toml 固定 Rust 1.96.1，Cargo.lock 固定依赖；这不是已确定的最低 Rust 版本，MSRV 与系统/ABI 基线在 M2 确定。源码构建需要 C 编译器（Linux: cc），原生 regexp 以静态库链接进二进制，无 JS VM。开发检查还需 rustfmt、clippy：
+rust-toolchain.toml 固定 Rust 1.96.1，Cargo.lock 固定依赖；Cargo.toml 的最低 Rust 版本为 1.89，生产依赖以该版本实际检查。五平台的系统/ABI 基线及打包命令见 [NATIVE-PLATFORMS.md](NATIVE-PLATFORMS.md)。源码构建需要 C 编译器（Linux: cc，Windows: clang-cl 配合 Visual Studio SDK，macOS: 系统 cc），原生 regexp 以静态库链接进二进制，无 JS VM。开发检查还需 rustfmt、clippy：
 
 ```bash
 rustup show
