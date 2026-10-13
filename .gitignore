@@ -42,26 +42,21 @@ ts/data/*
 !ts/data/gamedata-levels/.gitkeep
 !ts/data/storyjson/.gitkeep
 
-data/*
-!data/.gitkeep
-!data/gamedata/
-!data/gamedata-levels/
-!data/storyjson/
-!data/gamedata/**
-!data/gamedata-levels/.gitkeep
-!data/storyjson/.gitkeep
-data/gamedata/archives/
-data/gamedata/**/*.zip
-data/gamedata/**/*.7z
-data/gamedata-levels/archives/
-data/gamedata-levels/**/*.zip
-data/gamedata-levels/**/*.7z
+# Local game data is downloaded content, not source or a release bundle.
+# Keep only the explanation and directory placeholders in the root data/.
+/data/*
+!/data/README.md
+!/data/.gitkeep
+!/data/gamedata/
+!/data/gamedata-levels/
+!/data/storyjson/
+/data/gamedata/*
+!/data/gamedata/.gitkeep
+/data/gamedata-levels/*
+!/data/gamedata-levels/.gitkeep
+/data/storyjson/*
+!/data/storyjson/.gitkeep
 .release.lock/
-
-# Runtime sync artifacts
-data/*/.releases/
-data/*/release_meta.json
-data/*/zh_CN*.zip
 
 # Rust builds and isolated historical verification
 /target/

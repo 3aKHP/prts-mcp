@@ -8,3 +8,7 @@ dev
 node_modules
 .env
 .env.*
+
+# Root data/ contains local downloads. Validated release bundles are staged
+# separately by distribution tooling; never copy a developer's local cache.
+/data/
