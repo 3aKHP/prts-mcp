@@ -1,0 +1,75 @@
+[package]
+name = "prts-mcp"
+version = "3.0.0-dev.0"
+edition = "2021"
+publish = false
+description = "Arknights fan-creation MCP server with native Rust runtime"
+repository = "https://github.com/3aKHP/prts-mcp"
+readme = "README.md"
+include = ["Cargo.toml", "Cargo.lock", "build.rs", "rust-toolchain.toml", "src/**", "native/**", "vendor/**", "contracts/data-declarations.json", "LICENSE", "NOTICE", "README.md", "CHANGELOG.md"]
+license = "MIT"
+
+[lib]
+name = "prts_mcp_rust"
+path = "src/lib.rs"
+
+# ---------------------------------------------------------------------------
+# Dependency policy (docs/02-architecture.md): precise versions are pinned by
+# the committed Cargo.lock; the requirements below stay conservative. rmcp and
+# the native ECMAScript regex component are validated by oracle probes.
+# ---------------------------------------------------------------------------
+
+[dependencies]
+# Async runtime + HTTP server.
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "time", "signal", "io-util", "io-std", "sync", "fs", "process"] }
+axum = { version = "0.8", default-features = false, features = ["http1", "json", "query", "tokio"] }
+
+# JSON: preserve_order keeps object key insertion order (JS semantics) for
+# structuredContent rendering parity.
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+
+# HTTP client (sync layer uses, P2+).
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "gzip", "stream", "json", "system-proxy"] }
+
+# Archive + hashing (sync layer, P2+).
+zip = { version = "6", default-features = false, features = ["deflate"] }
+sha2 = "0.10"
+
+# Sync layer (P2): async trait objects for the injectable transport, and
+# mtime/utimes for the cross-process lock lease protocol (TS uses
+# fs.promises.utimes; std has no setter).
+async-trait = "0.1"
+filetime = "0.2"
+
+# XML/HTML parsing for the Wiki template renderer (P5).
+quick-xml = "0.38"
+
+# SSE hold streams for GET /mcp (session channel with no server push).
+tokio-stream = { version = "0.1", features = ["sync"] }
+uuid = { version = "1", features = ["v4"] }
+
+# Diagnostics/errors.
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+thiserror = "2"
+
+# Mandatory-literal scanning; native regexp sources are pinned under vendor/.
+memchr = "2"
+
+[build-dependencies]
+cc = "1"
+
+[features]
+default = []
+
+[dev-dependencies]
+# MCP SDK evaluated by the P1 probe (examples/rmcp_probe.rs): rmcp 3.5.1 could
+# not reproduce the oracle's wire behavior (SSE framing, priming events,
+# unknown-session body, discover version set, modern JSON responses); the
+# product uses the thin adapter in src/protocol instead. Kept as a
+# dev-dependency so the selection evidence stays reproducible.
+rmcp = { version = "3.5.1", default-features = false, features = ["server", "transport-io", "transport-streamable-http-server", "transport-streamable-http-server-session", "macros", "schemars"] }
+
+[profile.release]
+debug = false

@@ -62,3 +62,12 @@ data/gamedata-levels/**/*.7z
 data/*/.releases/
 data/*/release_meta.json
 data/*/zh_CN*.zip
+
+# Rust builds and isolated historical verification
+/target/
+/.reference/
+/.runtime/
+/artifacts/
+/node_modules/
+**/node_modules/
+*.crate

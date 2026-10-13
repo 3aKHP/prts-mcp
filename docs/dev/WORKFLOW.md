@@ -4,7 +4,7 @@
 
 ## 硬规则
 
-- 一切改动经 PR；不直推 `main` / `develop` / `lts/1.7`（本仓库不引入 Develop Direct）。
+- 一切改动经 PR；不直推 `main` / `develop` / `lts/1.7` / `lts/2.8`（本仓库不引入 Develop Direct）。
 - 一个分支或 PR 只承载一个主要意图；大变更先拆分。
 - 行为、配置、协议、部署契约或用户文档变化时，同一变更更新拥有该事实的文档。
 - 难以判断属于哪一级时，**向上分级**。
@@ -59,7 +59,7 @@ reviewer 独立性、不可信输入处理、交叉核对与 finding 处置的�
 
 - 开始前编写专题计划：目标与验收条件、涉及子系统、风险与失败模式、拆分方案；
 - 实现拆分为多个 Standard PR，每个只承载一个主要意图，各自走完双轨；
-- 整体变更做多透镜审查，透镜按本仓库风险面设定：① sync 数据管线；② api / parity 契约；③ MCP 传输与会话；④ artwork 双数据源缝合；⑤ 跨实现结构、配置与部署一致性；
+- 整体变更做多透镜审查，透镜按本仓库风险面设定：① sync 数据管线；② api / 固定历史 parity 契约；③ MCP 传输与会话；④ artwork 双数据源缝合；⑤ 跨实现结构、配置与部署一致性；
 - 全量 E2E 为强烈建议（[`E2E.md`](E2E.md)），不是合并门禁；未执行时按"高风险域"一节的裁量规则在 PR 披露验证范围与替代方案。
 
 ### Hot-Fix
@@ -101,19 +101,23 @@ gh pr view "$pr" --json reviews \
 
 ## 最小验证矩阵
 
-按改动风险选最小验证集；命令清单以 `CLAUDE.md` 路径 A 步骤 4 为单一来源，本表只标层级：
+按改动风险选最小验证集；命令清单以 `ENVIRONMENT.md` 为单一来源，本表只标层级：
 
 | 改动类型 | 最小验证 |
 |---|---|
-| 仅文档 | 术语 / 链接 targeted grep；引用代码时按需 `pytest -k <topic>`。CI 仅在改动命中 paths 过滤（`python/**` 与 `ts/**`——含两实现的 CHANGELOG——以及 `.github/workflows/{ci,cd,cd-ts}.yml`、`scripts/test-shared-volume-sync.sh`）时运行；`docs/**` 与根目录 .md 不触发 CI |
-| 小代码（单实现） | 对应实现的全量单测（Python pytest 或 TS build + test + typecheck） |
-| 工具面 / 数据 / sync 运行时 | 双实现全量 + `./scripts/check-runtime.sh --full` |
-| 高风险域改动 | 双实现全量 + check-runtime --full；全量 E2E 强烈建议，维护者可按上节规则当次裁量（替代时 PR 披露范围与未执行环节） |
-| Huge PR | 上述全部 + 双实现 parity 测试 + 整体多透镜审查；全量 E2E 强烈建议（[`E2E.md`](E2E.md)），非门禁 |
-| Release | 上述全部 + 双实现 parity 测试 + CHANGELOG / 版本号 / STATUS 口径核对 + CD 产物核对 |
+| 仅文档 | 术语与链接检查；Rust CI 对 push/PR 均运行，不再依赖旧目录 paths filter。 |
+| 小代码（Rust） | fmt/clippy 和对应模块 Rust tests；触及冻结契约时补 differential。 |
+| 工具面 / 数据 / sync 运行时 | Rust 全量原生测试与固定 TS oracle 对照 + `./scripts/check-runtime.sh --full` |
+| 高风险域改动 | Rust 全量原生测试与固定 TS oracle 对照 + check-runtime --full；全量 E2E 强烈建议，维护者可按上节规则当次裁量（替代时 PR 披露范围与未执行环节） |
+| Huge PR | 上述全部 + 冻结 parity 测试 + 整体多透镜审查；全量 E2E 强烈建议（[`E2E.md`](E2E.md)），非门禁 |
+| Release | 上述全部 + 冻结 parity 测试 + CHANGELOG / 版本号 / STATUS 口径核对 + CD 产物核对 |
 
 ## 其他约定
 
 - 解决 Issue 的 PR 正文使用单独一行 `Closes #<issue>`；仅关联但未完成的使用 `Refs #<issue>`。
 - 合并一律由人执行；协作者不自行 merge。
 - PR 保留 merge 历史，不 squash（仓库现行惯例）。
+
+## M1B 迁移评审范围
+
+3.0 的 Huge 迁移按 M1A、M1B、M2A/B/C、M3、M4、M5 拆成各有单一意图的 PR。M1B 的体积来自导入既有 Rust 历史和移除旧实现，本地独立 Reviewer 必须按推送后的最终 HEAD 快照多透镜定向审查，不通读全量 Diff；入口和审查清单见 rust-rewrite/IMPORT.md。Rust 业务对齐固定 TS/v2.8.1 oracle，旧线双实现规则只适用于对应 LTS 分支；独立 CR / Bot 双轨和人工合并规则保持。

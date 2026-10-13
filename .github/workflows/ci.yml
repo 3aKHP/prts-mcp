@@ -1,479 +1,56 @@
 name: CI
-
 on:
   push:
-    branches:
-      - main
-      - master
-      - develop
-      - release/**
-      - feat/**
-      - refactor/**
-    paths:
-      - 'python/**'
-      - 'ts/**'
-      - 'scripts/test-shared-volume-sync.sh'
-      - '.github/workflows/ci.yml'
-      - '.github/workflows/cd.yml'
-      - '.github/workflows/cd-ts.yml'
+    branches: [main, develop, 'release/**', 'feat/**', 'fix/**', 'refactor/**', 'chore/**', 'docs/**', 'perf/**']
   pull_request:
-    paths:
-      - 'python/**'
-      - 'ts/**'
-      - 'scripts/test-shared-volume-sync.sh'
-      - '.github/workflows/ci.yml'
-      - '.github/workflows/cd.yml'
-      - '.github/workflows/cd-ts.yml'
-
+permissions:
+  contents: read
 jobs:
   workflow-lint:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Set up Go
-        uses: actions/setup-go@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
         with:
           go-version: '1.25.x'
           cache: false
-
-      - name: Lint GitHub Actions workflows
-        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
-
-      - name: Shellcheck CD helper scripts
-        run: |
-          for f in ts/scripts/*.sh; do
-            docker run --rm -v "$PWD":/mnt:ro koalaman/shellcheck:stable "/mnt/$f"
-          done
-
-  # ---------------------------------------------------------------------------
-  # Python implementation
-  # ---------------------------------------------------------------------------
-  verify-python:
-    runs-on: ubuntu-latest
-
+      - run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+  rust-validation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Set up Python
-        uses: actions/setup-python@v7
+      - uses: actions/checkout@v7
         with:
-          python-version: "3.11"
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          version: "0.11.28"
-          enable-cache: true
-
-      - name: Sync Python environment
-        run: uv sync --project python --locked
-
-      - name: Compile source files
-        run: uv run --project python --no-sync python -m compileall python/src python/scripts
-
-      - name: Download storyjson zip for integration tests
+          fetch-depth: 0
+      - name: Install pinned Rust toolchain and check components
         run: |
-          mkdir -p .ci-data/storyjson
-          DATA_TAG=$(gh release list --repo 3aKHP/arknights-data-pipeline --json tagName,isDraft,isPrerelease --limit 100 --jq "$(cat .github/scripts/data-tag-selector.jq)")
-          gh release download "$DATA_TAG" \
-            --repo 3aKHP/arknights-data-pipeline \
-            --pattern "zh_CN.zip" \
-            --dir .ci-data/storyjson/ \
-            --clobber
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Run tests
-        run: uv run --project python --no-sync python -m pytest python/tests
-        env:
-          STORYJSON_ZIP: ${{ github.workspace }}/.ci-data/storyjson/zh_CN.zip
-
-      - name: Verify import and config fallback
-        run: |
-          mkdir -p .ci-empty/gamedata
-          export GAMEDATA_PATH="$PWD/.ci-empty/gamedata"
-          uv run --project python --no-sync python - <<'PY'
-          from pathlib import Path
-          from prts_mcp.config import Config
-          from prts_mcp.data.operator import get_operator_archives
-
-          cfg = Config.load()
-          assert cfg.gamedata_path is not None
-          assert cfg.gamedata_path.resolve() == Path(".ci-empty/gamedata").resolve()
-          assert cfg.has_operator_data is False
-          assert cfg.has_story_data is False
-          message = get_operator_archives("阿米娅")
-          assert "干员数据暂不可用" in message
-          print("Import/config verification passed.")
-          PY
-
-  build-image-python:
-    runs-on: ubuntu-latest
-    needs: verify-python
-    if: |
-      github.ref == 'refs/heads/main' ||
-      github.ref == 'refs/heads/develop' ||
-      (github.event_name == 'pull_request' && startsWith(github.head_ref, 'release/'))
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Set up Python
-        uses: actions/setup-python@v7
+          rustup show
+          rustup component add rustfmt clippy
+      - uses: actions/setup-node@v7
         with:
-          python-version: "3.11"
-
-      - name: Install package
-        run: python -m pip install -e python/
-
-      - name: Restore cached gamedata
-        uses: actions/cache/restore@v6
+          node-version: '24'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.14'
+      - uses: actions/cache@v6
         with:
           path: |
-            data/gamedata
-            data/gamedata-levels
-          key: gamedata-${{ hashFiles('data/gamedata/archives/release_meta.json', 'data/gamedata-levels/archives/release_meta.json') }}
-          restore-keys: gamedata-
-
-      - name: Fetch latest gamedata from GitHub
-        run: python python/scripts/fetch_gamedata.py
-        # Exits 0 on success or when cached data covers a network failure.
-        # Exits 1 (fails the build) only when no data is available at all.
-
-      - name: Download bundled storyjson zip
-        run: |
-          mkdir -p data/storyjson
-          DATA_TAG=$(gh release list --repo 3aKHP/arknights-data-pipeline --json tagName,isDraft,isPrerelease --limit 100 --jq "$(cat .github/scripts/data-tag-selector.jq)")
-          gh release download "$DATA_TAG" \
-            --repo 3aKHP/arknights-data-pipeline \
-            --pattern "zh_CN.zip" \
-            --dir data/storyjson/ \
-            --clobber
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Save gamedata cache
-        uses: actions/cache/save@v6
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: rust-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml', 'build.rs', 'native/**', 'vendor/**') }}
+      - uses: actions/cache@v6
         with:
-          path: |
-            data/gamedata
-            data/gamedata-levels
-          key: gamedata-${{ hashFiles('data/gamedata/archives/release_meta.json', 'data/gamedata-levels/archives/release_meta.json') }}
-
-      - name: Build Docker image
-        run: docker build -f python/Dockerfile -t prts-mcp-python:latest .
-
-      - name: Smoke test Docker image
-        run: |
-          python - <<'PY'
-          import subprocess, json, sys
-
-          proc = subprocess.Popen(
-              ["docker","run","-i","--rm","prts-mcp-python:latest"],
-              stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-          )
-
-          def send(msg):
-              proc.stdin.write((json.dumps(msg) + "\n").encode())
-              proc.stdin.flush()
-
-          def recv():
-              line = proc.stdout.readline()
-              if not line:
-                  raise RuntimeError("stdout closed unexpectedly")
-              return json.loads(line)
-
-          send({"jsonrpc":"2.0","method":"initialize","id":1,"params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}})
-          r = recv()
-          assert r.get("id") == 1, f"Expected initialize response, got: {r}"
-
-          send({"jsonrpc":"2.0","method":"notifications/initialized","params":{}})
-          send({"jsonrpc":"2.0","method":"tools/list","id":2,"params":{}})
-          r = recv()
-          assert r.get("id") == 2, f"Expected tools/list response, got: {r}"
-
-          names = {t["name"] for t in r["result"]["tools"]}
-          expected = {"get_operator_archives", "search_prts", "list_story_events", "list_stories", "read_story", "read_activity"}
-          for tool in expected:
-              assert tool in names, f"Missing tool: {tool}. Got: {names}"
-          print("Smoke test passed:", sorted(names))
-
-          proc.stdin.close()
-          proc.wait(timeout=10)
-          PY
-
-  # ---------------------------------------------------------------------------
-  # TypeScript implementation
-  #
-  # Since 2.2.0 Bun is the default production runtime. The Bun pipeline
-  # (verify-ts + build-image-ts) is the primary verification path; Node.js
-  # stays covered as a supported legacy/optional runtime by test-ts (unit
-  # tests, which still run on node:test) and build-image-ts-node (legacy
-  # Docker image). The npm bin surface is unchanged: prts-mcp-ts stays
-  # Node-based, prts-mcp-ts-bun stays Bun-based.
-  # ---------------------------------------------------------------------------
-  test-ts:
-    # Unit tests run on Node's node:test runner. They are split into their own
-    # job (rather than folded into verify-ts) because the Bun pipeline does
-    # not use node:test, and keeping the unit suite on Node preserves the
-    # existing test runner without a bun:test migration.
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
+          path: .runtime/data
+          key: frozen-oracle-data-${{ hashFiles('contracts/validation-assets.json') }}
+      - name: Native tests, frozen differential suite and lifecycle
+        run: ./scripts/check-runtime.sh --full
+      - name: Verify standalone source package
+        run: cargo package --locked
+      - name: Retain scoped validation evidence
+        if: always()
+        uses: actions/upload-artifact@v6
         with:
-          node-version-file: 'ts/package.json'
-          cache: 'npm'
-          cache-dependency-path: 'ts/package-lock.json'
-
-      - name: Install dependencies
-        run: npm ci
-        working-directory: ts
-
-      - name: Build (for e2e tests that spawn dist/server-stdio.js)
-        run: npm run build
-        working-directory: ts
-
-      - name: Run tests
-        run: npm test
-        working-directory: ts
-
-      - name: Verify npm tarball helper script tests
-        run: node scripts/verify-npm-published.test.mjs
-        working-directory: ts
-
-  verify-ts:
-    # Primary TS verification path: Bun runtime, type-check, build, and
-    # black-box HTTP MCP smoke (including packed-package smoke).
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: "1.3.14"
-
-      - name: Verify bun.lock is in sync with package.json
-        # Guards against the dual-lockfile drift risk: if a contributor
-        # changes package.json dependencies but forgets to refresh bun.lock,
-        # bun install --frozen-lockfile would fail here with an actionable
-        # message instead of a cryptic downstream error.
-        #
-        # Diff against a temporary copy rather than mutating bun.lock in
-        # place: this avoids leaving a dirty lockfile on disk if the step
-        # fails, and avoids false positives when a different Bun version
-        # regenerates a semantically-equivalent but textually-different
-        # lockfile (the comparison is against the committed lockfile
-        # resolved by the pinned Bun 1.3.14 above).
-        run: |
-          cp bun.lock bun.lock.tmp
-          bun install --lockfile-only
-          if ! diff -q bun.lock bun.lock.tmp >/dev/null; then
-            echo "::error::bun.lock is out of sync with package.json. Run 'bun install --lockfile-only' locally and commit the updated bun.lock."
-            diff --stat bun.lock bun.lock.tmp || true
-            rm -f bun.lock.tmp
-            exit 1
-          fi
-          rm -f bun.lock.tmp
-        working-directory: ts
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-        working-directory: ts
-
-      - name: Type-check with Bun
-        run: bun run typecheck
-        working-directory: ts
-
-      - name: Build with Bun
-        run: bun run build:bun
-        working-directory: ts
-
-      # The full unit suite uses Node's node:test runner and is covered by
-      # test-ts. Bun coverage is intentionally black-box runtime smoke until
-      # a dedicated bun:test migration is planned.
-      - name: Smoke test Bun runtime
-        run: bun run smoke:bun
-        working-directory: ts
-
-      - name: Smoke test packed Bun bin
-        run: bun run smoke:bun:package
-        working-directory: ts
-
-  shared-volume-sync:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Set up Python
-        uses: actions/setup-python@v7
-        with:
-          python-version: "3.11"
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          version: "0.11.28"
-          enable-cache: true
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version-file: 'ts/package.json'
-          cache: 'npm'
-          cache-dependency-path: 'ts/package-lock.json'
-
-      - name: Install Python dependencies
-        run: uv sync --project python --locked
-
-      - name: Install TypeScript dependencies
-        run: npm ci
-        working-directory: ts
-
-      - name: Exercise Python and TypeScript on one shared volume
-        run: ./scripts/test-shared-volume-sync.sh
-
-  build-image-ts:
-    # Default Docker image — Bun runtime (ts/Dockerfile is Bun since 2.2.0).
-    # Runs on develop/main branch pushes. Also runs on pull requests whose
-    # head branch is release/** so that a release PR validates the default
-    # image before it ships to main (github.head_ref is only set on
-    # pull_request events; branch pushes are covered by the ref checks).
-    runs-on: ubuntu-latest
-    needs: [verify-ts, test-ts]
-    if: |
-      github.ref == 'refs/heads/main' ||
-      github.ref == 'refs/heads/develop' ||
-      (github.event_name == 'pull_request' && startsWith(github.head_ref, 'release/'))
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: "1.3.14"
-
-      - name: Set up Python
-        uses: actions/setup-python@v7
-        with:
-          python-version: "3.11"
-
-      - name: Install Python package (for fetch_gamedata script)
-        run: python -m pip install -e python/
-
-      - name: Restore cached gamedata
-        uses: actions/cache/restore@v6
-        with:
-          path: |
-            data/gamedata
-            data/gamedata-levels
-          key: gamedata-${{ hashFiles('data/gamedata/archives/release_meta.json', 'data/gamedata-levels/archives/release_meta.json') }}
-          restore-keys: gamedata-
-
-      - name: Fetch latest gamedata from GitHub
-        run: python python/scripts/fetch_gamedata.py
-
-      - name: Download bundled storyjson zip
-        run: |
-          mkdir -p data/storyjson
-          DATA_TAG=$(gh release list --repo 3aKHP/arknights-data-pipeline --json tagName,isDraft,isPrerelease --limit 100 --jq "$(cat .github/scripts/data-tag-selector.jq)")
-          gh release download "$DATA_TAG" \
-            --repo 3aKHP/arknights-data-pipeline \
-            --pattern "zh_CN.zip" \
-            --dir data/storyjson/ \
-            --clobber
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Save gamedata cache
-        uses: actions/cache/save@v6
-        with:
-          path: |
-            data/gamedata
-            data/gamedata-levels
-          key: gamedata-${{ hashFiles('data/gamedata/archives/release_meta.json', 'data/gamedata-levels/archives/release_meta.json') }}
-
-      - name: Build Docker image
-        run: docker build -f ts/Dockerfile -t prts-mcp-ts:latest .
-
-      - name: Smoke test Docker image (HTTP MCP protocol)
-        run: |
-          docker run -d --name prts-mcp-ts-ci -p 3000:3000 prts-mcp-ts:latest
-          trap 'docker rm -f prts-mcp-ts-ci' EXIT
-          bun ts/scripts/smoke-http.mjs --origin http://localhost:3000
-
-  build-image-ts-node:
-    # Legacy Node.js Docker image (ts/Dockerfile.node). Run on PRs as well as
-    # develop/main to keep the legacy Node path verified. The job does not
-    # save gamedata caches, so PR branches do not publish cache entries.
-    runs-on: ubuntu-latest
-    needs: test-ts
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version-file: 'ts/package.json'
-
-      - name: Set up Python
-        uses: actions/setup-python@v7
-        with:
-          python-version: "3.11"
-
-      - name: Install Python package (for fetch_gamedata script)
-        run: python -m pip install -e python/
-
-      - name: Restore cached gamedata
-        uses: actions/cache/restore@v6
-        with:
-          path: |
-            data/gamedata
-            data/gamedata-levels
-          key: gamedata-${{ hashFiles('data/gamedata/archives/release_meta.json', 'data/gamedata-levels/archives/release_meta.json') }}
-          restore-keys: gamedata-
-
-      - name: Fetch latest gamedata from GitHub
-        run: python python/scripts/fetch_gamedata.py
-
-      - name: Download bundled storyjson zip
-        run: |
-          mkdir -p data/storyjson
-          DATA_TAG=$(gh release list --repo 3aKHP/arknights-data-pipeline --json tagName,isDraft,isPrerelease --limit 100 --jq "$(cat .github/scripts/data-tag-selector.jq)")
-          gh release download "$DATA_TAG" \
-            --repo 3aKHP/arknights-data-pipeline \
-            --pattern "zh_CN.zip" \
-            --dir data/storyjson/ \
-            --clobber
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build Node Docker image
-        run: docker build -f ts/Dockerfile.node -t prts-mcp-ts-node:legacy .
-
-      - name: Smoke test Node Docker image (HTTP MCP protocol)
-        run: |
-          docker run -d --name prts-mcp-ts-node-ci -p 3000:3000 prts-mcp-ts-node:legacy
-          trap 'docker rm -f prts-mcp-ts-node-ci' EXIT
-          node ts/scripts/smoke-http.mjs --origin http://localhost:3000
+          name: rust-validation-evidence
+          path: artifacts/
+          retention-days: 14
