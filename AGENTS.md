@@ -5,7 +5,7 @@
 | Branch | Purpose |
 | --- | --- |
 | main | Latest stable release, currently 2.8.1; changes to Rust at M5. |
-| develop | Rust integration, target 3.0.0-dev.0 after M1B merges. No python/ or ts/ source directories. |
+| develop | Rust integration, target 3.0.0-dev.0. No python/ or ts/ source directories. |
 | lts/2.8 | Python/TS 2.8.x maintenance, EOL 2027-07-02. |
 | lts/1.7 | Python/TS 1.7.x maintenance, EOL 2027-07-02. |
 
@@ -17,7 +17,7 @@ Read CLAUDE.md and docs/dev/STYLE.md before non-trivial changes. Read docs/dev/V
 
 ## Runtime
 
-The root is a native Cargo project. rust-toolchain.toml pins the development compiler; Cargo.lock pins dependencies. Source builds require a C compiler for the vendored native regexp component. Released native binaries will carry the component; end users do not need a compiler. Five-platform distribution is an M2 deliverable, not an M1B support claim.
+The root is a native Cargo project. rust-toolchain.toml pins the development compiler; Cargo.lock pins dependencies; Cargo.toml declares Rust 1.89 minimum. Source builds require a C compiler for native regexp and OS diagnostics. Prebuilt binaries carry those components, so users need no compiler. M2A validates five native archive targets; docs/dev/NATIVE-PLATFORMS.md owns exact ABI/runtime evidence. npm/Docker installation, public publishing and candidate E2E remain later migration stages.
 
 In WSL keep the checkout on the Linux filesystem. Development oracle/packaging tools use Node >=22 and Bun 1.3.14; they are not the production business runtime. Historical TS/Python comparison sources are reconstructed from the fixed 2.8.1 commit under ignored .reference/, never restored to root python/ or ts/.
 

@@ -60,6 +60,7 @@ ts/data/*
 
 # Rust builds and isolated historical verification
 /target/
+/.native-cache/
 /.reference/
 /.runtime/
 /artifacts/

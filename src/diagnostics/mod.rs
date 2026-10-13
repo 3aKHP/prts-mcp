@@ -289,44 +289,58 @@ pub fn cache_snapshot() -> Value {
 }
 
 // ---------------------------------------------------------------------------
-// Process memory (/proc readers — Linux is this replication's deployment
-// target; a missing /proc falls back to 0, never a fabricated value.)
+// Process memory: Linux /proc with the actual OS page size; desktop OS APIs.
+// Measurement failures fall back to 0, never a fabricated value.
 // ---------------------------------------------------------------------------
 
-const PAGE_SIZE: u64 = 4096;
+mod process;
 
 /// Current RSS in bytes (`/proc/self/statm` resident pages).
 pub fn rss_bytes() -> u64 {
-    let Ok(text) = std::fs::read_to_string("/proc/self/statm") else {
-        return 0;
-    };
-    let mut parts = text.split_whitespace();
-    parts.next();
-    parts
-        .next()
-        .and_then(|p| p.parse::<u64>().ok())
-        .map(|pages| pages * PAGE_SIZE)
-        .unwrap_or(0)
+    #[cfg(any(windows, target_os = "macos"))]
+    {
+        return process::memory().0;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let Ok(text) = std::fs::read_to_string("/proc/self/statm") else {
+            return 0;
+        };
+        let mut parts = text.split_whitespace();
+        parts.next();
+        parts
+            .next()
+            .and_then(|p| p.parse::<u64>().ok())
+            .map(|pages| pages * process::page_size())
+            .unwrap_or(0)
+    }
 }
 
 /// Peak RSS (`VmHWM` from `/proc/self/status`) — the faithful analogue of
 /// TS tracking the max of `process.memoryUsage().rss`.
 pub fn rss_high_water_bytes() -> u64 {
-    let Ok(text) = std::fs::read_to_string("/proc/self/status") else {
-        return 0;
-    };
-    for line in text.lines() {
-        if let Some(rest) = line.strip_prefix("VmHWM:") {
-            return rest
-                .trim()
-                .trim_end_matches("kB")
-                .trim()
-                .parse::<u64>()
-                .map(|kb| kb * 1024)
-                .unwrap_or(0);
-        }
+    #[cfg(any(windows, target_os = "macos"))]
+    {
+        return process::memory().1;
     }
-    0
+    #[cfg(target_os = "linux")]
+    {
+        let Ok(text) = std::fs::read_to_string("/proc/self/status") else {
+            return 0;
+        };
+        for line in text.lines() {
+            if let Some(rest) = line.strip_prefix("VmHWM:") {
+                return rest
+                    .trim()
+                    .trim_end_matches("kB")
+                    .trim()
+                    .parse::<u64>()
+                    .map(|kb| kb * 1024)
+                    .unwrap_or(0);
+            }
+        }
+        0
+    }
 }
 
 // ---------------------------------------------------------------------------

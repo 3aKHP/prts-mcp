@@ -97,8 +97,15 @@ fn load_gamedata_pair(
 }
 
 fn relative_or_dot(from: &Path, to: &Path) -> String {
-    let from_abs = std::path::absolute(from).unwrap_or_else(|_| from.to_path_buf());
-    let to_abs = std::path::absolute(to).unwrap_or_else(|_| to.to_path_buf());
+    // Activation roots are realpaths. Canonicalize both sides so /var aliases
+    // on macOS and Windows extended-length prefixes do not leak absolute paths
+    // into otherwise movable, relative generation metadata.
+    let from_abs = std::fs::canonicalize(from)
+        .or_else(|_| std::path::absolute(from))
+        .unwrap_or_else(|_| from.to_path_buf());
+    let to_abs = std::fs::canonicalize(to)
+        .or_else(|_| std::path::absolute(to))
+        .unwrap_or_else(|_| to.to_path_buf());
     if let Ok(rel) = to_abs.strip_prefix(&from_abs) {
         let text = rel.to_string_lossy().replace('\\', "/");
         if text.is_empty() {
@@ -502,7 +509,7 @@ mod tests {
             (SyncStatus::UpToDate, SyncStatus::UpToDate)
         );
         assert!(pair_path.is_file());
-        let before = std::fs::metadata(&pair_path).unwrap();
+        let before = crate::storage::identity::path_token(&pair_path).unwrap();
 
         let second = sync_release_archive_pair(&DownTransport, &excel, &levels, false)
             .await
@@ -511,22 +518,19 @@ mod tests {
             (second.0.status, second.1.status),
             (SyncStatus::UpToDate, SyncStatus::UpToDate)
         );
-        let after = std::fs::metadata(&pair_path).unwrap();
-        // Unchanged cycle: identical inode and timestamps (no rewrite).
-        use std::os::unix::fs::MetadataExt;
-        assert_eq!(after.ino(), before.ino());
-        assert_eq!(after.mtime(), before.mtime());
-        assert_eq!(after.ctime(), before.ctime());
+        let after = crate::storage::identity::path_token(&pair_path).unwrap();
+        // Unchanged cycle: identical file identity and timestamps (no rewrite).
+        assert_eq!(after, before);
 
         activate_generation((&excel, &levels), "next");
         sync_release_archive_pair(&DownTransport, &excel, &levels, false)
             .await
             .unwrap();
-        let changed = std::fs::metadata(&pair_path).unwrap();
+        let changed = crate::storage::identity::path_token(&pair_path).unwrap();
         let value: Value =
             serde_json::from_str(&std::fs::read_to_string(&pair_path).unwrap()).unwrap();
         assert_eq!(value["commit_sha"], "next");
-        assert_ne!(changed.ino(), after.ino());
+        assert_ne!(changed, after);
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -585,6 +589,25 @@ mod tests {
         assert_eq!(l.status, SyncStatus::OfflineFallback);
         assert!(!dir.join(".gamedata_pair.json").exists());
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[tokio::test]
+    async fn pair_manifest_remains_readable_after_moving_data_directory() {
+        let (dir, excel, levels) = pair_specs("relocate");
+        activate_generation((&excel, &levels), "relocate");
+        sync_release_archive_pair(&DownTransport, &excel, &levels, false)
+            .await
+            .unwrap();
+        let moved = dir.with_extension("moved");
+        let _ = std::fs::remove_dir_all(&moved);
+        std::fs::rename(&dir, &moved).unwrap();
+        let moved_excel = moved.join(excel.local_root.file_name().unwrap());
+        let moved_levels = moved.join(levels.local_root.file_name().unwrap());
+        let pair = crate::storage::activated_pair(&moved_excel, &moved_levels)
+            .expect("relative generation pointers must survive moving the whole volume");
+        assert!(pair.0.join(&excel.required_files[0]).is_file());
+        assert!(pair.1.join(&levels.required_files[0]).is_file());
+        std::fs::remove_dir_all(&moved).unwrap();
     }
 
     #[tokio::test]
@@ -824,7 +847,10 @@ mod tests {
         let outside = dir.join("outside");
         std::fs::create_dir_all(&outside).unwrap();
         std::fs::create_dir_all(&spec.local_root).unwrap();
+        #[cfg(unix)]
         std::os::unix::fs::symlink(&outside, spec.local_root.join(".releases")).unwrap();
+        #[cfg(windows)]
+        std::os::windows::fs::symlink_dir(&outside, spec.local_root.join(".releases")).unwrap();
 
         let result = sync_release_archive(&DownTransport, spec, false).await;
         assert_eq!(result.status, SyncStatus::NoData);

@@ -1,0 +1,3 @@
+# Native platform smoke fixture
+
+Synthetic GameData and StoryJson tables generated from the frozen TS/v2.8.1 unit fixtures by tools/make-fixtures.mjs, corresponding to minimal-gamedata-v2 in contracts/data-manifest.json. Exact committed bytes are sealed in contracts/native-smoke-manifest.json; reconstructed ZIP timestamps differ from the old runtime archive, while the untouched frozen tool-output golden remains the comparison oracle. This small fixture is committed so native-platform verification needs no historical JS implementation, live upstream data or local .runtime files. Game/Wiki content terms remain in NOTICE.

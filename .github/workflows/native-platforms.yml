@@ -1,0 +1,81 @@
+name: Native platforms
+on:
+  push:
+    branches: [develop, 'feat/**', 'fix/**', 'refactor/**', 'chore/**', 'release/**']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: native-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  native:
+    name: Native ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x64
+            runner: ubuntu-24.04
+          - platform: linux-arm64
+            runner: ubuntu-24.04-arm
+          - platform: windows-x64
+            runner: windows-2022
+          - platform: darwin-arm64
+            runner: macos-14
+          - platform: darwin-x64
+            runner: macos-15-intel
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Configure Windows compiler and SDK
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1
+      - name: Select Windows native C compiler
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: '"CC=clang-cl" >> $env:GITHUB_ENV'
+      - name: Prepare desktop Rust compiler
+        if: runner.os != 'Linux'
+        run: rustup show
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            .native-cache
+            target
+          key: native-${{ matrix.platform }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml', 'build.rs', 'native/**', 'vendor/**', 'packaging/native/targets.json') }}
+          restore-keys: native-${{ matrix.platform }}-
+      - name: Native build, minimum Rust check and native corpus
+        run: node tools/native/build.mjs ${{ matrix.platform }}
+      - name: Package binaries, notices and audited ABI
+        run: node tools/native/pack.mjs ${{ matrix.platform }}
+      - name: Run extracted archive without a runtime/toolchain PATH
+        run: node tools/native/probe.mjs ${{ matrix.platform }}
+      - name: Run Linux archive in minimal glibc 2.28 runtime
+        if: runner.os == 'Linux'
+        run: node tools/native/probe.mjs ${{ matrix.platform }} --baseline
+      - name: Retain installable archive and evidence (no publication)
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: native-${{ matrix.platform }}
+          path: |
+            artifacts/native/${{ matrix.platform }}/*.tar.gz
+            artifacts/native/${{ matrix.platform }}/*.zip
+            artifacts/native/${{ matrix.platform }}/*.sha256
+            artifacts/native/${{ matrix.platform }}/runtime-evidence.json
+            artifacts/native/${{ matrix.platform }}/runtime-baseline-evidence.json
+            artifacts/native/${{ matrix.platform }}/compiler.*
+            artifacts/native/${{ matrix.platform }}/payload/BUILD.json
+            artifacts/native/${{ matrix.platform }}/payload/ABI.json
+            artifacts/native/${{ matrix.platform }}/payload/SHA256SUMS
+          retention-days: 14

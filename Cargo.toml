@@ -2,6 +2,7 @@
 name = "prts-mcp"
 version = "3.0.0-dev.0"
 edition = "2021"
+rust-version = "1.89"
 publish = false
 description = "Arknights fan-creation MCP server with native Rust runtime"
 repository = "https://github.com/3aKHP/prts-mcp"

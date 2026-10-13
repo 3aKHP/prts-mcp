@@ -2,7 +2,7 @@
 
 PRTS-MCP provides Arknights game data, story search, PRTS Wiki content and operator artwork to MCP clients. The 3.x development branch uses one native Rust implementation with a statically linked C regexp component.
 
-**Release status:** the latest public stable release is still **2.8.1**. This branch is **3.0.0-dev.0**, with root import/validation in M1B. Five-platform native binaries, npm distribution and published Docker follow in M2/M3. The planned npm main package is prts-mcp; prts-mcp-ts will remain a Rust-backed compatibility entry. Neither is a published 3.x release yet. See the [migration plan](docs/dev/plans/3.x-rust-migration.md), [roadmap](ROADMAP.md) and [2.8.1 installation guide](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/README.md).
+**Release status:** the latest public stable release is still **2.8.1**. This branch is **3.0.0-dev.0**; M1B root import is merged and M2A has validated five [native platform artifacts](docs/dev/NATIVE-PLATFORMS.md). They are development CI artifacts; npm distribution and published Docker follow in M2B/C and M3. The planned npm main package is prts-mcp; prts-mcp-ts will remain a Rust-backed compatibility entry. Neither is a published 3.x release yet. See the [migration plan](docs/dev/plans/3.x-rust-migration.md), [roadmap](ROADMAP.md) and [2.8.1 installation guide](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/README.md).
 
 ## Run from source
 
@@ -35,13 +35,13 @@ The server provides 24 tools (23 without artwork) across operator/enemy/stage/it
 cargo package --locked
 ```
 
-The full development check reconstructs the fixed TS oracle and fixtures in ignored directories; Node/Bun are development tools, not native service dependencies. Full release-candidate real-client E2E is planned for M4. M1B proves Linux x64 glibc only; Windows, macOS and Linux arm64 await native M2 validation.
+The full development check reconstructs the fixed TS oracle and fixtures in ignored directories; Node/Bun are development tools, not native service dependencies. Native CI independently builds and runs detached archives on Linux x64/arm64 glibc, Windows x64 and macOS arm64/x64, with required C components compiled in. [Platform baselines and exact evidence](docs/dev/NATIVE-PLATFORMS.md) distinguish ABI floors from OS versions actually exercised. Full release-candidate real-client E2E is planned for M4.
 
 Python/TS maintenance remains on lts/2.8 and lts/1.7, both EOL 2027-07-02. See [LTS policy](docs/dev/LTS.md) and [contributing](CONTRIBUTING.md). CLI and new functionality follow 3.0; crates.io source publication is a separate post-M5 task.
 
 ## 中文
 
-3.x 将技术栈统一为根目录 Rust 工程，正则使用随二进制提供的原生 C 组件，不执行 JS/TS 业务。当前公开稳定版仍为 2.8.1，本分支 3.0.0-dev.0 尚未发行；此阶段只完成源码迁移、开发验证和独立源码打包。后续依次完成五平台发行验证、npm 与 Docker 包装、发布自动化、真实客户端 E2E、3.0 正式发布。新主命令默认 Streamable HTTP，旧 TS 命令及 Docker 的默认传输分别保留。配置见[环境变量](docs/user/environment-variables.md)，阶段和边界见[中文路线图](ROADMAP.zh-CN.md)。
+3.x 将技术栈统一为根目录 Rust 工程，正则使用随二进制提供的原生 C 组件，不执行 JS/TS 业务。当前公开稳定版仍为 2.8.1，本分支 3.0.0-dev.0 尚未发行；源码迁移、独立源码打包以及[五平台原生产物构建/运行验证](docs/dev/NATIVE-PLATFORMS.md)已完成，当前产物仅在开发 CI 中提供。后续依次完成 data/ 方案、npm 与 Docker 包装、发布自动化、真实客户端 E2E及正式发布；文档专场和 data/ 方案均是 3.0 发布门禁。新主命令默认 Streamable HTTP，旧 TS 命令及 Docker 的默认传输分别保留。配置见[环境变量](docs/user/environment-variables.md)，阶段和边界见[中文路线图](ROADMAP.zh-CN.md)。
 
 根 data/ 保留本地下载数据并由 ignore 排除，旧四表快照退出源码跟踪。源码运行默认同步至用户数据目录；正式原生/npm/Docker 发行物继续要求经过校验的只读备用数据，由后续发行包装流程准备，当前 M2A CI 产物尚未携带完整备用数据。详见[数据目录说明](data/README.md)。
 

@@ -175,6 +175,7 @@ pub fn levels_complete(root: &Path) -> bool {
         .is_file()
 }
 
+#[cfg(not(windows))]
 fn home_local_share() -> PathBuf {
     std::env::var("HOME")
         .map(|h| PathBuf::from(h).join(".local").join("share"))
@@ -185,12 +186,22 @@ fn default_gamedata_path() -> PathBuf {
     if std::env::var("PRTS_MCP_ROOT").as_deref() == Ok("/app") {
         return PathBuf::from("/data/gamedata");
     }
-    // Windows LOCALAPPDATA handling is a pure-parsing fixture for P7; on this
-    // Linux verification host the XDG branch is the live path.
-    let base = std::env::var("XDG_DATA_HOME")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| home_local_share());
-    base.join("prts-mcp").join("gamedata")
+    #[cfg(windows)]
+    {
+        // The TS baseline uses LOCALAPPDATA ?? homedir()/AppData/Local.
+        // Rust >=1.85 resolves USERPROFILE or the Windows user-profile API,
+        // matching Node's homedir() without assuming a Unix HOME variable.
+        #[allow(deprecated)]
+        let home = std::env::home_dir().unwrap_or_else(|| PathBuf::from("."));
+        return windows_default_gamedata(std::env::var("LOCALAPPDATA").ok().as_deref(), &home);
+    }
+    #[cfg(not(windows))]
+    {
+        let base = std::env::var("XDG_DATA_HOME")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| home_local_share());
+        base.join("prts-mcp").join("gamedata")
+    }
 }
 
 fn levels_path_of(gamedata_root: &Path) -> PathBuf {

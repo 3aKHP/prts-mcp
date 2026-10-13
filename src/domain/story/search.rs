@@ -47,11 +47,19 @@ fn cache() -> &'static Mutex<Option<SharedIndex>> {
 
 /// `zip:{path}:{size}:{mtime_ns}` — the TS ZipStore descriptor.
 pub fn zip_descriptor(zip_path: &Path) -> Option<String> {
-    use std::os::unix::fs::MetadataExt;
     let meta = std::fs::metadata(zip_path).ok()?;
     // mtime seconds + nanoseconds concatenated — the TS `${stat.mtimeNs}`
     // analogue sufficient for change detection.
-    let mtime_ns = format!("{}{}", meta.mtime(), meta.mtime_nsec());
+    #[cfg(unix)]
+    let mtime_ns = {
+        use std::os::unix::fs::MetadataExt;
+        format!("{}{}", meta.mtime(), meta.mtime_nsec())
+    };
+    #[cfg(windows)]
+    let mtime_ns = {
+        use std::os::windows::fs::MetadataExt;
+        meta.last_write_time().to_string()
+    };
     Some(format!(
         "zip:{}:{}:{}",
         zip_path.display(),

@@ -101,19 +101,8 @@ fn resolve_view(config: &RuntimeConfig) -> DataView {
 /// file; a missing file is [path, null]. The signature covers the pair file
 /// and both extract_meta files — exactly the files an activation rewrites.
 fn path_token(path: &std::path::Path) -> String {
-    match std::fs::metadata(path) {
-        Ok(meta) => {
-            use std::os::unix::fs::MetadataExt;
-            format!(
-                "{path:?}|{}|{}|{}|{}",
-                meta.ino(),
-                meta.len(),
-                meta.mtime(),
-                meta.ctime()
-            )
-        }
-        Err(_) => format!("{path:?}|null"),
-    }
+    let token = crate::storage::identity::path_token(path).unwrap_or_else(|| "null".into());
+    format!("{path:?}|{token}")
 }
 
 fn activation_signature(config: &RuntimeConfig) -> String {
