@@ -2,7 +2,9 @@
 
 ## [Unreleased] — 3.0.0-dev.0
 
-- Prepare native Linux x64/ARM64 Docker packaging with validated fallback data, original dependency notices and preserved default stdio/explicit HTTP, root permissions and legacy writable volumes; add tini to forward container stop signals. Development image verification is in progress; GHCR publication remains a later stage.
+- Prepare full native release candidates with validated read-only fallback data on all five platforms, verify archive installation without developer tools, and collect one exact-version snapshot for npm, native and Docker channels. Public publishing and stable latest are not enabled by this preparation.
+
+- Prepare native Linux x64/ARM64 Docker packaging with validated fallback data, original dependency notices and preserved default stdio/explicit HTTP, root permissions and legacy writable volumes; add tini to forward container stop signals. Both native architectures pass scoped development image verification; GHCR publication remains a later stage.
 
 - Prepare native-backed prts-mcp and prts-mcp-ts npm entries, shared exact-version platform/runtime packages and validated read-only game-data fallback, with real installation verification on native CI. These development tarballs are not published npm releases.
 - Keep native npm stdio/HTTP profiles, standard streams and exit behavior; diagnose missing optional platform packages or version mismatches. Windows npm launches monitor parent-process exit so force-closing the Node bridge stops the native server.

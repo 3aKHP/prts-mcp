@@ -4,6 +4,7 @@ on:
     branches: [develop, 'feat/**', 'fix/**', 'refactor/**', 'chore/**', 'release/**']
   pull_request:
   workflow_dispatch:
+  workflow_call:
 permissions:
   contents: read
 concurrency:
@@ -128,4 +129,47 @@ jobs:
             artifacts/native/${{ matrix.platform }}/payload/BUILD.json
             artifacts/native/${{ matrix.platform }}/payload/ABI.json
             artifacts/native/${{ matrix.platform }}/payload/SHA256SUMS
+          retention-days: 14
+      - name: Package and run actual native candidate with bundled data
+        run: |
+          node tools/release/check-version.mjs
+          node --test tools/release/policy.test.mjs
+          node tools/release/pack-native.mjs ${{ matrix.platform }}
+          node tools/release/probe-native.mjs ${{ matrix.platform }}
+      - name: Retain native candidate and data acceptance (no publication)
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: candidate-${{ matrix.platform }}
+          path: |
+            artifacts/candidate/${{ matrix.platform }}/*-candidate.tar.gz
+            artifacts/candidate/${{ matrix.platform }}/*-candidate.zip
+            artifacts/candidate/${{ matrix.platform }}/*.sha256
+            artifacts/candidate/${{ matrix.platform }}/candidate.json
+            artifacts/candidate/${{ matrix.platform }}/candidate-evidence.json
+          compression-level: 0
+          retention-days: 14
+
+  collect:
+    name: Complete Rust candidate snapshot
+    needs: native
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v8
+        with:
+          path: artifacts/incoming
+      - name: Verify all native candidates, npm packages and Docker images
+        run: node tools/release/collect.mjs artifacts/incoming
+      - uses: actions/upload-artifact@v6
+        with:
+          name: rust-release-candidate
+          path: artifacts/release/
+          compression-level: 0
           retention-days: 14
