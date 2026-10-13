@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
-import { cpSync, mkdirSync, readdirSync, rmSync, chmodSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, readdirSync, rmSync, chmodSync, writeFileSync, readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join, resolve } from 'node:path';
 import { root, version, targets, npm, run, sha, json, readJson, verifyInventory, verifyNotices } from './common.mjs';
+import { canonicalEntry } from './canonical-entry.mjs';
 
 const id = process.argv[2];
 const target = targets[id];
@@ -36,6 +38,12 @@ function make(name, fields, fill, expectedFiles = []) {
   const packed = JSON.parse(run(npm, ['pack','--json','--ignore-scripts','--pack-destination',tarballs], { cwd: dir }))[0];
   assert.equal(packed.name, name);
   assert.equal(packed.version, version);
+  if (name === 'prts-mcp' || name === 'prts-mcp-ts') {
+    const file = join(tarballs, packed.filename);
+    const bytes = canonicalEntry(readFileSync(file));
+    writeFileSync(file, bytes);
+    packed.integrity = 'sha512-' + createHash('sha512').update(bytes).digest('base64');
+  }
   const paths = new Set(packed.files.map(f => f.path));
   for (const path of expectedFiles) assert(paths.has(path), `npm pack omitted required payload file: ${name}/${path}`);
   assert(!packed.files.some(f => /(^|\/)(\.git|\.release\.lock|node_modules)(\/|$)/.test(f.path)));

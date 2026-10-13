@@ -21,7 +21,7 @@ node tools/release/probe-native.mjs linux-x64
 
 .github/workflows/release-rust.yml读取当前Cargo/Cargo.lock单版本，调用同一native-platforms.yml完成五平台原生/npm/候选与双架构Docker验证，再收集同次run的候选与真实tarball/镜像，不把旧run或开发者下载目录当成来源。该准备workflow仅contents:read，不推送包或容器、不创建公开Release。主仓main仍是2.x，M5前新workflow的workflow_dispatch可能受默认分支登记限制；release/v3.*分支push和v3.*tagpush使用对应ref的workflow，标签必须通过版本/范围门禁。
 
-node tools/release/collect.mjs artifacts/incoming要求candidate-{五平台}、npm-{五平台}与docker-{两Linux}目录（npm artifact内部保留npm/{platform}及native/{platform}层级）。验证当前干净提交、版本、CPU/pin、实际归档SHA、运行证据、绑定实际tarball列表的npm运行证据、绑定已加载档案SHA的Docker运行证据，与tarball/原生候选的实际package.json/BUILD/BUNDLE；五套共享npm tarball必须完全一致，不能任选一个冲突副本。汇总得到五个带数据原生包、九个唯一npm包、两个Docker档案、验证证据、RELEASE.json及SHA256SUMS，保存在artifacts/release/和CI的rust-release-candidate artifact（14天）。发布前必须先核对该清单，不能从单个平台临时重新打包覆盖候选。
+node tools/release/collect.mjs artifacts/incoming要求candidate-{五平台}、npm-{五平台}与docker-{两Linux}目录（npm artifact内部保留npm/{platform}及native/{platform}层级）。验证当前干净提交、版本、CPU/pin、实际归档SHA、运行证据、绑定实际tarball列表的npm运行证据、绑定已加载档案SHA的Docker运行证据，与tarball/原生候选的实际package.json/BUILD/BUNDLE；五套共享npm tarball必须完全一致，不能任选一个冲突副本。NOTICE在checkout时统一LF；两入口小包的bin执行位和gzip元数据在npm pack后统一，解决Windows没有Unix执行位的差异，正文及实际代码字节不改，SHA/integrity按最终tarball重新计算。汇总得到五个带数据原生包、九个唯一npm包、两个Docker档案、验证证据、RELEASE.json及SHA256SUMS，保存在artifacts/release/和CI的rust-release-candidate artifact（14天）。发布前必须先核对该清单，不能从单个平台临时重新打包覆盖候选。
 
 ## 版本与渠道
 

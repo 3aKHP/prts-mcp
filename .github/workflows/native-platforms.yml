@@ -133,7 +133,7 @@ jobs:
       - name: Package and run actual native candidate with bundled data
         run: |
           node tools/release/check-version.mjs
-          node --test tools/release/policy.test.mjs
+          node --test tools/release/policy.test.mjs tools/npm/canonical-entry.test.mjs
           node tools/release/pack-native.mjs ${{ matrix.platform }}
           node tools/release/probe-native.mjs ${{ matrix.platform }}
       - name: Retain native candidate and data acceptance (no publication)

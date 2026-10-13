@@ -27,6 +27,7 @@
 # Text — dotfiles without extensions
 Dockerfile   text eol=lf
 LICENSE      text eol=lf
+NOTICE       text eol=lf
 
 # Binary
 *.zip   binary
