@@ -1,5 +1,10 @@
 # Changelog
 
+## [3.0.0-alpha.2] — Candidate
+
+- Prepare a fresh Rust candidate for the first real npm Actions/OIDC publish after the nine alpha.1 packages were manually established. It uses npm next, GitHub prerelease and Docker candidate tags; stable 2.8.1 remains unchanged. Public alpha.2 publication and provenance are not claimed until the tag workflow and external acceptance pass.
+- Wait for public npm version visibility and remove only known bootstrap latest aliases on the eight new Rust names; preserve the existing prts-mcp-ts stable/LTS labels. Full real-client E2E, upgrade/rollback and documentation/data gates remain later work.
+
 ## [Unreleased] — 3.0.0-dev.0
 
 - Wait for npm's asynchronous validation to make an accepted candidate upload publicly readable before advancing dependencies. Remove only known bootstrap latest aliases on the eight new Rust package names and verify retained tags; existing prts-mcp-ts stable/LTS channels remain unchanged.

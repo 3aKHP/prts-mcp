@@ -3,7 +3,7 @@
 | Line | State |
 | --- | --- |
 | Public stable / main | 2.8.1, Python and TS; unchanged by the M1B PR. |
-| This development branch | 3.0.0-dev.0, root Rust/Cargo project; M2A/B/C and M3A/B engineering merged; alpha.1 published on GitHub/GHCR and manually bootstrapped on npm; new-version OIDC/channel acceptance pending. |
+| This candidate branch | 3.0.0-alpha.2 from reviewed npm-channel source 97ddac6; complete candidate CI/review and real Actions/OIDC publication pending. develop remains 3.0.0-dev.0 and main remains stable 2.8.1. |
 | lts/2.8 | Both 2.8 implementations preserved; release isolation at 9c84e3eeac7a5f267bc17564e0cdf115a67957cc. |
 | lts/1.7 | Existing 1.7 LTS. |
 | LTS EOL | Both lines: 2027-07-02. |
