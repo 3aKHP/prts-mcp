@@ -47,6 +47,8 @@ docker run --rm -i --user "$(id -u):$(id -g)" --read-only \
   --tmpfs /tmp:rw,nosuid,nodev,mode=1777 -v "$PWD/host-data:/data" prts-mcp:m2c-linux-x64
 ```
 
+四个分离挂载配合 --read-only 时，还须添加 --tmpfs /data:rw,nosuid,nodev,mode=1777，使父目录的锁和 pair pointer 能写入临时空间。普通可写根文件系统的旧部署不需要此额外选项；整卷 /data 挂载本身已提供可写父目录。
+
 默认 root 延续旧镜像，不擅自改为固定非 root UID，也不自动 chown 既有卷。选择 --user 的部署者负责挂载目录所有权；镜像内备用数据对普通 UID 可读。无卷时同步数据只存在于容器可写层，删除容器后丢失，与旧行为一致。
 
 ## 验证边界

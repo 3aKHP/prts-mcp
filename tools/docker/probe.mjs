@@ -7,21 +7,25 @@ import { root,out,image,id,arch,version,pin,mirrorImage,readJson,json,sha,run } 
 import { stdio } from '../npm/mcp.mjs';
 
 const receipt=readJson(join(out,'image.json'));
+const archive=join(out,`prts-mcp-${version}-${id}.docker.tar.gz`);
+assert.equal(sha(archive),readFileSync(archive+'.sha256','utf8').split(/\s+/)[0]);
+run('docker',['image','load','--input',archive]);
 const inspected=JSON.parse(run('docker',['image','inspect',image]))[0];
 assert.equal(inspected.Id,receipt.imageId);assert.equal(inspected.Architecture,arch);
 assert.deepEqual(inspected.Config.Entrypoint,['/usr/bin/tini','-g','--','/app/bin/prts-mcp-ghcr']);
 assert.equal(inspected.Config.User,'0:0');assert(inspected.Config.Env.includes('PRTS_MCP_ROOT=/app'));
 assert.equal(inspected.Config.Labels['org.opencontainers.image.version'],version);
+assert.equal(inspected.Config.Labels['org.opencontainers.image.revision'],receipt.commit);
 const temp=mkdtempSync(join(root,'.runtime/docker-probe-'));
 const prefix=`prts-m2c-${id}-${process.pid}`,network=`${prefix}-net`,mirror=`${prefix}-mirror`;
-const containers=new Set(),checks=[];
+const containers=new Set(),checks=[];let networkCreated=false;
 const docker=(args,opts={})=>run('docker',args,opts);
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
-const commonEnv={IMAGES_ENABLED:'false',LOCAL_IMAGE:'false',PRTS_OUTPUT_CHANNEL:'content',PRTS_AUTO_SYNC_INTERVAL_SECONDS:'0'};
+const commonEnv={IMAGES_ENABLED:'false',LOCAL_IMAGE:'false',PRTS_OUTPUT_CHANNEL:'content',PRTS_AUTO_SYNC_INTERVAL_SECONDS:'0',GITHUB_MIRRORS:'http://127.0.0.1:9',HTTPS_PROXY:'http://127.0.0.1:9',https_proxy:'http://127.0.0.1:9'};
 const envArgs=e=>Object.entries({...commonEnv,...e}).flatMap(([k,v])=>['-e',`${k}=${v}`]);
 const ownedUser=['--user',`${process.getuid()}:${process.getgid()}`];
 const readonly=['--read-only','--tmpfs','/tmp:rw,nosuid,nodev,mode=1777'];
-function mounts(vol,separate=false){return separate?['gamedata','gamedata-levels','storyjson','images'].flatMap(name=>['-v',`${join(vol,name)}:/data/${name}`]):['-v',`${vol}:/data`];}
+function mounts(vol,separate=false){return separate?['--tmpfs','/data:rw,nosuid,nodev,mode=1777',...['gamedata','gamedata-levels','storyjson','images'].flatMap(name=>['-v',`${join(vol,name)}:/data/${name}`])]:['-v',`${vol}:/data`];}
 function volume(dir){mkdirSync(dir,{recursive:true});for(const name of ['gamedata','gamedata-levels','storyjson','images'])mkdirSync(join(dir,name));return dir;}
 function startStdio(name,args=[],env={}){containers.add(name);return spawn('docker',['run','--rm','-i','--name',name,...args,...envArgs(env),image],{cwd:temp,stdio:['pipe','pipe','pipe']});}
 async function asyncRun(command,args,env=process.env){
@@ -31,10 +35,14 @@ async function asyncRun(command,args,env=process.env){
 }
 function fileInventory(dir){const hashes={};function visit(p){for(const e of readdirSync(p,{withFileTypes:true})){const f=join(p,e.name);if(e.isDirectory())visit(f);else{assert(e.isFile());hashes[f.slice(dir.length+1)]=sha(f);}}}visit(dir);return hashes;}
 function payloadHashes(dir){const files=fileInventory(dir);return Object.fromEntries(Object.entries(files).filter(([f])=>!f.endsWith('.lock')&&!f.includes('/archives/')));}
-async function http(name,vol,{separate=false,env={},networkName='none'}={}){
+async function http(name,vol,{separate=false,env={},networkName=network}={}){
  containers.add(name);docker(['run','-d','--name',name,...ownedUser,...readonly,...mounts(vol,separate),'--network',networkName,
  '-p','127.0.0.1::8000',...envArgs({...env,PRTS_TRANSPORT:' HtTp ',HOST:'0.0.0.0',PORT:'8000'}),image]);
- const port=JSON.parse(docker(['inspect',name]))[0].NetworkSettings.Ports['8000/tcp'][0].HostPort;
+ const details=JSON.parse(docker(['inspect',name]))[0];
+ assert(details.State.Running,`${JSON.stringify(details.State)} ${docker(['logs',name],{maxBuffer:1<<20})}`);
+ const bindings=details.NetworkSettings.Ports['8000/tcp'];
+ assert(bindings?.length,`Port not published: ${JSON.stringify({ports:details.NetworkSettings.Ports,bindings:details.HostConfig.PortBindings,network:details.HostConfig.NetworkMode})}`);
+ const port=bindings[0].HostPort;
  const origin=`http://127.0.0.1:${port}`;let ready=false;
  for(let i=0;i<150;i++){try{if((await fetch(origin+'/health',{signal:AbortSignal.timeout(500)})).ok){ready=true;break;}}catch{}await delay(100);}
  assert(ready,docker(['logs',name],{maxBuffer:1<<20}));
@@ -52,6 +60,7 @@ async function http(name,vol,{separate=false,env={},networkName='none'}={}){
 }
 async function stop(name){docker(['stop','--time','5',name]);const state=JSON.parse(docker(['inspect',name]))[0].State;assert.equal(state.Running,false);assert.equal(state.ExitCode,143,'tini must forward SIGTERM rather than wait for SIGKILL');return state.ExitCode;}
 try {
+ docker(['network','create',network]);networkCreated=true;
  console.log(`DOCKER_STAGE: ${id} packaged integrity and offline stdio`);
  docker(['run','--rm','--network','none','--entrypoint','/bin/sh',image,'-ec',
  "cd /app; sha256sum -c SHA256SUMS >/dev/null; cd /app/data; sha256sum -c SHA256SUMS >/dev/null; test -r /usr/share/doc/tini/copyright; for x in node bun python python3 rustc cargo cc gcc; do ! command -v $x; done"]);
@@ -70,7 +79,7 @@ try {
  for(const asset of pin.assets){const src=join(root,'.runtime/npm-data',pin.release_tag,asset.name);assert.equal(sha(src),asset.sha256);cpSync(src,join(fixture,asset.name));lines.push(`https://github.com/${pin.repo}/releases/download/${pin.release_tag}/${asset.name} ${asset.name}`);}
  writeFileSync(join(fixture,'assets.txt'),lines.join('\n')+'\n');
  json(join(fixture,'releases.json'),[{tag_name:pin.release_tag,created_at:'2026-10-08T05:00:00Z',assets:pin.assets.map(a=>({name:a.name,browser_download_url:`https://github.com/${pin.repo}/releases/download/${pin.release_tag}/${a.name}`}))}]);
- docker(['network','create','--internal',network]);docker(['pull',mirrorImage],{stdio:'inherit'});
+ docker(['pull',mirrorImage],{stdio:'inherit'});
  containers.add(mirror);docker(['run','-d','--name',mirror,'--network',network,'-p','127.0.0.1::8080',...ownedUser,'--read-only',
  '-v',`${fixture}:/fixture:ro`,'-v',`${join(root,'tools/docker/mirror.mjs')}:/mirror.mjs:ro`,mirrorImage,'node','/mirror.mjs','/fixture']);
  const mirrorPort=JSON.parse(docker(['inspect',mirror]))[0].NetworkSettings.Ports['8080/tcp'][0].HostPort;
@@ -86,11 +95,11 @@ try {
  cpSync(join(root,'.runtime/fixtures/ts-images-v1'),join(legacy,'images'),{recursive:true});
  const before=payloadHashes(legacy);
  const old=await http(`${prefix}-old`,legacy,{env:{IMAGES_ENABLED:'true',LOCAL_IMAGE:'true'}});
- assert.match(JSON.stringify(await old.call('get_operator_basic_info',{name:'卷内阿米娅'})),/卷内阿米娅/);
- const artwork=await old.call('operator_artwork',{action:'get',operator_name:'卷内阿米娅',variant:'preview'});assert(artwork.content.some(c=>c.type==='image'),JSON.stringify(artwork).slice(0,300));
+ assert.match(JSON.stringify(await old.call('get_operator_basic_info',{name:'卷内阿米娅'})),/卷内阿米娅 - 干员基本信息/);
+ const artwork=await old.call('operator_artwork',{action:'get',operator_name:'卷内阿米娅',artwork_id:'char_002_amiya#1',variant:'preview'});assert(artwork.content.some(c=>c.type==='image'),JSON.stringify(artwork).slice(0,300));
  await stop(`${prefix}-old`);assert.deepEqual(payloadHashes(legacy),before);
  checks.push({case:'actual TS-written pair and image generations, user data priority and PNG, unchanged offline payload',oracle:'TS/v2.8.1',imageAssets:5});
- const split=await http(`${prefix}-split`,legacy,{separate:true});assert.match(JSON.stringify(await split.call('get_operator_basic_info',{name:'卷内阿米娅'})),/卷内阿米娅/);await stop(`${prefix}-split`);
+ const split=await http(`${prefix}-split`,legacy,{separate:true});assert.match(JSON.stringify(await split.call('get_operator_basic_info',{name:'卷内阿米娅'})),/卷内阿米娅 - 干员基本信息/);await stop(`${prefix}-split`);
  checks.push({case:'legacy four separate mounts read extract_meta without root pair pointer'});
  console.log(`DOCKER_STAGE: ${id} real in-container sync and offline recovery`);
  const synced=volume(join(temp,'synced'));
@@ -99,13 +108,13 @@ try {
  assert(ready,docker(['logs',`${prefix}-sync`],{maxBuffer:1<<22}));
  assert.match(JSON.stringify(await active.call('get_operator_basic_info',{name:'阿米娅'})),/阿米娅/);await stop(`${prefix}-sync`);
  const syncedBefore=payloadHashes(synced),recovered=await http(`${prefix}-recovery`,synced);
- assert.match(JSON.stringify(await recovered.call('list_stages')),/关卡/);await stop(`${prefix}-recovery`);assert.deepEqual(payloadHashes(synced),syncedBefore);
+ assert.match(JSON.stringify(await recovered.call('list_stages')),/关卡列表/);await stop(`${prefix}-recovery`);assert.deepEqual(payloadHashes(synced),syncedBefore);
  checks.push({case:'non-root real sync into whole /data then offline restart without destructive resync'});
  const separateVol=volume(join(temp,'separate-sync'));
  const separateActive=await http(`${prefix}-separate-sync`,separateVol,{separate:true,networkName:network,env:{GITHUB_MIRRORS:`http://${mirror}:8080/`,HTTPS_PROXY:'http://127.0.0.1:9',https_proxy:'http://127.0.0.1:9'}});
  ready=false;for(let i=0;i<240;i++){if(existsSync(join(separateVol,'gamedata/archives/extract_meta.json'))&&existsSync(join(separateVol,'gamedata-levels/archives/extract_meta.json'))&&existsSync(join(separateVol,'storyjson/zh_CN.zip'))){ready=true;break;}await delay(500);}
  assert(ready,docker(['logs',`${prefix}-separate-sync`],{maxBuffer:1<<22}));await stop(`${prefix}-separate-sync`);
- const separateRecovered=await http(`${prefix}-separate-recovery`,separateVol,{separate:true});assert.match(JSON.stringify(await separateRecovered.call('list_stages')),/关卡/);await stop(`${prefix}-separate-recovery`);
+ const separateRecovered=await http(`${prefix}-separate-recovery`,separateVol,{separate:true});assert.match(JSON.stringify(await separateRecovered.call('list_stages')),/关卡列表/);await stop(`${prefix}-separate-recovery`);
  checks.push({case:'real sync and recreation with four legacy subdirectory mounts'});
  const rollback=spawn('bun',[join(root,'.reference/ts-v2.8.1/ts/dist/server-stdio.js')],{cwd:temp,env:{...tsEnv,GAMEDATA_PATH:join(synced,'gamedata'),STORYJSON_PATH:join(synced,'storyjson/zh_CN.zip')},stdio:['pipe','pipe','pipe']});
  checks.push({case:'fixed old TS reads container-written data (scoped read-back, not M4 release rollback)',...await stdio(rollback,'2.8.1')});
@@ -114,6 +123,6 @@ try {
  console.log(`DOCKER_VERIFY_PASS: ${checks.length} checks (${id})`);
 }finally {
  for(const name of containers){try{docker(['rm','-f',name]);}catch{}}
- try{docker(['network','rm',network]);}catch{}
+ if(networkCreated)try{docker(['network','rm',network]);}catch{}
  rmSync(temp,{recursive:true,force:true});
 }

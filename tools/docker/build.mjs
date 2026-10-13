@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { cpSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { root,version,config,id,arch,out,image,readJson,json,sha,run,verifyInventory,verifyNotices } from './common.mjs';
+import { root,version,config,id,arch,out,image,pin,readJson,json,sha,run,verifyInventory,verifyNotices } from './common.mjs';
 
 const native=join(root,'artifacts/native',id,'payload'),bundle=join(root,'artifacts/npm-bundle/data');
 const build=readJson(join(native,'BUILD.json')),data=readJson(join(bundle,'BUNDLE.json'));
@@ -10,6 +10,9 @@ assert.equal(build.platform,id);assert.equal(build.target,config.target);assert.
 assert.equal(build.commit,commit,'Repack current clean native source before building the image');assert.equal(build.dirty,false);
 assert.equal(run('git',['status','--porcelain']).trim(),'','Distribution images require a clean source snapshot');
 assert.equal(data.productVersion,version);
+assert.equal(data.schema,'prts-mcp-bundle/v1');assert.equal(data.repo,pin.repo);
+assert.equal(data.releaseTag,pin.release_tag);assert.equal(data.sourceVersion,pin.source_version);
+assert.deepEqual(data.assets,pin.assets,'Prepare the current production data pin before packaging');
 const nativeFiles=verifyInventory(native),dataFiles=verifyInventory(bundle),notices=verifyNotices(native);
 const context=join(out,'context');rmSync(context,{recursive:true,force:true});mkdirSync(context,{recursive:true});
 cpSync(native,join(context,'native-payload'),{recursive:true});cpSync(bundle,join(context,'bundle'),{recursive:true});
