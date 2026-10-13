@@ -29,7 +29,7 @@ M1B 至 M5 按阶段拆分，管理 CLI、新功能和 AKDP 专项均在 3.0 之
 
 3.x 单一产品版本从 Cargo.toml 取得，Cargo.lock、未来 npm 入口/平台包、容器和 MCP serverInfo 保持一致。开发版本为 3.0.0-dev.0，稳定 tag 为 v3.x.y，预发布为 v3.x.y-alpha.N/beta.N/rc.N。稳定版走 release/* → main，再将同一 release 分支回灌 develop 并重开下一目标 -dev.0。原 python/v* + ts/v* tag 只用于旧分支。
 
-M1B 已移除依赖旧目录的 CD；3.x 公开发布 workflow 在 M3 建立，当前打 v3.* tag 不会发布。M5 前不切换 npm/Docker latest。crates.io 源码包在迁移期间准备，公开上架在 M5 后单独实施。
+M1B 已移除依赖旧目录的 CD；3.x 公开发布 workflow 由 M3 的 release-rust.yml 建立；v3.* tag 须版本/来源匹配且相应渠道开关启用才发布，分支 push 只生成验证产物。M5 前不切换 npm/Docker latest。crates.io 源码包在迁移期间准备，公开上架在 M5 后单独实施。
 
 ## 双轨 CR 契约
 

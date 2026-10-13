@@ -89,7 +89,10 @@ fn product_and_compatibility_stdio_profiles() {
         );
         send(&mut child, &serde_json::from_str(INIT).unwrap());
         let response = recv(&mut child, 1);
-        assert_eq!(response["result"]["serverInfo"]["version"], "3.0.0-dev.0");
+        assert_eq!(
+            response["result"]["serverInfo"]["version"],
+            env!("CARGO_PKG_VERSION")
+        );
         drop(child.stdin.take());
         assert!(
             child.wait().unwrap().success(),
