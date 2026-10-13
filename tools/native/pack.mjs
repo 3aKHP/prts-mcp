@@ -1,6 +1,6 @@
 import { cpSync, mkdirSync, readdirSync, rmSync, chmodSync, writeFileSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { root, out, stage, release, bins, suffix, config, id, version, flags, run, sha, json } from './common.mjs';
+import { root, out, stage, release, bins, suffix, config, id, version, flags, run, sha, json, psLiteral } from './common.mjs';
 import { collectNotices } from './legal.mjs';
 
 rmSync(stage, { recursive: true, force: true });
@@ -46,7 +46,12 @@ inventory(stage);
 writeFileSync(join(stage, 'SHA256SUMS'), hashes.join('\n') + '\n');
 const archive = join(out, `prts-mcp-${version}-${id}.${config.os === 'win32' ? 'zip' : 'tar.gz'}`);
 rmSync(archive, { force: true });
-run('tar', config.os === 'win32' ? ['-a', '-cf', archive, '-C', stage, '.'] : ['-czf', archive, '-C', stage, '.']);
+if (config.os === 'win32') {
+  // Windows tar.exe can lose non-ASCII paths through the active code page.
+  // The OS .NET archive API uses Unicode and includes all payload files.
+  run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
+    `Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::CreateFromDirectory(${psLiteral(stage)}, ${psLiteral(archive)})`]);
+} else run('tar', ['-czf', archive, '-C', stage, '.']);
 writeFileSync(archive + '.sha256', `${sha(archive)}  ${relative(out, archive)}\n`);
 json(join(out, 'artifact.json'), { archive, sha256: sha(archive), payloadFiles: hashes.length });
 console.log(`Native archive: ${archive}`);

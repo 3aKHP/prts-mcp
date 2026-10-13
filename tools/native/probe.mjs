@@ -7,7 +7,7 @@ import { tmpdir, release as osRelease } from 'node:os';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { createServer } from 'node:net';
-import { root, out, bins, suffix, version, config, run, sha, json } from './common.mjs';
+import { root, out, bins, suffix, version, config, run, sha, json, psLiteral } from './common.mjs';
 
 const temp = mkdtempSync(join(tmpdir(), 'prts-native 空格-'));
 const installed = join(temp, 'installed');
@@ -17,7 +17,10 @@ const baseline = process.argv.includes('--baseline');
 if (baseline && config.os !== 'linux') throw new Error('--baseline requires a Linux native runtime image');
 if (baseline) run('docker', ['pull', config.runtimeImage], { stdio: 'inherit' });
 assert.equal(sha(artifact.archive), artifact.sha256);
-run('tar', ['-xf', artifact.archive, '-C', installed]);
+if (config.os === 'win32') {
+  run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
+    `Expand-Archive -LiteralPath ${psLiteral(artifact.archive)} -DestinationPath ${psLiteral(installed)}`]);
+} else run('tar', ['-xf', artifact.archive, '-C', installed]);
 for (const line of readFileSync(join(installed, 'SHA256SUMS'), 'utf8').trim().split('\n')) {
   const [, hash, path] = line.match(/^([a-f\d]{64})  (.+)$/);
   assert.equal(sha(join(installed, path)), hash, `Extracted hash: ${path}`);

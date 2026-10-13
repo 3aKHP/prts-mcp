@@ -31,3 +31,6 @@ export function json(path, value) {
   writeFileSync(path, JSON.stringify(value, null, 2) + '\n');
 }
 export function sha(path) { return createHash('sha256').update(readFileSync(path)).digest('hex'); }
+// PowerShell single-quoted literals preserve Unicode and do not expand $ or
+// backticks; only the embedded quote needs escaping. Never pass through a shell.
+export function psLiteral(value) { return `'${value.replaceAll("'", "''")}'`; }
