@@ -1,5 +1,6 @@
 // Black-box checks of the extracted release archive, outside the checkout,
-// with an empty PATH. Node is the MCP client only; it is not the server runtime.
+// with an empty PATH. With --npm-root Node also runs the installed thin npm
+// bridge; all server behavior still executes in the native Rust child.
 import assert from 'node:assert/strict';
 import { cpSync, mkdtempSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
@@ -14,6 +15,9 @@ const installed = join(temp, 'installed');
 mkdirSync(installed);
 const artifact = JSON.parse(readFileSync(join(out, 'artifact.json')));
 const baseline = process.argv.includes('--baseline');
+const npmIndex = process.argv.indexOf('--npm-root');
+const npmRoot = npmIndex < 0 ? null : process.argv[npmIndex + 1];
+if (npmIndex >= 0 && !npmRoot) throw new Error('--npm-root needs an installed global npm root');
 if (baseline && config.os !== 'linux') throw new Error('--baseline requires a Linux native runtime image');
 if (baseline) run('docker', ['pull', config.runtimeImage], { stdio: 'inherit' });
 assert.equal(sha(artifact.archive), artifact.sha256);
@@ -45,13 +49,14 @@ function launch(bin, overrides = {}) {
   const executable = join(installed, 'bin', bin + suffix);
   const childEnv = { ...env, ...overrides };
   if (baseline) childEnv.HOST = '0.0.0.0';
-  const args = baseline ? ['run', '--rm', '--init', '-i', '--user', `${process.getuid()}:${process.getgid()}`,
+  const args = npmRoot ? [join(npmRoot, bin === 'prts-mcp' ? 'prts-mcp' : 'prts-mcp-ts', 'bin', `${bin}.cjs`)]
+    : baseline ? ['run', '--rm', '--init', '-i', '--user', `${process.getuid()}:${process.getgid()}`,
     ...(childEnv.PORT ? ['-p', `127.0.0.1:${childEnv.PORT}:${childEnv.PORT}`] : []),
     '-v', `${temp}:${temp}`, '-w', temp,
     ...Object.entries(childEnv).filter(([k,v]) => v !== undefined &&
       /^(PATH|PRTS_.*|GAMEDATA_PATH|STORYJSON_PATH|IMAGES_ENABLED|HOST|PORT|GITHUB_MIRRORS)$/.test(k))
       .flatMap(([k,v]) => ['-e', `${k}=${v}`]), '--entrypoint', executable, config.runtimeImage] : [];
-  const child = spawn(baseline ? 'docker' : executable, args, { cwd: temp,
+  const child = spawn(npmRoot ? process.execPath : baseline ? 'docker' : executable, args, { cwd: temp,
     env: baseline ? process.env : childEnv, stdio: ['pipe','pipe','pipe'] });
   children.add(child);
   child.stdout.setEncoding('utf8'); child.stderr.setEncoding('utf8');
@@ -179,7 +184,7 @@ try {
   await stdio('prts-mcp', { PRTS_TRANSPORT: ' StDiO ' });
   await stdio('prts-mcp', { PRTS_TRANSPORT: 'stdio' }, true);
   await stdio('prts-mcp-ts-stdio', { PRTS_TRANSPORT: 'http' });
-  await stdio('prts-mcp-ghcr', {});
+  if (!npmRoot) await stdio('prts-mcp-ghcr', {});
   if (config.os === 'win32') {
     const local = join(temp, 'Local App Data');
     cpSync(fixture, join(local, 'prts-mcp/gamedata'), { recursive: true });
@@ -192,11 +197,12 @@ try {
   await http('prts-mcp', {});
   await http('prts-mcp-ts', { PRTS_TRANSPORT: 'stdio' });
   await http('prts-mcp-ts-bun', { PRTS_TRANSPORT: 'stdio' });
-  await http('prts-mcp-ghcr', { PRTS_TRANSPORT: ' HTTP ' });
-  json(join(out, baseline ? 'runtime-baseline-evidence.json' : 'runtime-evidence.json'), { platform: config.target, native: true, os: osRelease(),
+  if (!npmRoot) await http('prts-mcp-ghcr', { PRTS_TRANSPORT: ' HTTP ' });
+  json(join(out, npmRoot ? 'npm-runtime-evidence.json' : baseline ? 'runtime-baseline-evidence.json' : 'runtime-evidence.json'), { platform: config.target, native: true, os: osRelease(),
     runtimeImage: baseline ? config.runtimeImage : null,
     arch: process.arch, archiveSha256: artifact.sha256, extractedOutsideCheckout: true,
-    pathEmpty: true, checks, scope: 'native units/regex plus detached archive MCP/profile checks; npm, Docker distribution and M4 E2E are later phases' });
+    pathEmpty: true, checks, scope: npmRoot ? 'installed npm entries; Node bridge invoked by absolute path with empty PATH; public publishing, Docker and M4 E2E are later phases'
+      : 'native units/regex plus detached archive MCP/profile checks; npm, Docker distribution and M4 E2E are later phases' });
   console.log(`Detached native runtime passed: ${checks.length} profiles/checks (${config.target})`);
 } finally {
   await Promise.allSettled([...children].map(child => {

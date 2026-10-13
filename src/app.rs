@@ -180,6 +180,7 @@ pub struct App {
 
 impl App {
     pub fn from_env() -> Self {
+        crate::launcher::watch_parent();
         Self::with_config(RuntimeConfig::from_env_with_bundle())
     }
 

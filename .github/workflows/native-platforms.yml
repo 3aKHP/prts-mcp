@@ -63,6 +63,28 @@ jobs:
       - name: Run Linux archive in minimal glibc 2.28 runtime
         if: runner.os == 'Linux'
         run: node tools/native/probe.mjs ${{ matrix.platform }} --baseline
+      - uses: actions/cache@v6
+        with:
+          path: .runtime/npm-data
+          key: npm-bundle-data-${{ hashFiles('packaging/npm/data-release.json') }}
+          enableCrossOsArchive: true
+      - name: Prepare pinned and validated read-only game data
+        run: node tools/npm/prepare-data.mjs
+      - name: Pack shared npm runtime/data and native platform tarballs
+        run: node tools/npm/pack.mjs ${{ matrix.platform }}
+      - name: Verify real npm install, npx, lockfile and native entry behavior
+        run: node tools/npm/probe.mjs ${{ matrix.platform }}
+      - name: Retain npm tarballs and installation evidence (no publication)
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: npm-${{ matrix.platform }}
+          path: |
+            artifacts/npm/${{ matrix.platform }}/tarballs/*.tgz
+            artifacts/npm/${{ matrix.platform }}/packages.json
+            artifacts/npm/${{ matrix.platform }}/npm-evidence.json
+            artifacts/native/${{ matrix.platform }}/npm-runtime-evidence.json
+          retention-days: 14
       - name: Retain installable archive and evidence (no publication)
         if: always()
         uses: actions/upload-artifact@v6

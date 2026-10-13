@@ -9,6 +9,7 @@
 *.c      text eol=lf
 *.h      text eol=lf
 *.mjs    text eol=lf
+*.cjs    text eol=lf
 *.py     text eol=lf
 *.ts     text eol=lf
 *.js     text eol=lf

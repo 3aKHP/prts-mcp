@@ -3,7 +3,7 @@
 | Line | State |
 | --- | --- |
 | Public stable / main | 2.8.1, Python and TS; unchanged by the M1B PR. |
-| This development branch | 3.0.0-dev.0, root Rust/Cargo project; M1B merged as 67722ce, M2A implemented and validated in PR #229. |
+| This development branch | 3.0.0-dev.0, root Rust/Cargo project; M2A merged as aff8093, data cleanup as 05c279f; M2B npm packaging under implementation/validation. |
 | lts/2.8 | Both 2.8 implementations preserved; release isolation at 9c84e3eeac7a5f267bc17564e0cdf115a67957cc. |
 | lts/1.7 | Existing 1.7 LTS. |
 | LTS EOL | Both lines: 2027-07-02. |
@@ -16,4 +16,4 @@ Evidence inherited from P0–P9 proves Linux x64 glibc behavior and native perfo
 
 The root owns Cargo files, src/, native/, vendor/, tests/, contracts/, tools/, packaging/ and Dockerfile. Historical implementation documents live under docs/dev/rust-rewrite/; 2.x documentation is archived under docs/dev/legacy/2.x/ and remains authoritative on its own LTS branch. LICENSE and NOTICE retain code/content distinctions.
 
-Current: M2A implementation/validation completed, awaiting PR #229 review/merge closure; see [platform baselines and evidence](docs/dev/NATIVE-PLATFORMS.md). Data policy and source cleanup are approved and merged in PR #230; validated read-only release bundles will be packaged in M2B/C and accepted with candidate/runtime evidence in M3/M4. Next: npm entry/platform packages and shared fallback data, then Docker. The dedicated documentation restoration/update pass remains unstarted; both documentation and data distribution/runtime acceptance must close before stable 3.0. CLI, feature/data-domain additions, AKDP tasks and the older backlog follow 3.0. crates.io publication is a separate task after M5.
+Current: M2B implements and validates two npm entries, shared native platform/runtime packages and pinned read-only fallback data; see [npm distribution](docs/dev/NPM-DISTRIBUTION.md). M2A PR #229 and data-source Quick PR #230 are merged and their short branches cleaned. npm packages are development CI tarballs, not public releases. Next after M2B acceptance: M2C Docker/old-volume packaging, then M3 publishing and M4 candidate/runtime acceptance. The dedicated documentation restoration/update pass remains unstarted; both documentation and data distribution/runtime acceptance must close before stable 3.0. CLI, feature/data-domain additions, AKDP tasks and the older backlog follow 3.0. crates.io publication is a separate task after M5.

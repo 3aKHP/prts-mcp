@@ -14,7 +14,7 @@ Public stable remains 2.8.1. The next development target is 3.0.0-dev.0: migrate
 | M4 | Real-client E2E with actual candidate artifacts, old volumes, upgrade and rollback, Windows and/or WSL. |
 | M5 | RC closure, stable 3.0, latest switches and development back-merge. |
 
-M2A implementation and five-platform native verification are complete in PR #229, awaiting review/merge closure; baselines and exact evidence are maintained in [NATIVE-PLATFORMS.md](docs/dev/NATIVE-PLATFORMS.md). M2B/C have not started.
+M2A PR #229 is merged; baselines and exact evidence are maintained in [NATIVE-PLATFORMS.md](docs/dev/NATIVE-PLATFORMS.md). Data-source cleanup PR #230 is merged. M2B npm entries/shared native packages and validated fallback data are under implementation/verification; see [npm distribution](docs/dev/NPM-DISTRIBUTION.md). M2C has not started.
 
 Two additional pre-3.0 release gates are required: a dedicated documentation pass restoring and updating still-applicable 2.x coverage, and a reviewed data/ source/distribution/runtime strategy with validation. They follow M2A without interrupting it and must close before stable release; data decisions that affect npm/Docker/candidate artifacts must land before those artifacts are accepted.
 
