@@ -73,6 +73,7 @@ async function signalCheck(file,requested='SIGTERM') {
 }
 
 try {
+  console.log(`NPM_STAGE: ${id} global dual-entry install`);
   await install(['install','--global','--prefix',prefix,'--cache',join(temp,'global-cache'),'--ignore-scripts',
     `prts-mcp@${version}`,`prts-mcp-ts@${version}`]);
   checks.push({case:'global install both exact-version entries with clean cache',registryOnly:true});
@@ -89,6 +90,7 @@ try {
   const profile = spawn(process.execPath,['tools/native/probe.mjs',id,'--npm-root',globalRoot],{cwd:root,env,stdio:'inherit'});
   const [code] = await once(profile,'close'); assert.equal(code,0);
   checks.push({case:'installed new/compat entry profiles, frozen outputs and protocols',evidence:`artifacts/native/${id}/npm-runtime-evidence.json`});
+  console.log(`NPM_STAGE: ${id} offline fallback and actual global shim`);
   checks.push({case:'fresh empty-user offline fallback',...await stdio(launch(main,{PRTS_TRANSPORT:'stdio'}),version)});
   const directCommand = process.platform==='win32' ? join(prefix,'prts-mcp-ts-stdio.cmd') : join(prefix,'bin/prts-mcp-ts-stdio');
   let commandChild;
@@ -99,12 +101,14 @@ try {
   }else commandChild=spawn(directCommand,[],{cwd:temp,env,stdio:['pipe','pipe','pipe']});
   checks.push({case:'actual global executable shim',...await stdio(commandChild,version)});
   for(const name of ['prts-mcp','prts-mcp-ts']){
+    console.log(`NPM_STAGE: ${id} clean-cache npx ${name}`);
     const bin=name==='prts-mcp'?'prts-mcp':'prts-mcp-ts-stdio';
     const child=npmSpawn('npx',['--yes','--cache',join(temp,`npx-${name}`),'--registry',registry.url,'--package',`${name}@${version}`,bin],
       {cwd:temp,env:{...env,PRTS_TRANSPORT:'stdio'},stdio:['pipe','pipe','pipe']});
     checks.push({case:`npx ${name} with clean cache`,...await stdio(child,version)});
   }
   const project=join(temp,'locked-project');mkdirSync(project);
+  console.log(`NPM_STAGE: ${id} locked project install and clean npm ci`);
   json(join(project,'package.json'),{name:'npm-install-probe',private:true,dependencies:{'prts-mcp':version,'prts-mcp-ts':version}});
   const local = await capture('npm',['install','--ignore-scripts','--cache',join(temp,'lock-cache')],{cwd:project,env});assert.equal(local.code,0,local.stderr);
   const lock=readFileSync(join(project,'package-lock.json'),'utf8');
@@ -116,6 +120,7 @@ try {
   const requireMain=createRequire(localMain), requireCompat=createRequire(localCompat);
   assert.equal(requireMain.resolve('@3akhp/prts-mcp-runtime'),requireCompat.resolve('@3akhp/prts-mcp-runtime'));
   checks.push({case:'npm ci with fresh cache and unchanged lockfile; shared runtime/data deduplicated',...await stdio(launch(localCompat),version)});
+  console.log(`NPM_STAGE: ${id} lifecycle and error diagnostics`);
   for(const signal of process.platform==='win32'?['SIGTERM']:['SIGTERM','SIGINT','SIGHUP']) await signalCheck(main,signal);
   const occupied=createServer();occupied.listen(0,'127.0.0.1');await once(occupied,'listening');
   const badPort=launch(main,{PORT:String(occupied.address().port),HOST:'127.0.0.1',PRTS_TRANSPORT:'http'});
@@ -148,6 +153,9 @@ try {
   json(join(out,'npm-evidence.json'),{platform:id,os:osRelease(),arch:process.arch,version,native:true,
     packages:receipt.packages,checks,registry:'read-only loopback; actual npm resolution',publicPublication:false});
   console.log(`NPM_INSTALL_PASS: ${checks.length} checks (${id})`);
+} catch(error) {
+  console.error(`NPM_VERIFY_FAILURE: ${error.stack ?? error}`);
+  throw error;
 } finally {
   await Promise.allSettled([...children].map(child=>{const close=once(child,'close');child.kill();return close;}));
   await registry.close();

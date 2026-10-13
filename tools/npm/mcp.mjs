@@ -25,7 +25,7 @@ export async function stdio(child, version, name = '阿米娅') {
   });
   let timer;
   const timeout = new Promise((_,reject) => {
-    timer = setTimeout(() => reject(new Error(`MCP stdio timed out: ${stderr}`)),180000);
+    timer = setTimeout(() => reject(new Error(`MCP stdio timed out: ${stderr}`)),process.platform === 'win32' ? 600000 : 180000);
   });
   const call = async (method,params) => {
     const id = ++serial;

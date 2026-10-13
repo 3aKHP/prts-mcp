@@ -48,7 +48,10 @@ export async function startRegistry(out) {
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
   url = `http://127.0.0.1:${server.address().port}`;
-  return { url, hits, close: () => new Promise((resolve,reject) => server.close(e => e ? reject(e) : resolve())) };
+  return { url, hits, close: () => new Promise((resolve,reject) => {
+    server.close(e => e ? reject(e) : resolve());
+    server.closeAllConnections();
+  }) };
 }
 
 export function npmSpawn(command, args, options = {}) {
@@ -63,7 +66,7 @@ export function capture(command, args, options = {}) {
   return new Promise((resolve,reject) => {
     const child = npmSpawn(command, args, { ...options, stdio: ['ignore','pipe','pipe'] });
     let stdout = '', stderr = '';
-    const timer = setTimeout(() => { child.kill(); reject(new Error(`npm command timeout: ${command} ${args.join(' ')}`)); }, 180000);
+    const timer = setTimeout(() => { child.kill(); reject(new Error(`npm command timeout: ${command} ${args.join(' ')}; ${stderr}`)); }, process.platform === 'win32' ? 600000 : 180000);
     child.stdout.on('data',data => { stdout += data; });
     child.stderr.on('data',data => { stderr += data; });
     child.once('error',error => { clearTimeout(timer); reject(error); });
