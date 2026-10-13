@@ -1,6 +1,8 @@
 # Changelog
 
-## [Unreleased] — 3.0.0-dev.0
+## [3.0.0-alpha.1] — 2026-10-13
+
+First Rust candidate for GitHub/GHCR publication under the maintainer’s AFK authorization. npm registry publication remains pending account setup; attached npm tarballs are review/bootstrap artifacts. Full real-client E2E, upgrades/rollback and the documentation/data release gates remain open; stable 2.8.1/latest are unchanged.
 
 - Add verified-snapshot publishing for Rust candidates on GitHub/GHCR and independently enabled npm OIDC. Prereleases use next and leave stable latest unchanged; npm account setup remains required.
 
@@ -17,6 +19,6 @@
 - Compile vendored native C regexp into the server; no JS VM or JS/TS business runtime is needed.
 - Prepare five native platform archives with static regexp, bundled dependency notices, ABI audits and detached runtime checks; Rust source builds require 1.89 or newer. 3.x development artifacts are not public releases.
 - Use the Windows LOCALAPPDATA user-data location during actual startup, matching the frozen TS default path contract; preserve Windows file identity and drive prefixes for activation/extraction, movable relative generation pointers on desktop platforms, and actual Windows/macOS memory diagnostics.
-- Establish full Linux Rust validation, standalone Cargo source packaging and five native archive build/runtime checks. npm entry/platform installation, published Docker and release automation follow in M2B/C and M3; no 3.x package has been released yet.
+- Establish full Linux Rust validation, standalone Cargo source packaging and five native archive build/runtime checks. npm entry/platform installation, published Docker and release automation follow in M2B/C and M3; this source checkpoint alone does not establish public-channel publication.
 
 Older Python/TS changelogs remain on their historical tags and LTS branches.
