@@ -45,6 +45,8 @@ jobs:
           key: frozen-oracle-data-${{ hashFiles('contracts/validation-assets.json') }}
       - name: Native tests, frozen differential suite and lifecycle
         run: ./scripts/check-runtime.sh --full
+      - name: Verify candidate publication and channel guards
+        run: node --test tools/release/policy.test.mjs tools/npm/canonical-entry.test.mjs tools/release/publication.test.mjs
       - name: Verify standalone source package
         run: |
           node tools/check-source-package.mjs

@@ -2,6 +2,8 @@
 
 ## [Unreleased] — 3.0.0-dev.0
 
+- Add verified-snapshot publishing for Rust candidates on GitHub/GHCR and independently enabled npm OIDC. Prereleases use next and leave stable latest unchanged; npm account setup remains required.
+
 - Prepare full native release candidates with validated read-only fallback data on all five platforms, verify archive installation without developer tools, and collect one exact-version snapshot for npm, native and Docker channels. Public publishing and stable latest are not enabled by this preparation.
 
 - Prepare native Linux x64/ARM64 Docker packaging with validated fallback data, original dependency notices and preserved default stdio/explicit HTTP, root permissions and legacy writable volumes; add tini to forward container stop signals. Both native architectures pass scoped development image verification; GHCR publication remains a later stage.

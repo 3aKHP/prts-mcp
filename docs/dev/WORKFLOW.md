@@ -70,6 +70,10 @@ reviewer 独立性、不可信输入处理、交叉核对与 finding 处置的�
 
 按 `CLAUDE.md` 路径 D / F 执行；评审至少 Standard，命中 Huge 条件时按 Huge 执行；合并前完成 CD 产物核对。全量 E2E 不构成发布前置项——发布内容命中 [`E2E.md`](E2E.md) 建议场景时，是否执行由维护者按"高风险域"一节的裁量规则当次决定。回灌完成后核对 develop 的下一目标版本（规则见 [`VERSIONING.md`](VERSIONING.md)）。
 
+### Rust 过渡期预发布
+
+M5前main保持2.x，M3/M4的Rust alpha/beta从已审查快照创建release/v<version>分支，版本和产物完成Standard独立审查及完整CI后在该分支打对应v3.* tag，不提前合main或改变develop的-dev.0目标。发布分支保留至该版本所有渠道验证完成，供同一次run失败job重试时检查来源。是否执行外部发布依维护者授权；AFK期间明确的非npm自主授权不扩大为npm账号操作或稳定latest切换。M5稳定版仍执行release PR合main后打tag和回灌流程。
+
 ## KHPilot Bot Review 机制
 
 KHPilot 是 PR 侧的自动评审 Bot，行为特征：

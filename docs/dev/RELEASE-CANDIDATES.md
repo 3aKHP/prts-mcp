@@ -1,6 +1,6 @@
-# Rust 候选发行物（M3A）
+# Rust 候选发行物与发布流程
 
-M3A 为 M3 的工程准备：五平台完整原生候选、单版本检查和多渠道产物汇总；当前正在实现和验证。公开发布身份与实际 npm/GHCR/Release 在 M3B 验收，本页不表示已有3.x公开发行。详细步骤和维护者配置见[M3计划](plans/3.0-m3-release.md)。
+M3A 为 M3 的工程准备：五平台完整原生候选、单版本检查和多渠道产物汇总；M3A 工程准备已通过，M3B 增加发布流水线；真实渠道验收按下文记录，本页不把代码完成视为公开发布完成。详细步骤和维护者配置见[M3计划](plans/3.0-m3-release.md)。
 
 ## 本机重现
 
@@ -19,12 +19,22 @@ node tools/release/probe-native.mjs linux-x64
 
 ## 汇总
 
-.github/workflows/release-rust.yml读取当前Cargo/Cargo.lock单版本，调用同一native-platforms.yml完成五平台原生/npm/候选与双架构Docker验证，再收集同次run的候选与真实tarball/镜像，不把旧run或开发者下载目录当成来源。该准备workflow仅contents:read，不推送包或容器、不创建公开Release。主仓main仍是2.x，M5前新workflow的workflow_dispatch可能受默认分支登记限制；release/v3.*分支push和v3.*tagpush使用对应ref的workflow，标签必须通过版本/范围门禁。
+.github/workflows/release-rust.yml读取当前Cargo/Cargo.lock单版本，调用同一native-platforms.yml完成五平台原生/npm/候选与双架构Docker验证，再收集同次run的候选与真实tarball/镜像，不把旧run或开发者下载目录当成来源。构建和汇总job仅contents:read。tag通过版本门禁后，npm发布job单独获得id-token:write，GitHub/GHCR发布job单独获得contents:write/packages:write；发布job均使用rust-release环境，分支push只构建。主仓main仍是2.x，M5前新workflow的workflow_dispatch可能受默认分支登记限制；release/v3.*分支push和v3.*tagpush使用对应ref的workflow，标签必须通过版本/范围门禁。
 
 node tools/release/collect.mjs artifacts/incoming要求candidate-{五平台}、npm-{五平台}与docker-{两Linux}目录（npm artifact内部保留npm/{platform}及native/{platform}层级）。验证当前干净提交、版本、CPU/pin、实际归档SHA、运行证据、绑定实际tarball列表的npm运行证据、绑定已加载档案SHA的Docker运行证据，与tarball/原生候选的实际package.json/BUILD/BUNDLE；五套共享npm tarball必须完全一致，不能任选一个冲突副本。NOTICE在checkout时统一LF；两入口小包的bin执行位和gzip元数据在npm pack后统一，解决Windows没有Unix执行位的差异，正文及实际代码字节不改，SHA/integrity按最终tarball重新计算。汇总得到五个带数据原生包、九个唯一npm包、两个Docker档案、验证证据、RELEASE.json及SHA256SUMS，保存在artifacts/release/和CI的rust-release-candidate artifact（14天）。发布前必须先核对该清单，不能从单个平台临时重新打包覆盖候选。
 
 ## 版本与渠道
 
-Cargo.toml与Cargo.lock的产品版本一致，dev只可作为开发候选，不能公开发布。实际v3.*tag必须与产品version和当前提交完全一致；旧ts/python标签、fork、错误tag和M5前的stable均拒绝。预发布按next/候选Docker标签和GitHub prerelease发布；LTS和稳定latest不推进。真正公开流程尚待M3B，不能只以policy函数测试通过认领实际权限正确。
+Cargo.toml与Cargo.lock的产品版本一致，dev只可作为开发候选，不能公开发布。实际v3.*tag必须与产品version和当前提交完全一致；旧ts/python标签、fork、错误tag和M5前的stable均拒绝。预发布按next/候选Docker标签和GitHub prerelease发布；LTS和稳定latest不推进。公开流程由release-rust.yml承载，不能只以policy函数测试通过认领实际权限正确。
 
 M3A仍不是M4完整真实客户端验收或旧发行物回滚，也不关闭文档/data两项门禁。本机root data/、已有用户卷、lts工作树和旧oracle不作为候选打包输入。
+
+## 发布开关与重试
+
+仓库变量RUST_NPM_PUBLISH_ENABLED=true启用npm真实发布，RUST_NON_NPM_PUBLISH_ENABLED=true启用GitHub/GHCR。未设置则相应job跳过。维护者AFK期间npm保持关闭，非npm按明确授权独立推进；npm不发布时Release说明会披露该状态。RUST_STABLE_RELEASE_ENABLED在M5正式切换前不启用，稳定版本在流程入口被拒绝。
+
+发布job下载同一次CI汇总的rust-release-candidate，重新核对完整文件集合/SHA、产品版本和source commit，禁止重打包替换已验收产物。npm按五平台→data→runtime→两入口顺序发布，使用npm11.21.0及Node24支持直接OIDC发布与独立dist-tag权限；已有版本须integrity相同，必要时仅修复所属候选标签。GHCR加载两份已运行验证的镜像档案，检查image ID/CPU，再推送精确版本平台标签并建立双架构版本/next manifest；已有精确版本不允许不同镜像覆盖。GitHub使用相同清单上传档案、tarball、镜像和证据，设置prerelease及latest=false。
+
+公开流程中途失败时使用同一次run的“Re-run failed jobs”，复用已经成功汇总的快照。npm已存在且字节相同则跳过重复上传；Docker已有精确版本必须image ID/digest相同；GitHub已有资产先比对字节哈希，缺失资产补传且不使用--clobber。不要通过重跑全部构建来覆盖同版本，重建可能改变档案时间戳或镜像依赖。需要重新构建时使用新的候选版本。
+
+M5前main仍为2.x。预发布从已审查Rust快照创建release/v3.x.y-alpha.N等短发布分支，版本更改与发行内容经独立只读审查及完整CI；tag必须指向该远端发布分支内的提交。此过渡期不将预发布合入main，也不让develop长期停在alpha版本。实际候选的公开记录、渠道和未验范围必须单独核验；npm账号准备见[M3计划](plans/3.0-m3-release.md)。
