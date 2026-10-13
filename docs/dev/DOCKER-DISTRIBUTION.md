@@ -1,6 +1,6 @@
 # Rust Docker 分发（M2C）
 
-M2C 在原生 Linux x64/ARM64 上分别构建并执行 Docker 镜像，使用 M2A 审计过的同版原生 payload 和 M2B 校验过的共享备用数据。构建/验证正在推进；本阶段不推送 GHCR，不改写 ghcr.io/3akhp/prts-mcp 的公开版本或 latest。M3 负责汇总双架构候选和发布，M4 负责真实客户端完整升级/回滚验收。
+M2C 在原生 Linux x64/ARM64 上分别构建并执行 Docker 镜像，使用 M2A 审计过的同版原生 payload 和 M2B 校验过的共享备用数据。双架构构建和范围内运行验证通过，见[验收记录](reports/3.0-m2c-docker-distribution.md)；本阶段不推送 GHCR，不改写 ghcr.io/3akhp/prts-mcp 的公开版本或 latest。M3 负责汇总双架构候选和发布，M4 负责真实客户端完整升级/回滚验收。
 
 ## 构建
 

@@ -2,7 +2,7 @@
 
 PRTS-MCP provides Arknights game data, story search, PRTS Wiki content and operator artwork to MCP clients. The 3.x development branch uses one native Rust implementation with a statically linked C regexp component.
 
-**Release status:** the latest public stable release is still **2.8.1**. This branch is **3.0.0-dev.0**; M1B root import is merged and M2A has validated five [native platform artifacts](docs/dev/NATIVE-PLATFORMS.md). They are development CI artifacts; npm distribution and published Docker follow in M2B/C and M3. The planned npm main package is prts-mcp; prts-mcp-ts will remain a Rust-backed compatibility entry. Neither is a published 3.x release yet. See the [migration plan](docs/dev/plans/3.x-rust-migration.md), [roadmap](ROADMAP.md) and [2.8.1 installation guide](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/README.md).
+**Release status:** the latest public stable release is still **2.8.1**. This branch is **3.0.0-dev.0**; M1B root import is merged, M2A/B validate five [native platform artifacts](docs/dev/NATIVE-PLATFORMS.md) and [npm installation](docs/dev/NPM-DISTRIBUTION.md), and M2C validates native x64/ARM64 [Docker packaging](docs/dev/DOCKER-DISTRIBUTION.md). These are development CI artifacts; public candidates and publishing automation follow in M3. The planned npm main package is prts-mcp; prts-mcp-ts will remain a Rust-backed compatibility entry. Neither is a published 3.x release yet. See the [migration plan](docs/dev/plans/3.x-rust-migration.md), [roadmap](ROADMAP.md) and [2.8.1 installation guide](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/README.md).
 
 ## Run from source
 
@@ -19,7 +19,7 @@ The new prts-mcp defaults to Streamable HTTP on :3000 (/mcp, /health). PRTS_TRAN
 
 M2B prepares actual npm tarballs for both entries, an exact-version shared launch bridge, five platform payloads and pinned read-only fallback data. Build/install verification and lifecycle boundaries are documented in [npm distribution](docs/dev/NPM-DISTRIBUTION.md); these packages are not yet published to npm. The legacy command containing bun also launches Rust and requires no Bun installation.
 
-M2C Docker packaging uses validated native payloads and fallback data, preserves the GHCR default stdio/:3000 HTTP profile and old writable volumes, and adds tini for PID 1 signal forwarding. Build and validation are in progress; see [Docker distribution](docs/dev/DOCKER-DISTRIBUTION.md). No 3.x image has been publicly published.
+M2C Docker packaging uses validated native payloads and fallback data, preserves the GHCR default stdio/:3000 HTTP profile and old writable volumes, and adds tini for PID 1 signal forwarding. Both native Linux architectures pass packaging and scoped runtime validation; see [Docker distribution](docs/dev/DOCKER-DISTRIBUTION.md) and [acceptance evidence](docs/dev/reports/3.0-m2c-docker-distribution.md). No 3.x image has been publicly published.
 
 Data sync, paths and user settings are documented in [environment variables](docs/user/environment-variables.md). GameData and story data auto-sync from arknights-data-pipeline Releases; explicit data paths disable the corresponding sync. Read-only fallback, atomic activation, lock/lease, generations and offline recovery follow the frozen 2.8.1 contract. LOCAL_IMAGE=false fetches artwork through MediaWiki; LOCAL_IMAGE=true syncs AKDP PNG assets. IMAGES_ENABLED=false removes the artwork tool.
 
