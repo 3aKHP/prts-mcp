@@ -10,6 +10,7 @@ pub mod config;
 pub mod contracts;
 pub mod diagnostics;
 pub mod domain;
+pub mod launcher;
 pub mod protocol;
 pub mod storage;
 pub mod sync;

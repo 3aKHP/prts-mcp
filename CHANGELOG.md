@@ -2,6 +2,8 @@
 
 ## [Unreleased] — 3.0.0-dev.0
 
+- Prepare native-backed prts-mcp and prts-mcp-ts npm entries, shared exact-version platform/runtime packages and validated read-only game-data fallback, with real installation verification on native CI. These development tarballs are not published npm releases.
+- Keep native npm stdio/HTTP profiles, standard streams and exit behavior; diagnose missing optional platform packages or version mismatches. Windows npm launches monitor parent-process exit so force-closing the Node bridge stops the native server.
 - Stop tracking the outdated four-table game-data sample and its source metadata; keep existing local files ignored, exclude root data/ from Docker source contexts, and document separately validated read-only release bundles as a pre-3.0 distribution requirement. Source startup sync and historical/LTS data remain unchanged.
 - Move to one native Rust implementation at repository root, retaining full Rust development history and fixed TS/v2.8.1 comparison contracts.
 - Preserve Python/TS 2.8.x on lts/2.8 and 1.7.x on lts/1.7; both reach EOL on 2027-07-02.

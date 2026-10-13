@@ -14,7 +14,7 @@
 | M4 | 实际候选发行物、真实 MCP 客户端、旧卷升级与回滚；Windows 和/或 WSL 完整 E2E。 |
 | M5 | 收口 RC，正式发布 3.0，切换 latest，回灌开发线。 |
 
-M2A 实现及五平台原生验证已完成，PR #229 等待评审/合并收口；基线和实际证据见[原生平台说明](docs/dev/NATIVE-PLATFORMS.md)。M2B/C 尚未启动。
+M2A PR #229 和 data/ 源码清理 PR #230 已合并；基线和实际证据见[原生平台说明](docs/dev/NATIVE-PLATFORMS.md)。M2B 的 npm 双入口、共享原生包和校验备用数据已通过五个平台的实际安装与运行验证，见[npm 分发说明](docs/dev/NPM-DISTRIBUTION.md)和[验收记录](docs/dev/reports/3.0-m2b-npm-distribution.md)。M2C 尚未启动。
 
 追加两项 3.0 正式发布门禁：单独整理文档，恢复并更新 2.x 仍适用的内容覆盖；重新确定 data/ 的源码、分发和运行时方案并验证。两项在 M2A 之后推进，不打断当前工作，必须在正式发布前收口；影响 npm/Docker/候选产物的 data/ 决策须在对应产物验收前落实。
 
