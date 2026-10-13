@@ -37,10 +37,10 @@ function fileInventory(dir){const hashes={};function visit(p){for(const e of rea
 function payloadHashes(dir){const files=fileInventory(dir);return Object.fromEntries(Object.entries(files).filter(([f])=>!f.endsWith('.lock')&&!f.includes('/archives/')));}
 async function http(name,vol,{separate=false,env={},networkName=network}={}){
  containers.add(name);docker(['run','-d','--name',name,...ownedUser,...readonly,...mounts(vol,separate),'--network',networkName,
- '-p','127.0.0.1::8000',...envArgs({...env,PRTS_TRANSPORT:' HtTp ',HOST:'0.0.0.0',PORT:'8000'}),image]);
+ '-p','127.0.0.1::3000',...envArgs({...env,PRTS_TRANSPORT:' HtTp ',HOST:'0.0.0.0'}),image]);
  const details=JSON.parse(docker(['inspect',name]))[0];
  assert(details.State.Running,`${JSON.stringify(details.State)} ${docker(['logs',name],{maxBuffer:1<<20})}`);
- const bindings=details.NetworkSettings.Ports['8000/tcp'];
+ const bindings=details.NetworkSettings.Ports['3000/tcp'];
  assert(bindings?.length,`Port not published: ${JSON.stringify({ports:details.NetworkSettings.Ports,bindings:details.HostConfig.PortBindings,network:details.HostConfig.NetworkMode})}`);
  const port=bindings[0].HostPort;
  const origin=`http://127.0.0.1:${port}`;let ready=false;
@@ -73,7 +73,7 @@ try {
  checks.push({case:'GHCR HTTP non-numeric PORT reports stderr and exits 1'});
  const off=await http(`${prefix}-http`,fresh);assert.match(JSON.stringify(await off.call('get_operator_basic_info',{name:'阿米娅'})),/阿米娅/);assert.equal((await off.modern()).tools.length,23);
  assert.equal(docker(['exec',`${prefix}-http`,'cat','/proc/1/comm']).trim(),'tini');
- checks.push({case:'explicit HTTP, legacy/modern MCP and tini PID1 stop',exit:await stop(`${prefix}-http`)});
+ checks.push({case:'explicit HTTP with default PORT 3000, legacy/modern MCP and tini PID1 stop',exit:await stop(`${prefix}-http`)});
  console.log(`DOCKER_STAGE: ${id} isolated mirror and actual legacy TS volume`);
  const fixture=join(temp,'mirror');mkdirSync(fixture);const lines=[];
  for(const asset of pin.assets){const src=join(root,'.runtime/npm-data',pin.release_tag,asset.name);assert.equal(sha(src),asset.sha256);cpSync(src,join(fixture,asset.name));lines.push(`https://github.com/${pin.repo}/releases/download/${pin.release_tag}/${asset.name} ${asset.name}`);}

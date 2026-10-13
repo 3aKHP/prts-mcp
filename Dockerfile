@@ -8,5 +8,5 @@ COPY bundle/ /app/data/
 RUN chmod -R a+rX /app && mkdir -p /data/gamedata /data/gamedata-levels /data/storyjson /data/images
 ENV PRTS_MCP_ROOT=/app
 USER 0:0
-EXPOSE 8000
+EXPOSE 3000
 ENTRYPOINT ["/usr/bin/tini", "-g", "--", "/app/bin/prts-mcp-ghcr"]

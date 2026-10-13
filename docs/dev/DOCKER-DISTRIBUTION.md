@@ -4,7 +4,7 @@ M2C 在原生 Linux x64/ARM64 上分别构建并执行 Docker 镜像，使用 M2
 
 ## 构建
 
-生产 Dockerfile 消费经过校验的独立构建上下文，不能直接把开发者的根 data/ 当作备用数据。tools/docker/build.mjs 要求匹配本机和 Docker daemon 的 Linux CPU、当前干净提交、同版原生 BUILD/BUNDLE，以及实际 payload 哈希和许可引用；拒绝交叉编译或模拟运行作为原生证据。版本来自 Cargo.toml。
+生产 Dockerfile 消费经过校验的独立构建上下文，不能直接把开发者的根 data/ 当作备用数据。tools/docker/build.mjs 要求匹配本机和 Docker daemon 的 Linux CPU、当前干净提交、同版原生 BUILD/BUNDLE，以及实际 payload 的完整文件集合、哈希和许可引用（拒绝清单外文件、链接及特殊文件）；拒绝交叉编译或模拟运行作为原生证据。版本来自 Cargo.toml。
 
 ```bash
 node tools/native/build.mjs linux-x64
@@ -25,13 +25,13 @@ ARM64 在原生 ARM64 主机使用 linux-arm64。out 目录为 artifacts/docker/
 
 ENTRYPOINT 是 tini -g -- /app/bin/prts-mcp-ghcr。tini 作为 PID 1 转发停止信号、回收进程，避免直接 PID 1 的默认信号行为使 docker stop 等到 SIGKILL。SIGTERM 终止退出语义不等于已经实现应用层 graceful shutdown。
 
-沿用固定 2.8.1 GHCR/Python Docker profile：默认 root（0:0），默认 stdio；只有规范化后 PRTS_TRANSPORT=http 才选择 HTTP，默认端口 8000。HTTP 分支非法 PORT 写 stderr 并退出 1，stdio 不读取该端口值。新 npm 主命令的默认 HTTP/:3000 不改变此容器契约。
+沿用固定 2.8.1 GHCR/Python Docker profile：默认 root（0:0），默认 stdio；只有规范化后 PRTS_TRANSPORT=http 才选择 HTTP，默认端口 3000。HTTP 分支非法 PORT 写 stderr 并退出 1，stdio 不读取该端口值。新 npm 主命令的默认 HTTP/:3000 不改变此容器契约。
 
 ```bash
 # M2C 本地构建标签；不是公开 GHCR 安装命令。
 docker run --rm -i prts-mcp:m2c-linux-x64
 # HTTP 明确选择；端口仅向本机开放。
-docker run --rm -e PRTS_TRANSPORT=http -p 127.0.0.1:8000:8000 prts-mcp:m2c-linux-x64
+docker run --rm -e PRTS_TRANSPORT=http -p 127.0.0.1:3000:3000 prts-mcp:m2c-linux-x64
 ```
 
 ## 数据卷和旧版迁移

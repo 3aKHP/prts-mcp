@@ -84,7 +84,9 @@ jobs:
         run: node tools/prepare-validation.mjs --minimal
       - name: Build and export native Docker image (no publication)
         if: runner.os == 'Linux'
-        run: node tools/docker/build.mjs ${{ matrix.platform }}
+        run: |
+          node tools/docker/check-inputs.mjs
+          node tools/docker/build.mjs ${{ matrix.platform }}
       - name: Verify Docker transport, signals, old volumes and real sync
         if: runner.os == 'Linux'
         run: node tools/docker/probe.mjs ${{ matrix.platform }}
