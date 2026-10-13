@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
-import { root, version, targets, packageNames, verifyVersion, verifyBundle, verifyNpmEvidence, verifyDockerEvidence, readJson, json, sha, run } from './common.mjs';
+import { root, version, targets, packageNames, verifyVersion, verifyBundle, verifyNpmEvidence, verifyDockerEvidence, zipMemberPattern, readJson, json, sha, run } from './common.mjs';
 verifyVersion();
 const input = resolve(process.argv[2] ?? join(root,'artifacts/incoming'));
 const output = join(root,'artifacts/release');
@@ -22,8 +22,9 @@ for(const [id,target]of Object.entries(targets)){
   assert.equal(evidence.arch,target.arch);assert.equal(evidence.checks.length,3);assert.equal(evidence.archiveSha256,candidate.sha256);
   const archive=join(dir,safe(candidate.filename));assert.equal(sha(archive),candidate.sha256);
   assert.equal(readFileSync(archive+'.sha256','utf8').trim(),`${candidate.sha256}  ${candidate.filename}`);
-  const nativeJson = name => JSON.parse(candidate.filename.endsWith('.zip')
-    ? run('unzip',['-p',archive,name]) : run('tar',['-xOzf',archive,`./${name}`]));
+  const zipEntries = candidate.filename.endsWith('.zip') ? run('unzip',['-Z1',archive]).trim().split('\n') : null;
+  const nativeJson = name => JSON.parse(zipEntries
+    ? run('unzip',['-p',archive,zipMemberPattern(zipEntries,name)]) : run('tar',['-xOzf',archive,`./${name}`]));
   const packedCandidate=nativeJson('CANDIDATE.json'), packedBuild=nativeJson('BUILD.json');
   assert.equal(packedCandidate.commit,commit);assert.equal(packedCandidate.version,version);assert.equal(packedCandidate.platform,id);
   assert.equal(packedBuild.commit,commit);assert.equal(packedBuild.version,version);assert.equal(packedBuild.platform,id);assert.equal(packedBuild.dirty,false);

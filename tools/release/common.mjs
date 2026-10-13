@@ -5,6 +5,12 @@ export { root, version, targets, pin, readJson, json, sha, run };
 export const repository = '3aKHP/prts-mcp';
 export const packageNames = [...Object.keys(targets).map(id => `@3akhp/prts-mcp-${id}`),
   '@3akhp/prts-mcp-data', '@3akhp/prts-mcp-runtime', 'prts-mcp', 'prts-mcp-ts'];
+// Windows .NET ZIPs retain backslashes; Info-ZIP expects an escaped member pattern.
+export function zipMemberPattern(entries, name) {
+  const matches = entries.filter(entry => entry.replaceAll('\\', '/') === name);
+  assert.equal(matches.length, 1, `ZIP requires one exact member: ${name}`);
+  return matches[0].replace(/[\\*?\[\]]/g, '\\$&');
+}
 export function verifyVersion(product = version) {
   assert(/^3\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-(?:alpha|beta|rc)\.(?:0|[1-9]\d*)|-dev\.0)?$/.test(product), 'Invalid Rust product version');
   const lock = readFileSync(new URL('../../Cargo.lock', import.meta.url), 'utf8');

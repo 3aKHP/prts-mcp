@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { releasePolicy, verifyVersion, verifyNpmEvidence, verifyDockerEvidence } from './common.mjs';
+import { releasePolicy, verifyVersion, verifyNpmEvidence, verifyDockerEvidence, zipMemberPattern } from './common.mjs';
+test('ZIP metadata lookup handles Windows separators and rejects missing or duplicate identities',()=>{
+  assert.equal(zipMemberPattern(['data\\BUNDLE.json'],'data/BUNDLE.json'),'data\\\\BUNDLE.json');
+  assert.equal(zipMemberPattern(['data/BUNDLE.json'],'data/BUNDLE.json'),'data/BUNDLE.json');
+  assert.throws(()=>zipMemberPattern([],'data/BUNDLE.json'));
+  assert.throws(()=>zipMemberPattern(['data/BUNDLE.json','data\\BUNDLE.json'],'data/BUNDLE.json'));
+});
 test('Cargo product version stays locked',()=>verifyVersion());
 test('candidate releases cannot advance stable channels',()=>{
   const p=releasePolicy('3.0.0-alpha.1','refs/tags/v3.0.0-alpha.1');
