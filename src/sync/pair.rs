@@ -97,8 +97,15 @@ fn load_gamedata_pair(
 }
 
 fn relative_or_dot(from: &Path, to: &Path) -> String {
-    let from_abs = std::path::absolute(from).unwrap_or_else(|_| from.to_path_buf());
-    let to_abs = std::path::absolute(to).unwrap_or_else(|_| to.to_path_buf());
+    // Activation roots are realpaths. Canonicalize both sides so /var aliases
+    // on macOS and Windows extended-length prefixes do not leak absolute paths
+    // into otherwise movable, relative generation metadata.
+    let from_abs = std::fs::canonicalize(from)
+        .or_else(|_| std::path::absolute(from))
+        .unwrap_or_else(|_| from.to_path_buf());
+    let to_abs = std::fs::canonicalize(to)
+        .or_else(|_| std::path::absolute(to))
+        .unwrap_or_else(|_| to.to_path_buf());
     if let Ok(rel) = to_abs.strip_prefix(&from_abs) {
         let text = rel.to_string_lossy().replace('\\', "/");
         if text.is_empty() {
@@ -582,6 +589,25 @@ mod tests {
         assert_eq!(l.status, SyncStatus::OfflineFallback);
         assert!(!dir.join(".gamedata_pair.json").exists());
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[tokio::test]
+    async fn pair_manifest_remains_readable_after_moving_data_directory() {
+        let (dir, excel, levels) = pair_specs("relocate");
+        activate_generation((&excel, &levels), "relocate");
+        sync_release_archive_pair(&DownTransport, &excel, &levels, false)
+            .await
+            .unwrap();
+        let moved = dir.with_extension("moved");
+        let _ = std::fs::remove_dir_all(&moved);
+        std::fs::rename(&dir, &moved).unwrap();
+        let moved_excel = moved.join(excel.local_root.file_name().unwrap());
+        let moved_levels = moved.join(levels.local_root.file_name().unwrap());
+        let pair = crate::storage::activated_pair(&moved_excel, &moved_levels)
+            .expect("relative generation pointers must survive moving the whole volume");
+        assert!(pair.0.join(&excel.required_files[0]).is_file());
+        assert!(pair.1.join(&levels.required_files[0]).is_file());
+        std::fs::remove_dir_all(&moved).unwrap();
     }
 
     #[tokio::test]

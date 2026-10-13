@@ -258,26 +258,27 @@ fn pathdiff_lite(from: &Path, to: &Path) -> String {
 /// require the result to stay inside `root`.
 fn resolve_inside_lexical(root: &Path, name: &str) -> Option<PathBuf> {
     let name = name.replace('\\', "/");
+    let root_abs = std::path::absolute(root).ok()?;
     let joined: PathBuf = if name.starts_with('/') {
         PathBuf::from(name)
     } else {
-        root.join(&name)
+        root_abs.join(&name)
     };
-    let root_abs = std::path::absolute(root).ok()?;
-    let mut normalized: Vec<std::ffi::OsString> = Vec::new();
+    let mut resolved = PathBuf::new();
     for component in joined.components() {
         match component {
-            std::path::Component::Prefix(_) | std::path::Component::RootDir => normalized.clear(),
+            std::path::Component::Prefix(prefix) => resolved.push(prefix.as_os_str()),
+            std::path::Component::RootDir => resolved.push(component.as_os_str()),
             std::path::Component::CurDir => {}
             // A ".." that pops above the root means the path escapes.
             std::path::Component::ParentDir => {
-                normalized.pop()?;
+                if !resolved.pop() {
+                    return None;
+                }
             }
-            std::path::Component::Normal(part) => normalized.push(part.to_os_string()),
+            std::path::Component::Normal(part) => resolved.push(part),
         }
     }
-    let resolved = PathBuf::from(std::path::MAIN_SEPARATOR.to_string())
-        .join(normalized.iter().collect::<PathBuf>());
     if resolved.strip_prefix(&root_abs).is_ok() {
         Some(resolved)
     } else {

@@ -9,6 +9,7 @@ for (const bin of bins) {
   const dest = join(stage, 'bin', bin + suffix);
   cpSync(join(release, bin + suffix), dest);
   if (config.os !== 'win32') chmodSync(dest, 0o755);
+  if (config.os === 'darwin') run('codesign', ['--force', '--sign', '-', dest]);
 }
 for (const name of ['LICENSE', 'NOTICE']) cpSync(join(root, name), join(stage, name));
 collectNotices();

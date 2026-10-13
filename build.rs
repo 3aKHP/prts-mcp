@@ -10,4 +10,9 @@ fn main() {
         .flag_if_supported("-std=c11")
         .warnings(false)
         .compile("prts_ecma_regexp");
+    println!("cargo:rerun-if-changed=native/process_memory.c");
+    cc::Build::new()
+        .file("native/process_memory.c")
+        .flag_if_supported("-std=c11")
+        .compile("prts_process_memory");
 }
