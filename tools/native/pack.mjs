@@ -24,6 +24,8 @@ json(join(stage, 'BUILD.json'), {
   dirty: !!run('git', ['status', '--porcelain', '--untracked-files=normal']).trim(),
   nativeHost: { os: process.platform, arch: process.arch },
   rustToolchain: '1.96.1', minimumRustChecked: '1.89.0', rustFlags: flags,
+  compilerEvidence: config.os === 'linux' ? readFileSync(join(out, 'compiler.txt'), 'utf8')
+    : JSON.parse(readFileSync(join(out, 'compiler.json'))),
   builder: config.builder ?? config.runner,
   declaredBaseline: { glibc: config.glibc, crt: config.crt, cpu: config.cpu,
     macosDeploymentTarget: config.deploymentTarget, windowsMinimum: config.minimumOs },

@@ -502,7 +502,7 @@ mod tests {
             (SyncStatus::UpToDate, SyncStatus::UpToDate)
         );
         assert!(pair_path.is_file());
-        let before = std::fs::metadata(&pair_path).unwrap();
+        let before = crate::storage::identity::path_token(&pair_path).unwrap();
 
         let second = sync_release_archive_pair(&DownTransport, &excel, &levels, false)
             .await
@@ -511,22 +511,19 @@ mod tests {
             (second.0.status, second.1.status),
             (SyncStatus::UpToDate, SyncStatus::UpToDate)
         );
-        let after = std::fs::metadata(&pair_path).unwrap();
-        // Unchanged cycle: identical inode and timestamps (no rewrite).
-        use std::os::unix::fs::MetadataExt;
-        assert_eq!(after.ino(), before.ino());
-        assert_eq!(after.mtime(), before.mtime());
-        assert_eq!(after.ctime(), before.ctime());
+        let after = crate::storage::identity::path_token(&pair_path).unwrap();
+        // Unchanged cycle: identical file identity and timestamps (no rewrite).
+        assert_eq!(after, before);
 
         activate_generation((&excel, &levels), "next");
         sync_release_archive_pair(&DownTransport, &excel, &levels, false)
             .await
             .unwrap();
-        let changed = std::fs::metadata(&pair_path).unwrap();
+        let changed = crate::storage::identity::path_token(&pair_path).unwrap();
         let value: Value =
             serde_json::from_str(&std::fs::read_to_string(&pair_path).unwrap()).unwrap();
         assert_eq!(value["commit_sha"], "next");
-        assert_ne!(changed.ino(), after.ino());
+        assert_ne!(changed, after);
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -824,7 +821,10 @@ mod tests {
         let outside = dir.join("outside");
         std::fs::create_dir_all(&outside).unwrap();
         std::fs::create_dir_all(&spec.local_root).unwrap();
+        #[cfg(unix)]
         std::os::unix::fs::symlink(&outside, spec.local_root.join(".releases")).unwrap();
+        #[cfg(windows)]
+        std::os::windows::fs::symlink_dir(&outside, spec.local_root.join(".releases")).unwrap();
 
         let result = sync_release_archive(&DownTransport, spec, false).await;
         assert_eq!(result.status, SyncStatus::NoData);

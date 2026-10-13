@@ -16,6 +16,8 @@ Public stable remains 2.8.1. The next development target is 3.0.0-dev.0: migrate
 
 M2A is in progress; native artifact baselines and exact evidence are maintained in [NATIVE-PLATFORMS.md](docs/dev/NATIVE-PLATFORMS.md).
 
+Two additional pre-3.0 release gates are required: a dedicated documentation pass restoring and updating still-applicable 2.x coverage, and a reviewed data/ source/distribution/runtime strategy with validation. They follow M2A without interrupting it and must close before stable release; data decisions that affect npm/Docker/candidate artifacts must land before those artifacts are accepted.
+
 Detailed decisions, acceptance criteria and scope: [migration plan](docs/dev/plans/3.x-rust-migration.md). M1B is not a public release or a five-platform support claim. Full real-machine E2E is specifically scheduled for M4, not a general workflow gate.
 
 ## After 3.0

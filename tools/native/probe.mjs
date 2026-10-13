@@ -13,6 +13,9 @@ const temp = mkdtempSync(join(tmpdir(), 'prts-native 空格-'));
 const installed = join(temp, 'installed');
 mkdirSync(installed);
 const artifact = JSON.parse(readFileSync(join(out, 'artifact.json')));
+const baseline = process.argv.includes('--baseline');
+if (baseline && config.os !== 'linux') throw new Error('--baseline requires a Linux native runtime image');
+if (baseline) run('docker', ['pull', config.runtimeImage], { stdio: 'inherit' });
 assert.equal(sha(artifact.archive), artifact.sha256);
 run('tar', ['-xf', artifact.archive, '-C', installed]);
 for (const line of readFileSync(join(installed, 'SHA256SUMS'), 'utf8').trim().split('\n')) {
@@ -20,6 +23,10 @@ for (const line of readFileSync(join(installed, 'SHA256SUMS'), 'utf8').trim().sp
   assert.equal(sha(join(installed, path)), hash, `Extracted hash: ${path}`);
 }
 const fixture = join(temp, '测试数据');
+const frozen = JSON.parse(readFileSync(join(root, 'contracts/native-smoke-manifest.json')));
+for (const file of frozen.files) {
+  assert.equal(sha(join(root, 'tests/fixtures/native-smoke', file.path)), file.sha256, `Frozen native fixture: ${file.path}`);
+}
 cpSync(join(root, 'tests/fixtures/native-smoke'), fixture, { recursive: true });
 const env = { ...process.env };
 for (const key of Object.keys(env)) {
@@ -32,8 +39,17 @@ const checks = [];
 const children = new Set();
 const delay = ms => new Promise(r => setTimeout(r, ms));
 function launch(bin, overrides = {}) {
-  const child = spawn(join(installed, 'bin', bin + suffix), [], { cwd: temp,
-    env: { ...env, ...overrides }, stdio: ['pipe','pipe','pipe'] });
+  const executable = join(installed, 'bin', bin + suffix);
+  const childEnv = { ...env, ...overrides };
+  if (baseline) childEnv.HOST = '0.0.0.0';
+  const args = baseline ? ['run', '--rm', '--init', '-i', '--user', `${process.getuid()}:${process.getgid()}`,
+    ...(childEnv.PORT ? ['-p', `127.0.0.1:${childEnv.PORT}:${childEnv.PORT}`] : []),
+    '-v', `${temp}:${temp}`, '-w', temp,
+    ...Object.entries(childEnv).filter(([k,v]) => v !== undefined &&
+      /^(PATH|PRTS_.*|GAMEDATA_PATH|STORYJSON_PATH|IMAGES_ENABLED|HOST|PORT|GITHUB_MIRRORS)$/.test(k))
+      .flatMap(([k,v]) => ['-e', `${k}=${v}`]), '--entrypoint', executable, config.runtimeImage] : [];
+  const child = spawn(baseline ? 'docker' : executable, args, { cwd: temp,
+    env: baseline ? process.env : childEnv, stdio: ['pipe','pipe','pipe'] });
   children.add(child);
   child.stdout.setEncoding('utf8'); child.stderr.setEncoding('utf8');
   const state = { child, stdout: '', stderr: '', lines: [] };
@@ -116,7 +132,9 @@ async function http(bin, overrides) {
   const base = `http://127.0.0.1:${port}`;
   try {
     await bounded((async () => {
+      const deadline = Date.now() + 19000;
       for (;;) {
+        if (Date.now() > deadline) throw new Error(`HTTP ready timeout: ${state.stderr}`);
         if (state.child.exitCode !== null) throw new Error(`HTTP process exited: ${state.stderr}`);
         try { if ((await fetch(`${base}/health`, { signal: AbortSignal.timeout(500) })).ok) break; } catch {}
         await delay(100);
@@ -149,7 +167,7 @@ async function http(bin, overrides) {
     assert.equal(direct.body.result.tools.length, 23);
     state.child.kill('SIGTERM');
     const exit = await bounded(state.closed, state, 'HTTP shutdown');
-    assert.ok(exit.code === 0 || exit.signal === 'SIGTERM' || config.os === 'win32' && exit.code === 1,
+    assert.ok(exit.code === 0 || exit.signal === 'SIGTERM' || baseline && exit.code === 143 || config.os === 'win32' && exit.code === 1,
       `Unexpected shutdown: ${JSON.stringify(exit)}`);
     checks.push({ bin, transport: 'http', legacy: true, modern: true, path: 'empty', shutdown: exit });
   } finally { if (state.child.exitCode === null) state.child.kill(); }
@@ -168,11 +186,14 @@ try {
   await http('prts-mcp-ts', { PRTS_TRANSPORT: 'stdio' });
   await http('prts-mcp-ts-bun', { PRTS_TRANSPORT: 'stdio' });
   await http('prts-mcp-ghcr', { PRTS_TRANSPORT: ' HTTP ' });
-  json(join(out, 'runtime-evidence.json'), { platform: config.target, native: true, os: osRelease(),
+  json(join(out, baseline ? 'runtime-baseline-evidence.json' : 'runtime-evidence.json'), { platform: config.target, native: true, os: osRelease(),
+    runtimeImage: baseline ? config.runtimeImage : null,
     arch: process.arch, archiveSha256: artifact.sha256, extractedOutsideCheckout: true,
     pathEmpty: true, checks, scope: 'native units/regex plus detached archive MCP/profile checks; npm, Docker distribution and M4 E2E are later phases' });
   console.log(`Detached native runtime passed: ${checks.length} profiles/checks (${config.target})`);
 } finally {
-  for (const child of children) child.kill();
+  await Promise.allSettled([...children].map(child => {
+    const closed = once(child, 'close'); child.kill(); return closed;
+  }));
   rmSync(temp, { recursive: true, force: true });
 }

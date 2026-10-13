@@ -35,7 +35,7 @@ jobs:
           node-version: '24'
       - name: Configure Windows compiler and SDK
         if: runner.os == 'Windows'
-        uses: ilammy/msvc-dev-cmd@v1
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1
       - name: Select Windows native C compiler
         if: runner.os == 'Windows'
         shell: pwsh
@@ -57,6 +57,9 @@ jobs:
         run: node tools/native/pack.mjs ${{ matrix.platform }}
       - name: Run extracted archive without a runtime/toolchain PATH
         run: node tools/native/probe.mjs ${{ matrix.platform }}
+      - name: Run Linux archive in minimal glibc 2.28 runtime
+        if: runner.os == 'Linux'
+        run: node tools/native/probe.mjs ${{ matrix.platform }} --baseline
       - name: Retain installable archive and evidence (no publication)
         if: always()
         uses: actions/upload-artifact@v6
@@ -67,6 +70,7 @@ jobs:
             artifacts/native/${{ matrix.platform }}/*.zip
             artifacts/native/${{ matrix.platform }}/*.sha256
             artifacts/native/${{ matrix.platform }}/runtime-evidence.json
+            artifacts/native/${{ matrix.platform }}/runtime-baseline-evidence.json
             artifacts/native/${{ matrix.platform }}/compiler.*
             artifacts/native/${{ matrix.platform }}/payload/BUILD.json
             artifacts/native/${{ matrix.platform }}/payload/ABI.json

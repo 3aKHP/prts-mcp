@@ -12,7 +12,9 @@ for (const name of bins) {
     dependencies = [...run('readelf', ['-d', path]).matchAll(/Shared library: \[([^\]]+)\]/g)].map(m => m[1]);
     const allowed = /^(libc\.so\.6|libm\.so\.6|libgcc_s\.so\.1|libpthread\.so\.0|libdl\.so\.2|librt\.so\.1|ld-linux-x86-64\.so\.2|ld-linux-aarch64\.so\.1)$/;
     assert.ok(dependencies.length && dependencies.every(d => allowed.test(d)), `Unexpected ELF dependencies: ${dependencies}`);
-    const versions = [...run('readelf', ['--version-info', path]).matchAll(/GLIBC_(\d+)\.(\d+)/g)]
+    const symbolVersions = run('readelf', ['--version-info', path]);
+    assert.doesNotMatch(symbolVersions, /GLIBC_PRIVATE|GLIBC_ABI_/, 'Unsupported private/new glibc ABI dependency');
+    const versions = [...symbolVersions.matchAll(/GLIBC_(\d+)\.(\d+)/g)]
       .map(m => [Number(m[1]), Number(m[2])]).sort((a,b) => a[0]-b[0] || a[1]-b[1]);
     const max = versions.at(-1);
     assert.ok(max && (max[0] < 2 || max[0] === 2 && max[1] <= 28), `Requires GLIBC_${max?.join('.')}`);
