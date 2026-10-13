@@ -52,6 +52,16 @@ probe.mjs 使用只读 loopback registry 和隔离 npm 配置/缓存，执行真
 
 M2B 五个平台的实际安装与运行已通过，检查数量和 CI 来源见[验收记录](reports/3.0-m2b-npm-distribution.md)。Windows 的完整数据解包安装需要比协议调用更长的测试预算；超时仍判失败，具体耗时不能当作用户机器上的安装速度承诺。
 
-CI 留存 tarball 和验收证据 14 天，不执行 npm publish，也不改写 npm latest、旧版 LTS 或 GitHub Latest。当前 npm 公开安装说明仍应使用已发布的 2.8.x；3.x 候选安装示例在 M3 真正发布后补充。
+开发CI留存tarball与验收证据14天，不执行npm publish。2026-10-14九个3.0.0-alpha.1包已从正式候选tarball首次公开，next指向该版；旧prts-mcp-ts latest仍2.8.1。匿名公开registry安装、本机Linux x64双入口备用查询与退出、已安装项目内npx调用通过；真实OIDC发布和新包自动latest清理仍待M3收口，不能将本机范围扩大为五平台公开安装或M4。
+
+测试候选必须明确选择next或精确版本；新包首次暂存时npm自动生成的0.0.0-stage并非产品版本。新主入口默认HTTP，兼容stdio命令保持原传输 profile。
+
+```bash
+npm install -g prts-mcp@next
+prts-mcp
+PRTS_TRANSPORT=stdio prts-mcp
+```
+
+兼容入口可用npm install -g prts-mcp-ts@next，随后运行prts-mcp-ts-stdio。稳定2.x用户继续使用prts-mcp-ts@latest，正式3.0在M5才切换稳定渠道；发行自动化、OIDC和标签保留规则见[候选发行流程](RELEASE-CANDIDATES.md)。
 
 npm 筛选与 optionalDependencies 行为参见 [package.json 官方说明](https://docs.npmjs.com/cli/v11/configuring-npm/package-json/)，锁文件安装见 [npm ci](https://docs.npmjs.com/cli/v11/commands/npm-ci/)，npx 对应 [npm exec](https://docs.npmjs.com/cli/v11/commands/npm-exec/)。
