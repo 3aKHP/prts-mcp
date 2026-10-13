@@ -52,9 +52,9 @@ probe.mjs 使用只读 loopback registry 和隔离 npm 配置/缓存，执行真
 
 M2B 五个平台的实际安装与运行已通过，检查数量和 CI 来源见[验收记录](reports/3.0-m2b-npm-distribution.md)。Windows 的完整数据解包安装需要比协议调用更长的测试预算；超时仍判失败，具体耗时不能当作用户机器上的安装速度承诺。
 
-开发CI留存tarball与验收证据14天，不执行npm publish。2026-10-14九个3.0.0-alpha.1包已从正式候选tarball首次公开，next指向该版；旧prts-mcp-ts latest仍2.8.1。匿名公开registry安装、本机Linux x64双入口备用查询与退出、已安装项目内npx调用通过；真实OIDC发布和新包自动latest清理仍待M3收口，不能将本机范围扩大为五平台公开安装或M4。
+开发CI留存tarball与验收证据14天，不执行npm publish。2026-10-14九个3.0.0-alpha.1包已从正式候选tarball首次公开，后续alpha.2仅Linux x64平台包通过OIDC公开、该平台next为alpha.2；两个入口next仍alpha.1，旧prts-mcp-ts latest仍2.8.1。匿名公开registry安装、本机Linux x64双入口备用查询与退出、已安装项目内npx调用通过；真实九包OIDC发布和独立dist-tag权限仍待M3收口；八个新包强制保留并冻结首次latest，不将删除它作为门禁，不能将本机范围扩大为五平台公开安装或M4。
 
-测试候选必须明确选择next或精确版本；新包首次暂存时npm自动生成的0.0.0-stage并非产品版本。新主入口默认HTTP，兼容stdio命令保持原传输 profile。
+测试候选必须明确选择next或精确版本；新包首次暂存时npm自动生成的0.0.0-stage并非产品版本。npm要求latest存在，八个新名字的首次自动latest保留原值，正式3.0才切换；不要在预发布期间用新主包的裸安装或@latest代替@next。新主入口默认HTTP，兼容stdio命令保持原传输 profile。
 
 ```bash
 npm install -g prts-mcp@next
