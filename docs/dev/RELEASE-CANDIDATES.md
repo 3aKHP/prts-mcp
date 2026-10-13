@@ -35,6 +35,8 @@ M3A仍不是M4完整真实客户端验收或旧发行物回滚，也不关闭文
 
 发布job下载同一次CI汇总的rust-release-candidate，重新核对完整文件集合/SHA、产品版本和source commit，禁止重打包替换已验收产物。npm按五平台→data→runtime→两入口顺序发布，使用npm11.21.0及Node24支持直接OIDC发布与独立dist-tag权限；已有版本须integrity相同，必要时仅修复所属候选标签。GHCR加载两份已运行验证的镜像档案，检查image ID/CPU，再推送精确版本平台标签并建立双架构版本/next manifest；已有精确版本不允许不同镜像覆盖。GitHub使用相同清单上传档案、tarball、镜像和证据，设置prerelease及latest=false。
 
+npm接受上传后可能仍在服务端校验，发布器最多等待五分钟确认该版本公开可读及integrity一致，再处理后续依赖；超时失败，不把CLI退出0算成公开成功。预发布还核验next与原有标签：仅八个新Rust包可清理首次建立留下的latest=0.0.0-stage或3.0.0-alpha.1，以及本次首次上传自动产生的同版latest；prts-mcp-ts的旧稳定/LTS标签和其他已存在标签保留。清理使用同一workflow的OIDC dist-tag权限，删除后须再核验，不能忽略失败。这不是M5的稳定latest切换。
+
 公开流程中途失败时使用同一次run的“Re-run failed jobs”，复用已经成功汇总的快照。npm已存在且字节相同则跳过重复上传；Docker已有精确版本必须image ID/digest相同；GitHub已有资产先比对字节哈希，缺失资产补传且不使用--clobber。不要通过重跑全部构建来覆盖同版本，重建可能改变档案时间戳或镜像依赖。需要重新构建时使用新的候选版本。
 
 M5前main仍为2.x。预发布从已审查Rust快照创建release/v3.x.y-alpha.N等短发布分支，版本更改与发行内容经独立只读审查及完整CI；tag必须指向该远端发布分支内的提交。此过渡期不将预发布合入main，也不让develop长期停在alpha版本。实际候选的公开记录、渠道和未验范围必须单独核验；npm账号准备见[M3计划](plans/3.0-m3-release.md)。
