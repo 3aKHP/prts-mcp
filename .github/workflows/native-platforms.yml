@@ -30,6 +30,8 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
@@ -51,6 +53,7 @@ jobs:
             .native-cache
             target
           key: native-${{ matrix.platform }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml', 'build.rs', 'native/**', 'vendor/**', 'packaging/native/targets.json') }}
+          restore-keys: native-${{ matrix.platform }}-
       - name: Native build, minimum Rust check and native corpus
         run: node tools/native/build.mjs ${{ matrix.platform }}
       - name: Package binaries, notices and audited ABI

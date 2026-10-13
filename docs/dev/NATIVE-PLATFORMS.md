@@ -18,6 +18,8 @@ The deployment/ABI floor and the OS actually exercised are separate facts. Linux
 
 Linux artifacts accept only standard glibc/libgcc shared libraries, and readelf must report no symbol requirement newer than GLIBC_2.28. Windows artifacts reject VC/UCRT and other non-system DLL imports; users need not install vc_redist. macOS artifacts allow only system libraries/frameworks and verify Mach-O architecture, deployment target and code signature. Extra dependencies fail packaging rather than silently becoming installation prerequisites.
 
+Windows BCryptPrimitives.dll is explicitly allowed as the operating system's [ProcessPrng CNG implementation](https://learn.microsoft.com/en-us/windows/win32/seccng/processprng), used by the locked random-number dependencies. It is not a VC/UCRT runtime. The PE audit still rejects vcruntime/msvcp/ucrt imports.
+
 Platform correctness fixes preserve the frozen runtime contract: Windows extraction retains the drive/UNC prefix during containment checks, activation caches observe native file IDs, and both canonicalized paths are used when writing relative generation metadata so a whole data volume remains movable. Memory diagnostics use Windows working-set/peak counters and macOS Mach resident/peak sizes; Linux continues reading /proc with the real OS page size, including ARM64 systems with pages larger than 4 KiB. The small platform memory adapter uses OS SDK headers and is statically compiled into the binary; it adds no third-party runtime dependency. API references: [Windows memory counters](https://learn.microsoft.com/en-us/windows/win32/api/psapi/nf-psapi-getprocessmemoryinfo), [Apple Mach task information](https://github.com/apple-oss-distributions/xnu/blob/main/osfmk/mach/task_info.h).
 
 ## Build and validate

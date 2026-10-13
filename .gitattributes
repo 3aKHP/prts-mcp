@@ -5,6 +5,10 @@
 # Binary types are marked explicitly to avoid any heuristic mis-detection.
 
 # Text — source
+*.rs     text eol=lf
+*.c      text eol=lf
+*.h      text eol=lf
+*.mjs    text eol=lf
 *.py     text eol=lf
 *.ts     text eol=lf
 *.js     text eol=lf

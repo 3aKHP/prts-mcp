@@ -181,6 +181,10 @@ try {
     const local = join(temp, 'Local App Data');
     cpSync(fixture, join(local, 'prts-mcp/gamedata'), { recursive: true });
     await stdio('prts-mcp', { PRTS_TRANSPORT: 'stdio', GAMEDATA_PATH: undefined, LOCALAPPDATA: local });
+    const profile = join(temp, 'User Profile');
+    cpSync(fixture, join(profile, 'AppData/Local/prts-mcp/gamedata'), { recursive: true });
+    await stdio('prts-mcp', { PRTS_TRANSPORT: 'stdio', GAMEDATA_PATH: undefined,
+      LOCALAPPDATA: undefined, USERPROFILE: profile });
   }
   await http('prts-mcp', {});
   await http('prts-mcp-ts', { PRTS_TRANSPORT: 'stdio' });

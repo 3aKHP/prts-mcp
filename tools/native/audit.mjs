@@ -26,7 +26,9 @@ for (const name of bins) {
     const imports = run('dumpbin', ['/dependents', path]);
     dependencies = [...new Set([...imports.matchAll(/^\s+([\w.-]+\.dll)\s*$/gim)].map(m => m[1].toLowerCase()))];
     assert.ok(dependencies.length, 'Could not read PE imports');
-    const system = /^(kernel32|ntdll|ws2_32|userenv|bcrypt|advapi32|crypt32|ncrypt|secur32|iphlpapi|psapi|shell32|ole32|gdi32|user32|dbghelp)\.dll$|^api-ms-win-(core|security)-[\w-]+\.dll$/;
+    // BCryptPrimitives provides the locked getrandom/stdlib ProcessPrng call;
+    // it is an OS CNG library, not a redistributable CRT or bundled dependency.
+    const system = /^(kernel32|ntdll|ws2_32|userenv|bcrypt|bcryptprimitives|advapi32|crypt32|ncrypt|secur32|iphlpapi|psapi|shell32|ole32|gdi32|user32|dbghelp)\.dll$|^api-ms-win-(core|security)-[\w-]+\.dll$/;
     assert.ok(dependencies.every(d => system.test(d)), `Non-system or CRT DLLs: ${dependencies}`);
     details = { crt: 'static; no vcruntime/msvcp/ucrt DLL import', peHeaders: headers };
   } else {
