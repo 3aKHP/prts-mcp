@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
-import { cpSync, mkdirSync, readdirSync, rmSync, chmodSync, writeFileSync, readFileSync } from 'node:fs';
+import { cpSync, mkdirSync, readdirSync, rmSync, chmodSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { root, version, targets, npm, run, sha, json, readJson } from './common.mjs';
+import { root, version, targets, npm, run, sha, json, readJson, verifyInventory, verifyNotices } from './common.mjs';
 
 const id = process.argv[2];
 const target = targets[id];
@@ -16,11 +16,8 @@ assert.equal(build.dirty, false, 'Only clean, audited native payloads may become
 const abi = readJson(join(nativeDir, 'ABI.json'));
 assert.equal(abi.platform, target.target);
 assert.equal(abi.binaries.length, 5);
-for (const line of readFileSync(join(nativeDir, 'SHA256SUMS'), 'utf8').trim().split('\n')) {
-  const match = /^([a-f0-9]{64})  (.+)$/.exec(line);
-  assert(match && !match[2].startsWith('/') && !match[2].split('/').includes('..'));
-  assert.equal(sha(join(nativeDir, match[2])), match[1]);
-}
+const nativeFiles = verifyInventory(nativeDir);
+verifyNotices(nativeDir);
 const out = join(root, 'artifacts/npm', id);
 const packages = join(out, 'packages');
 const tarballs = join(out, 'tarballs');
@@ -30,7 +27,7 @@ mkdirSync(tarballs);
 const base = { version, repository: { type: 'git', url: 'https://github.com/3aKHP/prts-mcp.git' },
   engines: { node: '>=22', npm: '>=10' }, publishConfig: { access: 'public', tag: 'next' } };
 const manifest = [];
-function make(name, fields, fill) {
+function make(name, fields, fill, expectedFiles = []) {
   const dir = join(packages, name.replace('@','').replace('/','-'));
   mkdirSync(dir);
   json(join(dir, 'package.json'), { ...base, name, ...fields });
@@ -39,6 +36,8 @@ function make(name, fields, fill) {
   const packed = JSON.parse(run(npm, ['pack','--json','--ignore-scripts','--pack-destination',tarballs], { cwd: dir }))[0];
   assert.equal(packed.name, name);
   assert.equal(packed.version, version);
+  const paths = new Set(packed.files.map(f => f.path));
+  for (const path of expectedFiles) assert(paths.has(path), `npm pack omitted required payload file: ${name}/${path}`);
   assert(!packed.files.some(f => /(^|\/)(\.git|\.release\.lock|node_modules)(\/|$)/.test(f.path)));
   manifest.push({ name, version, filename: packed.filename, integrity: packed.integrity,
     sha256: sha(join(tarballs, packed.filename)), unpackedSize: packed.unpackedSize, files: packed.files.length });
@@ -46,11 +45,13 @@ function make(name, fields, fill) {
 const platformName = `@3akhp/prts-mcp-${id}`;
 make(platformName, { description: `PRTS-MCP native Rust payload (${id})`, license: 'MIT',
   os: [target.os], cpu: [target.arch], ...(target.os === 'linux' ? { libc: 'glibc' } : {}),
-  files: ['bin/','BUILD.json','ABI.json','SHA256SUMS','notices/','THIRD-PARTY.json','LICENSE','NOTICE'] }, dir => {
+  files: ['bin/','BUILD.json','ABI.json','SHA256SUMS','licenses/','THIRD-PARTY.json','LICENSE','NOTICE'] }, dir => {
   for (const entry of readdirSync(nativeDir)) {
     cpSync(join(nativeDir, entry), join(dir, entry), { recursive: true });
   }
-});
+}, [...nativeFiles, 'SHA256SUMS']);
+const bundleDir = join(root, 'artifacts/npm-bundle/data');
+const dataFiles = verifyInventory(bundleDir);
 make('@3akhp/prts-mcp-data', { description: 'Validated read-only Arknights data fallback for PRTS-MCP',
   license: 'SEE LICENSE IN NOTICE', files: ['data/','NOTICE'] }, dir => {
   const data = join(root, 'artifacts/npm-bundle/data');
@@ -58,7 +59,7 @@ make('@3akhp/prts-mcp-data', { description: 'Validated read-only Arknights data 
   assert.equal(bundle.schema, 'prts-mcp-bundle/v1');
   assert.equal(bundle.productVersion, version);
   cpSync(data, join(dir, 'data'), { recursive: true });
-});
+}, [...dataFiles.map(p => `data/${p}`), 'data/SHA256SUMS', 'NOTICE']);
 make('@3akhp/prts-mcp-runtime', { description: 'Shared native launch bridge for PRTS-MCP npm entries',
   license: 'MIT', main: 'runtime.cjs', files: ['runtime.cjs','platforms.json','LICENSE','NOTICE'],
   dependencies: { '@3akhp/prts-mcp-data': version },

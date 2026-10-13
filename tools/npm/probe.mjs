@@ -6,7 +6,7 @@ import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
 import { once } from 'node:events';
 import { createRequire } from 'node:module';
-import { root,version,targets,readJson,json,sha } from './common.mjs';
+import { root,version,targets,readJson,json,sha,verifyInventory,verifyNotices } from './common.mjs';
 import { startRegistry,capture,npmSpawn } from './registry.mjs';
 import { stdio } from './mcp.mjs';
 
@@ -82,6 +82,10 @@ try {
   assert.equal(nativePkg.version,version);
   assert.deepEqual(nativePkg.os,[process.platform]);assert.deepEqual(nativePkg.cpu,[process.arch]);
   checks.push({case:'matching native platform selected',platform:id});
+  const nativeHashes=verifyInventory(nativeRoot),notices=verifyNotices(nativeRoot);
+  const installedData=join(req.resolve('@3akhp/prts-mcp-data/package.json'),'..','data');
+  const dataHashes=verifyInventory(installedData);
+  checks.push({case:'actual installed tarball payload and license integrity',nativeHashes:nativeHashes.length,noticeReferences:notices,dataHashes:dataHashes.length});
   const profile = spawn(process.execPath,['tools/native/probe.mjs',id,'--npm-root',globalRoot],{cwd:root,env,stdio:'inherit'});
   const [code] = await once(profile,'close'); assert.equal(code,0);
   checks.push({case:'installed new/compat entry profiles, frozen outputs and protocols',evidence:`artifacts/native/${id}/npm-runtime-evidence.json`});
