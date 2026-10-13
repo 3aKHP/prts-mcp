@@ -50,6 +50,8 @@ tools/npm/pack.mjs 只接受经过审计、校验清单一致且 dirty=false 的
 
 probe.mjs 使用只读 loopback registry 和隔离 npm 配置/缓存，执行真实全局双入口安装、npx、npm ci、无用户数据的备用查询、命令与协议、退出码、信号/Windows 父进程终止、版本不匹配和缺少 optional 包的诊断。非当前平台只提供用于锁文件解析的模拟元数据，并断言 npm 没有下载它们；异平台运行结论来自各自原生 runner。具体证据位于 npm-evidence.json 与 npm-runtime-evidence.json，安装包内容不能仅以模板审查认领通过。
 
+M2B 五个平台的实际安装与运行已通过，检查数量和 CI 来源见[验收记录](reports/3.0-m2b-npm-distribution.md)。Windows 的完整数据解包安装需要比协议调用更长的测试预算；超时仍判失败，具体耗时不能当作用户机器上的安装速度承诺。
+
 CI 留存 tarball 和验收证据 14 天，不执行 npm publish，也不改写 npm latest、旧版 LTS 或 GitHub Latest。当前 npm 公开安装说明仍应使用已发布的 2.8.x；3.x 候选安装示例在 M3 真正发布后补充。
 
 npm 筛选与 optionalDependencies 行为参见 [package.json 官方说明](https://docs.npmjs.com/cli/v11/configuring-npm/package-json/)，锁文件安装见 [npm ci](https://docs.npmjs.com/cli/v11/commands/npm-ci/)，npx 对应 [npm exec](https://docs.npmjs.com/cli/v11/commands/npm-exec/)。

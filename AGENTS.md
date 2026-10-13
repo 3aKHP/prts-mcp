@@ -17,7 +17,7 @@ Read CLAUDE.md and docs/dev/STYLE.md before non-trivial changes. Read docs/dev/V
 
 ## Runtime
 
-The root is a native Cargo project. rust-toolchain.toml pins the development compiler; Cargo.lock pins dependencies; Cargo.toml declares Rust 1.89 minimum. Source builds require a C compiler for native regexp and OS diagnostics. Prebuilt binaries carry those components, so users need no compiler. M2A validates five native archive targets; docs/dev/NATIVE-PLATFORMS.md owns exact ABI/runtime evidence. npm/Docker installation, public publishing and candidate E2E remain later migration stages.
+The root is a native Cargo project. rust-toolchain.toml pins the development compiler; Cargo.lock pins dependencies; Cargo.toml declares Rust 1.89 minimum. Source builds require a C compiler for native regexp and OS diagnostics. Prebuilt binaries carry those components, so users need no compiler. M2A validates five native archive targets; docs/dev/NATIVE-PLATFORMS.md owns exact ABI/runtime evidence. M2B validates npm installation/execution on those platforms; docs/dev/NPM-DISTRIBUTION.md owns packaging and acceptance. Docker installation, public publishing and candidate E2E remain later migration stages.
 
 In WSL keep the checkout on the Linux filesystem. Development oracle/packaging tools use Node >=22 and Bun 1.3.14; they are not the production business runtime. Historical TS/Python comparison sources are reconstructed from the fixed 2.8.1 commit under ignored .reference/, never restored to root python/ or ts/.
 
