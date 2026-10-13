@@ -8,7 +8,7 @@ First Rust candidate for GitHub/GHCR publication under the maintainer’s AFK au
 
 - Prepare full native release candidates with validated read-only fallback data on all five platforms, verify archive installation without developer tools, and collect one exact-version snapshot for npm, native and Docker channels. Public publishing and stable latest are not enabled by this preparation.
 
-- Prepare native Linux x64/ARM64 Docker packaging with validated fallback data, original dependency notices and preserved default stdio/explicit HTTP, root permissions and legacy writable volumes; add tini to forward container stop signals. Both native architectures pass scoped development image verification; GHCR publication remains a later stage.
+- Prepare native Linux x64/ARM64 Docker packaging with validated fallback data, original dependency notices and preserved default stdio/explicit HTTP, root permissions and legacy writable volumes; add tini to forward container stop signals. Both native architectures pass scoped development image verification; Native packaging has passed; actual GHCR publication is verified separately by the candidate workflow.
 
 - Prepare native-backed prts-mcp and prts-mcp-ts npm entries, shared exact-version platform/runtime packages and validated read-only game-data fallback, with real installation verification on native CI. These development tarballs are not published npm releases.
 - Keep native npm stdio/HTTP profiles, standard streams and exit behavior; diagnose missing optional platform packages or version mismatches. Windows npm launches monitor parent-process exit so force-closing the Node bridge stops the native server.
@@ -19,6 +19,6 @@ First Rust candidate for GitHub/GHCR publication under the maintainer’s AFK au
 - Compile vendored native C regexp into the server; no JS VM or JS/TS business runtime is needed.
 - Prepare five native platform archives with static regexp, bundled dependency notices, ABI audits and detached runtime checks; Rust source builds require 1.89 or newer. 3.x development artifacts are not public releases.
 - Use the Windows LOCALAPPDATA user-data location during actual startup, matching the frozen TS default path contract; preserve Windows file identity and drive prefixes for activation/extraction, movable relative generation pointers on desktop platforms, and actual Windows/macOS memory diagnostics.
-- Establish full Linux Rust validation, standalone Cargo source packaging and five native archive build/runtime checks. npm entry/platform installation, published Docker and release automation follow in M2B/C and M3; this source checkpoint alone does not establish public-channel publication.
+- Establish full Linux Rust validation, standalone Cargo source packaging and five native archive build/runtime checks. Five-platform npm installation and dual-native Docker packaging have passed; npm registry publication remains pending account setup, and public GitHub/GHCR verification is separate; this source checkpoint alone does not establish public-channel publication.
 
 Older Python/TS changelogs remain on their historical tags and LTS branches.

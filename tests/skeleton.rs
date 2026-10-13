@@ -3,7 +3,7 @@
 #[test]
 fn server_identity_matches_plan() {
     assert_eq!(prts_mcp_rust::SERVER_NAME, "PRTS_Wiki_Assistant");
-    assert_eq!(prts_mcp_rust::SERVER_VERSION, "3.0.0-dev.0");
+    assert_eq!(prts_mcp_rust::SERVER_VERSION, env!("CARGO_PKG_VERSION"));
 }
 
 /// docs/07 phase tool-count contract: the final surface is 24 real tools
