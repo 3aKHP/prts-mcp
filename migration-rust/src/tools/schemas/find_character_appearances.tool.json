@@ -1,0 +1,28 @@
+{
+ "name": "find_character_appearances",
+ "description": "查找某个角色在剧情中的出场（说话或被提及）。 返回该角色作为对话发言者（speaks）或名字出现在台词/旁白文本中（mentioned）的所有章节，每章标注 speaks / mentioned / 两者皆有，适合快速定位角色的登场分布。 如需精确台词，可用返回的 story_key 调用 read_story。",
+ "inputSchema": {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+   "name": {
+    "type": "string",
+    "description": "角色名（干员中文名或「博士」）。speaks 按对话角色名精确匹配，mentioned 按名字在台词/旁白文本中的子串匹配——请使用完整名字以免误报（如「阿」会命中「阿米娅」）。"
+   },
+   "scope": {
+    "description": "限定活动 ID，如「act31side」。不填则检索全部活动。",
+    "type": "string"
+   },
+   "max_events": {
+    "default": 50,
+    "description": "最多返回章节数，默认 50。",
+    "type": "integer",
+    "minimum": 1,
+    "maximum": 200
+   }
+  },
+  "required": [
+   "name"
+  ]
+ }
+}

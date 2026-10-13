@@ -1,0 +1,26 @@
+{
+  "case": "story.summary.official-fallback",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "68ce42ad-b262-4ed0-9ade-05c6e269ddf4",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "官方级：终章一句话。"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9617
+    }
+  }
+}

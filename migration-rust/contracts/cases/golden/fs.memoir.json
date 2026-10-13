@@ -1,0 +1,26 @@
+{
+  "case": "fs.memoir",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "full-story-r2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "70ead090-2236-403d-8e41-d5ce966fcb1a",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "# 12F（code: 12fce，id: 009）\n共 1 章密录\n\n-  一些选择（key: obt/memory/story_12fce_1_1）"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9811
+    }
+  }
+}

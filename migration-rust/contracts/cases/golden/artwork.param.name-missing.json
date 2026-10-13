@@ -1,0 +1,27 @@
+{
+  "case": "artwork.param.name-missing",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-images-v1",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "419d44af-4b12-49ae-b460-1bfffe952fa2",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Input validation error: Invalid arguments for tool operator_artwork: operator_name: Invalid input: expected string, received undefined"
+          }
+        ],
+        "isError": true
+      },
+      "jsonrpc": "2.0",
+      "id": 9990
+    }
+  }
+}

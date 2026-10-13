@@ -1,0 +1,785 @@
+{
+  "baseline": "e0ba36096cdd46640166b0a5db02902fa9a6a24c",
+  "files": [
+    {
+      "path": "tests/parity-fixtures/character_appearances.json",
+      "sha256": "24f8a25460ae53a93792664241c50690ae23fae9b56ad1614f6559950f7ffcf0",
+      "lines": 25
+    },
+    {
+      "path": "tests/parity-fixtures/character_appearances_empty.json",
+      "sha256": "a761ba0dd68c29471ac02fde22c8ea291de964650a5deced77c7ca1b05a8c701",
+      "lines": 8
+    },
+    {
+      "path": "tests/parity-fixtures/data-release-selection.json",
+      "sha256": "1ab82dbb16c58789c10cf58657a7e8b309fb2c14b88f916e42d4d0824550b056",
+      "lines": 11
+    },
+    {
+      "path": "tests/parity-fixtures/enemy_appearances.json",
+      "sha256": "7aae7779875652e908a4845fe94d57b19623060f1f068e0cfebc296b1a978f83",
+      "lines": 15
+    },
+    {
+      "path": "tests/parity-fixtures/enemy_appearances_empty.json",
+      "sha256": "ffc59d152657985687daa45e1b852ed410cfad51aa2f80449af64919ad93142d",
+      "lines": 9
+    },
+    {
+      "path": "tests/parity-fixtures/enemy_info.json",
+      "sha256": "0d6259d1ef1c817cc2341b65df138645fd3fc08a0f10fe79d611aebb7bcf1854",
+      "lines": 17
+    },
+    {
+      "path": "tests/parity-fixtures/enemy_info_with_stats.json",
+      "sha256": "c8eb84f8b2e780449a2d56dacc09a1f93e22a4ae38997de58caf4ba5fd885e74",
+      "lines": 38
+    },
+    {
+      "path": "tests/parity-fixtures/item_info.json",
+      "sha256": "b3f8d175aa62767f8ccce144f20a17ac9cb2bc180858a712b2f5696a35508ca6",
+      "lines": 28
+    },
+    {
+      "path": "tests/parity-fixtures/list_enemies.json",
+      "sha256": "3ab1fcb281051b6948e0d72cf17bc69508fc7f16c166af68cfa16b825fc085fb",
+      "lines": 28
+    },
+    {
+      "path": "tests/parity-fixtures/list_enemies_offset_empty.json",
+      "sha256": "661470ba0bf2670c2b71e3a3f515829340376ad471e9968766f02506910642fe",
+      "lines": 12
+    },
+    {
+      "path": "tests/parity-fixtures/list_items.json",
+      "sha256": "bc1068efd18b807e89c9b67ed168ed5a8fd599ed2483904a591c3e6f65c6ca47",
+      "lines": 31
+    },
+    {
+      "path": "tests/parity-fixtures/list_items_empty.json",
+      "sha256": "8765b648a7acc77b1a37c15cf626c3cbefe80240b443ea2b82a3eca2ff7d1fd6",
+      "lines": 11
+    },
+    {
+      "path": "tests/parity-fixtures/list_stages.json",
+      "sha256": "88b4d4be7440ed80c09f920668daf1d7b7bba2b3b66f7584e3bbf010edb2213a",
+      "lines": 51
+    },
+    {
+      "path": "tests/parity-fixtures/list_stages_daily.json",
+      "sha256": "9f50d7ef9b5dbb9d6f19af8e197251085593af476bddefd906c07e84613dd371",
+      "lines": 21
+    },
+    {
+      "path": "tests/parity-fixtures/list_stages_empty.json",
+      "sha256": "9707c07f5b93007f4f68576cf82f2e0d005c9abecdd2731026f6f44212644db6",
+      "lines": 10
+    },
+    {
+      "path": "tests/parity-fixtures/list_stages_offset_empty.json",
+      "sha256": "21b15128204e13cce85d874029864657bc1b55304b5f17d4c5eb1b8df0a1d413",
+      "lines": 10
+    },
+    {
+      "path": "tests/parity-fixtures/list_stages_page.json",
+      "sha256": "8e2867970233332a23552349395871b59701031e2a4404e3c256b66625ebff36",
+      "lines": 31
+    },
+    {
+      "path": "tests/parity-fixtures/list_stories.json",
+      "sha256": "5a6314901b619ee013d68777d8164a8d2e9ac1c59df4cd35c3f291cf22c8e445",
+      "lines": 19
+    },
+    {
+      "path": "tests/parity-fixtures/list_stories_empty_event.json",
+      "sha256": "e954e7085357d7fe9764eecfb4a5fd3d0ee400b3211c85d52b1c68f46eb2ba88",
+      "lines": 6
+    },
+    {
+      "path": "tests/parity-fixtures/list_stories_no_summary.json",
+      "sha256": "78c889367e09d4deea350475c9d3f6574eeafa79a8d7ceedcc4a7ef81ca53fe0",
+      "lines": 21
+    },
+    {
+      "path": "tests/parity-fixtures/list_stories_roguelike.json",
+      "sha256": "6e0b7b2305a083b697fd8d99a440fb687cfa6b1461d445fe236f5474397cbf26",
+      "lines": 19
+    },
+    {
+      "path": "tests/parity-fixtures/list_stories_with_summaries.json",
+      "sha256": "6f8e0e62a73bc126cd51c6e8753322acc3b79a76d484ba940b84173ad783f318",
+      "lines": 22
+    },
+    {
+      "path": "tests/parity-fixtures/operator-query-cases.json",
+      "sha256": "e43c3bd96ad06b2bf7f13dbc2939ef0aa258cc87d53bfae84b18277089ed3dfb",
+      "lines": 19
+    },
+    {
+      "path": "tests/parity-fixtures/operator-talent-cases.json",
+      "sha256": "007c641665ce03c9a2591748b8bb2a9d5da8fdd233b1dca0047968240cefcb30",
+      "lines": 32
+    },
+    {
+      "path": "tests/parity-fixtures/operator_basic_info.json",
+      "sha256": "68a509b8cfe1711b5ebd0a318647f96021ae7fb1f05214e6b6fbe9d8ac4e9e94",
+      "lines": 57
+    },
+    {
+      "path": "tests/parity-fixtures/operator_memoirs.json",
+      "sha256": "ac1b06f1043243ac0eb111458bb3c7335f65a1592e3b26058b975ba52370336a",
+      "lines": 13
+    },
+    {
+      "path": "tests/parity-fixtures/operator_skills.json",
+      "sha256": "ad58268a0c7a72a55c5c37fec8a4b0a4e914bfe96f30e180df971b2b1fa6cd58",
+      "lines": 193
+    },
+    {
+      "path": "tests/parity-fixtures/operator_stats.json",
+      "sha256": "d5936be80819c200f51c404eaf5befb1741d49888b8eb4747dd317aad2371bf2",
+      "lines": 98
+    },
+    {
+      "path": "tests/parity-fixtures/operator_stats_level.json",
+      "sha256": "72730a69e4fa93ed6ab2ac4d4f79c640451c1f71b752e0a87e9cdc887aa47e25",
+      "lines": 26
+    },
+    {
+      "path": "tests/parity-fixtures/search_building_skills.json",
+      "sha256": "6792cd163f0e6861fc961fe8792beb04594515b1fdc01a2be506319e283db049",
+      "lines": 14
+    },
+    {
+      "path": "tests/parity-fixtures/search_building_skills_empty.json",
+      "sha256": "ddca82db9ddfd789300906f8bb1f85f29e00bd785fd3bd64feaa63956105f339",
+      "lines": 6
+    },
+    {
+      "path": "tests/parity-fixtures/search_enemies.json",
+      "sha256": "5e0e721a3c91340a00ab756972f2e6f5196f2139513fdda13b3f1ad976faeda1",
+      "lines": 22
+    },
+    {
+      "path": "tests/parity-fixtures/search_enemies_empty.json",
+      "sha256": "be81ba34ae3236018b60e3b292e7ae011d59b94a3d21ed7ed942d1df127fbc43",
+      "lines": 6
+    },
+    {
+      "path": "tests/parity-fixtures/search_items.json",
+      "sha256": "945410fdd9245362bcf7aac77afb6ab2373faa4352f902098d1a2006db03143d",
+      "lines": 18
+    },
+    {
+      "path": "tests/parity-fixtures/search_items_empty.json",
+      "sha256": "ee22189a70d28d953217c4a1f119f0be294dbbb728bc767a65f4e4a3ef0d42c0",
+      "lines": 6
+    },
+    {
+      "path": "tests/parity-fixtures/search_operators.json",
+      "sha256": "5f2f93bbc9c045934f20b305b0039be22a02b823dcf1dd70976deddd83669694",
+      "lines": 19
+    },
+    {
+      "path": "tests/parity-fixtures/search_operators_empty.json",
+      "sha256": "461cd49ccb84c72e7348bdcda6c08836ccfeb2c206a9c54467bba83425dbb14f",
+      "lines": 6
+    },
+    {
+      "path": "tests/parity-fixtures/search_prts.json",
+      "sha256": "cab4d60dc4df6aeff6c61f7aa27ba1af5b05c8634f0e8ebd6641a768514b7384",
+      "lines": 15
+    },
+    {
+      "path": "tests/parity-fixtures/search_prts_empty.json",
+      "sha256": "f30e29a2bfad601c71c92d32762c9c2e52e0f71117ee75f6cec80f0c9f9c37ce",
+      "lines": 10
+    },
+    {
+      "path": "tests/parity-fixtures/search_skills.json",
+      "sha256": "c3a06c1514368d428e063c59d6e491eb0eb63f8b9e7785e25ce3be05798ab4d1",
+      "lines": 17
+    },
+    {
+      "path": "tests/parity-fixtures/search_skills_empty.json",
+      "sha256": "3aa061e576b9cba05b44996ce30885f9c3a7ec011e9c5eaa4f2674364915c39a",
+      "lines": 6
+    },
+    {
+      "path": "tests/parity-fixtures/search_stages.json",
+      "sha256": "3333f597e8062e0cc164749f933e30a994cb2181b0e561a31050f6a3ac445e98",
+      "lines": 20
+    },
+    {
+      "path": "tests/parity-fixtures/search_stages_empty.json",
+      "sha256": "4062586206966c0764ef14d7c313a78d2759f87c79a6ec5b94035feff344ca98",
+      "lines": 6
+    },
+    {
+      "path": "tests/parity-fixtures/search_stories.json",
+      "sha256": "76151c7115edacdaa8e1c7803898ad7f69c7522594c3a3b10674e0bf36cbbcce",
+      "lines": 28
+    },
+    {
+      "path": "tests/parity-fixtures/search_stories_empty.json",
+      "sha256": "f7f584905c153cfa6be262928e8995e8be97a2e815385178d9dc3dfa52477ca7",
+      "lines": 11
+    },
+    {
+      "path": "tests/parity-fixtures/speakers_in_event.json",
+      "sha256": "79da5a870c7e51270961212856dc9b4d9f4b5d610cac2cfb7a5b10c32e3df167",
+      "lines": 14
+    },
+    {
+      "path": "tests/parity-fixtures/speakers_in_event_empty.json",
+      "sha256": "c9d5207cb13821ae4e2aa67f3793735e4199769b09fd590f6feeb983e29b4d41",
+      "lines": 5
+    },
+    {
+      "path": "tests/parity-fixtures/stage_enemies.json",
+      "sha256": "65622f3771f1238785c7e7f02cc991c2e78876ff972c0e80f7b93f04af3197da",
+      "lines": 31
+    },
+    {
+      "path": "tests/parity-fixtures/stage_info.json",
+      "sha256": "133c735a89f7c47aa108fe36c152104ef28938d2629bb4f6a674f24b06d19ac5",
+      "lines": 34
+    },
+    {
+      "path": "tests/parity-fixtures/story_events_activities.json",
+      "sha256": "3c023ad131c4ca18229642de16cab9edbc5189a3fe7a8d69484ba300e3b80972",
+      "lines": 33
+    },
+    {
+      "path": "tests/parity-fixtures/story_events_all.json",
+      "sha256": "b1ba7b1cd0fabb3128dc2bf29d117eab2fdf3edf7f116fc784861e3b34710065",
+      "lines": 45
+    },
+    {
+      "path": "tests/parity-fixtures/story_events_empty.json",
+      "sha256": "1ae4671880da9bb779174f35ffa89c47bb5ba59da97d20ee00f53d447a894df8",
+      "lines": 8
+    },
+    {
+      "path": "tests/parity-fixtures/story_events_roguelike.json",
+      "sha256": "bb7f621c4d11b537e625c1c84c904bf13843165f8e2bd8bfbb6800233342e62a",
+      "lines": 15
+    },
+    {
+      "path": "tests/parity-fixtures/template_nested_rendering.json",
+      "sha256": "f8fc8e0d70851b4d23faf47d9ce8b05da58f816a97e5a82b8d18e62acea723f1",
+      "lines": 23
+    },
+    {
+      "path": "tests/parity-fixtures/tool-bounds.json",
+      "sha256": "b46294f1d82120de74bda9576411be9adbd6da364e2c37f80221f1bb830917f0",
+      "lines": 39
+    },
+    {
+      "path": "ts/src/activation.ts",
+      "sha256": "4a83ec5bae44efcb16386f6b4022442a3debc2597a1c441603782bf8b079d20b",
+      "lines": 121
+    },
+    {
+      "path": "ts/src/api/prtsWiki.ts",
+      "sha256": "e6abbf3bd7f39aa31a71ad2faff4e3d63a5faffa3a0d4d1a1085445f446dbb56",
+      "lines": 630
+    },
+    {
+      "path": "ts/src/api/templateRenderer.ts",
+      "sha256": "58eb3bfe857bf8e4d37117cb048044d005f4d9577149982f5979eb27fe50413f",
+      "lines": 190
+    },
+    {
+      "path": "ts/src/cacheStats.ts",
+      "sha256": "2e0394e52876f46e05744baffcf9231669b4768f7f290635bc487a76062c4d93",
+      "lines": 67
+    },
+    {
+      "path": "ts/src/config.ts",
+      "sha256": "73793c3d110b45032a5226481a7cfce6416d634808eeb7a23c9bfdeff5f663c8",
+      "lines": 339
+    },
+    {
+      "path": "ts/src/data/artworkFormat.ts",
+      "sha256": "c600584c9b3b13997fb660fa6e14ead762ddfb5801e75645b08b63c38aa4fabe",
+      "lines": 52
+    },
+    {
+      "path": "ts/src/data/artworkLocal.ts",
+      "sha256": "f2d63d59fbe63a42dbd9bff2b38b0f84eb9c92cd65b92c3c7b96ed67c930f6a5",
+      "lines": 231
+    },
+    {
+      "path": "ts/src/data/artworkMediawiki.ts",
+      "sha256": "a6b73d62c1368b0b90eb9af99237b488c65bf143150623ab2b5728b105841b54",
+      "lines": 280
+    },
+    {
+      "path": "ts/src/data/building.ts",
+      "sha256": "16f68dc1dd2b14068fe7902fa15cfff538823b3de1b5ea1b96a41c4d2da2a0ce",
+      "lines": 247
+    },
+    {
+      "path": "ts/src/data/cacheMetrics.ts",
+      "sha256": "038493065051e03aada3d25dbccc3376a3b6ff713f272f7ce14ae03e2d40c22f",
+      "lines": 28
+    },
+    {
+      "path": "ts/src/data/datasetAccess.ts",
+      "sha256": "d63cc4522bf771012a5a3f4bcdbb44249c104303555ded0b6e59f30ddd8b1db7",
+      "lines": 225
+    },
+    {
+      "path": "ts/src/data/datasets.ts",
+      "sha256": "a0c1527bd2bac4e9aec676849870fddaf3b569b554c2ceed561b0acf0148e0ac",
+      "lines": 143
+    },
+    {
+      "path": "ts/src/data/enemy.ts",
+      "sha256": "d66a19fa5f37e02288e359c96f1920bba6aa0fa4028c2664f19f04504331261c",
+      "lines": 475
+    },
+    {
+      "path": "ts/src/data/enemyDatabase.ts",
+      "sha256": "81b0ea1484fae0caee6134a905294184dfa6d8f6226a8206574d3c11eea1d513",
+      "lines": 76
+    },
+    {
+      "path": "ts/src/data/enemyRender.ts",
+      "sha256": "212a7a33fc2a60ae13c2cf501ed4926c9cf169e7699f4a2706efde532fceb046",
+      "lines": 95
+    },
+    {
+      "path": "ts/src/data/enemyStats.ts",
+      "sha256": "2361e4c11052f2951112e060f90a1f693a0705a43d41272f5614ff493025df63",
+      "lines": 239
+    },
+    {
+      "path": "ts/src/data/gamedataAttrs.ts",
+      "sha256": "b7fed08d3a4701a06a59b1946998e466d6b77d5561dc61451216878182c52a50",
+      "lines": 22
+    },
+    {
+      "path": "ts/src/data/images.ts",
+      "sha256": "b80f1b2426c888a85dcd5ad85798c4aa6c4724a7cf71ed5dec298a4971828395",
+      "lines": 238
+    },
+    {
+      "path": "ts/src/data/item.ts",
+      "sha256": "2c9c2dc3357946ffb4f8bfda5a7ba6b08b4cd290cc00b93b4acdc5090808d614",
+      "lines": 497
+    },
+    {
+      "path": "ts/src/data/levelParser.ts",
+      "sha256": "8a6e981f6cbfaae9c2efb31c77fffd84b7a2adacbfcdd965b8a7e7448b100394",
+      "lines": 66
+    },
+    {
+      "path": "ts/src/data/messages.ts",
+      "sha256": "49359502fd92db3b4d7a7ea8c69772fa6afcec6f7ddde03d8dd118bef79fd4d1",
+      "lines": 48
+    },
+    {
+      "path": "ts/src/data/operator.ts",
+      "sha256": "84d8da2ac5ceb1b23d5547b1dc4a922f2b39d760adf2b7edfc1d571205400c68",
+      "lines": 496
+    },
+    {
+      "path": "ts/src/data/operatorStats.ts",
+      "sha256": "7d59d3336067a0bdab2f9c9d3ff138e81acfb9fd48916392a3b987f49580c753",
+      "lines": 292
+    },
+    {
+      "path": "ts/src/data/search.ts",
+      "sha256": "e99be83d659fc9e9353b4874baa1eca3b3b50e8fbbefba81fa9ac03b70439737",
+      "lines": 215
+    },
+    {
+      "path": "ts/src/data/skill.ts",
+      "sha256": "4afaf27614e88b31af7b9711676420f96a0e43fe010df9bebfd09cf2c24db677",
+      "lines": 436
+    },
+    {
+      "path": "ts/src/data/sort.ts",
+      "sha256": "1ed83928c84388e651cca910b0e4e01644fe5b39c70d097f4e4754720529e3fd",
+      "lines": 14
+    },
+    {
+      "path": "ts/src/data/stage.ts",
+      "sha256": "b40840eb82e2b6992c8817f9e3e05cdaa00e0fa0ac034dc2ab12d20ae20f64e7",
+      "lines": 555
+    },
+    {
+      "path": "ts/src/data/stageEnemy.ts",
+      "sha256": "3bd229286756bc70247ad61aa1c3f4c12b64516d3fbd929bc59b9add11f5cbd4",
+      "lines": 359
+    },
+    {
+      "path": "ts/src/data/stores.ts",
+      "sha256": "94638d4bd2a6369b3442b11d3ab0a62db4194a2839c90f92ea9b5f38206bb202",
+      "lines": 158
+    },
+    {
+      "path": "ts/src/data/story.ts",
+      "sha256": "f185827d0b613127d440ec44b758af389b929ddb44b0a111fdba80659db497c4",
+      "lines": 95
+    },
+    {
+      "path": "ts/src/data/storyCharacter.ts",
+      "sha256": "c7285c430121e03a8c30ba5afc0b72e2ec6ac4107084d30f6ddaad97e8e8c899",
+      "lines": 267
+    },
+    {
+      "path": "ts/src/data/storyMemoir.ts",
+      "sha256": "e75f50e9e803745907ecad408158683a831dfe7e58b8b6cd90c558cc1a7d1313",
+      "lines": 213
+    },
+    {
+      "path": "ts/src/data/storyReader.ts",
+      "sha256": "a9d344773af2441a77c65ba7a2fe73efc0b88fe477fb131d76e1389320733993",
+      "lines": 647
+    },
+    {
+      "path": "ts/src/data/storySearch.ts",
+      "sha256": "52a43fb727d7bd1553d86b42d484e1abce4efbc416c2d729130e20744b19372a",
+      "lines": 366
+    },
+    {
+      "path": "ts/src/data/storySummary.ts",
+      "sha256": "1c26b5a3f2862e21c0055d4d941556d318c0c7c33c3192ea60b62c7a17cef17e",
+      "lines": 27
+    },
+    {
+      "path": "ts/src/data/sync.ts",
+      "sha256": "02dedac3cfef7f5f7f9d4c1182246e03b1bd7b78bbd65e48073388aa6dcad90c",
+      "lines": 49
+    },
+    {
+      "path": "ts/src/metrics.ts",
+      "sha256": "613410e97d350e495070caaaa53234b9f4e3c5948e5a6317ce799ef8ffc8a6c8",
+      "lines": 201
+    },
+    {
+      "path": "ts/src/output.ts",
+      "sha256": "e7f8e30a5bad7ed5ffd475ee7afdca3329df43d9f335d95bd397003e7c0a3d6d",
+      "lines": 76
+    },
+    {
+      "path": "ts/src/server-bun.ts",
+      "sha256": "bd123879b0950832973976229a5b7f0c6ff587efc230eebaa9143434b712c89b",
+      "lines": 21
+    },
+    {
+      "path": "ts/src/server-core.ts",
+      "sha256": "de00a53888a58cc75d9302e5852bad66d2d1de65341ac90e2fcb53d25a899ef3",
+      "lines": 45
+    },
+    {
+      "path": "ts/src/server-stdio.ts",
+      "sha256": "b6bb7263db94d86d4fb1fa60d0e28466f438618ed87ca3d828d4a3e0aaaa7965",
+      "lines": 43
+    },
+    {
+      "path": "ts/src/server.ts",
+      "sha256": "f42696fa9e17dc6767c5e059905d8a48b994f34c3c8515639e47a3a7a19b76ba",
+      "lines": 263
+    },
+    {
+      "path": "ts/src/startupSync.ts",
+      "sha256": "93f6ff4a7f361e8c91a3e3cf03226ccc2c79d6f22f14582a23d16863a0da8a1c",
+      "lines": 338
+    },
+    {
+      "path": "ts/src/sync/gamedataPair.ts",
+      "sha256": "5bc41b21379104ccbbec3f8ab5c5c4ae8fc84dc3fe9bbed493034802ef56b676",
+      "lines": 333
+    },
+    {
+      "path": "ts/src/sync/generationStore.ts",
+      "sha256": "4db8a60804ca773f2981ac0537a63112ff1b0f494ab15d1e0b47381b95231de4",
+      "lines": 79
+    },
+    {
+      "path": "ts/src/sync/imagesSync.ts",
+      "sha256": "44dcbb42e1d76d40becad85902a7bd1fdc12c4f23f5b4eedf9ddb1fc700bc71f",
+      "lines": 456
+    },
+    {
+      "path": "ts/src/sync/primitives.ts",
+      "sha256": "1d0257bedcb4a6363e56f2e3e155486de9c69ca86a675214e149e99de252756e",
+      "lines": 58
+    },
+    {
+      "path": "ts/src/sync/release.ts",
+      "sha256": "877b6a64f1f58c2e3e0dc614a12723c1948124a5bd53167801e355f6e700fda2",
+      "lines": 387
+    },
+    {
+      "path": "ts/src/sync/releaseActivation.ts",
+      "sha256": "17b7a46be25cad6ff8443b39e41d9a4763ad050abb4f8af5af08ce8241fd742a",
+      "lines": 315
+    },
+    {
+      "path": "ts/src/sync/releaseDiscovery.ts",
+      "sha256": "8d96654e59a8f77045f528f1af6d02d3dfb0302147a12dd65efde97f725a2acd",
+      "lines": 267
+    },
+    {
+      "path": "ts/src/sync/transport.ts",
+      "sha256": "ea1b89f3bc647c2e42205e4632acc298c8d252f3a56480fb2c21e7abbc138c67",
+      "lines": 182
+    },
+    {
+      "path": "ts/src/sync/types.ts",
+      "sha256": "455c0cbfbfd761f489b0f9dfb39b663d38eca70f02bea4011dbc0aa27fb4b0aa",
+      "lines": 45
+    },
+    {
+      "path": "ts/src/tools/artworkTools.ts",
+      "sha256": "92bda0c8a24024a26234fac489f042d0963a5f030216b46f88557c7c46c39f6b",
+      "lines": 139
+    },
+    {
+      "path": "ts/src/tools/gamedataTools.ts",
+      "sha256": "9c245c1c1d1b331c53bc4d73c15382426c7fe10ae41f2345bdb3d1d5ad3cf319",
+      "lines": 302
+    },
+    {
+      "path": "ts/src/tools/prtsTools.ts",
+      "sha256": "68c29f789289c3c4b56f406ddd09f56da66c04d78ac1d08dcce1a693c8fe8c07",
+      "lines": 154
+    },
+    {
+      "path": "ts/src/tools/registerTool.ts",
+      "sha256": "0db70a7583cc4ec3d803317989ea388b1ca1b11cb76b3f91643998e982b5c821",
+      "lines": 19
+    },
+    {
+      "path": "ts/src/tools/storyTools.ts",
+      "sha256": "bc753e431b39d280a7fa8617b7c8996b6ce4dbec3a7dc05e0f54fedae3d8058e",
+      "lines": 389
+    },
+    {
+      "path": "ts/src/utils/numbers.ts",
+      "sha256": "931242e76be8a14fb4786d0aae74734dd10f02f3efa8acbce95b98f3da8efd9b",
+      "lines": 18
+    },
+    {
+      "path": "ts/src/utils/sanitizer.ts",
+      "sha256": "1a64549943e1f4487ea7216fda918f5c7d309729f57f495582681b43138b6e92",
+      "lines": 22
+    },
+    {
+      "path": "ts/tests/artworkLocal.test.ts",
+      "sha256": "bbefb27284b1e07bba15a6541a4b4b6c78567e653f9799a7c6c20d75f2756b07",
+      "lines": 124
+    },
+    {
+      "path": "ts/tests/artworkMediawiki.test.ts",
+      "sha256": "ad8e2cc23afa965a7e8327a4325488ed436cb744495a3126a86576424e2fc336",
+      "lines": 197
+    },
+    {
+      "path": "ts/tests/autoSync.test.ts",
+      "sha256": "b2077ded07a9d148c52f794e9a75d015777ac05d66a1cb68332c8851fa2adf3d",
+      "lines": 138
+    },
+    {
+      "path": "ts/tests/building.test.ts",
+      "sha256": "dc1f5c6e042635787176e559b69a2d29094caa8a42a76f2de756ac31588fa3d5",
+      "lines": 230
+    },
+    {
+      "path": "ts/tests/config.test.ts",
+      "sha256": "7a03dde488c2270cd57450e67e4bc7995e0b39daf93ac6eb3da7028fb0715d8a",
+      "lines": 362
+    },
+    {
+      "path": "ts/tests/datasetAccess.test.ts",
+      "sha256": "1309b1f0905e4e5b03cd78427de90eeaf04509c673e51b471d7e78d1b1c45450",
+      "lines": 217
+    },
+    {
+      "path": "ts/tests/datasets.test.ts",
+      "sha256": "0cb1eaedab9c551930d35acda54b880040bd3f3d47fa1f0260d7b36373372bab",
+      "lines": 144
+    },
+    {
+      "path": "ts/tests/e2e.test.ts",
+      "sha256": "f04373d924f222f37c54b6cabb19b00f727bd56191d01dd1c06f5d051629f64b",
+      "lines": 453
+    },
+    {
+      "path": "ts/tests/e2eStdio.test.ts",
+      "sha256": "ad130d412fcea468a6ae66559147411f6083a50b36afde29eb39e48cea938265",
+      "lines": 319
+    },
+    {
+      "path": "ts/tests/enemy.test.ts",
+      "sha256": "0260721a28f34b08d81741d734c51ae2e5a393f4e146162b64bdeb3c71f54928",
+      "lines": 370
+    },
+    {
+      "path": "ts/tests/enemyStats.test.ts",
+      "sha256": "2b0423fd231fe813eb5646dd4acc21fe3d4cf1720f551f634b6528ef7316e813",
+      "lines": 181
+    },
+    {
+      "path": "ts/tests/fixtures/hangingFetch.ts",
+      "sha256": "92452166310b354c34ea3b763ca7d341f02f97fb1cf7ae3fdbb17f4887ad42d5",
+      "lines": 4
+    },
+    {
+      "path": "ts/tests/fixtures/operatorData.ts",
+      "sha256": "e5e4b926c6d21cad1e567150d20e00793dba4b601606ff6800b2eaa708dcccad",
+      "lines": 276
+    },
+    {
+      "path": "ts/tests/fixtures/storySupplement.ts",
+      "sha256": "08991f55afe9002c8993247a51688d0f746b7cc05cde3138f01deacc57a488c6",
+      "lines": 65
+    },
+    {
+      "path": "ts/tests/generationStore.test.ts",
+      "sha256": "7172c529ad5ae07ae12963c5307b07ef8fc206497b6481cea5dfd60954b12479",
+      "lines": 71
+    },
+    {
+      "path": "ts/tests/images.test.ts",
+      "sha256": "5e000c47ff5d3c5e3b074b1b9709b67118a5c5d6a40fa27180d57250d1ff471d",
+      "lines": 350
+    },
+    {
+      "path": "ts/tests/imagesSync.test.ts",
+      "sha256": "54c16bd8c54c83ad2878a25d05da26324b14a032a724545d261faff7136f971e",
+      "lines": 608
+    },
+    {
+      "path": "ts/tests/item.test.ts",
+      "sha256": "2976587420f13c76306168742016489941bf331d4122f32d9e490f8b330ccde5",
+      "lines": 220
+    },
+    {
+      "path": "ts/tests/metrics.test.ts",
+      "sha256": "032bc19d322dfdb42725aa56fcdd1e769fe41425cc3e94d659ffefbc6e20f6bb",
+      "lines": 73
+    },
+    {
+      "path": "ts/tests/metricsSampler.test.ts",
+      "sha256": "157ecdb8c1a36d3bfea9574950ac3479299f7648ca7e6a0322903b3a5cd7e00e",
+      "lines": 54
+    },
+    {
+      "path": "ts/tests/operator.test.ts",
+      "sha256": "54eede27976c74db870a19ed6834571c3721268f924e9df35d7b65adb967261e",
+      "lines": 213
+    },
+    {
+      "path": "ts/tests/operatorQuery.test.ts",
+      "sha256": "b3b24d64bb9843bd78c82264288e7c6062e596f28c06ce8eb4b0d2bdc106192f",
+      "lines": 98
+    },
+    {
+      "path": "ts/tests/operatorStats.test.ts",
+      "sha256": "c8e0560c238f69fdab3663c4584bb921223cf9d9cfde9408abc888ad841a6080",
+      "lines": 129
+    },
+    {
+      "path": "ts/tests/output.test.ts",
+      "sha256": "122b69b8545fd64e713c5091538c338dac59c77663af004926032a924b54f1de",
+      "lines": 56
+    },
+    {
+      "path": "ts/tests/prtsTools.test.ts",
+      "sha256": "46e5df3b8061c10fbb5f74248e601ed91ee54b6abd0ef590765838e1a99bc351",
+      "lines": 190
+    },
+    {
+      "path": "ts/tests/search.test.ts",
+      "sha256": "03f2ac8108a14176a818d2090e0609d922eda0fc1ef0725a5dc9be0226526cb5",
+      "lines": 405
+    },
+    {
+      "path": "ts/tests/serverOutputChannel.test.ts",
+      "sha256": "044ff371b00ae6996db945d22e2b6c3a0dc62835c83d604d0abb35097def9c92",
+      "lines": 298
+    },
+    {
+      "path": "ts/tests/serverStartup.test.ts",
+      "sha256": "a3cceeed2f96ed3b7d1e5dc260ff05c6db0aa2f40457396b1fa8117cfcc3352d",
+      "lines": 78
+    },
+    {
+      "path": "ts/tests/sessionIdleTimeout.test.ts",
+      "sha256": "1bd88e021a6860541594786421075c505e1f15568711aa68c8da50b9d0a1aada",
+      "lines": 197
+    },
+    {
+      "path": "ts/tests/skill.test.ts",
+      "sha256": "fdc5ecbc37a7c967a847e05a29a168b2e633a2ebbca38d8119c85275cfb2a950",
+      "lines": 186
+    },
+    {
+      "path": "ts/tests/sort.test.ts",
+      "sha256": "8aecab00a29a547e03c990b4e70eaa9555877228105bd30b963b8ec8fa04fd00",
+      "lines": 18
+    },
+    {
+      "path": "ts/tests/stage.test.ts",
+      "sha256": "938eb1c7e63b7df8b5a2743a582142aa88d09307580a3c08e38ad4ff3211ab3f",
+      "lines": 550
+    },
+    {
+      "path": "ts/tests/stageEnemy.test.ts",
+      "sha256": "d9838e1b9ea93e04ca93a0e61facef0d97e67bb8b8cf513cd4d5a8be5f481203",
+      "lines": 291
+    },
+    {
+      "path": "ts/tests/stores.test.ts",
+      "sha256": "55a137140d55e0f347c50feb785d49f6f29556b0e00180e754d6ec2d24972e55",
+      "lines": 159
+    },
+    {
+      "path": "ts/tests/story.test.ts",
+      "sha256": "6f126131c208245b8a21b65658beeeb768489ea4fc1d9a082a9b26fbe4444374",
+      "lines": 255
+    },
+    {
+      "path": "ts/tests/storyCharacter.test.ts",
+      "sha256": "e0ed341c9ce34c9d5356142108856aca5eac6013d96ee267733933fa0fe80912",
+      "lines": 297
+    },
+    {
+      "path": "ts/tests/storyOutputChannel.test.ts",
+      "sha256": "a7fca8e695a3c0c0d1befdfbf9506f9094b0de865f7385a7b88b3c95e4eeb5ac",
+      "lines": 327
+    },
+    {
+      "path": "ts/tests/storySupplement.test.ts",
+      "sha256": "be0823d7c6eb168610d4604b65b1297ea79e16e9de43666b1c03c415a9bd6eae",
+      "lines": 265
+    },
+    {
+      "path": "ts/tests/sync.test.ts",
+      "sha256": "029f702ac98a1cd99fa226e3cab9a586554ece1ab8c3f878dfdaa046ffd14132",
+      "lines": 1349
+    },
+    {
+      "path": "ts/tests/templateRenderer.test.ts",
+      "sha256": "6534e045298dfa57b76ea5b6a73c139c8e0b482c6649a851c3978cd8fc64b1fd",
+      "lines": 210
+    },
+    {
+      "path": "ts/tests/toolSurface.test.ts",
+      "sha256": "1171e5fb940591e1df9f9628874f37cbab8bba23c09fb0e246b21ab0bb794cdf",
+      "lines": 477
+    },
+    {
+      "path": "ts/tests/zipCache.test.ts",
+      "sha256": "b9f6fed6f461c8d618e36ac992235e1df3e45cbcd400daf68ef721da62bbf607",
+      "lines": 74
+    }
+  ]
+}

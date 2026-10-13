@@ -1,0 +1,26 @@
+{
+  "case": "enemy.stage-enemies.not-found",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "3173690e-ec40-4c8f-a0fd-b4f8098b4879",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "未找到关卡：\"nope\"。"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9339
+    }
+  }
+}

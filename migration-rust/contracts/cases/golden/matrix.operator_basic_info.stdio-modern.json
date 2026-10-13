@@ -1,0 +1,33 @@
+{
+  "case": "matrix.operator_basic_info.stdio-modern",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "stdio",
+    "session_id": null,
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "# 阿米娅 - 干员基本信息\n\n- **编号**：R001\n- **英文名**：Amiya\n- **稀有度**：5★\n- **职业**：术师（corecaster）\n- **站位**：远程\n- **所属**：rhodes\n- **招募标签**：输出、支援\n- **攻击属性**：法术伤害\n\n**图鉴**：罗德岛的公开领袖。\n\n> 阿米娅的信物。\n\n**获取方式**：主线获得\n\n## 天赋\n- **情绪吸收**：攻击回复技力（+2）\n  （精英1解锁；精英2强化；潜能5档强化）\n\n## 基建技能\n- **合作协议**（控制中枢，精英0解锁）：进驻控制中枢时，所有贸易站订单效率+7%（同种效果取最高）\n- **热情**（宿舍，精英2解锁）：进驻宿舍时，恢复+0.25"
+          }
+        ],
+        "resultType": "complete",
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "PRTS_Wiki_Assistant",
+            "version": "<server-version>"
+          }
+        }
+      },
+      "jsonrpc": "2.0",
+      "id": 9391
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "case": "wiki.page.read.empty",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v1",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "8e9f5669-e656-4896-9bbf-18a454c40f4b",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "页面 '空白页面' 未找到或内容为空。"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9927
+    }
+  }
+}

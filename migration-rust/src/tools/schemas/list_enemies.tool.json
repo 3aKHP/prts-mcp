@@ -1,0 +1,33 @@
+{
+ "name": "list_enemies",
+ "description": "列出敌方图鉴，支持按威胁等级过滤和分页。 默认返回前 50 条；翻页增大 offset，只看领袖/BOSS 设 threat_level=\"boss\"。 图鉴共 1500+ 条目，不推荐 full=true。",
+ "inputSchema": {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+   "threat_level": {
+    "description": "按威胁等级过滤：boss（领袖）、elite（精英）、normal（普通）。不填则返回全部。",
+    "type": "string"
+   },
+   "limit": {
+    "default": 50,
+    "description": "返回数量上限，默认 50。",
+    "type": "integer",
+    "minimum": 1,
+    "maximum": 200
+   },
+   "offset": {
+    "default": 0,
+    "description": "分页偏移量，默认 0。",
+    "type": "integer",
+    "minimum": 0,
+    "maximum": 9007199254740991
+   },
+   "full": {
+    "default": false,
+    "description": "返回全部敌人（忽略 limit/offset）。不推荐常规使用。",
+    "type": "boolean"
+   }
+  }
+ }
+}

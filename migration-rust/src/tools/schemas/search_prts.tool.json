@@ -1,0 +1,38 @@
+{
+  "name": "search_prts",
+  "description": "搜索 PRTS 明日方舟中文维基词条。 返回匹配词条的标题、简短摘要列表及匹配总数。查询专有名词、干员、关卡或世界观设定时先用此工具拿到准确标题，再传入 prts_page 获取完整内容。",
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "query": {
+        "type": "string",
+        "description": "搜索关键词，支持中文，如「罗德岛」、「整合运动」。"
+      },
+      "limit": {
+        "default": 5,
+        "description": "返回结果数量上限，默认 5，最大建议不超过 10。",
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 20
+      },
+      "search_mode": {
+        "default": "text",
+        "description": "搜索模式：text（全文搜索，默认）或 title（仅搜索标题）。",
+        "type": "string",
+        "enum": [
+          "text",
+          "title"
+        ]
+      },
+      "filter_technical": {
+        "default": true,
+        "description": "是否过滤 /spine、/data 等技术页面，默认 true。",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "query"
+    ]
+  }
+}

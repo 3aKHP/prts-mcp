@@ -1,0 +1,26 @@
+{
+  "case": "story.list.channel-structured",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "553e4656-375b-41e1-874d-9378bc329464",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "- TEST-1 [BEG] 开端（key: activities/act_test/level_act_test_01_beg）\n- TEST-2 [END] 终章（key: activities/act_test/level_act_test_02_end）"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9615
+    }
+  }
+}

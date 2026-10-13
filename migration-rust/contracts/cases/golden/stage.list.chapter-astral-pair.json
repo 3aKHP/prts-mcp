@@ -1,0 +1,26 @@
+{
+  "case": "stage.list.chapter-astral-pair",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v1",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "f401e258-5108-4d9e-8e39-818be9b8dea4",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "没有匹配的关卡（filter: zoneId=𠮷）。"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9027
+    }
+  }
+}

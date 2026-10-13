@@ -1,0 +1,26 @@
+{
+  "case": "wiki.search.title-mode",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v1",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "aa9dac04-1ac2-4326-9983-3bf396d4dd12",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "# 搜索 \"罗德岛\"（共 2 条匹配）\n**罗德岛**\n制药与军事公司\n\n---\n\n**罗德岛(小说)**\n官方小说"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9902
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "case": "stage.list.bad-type",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v1",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "9b2ae38a-3974-43b3-bc22-76120170a0ce",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "无效的 type：\"NOT_A_TYPE\"。可选值：MAIN、ACTIVITY、SUB、DAILY、CAMPAIGN、CLIMB_TOWER、SPECIAL_STORY、GUIDE。"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9009
+    }
+  }
+}

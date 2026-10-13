@@ -1,0 +1,15 @@
+{
+  "source": "crates.io rquickjs-sys 0.14.0 / quickjs",
+  "description": "Unmodified QuickJS-NG regexp and Unicode sources; quickjs.c and the JavaScript VM are excluded.",
+  "license": "MIT AND Unicode-3.0",
+  "files": {
+    "cutils.h": "dffec8bea17f08108da5a91c1178804754698bbbb6202dc100268e78e8c5b770",
+    "libregexp-opcode.h": "2a98d646089f3a72f25480116297c5fdb5b28fd9f815447273951f4ade4a115e",
+    "libregexp.c": "af13e996abb1767fe0cdfda123c45b811d53688d403a2ac47142e97bf79f1fae",
+    "libregexp.h": "53ff95a038f7001b752c455d195d998e2955f0ae4ed62a002c13eca798db3ceb",
+    "libunicode-table.h": "5840a921ac11664b505ee37b1219f518fff2a04972fe848b4bdf1e85c5a0bd83",
+    "libunicode.c": "d755606498ff707dc3a93826713c749f77b9222d8a6b066621d72a308460bf2d",
+    "libunicode.h": "ad13f66aaea3fab1616e84b9c048f2a315e1bdbab628b966617a7a3e55bcba2b"
+  },
+  "source_crate_checksum": "cee271d0eeba64f0915b846cb7ae02e16faf3dfdffdca91731101d9d30fe3423"
+}

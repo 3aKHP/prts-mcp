@@ -1,0 +1,26 @@
+{
+  "case": "search.skills",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "07b7d7ad-930a-488f-abee-eb6187681e2e",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "# 搜索 \"晕眩\" 的结果（共 2 条）\n- **阿米娅**｜精神爆发：伤害类型变为法术，连击6次，倍率115.0%，另有0次追击\n- **阿米娅**｜奇美拉：被动效果：每击使敌人防御力-330，并使其晕眩2秒"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9372
+    }
+  }
+}

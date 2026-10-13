@@ -1,0 +1,26 @@
+{
+  "case": "enemy.stage-enemies.placeholders",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "33c3b23b-993c-41bb-8f06-fe143eb077a2",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "关卡 \"act42side_10\" 未解析到实际出怪。"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9338
+    }
+  }
+}

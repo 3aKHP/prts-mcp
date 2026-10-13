@@ -1,0 +1,26 @@
+{
+  "case": "fs.speakers",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "full-story-r2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "5d161492-eec9-4743-b295-02b2b6afbbf5",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "# act9d0 的发言角色（共 23 位）\n- W（547 句）\n- 赫德雷（432 句）\n- 伊内丝（411 句）\n- 萨卡兹战士（84 句）\n- 坚强的孩子（82 句）\n- 孱弱的孩子（50 句）\n- 整合运动士兵（44 句）\n- Scout（38 句）\n- ？？？（38 句）\n- 特蕾西娅（32 句）\n- 赦罪师（28 句）\n- 凯尔希（26 句）\n- 萨卡兹信使（25 句）\n- 萨卡兹佣兵领袖（19 句）\n- 萨卡兹战士？（11 句）\n- 衣衫褴褛的萨卡兹女性（11 句）\n- 可露希尔（8 句）\n- 坚毅的整合运动术师（4 句）\n- 塔露拉（4 句）\n- 娇小的卡特斯（3 句）\n- 塔露拉？（2 句）\n- 萨卡兹俘虏（2 句）\n- 雇佣兵（1 句）"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9810
+    }
+  }
+}

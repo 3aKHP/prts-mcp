@@ -1,0 +1,26 @@
+{
+  "case": "search.building-skills",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "0922ee7e-5042-4c01-aafb-b93272a0b81c",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "# 搜索 \"贸易\" 的结果（共 1 条）\n- **阿米娅**｜合作协议（控制中枢，精英0解锁）：进驻控制中枢时，所有贸易站订单效率+7%（同种效果取最高）"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9371
+    }
+  }
+}

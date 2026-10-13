@@ -1,0 +1,26 @@
+{
+  "case": "fs.story.search.character",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "full-story-r2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "f648ebab-a0bc-4757-a297-147b66535b81",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "未找到匹配 '博士' 的剧情台词。（过滤条件：event_id='act9d0'。character='阿米娅'）"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9809
+    }
+  }
+}

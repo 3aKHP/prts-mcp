@@ -1,0 +1,26 @@
+{
+  "case": "appearances.no-match",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "c76da8bf-096b-4307-9b2c-8a58fa74cf64",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "未找到「无名角色」的出场记录。"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9656
+    }
+  }
+}

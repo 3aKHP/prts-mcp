@@ -1,0 +1,52 @@
+{
+  "case": "wiki.search.channel-structured",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v1",
+  "expected": {
+    "status": 200,
+    "content_type": "stdio",
+    "session_id": null,
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "（结构化结果共 3 条，详见 structuredContent）"
+          }
+        ],
+        "structuredContent": {
+          "query": "阿米娅",
+          "search_mode": "text",
+          "filters": {
+            "limit": 5,
+            "filter_technical": true
+          },
+          "total": 3,
+          "results": [
+            {
+              "title": "阿米娅",
+              "snippet": "罗德岛的<b>领袖</b>，公开身份是\"博士\"的秘书"
+            },
+            {
+              "title": "阿米娅(近卫)",
+              "snippet": "残留文本"
+            }
+          ]
+        },
+        "resultType": "complete",
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "PRTS_Wiki_Assistant",
+            "version": "<server-version>"
+          }
+        }
+      },
+      "jsonrpc": "2.0",
+      "id": 9917
+    }
+  }
+}

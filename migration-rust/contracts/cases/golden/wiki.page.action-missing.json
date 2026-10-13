@@ -1,0 +1,27 @@
+{
+  "case": "wiki.page.action-missing",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v1",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "bece1df3-9e10-407b-9ec5-21abd36b24ef",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Input validation error: Invalid arguments for tool prts_page: action: Invalid option: expected one of \"read\"|\"sections\"|\"categories\"|\"links\"|\"template\""
+          }
+        ],
+        "isError": true
+      },
+      "jsonrpc": "2.0",
+      "id": 9938
+    }
+  }
+}

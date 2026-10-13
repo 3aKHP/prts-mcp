@@ -1,0 +1,26 @@
+{
+  "case": "artwork.local.get.skin",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-images-v1",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "4d936200-51ce-4430-9c07-75d3fca1ebce",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "立绘数据未就绪。可能原因：IMAGES_ENABLED 未开启，或图片同步仍在进行中。请稍后重试；若持续不可用，请检查网络或 GITHUB_TOKEN。"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9959
+    }
+  }
+}

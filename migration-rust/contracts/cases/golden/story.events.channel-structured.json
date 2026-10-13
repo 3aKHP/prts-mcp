@@ -1,0 +1,26 @@
+{
+  "case": "story.events.channel-structured",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "66e72d9f-5eb3-4f2d-9685-d3fa3420209d",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "- [ACTIVITY] act_test：测试活动（2 章）\n- [MAINLINE] main_test：测试主线（0 章）\n- [ACTIVITY] act_big：大型活动（7 章）\n- [NONE] none_plain：无类型杂项（1 章）\n- [NONE] story_amiya_set_1：阿米娅的糖（1 章）\n- [NONE] story_amiya_set_2：阿米娅的梦（2 章）\n- [ROGUELIKE] rogue_6：沉沦者的黑流树海（2 章）"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9607
+    }
+  }
+}

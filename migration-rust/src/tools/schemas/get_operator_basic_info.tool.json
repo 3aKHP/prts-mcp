@@ -1,0 +1,53 @@
+{
+ "name": "get_operator_basic_info",
+ "description": "查询指定干员的基本信息、战斗技能或面板数值。 按 action 返回定位/天赋/基建技能、战斗技能 Lv1-7 与专精各级效果，或各精英阶段关键帧/指定等级面板，每次仅返回所选内容。 完整背景故事见 get_operator_archives。",
+ "inputSchema": {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+   "name": {
+    "type": "string",
+    "description": "干员的游戏内中文名，如「阿米娅」、「能天使」。"
+   },
+   "action": {
+    "default": "basic",
+    "description": "查询内容：basic（默认，定位/天赋/基建技能）、skills（战斗技能各等级效果）、stats（面板数值）。",
+    "type": "string",
+    "enum": [
+     "basic",
+     "skills",
+     "stats"
+    ]
+   },
+   "phase": {
+    "description": "仅 action=stats：精英阶段 0/1/2。与 level 同时提供，或同时省略以查看各阶段 Lv1/满级面板及信赖/潜能加成。",
+    "anyOf": [
+     {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2
+     },
+     {
+      "type": "null"
+     }
+    ]
+   },
+   "level": {
+    "description": "仅 action=stats：该精英阶段内的等级。必须与 phase 同时提供或同时省略。",
+    "anyOf": [
+     {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+     },
+     {
+      "type": "null"
+     }
+    ]
+   }
+  },
+  "required": [
+   "name"
+  ]
+ }
+}

@@ -1,0 +1,26 @@
+{
+  "case": "matrix.stories.http-legacy",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "4ecb067b-3582-4b16-b29a-e46b9828be51",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "- TEST-1 [BEG] 开端（key: activities/act_test/level_act_test_01_beg）\n- TEST-2 [END] 终章（key: activities/act_test/level_act_test_02_end）"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9667
+    }
+  }
+}

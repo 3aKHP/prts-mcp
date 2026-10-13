@@ -1,0 +1,26 @@
+{
+  "case": "search.stages",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "b13843e5-d479-43e6-8b29-b027980a139c",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "# 搜索结果：坍塌（共 2 个）\n\n## 坍塌 [主线] 0-1（id: main_00-01）\n- **区域**：序章-黑暗时代·上\n- **难度**：普通\n- **理智**：6\n- **描述**：三点方向出现了敌人的先锋部队。\n\n## 坍塌·突袭 [主线] TR-1（id: main_00-01#f#）\n- **区域**：序章-黑暗时代·上\n- **难度**：突袭\n- **理智**：9\n- **描述**：突袭条件：敌方生命值提升。"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9369
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "case": "story.events.missing-data",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "empty",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "65f67e81-d3fa-4bff-bfba-27a3c0ef2d78",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "剧情数据暂不可用。容器启动时的 auto-sync 可能仍在进行中，请稍后重试；若持续出现此提示，请检查网络连接，或提供 STORYJSON_PATH 指向本地 zh_CN.zip。（当前同步目标路径：/home/asus/projects/2026-Spring/PRTS-MCP/dev/rust-rewrite/.runtime/fixtures/empty-gamedata-v1/does-not-exist.zip）"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9609
+    }
+  }
+}

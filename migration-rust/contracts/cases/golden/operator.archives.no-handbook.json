@@ -1,0 +1,26 @@
+{
+  "case": "operator.archives.no-handbook",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "a1c05323-df40-44e1-8ab6-6dccf480750e",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "干员 '夜刀' 暂无档案数据。"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9301
+    }
+  }
+}

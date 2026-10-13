@@ -1,0 +1,26 @@
+{
+  "case": "fs.story.list",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "full-story-r2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "d5ffc2b3-c74c-47a3-8107-f914722a8aa6",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "- DM-1 [行动前] 埋藏（key: activities/act9d0/level_act9d0_01_beg）\n- DM-1 [行动后] 埋藏（key: activities/act9d0/level_act9d0_01_end）\n- DM-2 [行动前] 偶然（key: activities/act9d0/level_act9d0_02_beg）\n- DM-2 [行动后] 偶然（key: activities/act9d0/level_act9d0_02_end）\n- DM-3 [行动前] 挤压（key: activities/act9d0/level_act9d0_03_beg）\n- DM-5 [行动后] 旗帜（key: activities/act9d0/level_act9d0_03_end）\n- DM-6 [行动前] 远遁（key: activities/act9d0/level_act9d0_04_beg）\n- DM-6 [行动后] 远遁（key: activities/act9d0/level_act9d0_04_end）\n- DM-7 [行动前] 龟裂（key: activities/act9d0/level_act9d0_05_beg）\n- DM-7 [行动后] 龟裂（key: activities/act9d0/level_act9d0_05_end）\n- DM-8 [行动前] 离散（key: activities/act9d0/level_act9d0_06_beg）\n- DM-8 [行动后] 离散（key: activities/act9d0/level_act9d0_06_end）\n- DM-ST-1 [幕间] 求生（key: activities/act9d0/level_act9d0_st01）"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9803
+    }
+  }
+}

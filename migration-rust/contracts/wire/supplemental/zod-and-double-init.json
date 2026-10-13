@@ -1,0 +1,345 @@
+{
+  "capture_meta": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1",
+    "fixture": "minimal-gamedata-v1",
+    "captured_at": "2026-10-11T10:44:51.814Z"
+  },
+  "steps": [
+    {
+      "label": "initialize",
+      "request": {
+        "body": {
+          "jsonrpc": "2.0",
+          "method": "initialize",
+          "id": 1,
+          "params": {
+            "protocolVersion": "2025-03-26",
+            "capabilities": {},
+            "clientInfo": {
+              "name": "probe2",
+              "version": "1.0"
+            }
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "text/event-stream",
+          "mcp-session-id": "399a4fb3-c49f-42c9-a1a9-b8ef040de846"
+        },
+        "body_text": "event: message\ndata: {\"result\":{\"protocolVersion\":\"2025-03-26\",\"capabilities\":{\"tools\":{\"listChanged\":true}},\"serverInfo\":{\"name\":\"PRTS_Wiki_Assistant\",\"version\":\"2.8.1\"}},\"jsonrpc\":\"2.0\",\"id\":1}\n\n"
+      }
+    },
+    {
+      "label": "limit wrong type (string)",
+      "request": {
+        "body": {
+          "jsonrpc": "2.0",
+          "method": "tools/call",
+          "id": 100,
+          "params": {
+            "name": "list_stages",
+            "arguments": {
+              "limit": "5"
+            }
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "text/event-stream",
+          "mcp-session-id": "399a4fb3-c49f-42c9-a1a9-b8ef040de846"
+        },
+        "body_text": "event: message\ndata: {\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"Input validation error: Invalid arguments for tool list_stages: limit: Invalid input: expected number, received string\"}],\"isError\":true},\"jsonrpc\":\"2.0\",\"id\":100}\n\n"
+      }
+    },
+    {
+      "label": "limit non-integer (1.5)",
+      "request": {
+        "body": {
+          "jsonrpc": "2.0",
+          "method": "tools/call",
+          "id": 101,
+          "params": {
+            "name": "list_stages",
+            "arguments": {
+              "limit": 1.5
+            }
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "text/event-stream",
+          "mcp-session-id": "399a4fb3-c49f-42c9-a1a9-b8ef040de846"
+        },
+        "body_text": "event: message\ndata: {\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"Input validation error: Invalid arguments for tool list_stages: limit: Invalid input: expected int, received number\"}],\"isError\":true},\"jsonrpc\":\"2.0\",\"id\":101}\n\n"
+      }
+    },
+    {
+      "label": "limit 1.0 float-integral",
+      "request": {
+        "body": {
+          "jsonrpc": "2.0",
+          "method": "tools/call",
+          "id": 102,
+          "params": {
+            "name": "list_stages",
+            "arguments": {
+              "limit": 1
+            }
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "text/event-stream",
+          "mcp-session-id": "399a4fb3-c49f-42c9-a1a9-b8ef040de846"
+        },
+        "body_text": "event: message\ndata: {\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"# 关卡列表（共 4 个）\\n- **测试活动关** [活动] AS-1 — 普通 — 火山旅梦（id: act31side_01）\\n\\n（显示第 1–1 条，共 4 条。使用 offset=1 查看下一页）\"}]},\"jsonrpc\":\"2.0\",\"id\":102}\n\n"
+      }
+    },
+    {
+      "label": "limit below min (0)",
+      "request": {
+        "body": {
+          "jsonrpc": "2.0",
+          "method": "tools/call",
+          "id": 103,
+          "params": {
+            "name": "list_stages",
+            "arguments": {
+              "limit": 0
+            }
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "text/event-stream",
+          "mcp-session-id": "399a4fb3-c49f-42c9-a1a9-b8ef040de846"
+        },
+        "body_text": "event: message\ndata: {\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"Input validation error: Invalid arguments for tool list_stages: limit: Too small: expected number to be >=1\"}],\"isError\":true},\"jsonrpc\":\"2.0\",\"id\":103}\n\n"
+      }
+    },
+    {
+      "label": "offset negative",
+      "request": {
+        "body": {
+          "jsonrpc": "2.0",
+          "method": "tools/call",
+          "id": 104,
+          "params": {
+            "name": "list_stages",
+            "arguments": {
+              "offset": -1
+            }
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "text/event-stream",
+          "mcp-session-id": "399a4fb3-c49f-42c9-a1a9-b8ef040de846"
+        },
+        "body_text": "event: message\ndata: {\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"Input validation error: Invalid arguments for tool list_stages: offset: Too small: expected number to be >=0\"}],\"isError\":true},\"jsonrpc\":\"2.0\",\"id\":104}\n\n"
+      }
+    },
+    {
+      "label": "offset float",
+      "request": {
+        "body": {
+          "jsonrpc": "2.0",
+          "method": "tools/call",
+          "id": 105,
+          "params": {
+            "name": "list_stages",
+            "arguments": {
+              "offset": 1.5
+            }
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "text/event-stream",
+          "mcp-session-id": "399a4fb3-c49f-42c9-a1a9-b8ef040de846"
+        },
+        "body_text": "event: message\ndata: {\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"Input validation error: Invalid arguments for tool list_stages: offset: Invalid input: expected int, received number\"}],\"isError\":true},\"jsonrpc\":\"2.0\",\"id\":105}\n\n"
+      }
+    },
+    {
+      "label": "chapter null",
+      "request": {
+        "body": {
+          "jsonrpc": "2.0",
+          "method": "tools/call",
+          "id": 106,
+          "params": {
+            "name": "list_stages",
+            "arguments": {
+              "chapter": null
+            }
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "text/event-stream",
+          "mcp-session-id": "399a4fb3-c49f-42c9-a1a9-b8ef040de846"
+        },
+        "body_text": "event: message\ndata: {\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"Input validation error: Invalid arguments for tool list_stages: chapter: Invalid input: expected string, received null\"}],\"isError\":true},\"jsonrpc\":\"2.0\",\"id\":106}\n\n"
+      }
+    },
+    {
+      "label": "type null",
+      "request": {
+        "body": {
+          "jsonrpc": "2.0",
+          "method": "tools/call",
+          "id": 107,
+          "params": {
+            "name": "list_stages",
+            "arguments": {
+              "type": null
+            }
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "text/event-stream",
+          "mcp-session-id": "399a4fb3-c49f-42c9-a1a9-b8ef040de846"
+        },
+        "body_text": "event: message\ndata: {\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"Input validation error: Invalid arguments for tool list_stages: type: Invalid input: expected string, received null\"}],\"isError\":true},\"jsonrpc\":\"2.0\",\"id\":107}\n\n"
+      }
+    },
+    {
+      "label": "unknown extra argument",
+      "request": {
+        "body": {
+          "jsonrpc": "2.0",
+          "method": "tools/call",
+          "id": 108,
+          "params": {
+            "name": "list_stages",
+            "arguments": {
+              "chapter": "main_0",
+              "nonsense": true
+            }
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "text/event-stream",
+          "mcp-session-id": "399a4fb3-c49f-42c9-a1a9-b8ef040de846"
+        },
+        "body_text": "event: message\ndata: {\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"# 关卡列表（共 2 个）\\n- **坍塌** [主线] 0-1 — 普通 — 序章-黑暗时代·上（id: main_00-01）\\n- **坍塌·突袭** [主线] TR-1 — 突袭 — 序章-黑暗时代·上（id: main_00-01#f#）\\n\\n（显示第 1–2 条，共 2 条。使用 offset=50 查看下一页）\"}]},\"jsonrpc\":\"2.0\",\"id\":108}\n\n"
+      }
+    },
+    {
+      "label": "arguments key missing",
+      "request": {
+        "body": {
+          "jsonrpc": "2.0",
+          "method": "tools/call",
+          "id": 109,
+          "params": {
+            "name": "list_stages"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "text/event-stream",
+          "mcp-session-id": "399a4fb3-c49f-42c9-a1a9-b8ef040de846"
+        },
+        "body_text": "event: message\ndata: {\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"# 关卡列表（共 4 个）\\n- **测试活动关** [活动] AS-1 — 普通 — 火山旅梦（id: act31side_01）\\n- **货物运送** [每日] CE-5 — 普通 — daily_zone1（id: daily_01）\\n- **坍塌** [主线] 0-1 — 普通 — 序章-黑暗时代·上（id: main_00-01）\\n- **坍塌·突袭** [主线] TR-1 — 突袭 — 序章-黑暗时代·上（id: main_00-01#f#）\\n\\n（显示第 1–4 条，共 4 条。使用 offset=50 查看下一页）\"}]},\"jsonrpc\":\"2.0\",\"id\":109}\n\n"
+      }
+    },
+    {
+      "label": "arguments null",
+      "request": {
+        "body": {
+          "jsonrpc": "2.0",
+          "method": "tools/call",
+          "id": 110,
+          "params": {
+            "name": "list_stages",
+            "arguments": null
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "text/event-stream",
+          "mcp-session-id": "399a4fb3-c49f-42c9-a1a9-b8ef040de846"
+        },
+        "body_text": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":110,\"error\":{\"code\":-32602,\"message\":\"Invalid tools/call request: [\\n  {\\n    \\\"expected\\\": \\\"record\\\",\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"path\\\": [\\n      \\\"params\\\",\\n      \\\"arguments\\\"\\n    ],\\n    \\\"message\\\": \\\"Invalid input: expected record, received null\\\"\\n  }\\n]\"}}\n\n"
+      }
+    },
+    {
+      "label": "chapter wrong type (number)",
+      "request": {
+        "body": {
+          "jsonrpc": "2.0",
+          "method": "tools/call",
+          "id": 111,
+          "params": {
+            "name": "list_stages",
+            "arguments": {
+              "chapter": 5
+            }
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "text/event-stream",
+          "mcp-session-id": "399a4fb3-c49f-42c9-a1a9-b8ef040de846"
+        },
+        "body_text": "event: message\ndata: {\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"Input validation error: Invalid arguments for tool list_stages: chapter: Invalid input: expected string, received number\"}],\"isError\":true},\"jsonrpc\":\"2.0\",\"id\":111}\n\n"
+      }
+    },
+    {
+      "label": "second initialize on live session",
+      "request": {
+        "body": {
+          "jsonrpc": "2.0",
+          "method": "initialize",
+          "id": 2,
+          "params": {
+            "protocolVersion": "2025-03-26",
+            "capabilities": {},
+            "clientInfo": {
+              "name": "probe2",
+              "version": "1.0"
+            }
+          }
+        }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body_text": "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32600,\"message\":\"Invalid Request: Server already initialized\"},\"id\":null}"
+      }
+    }
+  ]
+}

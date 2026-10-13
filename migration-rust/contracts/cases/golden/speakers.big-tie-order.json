@@ -1,0 +1,26 @@
+{
+  "case": "speakers.big-tie-order",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "af8d7add-8cab-4e61-8b3e-279e461c0923",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "# act_big 的发言角色（共 3 位）\n- 阿米娅（14 句）\n- 凯尔希（7 句）\n- 博士（7 句）"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9659
+    }
+  }
+}

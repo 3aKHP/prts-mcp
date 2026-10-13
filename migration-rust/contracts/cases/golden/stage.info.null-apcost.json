@@ -1,0 +1,26 @@
+{
+  "case": "stage.info.null-apcost",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "5d2d8f3a-c4ca-4ed6-8645-7fa0a730f204",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "# 死线 — 关卡详情\n\n## 基本信息\n- **ID**：main_00-02\n- **编号**：0-2\n- **类型**：主线\n- **难度**：普通\n- **所属区域**：序章-黑暗时代·上\n- **理智消耗**：?\n- **危险等级**：?\n\n## 描述\n（无描述）\n\n## 掉落信息\n（无）\n\n## 解锁条件\n（无条件）\n\n## 关联关卡\n- 突袭模式：无\n- 六星模式：main_00-01#f#（坍塌·突袭）"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9350
+    }
+  }
+}

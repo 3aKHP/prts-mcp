@@ -1,0 +1,26 @@
+{
+  "case": "wiki.page.links.outbound-more",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v1",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "211d01a9-5c1e-42d8-b99a-9248755a609f",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "- 链接一\n- 链接二\n（共 4 条，还有更多）"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9933
+    }
+  }
+}

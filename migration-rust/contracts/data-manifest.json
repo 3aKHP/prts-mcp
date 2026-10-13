@@ -1,0 +1,442 @@
+{
+  "schema_version": "prts-rust-plan/data-manifest/v1",
+  "recorded_at": "2026-10-11T18:29:20.642Z",
+  "baseline_commit": "e0ba36096cdd46640166b0a5db02902fa9a6a24c",
+  "datasets": {
+    "minimal-gamedata-v1": {
+      "purpose": "P0/P1 differential fixture for list_stages and protocol cases",
+      "source": "derived from ts/tests/stage.test.ts writeFixtures @ baseline commit",
+      "root": ".runtime/fixtures/minimal-gamedata-v1",
+      "excel_dir": "zh_CN/gamedata/excel",
+      "files": [
+        {
+          "path": "zh_CN/gamedata/excel/character_table.json",
+          "bytes": 2,
+          "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/charword_table.json",
+          "bytes": 2,
+          "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/handbook_info_table.json",
+          "bytes": 2,
+          "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/item_table.json",
+          "bytes": 129,
+          "sha256": "c5a68023d308877e229e9af2b4a0a29f157294cc69f4c8c27b68ca4feec1f23d"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/stage_table.json",
+          "bytes": 1594,
+          "sha256": "b24ad3b4dfca63fab834fd72e9fbf2ee6469ea81abb44526b1d470cbab8c0f42"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/story_review_table.json",
+          "bytes": 2,
+          "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/zone_table.json",
+          "bytes": 284,
+          "sha256": "a9120d68d1daa732905dc7e24e360408fa6a809fd62392e7ab336d87e61a3dcb"
+        }
+      ]
+    },
+    "minimal-gamedata-v2": {
+      "purpose": "P3 differential fixture: full GameData tool surface (operator/enemy/stage/item/search)",
+      "source": "derived from tests/fixtures/operatorData.ts + enemy/item/stageEnemy test fixtures @ baseline commit",
+      "root": ".runtime/fixtures/minimal-gamedata-v2",
+      "excel_dir": "zh_CN/gamedata/excel",
+      "levels_dir": "zh_CN/gamedata/levels",
+      "files": [
+        {
+          "path": "storyjson/zh_CN.zip",
+          "bytes": 8441,
+          "sha256": "3f422f244472ff7558716b6d3d431c08bfaea26844d532a5f0c741bf42e6f6cf"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/building_data.json",
+          "bytes": 1091,
+          "sha256": "dd56ea8e6ca42536c938e6116bd65a29f9c92153abe28e17c595146d2fc56085"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/character_table.json",
+          "bytes": 4189,
+          "sha256": "26f4fe7d3f54de5505db8df80e9ccf519a233402321a68445afc599521c20c53"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/charword_table.json",
+          "bytes": 361,
+          "sha256": "ee1115078577737f597b9f36dd5baeae7bd430507d7dc05666a027abb3d345a7"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/enemy_handbook_table.json",
+          "bytes": 1198,
+          "sha256": "caa949a7e89393af5112d12a7e4dc02de7e88e7afa6fa452bdf049d5853eaffb"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/handbook_info_table.json",
+          "bytes": 379,
+          "sha256": "754d71eaa1efe364ce97efbb51e5806855b78b8bae6f3d6a4d37f1ea5fa924cd"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/item_table.json",
+          "bytes": 1288,
+          "sha256": "44db3c4296c0d9d3414b92f363bb8fbab7b59d01bef7e8d1493921d9a803a87e"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/skill_table.json",
+          "bytes": 5531,
+          "sha256": "bfbe52ad95b2d2ed4935e99f8bdbf0b27a262ec85e54c373a3d8efa8452dcd89"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/stage_table.json",
+          "bytes": 2290,
+          "sha256": "2c482e0cc0c906c0380d3044d397bb056c7d2365935d35394758c40dea168301"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/story_review_table.json",
+          "bytes": 2,
+          "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/zone_table.json",
+          "bytes": 284,
+          "sha256": "a9120d68d1daa732905dc7e24e360408fa6a809fd62392e7ab336d87e61a3dcb"
+        },
+        {
+          "path": "zh_CN/gamedata/levels/enemydata/enemy_database.json",
+          "bytes": 1170,
+          "sha256": "e5af8842bfdf91cfbafcbd4db68da1995036a3f06f8d35a47edabdb741dab009"
+        },
+        {
+          "path": "zh_CN/gamedata/levels/obt/main/level_act42side_10.json",
+          "bytes": 76,
+          "sha256": "3cdd6072cbb09ca215ca2ba90bbfc5688671c68461325a33e01bc83690ed8c56"
+        },
+        {
+          "path": "zh_CN/gamedata/levels/obt/main/level_main_00-01.json",
+          "bytes": 785,
+          "sha256": "085e9285080278c8c4e1b7203ad08ce7a6119e898b4d76298737d3dac75119ad"
+        }
+      ]
+    },
+    "bundled-sample-gamedata": {
+      "purpose": "repo-bundled partial excel sample shipped with the fixed tag; reference only",
+      "source": "git archive e0ba360:data/gamedata",
+      "root": ".reference/ts-v2.8.1/data/gamedata",
+      "files": [
+        {
+          "path": "cache_meta.json",
+          "bytes": 384,
+          "sha256": "baa5b6195535ac451aa30cef9def2b227cdcc8356ee9ecb8978f698cf4388db8"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/character_table.json",
+          "bytes": 13278702,
+          "sha256": "024e0dbae29b5cc6d1db02c97c5c814de7dfc7aa3c1fee08854bd6b63e2a4331"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/charword_table.json",
+          "bytes": 10628587,
+          "sha256": "201844f3fc5f39df6f7ae3189688279baeb5714a4370e1ef7b414232e3cb3c62"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/handbook_info_table.json",
+          "bytes": 5470806,
+          "sha256": "ec2a4a0f3f4240a45da008749b180ed34089534df4e304f5f7d8bf97c74c721f"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/story_review_table.json",
+          "bytes": 1735098,
+          "sha256": "fe70abee91e9f4b383aea2d644103ccde84c2cff7a4c227a103de256a5883b55"
+        }
+      ]
+    },
+    "activated-minimal-v1": {
+      "purpose": "P2 differential fixture: TS-sync-written generation volume with pair pointer",
+      "source": "ts dist syncReleaseArchivePair (offline) over minimal-gamedata-v1 content",
+      "root": ".runtime/fixtures/activated-minimal-v1",
+      "gamedata_root": "gamedata",
+      "pair_commit_sha": "26-10-10-00-00-00_cafe01",
+      "activation": {
+        "result": "ok",
+        "statuses": [
+          "updated",
+          "updated"
+        ],
+        "commitShas": [
+          "26-10-10-00-00-00_cafe01",
+          "26-10-10-00-00-00_cafe01"
+        ]
+      },
+      "files": [
+        {
+          "path": "gamedata/archives/zh_CN-excel.zip",
+          "bytes": 2688,
+          "sha256": "79988a101714948a4ec58f24195cd5c2117a78ff9781cc15450f67a569fac646"
+        },
+        {
+          "path": "gamedata/archives/release_meta.json",
+          "bytes": 197,
+          "sha256": "104c45cea5c1d673294990175ba1b190c6bb5b771133c1939e786d829a680e8e"
+        },
+        {
+          "path": "gamedata-levels/archives/zh_CN-levels.zip",
+          "bytes": 204,
+          "sha256": "82e795f389aaefc11943b314ed1e24e4ff299c0310b0aa94b795b4b1c10c258b"
+        },
+        {
+          "path": "gamedata-levels/archives/release_meta.json",
+          "bytes": 198,
+          "sha256": "9044c9a16045b1339c4a8c88b44835bdc4f53c7520a2b94179d5b0d5c1f617d6"
+        },
+        {
+          "path": ".gamedata_pair.json",
+          "bytes": 215,
+          "sha256": "958a0adcb7ebddd6a647f6eb6ed77608eac942bd72bc5783528c46a19b7bcd89"
+        }
+      ],
+      "generation_content": [
+        {
+          "path": "gamedata-levels/.releases/<gen>/zh_CN/gamedata/levels/enemydata/enemy_database.json",
+          "bytes": 2,
+          "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+        },
+        {
+          "path": "gamedata/.releases/<gen>/zh_CN/gamedata/excel/building_data.json",
+          "bytes": 2,
+          "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+        },
+        {
+          "path": "gamedata/.releases/<gen>/zh_CN/gamedata/excel/character_table.json",
+          "bytes": 2,
+          "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+        },
+        {
+          "path": "gamedata/.releases/<gen>/zh_CN/gamedata/excel/charword_table.json",
+          "bytes": 2,
+          "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+        },
+        {
+          "path": "gamedata/.releases/<gen>/zh_CN/gamedata/excel/enemy_handbook_table.json",
+          "bytes": 2,
+          "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+        },
+        {
+          "path": "gamedata/.releases/<gen>/zh_CN/gamedata/excel/handbook_info_table.json",
+          "bytes": 2,
+          "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+        },
+        {
+          "path": "gamedata/.releases/<gen>/zh_CN/gamedata/excel/item_table.json",
+          "bytes": 129,
+          "sha256": "c5a68023d308877e229e9af2b4a0a29f157294cc69f4c8c27b68ca4feec1f23d"
+        },
+        {
+          "path": "gamedata/.releases/<gen>/zh_CN/gamedata/excel/skill_table.json",
+          "bytes": 2,
+          "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+        },
+        {
+          "path": "gamedata/.releases/<gen>/zh_CN/gamedata/excel/skin_table.json",
+          "bytes": 2,
+          "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+        },
+        {
+          "path": "gamedata/.releases/<gen>/zh_CN/gamedata/excel/stage_table.json",
+          "bytes": 1594,
+          "sha256": "b24ad3b4dfca63fab834fd72e9fbf2ee6469ea81abb44526b1d470cbab8c0f42"
+        },
+        {
+          "path": "gamedata/.releases/<gen>/zh_CN/gamedata/excel/story_review_table.json",
+          "bytes": 2,
+          "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+        },
+        {
+          "path": "gamedata/.releases/<gen>/zh_CN/gamedata/excel/zone_table.json",
+          "bytes": 284,
+          "sha256": "a9120d68d1daa732905dc7e24e360408fa6a809fd62392e7ab336d87e61a3dcb"
+        }
+      ]
+    },
+    "full-story-r2": {
+      "purpose": "P4 full-scale differential: pinned real datarev excel + story package",
+      "source": ".runtime/data/datarev-26-10-08-04-51-28-56071834-r2 (zips pinned by fetch-data)",
+      "root": ".runtime/fixtures/full-story-r2",
+      "excel_dir": "zh_CN/gamedata/excel",
+      "story_zip": "storyjson/zh_CN.zip",
+      "story_zip_sha256": "f987b360d72e7de270ee00ad4998e6bc3d88a192db52fe35ac98864299070eb5",
+      "excel_files": 59,
+      "excel_bytes": 104320411
+    },
+    "minimal-images-v1": {
+      "purpose": "P6 differential fixture: operator_artwork local backend (skin_table + activated images generation)",
+      "source": "minimal-gamedata-v2 copy + skin_table.json + synthetic akdp-images/v1 generation",
+      "root": ".runtime/fixtures/minimal-images-v1",
+      "excel_dir": "zh_CN/gamedata/excel",
+      "images_generation": "images/.releases/2ff20f8da19f3c77-fiximg0011223344",
+      "files": [
+        {
+          "path": "images/.images_meta.json",
+          "bytes": 301,
+          "sha256": "faaa548df6df420975f6ccfe9076b45cd0fca7b12c38b054e1611f22a7317dc0"
+        },
+        {
+          "path": "images/.releases/2ff20f8da19f3c77-fiximg0011223344/.images_meta.json",
+          "bytes": 234,
+          "sha256": "9c68c766e8746fb864a6b225f02b7100556cb704545ecb21025c714883aabe2a"
+        },
+        {
+          "path": "images/.releases/2ff20f8da19f3c77-fiximg0011223344/chararts/char_002_amiya#1.large.png",
+          "bytes": 38,
+          "sha256": "00ad961227ea520bcca5fa61e1cb2f1c44b2d91dca093d287e05992f9f909ec2"
+        },
+        {
+          "path": "images/.releases/2ff20f8da19f3c77-fiximg0011223344/chararts/char_002_amiya#1.preview.png",
+          "bytes": 40,
+          "sha256": "79d3e7e23b71044c9778127cfedcab3b6c075765e95244623bfb990b3c3c98f9"
+        },
+        {
+          "path": "images/.releases/2ff20f8da19f3c77-fiximg0011223344/chararts/char_002_amiya#2.large.png",
+          "bytes": 38,
+          "sha256": "873558a8b64cb1224eb2e14bd5b8289c29f0c51dece9ed6fd6f1c0bf451c4585"
+        },
+        {
+          "path": "images/.releases/2ff20f8da19f3c77-fiximg0011223344/chararts/char_002_amiya#2.preview.png",
+          "bytes": 40,
+          "sha256": "b02d6c6b4ac2aa2a8c9757338d08a58a367fa53bff50b1e8369430373c1cd146"
+        },
+        {
+          "path": "images/.releases/2ff20f8da19f3c77-fiximg0011223344/chararts/char_1001_amiya2#1.large.png",
+          "bytes": 40,
+          "sha256": "e4caffaa536a32763620943752fb96903d991f2b427031c9bd0f203945fa5444"
+        },
+        {
+          "path": "images/.releases/2ff20f8da19f3c77-fiximg0011223344/chararts/char_1001_amiya2#1.preview.png",
+          "bytes": 42,
+          "sha256": "ef76805321292f6b7fdc81d7240c51e162841c61657e0a06788c4d543fdc1666"
+        },
+        {
+          "path": "images/.releases/2ff20f8da19f3c77-fiximg0011223344/chararts/char_1001_amiya2#2.large.png",
+          "bytes": 40,
+          "sha256": "bcd29e0976a2c13f8f116865beb1bb70bd8e994be946326b9a189f56eed5c1e5"
+        },
+        {
+          "path": "images/.releases/2ff20f8da19f3c77-fiximg0011223344/chararts/char_1001_amiya2#2.preview.png",
+          "bytes": 42,
+          "sha256": "e3b2c0f6357668965a32a4f1233f52e6857b84d9769df14a10f2a8db3076c6e0"
+        },
+        {
+          "path": "images/.releases/2ff20f8da19f3c77-fiximg0011223344/index.json",
+          "bytes": 2949,
+          "sha256": "df3ebfab43f2d619fbeb9bdb499bf502108708156ceda7e9438420c918c048ad"
+        },
+        {
+          "path": "images/.releases/2ff20f8da19f3c77-fiximg0011223344/skinpack/char_002_amiya@theme1#1.large.png",
+          "bytes": 45,
+          "sha256": "80bf15fd0db466705c3d8bab30d8c196c6cff632e8e5f2fbddfbca157195fc54"
+        },
+        {
+          "path": "images/.releases/2ff20f8da19f3c77-fiximg0011223344/skinpack/char_002_amiya@theme1#1.preview.png",
+          "bytes": 47,
+          "sha256": "a6dcc2a18f249ad51df4f44394aa9d1601c8a32feb9e03219f6e6ac7f2e2469e"
+        },
+        {
+          "path": "storyjson/zh_CN.zip",
+          "bytes": 8441,
+          "sha256": "3f422f244472ff7558716b6d3d431c08bfaea26844d532a5f0c741bf42e6f6cf"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/building_data.json",
+          "bytes": 1091,
+          "sha256": "dd56ea8e6ca42536c938e6116bd65a29f9c92153abe28e17c595146d2fc56085"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/character_table.json",
+          "bytes": 4189,
+          "sha256": "26f4fe7d3f54de5505db8df80e9ccf519a233402321a68445afc599521c20c53"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/charword_table.json",
+          "bytes": 361,
+          "sha256": "ee1115078577737f597b9f36dd5baeae7bd430507d7dc05666a027abb3d345a7"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/enemy_handbook_table.json",
+          "bytes": 1198,
+          "sha256": "caa949a7e89393af5112d12a7e4dc02de7e88e7afa6fa452bdf049d5853eaffb"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/handbook_info_table.json",
+          "bytes": 379,
+          "sha256": "754d71eaa1efe364ce97efbb51e5806855b78b8bae6f3d6a4d37f1ea5fa924cd"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/item_table.json",
+          "bytes": 1288,
+          "sha256": "44db3c4296c0d9d3414b92f363bb8fbab7b59d01bef7e8d1493921d9a803a87e"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/skill_table.json",
+          "bytes": 5531,
+          "sha256": "bfbe52ad95b2d2ed4935e99f8bdbf0b27a262ec85e54c373a3d8efa8452dcd89"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/skin_table.json",
+          "bytes": 264,
+          "sha256": "6155ef6e7d9ff2afc9e84b43b89e2669402e555bbbc3c62f7a2019d7660ee926"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/stage_table.json",
+          "bytes": 2290,
+          "sha256": "2c482e0cc0c906c0380d3044d397bb056c7d2365935d35394758c40dea168301"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/story_review_table.json",
+          "bytes": 2,
+          "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+        },
+        {
+          "path": "zh_CN/gamedata/excel/zone_table.json",
+          "bytes": 284,
+          "sha256": "a9120d68d1daa732905dc7e24e360408fa6a809fd62392e7ab336d87e61a3dcb"
+        },
+        {
+          "path": "zh_CN/gamedata/levels/enemydata/enemy_database.json",
+          "bytes": 1170,
+          "sha256": "e5af8842bfdf91cfbafcbd4db68da1995036a3f06f8d35a47edabdb741dab009"
+        },
+        {
+          "path": "zh_CN/gamedata/levels/obt/main/level_act42side_10.json",
+          "bytes": 76,
+          "sha256": "3cdd6072cbb09ca215ca2ba90bbfc5688671c68461325a33e01bc83690ed8c56"
+        },
+        {
+          "path": "zh_CN/gamedata/levels/obt/main/level_main_00-01.json",
+          "bytes": 785,
+          "sha256": "085e9285080278c8c4e1b7203ad08ce7a6119e898b4d76298737d3dac75119ad"
+        }
+      ]
+    }
+  },
+  "upstream_release_probe": {
+    "repo": "3aKHP/arknights-data-pipeline",
+    "note": "version axis of data packages, independent of server release dates; no archives downloaded in P0",
+    "status": "not-run",
+    "reason": "--skip-release-probe"
+  },
+  "wiki_response_fixtures": {
+    "status": "not-started",
+    "note": "P5 scope; P0 records the slot only"
+  },
+  "image_assets": {
+    "status": "recorded",
+    "note": "minimal-images-v1 synthetic generation (5 artworks × large/preview); full-scale real sync measured separately in P6",
+    "oversized_download_body_b64_gzip_bytes": 1063
+  }
+}

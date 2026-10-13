@@ -1,0 +1,27 @@
+{
+  "case": "operator.basic.phase-oob",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "3d677fae-1ee4-4d09-92a9-9c93fbbff062",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Input validation error: Invalid arguments for tool get_operator_basic_info: phase: Too big: expected number to be <=2"
+          }
+        ],
+        "isError": true
+      },
+      "jsonrpc": "2.0",
+      "id": 9313
+    }
+  }
+}

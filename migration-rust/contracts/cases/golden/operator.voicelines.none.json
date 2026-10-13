@@ -1,0 +1,26 @@
+{
+  "case": "operator.voicelines.none",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "d73d035e-ea02-4dd0-907c-75a01798fd92",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "干员 '夜刀' 暂无语音数据。"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9305
+    }
+  }
+}

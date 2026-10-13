@@ -1,0 +1,71 @@
+{
+  "baseline": "e0ba36096cdd46640166b0a5db02902fa9a6a24c",
+  "kind": "source-declarations-not-runtime-validation",
+  "data_contract_version": "prts-mcp-data/v1",
+  "datasets": [
+    {
+      "name": "GAMEDATA_EXCEL",
+      "datasetId": "gamedata.excel",
+      "owner": "3aKHP",
+      "repo": "arknights-data-pipeline",
+      "assetName": "zh_CN-excel.zip",
+      "requiredFiles": [
+        "zh_CN/gamedata/excel/character_table.json",
+        "zh_CN/gamedata/excel/handbook_info_table.json",
+        "zh_CN/gamedata/excel/charword_table.json",
+        "zh_CN/gamedata/excel/story_review_table.json",
+        "zh_CN/gamedata/excel/enemy_handbook_table.json",
+        "zh_CN/gamedata/excel/stage_table.json",
+        "zh_CN/gamedata/excel/zone_table.json",
+        "zh_CN/gamedata/excel/item_table.json",
+        "zh_CN/gamedata/excel/building_data.json",
+        "zh_CN/gamedata/excel/skin_table.json",
+        "zh_CN/gamedata/excel/skill_table.json"
+      ],
+      "verifyManifest": true,
+      "validation": "required files plus archive activation validation"
+    },
+    {
+      "name": "GAMEDATA_LEVELS",
+      "datasetId": "gamedata.levels",
+      "owner": "3aKHP",
+      "repo": "arknights-data-pipeline",
+      "assetName": "zh_CN-levels.zip",
+      "requiredFiles": [
+        "zh_CN/gamedata/levels/enemydata/enemy_database.json"
+      ],
+      "verifyManifest": true,
+      "validation": "required files plus archive activation validation"
+    },
+    {
+      "name": "STORY_ZH_CN",
+      "datasetId": "story.zh_CN",
+      "owner": "3aKHP",
+      "repo": "arknights-data-pipeline",
+      "assetName": "zh_CN.zip",
+      "requiredFiles": [
+        "zh_CN/gamedata/excel/story_review_table.json",
+        "zh_CN/storyinfo.json"
+      ],
+      "verifyManifest": true,
+      "validation": "validateStoryjsonZip (includes optional supplement chapter references)"
+    }
+  ],
+  "image_schema_version": "akdp-images/v1",
+  "image_shards": {
+    "default": [
+      "chararts-large",
+      "chararts-preview",
+      "skinpack-large",
+      "skinpack-preview"
+    ],
+    "with_original": [
+      "chararts-large",
+      "chararts-preview",
+      "skinpack-large",
+      "skinpack-preview",
+      "chararts-original",
+      "skinpack-original"
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "case": "search.scope-schema-reject",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "81fb4d29-684a-4f5a-b9fe-bfe4b3847f95",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Input validation error: Invalid arguments for tool search: scope: Invalid option: expected one of \"operators\"|\"enemies\"|\"stages\"|\"items\"|\"building_skills\"|\"skills\""
+          }
+        ],
+        "isError": true
+      },
+      "jsonrpc": "2.0",
+      "id": 9376
+    }
+  }
+}

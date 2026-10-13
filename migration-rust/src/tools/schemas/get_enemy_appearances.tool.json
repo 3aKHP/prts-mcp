@@ -1,0 +1,31 @@
+{
+ "name": "get_enemy_appearances",
+ "description": "反向查询指定敌人实际出现在哪些关卡。 只统计该敌人真正刷出的关卡，不计入引用但未实际出场的关卡。",
+ "inputSchema": {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+   "name": {
+    "type": "string",
+    "description": "敌人的游戏内中文名或 enemyId，如「源石虫」或 enemy_1007_slime。"
+   },
+   "limit": {
+    "default": 50,
+    "description": "返回数量上限，默认 50。",
+    "type": "integer",
+    "minimum": 1,
+    "maximum": 200
+   },
+   "offset": {
+    "default": 0,
+    "description": "分页偏移量，默认 0。",
+    "type": "integer",
+    "minimum": 0,
+    "maximum": 9007199254740991
+   }
+  },
+  "required": [
+   "name"
+  ]
+ }
+}

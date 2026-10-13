@@ -1,0 +1,526 @@
+{
+  "id": "D-007-native-regex-unicode-folding",
+  "approved_by": "maintainer",
+  "approved_at": "2026-10-13",
+  "decision": "retain-existing-rust-semantics",
+  "scope": "Retain the existing Rust Unicode simple case folding behavior for the identified categories: ASCII character ranges and Unicode property escapes (including inverted properties), instead of adding Bun-specific exceptions. This approval does not waive unrelated regex differences.",
+  "evidence": "Old rquickjs and standalone native adapters agree on the 86 explicitly listed divergences in the extended corpus; positive/inverted property aliases exercise the same known folding mechanism.",
+  "cases": [
+    {
+      "pattern": "[a-zA-Z]",
+      "text": "ſ",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "[a-zA-Z]",
+      "text": "K",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "[s-s]",
+      "text": "ſ",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "[s-s]",
+      "text": "PRTſ_BENCH_NO_MATCH_7f814e",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Lowercase_Letter}",
+      "text": "ABC",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Lowercase_Letter}",
+      "text": "S",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Lowercase_Letter}",
+      "text": "K",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Lowercase_Letter}",
+      "text": "Σ",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\P{Lowercase_Letter}",
+      "text": "a",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\P{Lowercase_Letter}",
+      "text": "ab",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\P{Lowercase_Letter}",
+      "text": "aaab",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\P{Lowercase_Letter}",
+      "text": "abc",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\P{Lowercase_Letter}",
+      "text": "abb",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\P{Lowercase_Letter}",
+      "text": "ſ",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\P{Lowercase_Letter}",
+      "text": "k",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\P{Lowercase_Letter}",
+      "text": "ß",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\P{Lowercase_Letter}",
+      "text": "σ",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\P{Lowercase_Letter}",
+      "text": "ς",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\P{Lowercase_Letter}",
+      "text": "é",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Uppercase_Letter}",
+      "text": "a",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Uppercase_Letter}",
+      "text": "ab",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Uppercase_Letter}",
+      "text": "aaab",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Uppercase_Letter}",
+      "text": "abc",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Uppercase_Letter}",
+      "text": "abb",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Uppercase_Letter}",
+      "text": "ſ",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Uppercase_Letter}",
+      "text": "k",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Uppercase_Letter}",
+      "text": "ß",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Uppercase_Letter}",
+      "text": "σ",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Uppercase_Letter}",
+      "text": "ς",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Uppercase_Letter}",
+      "text": "😀a",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Uppercase_Letter}",
+      "text": "a😀b",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Uppercase_Letter}",
+      "text": "a\u0000b",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Uppercase_Letter}",
+      "text": "a﻿b",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Uppercase_Letter}",
+      "text": "ab",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Uppercase_Letter}",
+      "text": "é",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Uppercase_Letter}",
+      "text": "é",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Uppercase_Letter}",
+      "text": "prts_bench_no_match_7f814e",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\P{Uppercase_Letter}",
+      "text": "ABC",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\P{Uppercase_Letter}",
+      "text": "S",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\P{Uppercase_Letter}",
+      "text": "K",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\P{Uppercase_Letter}",
+      "text": "Σ",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Ll}",
+      "text": "ABC",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Ll}",
+      "text": "S",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Ll}",
+      "text": "K",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Ll}",
+      "text": "Σ",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\P{Ll}",
+      "text": "a",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\P{Ll}",
+      "text": "ab",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\P{Ll}",
+      "text": "aaab",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\P{Ll}",
+      "text": "abc",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\P{Ll}",
+      "text": "abb",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\P{Ll}",
+      "text": "ſ",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\P{Ll}",
+      "text": "k",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\P{Ll}",
+      "text": "ß",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\P{Ll}",
+      "text": "σ",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\P{Ll}",
+      "text": "ς",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\P{Ll}",
+      "text": "é",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Lu}",
+      "text": "a",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Lu}",
+      "text": "ab",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Lu}",
+      "text": "aaab",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Lu}",
+      "text": "abc",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Lu}",
+      "text": "abb",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Lu}",
+      "text": "ſ",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Lu}",
+      "text": "k",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Lu}",
+      "text": "ß",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Lu}",
+      "text": "σ",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Lu}",
+      "text": "ς",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Lu}",
+      "text": "😀a",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Lu}",
+      "text": "a😀b",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Lu}",
+      "text": "a\u0000b",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Lu}",
+      "text": "a﻿b",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Lu}",
+      "text": "ab",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Lu}",
+      "text": "é",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Lu}",
+      "text": "é",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{Lu}",
+      "text": "prts_bench_no_match_7f814e",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\P{Lu}",
+      "text": "ABC",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\P{Lu}",
+      "text": "S",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\P{Lu}",
+      "text": "K",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\P{Lu}",
+      "text": "Σ",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{ASCII}",
+      "text": "ſ",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\p{ASCII}",
+      "text": "K",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "[a-z]",
+      "text": "ſ",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "[a-z]",
+      "text": "K",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\P{ASCII}",
+      "text": "S",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\P{ASCII}",
+      "text": "k",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\P{ASCII}",
+      "text": "PRTS_BENCH_NO_MATCH_7f814e",
+      "bun_match": false,
+      "rust_match": true
+    },
+    {
+      "pattern": "\\P{ASCII}",
+      "text": "prts_bench_no_match_7f814e",
+      "bun_match": false,
+      "rust_match": true
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "case": "enemy.list.boss",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "597ea13a-c4a0-4c25-896e-50d5c6106fda",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "# 敌人图鉴（共 1 个）\n- **霜星** [领袖] (FN) — 整合运动法术部队干部。"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9323
+    }
+  }
+}

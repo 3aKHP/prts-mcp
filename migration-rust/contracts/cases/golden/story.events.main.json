@@ -1,0 +1,26 @@
+{
+  "case": "story.events.main",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "52b512dc-cdba-4585-ab3b-ce1bab626e0d",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "- [MAINLINE] main_test：测试主线（0 章）"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9602
+    }
+  }
+}

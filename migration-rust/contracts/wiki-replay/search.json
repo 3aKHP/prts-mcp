@@ -1,0 +1,321 @@
+{
+  "rules": [
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "query",
+          "list": "search",
+          "srsearch": "阿米娅",
+          "srlimit": "10",
+          "srnamespace": "0",
+          "srinfo": "totalhits",
+          "srprop": "snippet|redirecttitle",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "query": {
+            "searchinfo": {
+              "totalhits": 3
+            },
+            "search": [
+              {
+                "title": "阿米娅",
+                "snippet": "罗德岛的&lt;b&gt;领袖&lt;/b&gt;，公开身份是&quot;博士&quot;的秘书"
+              },
+              {
+                "title": "阿米娅(近卫)",
+                "snippet": "  \"key\": \"char_002_amiya\", \"rarity\": \"5\" 残留文本"
+              },
+              {
+                "title": "阿米娅/Spine",
+                "snippet": "动作数据"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "query",
+          "list": "search",
+          "srsearch": "罗德岛",
+          "srlimit": "10",
+          "srnamespace": "0",
+          "srinfo": "totalhits",
+          "srprop": "snippet|redirecttitle",
+          "format": "json",
+          "srwhat": "title"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "query": {
+            "searchinfo": {
+              "totalhits": 2
+            },
+            "search": [
+              {
+                "title": "罗德岛",
+                "snippet": "制药与军事公司"
+              },
+              {
+                "title": "罗德岛(小说)",
+                "snippet": "官方小说"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "query",
+          "list": "search",
+          "srsearch": "数据页",
+          "srlimit": "5",
+          "srnamespace": "0",
+          "srinfo": "totalhits",
+          "srprop": "snippet|redirecttitle",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "query": {
+            "searchinfo": {
+              "totalhits": 1
+            },
+            "search": [
+              {
+                "title": "敌人/数据/012",
+                "snippet": "技术数据页"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "query",
+          "list": "search",
+          "srsearch": "多个结果",
+          "srlimit": "4",
+          "srnamespace": "0",
+          "srinfo": "totalhits",
+          "srprop": "snippet|redirecttitle",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "query": {
+            "searchinfo": {
+              "totalhits": 9
+            },
+            "search": [
+              {
+                "title": "Module:卡片",
+                "snippet": "模块"
+              },
+              {
+                "title": "关卡/data/x",
+                "snippet": "数据"
+              },
+              {
+                "title": "第一条",
+                "snippet": "内容一"
+              },
+              {
+                "title": "第二条",
+                "snippet": "内容二"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "query",
+          "list": "search",
+          "srsearch": "不存在的词条xyzzy",
+          "srlimit": "10",
+          "srnamespace": "0",
+          "srinfo": "totalhits",
+          "srprop": "snippet|redirecttitle",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "query": {
+            "searchinfo": {
+              "totalhits": 0
+            },
+            "search": []
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "query",
+          "list": "search",
+          "srsearch": "重定向一",
+          "srlimit": "10",
+          "srnamespace": "0",
+          "srinfo": "totalhits",
+          "srprop": "snippet|redirecttitle",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "query": {
+            "searchinfo": {
+              "totalhits": 1
+            },
+            "search": [
+              {
+                "title": "阿米亚",
+                "snippet": "#REDIRECT [[阿米娅]]"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "query",
+          "redirects": "1",
+          "titles": "阿米亚",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "query": {
+            "redirects": [
+              {
+                "from": "阿米亚",
+                "to": "阿米娅"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "query",
+          "list": "search",
+          "srsearch": "重定向二",
+          "srlimit": "10",
+          "srnamespace": "0",
+          "srinfo": "totalhits",
+          "srprop": "snippet|redirecttitle",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "query": {
+            "searchinfo": {
+              "totalhits": 1
+            },
+            "search": [
+              {
+                "title": "阿米亚",
+                "snippet": "#重定向 [[阿米娅]]"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "query",
+          "redirects": "1",
+          "titles": "阿米亚",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 500,
+        "body": "boom"
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "query",
+          "list": "search",
+          "srsearch": "重定向三",
+          "srlimit": "10",
+          "srnamespace": "0",
+          "srinfo": "totalhits",
+          "srprop": "snippet|redirecttitle",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "query": {
+            "searchinfo": {
+              "totalhits": 1
+            },
+            "search": [
+              {
+                "title": "阿米亚",
+                "snippet": "#REDIRECT [[阿米娅]]",
+                "redirecttitle": "阿米娅"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "default": {
+    "status": 404,
+    "json": {
+      "error": {
+        "code": "replay-unmatched",
+        "info": "no replay rule matched this request"
+      }
+    }
+  }
+}

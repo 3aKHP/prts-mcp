@@ -1,0 +1,35 @@
+{
+ "name": "read_activity",
+ "description": "读取整个活动的完整剧情台词（按官方章节顺序合并）。 返回各章节台词的合并文本，格式与 read_story 一致，章节间以分隔标题区分。 单次文本量可能较大，建议用 page 分批获取，返回末尾会提示是否还有后续内容。",
+ "inputSchema": {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+   "event_id": {
+    "type": "string",
+    "description": "活动 ID，如 \"act31side\"（可从 list_story_events 获取）。"
+   },
+   "include_narration": {
+    "default": true,
+    "description": "是否包含旁白，默认 true。",
+    "type": "boolean"
+   },
+   "page": {
+    "description": "分页页码（从 1 开始）。不填则返回全部章节。",
+    "type": "integer",
+    "minimum": 1,
+    "maximum": 9007199254740991
+   },
+   "page_size": {
+    "default": 5,
+    "description": "每页章节数，默认 5。",
+    "type": "integer",
+    "minimum": 1,
+    "maximum": 20
+   }
+  },
+  "required": [
+   "event_id"
+  ]
+ }
+}

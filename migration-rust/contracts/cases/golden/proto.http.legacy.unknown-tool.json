@@ -1,0 +1,22 @@
+{
+  "case": "proto.http.legacy.unknown-tool",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v1",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "21bd793c-3a05-4139-bb2d-20e6fdffd28f",
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 9004,
+      "error": {
+        "code": -32602,
+        "message": "Tool no_such_tool not found"
+      }
+    }
+  }
+}

@@ -1,0 +1,661 @@
+{
+  "recorded_at": "2026-10-13",
+  "four_cpu": {
+    "method": "offline pinned data; 5 rotated fresh processes/implementation; 10 warmups + 100 calls/scenario; HTTP legacy; content channel; OS page cache retained; no sync; all servers share the same CPU affinity",
+    "cpu": "12th Gen Intel(R) Core(TM) i7-12700H",
+    "cpu_affinity": "2-5",
+    "zip_sha256": "f987b360d72e7de270ee00ad4998e6bc3d88a192db52fe35ac98864299070eb5",
+    "rust_binary_sha256": "281935e7a8501016c1355d58acb1e161197994ff0604ae0be2ac2df274515a87",
+    "before_binary_sha256": "73fef553439a7af36bad3dc0fba36a1aff6f2da2258386c113ff3fb00eee0799",
+    "cold": {
+      "ts": {
+        "n": 5,
+        "p50": 1263.9762009999995,
+        "p95": 1302.4786270000004,
+        "rss_p50_bytes": 424062976
+      },
+      "rust-before": {
+        "n": 5,
+        "p50": 2103.4238210000003,
+        "p95": 2167.3343569999997,
+        "rss_p50_bytes": 113569792
+      },
+      "rust": {
+        "n": 5,
+        "p50": 464.0879840000007,
+        "p95": 479.8588319999999,
+        "rss_p50_bytes": 128024576
+      }
+    },
+    "hot": [
+      {
+        "kind": "ts",
+        "scenario": "empty-1-control",
+        "n": 100,
+        "min": 1.4567109999989043,
+        "p50": 3.116004999999859,
+        "p95": 4.653533000000607,
+        "max": 12.266106999999465
+      },
+      {
+        "kind": "ts",
+        "scenario": "p8-amiya-30",
+        "args": {
+          "pattern": "阿米娅"
+        },
+        "n": 100,
+        "min": 3.328440999997838,
+        "p50": 4.193583000000217,
+        "p95": 4.879774999997608,
+        "max": 5.564021000001958,
+        "VmRSS": 372703232,
+        "VmHWM": 420954112
+      },
+      {
+        "kind": "ts",
+        "scenario": "amiya-5",
+        "args": {
+          "pattern": "阿米娅",
+          "max_results": 5
+        },
+        "n": 100,
+        "min": 1.2167809999991732,
+        "p50": 2.4641609999998764,
+        "p95": 3.554954999999609,
+        "max": 4.269043000000238,
+        "VmRSS": 373637120,
+        "VmHWM": 420954112
+      },
+      {
+        "kind": "ts",
+        "scenario": "p4-rhodes-5",
+        "args": {
+          "pattern": "罗德岛",
+          "max_results": 5
+        },
+        "n": 100,
+        "min": 1.0304209999994782,
+        "p50": 2.3652339999971446,
+        "p95": 3.26202099999864,
+        "max": 3.9256979999991017,
+        "VmRSS": 358105088,
+        "VmHWM": 420954112
+      },
+      {
+        "kind": "ts",
+        "scenario": "rhodes-30",
+        "args": {
+          "pattern": "罗德岛",
+          "max_results": 30
+        },
+        "n": 100,
+        "min": 1.0453539999980421,
+        "p50": 2.3173189999979513,
+        "p95": 3.2253099999979895,
+        "max": 3.961756000000605,
+        "VmRSS": 358633472,
+        "VmHWM": 420954112
+      },
+      {
+        "kind": "ts",
+        "scenario": "no-match",
+        "args": {
+          "pattern": "PRTS_BENCH_NO_MATCH_7f814e"
+        },
+        "n": 100,
+        "min": 20.368751999998494,
+        "p50": 22.239096000001155,
+        "p95": 24.176362000001973,
+        "max": 29.38778900000034,
+        "VmRSS": 301670400,
+        "VmHWM": 420954112
+      },
+      {
+        "kind": "ts",
+        "scenario": "lookahead",
+        "args": {
+          "pattern": "阿米娅(?=。)",
+          "max_results": 30
+        },
+        "n": 100,
+        "min": 10.61189000000013,
+        "p50": 12.365971999999601,
+        "p95": 13.664894999998069,
+        "max": 15.097553999999946,
+        "VmRSS": 303128576,
+        "VmHWM": 420954112
+      },
+      {
+        "kind": "rust-before",
+        "scenario": "empty-1-control",
+        "n": 100,
+        "min": 0.7079909999993106,
+        "p50": 1.7889350000004924,
+        "p95": 2.0168310000008205,
+        "max": 2.6563629999982368
+      },
+      {
+        "kind": "rust-before",
+        "scenario": "p8-amiya-30",
+        "args": {
+          "pattern": "阿米娅"
+        },
+        "n": 100,
+        "min": 19.216466000001674,
+        "p50": 21.666704999999638,
+        "p95": 22.95472399999926,
+        "max": 23.630676000000676,
+        "VmRSS": 114368512,
+        "VmHWM": 114368512
+      },
+      {
+        "kind": "rust-before",
+        "scenario": "amiya-5",
+        "args": {
+          "pattern": "阿米娅",
+          "max_results": 5
+        },
+        "n": 100,
+        "min": 1.3927999999978056,
+        "p50": 2.5215489999973215,
+        "p95": 2.809517000001506,
+        "max": 3.5744550000017625,
+        "VmRSS": 114368512,
+        "VmHWM": 114368512
+      },
+      {
+        "kind": "rust-before",
+        "scenario": "p4-rhodes-5",
+        "args": {
+          "pattern": "罗德岛",
+          "max_results": 5
+        },
+        "n": 100,
+        "min": 0.9321409999975003,
+        "p50": 1.9991269999991346,
+        "p95": 2.186576000000059,
+        "max": 2.518508999997721,
+        "VmRSS": 114368512,
+        "VmHWM": 114368512
+      },
+      {
+        "kind": "rust-before",
+        "scenario": "rhodes-30",
+        "args": {
+          "pattern": "罗德岛",
+          "max_results": 30
+        },
+        "n": 100,
+        "min": 1.3689519999970798,
+        "p50": 2.5195670000030077,
+        "p95": 2.797276999997848,
+        "max": 4.434041000000434,
+        "VmRSS": 114425856,
+        "VmHWM": 114425856
+      },
+      {
+        "kind": "rust-before",
+        "scenario": "no-match",
+        "args": {
+          "pattern": "PRTS_BENCH_NO_MATCH_7f814e"
+        },
+        "n": 100,
+        "min": 325.7457729999951,
+        "p50": 360.34949300000153,
+        "p95": 372.20189499999833,
+        "max": 384.1122639999958,
+        "VmRSS": 114425856,
+        "VmHWM": 114425856
+      },
+      {
+        "kind": "rust-before",
+        "scenario": "lookahead",
+        "args": {
+          "pattern": "阿米娅(?=。)",
+          "max_results": 30
+        },
+        "n": 100,
+        "min": 168.9357919999893,
+        "p50": 184.84889300000214,
+        "p95": 193.47718000000168,
+        "max": 202.10520400000678,
+        "VmRSS": 114434048,
+        "VmHWM": 114434048
+      },
+      {
+        "kind": "rust",
+        "scenario": "empty-1-control",
+        "n": 100,
+        "min": 0.4699499999987893,
+        "p50": 1.630395000000135,
+        "p95": 1.850749999997788,
+        "max": 1.9271730000036769
+      },
+      {
+        "kind": "rust",
+        "scenario": "p8-amiya-30",
+        "args": {
+          "pattern": "阿米娅"
+        },
+        "n": 100,
+        "min": 1.2925329999998212,
+        "p50": 2.6851989999995567,
+        "p95": 3.1459190000023227,
+        "max": 5.074309999996331,
+        "VmRSS": 128147456,
+        "VmHWM": 128155648
+      },
+      {
+        "kind": "rust",
+        "scenario": "amiya-5",
+        "args": {
+          "pattern": "阿米娅",
+          "max_results": 5
+        },
+        "n": 100,
+        "min": 0.38889000000199303,
+        "p50": 1.7406860000046436,
+        "p95": 1.8938659999985248,
+        "max": 2.131500000003143,
+        "VmRSS": 128147456,
+        "VmHWM": 128155648
+      },
+      {
+        "kind": "rust",
+        "scenario": "p4-rhodes-5",
+        "args": {
+          "pattern": "罗德岛",
+          "max_results": 5
+        },
+        "n": 100,
+        "min": 0.5772109999961685,
+        "p50": 1.742048000000068,
+        "p95": 1.9741360000043642,
+        "max": 2.1847859999979846,
+        "VmRSS": 128147456,
+        "VmHWM": 128155648
+      },
+      {
+        "kind": "rust",
+        "scenario": "rhodes-30",
+        "args": {
+          "pattern": "罗德岛",
+          "max_results": 30
+        },
+        "n": 100,
+        "min": 0.6982170000119368,
+        "p50": 1.9333040000055917,
+        "p95": 2.2143790000118315,
+        "max": 4.024873000002117,
+        "VmRSS": 128147456,
+        "VmHWM": 128155648
+      },
+      {
+        "kind": "rust",
+        "scenario": "no-match",
+        "args": {
+          "pattern": "PRTS_BENCH_NO_MATCH_7f814e"
+        },
+        "n": 100,
+        "min": 12.46721799999068,
+        "p50": 13.792493000000832,
+        "p95": 14.766367999996874,
+        "max": 15.135209000000032,
+        "VmRSS": 128217088,
+        "VmHWM": 128217088
+      },
+      {
+        "kind": "rust",
+        "scenario": "lookahead",
+        "args": {
+          "pattern": "阿米娅(?=。)",
+          "max_results": 30
+        },
+        "n": 100,
+        "min": 7.7127480000053765,
+        "p50": 9.216251000005286,
+        "p95": 9.896522000010009,
+        "max": 11.160048999998253,
+        "VmRSS": 128745472,
+        "VmHWM": 128745472
+      }
+    ],
+    "equality": [
+      {
+        "kind": "rust-before",
+        "scenario": "p8-amiya-30",
+        "equal": true
+      },
+      {
+        "kind": "rust-before",
+        "scenario": "amiya-5",
+        "equal": true
+      },
+      {
+        "kind": "rust-before",
+        "scenario": "p4-rhodes-5",
+        "equal": true
+      },
+      {
+        "kind": "rust-before",
+        "scenario": "rhodes-30",
+        "equal": true
+      },
+      {
+        "kind": "rust-before",
+        "scenario": "no-match",
+        "equal": true
+      },
+      {
+        "kind": "rust-before",
+        "scenario": "lookahead",
+        "equal": true
+      },
+      {
+        "kind": "rust",
+        "scenario": "p8-amiya-30",
+        "equal": true
+      },
+      {
+        "kind": "rust",
+        "scenario": "amiya-5",
+        "equal": true
+      },
+      {
+        "kind": "rust",
+        "scenario": "p4-rhodes-5",
+        "equal": true
+      },
+      {
+        "kind": "rust",
+        "scenario": "rhodes-30",
+        "equal": true
+      },
+      {
+        "kind": "rust",
+        "scenario": "no-match",
+        "equal": true
+      },
+      {
+        "kind": "rust",
+        "scenario": "lookahead",
+        "equal": true
+      }
+    ]
+  },
+  "single_cpu": {
+    "method": "offline pinned data; 5 rotated fresh processes/implementation; 10 warmups + 100 calls/scenario; HTTP legacy; content channel; OS page cache retained; no sync; all servers share the same CPU affinity",
+    "cpu": "12th Gen Intel(R) Core(TM) i7-12700H",
+    "cpu_affinity": "2",
+    "zip_sha256": "f987b360d72e7de270ee00ad4998e6bc3d88a192db52fe35ac98864299070eb5",
+    "rust_binary_sha256": "281935e7a8501016c1355d58acb1e161197994ff0604ae0be2ac2df274515a87",
+    "before_binary_sha256": null,
+    "cold": {
+      "ts": {
+        "n": 5,
+        "p50": 1474.7419149999987,
+        "p95": 1719.6439850000002,
+        "rss_p50_bytes": 422170624
+      },
+      "rust": {
+        "n": 5,
+        "p50": 1371.513581000001,
+        "p95": 1491.350535,
+        "rss_p50_bytes": 124874752
+      }
+    },
+    "hot": [
+      {
+        "kind": "ts",
+        "scenario": "empty-1-control",
+        "n": 100,
+        "min": 1.2901160000001255,
+        "p50": 3.0577890000022308,
+        "p95": 5.222811999999976,
+        "max": 11.991243999997096
+      },
+      {
+        "kind": "ts",
+        "scenario": "p8-amiya-30",
+        "args": {
+          "pattern": "阿米娅"
+        },
+        "n": 100,
+        "min": 2.8041039999989152,
+        "p50": 4.2304259999982605,
+        "p95": 5.607382000001962,
+        "max": 7.761473999998998,
+        "VmRSS": 373047296,
+        "VmHWM": 424017920
+      },
+      {
+        "kind": "ts",
+        "scenario": "amiya-5",
+        "args": {
+          "pattern": "阿米娅",
+          "max_results": 5
+        },
+        "n": 100,
+        "min": 2.084091000000626,
+        "p50": 3.5026209999996354,
+        "p95": 4.56440400000065,
+        "max": 5.670507999999245,
+        "VmRSS": 372932608,
+        "VmHWM": 424017920
+      },
+      {
+        "kind": "ts",
+        "scenario": "p4-rhodes-5",
+        "args": {
+          "pattern": "罗德岛",
+          "max_results": 5
+        },
+        "n": 100,
+        "min": 1.198116999999911,
+        "p50": 2.814063999998325,
+        "p95": 4.050924000002851,
+        "max": 6.882172000001447,
+        "VmRSS": 373391360,
+        "VmHWM": 424017920
+      },
+      {
+        "kind": "ts",
+        "scenario": "rhodes-30",
+        "args": {
+          "pattern": "罗德岛",
+          "max_results": 30
+        },
+        "n": 100,
+        "min": 1.521154000001843,
+        "p50": 2.924539999999979,
+        "p95": 3.8291590000008,
+        "max": 5.399012000001676,
+        "VmRSS": 368193536,
+        "VmHWM": 424017920
+      },
+      {
+        "kind": "ts",
+        "scenario": "no-match",
+        "args": {
+          "pattern": "PRTS_BENCH_NO_MATCH_7f814e"
+        },
+        "n": 100,
+        "min": 23.26789700000154,
+        "p50": 25.05326200000127,
+        "p95": 27.70285199999853,
+        "max": 28.781183999999485,
+        "VmRSS": 367284224,
+        "VmHWM": 424017920
+      },
+      {
+        "kind": "ts",
+        "scenario": "lookahead",
+        "args": {
+          "pattern": "阿米娅(?=。)",
+          "max_results": 30
+        },
+        "n": 100,
+        "min": 11.615195000002132,
+        "p50": 13.873184000000037,
+        "p95": 17.2558140000001,
+        "max": 20.094992999998794,
+        "VmRSS": 369246208,
+        "VmHWM": 424017920
+      },
+      {
+        "kind": "rust",
+        "scenario": "empty-1-control",
+        "n": 100,
+        "min": 0.46362299999964307,
+        "p50": 1.6246759999994538,
+        "p95": 1.7899389999984123,
+        "max": 1.8552759999984119
+      },
+      {
+        "kind": "rust",
+        "scenario": "p8-amiya-30",
+        "args": {
+          "pattern": "阿米娅"
+        },
+        "n": 100,
+        "min": 1.2953550000020186,
+        "p50": 2.631634999997914,
+        "p95": 3.0658609999991313,
+        "max": 3.6537869999992836,
+        "VmRSS": 124899328,
+        "VmHWM": 125198336
+      },
+      {
+        "kind": "rust",
+        "scenario": "amiya-5",
+        "args": {
+          "pattern": "阿米娅",
+          "max_results": 5
+        },
+        "n": 100,
+        "min": 0.6046810000007099,
+        "p50": 1.6893120000022464,
+        "p95": 1.9892409999993106,
+        "max": 2.8276110000006156,
+        "VmRSS": 124899328,
+        "VmHWM": 125198336
+      },
+      {
+        "kind": "rust",
+        "scenario": "p4-rhodes-5",
+        "args": {
+          "pattern": "罗德岛",
+          "max_results": 5
+        },
+        "n": 100,
+        "min": 0.5351560000017344,
+        "p50": 1.6570140000003448,
+        "p95": 1.8303240000022925,
+        "max": 2.23981300000014,
+        "VmRSS": 124899328,
+        "VmHWM": 125198336
+      },
+      {
+        "kind": "rust",
+        "scenario": "rhodes-30",
+        "args": {
+          "pattern": "罗德岛",
+          "max_results": 30
+        },
+        "n": 100,
+        "min": 0.6635850000020582,
+        "p50": 1.8707829999984824,
+        "p95": 2.1091029999988677,
+        "max": 3.995085000002291,
+        "VmRSS": 124899328,
+        "VmHWM": 125198336
+      },
+      {
+        "kind": "rust",
+        "scenario": "no-match",
+        "args": {
+          "pattern": "PRTS_BENCH_NO_MATCH_7f814e"
+        },
+        "n": 100,
+        "min": 10.150932999997167,
+        "p50": 12.603102000000945,
+        "p95": 13.896130999997695,
+        "max": 15.192841000000044,
+        "VmRSS": 124899328,
+        "VmHWM": 125198336
+      },
+      {
+        "kind": "rust",
+        "scenario": "lookahead",
+        "args": {
+          "pattern": "阿米娅(?=。)",
+          "max_results": 30
+        },
+        "n": 100,
+        "min": 6.643095999999787,
+        "p50": 8.252975000003062,
+        "p95": 9.342497000001458,
+        "max": 9.863858000000619,
+        "VmRSS": 124899328,
+        "VmHWM": 125198336
+      }
+    ],
+    "equality": [
+      {
+        "kind": "rust",
+        "scenario": "p8-amiya-30",
+        "equal": true
+      },
+      {
+        "kind": "rust",
+        "scenario": "amiya-5",
+        "equal": true
+      },
+      {
+        "kind": "rust",
+        "scenario": "p4-rhodes-5",
+        "equal": true
+      },
+      {
+        "kind": "rust",
+        "scenario": "rhodes-30",
+        "equal": true
+      },
+      {
+        "kind": "rust",
+        "scenario": "no-match",
+        "equal": true
+      },
+      {
+        "kind": "rust",
+        "scenario": "lookahead",
+        "equal": true
+      }
+    ]
+  },
+  "full_index": {
+    "result": "FULL_INDEX_DIGEST_PASS",
+    "compared": "all chapter metadata, all line types/roles/text, all record ordinals",
+    "ts": {
+      "chapters": 2285,
+      "records": 424281,
+      "sha256": "96f0115147139a8a3b977727f779e0a5a26a8aed5516505be2664518e6c4363c"
+    },
+    "rust": {
+      "chapters": 2285,
+      "records": 424281,
+      "sha256": "96f0115147139a8a3b977727f779e0a5a26a8aed5516505be2664518e6c4363c"
+    }
+  },
+  "binary": {
+    "result": "NATIVE_BINARY_PASS",
+    "libraries": [
+      "libgcc_s.so.1",
+      "libm.so.6",
+      "libc.so.6",
+      "ld-linux-x86-64.so.2"
+    ],
+    "js_vm_symbols": false,
+    "vendored_hashes_verified": 7
+  }
+}

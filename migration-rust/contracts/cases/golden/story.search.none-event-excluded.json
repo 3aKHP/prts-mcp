@@ -1,0 +1,26 @@
+{
+  "case": "story.search.none-event-excluded",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "a3487c6b-a6c6-450f-9872-446226136bae",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "未找到匹配 '不应进入索引' 的剧情台词。"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9645
+    }
+  }
+}
