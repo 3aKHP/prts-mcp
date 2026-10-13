@@ -1,0 +1,26 @@
+{
+  "case": "activity.read.page-oob",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "729a409c-c404-4e9e-9dfc-f75e1ba0ddb9",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "页码超出范围：act_big 共 7 章，按 page_size=5 分页共 2 页，请求的 page=9 不存在。"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9627
+    }
+  }
+}

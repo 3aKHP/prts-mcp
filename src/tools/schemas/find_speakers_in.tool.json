@@ -1,0 +1,17 @@
+{
+ "name": "find_speakers_in",
+ "description": "列出某活动中的所有发言角色及其台词数。 返回该活动去重后的对话发言者，按台词句数降序排列，适合了解角色戏份分布。 读取某角色说的具体内容可用 search_stories(character=...) 过滤。",
+ "inputSchema": {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+   "event_id": {
+    "type": "string",
+    "description": "活动 ID，如 \"act31side\"（可从 list_story_events 获取）。"
+   }
+  },
+  "required": [
+   "event_id"
+  ]
+ }
+}

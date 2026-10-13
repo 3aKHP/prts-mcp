@@ -1,0 +1,25 @@
+{
+  "capture_meta": {
+    "captured_at": "2026-10-11T11:30:00Z",
+    "note": "Decision record for the unparseable-HTTP-body error shape; raw oracle evidence is contracts/wire/http-legacy/transport-edges.json step 'POST malformed JSON'"
+  },
+  "ts_oracle": {
+    "status": 400,
+    "content_type": "text/html; charset=utf-8",
+    "body_shape": "Express body-parser HTML error page (DOCTYPE + <pre> with stack trace)",
+    "evidence": "contracts/wire/http-legacy/transport-edges.json"
+  },
+  "rust_adapter": {
+    "status": 400,
+    "content_type": "application/json",
+    "body_text_verified": "{\"jsonrpc\":\"2.0\",\"id\":null,\"error\":{\"code\":-32700,\"message\":\"Parse error: key must be a string at line 1 column 2\"}} (request body \"{not json\")"
+  },
+  "disposition": {
+    "id": "D-006-unparseable-body-json-error",
+    "status": "approved",
+    "approved_by": "maintainer",
+    "approved_at": "2026-10-11",
+    "decision": "HTTP request bodies that fail JSON parsing return HTTP 400 with a JSON-RPC -32700 parse error (explicit message) instead of the oracle's Express HTML error page.",
+    "scope_guard": "Covers the parse-failure response shape only; all other error families, status codes, and body shapes remain oracle-aligned."
+  }
+}

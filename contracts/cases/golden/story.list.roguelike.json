@@ -1,0 +1,26 @@
+{
+  "case": "story.list.roguelike",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "c90240a6-c5c9-4876-b334-e279f400dd6f",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "- RO6-E1 [结局] 强制重启（key: Obt/Roguelike/RO6/level_rogue6_ending_1）\n- RO6-M4-1 [月度记录·南方往事] 南方往事·1（key: Obt/Rogue/rogue_6/MonthRecord/month_record_rogue_6_4_1）"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9612
+    }
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "cases": [
+    {
+      "name": "夜刀",
+      "candidates": [
+        {"name": "快速重新部署", "description": "再部署时间-30秒", "unlockCondition": {"phase": "PHASE_0", "level": 30}, "requiredPotentialRank": 0}
+      ],
+      "conditions": [["精英0", 30, 0]],
+      "note": "（精英0 Lv30解锁）"
+    },
+    {
+      "name": "香草",
+      "candidates": [
+        {"name": "攻击提升", "description": "攻击力+4%", "unlockCondition": {"phase": "PHASE_1", "level": 1}, "requiredPotentialRank": 0},
+        {"name": "攻击提升", "description": "攻击力+8%", "unlockCondition": {"phase": "PHASE_1", "level": 55}, "requiredPotentialRank": 0}
+      ],
+      "conditions": [["精英1", 1, 0], ["精英1", 55, 0]],
+      "note": "（精英1解锁；精英1 Lv55强化）"
+    },
+    {
+      "name": "银灰",
+      "candidates": [
+        {"name": "领袖", "description": "攻击力+5%", "unlockCondition": {"phase": "PHASE_1", "level": 1}, "requiredPotentialRank": 0},
+        {"name": "领袖", "description": "攻击力+7%", "unlockCondition": {"phase": "PHASE_1", "level": 1}, "requiredPotentialRank": 4},
+        {"name": "领袖", "description": "攻击力+10%", "unlockCondition": {"phase": "PHASE_2", "level": 1}, "requiredPotentialRank": 0},
+        {"name": "领袖", "description": "攻击力+12%", "unlockCondition": {"phase": "PHASE_2", "level": 1}, "requiredPotentialRank": 4}
+      ],
+      "conditions": [["精英1", 1, 0], ["精英1", 1, 4], ["精英2", 1, 0], ["精英2", 1, 4]],
+      "note": "（精英1解锁；精英2强化；潜能5档强化）"
+    }
+  ]
+}

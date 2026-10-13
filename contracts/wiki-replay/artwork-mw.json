@@ -1,0 +1,434 @@
+{
+  "rules": [
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "query",
+          "list": "allimages",
+          "aiprefix": "立绘_阿米娅_",
+          "ailimit": "50",
+          "aiprop": "name|size|mime",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "query": {
+            "allimages": [
+              {
+                "name": "立绘_阿米娅_1.png",
+                "size": 200000,
+                "mime": "image/png"
+              },
+              {
+                "name": "立绘_阿米娅_2.png",
+                "size": 300000,
+                "mime": "image/png"
+              },
+              {
+                "name": "立绘_阿米娅_1b.png",
+                "size": 5000,
+                "mime": "image/png"
+              },
+              {
+                "name": "立绘_阿米娅_skin1.png",
+                "size": 150000,
+                "mime": "image/png"
+              },
+              {
+                "name": "立绘_阿米娅_不标注.png",
+                "size": 10,
+                "mime": "image/png"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "parse",
+          "page": "阿米娅",
+          "prop": "parsetree",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "parse": {
+            "parsetree": {
+              "*": "<root><template><title>CharinfoV2</title><part><name>时装1名称</name><value>报童</value></part></template></root>"
+            }
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "query",
+          "titles": "File:立绘_阿米娅_1.png",
+          "prop": "imageinfo",
+          "iiprop": "url|size|mime",
+          "iiurlwidth": "1024",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "query": {
+            "pages": {
+              "7": {
+                "imageinfo": [
+                  {
+                    "url": "https://media.prts.wiki/3/31/立绘_阿米娅_1.png",
+                    "thumburl": "https://media.prts.wiki/thumb/立绘_阿米娅_1.png/1024px-立绘_阿米娅_1.png",
+                    "width": 2048,
+                    "height": 2048,
+                    "mime": "image/png",
+                    "size": 200000
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "query",
+          "titles": "File:立绘_阿米娅_1.png",
+          "prop": "imageinfo",
+          "iiprop": "url|size|mime",
+          "iiurlwidth": "256",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "query": {
+            "pages": {
+              "7": {
+                "imageinfo": [
+                  {
+                    "url": "https://media.prts.wiki/3/31/立绘_阿米娅_1.png",
+                    "thumburl": "https://media.prts.wiki/thumb/立绘_阿米娅_1.png/256px-立绘_阿米娅_1.png",
+                    "width": 2048,
+                    "height": 2048,
+                    "mime": "image/png",
+                    "size": 200000
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "query",
+          "titles": "File:立绘_阿米娅_2.png",
+          "prop": "imageinfo",
+          "iiprop": "url|size|mime",
+          "iiurlwidth": "1024",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "query": {
+            "pages": {
+              "8": {
+                "imageinfo": [
+                  {
+                    "url": "https://evil.example/立绘_阿米娅_2.png",
+                    "thumburl": "https://evil.example/立绘_阿米娅_2.png",
+                    "width": 2048,
+                    "height": 2048,
+                    "mime": "image/png",
+                    "size": 1
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "query",
+          "titles": "File:立绘_阿米娅_skin1.png",
+          "prop": "imageinfo",
+          "iiprop": "url|size|mime",
+          "iiurlwidth": "1024",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "query": {
+            "pages": {
+              "9": {
+                "imageinfo": [
+                  {
+                    "url": "https://media.prts.wiki/skin1.png",
+                    "thumburl": "https://media.prts.wiki/thumb/skin1.png/1024px-skin1.png",
+                    "width": 1024,
+                    "height": 1024,
+                    "mime": "image/png",
+                    "size": 150000
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "host": "media.prts.wiki",
+        "path": "/thumb/立绘_阿米娅_1.png/1024px-立绘_阿米娅_1.png"
+      },
+      "respond": {
+        "status": 200,
+        "content_type": "image/png",
+        "body_b64": "iVBORw0KGgpmaXh0dXJlOmNoYXJfMDAyX2FtaXlhIzE6bGFyZ2U="
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "host": "media.prts.wiki",
+        "path": "/thumb/立绘_阿米娅_1.png/256px-立绘_阿米娅_1.png"
+      },
+      "respond": {
+        "status": 200,
+        "content_type": "image/png",
+        "body_b64": "iVBORw0KGgpmaXh0dXJlOmNoYXJfMDAyX2FtaXlhIzE6cHJldmlldw=="
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "host": "media.prts.wiki",
+        "path": "/thumb/skin1.png/1024px-skin1.png"
+      },
+      "respond": {
+        "status": 200,
+        "content_type": "image/png",
+        "body_b64": "iVBORw0KGgpmaXh0dXJlOm1lZGlhd2lraS1za2lu"
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "query",
+          "titles": "File:立绘_阿米娅_8.png",
+          "prop": "imageinfo",
+          "iiprop": "url|size|mime",
+          "iiurlwidth": "1024",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "query": {
+            "pages": {
+              "18": {
+                "imageinfo": [
+                  {
+                    "url": "https://media.prts.wiki/8.png",
+                    "thumburl": "https://media.prts.wiki/bad-magic.png",
+                    "width": 2048,
+                    "height": 2048,
+                    "mime": "image/png",
+                    "size": 1
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "query",
+          "titles": "File:立绘_阿米娅_9.png",
+          "prop": "imageinfo",
+          "iiprop": "url|size|mime",
+          "iiurlwidth": "1024",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "query": {
+            "pages": {
+              "19": {
+                "imageinfo": [
+                  {
+                    "url": "https://media.prts.wiki/9.png",
+                    "thumburl": "https://media.prts.wiki/bad-mime.png",
+                    "width": 2048,
+                    "height": 2048,
+                    "mime": "image/png",
+                    "size": 1
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "query",
+          "titles": "File:立绘_阿米娅_7.png",
+          "prop": "imageinfo",
+          "iiprop": "url|size|mime",
+          "iiurlwidth": "1024",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "query": {
+            "pages": {
+              "17": {
+                "imageinfo": [
+                  {
+                    "url": "https://media.prts.wiki/7.png",
+                    "thumburl": "https://media.prts.wiki/oversize.png",
+                    "width": 4096,
+                    "height": 4096,
+                    "mime": "image/png",
+                    "size": 999999
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "query",
+          "list": "allimages",
+          "aiprefix": "立绘_无立绘干员_",
+          "ailimit": "50",
+          "aiprop": "name|size|mime",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "query": {
+            "allimages": []
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "query": {
+          "action": "parse",
+          "page": "无立绘干员",
+          "prop": "parsetree",
+          "format": "json"
+        }
+      },
+      "respond": {
+        "status": 200,
+        "json": {
+          "parse": {
+            "parsetree": {
+              "*": "<root><template><title>CharinfoV2</title><part><name>职业</name><value>近卫</value></part></template></root>"
+            }
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "host": "media.prts.wiki",
+        "path": "/bad-mime.png"
+      },
+      "respond": {
+        "status": 200,
+        "content_type": "text/html",
+        "body_b64": "iVBORw0KGgp4"
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "host": "media.prts.wiki",
+        "path": "/bad-magic.png"
+      },
+      "respond": {
+        "status": 200,
+        "content_type": "image/png",
+        "body_b64": "R0lGODlhAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+      }
+    },
+    {
+      "match": {
+        "method": "GET",
+        "host": "media.prts.wiki",
+        "path": "/oversize.png"
+      },
+      "respond": {
+        "status": 200,
+        "content_type": "image/png",
+        "body_b64": "H4sIAAAAAAAAA+3BMQ0AMAgAMG4SDGBo3zJbuJ4Jzrbz7qnsDAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAZR97A9z5GAAQAA==",
+        "content_encoding": "gzip"
+      }
+    }
+  ],
+  "default": {
+    "status": 404,
+    "json": {
+      "error": {
+        "code": "replay-unmatched",
+        "info": "no replay rule matched this request"
+      }
+    }
+  }
+}

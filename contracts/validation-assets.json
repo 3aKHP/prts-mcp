@@ -1,0 +1,30 @@
+{
+  "repo": "3aKHP/arknights-data-pipeline",
+  "release_tag": "datarev-26-10-08-04-51-28-56071834-r2",
+  "assets": [
+    {
+      "name": "manifest.json",
+      "path": ".runtime/data/datarev-26-10-08-04-51-28-56071834-r2/manifest.json",
+      "bytes": 51005,
+      "sha256": "55da802578de877de5132b3b25970882827b98962896b6a8b68344532c677eb4"
+    },
+    {
+      "name": "zh_CN-excel.zip",
+      "path": ".runtime/data/datarev-26-10-08-04-51-28-56071834-r2/zh_CN-excel.zip",
+      "bytes": 10468798,
+      "sha256": "b96e6af925cd595ffc9032a1858d6d36158568dd5f0fa940829cf0b59dadb9be"
+    },
+    {
+      "name": "zh_CN-levels.zip",
+      "path": ".runtime/data/datarev-26-10-08-04-51-28-56071834-r2/zh_CN-levels.zip",
+      "bytes": 14248859,
+      "sha256": "fe22cc8c3365a573ef5a83eb696800d08d65f321c4dc14fa53383603a175f70c"
+    },
+    {
+      "name": "zh_CN.zip",
+      "path": ".runtime/data/datarev-26-10-08-04-51-28-56071834-r2/zh_CN.zip",
+      "bytes": 35863985,
+      "sha256": "f987b360d72e7de270ee00ad4998e6bc3d88a192db52fe35ac98864299070eb5"
+    }
+  ]
+}

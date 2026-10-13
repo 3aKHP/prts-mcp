@@ -1,0 +1,26 @@
+{
+  "case": "activity.read.page2",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "04005312-5f91-49b2-8973-05a761fd00b5",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "# 大型活动（共 7 章）\n\n=== BIG-06 大活动第6章 ===\n阿米娅：第三章第6段对话。\n博士：回应一。\n凯尔希：医学报告。\n阿米娅：再次发言。\n*场景转换6。*\n\n=== BIG-07 大活动第7章 ===\n阿米娅：第三章第7段对话。\n博士：回应一。\n凯尔希：医学报告。\n阿米娅：再次发言。\n*场景转换7。*"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9626
+    }
+  }
+}

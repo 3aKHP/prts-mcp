@@ -1,0 +1,26 @@
+{
+  "case": "story.events.memoirs",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "ae880273-5168-4fda-8908-c7749c4403a5",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "- [NONE] story_amiya_set_1：阿米娅的糖（1 章）\n- [NONE] story_amiya_set_2：阿米娅的梦（2 章）"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9604
+    }
+  }
+}

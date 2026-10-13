@@ -1,0 +1,26 @@
+{
+  "case": "fs.search.items",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "full-story-r2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "3a2f55dc-21d2-41fd-beeb-07ad4ebab6c4",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "# 搜索结果：源岩（共 3 个）\n\n## 提纯源岩 [材料/MATERIAL] T4（id: 30014）\n- **用途**：从地表开采出的岩石固块组提纯出的物质，可用于多种强化场合，也常作为制作聚合剂的原料之一。\n\n## 固源岩组 [材料/MATERIAL] T3（id: 30013）\n- **用途**：从地表开采出的岩石固块组，可用于多种强化场合，也常作为制造站合成项目的原料。\n\n## 固源岩 [材料/MATERIAL] T2（id: 30012）\n- **用途**：从地表开采出的岩石固块，可用于多种强化场合，也常作为制造站合成项目的原料。"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9815
+    }
+  }
+}

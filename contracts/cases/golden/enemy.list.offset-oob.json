@@ -1,0 +1,26 @@
+{
+  "case": "enemy.list.offset-oob",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "ca3d3d18-a739-4db1-b2bd-35e74eaa4da5",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "# 敌人图鉴（共 6 个）\n\noffset=99 超出范围（总计 6 条）。"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9325
+    }
+  }
+}

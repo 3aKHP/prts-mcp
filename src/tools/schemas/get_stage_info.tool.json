@@ -1,0 +1,17 @@
+{
+ "name": "get_stage_info",
+ "description": "获取指定关卡的详细信息。返回关卡的编号、类型、难度、所属区域、理智消耗、掉落奖励、解锁条件等。关卡实际出场的敌人见 get_stage_enemies。",
+ "inputSchema": {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+   "stage_id": {
+    "type": "string",
+    "description": "关卡 ID，如 'main_00-01'（可从 list_stages 获取）。"
+   }
+  },
+  "required": [
+   "stage_id"
+  ]
+ }
+}

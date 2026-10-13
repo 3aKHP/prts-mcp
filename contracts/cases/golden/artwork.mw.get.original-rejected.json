@@ -1,0 +1,26 @@
+{
+  "case": "artwork.mw.get.original-rejected",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-images-v1",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "cdbb69c6-e7d2-488c-8d9c-18d1e68afa20",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "LOCAL_IMAGE=false 模式不提供 original 变体（PRTS 原图常超 1 MiB 安全上限）。请使用 large 或 preview。"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9975
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "case": "enemy.appearances.no-match",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "149aca78-44f1-4c33-86ee-3a04f161c9bb",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "未找到 未出场敌人（enemy_unused）的实际出场关卡。"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9344
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "case": "item.info.not-found",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "1e8906f5-575c-4dc2-94c6-0ccb3e486bf9",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "未找到物品：\"龙门币\"。"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9363
+    }
+  }
+}

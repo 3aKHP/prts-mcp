@@ -1,0 +1,22 @@
+{
+ "name": "read_story",
+ "description": "读取单章剧情的完整台词。 返回格式：首行为【活动名】章节名，随后按顺序输出对话（`角色：台词`）、旁白（`*旁白文本*`）和选项（`【选项】文本`）。",
+ "inputSchema": {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+   "story_key": {
+    "type": "string",
+    "description": "章节 key，如 \"activities/act31side/level_act31side_01_beg\"（可从 list_stories 获取）。"
+   },
+   "include_narration": {
+    "default": true,
+    "description": "是否包含旁白和场景描述，默认 true。设为 false 可只保留对话台词。",
+    "type": "boolean"
+   }
+  },
+  "required": [
+   "story_key"
+  ]
+ }
+}

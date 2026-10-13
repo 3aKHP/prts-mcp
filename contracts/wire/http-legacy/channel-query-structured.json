@@ -1,0 +1,84 @@
+{
+  "capture_meta": {
+    "runtime": "bun 1.3.14",
+    "server_entry": "dist/server.js",
+    "server_version": "2.8.1",
+    "fixture": "minimal-gamedata-v1",
+    "captured_at": "2026-10-11T10:29:31.973Z"
+  },
+  "steps": [
+    {
+      "label": "initialize (channel pinned)",
+      "request": {
+        "path": "/mcp?output_channel=structured",
+        "body": {
+          "jsonrpc": "2.0",
+          "method": "initialize",
+          "id": 1,
+          "params": {
+            "protocolVersion": "2025-03-26",
+            "capabilities": {},
+            "clientInfo": {
+              "name": "wire-capture",
+              "version": "1.0"
+            }
+          }
+        },
+        "headers": {}
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "text/event-stream",
+          "mcp-session-id": "85ea7c41-c0f1-4423-86d5-d87bada5f9ba"
+        },
+        "body_text": "event: message\ndata: {\"result\":{\"protocolVersion\":\"2025-03-26\",\"capabilities\":{\"tools\":{\"listChanged\":true}},\"serverInfo\":{\"name\":\"PRTS_Wiki_Assistant\",\"version\":\"2.8.1\"}},\"jsonrpc\":\"2.0\",\"id\":1}\n\n"
+      }
+    },
+    {
+      "label": "initialized",
+      "request": {
+        "body": {
+          "jsonrpc": "2.0",
+          "method": "notifications/initialized"
+        },
+        "headers": {
+          "mcp-session-id": "«sid»"
+        }
+      },
+      "response": {
+        "status": 202,
+        "headers": {},
+        "body_text": ""
+      }
+    },
+    {
+      "label": "tools/call list_stages",
+      "request": {
+        "path": "/mcp?output_channel=structured",
+        "body": {
+          "jsonrpc": "2.0",
+          "method": "tools/call",
+          "id": 2,
+          "params": {
+            "name": "list_stages",
+            "arguments": {
+              "limit": 2
+            }
+          }
+        },
+        "headers": {
+          "mcp-session-id": "«sid»"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "text/event-stream",
+          "mcp-session-id": "85ea7c41-c0f1-4423-86d5-d87bada5f9ba"
+        },
+        "body_text": "event: message\ndata: {\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"（结构化结果共 4 条，详见 structuredContent）\"}],\"structuredContent\":{\"total\":4,\"offset\":0,\"limit\":2,\"filters\":{\"chapter\":null,\"type\":null},\"stages\":[{\"stage_id\":\"act31side_01\",\"name\":\"测试活动关\",\"code\":\"AS-1\",\"type\":\"ACTIVITY\",\"type_label\":\"活动\",\"difficulty_label\":\"普通\",\"zone_id\":\"act31side_zone1\",\"zone_display\":\"火山旅梦\"},{\"stage_id\":\"daily_01\",\"name\":\"货物运送\",\"code\":\"CE-5\",\"type\":\"DAILY\",\"type_label\":\"每日\",\"difficulty_label\":\"普通\",\"zone_id\":\"daily_zone1\",\"zone_display\":\"daily_zone1\"}]}},\"jsonrpc\":\"2.0\",\"id\":2}\n\n"
+      }
+    }
+  ]
+}

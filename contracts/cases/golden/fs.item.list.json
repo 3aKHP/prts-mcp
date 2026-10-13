@@ -1,0 +1,26 @@
+{
+  "case": "fs.item.list",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "full-story-r2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "2d7ce7fa-073f-4215-b5fd-57481f148ad0",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "# 物品列表（共 1520 个）\n- **赏金猎人金币** [其他/ACTIVITY_COIN] T4（id: 1stact） — 用以兑换各类物资。\n- **声望** [其他/EXP_PLAYER] T5（id: 5001） — 战斗结束后获得的经验。足以见证博士的成长。\n- **演习券** [其他/TKT_TRY] T5（id: 6001） — 有关实战前演习的计划书。在选择行动的界面使用，可以模拟出正式交战时的场景，以便指挥部拟定实战策略。\n- **理智** [其他/AP_GAMEPLAY] T5（id: AP_GAMEPLAY） — 用以维持自我的必要概念，支撑着各类行动的策划与执行。\n- **行动协议** [其他/CRS_RUNE_COIN] T5（id: CRISIS_RUNE_COIN） — 作为协议的象征，可用于解锁更多危机合约内容。\n\n（显示第 1–5 条，共 1520 条。使用 offset=5 查看下一页）"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9813
+    }
+  }
+}

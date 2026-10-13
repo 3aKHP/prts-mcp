@@ -1,0 +1,26 @@
+{
+  "case": "story.summary.not-found",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "0ced0697-a195-42ff-8497-73307969ba40",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "未找到剧情章节 'nope/nope' 的梗概。"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9619
+    }
+  }
+}

@@ -1,6 +1,6 @@
 # 版本号约定与兼容性承诺
 
-本文件是 PRTS-MCP 版本语义与兼容性承诺的单一事实源，面向下游部署者与协作者。分支、评审、验证与发布的操作流程见 [`WORKFLOW.md`](WORKFLOW.md)；1.7 LTS 线的专门规则见 [`LTS.md`](LTS.md)。
+本文件是 PRTS-MCP 版本语义与兼容性承诺的单一事实源，面向下游部署者与协作者。分支、评审、验证与发布的操作流程见 [`WORKFLOW.md`](WORKFLOW.md)；两条 LTS 线的专门规则见 [`LTS.md`](LTS.md)。
 
 > **Core promise (EN):** PRTS-MCP follows SemVer-shaped versioning with a closed, enumerated set of deviations declared in this document — not maintainer discretion. For every Patch and Minor release within a Major line, the default goal is a blind upgrade: `pip install -U` / `npm install -g` with no configuration change, without end users noticing anything.
 
@@ -41,9 +41,12 @@ Patch 与 Minor 共享同一个默认姿态。**兼容** = 同时满足：
 
 ## 版本号操作规则
 
+3.x 不再持有 python/ 或 ts/，以下 Python/TS 归一化规则只适用于旧分支；裸 v3.* tag 仅对 Rust 产品线启用，旧线仍禁止裸 tag。稳定发布合 main，回灌 develop 时重开下一目标 -dev.0。main 尚为 2.x 的过渡期，不整体 forward merge 到 Rust，而是移植适用修复。
+
 - **三段式 `Major.Minor.Patch`**。**预发布后缀与归一化**：tag 始终使用连字符后缀（`-alpha.N` / `-beta.N` / `-rc.N`），Python 和 TS 统一；`pyproject.toml` 内用 PEP 440（`2.6.0a1`），CD 的 version check 自动归一化 `-alpha.` → `a`；`package.json` 内用与 tag 相同的 semver 形式（`2.6.0-alpha.1`）。
-- **双实现版本锁步**：`python/pyproject.toml` 与 `ts/package.json` 版本号始终一致（格式分别遵循 PEP 440 与 semver）；tag 成对（`python/vX.Y.Z` + `ts/vX.Y.Z`）。
-- **develop 目标版本**：`develop` 上的版本号 = 下一计划发布目标 + 开发后缀（`.dev0` / `-dev.0`）。正式发布并回灌后，默认进入当前 Minor 的下一 Patch（如 2.7.4 发布后 → `2.7.5.dev0` / `2.7.5-dev.0`）；确定开启新主题时才改为下一 Minor（`2.8.0.dev0`），并在 ROADMAP 记录主题。目标版本只表达下一计划发布，允许随范围调整；已发布 tag 与发行物保持原样。
+- **3.x 单一产品版本**：Cargo.toml 为版本源，Cargo.lock、npm 入口/平台包、容器及 MCP serverInfo 一致。开发版采用 -dev.0；稳定 tag 为 v3.x.y，预发布为 v3.x.y-alpha.N/beta.N/rc.N。M3 建立公开 CD 前，不将 tag 存在解释为已发布。
+- **旧线双实现版本锁步**（仅 lts/1.7 与 lts/2.8）：`python/pyproject.toml` 与 `ts/package.json` 版本号始终一致（格式分别遵循 PEP 440 与 semver）；tag 成对（`python/vX.Y.Z` + `ts/vX.Y.Z`）。
+- **develop 目标版本**（3.x 仅 semver -dev.0，当前目标 3.0.0-dev.0；旧线保留以下历史形式）：`develop` 上的版本号 = 下一计划发布目标 + 开发后缀（`.dev0` / `-dev.0`）。正式发布并回灌后，默认进入当前 Minor 的下一 Patch（如 2.7.4 发布后 → `2.7.5.dev0` / `2.7.5-dev.0`）；确定开启新主题时才改为下一 Minor（`2.8.0.dev0`），并在 ROADMAP 记录主题。目标版本只表达下一计划发布，允许随范围调整；已发布 tag 与发行物保持原样。
 - **Patch 是系列内累积更新的常规载体，hotfix 只是它的特例**：Patch release 可以容纳修复、优化、功能补全与小型兼容增补，不要求也不默认是一次紧急修复。非 hotfix 的 patch 工作一律经 `develop` 累积、随标准 release 流程发布；唯一直通 `main` 的通道是 hotfix（触发条件见 [`WORKFLOW.md`](WORKFLOW.md) 的 Hot-Fix 一节）。
 
 ### 回灌后的 develop 目标版本对照表
@@ -60,7 +63,7 @@ Patch 与 Minor 共享同一个默认姿态。**兼容** = 同时满足：
 
 ## 不变项
 
-- `lts/1.7` 的维护规则、tag 前缀与 CD 门禁：不变，见 [`LTS.md`](LTS.md) 与 `CLAUDE.md`。
+- `lts/1.7` 的维护规则、tag 前缀与 CD 门禁不变；lts/2.8 保留 python/v2.8.x + ts/v2.8.x 成对 tag，两线同于 2027-07-02 EOL 且不更新 latest，见 [`LTS.md`](LTS.md) 与 `CLAUDE.md`。
 - 历史版本保留原编号与发布记录，不追溯调整。
 
 ## 明确不引入

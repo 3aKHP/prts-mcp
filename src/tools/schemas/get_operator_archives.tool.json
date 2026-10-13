@@ -1,0 +1,17 @@
+{
+ "name": "get_operator_archives",
+ "description": "获取指定干员的档案资料。 返回干员的客观履历、个人档案（基础档案及解锁档案）等背景故事文本。 数值信息见 get_operator_basic_info，语音台词见 get_operator_voicelines。",
+ "inputSchema": {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+   "name": {
+    "type": "string",
+    "description": "干员的游戏内中文名，如「阿米娅」、「能天使」。"
+   }
+  },
+  "required": [
+   "name"
+  ]
+ }
+}

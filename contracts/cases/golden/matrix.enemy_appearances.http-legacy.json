@@ -1,0 +1,26 @@
+{
+  "case": "matrix.enemy_appearances.http-legacy",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "40f28990-81f0-4716-9f6b-01c424797a1e",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "# 源石虫（enemy_1007_slime）— 出场关卡（共 2 个）\n- **坍塌** 0-1（main_00-01）：6 个\n- **坍塌·突袭** TR-1（main_00-01#f#）：6 个\n\n（显示第 1–2 条，共 2 条。使用 offset=50 查看下一页）"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9404
+    }
+  }
+}

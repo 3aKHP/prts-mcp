@@ -1,0 +1,26 @@
+{
+  "case": "search.operators.empty",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "bf2be223-0c6c-49b4-8d4f-b83c3ac16884",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "未找到匹配 '不存在的干员xyz' 的干员数据。"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9367
+    }
+  }
+}

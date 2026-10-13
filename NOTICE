@@ -34,3 +34,8 @@ PRTS-MCP is a fan project run for the community.
 It accepts no commercial sponsorship, advertising or paid promotion, and ships no paid features.
 
 PRTS-MCP 是为爱发电的同人项目：不接受商业赞助、广告或付费推广，也不提供任何付费功能。
+
+4. Native regular expression component / 原生正则组件
+
+The server statically compiles the vendored QuickJS libregexp/libunicode subset. Its MIT notices, original source identity and hashes are included under vendor/quickjs-regexp/NOTICES.txt and SOURCE.json. No QuickJS JavaScript runtime is embedded.
+服务静态编译 QuickJS 的 libregexp/libunicode 子集；原始 MIT 声明及源码身份见 vendor/quickjs-regexp/，不包含 QuickJS JavaScript 运行时。

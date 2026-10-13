@@ -1,0 +1,28 @@
+{
+ "name": "list_items",
+ "description": "列出物品/材料列表，支持按分类过滤和分页。 返回每个物品的名称、分类、类型、稀有度、ID 和简短用途，适合查找材料、货币、凭证等。",
+ "inputSchema": {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+   "category": {
+    "description": "按物品分类过滤，如 MATERIAL（材料）、NORMAL（普通）、CONSUME（消耗品）。不填则返回全部可见物品。",
+    "type": "string"
+   },
+   "limit": {
+    "default": 50,
+    "description": "返回数量上限，默认 50。",
+    "type": "integer",
+    "minimum": 1,
+    "maximum": 200
+   },
+   "offset": {
+    "default": 0,
+    "description": "分页偏移量，默认 0。",
+    "type": "integer",
+    "minimum": 0,
+    "maximum": 9007199254740991
+   }
+  }
+ }
+}

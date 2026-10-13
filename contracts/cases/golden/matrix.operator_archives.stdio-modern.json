@@ -1,0 +1,33 @@
+{
+  "case": "matrix.operator_archives.stdio-modern",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "stdio",
+    "session_id": null,
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "# 阿米娅 - 干员档案\n\n### 档案资料一\n阿米娅的档案文本。\n\n### 档案资料二\n第二段有效文本{{Trim|边缘}}"
+          }
+        ],
+        "resultType": "complete",
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "PRTS_Wiki_Assistant",
+            "version": "<server-version>"
+          }
+        }
+      },
+      "jsonrpc": "2.0",
+      "id": 9383
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "case": "operator.basic.stats-level-oob",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "1a0ad4bc-d3d8-4abf-8ba7-05656fbbd5aa",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "level 必须在 1..80 之间（精英2 的等级上限为 80）。"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9312
+    }
+  }
+}
