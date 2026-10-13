@@ -41,3 +41,5 @@ Frozen error goldens contained their original absolute workspace roots. Only exp
 Cargo packaging is local validation only (publish=false), including all embedded runtime declarations, native source and notices. The private one-platform npm harness remains a local test package; it is not the planned public two-entry/platform-package distribution. Dockerfile is a development source-build image; minimum systems/ABI, MSRV, macOS/Windows/ARM64, npm platform installation and published multi-architecture images are not claimed at M1B.
 
 2.x fix intake: the frozen stable commit and develop base have no differences in ts/src or python/src. M1A changed maintenance rules/publishers only; no unported runtime fix was found at this checkpoint. Recheck again before RC.
+
+Local results: [M1B validation report](../reports/3.0-m1b-root-import.md). The 124-file Cargo package uses root-anchored include patterns and actual list checks, preventing nested oracle/cache README/LICENSE overmatches.

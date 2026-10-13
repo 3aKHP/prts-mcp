@@ -46,7 +46,9 @@ jobs:
       - name: Native tests, frozen differential suite and lifecycle
         run: ./scripts/check-runtime.sh --full
       - name: Verify standalone source package
-        run: cargo package --locked
+        run: |
+          node tools/check-source-package.mjs
+          cargo package --locked
       - name: Retain scoped validation evidence
         if: always()
         uses: actions/upload-artifact@v6

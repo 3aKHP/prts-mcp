@@ -6,7 +6,7 @@ publish = false
 description = "Arknights fan-creation MCP server with native Rust runtime"
 repository = "https://github.com/3aKHP/prts-mcp"
 readme = "README.md"
-include = ["Cargo.toml", "Cargo.lock", "build.rs", "rust-toolchain.toml", "src/**", "native/**", "vendor/**", "contracts/data-declarations.json", "LICENSE", "NOTICE", "README.md", "CHANGELOG.md"]
+include = ["/Cargo.toml", "/Cargo.lock", "/build.rs", "/rust-toolchain.toml", "/src/**", "/native/**", "/vendor/**", "/contracts/data-declarations.json", "/LICENSE", "/NOTICE", "/README.md", "/CHANGELOG.md"]
 license = "MIT"
 
 [lib]
