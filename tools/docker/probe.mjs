@@ -118,7 +118,7 @@ try {
  checks.push({case:'real sync and recreation with four legacy subdirectory mounts'});
  const rollback=spawn('bun',[join(root,'.reference/ts-v2.8.1/ts/dist/server-stdio.js')],{cwd:temp,env:{...tsEnv,GAMEDATA_PATH:join(synced,'gamedata'),STORYJSON_PATH:join(synced,'storyjson/zh_CN.zip')},stdio:['pipe','pipe','pipe']});
  checks.push({case:'fixed old TS reads container-written data (scoped read-back, not M4 release rollback)',...await stdio(rollback,'2.8.1')});
- json(join(out,'docker-evidence.json'),{platform:id,native:true,arch,version,commit:receipt.commit,imageId:receipt.imageId,checks,publicPublication:false,
+ json(join(out,'docker-evidence.json'),{platform:id,native:true,arch,version,commit:receipt.commit,imageId:receipt.imageId,archiveSha256:sha(archive),checks,publicPublication:false,
  scope:'native Docker packaging and isolated fixture lifecycle; real-client candidate E2E/complete release upgrades and rollback remain M4'});
  console.log(`DOCKER_VERIFY_PASS: ${checks.length} checks (${id})`);
 }finally {
