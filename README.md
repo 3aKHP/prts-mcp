@@ -19,6 +19,8 @@ The new prts-mcp defaults to Streamable HTTP on :3000 (/mcp, /health). PRTS_TRAN
 
 Data sync, paths and user settings are documented in [environment variables](docs/user/environment-variables.md). GameData and story data auto-sync from arknights-data-pipeline Releases; explicit data paths disable the corresponding sync. Read-only fallback, atomic activation, lock/lease, generations and offline recovery follow the frozen 2.8.1 contract. LOCAL_IMAGE=false fetches artwork through MediaWiki; LOCAL_IMAGE=true syncs AKDP PNG assets. IMAGES_ENABLED=false removes the artwork tool.
 
+Repository data/ contains ignored local downloads; the former four-table sample is no longer tracked. Source runs use the configured user data directory and startup sync. Validated read-only data bundles for native/npm/Docker releases are required by the 3.0 plan and will be prepared separately during distribution packaging; current M2A CI archives contain no full game-data bundle. See [data layout and distribution policy](data/README.md).
+
 ## MCP contract
 
 The server provides 24 tools (23 without artwork) across operator/enemy/stage/item lookup, unified search, story/event/character tracing, PRTS Wiki search/page and operator_artwork. Legacy MCP 2024-11-05 / 2025-03-26 / 2025-06-18 and modern 2026-07-28 support are preserved in both transports. PRTS_OUTPUT_CHANNEL selects content, structured or both; HTTP per-request overrides are preserved.
@@ -40,6 +42,8 @@ Python/TS maintenance remains on lts/2.8 and lts/1.7, both EOL 2027-07-02. See [
 ## 中文
 
 3.x 将技术栈统一为根目录 Rust 工程，正则使用随二进制提供的原生 C 组件，不执行 JS/TS 业务。当前公开稳定版仍为 2.8.1，本分支 3.0.0-dev.0 尚未发行；此阶段只完成源码迁移、开发验证和独立源码打包。后续依次完成五平台发行验证、npm 与 Docker 包装、发布自动化、真实客户端 E2E、3.0 正式发布。新主命令默认 Streamable HTTP，旧 TS 命令及 Docker 的默认传输分别保留。配置见[环境变量](docs/user/environment-variables.md)，阶段和边界见[中文路线图](ROADMAP.zh-CN.md)。
+
+根 data/ 保留本地下载数据并由 ignore 排除，旧四表快照退出源码跟踪。源码运行默认同步至用户数据目录；正式原生/npm/Docker 发行物继续要求经过校验的只读备用数据，由后续发行包装流程准备，当前 M2A CI 产物尚未携带完整备用数据。详见[数据目录说明](data/README.md)。
 
 ## License / 许可
 
