@@ -16,17 +16,23 @@ for(const [id,arch]of [['linux-x64','amd64'],['linux-arm64','arm64']]){
   catch(error){const message=String(error.stderr??'');if(!/manifest unknown|name unknown|not found/i.test(message))throw error;}
   if(found){const existing=JSON.parse(run('docker',['image','inspect',remote]))[0];assert.equal(existing.Id,actual.Id,'Immutable version image differs');}
   else {run('docker',['tag',receipt.image,remote]);run('docker',['push',remote],{stdio:'inherit'});}
-  sources.push(remote);digests.push(run('docker',['buildx','imagetools','inspect',remote,'--format','{{.Manifest.Digest}}']).trim());
+  const digest=run('docker',['buildx','imagetools','inspect',remote,'--format','{{.Manifest.Digest}}']).trim();
+  sources.push(`${registry}@${digest}`);digests.push(digest);
+}
+function verifyIndex(index) {
+  const actual=index.manifests.map(m=>({os:m.platform?.os,arch:m.platform?.architecture,digest:m.digest})).sort((a,b)=>a.arch?.localeCompare(b.arch));
+  assert.deepEqual(actual,[{os:'linux',arch:'amd64',digest:digests[0]},{os:'linux',arch:'arm64',digest:digests[1]}],
+    'Version manifest must map each verified digest to its actual native architecture');
 }
 for(const tag of policy.dockerTags){
   if(tag===policy.version){
     let existing;
     try{existing=JSON.parse(run('docker',['buildx','imagetools','inspect',`${registry}:${tag}`,'--raw']));}
     catch(error){if(!/manifest unknown|name unknown|not found/i.test(String(error.stderr??'')))throw error;}
-    if(existing){assert.deepEqual(existing.manifests.map(m=>m.digest).sort(),[...digests].sort(),'Immutable version manifest differs');continue;}
+    if(existing){verifyIndex(existing);continue;}
   }
   run('docker',['buildx','imagetools','create','--tag',`${registry}:${tag}`,...sources],{stdio:'inherit'});
   const index=JSON.parse(run('docker',['buildx','imagetools','inspect',`${registry}:${tag}`,'--raw']));
-  assert.deepEqual(index.manifests.filter(m=>m.platform?.os==='linux').map(m=>m.platform.architecture).sort(),['amd64','arm64']);
+  verifyIndex(index);
 }
 console.log(`DOCKER_PUBLICATION_PASS: ${policy.version} both verified native architectures`);
