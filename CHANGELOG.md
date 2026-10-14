@@ -12,7 +12,7 @@
 
 - Wait for both the public version and its candidate tag after an npm upload; the two registry endpoints may become readable at different times. Allow up to thirty minutes for observed npm processing delays and refuse later dependency publication when either remains unconfirmed.
 
-- Wait for npm's asynchronous validation to make an accepted candidate upload publicly readable before advancing dependencies. Preserve and verify all existing labels, including npm-required bootstrap latest aliases; candidate releases advance next only and verify independent tag writes with temporary labels that are removed. Existing prts-mcp-ts stable/LTS channels remain unchanged.
+- Wait for npm's asynchronous validation to make an accepted candidate upload publicly readable before advancing dependencies. Preserve and verify all existing labels, including npm-required bootstrap latest aliases; candidate releases advance next only; temporary tag probes are retained solely for incident troubleshooting. Existing prts-mcp-ts stable/LTS channels remain unchanged.
 - Add verified-snapshot publishing for Rust candidates on GitHub/GHCR and independently enabled npm OIDC. Prereleases use next and leave stable latest unchanged; npm account setup remains required.
 
 - Prepare full native release candidates with validated read-only fallback data on all five platforms, verify archive installation without developer tools, and collect one exact-version snapshot for npm, native and Docker channels. Public publishing and stable latest are not enabled by this preparation.
