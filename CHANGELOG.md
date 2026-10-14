@@ -2,6 +2,8 @@
 
 ## [Unreleased] — 3.0.0-dev.0
 
+- Wait for npm permission-check tag additions and removals to become publicly visible, while checking every existing release channel on each read; fail on permission errors, conflicts or the five-minute deadline, and clean up the owned probe even when observing its addition fails.
+
 - Wait for both the public version and its candidate tag after an npm upload; the two registry endpoints may become readable at different times. Allow up to thirty minutes for observed npm processing delays and refuse later dependency publication when either remains unconfirmed.
 
 - Wait for npm's asynchronous validation to make an accepted candidate upload publicly readable before advancing dependencies. Preserve and verify all existing labels, including npm-required bootstrap latest aliases; candidate releases advance next only and verify independent tag writes with temporary labels that are removed. Existing prts-mcp-ts stable/LTS channels remain unchanged.

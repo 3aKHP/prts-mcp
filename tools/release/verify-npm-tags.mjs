@@ -11,14 +11,28 @@ async function tags(name){
     {cache:'no-store',signal:AbortSignal.timeout(30000)});
   assert(response.ok,`Tag verification returned ${response.status}`);return response.json();
 }
+async function confirmedTags(name,retained,present){
+  const deadline=Date.now()+300000;
+  while(true){
+    const observed=await tags(name),unchanged={...observed};delete unchanged[probe];
+    assert.deepEqual(unchanged,retained,'Existing publication tags changed');
+    assert(!Object.hasOwn(observed,probe)||observed[probe]===manifest.version,'Conflicting verification tag');
+    if(Object.hasOwn(observed,probe)===present)return observed;
+    assert(Date.now()<deadline,`Verification tag ${present?'addition':'removal'} was not confirmed within five minutes`);
+    await new Promise(resolve=>setTimeout(resolve,2000));
+  }
+}
 for(const pkg of manifest.packages){
   const before=await tags(pkg.name);assert.equal(before[policy.npmTag],pkg.version);
   // A failed same-run attempt may have left this owned, exact-version probe.
   assert(!Object.hasOwn(before,probe)||before[probe]===pkg.version,'Conflicting verification tag');
+  const retained={...before};delete retained[probe];
   run('npm',['dist-tag','add',`${pkg.name}@${pkg.version}`,probe],{stdio:'inherit'});
-  assert.equal((await tags(pkg.name))[probe],pkg.version);
-  run('npm',['dist-tag','rm',pkg.name,probe],{stdio:'inherit'});
-  const after=await tags(pkg.name);assert(!Object.hasOwn(after,probe),'Verification tag removal was not confirmed');
-  const retained={...before};delete retained[probe];assert.deepEqual(after,retained,'Existing publication tags changed');
+  try{
+    await confirmedTags(pkg.name,retained,true);
+  }finally{
+    run('npm',['dist-tag','rm',pkg.name,probe],{stdio:'inherit'});
+    await confirmedTags(pkg.name,retained,false);
+  }
 }
 console.log(`NPM_TAG_PERMISSIONS_PASS: ${manifest.packages.length} packages; validation tags removed`);
