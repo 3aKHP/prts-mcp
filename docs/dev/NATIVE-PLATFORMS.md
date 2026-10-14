@@ -1,6 +1,6 @@
 # Native platform artifacts (M2A)
 
-M2A builds and runs the native Rust product on five matching CPU/OS runners. These are development CI artifacts, not published 3.x releases. npm installation is M2B, the production Docker wrapper is M2C, public publishing is M3/M5 and full candidate real-client E2E is M4. No Node/Bun/Python business runtime or local compilation is part of native installation.
+M2A builds and runs the native Rust product on five matching CPU/OS runners. M2A SDK artifacts remain development output; M3 publishes separate complete data-bearing candidates. npm installation is M2B, the production Docker wrapper is M2C, public publishing is M3/M5 and full candidate real-client E2E is M4. No Node/Bun/Python business runtime or local compilation is part of native installation.
 
 ## Baselines and evidence
 
@@ -46,6 +46,6 @@ LICENSE, NOTICE, original locked dependency notices, Rust standard-library notic
 
 Linux additionally runs the extracted archive in a pinned AlmaLinux 8 minimal runtime image on the matching host CPU, without a compiler or language runtime in that image. Docker is only this phase's test enclosure; a tiny init forwards signals, and HTTP is forwarded through a loopback-only mapped port. This does not pre-empt the M2C production Docker wrapper.
 
-GitHub Actions artifacts retain evidence for 14 days; this is CI retention, not a stable-download service. Public release automation will use the same payload contract in M3. The archive probe does not depend on historical TS sources, network data or local caches: [the small committed fixture](../../tests/fixtures/native-smoke/README.md) corresponds to contracts/data-manifest.json and its exact committed bytes are sealed in contracts/native-smoke-manifest.json. It is used only in the temporary test installation.
+GitHub Actions artifacts retain evidence for 14 days; this is CI retention, not a stable-download service. M3 now publishes complete data-bearing [3.0.0-alpha.3 candidates](https://github.com/3aKHP/prts-mcp/releases/tag/v3.0.0-alpha.3) under the same payload contract; [acceptance](reports/3.0-m3-candidate-release.md) records actual release scope. The archive probe does not depend on historical TS sources, network data or local caches: [the small committed fixture](../../tests/fixtures/native-smoke/README.md) corresponds to contracts/data-manifest.json and its exact committed bytes are sealed in contracts/native-smoke-manifest.json. It is used only in the temporary test installation.
 
 Build environment references: [GitHub native hosted runners](https://docs.github.com/en/actions/reference/runners/github-hosted-runners), [manylinux_2_28 images and glibc baseline](https://github.com/pypa/manylinux), [Rust supported platforms](https://doc.rust-lang.org/rustc/platform-support.html). Actual artifact audits and runtime records own the project's support claims.

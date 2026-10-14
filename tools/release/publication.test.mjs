@@ -35,8 +35,10 @@ function fixture(mode='fresh',version='3.0.0-alpha.1') {
   put('mock/fetch.mjs',`import {readFileSync,existsSync} from 'node:fs';
 import {basename} from 'node:path';
 const packages=JSON.parse(readFileSync(new URL('../artifacts/release/RELEASE.json',import.meta.url))).packages;
-const mode=process.env.TEST_NPM_MODE;let reads=0,tagReads=0;
-if(mode==='invisible'||mode==='tags-invisible'){let clock=0;Date.now=()=>clock+=1800001;}
+const mode=process.env.TEST_NPM_MODE;let reads=0,tagReads=0;const probeReads=new Map();
+if(mode==='invisible'||mode==='tags-invisible'||mode==='probe-add-invisible'||mode==='probe-rm-invisible'){let clock=0;Date.now=()=>clock+=1800001;}
+let lateClock=0;if(mode==='probe-late-response')Date.now=()=>lateClock;
+if(mode==='probe-delayed')globalThis.setTimeout=callback=>{queueMicrotask(callback);return 0;};
 const commands=()=>existsSync(process.env.TEST_COMMAND_LOG)?readFileSync(process.env.TEST_COMMAND_LOG,'utf8').trim().split('\\n').filter(Boolean).map(JSON.parse):[];
 globalThis.fetch=async url=>{
  const path=decodeURIComponent(new URL(url).pathname).slice(1),tagsRequest=path.startsWith('-/package/');
@@ -60,6 +62,15 @@ globalThis.fetch=async url=>{
   if(a[0]==='dist-tag'&&a[1]==='add'&&a[2]===pkg.name+'@'+pkg.version)tags[a[3]]=pkg.version;
  }
  if(tagsRequest&&pkg===packages[0]&&(mode==='tags-invisible'||(mode==='tags-delayed'&&tagReads++===0)))tags.next='3.0.0-alpha.1';
+ if(tagsRequest&&mode.startsWith('probe-')){
+  const probe='prts-release-check-12345',writes=calls.filter(c=>c.args[0]==='dist-tag'&&c.args.includes(probe)&&c.args.some(a=>a===pkg.name||a===pkg.name+'@'+pkg.version));
+  if(writes.length){
+   const phase=writes.at(-1).args[1];if(mode==='probe-late-response'&&phase==='add')lateClock=300001;const key=pkg.name+':'+phase,count=probeReads.get(key)||0;probeReads.set(key,count+1);
+   if(phase==='add'&&(mode==='probe-add-invisible'||(mode==='probe-delayed'&&count===0)))delete tags[probe];
+   if(phase==='rm'&&(mode==='probe-rm-invisible'||(mode==='probe-delayed'&&count===0)))tags[probe]=pkg.version;
+   if(mode==='probe-channel-change')tags.latest='unexpected';
+  }
+ }
  if(tagsRequest)return new Response(JSON.stringify(tags));
  const versions=(fresh||['bootstrap-upload','tags-delayed','tags-invisible'].includes(mode))&&!published?{}:{[pkg.version]:{dist:{integrity:mode==='conflict'?'sha512-conflict':pkg.integrity}}};
  return new Response(JSON.stringify({versions,'dist-tags':tags}));
@@ -186,5 +197,19 @@ for(const mode of ['tags-delayed','tags-invisible'])test(`public version with ${
       assert.equal(f.commands().filter(c=>c.args[0]==='publish').length,1);
     }
     assert(!f.commands().some(c=>c.args[0]==='dist-tag'),'Tag visibility waits must not write or repair labels');
+  }finally{f.cleanup();}
+});
+
+for(const mode of ['probe-delayed','probe-add-invisible','probe-rm-invisible','probe-channel-change','probe-late-response'])test(`actual tag permission probes handle ${mode} without extra writes or channel changes`,()=>{
+  const f=fixture();try{
+    f.env.RUST_NPM_PUBLISH_ENABLED='true';f.env.TEST_NPM_MODE=mode;f.env.NODE_OPTIONS='--import='+join(f.root,'mock/fetch.mjs');
+    const r=f.run('verify-npm-tags'),calls=f.commands();
+    if(mode==='probe-delayed'){
+      assert.equal(r.status,0,r.stderr);assert.equal(calls.length,18);
+    }else{
+      assert.notEqual(r.status,0);assert.match(r.stderr,mode==='probe-channel-change'?/Existing publication tags changed/:/not confirmed within five minutes/);
+      assert.equal(calls.length,2,'The owned tag is removed even if observing its addition fails');
+    }
+    assert(calls.every(c=>c.args[0]==='dist-tag'&&c.args.includes('prts-release-check-12345')));
   }finally{f.cleanup();}
 });

@@ -10,6 +10,8 @@
 - 难以判断属于哪一级时，**向上分级**。
 - 无法执行的验证必须在 PR / 交接中明确报告为未验证，不得当作通过。
 
+维护者要求：不设计新的独立验证门禁或例行发布阻力，除非真实事故证明其必要性；既有检查和已批准的文档/data发布前工作仍保留。短分支push不跑完整矩阵，开PR后由PR执行完整Rust和五平台检查，更新head取消过时PR运行；main/develop合并push保留集成检查，v3.*tag执行发布，必要时显式workflow_dispatch。release分支push不再额外跑一遍候选矩阵，打tag前复用同源PR的已验收产物/证据进行现有准备。
+
 ## 变更分级
 
 | 等级 | 范围 | 评审 | 合并路径 |
@@ -109,7 +111,7 @@ gh pr view "$pr" --json reviews \
 
 | 改动类型 | 最小验证 |
 |---|---|
-| 仅文档 | 术语与链接检查；Rust CI 对 push/PR 均运行，不再依赖旧目录 paths filter。 |
+| 仅文档 | 术语与链接检查；PR执行Rust CI；main/develop的push保留集成检查，短分支push不重复矩阵。 |
 | 小代码（Rust） | fmt/clippy 和对应模块 Rust tests；触及冻结契约时补 differential。 |
 | 工具面 / 数据 / sync 运行时 | Rust 全量原生测试与固定 TS oracle 对照 + `./scripts/check-runtime.sh --full` |
 | 高风险域改动 | Rust 全量原生测试与固定 TS oracle 对照 + check-runtime --full；全量 E2E 强烈建议，维护者可按上节规则当次裁量（替代时 PR 披露范围与未执行环节） |

@@ -2,9 +2,17 @@
 
 ## [Unreleased] — 3.0.0-dev.0
 
+- Publish the isolated 3.0.0-alpha.3 Rust candidate on npm next, GitHub prerelease and native x64/ARM64 GHCR, with bundled fallback data and signed npm provenance. All nine Trusted Publishers pass direct publishing; existing stable/latest/LTS channels remain frozen until M5. Real-client E2E and stable 3.0 are still pending.
+
+- Run complete feature/fix/release checks on pull requests rather than duplicating push matrices; retain main/develop integration pushes, explicit manual runs and formal tag publishing, and cancel outdated Rust PR validation.
+
+- Keep temporary npm tag probes for real-incident troubleshooting instead of blocking routine candidate or stable publication; candidate publishing still verifies exact package integrity and preserves all existing channels.
+
+- Wait for npm permission-check tag additions and removals to become publicly visible, while checking every existing release channel on each read; fail on permission errors, conflicts or the five-minute deadline, and clean up the owned probe even when observing its addition fails.
+
 - Wait for both the public version and its candidate tag after an npm upload; the two registry endpoints may become readable at different times. Allow up to thirty minutes for observed npm processing delays and refuse later dependency publication when either remains unconfirmed.
 
-- Wait for npm's asynchronous validation to make an accepted candidate upload publicly readable before advancing dependencies. Preserve and verify all existing labels, including npm-required bootstrap latest aliases; candidate releases advance next only and verify independent tag writes with temporary labels that are removed. Existing prts-mcp-ts stable/LTS channels remain unchanged.
+- Wait for npm's asynchronous validation to make an accepted candidate upload publicly readable before advancing dependencies. Preserve and verify all existing labels, including npm-required bootstrap latest aliases; candidate releases advance next only; temporary tag probes are retained solely for incident troubleshooting. Existing prts-mcp-ts stable/LTS channels remain unchanged.
 - Add verified-snapshot publishing for Rust candidates on GitHub/GHCR and independently enabled npm OIDC. Prereleases use next and leave stable latest unchanged; npm account setup remains required.
 
 - Prepare full native release candidates with validated read-only fallback data on all five platforms, verify archive installation without developer tools, and collect one exact-version snapshot for npm, native and Docker channels. Public publishing and stable latest are not enabled by this preparation.
@@ -20,6 +28,6 @@
 - Compile vendored native C regexp into the server; no JS VM or JS/TS business runtime is needed.
 - Prepare five native platform archives with static regexp, bundled dependency notices, ABI audits and detached runtime checks; Rust source builds require 1.89 or newer. 3.x development artifacts are not public releases.
 - Use the Windows LOCALAPPDATA user-data location during actual startup, matching the frozen TS default path contract; preserve Windows file identity and drive prefixes for activation/extraction, movable relative generation pointers on desktop platforms, and actual Windows/macOS memory diagnostics.
-- Establish full Linux Rust validation, standalone Cargo source packaging and five native archive build/runtime checks. npm entry/platform installation, published Docker and release automation follow in M2B/C and M3; no 3.x package has been released yet.
+- Establish full Linux Rust validation, standalone Cargo source packaging and five native archive build/runtime checks. npm entry/platform installation and published candidate Docker/release automation are accepted in M2B/C and M3; stable 3.0 and full candidate E2E remain later stages.
 
 Older Python/TS changelogs remain on their historical tags and LTS branches.
