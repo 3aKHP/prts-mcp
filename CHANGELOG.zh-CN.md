@@ -6,7 +6,7 @@
 
 2.8.1 基线时的原始分语言更新日志可在 [`ts/v2.8.1` tag](https://github.com/3aKHP/prts-mcp/tree/ts/v2.8.1) 查看（[Python](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/python/CHANGELOG.md) · [TypeScript](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/ts/CHANGELOG.md)），1.7.1 与 1.7.2 的维护记录来自已发布的 [`python/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/python/v1.7.2/python/CHANGELOG.md) 与 [`ts/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/ts/v1.7.2/ts/CHANGELOG.md) 标签。
 
-## [Unreleased] — 3.0.0-dev.0
+## [3.0.0-rc.1] - 2026-10-15
 
 实现：Rust。
 
@@ -14,14 +14,14 @@
 
 - **统一的原生 Rust 运行时（`prts-mcp`）**：将服务端迁移为仓库根目录下的单一原生 Rust 实现（最低 Rust 版本 `1.89`），静态链接内嵌的 QuickJS C 正则组件（`vendor/quickjs-regexp/`），完整保留 TS/v2.8.1 的 24 个工具契约、新旧两代 MCP 协议（`legacy` 会话与 `2026-07-28` 无状态 `modern` 信封）、`stdio` 与 Streamable HTTP 传输，以及感知数据代际激活的后台游戏数据与立绘同步。
 - **五平台预编译原生归档包**：提供 `linux-x64`、`linux-arm64`（`glibc >= 2.28`）、`windows-x64`（静态链接 CRT）、`darwin-arm64` 与 `darwin-x64`（`macOS 14.0+`）独立发行归档包，内置 5 个入口可执行文件、ABI/构建清单、完整第三方许可声明以及经过校验的只读备用游戏数据（游戏表、关卡、剧情）。
-- **9 包架构的 Rust 版 npm 分发**：新增主入口包 `prts-mcp` 并保留兼容入口包 `prts-mcp-ts`，底层由 `@3akhp/prts-mcp-runtime`（要求 `Node >= 22` 的轻量启动桥，支持 POSIX 信号转发与 Windows 父进程句柄退出联动）、`@3akhp/prts-mcp-data`（共享只读备用数据）及 5 个按平台自动筛选的二进制包（`@3akhp/prts-mcp-<platform>`）支撑，已通过 npm OIDC provenance 签名发布候选版 `3.0.0-alpha.3`（`@next`）。
+- **9 包架构的 Rust 版 npm 分发**：新增主入口包 `prts-mcp` 并保留兼容入口包 `prts-mcp-ts`，底层由 `@3akhp/prts-mcp-runtime`（要求 `Node >= 22` 的轻量启动桥，支持 POSIX 信号转发与 Windows 父进程句柄退出联动）、`@3akhp/prts-mcp-data`（共享只读备用数据）及 5 个按平台自动筛选的二进制包（`@3akhp/prts-mcp-<platform>`）支撑，已通过 npm OIDC provenance 签名发布候选版 `3.0.0-rc.1`（`@next`）。
 - **双架构原生 Docker 镜像**：`ghcr.io/3akhp/prts-mcp`（支持 `linux/amd64` 与 `linux/arm64`）切换为原生 Rust 二进制，由 `tini` 作为 PID 1 转发停止信号，内置 `/app/data` 只读备用数据，并直接兼容 2.x 既有的 `/data` 整卷与分卷挂载。
 - **独立的 `lts/2.8` 长期维护分支**：在 `lts/2.8` 分支保留 Python 与 TypeScript 2.8.x 双实现维护线，与 `lts/1.7` 一同维护至 `2027-07-02`。
 
 ### 变更
 
 - **入口命令与默认传输模式**：新主命令 `prts-mcp`（原生二进制与 npm 主包）默认启动 Streamable HTTP（`:3000/mcp`，设 `PRTS_TRANSPORT=stdio` 切换为 stdio）；`prts-mcp-ts` / `prts-mcp-ts-bun`（固定 HTTP）与 `prts-mcp-ts-stdio`（固定 stdio）在 Rust 二进制之上保留 2.x 固定传输行为（无需安装 Bun）；Docker 镜像入口（`prts-mcp-ghcr`）保留默认 `stdio`（设 `PRTS_TRANSPORT=http` 切换为 HTTP）。
-- **原生诊断指标与正则边界（`D-001`–`D-007`）**：`/debug/metrics` 的 `process.runtime` 标识为 `"rust"`，内存统计改为操作系统原生驻留集（`process.rss_bytes`）与采样中观察到的最高 RSS（`process.rss_high_water_bytes`），不再输出 V8/Python 堆字段；`/debug/cache` 保留按领域分组的缓存计数（详见 `contracts/baseline.json`）。
+- **原生诊断指标（`D-001`、`D-002`）**：`/debug/metrics` 的 `process.runtime` 标识为 `"rust"`，内存统计改为操作系统原生驻留集（`process.rss_bytes`）与采样中观察到的最高 RSS（`process.rss_high_water_bytes`），不再输出 V8/Python 堆字段；`/debug/cache` 保留按领域分组的缓存计数（详见 `contracts/baseline.json`）。
 
 ### 移除
 

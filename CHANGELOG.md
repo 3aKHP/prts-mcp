@@ -6,7 +6,7 @@ This file records user-visible changes across PRTS-MCP implementations: Python a
 
 The original per-implementation changelogs at the 2.8.1 baseline remain available on the [`ts/v2.8.1` tag](https://github.com/3aKHP/prts-mcp/tree/ts/v2.8.1) ([Python](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/python/CHANGELOG.md) · [TypeScript](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/ts/CHANGELOG.md)), and the 1.7.1/1.7.2 maintenance records come from the published [`python/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/python/v1.7.2/python/CHANGELOG.md) and [`ts/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/ts/v1.7.2/ts/CHANGELOG.md) tags.
 
-## [Unreleased] — 3.0.0-dev.0
+## [3.0.0-rc.1] - 2026-10-15
 
 Implementation: Rust.
 
@@ -14,14 +14,14 @@ Implementation: Rust.
 
 - **Unified native Rust runtime (`prts-mcp`)**: migrated the server to a single native Rust implementation at the repository root (MSRV `1.89`) with a statically linked QuickJS regular-expression engine (`vendor/quickjs-regexp/`), preserving the frozen TS/v2.8.1 24-tool contract, both MCP protocol eras (`legacy` and `2026-07-28` stateless `modern`), `stdio` and Streamable HTTP transports, and generation-aware background data/image synchronization.
 - **Five-platform prebuilt native archives**: added standalone release archives (`linux-x64`, `linux-arm64` with `glibc >= 2.28`, `windows-x64` with static CRT, `darwin-arm64`, and `darwin-x64` targeting macOS `14.0+`) containing all five entry executables, ABI/build manifests, third-party license notices, and a verified read-only fallback snapshot of game tables, level data, and stories.
-- **Nine-package Rust-backed npm distribution**: added the new `prts-mcp` main package alongside the compatible `prts-mcp-ts` package, backed by `@3akhp/prts-mcp-runtime` (Node `>= 22` launch bridge with signal forwarding and Windows parent-process lifecycle monitoring), `@3akhp/prts-mcp-data` (shared read-only fallback data), and five platform-filtered binary packages (`@3akhp/prts-mcp-<platform>`), published with npm OIDC provenance on `@next` (`3.0.0-alpha.3`).
+- **Nine-package Rust-backed npm distribution**: added the new `prts-mcp` main package alongside the compatible `prts-mcp-ts` package, backed by `@3akhp/prts-mcp-runtime` (Node `>= 22` launch bridge with signal forwarding and Windows parent-process lifecycle monitoring), `@3akhp/prts-mcp-data` (shared read-only fallback data), and five platform-filtered binary packages (`@3akhp/prts-mcp-<platform>`), published with npm OIDC provenance on `@next` (`3.0.0-rc.1`).
 - **Dual-architecture native Docker images**: updated `ghcr.io/3akhp/prts-mcp` (`linux/amd64` and `linux/arm64`) to run the native Rust server under `tini` (PID 1 signal forwarding) with bundled read-only fallback data in `/app/data` and full compatibility with existing 2.x `/data` named volumes and bind mounts.
 - **Isolated `lts/2.8` maintenance line**: preserved the Python and TypeScript 2.8.x implementations on `lts/2.8` (alongside `lts/1.7`), both supported through `2027-07-02`.
 
 ### Changed
 
 - **Entry-point transport defaults**: the new `prts-mcp` binary and npm package default to Streamable HTTP (`:3000/mcp`, switchable via `PRTS_TRANSPORT=stdio`); `prts-mcp-ts` / `prts-mcp-ts-bun` (HTTP) and `prts-mcp-ts-stdio` (stdio) retain their fixed 2.x transport modes on top of the Rust binary without requiring Bun; the Docker entrypoint (`prts-mcp-ghcr`) retains default `stdio` (switchable via `PRTS_TRANSPORT=http`).
-- **Native diagnostics and regex boundaries (`D-001`–`D-007`)**: `/debug/metrics` reports `process.runtime: "rust"`, OS-native resident memory (`process.rss_bytes`), and the highest sampled RSS (`process.rss_high_water_bytes`) instead of V8/Python heap fields; `/debug/cache` retains its per-domain cache counters (documented in `contracts/baseline.json`).
+- **Native diagnostics (`D-001`, `D-002`)**: `/debug/metrics` reports `process.runtime: "rust"`, OS-native resident memory (`process.rss_bytes`), and the highest sampled RSS (`process.rss_high_water_bytes`) instead of V8/Python heap fields; `/debug/cache` retains its per-domain cache counters (documented in `contracts/baseline.json`).
 
 ### Removed
 

@@ -19,7 +19,7 @@ PRTS-MCP 3.x 的核心服务为单一原生 Rust 二进制（静态链接 C 正�
 | **npm 全局安装** | 已具备 Node.js 环境的服务器或开发机 | 需 `Node.js >= 22`、`npm >= 10`（作为轻量启动桥拉起同平台的预编译 Rust 二进制，无需 Bun）。 | `prts-mcp` 默认 HTTP；兼容命令 `prts-mcp-ts` / `prts-mcp-ts-bun` 固定 HTTP，`prts-mcp-ts-stdio` 固定 stdio。 |
 | **从源码编译** | 自定义构建或不受预编译归档支持的系统 | 需安装 Rust 工具链（`>= 1.89`）与 C 编译器；源码构建不含内置备用数据，依赖启动后自动同步或挂载本地数据。 | 同原生二进制。 |
 
-> **版本标签说明**：当前公开稳定版为 `2.8.1`，Rust 公开候选版为 `3.0.0-alpha.3`（对应 npm 与 GHCR 的 `next` 标签）。在 3.0.0 正式发布（M5）前，`latest` 标签仍指向 `2.8.1`。生产环境建议始终固定具体版本号（如 `3.0.0-alpha.3`）或镜像 digest。各平台 ABI 审计细节见 [`NATIVE-PLATFORMS.md`](../dev/NATIVE-PLATFORMS.md)。
+> **版本标签说明**：当前公开稳定版为 `2.8.1`，Rust 公开候选版为 `3.0.0-rc.1`（对应 npm 与 GHCR 的 `next` 标签）。在 3.0.0 正式发布（M5）前，`latest` 标签仍指向 `2.8.1`。生产环境建议始终固定具体版本号（如 `3.0.0-rc.1`）或镜像 digest。各平台 ABI 审计细节见 [`NATIVE-PLATFORMS.md`](../dev/NATIVE-PLATFORMS.md)。
 
 ---
 
@@ -28,7 +28,7 @@ PRTS-MCP 3.x 的核心服务为单一原生 Rust 二进制（静态链接 C 正�
 ### 2.1 拉取镜像
 
 ```bash
-docker pull ghcr.io/3akhp/prts-mcp:3.0.0-alpha.3
+docker pull ghcr.io/3akhp/prts-mcp:3.0.0-rc.1
 ```
 
 容器使用 `tini` 作为 PID 1（`ENTRYPOINT ["tini", "-g", "--", "/app/bin/prts-mcp-ghcr"]`），可正确转发 `SIGTERM` / `SIGINT` 信号并回收子进程，确保 `docker stop` 立即优雅退出。
@@ -38,7 +38,7 @@ docker pull ghcr.io/3akhp/prts-mcp:3.0.0-alpha.3
 作为供局域网或多客户端共享的 HTTP 服务运行时，需显式设置 `-e PRTS_TRANSPORT=http` 并挂载 `/data` 持久化卷：
 
 ```bash
-docker run -d --name prts-mcp --restart unless-stopped -p 127.0.0.1:3000:3000 -v prts-data:/data -e PRTS_TRANSPORT=http ghcr.io/3akhp/prts-mcp:3.0.0-alpha.3
+docker run -d --name prts-mcp --restart unless-stopped -p 127.0.0.1:3000:3000 -v prts-data:/data -e PRTS_TRANSPORT=http ghcr.io/3akhp/prts-mcp:3.0.0-rc.1
 ```
 
 - **监听地址与端点**：容器内默认监听 `0.0.0.0:3000`（可通过 `HOST` / `PORT` 调整），MCP 端点为 `/mcp`，健康检查端点为 `/health`。
@@ -71,7 +71,7 @@ docker run -d --name prts-mcp --restart unless-stopped -p 127.0.0.1:3000:3000 -v
 2. **兼容 2.x 的多子卷挂载**：
    - 若从 2.x 升级且原有部署使用了 3 个或 4 个独立子目录命名卷，无需迁移数据，原挂载命令可直接沿用：
      ```bash
-     docker run -d --name prts-mcp -p 127.0.0.1:3000:3000 -e PRTS_TRANSPORT=http -v prts-mcp-data:/data/gamedata -v prts-mcp-levels:/data/gamedata-levels -v prts-mcp-storyjson:/data/storyjson ghcr.io/3akhp/prts-mcp:3.0.0-alpha.3
+     docker run -d --name prts-mcp -p 127.0.0.1:3000:3000 -e PRTS_TRANSPORT=http -v prts-mcp-data:/data/gamedata -v prts-mcp-levels:/data/gamedata-levels -v prts-mcp-storyjson:/data/storyjson ghcr.io/3akhp/prts-mcp:3.0.0-rc.1
      ```
    - 在分卷挂载下，容器重建后会根据各子卷内的 `archives/extract_meta.json` 自动恢复激活状态。
 3. **挂载宿主机目录（Bind Mount）**：
@@ -88,7 +88,7 @@ docker run -d --name prts-mcp --restart unless-stopped -p 127.0.0.1:3000:3000 -v
 mkdir -p /srv/prts-data
 chown -R 10001:10001 /srv/prts-data
 
-docker run -d --name prts-mcp --user 10001:10001 --read-only --tmpfs /tmp:rw,nosuid,nodev,mode=1777 -p 127.0.0.1:3000:3000 -e PRTS_TRANSPORT=http -v /srv/prts-data:/data ghcr.io/3akhp/prts-mcp:3.0.0-alpha.3
+docker run -d --name prts-mcp --user 10001:10001 --read-only --tmpfs /tmp:rw,nosuid,nodev,mode=1777 -p 127.0.0.1:3000:3000 -e PRTS_TRANSPORT=http -v /srv/prts-data:/data ghcr.io/3akhp/prts-mcp:3.0.0-rc.1
 ```
 
 > **注意**：若在 `--read-only` 模式下使用 4 个独立子目录分卷挂载（而非整卷挂载 `/data`），还需额外添加 `--tmpfs /data:rw,nosuid,nodev,mode=1777`，以便父目录 `/data` 能够写入跨进程同步锁与 `.gamedata_pair.json`。
@@ -99,12 +99,12 @@ docker run -d --name prts-mcp --user 10001:10001 --read-only --tmpfs /tmp:rw,nos
 
 ### 3.1 解压与目录结构要求
 
-从 [3.0.0-alpha.3 Release](https://github.com/3aKHP/prts-mcp/releases/tag/v3.0.0-alpha.3) 下载对应平台的 `candidate` 归档包与 `.sha256` 校验文件：
+从 [3.0.0-rc.1 Release](https://github.com/3aKHP/prts-mcp/releases/tag/v3.0.0-rc.1) 下载对应平台的 `candidate` 归档包与 `.sha256` 校验文件：
 
 ```bash
-sha256sum -c prts-mcp-3.0.0-alpha.3-linux-x64-candidate.tar.gz.sha256
+sha256sum -c prts-mcp-3.0.0-rc.1-linux-x64-candidate.tar.gz.sha256
 sudo mkdir -p /opt/prts-mcp
-sudo tar -xzf prts-mcp-3.0.0-alpha.3-linux-x64-candidate.tar.gz -C /opt/prts-mcp
+sudo tar -xzf prts-mcp-3.0.0-rc.1-linux-x64-candidate.tar.gz -C /opt/prts-mcp
 ```
 
 > **切勿破坏目录相对结构**：`/opt/prts-mcp/bin/prts-mcp` 启动时会自动从相邻的 `../data`（即 `/opt/prts-mcp/data`）定位内置只读备用数据。如果只把 `bin/prts-mcp` 单独复制到 `/usr/local/bin`，程序将无法找到内置备用数据。
@@ -157,11 +157,11 @@ curl -fsS http://127.0.0.1:3000/health
 
 ```bash
 # 安装 3.x 主包（提供 prts-mcp 命令，默认启动 HTTP）
-npm install -g prts-mcp@3.0.0-alpha.3
+npm install -g prts-mcp@3.0.0-rc.1
 prts-mcp
 
 # 若需保留 2.x 旧启动脚本中的命令名，可同时或单独安装兼容包：
-npm install -g prts-mcp-ts@3.0.0-alpha.3
+npm install -g prts-mcp-ts@3.0.0-rc.1
 ```
 
 - **切勿使用 `--omit=optional`**：平台对应的预编译 Rust 二进制通过 `optionalDependencies` 分发，禁用可选依赖会导致启动失败。

@@ -89,7 +89,7 @@ PRTS-MCP 运行依赖两类外部数据源：
 如果你在宿主机上自己维护了 `ArknightsGameData` 仓库克隆或离线 `zh_CN.zip` 剧情包，可通过 `GAMEDATA_PATH` 与 `STORYJSON_PATH` 指向本地路径：
 
 ```bash
-docker run -d --name prts-mcp -p 127.0.0.1:3000:3000 -e PRTS_TRANSPORT=http -v /srv/ArknightsGameData:/data/custom:ro -e GAMEDATA_PATH=/data/custom -v prts-data:/data ghcr.io/3akhp/prts-mcp:3.0.0-alpha.3
+docker run -d --name prts-mcp -p 127.0.0.1:3000:3000 -e PRTS_TRANSPORT=http -v /srv/ArknightsGameData:/data/custom:ro -e GAMEDATA_PATH=/data/custom -v prts-data:/data ghcr.io/3akhp/prts-mcp:3.0.0-rc.1
 ```
 
 **管理员必须注意的三条路径规则**：

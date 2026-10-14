@@ -79,5 +79,6 @@ node tools/release/probe-native.mjs linux-x64
    - 加载经过验证的 `linux-x64` 与 `linux-arm64` 镜像归档，校验 Image ID 与架构后推送单架构标签，并合成多架构 manifest（`:3.x.y-...` 与 `:next`；M5 前不更新 `:latest` 或 `:3`）。
 3. **GitHub Releases**：
    - 上传 `artifacts/release/` 中的全部 44 项资产与校验清单；预发布版本自动标记为 `--prerelease --latest=false`。
+   - 发行说明直接取自中英文 `CHANGELOG` 中与发布版本精确对应的段落，并附精确版本的安装命令和迁移指南链接；发布分支须先将 `Unreleased` 更新为对应版本及日期。
 
 如果在发布过程中遇到网络抖动、registry 传播延迟或单个渠道任务失败，请勿重新打 tag 或全量重跑构建，应直接按照 [`RELEASE-CD-RECOVERY.md`](RELEASE-CD-RECOVERY.md) 在原始 workflow run 上重跑失败的发布任务（`Re-run failed jobs`）。
