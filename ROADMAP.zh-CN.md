@@ -9,12 +9,14 @@
 | M0 | 冻结首发范围、入口、根目录布局、LTS 与分发决策。已完成。 |
 | M1A | 保留 lts/2.8，并隔离旧线发布与稳定 latest。已完成。 |
 | M1B | 导入 Rust 历史，建立根 Cargo 工程，移除旧源码目录，同步最低可用 CI/脚本/文档。已完成，PR #228 已合并。 |
-| M2A/B/C | 五平台原生构建和运行，共享 npm 平台产物及两个入口包，双架构 Docker。 |
-| M3 | 候选产物、单一版本检查和隔离的公开发布自动化。 |
+| M2A/B/C | 五平台原生构建和运行，共享 npm 平台产物及两个入口包，双架构 Docker。已完成。 |
+| M3 | 候选产物、单一版本检查和隔离的公开发布自动化。已完成，alpha.3 已公开。 |
 | M4 | 实际候选发行物、真实 MCP 客户端、旧卷升级与回滚；Windows 和/或 WSL 完整 E2E。 |
 | M5 | 收口 RC，正式发布 3.0，切换 latest，回灌开发线。 |
 
 M2A PR #229 和 data/ 源码清理 PR #230 已合并；基线和实际证据见[原生平台说明](docs/dev/NATIVE-PLATFORMS.md)。M2B 的 npm 双入口、共享原生包和校验备用数据已通过五个平台的实际安装与运行验证，见[npm 分发说明](docs/dev/NPM-DISTRIBUTION.md)和[验收记录](docs/dev/reports/3.0-m2b-npm-distribution.md)。M2C Docker/旧卷包装已通过原生 x64/ARM64 范围内运行验证，见[Docker 分发说明](docs/dev/DOCKER-DISTRIBUTION.md)和[验收记录](docs/dev/reports/3.0-m2c-docker-distribution.md)。
+
+M3 已完成：[3.0.0-alpha.3](https://github.com/3aKHP/prts-mcp/releases/tag/v3.0.0-alpha.3)九包实际OIDC/provenance、双原生GHCR、公开范围内安装通过，见[验收与边界](docs/dev/reports/3.0-m3-candidate-release.md)。M4尚未启动。
 
 追加两项 3.0 正式发布门禁：单独整理文档，恢复并更新 2.x 仍适用的内容覆盖；重新确定 data/ 的源码、分发和运行时方案并验证。两项在 M2A 之后推进，不打断当前工作，必须在正式发布前收口；影响 npm/Docker/候选产物的 data/ 决策须在对应产物验收前落实。
 

@@ -2,6 +2,8 @@
 
 M2C 在原生 Linux x64/ARM64 上分别构建并执行 Docker 镜像，使用 M2A 审计过的同版原生 payload 和 M2B 校验过的共享备用数据。双架构构建和范围内运行验证通过，见[验收记录](reports/3.0-m2c-docker-distribution.md)；本阶段不推送 GHCR，不改写 ghcr.io/3akhp/prts-mcp 的公开版本或 latest。M3 负责汇总双架构候选和发布，M4 负责真实客户端完整升级/回滚验收。
 
+实际公开候选为ghcr.io/3akhp/prts-mcp:3.0.0-alpha.3（next同一双架构index），正式tag由已验证镜像档案发布；[M3验收](reports/3.0-m3-candidate-release.md)记录公开子manifest/config绑定和本机x64运行边界，ARM64原生执行来自tag CI。latest/:3在M5前不推进。
+
 ## 构建
 
 生产 Dockerfile 消费经过校验的独立构建上下文，不能直接把开发者的根 data/ 当作备用数据。tools/docker/build.mjs 要求匹配本机和 Docker daemon 的 Linux CPU、当前干净提交、同版原生 BUILD/BUNDLE，以及实际 payload 的完整文件集合、哈希和许可引用（拒绝清单外文件、链接及特殊文件）；拒绝交叉编译或模拟运行作为原生证据。版本来自 Cargo.toml。

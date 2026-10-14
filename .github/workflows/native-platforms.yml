@@ -1,7 +1,7 @@
 name: Native platforms
 on:
   push:
-    branches: [develop, 'feat/**', 'fix/**', 'refactor/**', 'chore/**', 'release/**']
+    branches: [develop]
   pull_request:
   workflow_dispatch:
   workflow_call:

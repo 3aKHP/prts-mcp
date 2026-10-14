@@ -1,7 +1,6 @@
 name: Rust release candidates
 on:
   push:
-    branches: ['release/v3.*']
     tags: ['v3.*']
   workflow_dispatch:
 permissions:
@@ -61,7 +60,6 @@ jobs:
         run: |
           node tools/release/check-version.mjs --release
           node tools/release/publish-npm.mjs
-          node tools/release/verify-npm-tags.mjs
   publish-non-npm:
     needs: [native, publish-npm]
     if: >-

@@ -9,12 +9,14 @@ Public stable remains 2.8.1. The next development target is 3.0.0-dev.0: migrate
 | M0 | Freeze scope, entry defaults, root layout, LTS and distribution decisions. Complete. |
 | M1A | Preserve lts/2.8 and isolate maintenance publishers from stable latest. Complete. |
 | M1B | Import Rust history, establish root Cargo tree, remove old source directories, repair minimum CI/scripts/docs. Completed, PR #228 merged. |
-| M2A/B/C | Five-platform native build/run evidence, shared npm payload and both entry packages, dual-architecture Docker. |
-| M3 | Candidate artifacts, single-version checks and isolated release automation. |
+| M2A/B/C | Five-platform native build/run evidence, shared npm payload and both entry packages, dual-architecture Docker. Complete. |
+| M3 | Candidate artifacts, single-version checks and isolated release automation. Complete with public alpha.3. |
 | M4 | Real-client E2E with actual candidate artifacts, old volumes, upgrade and rollback, Windows and/or WSL. |
 | M5 | RC closure, stable 3.0, latest switches and development back-merge. |
 
 M2A PR #229 is merged; baselines and exact evidence are maintained in [NATIVE-PLATFORMS.md](docs/dev/NATIVE-PLATFORMS.md). Data-source cleanup PR #230 is merged. M2B npm entries/shared native packages and validated fallback data pass all five native runners; see [npm distribution](docs/dev/NPM-DISTRIBUTION.md) and [acceptance evidence](docs/dev/reports/3.0-m2b-npm-distribution.md). M2C Docker/old-volume packaging passes native x64/ARM64 scoped runtime verification; see [Docker distribution](docs/dev/DOCKER-DISTRIBUTION.md) and [acceptance evidence](docs/dev/reports/3.0-m2c-docker-distribution.md).
+
+M3 is complete with [public 3.0.0-alpha.3](https://github.com/3aKHP/prts-mcp/releases/tag/v3.0.0-alpha.3), all nine fresh OIDC publishes/provenance, dual-native GHCR and scoped public installation. [Acceptance and limits](docs/dev/reports/3.0-m3-candidate-release.md). M4 is not started.
 
 Two additional pre-3.0 release gates are required: a dedicated documentation pass restoring and updating still-applicable 2.x coverage, and a reviewed data/ source/distribution/runtime strategy with validation. They follow M2A without interrupting it and must close before stable release; data decisions that affect npm/Docker/candidate artifacts must land before those artifacts are accepted.
 

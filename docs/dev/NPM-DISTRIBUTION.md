@@ -1,6 +1,6 @@
 # Rust npm 分发
 
-M2B 将新主入口和旧命令包装为精确同版的 npm 包，服务业务仍由预编译 Rust 程序执行。构建和安装验证在开发 CI 中进行；公开 registry 发布、名称/账号权限及 next/latest 渠道由 M3/M5 验收，当前公开稳定版仍是 2.8.1。
+M2B 将新主入口和旧命令包装为精确同版的 npm 包，服务业务仍由预编译 Rust 程序执行。构建和安装验证在开发 CI 中进行；公开 registry 名称、九包 OIDC 和 next 已通过 M3 实际验收；latest 在 M5 才切换，当前公开稳定版仍是 2.8.1。
 
 ## 包与命令
 
@@ -12,7 +12,7 @@ M2B 将新主入口和旧命令包装为精确同版的 npm 包，服务业务�
 | @3akhp/prts-mcp-data | 同版共享只读备用数据 | 固定数据版本与校验记录，包含 Excel/levels 解压内容和剧情 ZIP。 |
 | @3akhp/prts-mcp-{platform} | 五种匹配平台的同版 Rust 产物 | Linux x64/arm64 glibc、Windows x64、macOS arm64/x64；携带 M2A 的原生依赖审计和许可。 |
 
-入口 → runtime → data 采用精确版本依赖；runtime 的五个原生包为精确版本 optionalDependencies，由 npm os/cpu/libc 条件筛选。正常安装从 npm 平台包获取二进制，不从 GitHub 临时下载，不现场编译。公共名称和 @3akhp scope 权限在 M3 发布前确认，本阶段不提前注册或发布。
+入口 → runtime → data 采用精确版本依赖；runtime 的五个原生包为精确版本 optionalDependencies，由 npm os/cpu/libc 条件筛选。正常安装从 npm 平台包获取二进制，不从 GitHub 临时下载，不现场编译。公共名称和 @3akhp scope 已真实注册，九包publish通过M3验收；正常标签切换直接操作目标并确认结果，不加独立探测门禁。
 
 五个平台的 CPU、系统和 ABI 基线沿用[原生平台说明](NATIVE-PLATFORMS.md)。npm 启动桥需要 Node >=22；npm >=10 是包装声明的安装基线。Linux 启动时还检查 glibc >=2.28；musl/Alpine 和未支持的 CPU/OS 给出明确诊断。直接原生程序和 Docker 的业务运行不因此依赖 Node。
 
@@ -24,7 +24,7 @@ packaging/npm/data-release.json 单独固定发行备用数据的 AKDP Release�
 
 安装包内数据为备用读取来源；有完整用户数据时优先读取用户目录或既有卷，后台同步继续更新用户目录，不覆盖安装目录。没有用户数据且同步失败时，备用数据支持游戏数据查询；Wiki 查询、未下载立绘仍依赖各自数据源。源码安装和 Cargo 源码包保持运行时同步，不内嵌全部游戏数据。参见[数据目录政策](../../data/README.md)。
 
-数据包装可供 M2C 镜像和 M3 原生候选产物复用；这些渠道尚未在 M2B 完成。data/ 门禁继续要求 M4 的实际候选首次启动、备用查询、用户数据优先、旧卷升级和回滚证据。独立文档补全门禁也尚未关闭。
+同一数据包装已用于 M2C 镜像与 M3 公开原生候选；M4 跨渠道运行门禁仍待完整验收。data/ 门禁继续要求 M4 的实际候选首次启动、备用查询、用户数据优先、旧卷升级和回滚证据。独立文档补全门禁也尚未关闭。
 
 ## 生命周期
 
@@ -52,9 +52,9 @@ probe.mjs 使用只读 loopback registry 和隔离 npm 配置/缓存，执行真
 
 M2B 五个平台的实际安装与运行已通过，检查数量和 CI 来源见[验收记录](reports/3.0-m2b-npm-distribution.md)。Windows 的完整数据解包安装需要比协议调用更长的测试预算；超时仍判失败，具体耗时不能当作用户机器上的安装速度承诺。
 
-开发CI留存tarball与验收证据14天，不执行npm publish。2026-10-14九个3.0.0-alpha.1包已从正式候选tarball首次公开，后续alpha.2仅Linux x64平台包通过OIDC公开、该平台next为alpha.2；两个入口next仍alpha.1，旧prts-mcp-ts latest仍2.8.1。匿名公开registry安装、本机Linux x64双入口备用查询与退出、已安装项目内npx调用通过；真实九包OIDC发布和独立dist-tag权限仍待M3收口；八个新包强制保留并冻结首次latest，不将删除它作为门禁，不能将本机范围扩大为五平台公开安装或M4。
+开发CI留存tarball与验收证据14天，本身不发布。M3正式tag已将九个3.0.0-alpha.3包经Actions/OIDC发布到next；九份provenance签名、源提交/run、integrity均通过，见[验收记录](reports/3.0-m3-candidate-release.md)。匿名公开registry本机Linux x64双入口安装、备用查询/退出及已安装项目内npx调用通过；不扩大为五平台公开registry安装或M4。alpha.2只有一个平台包部分公开，保留其历史字节。
 
-测试候选必须明确选择next或精确版本；新包首次暂存时npm自动生成的0.0.0-stage并非产品版本。npm要求latest存在，八个新名字的首次自动latest保留原值，正式3.0才切换；不要在预发布期间用新主包的裸安装或@latest代替@next。新主入口默认HTTP，兼容stdio命令保持原传输 profile。
+当前候选为3.0.0-alpha.3；测试必须明确选择next或该精确版本；新包首次暂存时npm自动生成的0.0.0-stage并非产品版本。npm要求latest存在，八个新名字的首次自动latest保留原值，正式3.0才切换；不要在预发布期间用新主包的裸安装或@latest代替@next。新主入口默认HTTP，兼容stdio命令保持原传输 profile。
 
 ```bash
 npm install -g prts-mcp@next

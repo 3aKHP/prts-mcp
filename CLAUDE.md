@@ -13,6 +13,8 @@ PRTS-MCP 的 3.x 开发线是根目录 Rust 工程，业务契约对齐固定 TS
 
 需明确指令才 commit/push；用户授权完成后开 PR，包含必要的提交和推送授权。不直接工作或推送到长期分支。秘密、凭据、完整下载数据、target、node_modules 和运行时产物不入 Git。PR 一项主要意图，按 Conventional Commits 提交，subject 小写、祈使、≤72 字符。分支名为 <type>/v<next-version>-<topic>。
 
+维护者要求：除非真实事故证明有必要，不新增独立验证门禁或每次发布的额外检查关卡；围绕既有CI与实际用户安装/运行收口。功能、修复与release短分支的完整CI只由PR触发，main/develop合并后push保留集成检查，v3.*tag保留正式发布，必要时手动dispatch。正常切换/回滚只操作目标标签并确认实际结果；临时标签工具仅供真实事故排查，不是任何阶段的常规门禁。
+
 ## 分支与迭代
 
 1. 从 develop 建短分支（旧线修复从相应 lts 分支）。
@@ -29,7 +31,7 @@ M1B 至 M5 按阶段拆分，管理 CLI、新功能和 AKDP 专项均在 3.0 之
 
 3.x 单一产品版本从 Cargo.toml 取得，Cargo.lock、未来 npm 入口/平台包、容器和 MCP serverInfo 保持一致。开发版本为 3.0.0-dev.0，稳定 tag 为 v3.x.y，预发布为 v3.x.y-alpha.N/beta.N/rc.N。稳定版走 release/* → main，再将同一 release 分支回灌 develop 并重开下一目标 -dev.0。原 python/v* + ts/v* tag 只用于旧分支。
 
-M1B 已移除依赖旧目录的 CD；3.x 公开发布 workflow 由 M3 的 release-rust.yml 建立；v3.* tag 须版本/来源匹配且相应渠道开关启用才发布，分支 push 只生成验证产物。M5 前不切换 npm/Docker latest。crates.io 源码包在迁移期间准备，公开上架在 M5 后单独实施。
+M1B 已移除依赖旧目录的 CD；3.x 公开发布 workflow 由 M3 的 release-rust.yml 建立；v3.* tag 须版本/来源匹配且相应渠道开关启用才发布，release短分支的验证产物由PR的Native platforms生成，分支push不重复构建；正式tag发布仍运行。M5 前不切换 npm/Docker latest。crates.io 源码包在迁移期间准备，公开上架在 M5 后单独实施。
 
 ## 双轨 CR 契约
 

@@ -38,6 +38,7 @@ const packages=JSON.parse(readFileSync(new URL('../artifacts/release/RELEASE.jso
 const mode=process.env.TEST_NPM_MODE;let reads=0,tagReads=0;const probeReads=new Map();
 if(mode==='invisible'||mode==='tags-invisible'||mode==='probe-add-invisible'||mode==='probe-rm-invisible'){let clock=0;Date.now=()=>clock+=1800001;}
 let lateClock=0;if(mode==='probe-late-response')Date.now=()=>lateClock;
+if(mode==='probe-delayed')globalThis.setTimeout=callback=>{queueMicrotask(callback);return 0;};
 const commands=()=>existsSync(process.env.TEST_COMMAND_LOG)?readFileSync(process.env.TEST_COMMAND_LOG,'utf8').trim().split('\\n').filter(Boolean).map(JSON.parse):[];
 globalThis.fetch=async url=>{
  const path=decodeURIComponent(new URL(url).pathname).slice(1),tagsRequest=path.startsWith('-/package/');
