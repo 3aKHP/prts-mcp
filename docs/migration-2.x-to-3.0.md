@@ -61,10 +61,13 @@ npm install -g prts-mcp@3.0.0-alpha.3
 
 ## 4. 已知实现细节变化（`D-001` – `D-007`）
 
-Rust 实现与 TS/v2.8.1 基线之间仅有 7 项经批准的非破坏性实现差异，完整记录在 [`contracts/baseline.json`](../contracts/baseline.json) 中，主要包括：
+Rust 实现与 TS/v2.8.1 基线之间有 7 项经批准的实现差异，完整记录在 [`contracts/baseline.json`](../contracts/baseline.json) 中，主要包括：
 
-- **诊断与指标结构（`D-001`、`D-002`）**：`/debug/cache` 与 `/debug/metrics` 中的 `runtime` 标识为 `"rust"`，内存指标改为 OS 原生驻留集（RSS / Working Set）与峰值统计，不再输出 V8/Python 堆字段。如果你在 2.x 中部署了自定义指标采集脚本，请按新的 Rust 指标字段更新解析逻辑。
-- **底层引擎错误文案与极端边界（`D-003` – `D-007`）**：无效正则表达式的底层引擎报错文本、极个别 Unicode 大小写折叠边界（如 `ẞ` / 组合字符）由内嵌的 QuickJS `libregexp` 决定，常规中文与 ASCII 正则检索行为完全一致。
+- **诊断与指标结构（`D-001`、`D-002`）**：`/debug/cache` 保留领域缓存统计，`/debug/metrics` 中的 `process.runtime` 标识为 `"rust"`，内存指标改为 OS 原生驻留集（RSS / Working Set）与峰值统计，不再输出 V8/Python 堆字段。如果你在 2.x 中部署了自定义指标采集脚本，请按新的 Rust 指标字段更新解析逻辑。
+- **底层依赖错误文案（`D-003`）**：无效正则表达式等错误的底层依赖报错文本可能与旧实现不同。
+- **分发包装（`D-004`）**：发行物改用 Rust 原生程序，npm 包保留 Node 启动桥；安装方式见前文。
+- **JSON 输入边界（`D-005`、`D-006`）**：HTTP 请求体包含孤立的 UTF-16 代理码元或无法解析的 JSON 时，返回 HTTP 400 与 JSON-RPC `-32700` 解析错误。stdio 中无法解析的行仍按原有规则跳过。
+- **正则大小写折叠（`D-007`）**：ASCII 字符范围和 Unicode 属性转义（含反向属性）沿用 Rust 原有的 Unicode 大小写折叠语义，例如 `[a-zA-Z]` 对 `ſ`、`K` 的匹配与 Bun 不同。具体案例见[已批准的正则差异](../contracts/cases/native-regex-differences.json)。
 
 ---
 

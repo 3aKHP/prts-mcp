@@ -59,7 +59,7 @@
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
-| `PRTS_OUTPUT_CHANNEL` | `content` | MCP 工具默认输出通道：`content`（默认，输出 Markdown 文本）、`structured`（仅输出 `structuredContent`）或 `both`（同时输出两者）；非法值回退为 `content`。HTTP 模式下还可通过 `?output_channel=` 查询参数或 `x-prts-output-channel` 请求头覆盖。 |
+| `PRTS_OUTPUT_CHANNEL` | `content` | MCP 工具默认输出通道：`content`（默认，输出 Markdown 文本）、`structured`（输出 `structuredContent`，`content` 保留简短摘要）或 `both`（结构化数据与完整文本）；非法值回退为 `content`。没有结构化结果时仍返回完整文本，各通道均保留图片内容。HTTP 模式下还可通过 `?output_channel=` 查询参数或 `x-prts-output-channel` 请求头覆盖。 |
 | `PRTS_TRANSPORT` | 原生/npm 主命令为 `http`；Docker 为 `stdio` | 选择 MCP 传输模式。对 `prts-mcp` 主命令，设为 `stdio`（大小写不敏感）切换到 stdio，其余值保持 HTTP；对 Docker 入口（`prts-mcp-ghcr`），设为 `http` 切换到 HTTP，其余值保持 stdio。`prts-mcp-ts` / `prts-mcp-ts-bun` / `prts-mcp-ts-stdio` 三个兼容命令忽略此变量，始终保持各自固定的传输模式。 |
 | `HOST` | `0.0.0.0` | HTTP 模式的监听地址。 |
 | `PORT` | `3000` | HTTP 模式的监听端口（MCP 端点为 `/mcp`，健康检查为 `/health`；stdio 模式下不解析此变量）。`prts-mcp` 与 `prts-mcp-ts*` 沿用 TypeScript `Number()` 解析语义，Docker 入口 `prts-mcp-ghcr` 沿用 Python `int()` 解析语义。 |
