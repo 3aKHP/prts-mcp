@@ -1,7 +1,7 @@
 // Documentation evidence only. Does not start a server or download data.
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve, dirname, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -34,7 +34,8 @@ writeFileSync(resolve(root, 'contracts/tool-declarations.json'), JSON.stringify(
   zod: JSON.parse(readFileSync(resolve(outer,'ts/node_modules/zod/package.json'))).version,
   tools,
 }, null, 2) + '\n');
-writeFileSync(resolve(root, 'docs/dev/rust-rewrite/research/source-inventory.json'), JSON.stringify({ baseline: sha, files: entries }, null, 2) + '\n');
+mkdirSync(resolve(root, 'dev/docs/rust-rewrite/research'), { recursive: true });
+writeFileSync(resolve(root, 'dev/docs/rust-rewrite/research/source-inventory.json'), JSON.stringify({ baseline: sha, files: entries }, null, 2) + '\n');
 const datasets = await import(pathToFileURL(resolve(outer, 'ts/src/data/datasets.ts')).href);
 const images = await import(pathToFileURL(resolve(outer, 'ts/src/sync/imagesSync.ts')).href);
 writeFileSync(resolve(root, 'contracts/data-declarations.json'), JSON.stringify({

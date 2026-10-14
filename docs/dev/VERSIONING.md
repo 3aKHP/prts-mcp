@@ -1,75 +1,90 @@
 # 版本号约定与兼容性承诺
 
-本文件是 PRTS-MCP 版本语义与兼容性承诺的单一事实源，面向下游部署者与协作者。分支、评审、验证与发布的操作流程见 [`WORKFLOW.md`](WORKFLOW.md)；两条 LTS 线的专门规则见 [`LTS.md`](LTS.md)。
+本文件是 PRTS-MCP 版本语义与向后兼容性承诺的单一事实源，面向下游部署者与项目协作者。
 
-> **Core promise (EN):** PRTS-MCP follows SemVer-shaped versioning with a closed, enumerated set of deviations declared in this document — not maintainer discretion. For every Patch and Minor release within a Major line, the default goal is a blind upgrade: `pip install -U` / `npm install -g` with no configuration change, without end users noticing anything.
+- 分支管理、PR 分级与发布操作流程见 [`WORKFLOW.md`](WORKFLOW.md) 与 [`CLAUDE.md`](../../CLAUDE.md)
+- `lts/1.7` 与 `lts/2.8` 两条长期支持线的专门规则见 [`LTS.md`](LTS.md)
 
-## 兼容的统一定义
+> **Core promise (EN):** PRTS-MCP follows SemVer-shaped versioning with a closed, enumerated set of deviations declared in this document — not open-ended maintainer discretion. For every Patch and Minor release within a Major line, the default goal is a zero-config upgrade (`npm install -g`, native archive replacement, or Docker image update; plus `pip install -U` on legacy lines) without breaking existing configurations or client workflows.
 
-Patch 与 Minor 共享同一个默认姿态。**兼容** = 同时满足：
+---
 
-1. 下游部署者可以无脑升级（`pip install -U` / `npm install -g`），无需修改配置、部署脚本或启动方式即可维持既有功能；
-2. 部署者的下游用户（MCP Client 使用者，可能就是部署者本人）可以毫无感知地继续以先前方式使用先前可用的功能。
+## 1. “向后兼容”的统一定义
 
-**纯增量变更不算破坏**，包括：新增工具、新增可选参数、新增输出内容类型（如 2.5.0 的多媒体输出）、带安全默认值的新环境变量、新增协议路径或端点。
+在同一 Major 版本线内，**Patch** 与 **Minor** 共享同一个默认目标——**无感升级**，即同时满足：
 
-**承诺只覆盖文档化契约面**：README、`docs/user/`、`docs/admin/`、CHANGELOG 或本文件明确承诺的行为。内部模块 API、未文档化的运行时副作用、双实现间未被文档承诺的文案细节，不在承诺范围内。
+1. **部署者无感**：下游部署者直接更新安装包或容器镜像，无需修改环境变量、部署脚本或客户端配置即可维持既有功能；
+2. **终端调用方无感**：MCP 客户端与上层 AI Agent 可以完全沿用先前的调用方式继续使用所有既有功能。
 
-## 承诺矩阵
+**纯增量变更均视为兼容**：包括新增工具、为既有工具新增带默认值的可选参数、新增输出内容类型（如 2.5.0 新增立绘输出）、新增带安全默认值的环境变量，以及新增可选协议路径或端点。
 
-| 契约面 | Patch | Minor | Major |
+**兼容承诺的边界**：承诺覆盖下表列出的工具、环境变量、部署与数据读取契约，内部 Rust 模块 API 不属于向后兼容承诺范围。`contracts/baseline.json` 中的 `D-001`–`D-007` 是 TS/v2.8.1 → Rust 3.0 迁移时已批准的实现差异；3.x 后续变更仍须遵循本文件的兼容性承诺与例外规则。
+
+---
+
+## 2. 兼容性承诺矩阵与例外白名单
+
+### 承诺矩阵
+
+| 契约面 | Patch（`X.Y.Z`） | Minor（`X.Y.0`） | Major（`X.0.0`） |
 |---|---|---|---|
-| 工具名 / 必填参数 / 输出格式 | 白名单例外（见下） | 同 Patch + 第四类（带强制义务） | 无承诺 |
-| 环境变量语义与默认值 | 同上 | 同上 | 无承诺 |
-| 部署 / 传输契约（端口、路径、health / debug 端点） | 同上 | 同上 | 无承诺 |
-| 数据文件契约（读取方：AKDP 数据集、缓存格式） | 变更须优雅降级 | 同 Patch + 第四类 | 无承诺 |
-| 内部模块 API | 任何级别均无承诺 | — | — |
+| 工具名 / 必填参数 / 输出格式 | 保持兼容（仅限下方三类 Patch 白名单例外） | 同 Patch + 允许第四类受控契约调整（附强制披露义务） | 允许破坏性重构（附迁移指南） |
+| 环境变量语义与默认值 | 同上 | 同上 | 允许调整 |
+| 部署与传输契约（默认端口、路径、`/health`、`/debug/*`） | 同上 | 同上 | 允许调整 |
+| 数据文件读取契约（AKDP 数据集、缓存元数据） | 格式变更须优雅降级兼容旧卷 | 同 Patch + 第四类受控调整 | 允许调整 |
+| 内部代码模块 API | 无兼容承诺 | 无兼容承诺 | 无兼容承诺 |
 
-## 例外集（封闭枚举）
+### 封闭枚举的例外集
 
-- **Patch 白名单（三类，封闭）**：
-  a. 行为与文档不符，修复使行为向文档对齐（如 #193：文档承诺 24h 空闲淘汰，实现实为 ~2×）；
-  b. 安全修复；
-  c. 外部依赖或上游的强制变化。
-  命中白名单也必须在 CHANGELOG 明示影响面，且在所有可行实现中优先选择不破坏的方案。
-- **Minor 第四类**：主题所必需的契约调整。强制义务三件套：CHANGELOG 版本段开头升级说明 + 迁移指南（受影响面大时独立 `docs/migration-X.Y-to-X.Z.md`）+ 可行时先标记 `Deprecated`、给一个过渡 Minor 再移除。2.6.0 是纯增量发布的先例（legacy 协议路径完整保留，`docs/migration-2.5-to-2.6.md` 为 opt-in 指南而非升级必需动作）。
-- **Major**：放弃兼容目标的唯一级别（2.0 先例：工具面 32 → 23）。
+除以下明确列出的例外情形外，Patch 与 Minor 严禁引入破坏性变更：
 
-即便命中例外集，"尽最大可能不破坏向后兼容"仍是义务：能增量就不改契约，能优雅降级就不报错。
+1. **Patch 白名单（仅限三类，封闭枚举）**：
+   - **a. 修正实现偏离文档的 Bug**：当实际代码行为与公开文档承诺不符时，修复代码使其对齐文档（例如 #193 修复会话空闲超时实际耗时约为文档承诺值 2 倍的问题）；
+   - **b. 安全漏洞修复**：修复安全隐患所必需的行为收紧；
+   - **c. 上游数据源或外部依赖的强制变更**：应对 PRTS Wiki 或游戏数据结构变化所必需的适配。
+   > 即便命中 Patch 白名单，也必须在所有可行方案中优先选择破坏最小的实现，并在 `CHANGELOG` 中明确标注影响面。
 
-**叙事惯例（非兼容规则）**：新增公共工具面优先安排在 Minor——README 与 CI 锚定工具数，值得一个主题版本。Patch 中新增工具不违反兼容承诺。
+2. **Minor 第四类例外（主题必需的受控契约调整）**：
+   - 若某次 Minor 版本的核心主题确需调整既有契约，必须同时履行**三项强制义务**：
+     1. 在 `CHANGELOG` 该版本段落开头醒目列出升级注意事项；
+     2. 编写迁移说明（影响面较大时提供独立的 `docs/migration-X.Y-to-X.Z.md`）；
+     3. 技术上可行时，先将旧参数/别名标记为 `Deprecated` 并保留至少一个过渡 Minor 版本，再行移除。
 
-## 版本号操作规则
+3. **Major 大版本升级**：
+   - 允许对公共契约或运行架构做不兼容调整，并须提供迁移指南（例如 2.0 将 32 个工具收敛为 23 个；3.0 将双语言实现统一为原生 Rust 并移除 PyPI 发布渠道）。
 
-3.x 不再持有 python/ 或 ts/，以下 Python/TS 归一化规则只适用于旧分支；裸 v3.* tag 仅对 Rust 产品线启用，旧线仍禁止裸 tag。稳定发布合 main，回灌 develop 时重开下一目标 -dev.0。main 尚为 2.x 的过渡期，不整体 forward merge 到 Rust，而是移植适用修复。
+> **版本编排惯例**：虽然新增工具属于纯增量兼容变更（在 Patch 中发布亦不违背承诺），但由于 `README.md` 与测试套件均锚定了工具总数，新增公共工具通常优先安排在 **Minor** 版本发布。
 
-- **三段式 `Major.Minor.Patch`**。**预发布后缀与归一化**：tag 始终使用连字符后缀（`-alpha.N` / `-beta.N` / `-rc.N`），Python 和 TS 统一；`pyproject.toml` 内用 PEP 440（`2.6.0a1`），CD 的 version check 自动归一化 `-alpha.` → `a`；`package.json` 内用与 tag 相同的 semver 形式（`2.6.0-alpha.1`）。
-- **3.x 单一产品版本**：Cargo.toml 为版本源，Cargo.lock、npm 入口/平台包、容器及 MCP serverInfo 一致。开发版采用 -dev.0；稳定 tag 为 v3.x.y，预发布为 v3.x.y-alpha.N/beta.N/rc.N。M3 建立公开 CD 前，不将 tag 存在解释为已发布。
-- **旧线双实现版本锁步**（仅 lts/1.7 与 lts/2.8）：`python/pyproject.toml` 与 `ts/package.json` 版本号始终一致（格式分别遵循 PEP 440 与 semver）；tag 成对（`python/vX.Y.Z` + `ts/vX.Y.Z`）。
-- **develop 目标版本**（3.x 仅 semver -dev.0，当前目标 3.0.0-dev.0；旧线保留以下历史形式）：`develop` 上的版本号 = 下一计划发布目标 + 开发后缀（`.dev0` / `-dev.0`）。正式发布并回灌后，默认进入当前 Minor 的下一 Patch（如 2.7.4 发布后 → `2.7.5.dev0` / `2.7.5-dev.0`）；确定开启新主题时才改为下一 Minor（`2.8.0.dev0`），并在 ROADMAP 记录主题。目标版本只表达下一计划发布，允许随范围调整；已发布 tag 与发行物保持原样。
-- **Patch 是系列内累积更新的常规载体，hotfix 只是它的特例**：Patch release 可以容纳修复、优化、功能补全与小型兼容增补，不要求也不默认是一次紧急修复。非 hotfix 的 patch 工作一律经 `develop` 累积、随标准 release 流程发布；唯一直通 `main` 的通道是 hotfix（触发条件见 [`WORKFLOW.md`](WORKFLOW.md) 的 Hot-Fix 一节）。
+---
 
-### 回灌后的 develop 目标版本对照表
+## 3. 版本号格式与分支流转规则
 
-覆盖 hotfix 占用目标版本与常规发布回灌两类场景。表中版本号以 TS（semver）形式书写；Python 侧对应 PEP 440 形式（`-dev.0` → `.dev0`）。
+### 版本号格式
 
-| 场景 | 回灌后的 develop 版本 |
+- **三段式 SemVer**：`Major.Minor.Patch`（例如 `3.0.0`）。
+- **预发布后缀**：Git tag、`Cargo.toml` 与 `package.json` 统一使用连字符形式：`-alpha.N`、`-beta.N`、`-rc.N`（例如 `3.0.0-alpha.3`）。
+  - *注：在 `lts/1.7` 与 `lts/2.8` 旧线中，`python/pyproject.toml` 遵循 PEP 440 格式（如 `2.6.0a1`），旧线 CD 会自动将 tag 中的 `-alpha.` 归一化为 `a` 后比对。*
+- **3.x 单一版本源**：在 3.x Rust 工程中，`Cargo.toml` 是唯一版本源，`Cargo.lock`、9 个 npm 包、Docker 镜像与 MCP `serverInfo.version` 必须严格一致。3.x 发布使用裸版本 tag（`v3.x.y` 或 `v3.x.y-alpha.N`）；旧线继续使用成对前缀 tag（`python/v2.8.x` + `ts/v2.8.x`）。
+- **开发分支版本后缀**：`develop` 分支上的版本号始终设为**下一计划发布的目标版本 + `-dev.0`**（当前为 `3.0.0-dev.0`；旧线 Python 对应 `.dev0`）。
+- **Patch 是日常累积更新的常规载体**：非紧急的缺陷修复、性能优化和小型兼容增补一律合入 `develop` 累积，随常规 Patch 版本发布；只有命中 [`WORKFLOW.md`](WORKFLOW.md) 阻断性回归标准的紧急修复才走直通 `main` 的 Hot-Fix 流程。
+
+### 发布回灌后的 `develop` 版本号推进规则
+
+每次正式版本（或 Hot-Fix）发布并回灌 `develop` 后，`develop` 默认进入当前 Minor 系列的下一个 Patch 开发版本（`-dev.0`）；仅当明确开启新 Minor 主题并在 `ROADMAP` 登记时，才推进至下一 Minor 的 `-dev.0`：
+
+| 发布场景 | 回灌后 `develop` 的版本号 |
 |---|---|
-| develop 为 `2.8.0-dev.0`，main 发布 `2.7.4` hotfix | 保持 `2.8.0-dev.0` |
-| develop 为 `2.7.4-dev.0`，main 发布 `2.7.4` hotfix | 通常调整为 `2.7.5-dev.0` |
-| develop 完成 `2.7.4` 正式发布，继续当前系列 | 进入 `2.7.5-dev.0` |
+| `develop` 完成 `3.0.0` 正式发布，继续 3.0 系列日常维护 | 推进为 `3.0.1-dev.0` |
+| `develop` 正在开发 `3.1.0-dev.0`，期间 `main` 发布了 `3.0.1` Hot-Fix | 保持 `3.1.0-dev.0` 不变 |
+| `develop` 处于 `3.0.1-dev.0`，期间 `main` 紧急发布了 `3.0.1` Hot-Fix | 顺延推进为 `3.0.2-dev.0` |
 
-版本字段的合并冲突按当前发布计划处理；核对回灌结果时同时确认修复已进入 develop，且 develop 版本仍表达下一计划发布目标。
+> **3.0 过渡期特别说明**：在 3.0.0 正式发布（M5）前，`main` 仍停留在 `2.8.1`。若期间 2.x 发生 Hot-Fix，修复合并至 `main` 与 `lts/2.8` 后，适用部分在 `develop` 的 Rust 代码中单独移植实现，绝不将 2.x 分支直接 merge 进 `develop`。
 
-## 不变项
+---
 
-- `lts/1.7` 的维护规则、tag 前缀与 CD 门禁不变；lts/2.8 保留 python/v2.8.x + ts/v2.8.x 成对 tag，两线同于 2027-07-02 EOL 且不更新 latest，见 [`LTS.md`](LTS.md) 与 `CLAUDE.md`。
-- 历史版本保留原编号与发布记录，不追溯调整。
+## 4. 明确不引入的机制
 
-## 明确不引入
-
-以下机制经评估后**不采纳**（本仓库大多数情况无并行开发，且无对应需求）：开发批次号（`dev.N` 递增）、本地 CHANGELOG 草稿机制、Develop Direct（免 PR 直推集成分支——本仓库一切改动经 PR）。若未来协作规模变化需要其中任何一项，需修订本文件后引入。
-
-## 设计基调
-
-本约定与 SemVer 的关系：**偏离是封闭枚举，而非开放裁量**。除上文声明的偏离（Patch 可含兼容增补、Minor 第四类契约调整）外，按 SemVer 理解。下游拿到的不是"看发布说明碰运气"，而是可预期的承诺形状：Patch 与 Minor 都以无脑升级为默认目标，例外的种类、义务与披露方式全部列明。
+为保持工程精简，以下机制经评估后**明确不采纳**：
+- 递增式开发构建号（即不使用 `dev.1`、`dev.2`，固定使用 `-dev.0`）；
+- 碎片化的本地 CHANGELOG 草稿文件目录（直接维护 `CHANGELOG.md` 与 `CHANGELOG.zh-CN.md` 的 `Unreleased` 段落）；
+- 免 PR 直推集成分支（Develop Direct）。

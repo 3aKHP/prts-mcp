@@ -1,3 +1,7 @@
-# Native platform smoke fixture
+# Native Platform Smoke Fixture
 
-Synthetic GameData and StoryJson tables generated from the frozen TS/v2.8.1 unit fixtures by tools/make-fixtures.mjs, corresponding to minimal-gamedata-v2 in contracts/data-manifest.json. Exact committed bytes are sealed in contracts/native-smoke-manifest.json; reconstructed ZIP timestamps differ from the old runtime archive, while the untouched frozen tool-output golden remains the comparison oracle. This small fixture is committed so native-platform verification needs no historical JS implementation, live upstream data or local .runtime files. Game/Wiki content terms remain in NOTICE.
+This directory contains minimal synthetic `GameData` and `StoryJson` files generated from the frozen TS/v2.8.1 unit-test fixtures (`tools/make-fixtures.mjs`), corresponding to `minimal-gamedata-v2` in [`contracts/data-manifest.json`](../../../contracts/data-manifest.json).
+
+- **Purpose**: enables [`tools/native/probe.mjs`](../../../tools/native/probe.mjs) to verify standalone native binaries across all five target platforms without requiring the historical TypeScript implementation, live network downloads, or local `.runtime/` caches.
+- **Integrity**: the exact committed file sizes and SHA-256 digests are sealed in [`contracts/native-smoke-manifest.json`](../../../contracts/native-smoke-manifest.json).
+- **Licensing**: third-party game and wiki content notices are documented in the root [`NOTICE`](../../../NOTICE) file.

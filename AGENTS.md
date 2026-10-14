@@ -1,32 +1,50 @@
 # Codex Instructions for PRTS-MCP
 
-## Branch model
+## 1. Branch Model
 
 | Branch | Purpose |
 | --- | --- |
-| main | Latest stable release, currently 2.8.1; changes to Rust at M5. |
-| develop | Rust integration, target 3.0.0-dev.0. No python/ or ts/ source directories. |
-| lts/2.8 | Python/TS 2.8.x maintenance, EOL 2027-07-02. |
-| lts/1.7 | Python/TS 1.7.x maintenance, EOL 2027-07-02. |
+| `main` | Latest public stable release (`2.8.1` until the `3.0.0` stable cutover at M5). |
+| `develop` | Active 3.x Rust integration branch (`3.0.0-dev.0`). Root Cargo project; no `python/` or `ts/` directories. |
+| `lts/2.8` | Python/TypeScript 2.8.x long-term maintenance branch (EOL `2027-07-02`). |
+| `lts/1.7` | Python/TypeScript 1.7.x long-term maintenance branch (EOL `2027-07-02`). |
 
-Never push directly to a long-lived branch. Branch from the appropriate line and open a PR. Human maintainers merge. During the 2.x main / Rust develop transition, port applicable fixes individually; never merge the entire legacy tree into Rust. User instructions can authorize session-specific workflow exceptions.
+Never push directly to any long-lived branch. Create a topic branch (`<type>/v<version>-<topic>`) from the appropriate base branch and open a Pull Request. Human maintainers perform all merges. When porting fixes from `lts/2.8` or `lts/1.7` to 3.x, reimplement them in Rust on `develop` — never merge a legacy branch into `develop`.
 
-## Startup reads
+## 2. Startup Reads
 
-Read CLAUDE.md and docs/dev/STYLE.md before non-trivial changes. Read docs/dev/VERSIONING.md and docs/dev/WORKFLOW.md before release/review work; docs/dev/LTS.md for either LTS line. STATUS.md records release state; ROADMAP.md / ROADMAP.zh-CN.md and docs/dev/plans/3.x-rust-migration.md own migration scope.
+Before making non-trivial changes, consult the authoritative guides:
 
-## Runtime
+- [`CLAUDE.md`](CLAUDE.md) and [`docs/dev/STYLE.md`](docs/dev/STYLE.md) — collaboration rules, module architecture, Rust conventions, and known pitfalls.
+- [`docs/dev/DOCUMENTING.md`](docs/dev/DOCUMENTING.md) — required standards whenever writing, editing, or reviewing public documentation.
+- [`docs/dev/WORKFLOW.md`](docs/dev/WORKFLOW.md) and [`docs/dev/VERSIONING.md`](docs/dev/VERSIONING.md) — PR grading, dual-track code review, minimum verification matrix, and SemVer compatibility promises.
+- [`docs/dev/LTS.md`](docs/dev/LTS.md) — maintenance scope and release rules for `lts/2.8` and `lts/1.7`.
+- [`STATUS.md`](STATUS.md) and [`ROADMAP.md`](ROADMAP.md) — current release state, 3.0 migration milestones, and post-3.0 backlog.
 
-The root is a native Cargo project. rust-toolchain.toml pins the development compiler; Cargo.lock pins dependencies; Cargo.toml declares Rust 1.89 minimum. Source builds require a C compiler for native regexp and OS diagnostics. Prebuilt binaries carry those components, so users need no compiler. M2A validates five native archive targets; docs/dev/NATIVE-PLATFORMS.md owns exact ABI/runtime evidence. M2B validates npm installation/execution on those platforms; docs/dev/NPM-DISTRIBUTION.md owns packaging and acceptance. Docker installation, public publishing and candidate E2E remain later migration stages.
+**Documentation task assignment**: GPT-family models should focus on fact-based review and small, evidence-backed corrections that preserve the existing writing style. Assign new-document drafting, substantial rewrites, large-scale translation, and prose refinement to a human maintainer or a maintainer-designated non-GPT model. This applies to both primary agents and subagents. Follow [`docs/dev/DOCUMENTING.md`](docs/dev/DOCUMENTING.md); explicit task-specific authorization takes precedence.
 
-In WSL keep the checkout on the Linux filesystem. Development oracle/packaging tools use Node >=22 and Bun 1.3.14; they are not the production business runtime. Historical TS/Python comparison sources are reconstructed from the fixed 2.8.1 commit under ignored .reference/, never restored to root python/ or ts/.
+*(Note: Local working notes, phase plans, and historical archives live under gitignored `./dev/docs/`. Never add links to `./dev/` in tracked public documentation.)*
 
-## Verification
+## 3. Runtime and Packaging
 
-Run ./scripts/check-runtime.sh first. Full scoped validation is ./scripts/check-runtime.sh --full (fixture preparation, fmt, clippy, native tests, release build, frozen differential suite, lifecycle and native regex checks). It may download pinned validation assets; it never rewrites committed contracts. See docs/dev/ENVIRONMENT.md.
+- **Native Rust Server**: The repository root is a Cargo workspace-free package (`Cargo.toml` declares MSRV `1.89`, `rust-toolchain.toml` pins `1.96.1`). Source builds require a C compiler for the statically linked QuickJS regexp engine (`vendor/quickjs-regexp/`) and OS memory diagnostics (`native/process_memory.c`). Prebuilt native archives and Docker images require no compiler or language runtime.
+- **Distribution Guides**:
+  - [`docs/dev/NATIVE-PLATFORMS.md`](docs/dev/NATIVE-PLATFORMS.md) — 5 native targets (`linux-x64`, `linux-arm64`, `windows-x64`, `darwin-arm64`, `darwin-x64`) and ABI baselines.
+  - [`docs/dev/NPM-DISTRIBUTION.md`](docs/dev/NPM-DISTRIBUTION.md) — 9-package npm layout (`prts-mcp`, `prts-mcp-ts`, `@3akhp/prts-mcp-runtime`, `@3akhp/prts-mcp-data`, and 5 platform packages).
+  - [`docs/dev/DOCKER-DISTRIBUTION.md`](docs/dev/DOCKER-DISTRIBUTION.md) — Linux `x64`/`arm64` Docker images and volume compatibility.
+  - [`docs/dev/RELEASE-CANDIDATES.md`](docs/dev/RELEASE-CANDIDATES.md) and [`docs/dev/RELEASE-CD-RECOVERY.md`](docs/dev/RELEASE-CD-RECOVERY.md) — candidate aggregation, publishing, and failure recovery.
+- **WSL2 Workspace**: Keep the repository checkout on the native Linux filesystem (never under `/mnt/c/`). `Node.js >= 22` and `Bun 1.3.14` are used only for development verification harnesses, packaging scripts, and the frozen TS/v2.8.1 oracle (reconstructed under gitignored `.reference/ts-v2.8.1/`).
 
-High-risk changes strongly recommend real-machine E2E, never a general hard gate; maintainers choose the scope under docs/dev/WORKFLOW.md. The migration's complete candidate-release E2E is scheduled for M4.
+## 4. Verification
 
-## Review
+Run `./scripts/check-runtime.sh` for a fast toolchain and metadata check. For full verification (fixture setup, `cargo fmt`, `cargo clippy`, unit/integration tests, release binary build, 384 frozen differential cases, process lifecycle, and extended regex checks), run:
 
-Standard and larger changes require independent clean-context, read-only subagent review plus KHPilot Bot Review after opening the PR. For the large M1B import, review the pushed branch snapshot purposefully using docs/dev/rust-rewrite/IMPORT.md; do not attempt to read the full repository diff.
+```bash
+./scripts/check-runtime.sh --full
+```
+
+See [`docs/dev/ENVIRONMENT.md`](docs/dev/ENVIRONMENT.md) for single-target test commands and platform-specific notes, and [`docs/dev/E2E.md`](docs/dev/E2E.md) for full real-client E2E procedures.
+
+## 5. Code Review
+
+Standard and higher-tier PRs require **dual-track review**: open the PR first to trigger KHPilot Bot Review, and run an independent clean-context, read-only review in parallel (see [`docs/dev/WORKFLOW.md`](docs/dev/WORKFLOW.md) and [`CLAUDE.md`](CLAUDE.md)).

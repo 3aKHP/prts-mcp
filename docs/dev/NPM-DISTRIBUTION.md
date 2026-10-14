@@ -1,42 +1,52 @@
-# Rust npm 分发
+# Rust npm 分发说明
 
-M2B 将新主入口和旧命令包装为精确同版的 npm 包，服务业务仍由预编译 Rust 程序执行。构建和安装验证在开发 CI 中进行；公开 registry 名称、九包 OIDC 和 next 已通过 M3 实际验收；latest 在 M5 才切换，当前公开稳定版仍是 2.8.1。
+本文面向构建与维护 npm 发行包的协作者，说明 PRTS-MCP 3.x 的 9 包架构、Node.js 启动桥生命周期、内置备用数据打包及本地验证流程。
 
-## 包与命令
+- 终端用户的 npm 安装与服务端部署见[客户端接入指南](../user/quick-start.md)与[服务端部署指南](../admin/deployment.md)
+- 五大平台的底层二进制与 ABI 基线见 [`NATIVE-PLATFORMS.md`](NATIVE-PLATFORMS.md)
+- 候选版汇总与 OIDC 发布流程见 [`RELEASE-CANDIDATES.md`](RELEASE-CANDIDATES.md)
 
-| 包 | 职责 | 命令 |
+---
+
+## 1. 九包架构与命令职责
+
+在 3.x 中，npm 渠道不再分发 TypeScript 业务源码，而是通过精简的 Node.js 启动桥拉起对应平台的预编译 Rust 二进制。整套分发由 **9 个同版本 npm 包**组成：
+
+| 包名 | 角色 | 提供的命令与职责 |
 | --- | --- | --- |
-| prts-mcp | 新主入口，依赖共享启动器 | prts-mcp：默认 Streamable HTTP；PRTS_TRANSPORT=stdio 选择 stdio。 |
-| prts-mcp-ts | 旧命令兼容入口，依赖同版共享启动器 | prts-mcp-ts、prts-mcp-ts-bun 固定 HTTP；prts-mcp-ts-stdio 固定 stdio。无需安装 Bun。 |
-| @3akhp/prts-mcp-runtime | 无业务逻辑的 Node 启动桥 | 选择匹配平台、检查版本、传递备用数据位置、参数和标准流、处理退出与信号。 |
-| @3akhp/prts-mcp-data | 同版共享只读备用数据 | 固定数据版本与校验记录，包含 Excel/levels 解压内容和剧情 ZIP。 |
-| @3akhp/prts-mcp-{platform} | 五种匹配平台的同版 Rust 产物 | Linux x64/arm64 glibc、Windows x64、macOS arm64/x64；携带 M2A 的原生依赖审计和许可。 |
+| `prts-mcp` | 3.x 新主入口包 | 提供 `prts-mcp` 命令：默认启动 Streamable HTTP（`:3000/mcp`），设 `PRTS_TRANSPORT=stdio` 切换为 stdio。 |
+| `prts-mcp-ts` | 2.x 命令兼容入口包 | 提供 `prts-mcp-ts`、`prts-mcp-ts-bun`（固定 HTTP）与 `prts-mcp-ts-stdio`（固定 stdio），底层同样调用 Rust 二进制，无需安装 Bun。 |
+| `@3akhp/prts-mcp-runtime` | 共享 Node 启动桥 | 不含业务逻辑；负责按当前 OS/CPU 定向解析平台二进制与内置数据目录、透传标准流与退出信号。 |
+| `@3akhp/prts-mcp-data` | 共享只读备用数据包 | 打包经过校验的 `gamedata/`、`gamedata-levels/` 与 `storyjson/` 备用快照（含 `BUNDLE.json` 与 `SHA256SUMS`）。 |
+| `@3akhp/prts-mcp-<platform>` | 5 个平台二进制包 | 对应 `linux-x64`、`linux-arm64`、`windows-x64`、`darwin-arm64`、`darwin-x64`；携带预编译 Rust 二进制、ABI 审计记录与完整第三方许可证。 |
 
-入口 → runtime → data 采用精确版本依赖；runtime 的五个原生包为精确版本 optionalDependencies，由 npm os/cpu/libc 条件筛选。正常安装从 npm 平台包获取二进制，不从 GitHub 临时下载，不现场编译。公共名称和 @3akhp scope 已真实注册，九包publish通过M3验收；正常标签切换直接操作目标并确认结果，不加独立探测门禁。
+### 依赖关系与安装约束
 
-五个平台的 CPU、系统和 ABI 基线沿用[原生平台说明](NATIVE-PLATFORMS.md)。npm 启动桥需要 Node >=22；npm >=10 是包装声明的安装基线。Linux 启动时还检查 glibc >=2.28；musl/Alpine 和未支持的 CPU/OS 给出明确诊断。直接原生程序和 Docker 的业务运行不因此依赖 Node。
+- **精确同版依赖**：`prts-mcp` 与 `prts-mcp-ts` 均以精确版本号依赖 `@3akhp/prts-mcp-runtime`；`runtime` 以精确版本号依赖 `@3akhp/prts-mcp-data`，并将 5 个平台包列为精确版本的 `optionalDependencies`。
+- **按平台自动筛选**：每个平台包在 `package.json` 中声明了对应的 `os`、`cpu`（以及 Linux 下的 `libc: ["glibc"]`）字段。`npm install` 时仅会下载匹配当前机器的那个平台包，无需在用户机器上执行 `postinstall` 下载脚本或现场编译（因此 `npm install --ignore-scripts` 也可正常工作）。
+- **环境要求**：启动桥要求 `Node.js >= 22`、`npm >= 10`，Linux 下额外检查 `glibc >= 2.28`。若安装时传入了 `--omit=optional` 导致平台包缺失，或在不支持的 `musl`/架构上运行，启动桥会向 `stderr` 输出明确错误并以非零状态码退出。
 
-新旧入口没有重名 bin，可同时安装；共享数据不复制进五个平台包。npm 在同一项目中会复用同版依赖，独立全局入口的安装目录由 npm 管理，可能各自存有依赖副本，不能承诺全局安装的物理文件去重。
+---
 
-## 数据与升级
+## 2. 内置备用数据与优先级
 
-packaging/npm/data-release.json 单独固定发行备用数据的 AKDP Release、manifest、源版本和三包大小/SHA。其更新不改写历史 contracts/validation-assets.json 的冻结验证基线。prepare-data.mjs 获取并校验文件，examples/package_data.rs 调用现有 Rust 必需文件、剧情引用检查和安全解压，并解析包内 JSON、生成 BUNDLE.json 与文件校验清单。
+1. **独立版本固定**：[`packaging/npm/data-release.json`](../../packaging/npm/data-release.json) 固定了发行备用数据所使用的上游 `arknights-data-pipeline` Release、manifest 与三个 ZIP 的 SHA-256（与开发测试专用的 `contracts/validation-assets.json` 互不干扰）。
+2. **数据准备与校验**：`node tools/npm/prepare-data.mjs` 下载并校验三个上游归档后，调用 `cargo run --locked --example package_data` 执行安全解压、必需表格校验、剧情引用检查，并生成 `BUNDLE.json` 与 `SHA256SUMS`。
+3. **运行时优先级**：启动桥通过内部参数将 `@3akhp/prts-mcp-data` 的路径传给 Rust 进程作为只读备用源。当用户数据目录已有完整数据时，服务优先读取用户数据；后台同步始终写入可写的用户数据目录，绝不修改 `node_modules` 内的备用数据包。
 
-安装包内数据为备用读取来源；有完整用户数据时优先读取用户目录或既有卷，后台同步继续更新用户目录，不覆盖安装目录。没有用户数据且同步失败时，备用数据支持游戏数据查询；Wiki 查询、未下载立绘仍依赖各自数据源。源码安装和 Cargo 源码包保持运行时同步，不内嵌全部游戏数据。参见[数据目录政策](../../data/README.md)。
+---
 
-同一数据包装已用于 M2C 镜像与 M3 公开原生候选；M4 已在维护者接受的范围内完成实际候选首次启动、备用查询、用户数据优先、旧 npm 发行物升级与回滚，data/ 分发运行验收收口，见 [M4 报告](reports/3.0-m4-e2e.md)。独立文档补全事项仍开放，由维护者亲自主持。
+## 3. 进程生命周期与信号转发
 
-## 生命周期
+- **无 Shell 直接拉起**：[`packaging/npm/runtime.cjs`](../../packaging/npm/runtime.cjs) 使用参数数组直接 `spawn` 原生二进制，不经过 shell 解析；`stdin`、`stdout`、`stderr` 原样继承，确保 `stdout` 仅输出纯净的 MCP 协议流。
+- **POSIX 信号转发**：在 Linux 与 macOS 下，启动桥捕获 `SIGINT`、`SIGTERM`、`SIGHUP` 并转发给 Rust 子进程，待子进程退出后保持相同的退出码或信号终止状态。
+- **Windows 父进程句柄监测**：由于 Windows 下强制终止外层 Node 进程不会触发 POSIX 信号处理器，启动桥在 Windows 下会向 Rust 子进程传入内部参数 `--launcher-parent-pid <pid>`。Rust 进程通过 Windows OS 句柄监听父进程状态：一旦外层 Node 启动桥退出，Rust 服务立即自动退出，防止遗留后台僵尸进程或占用端口的 HTTP 监听器。
 
-启动器以参数数组直接启动 Rust 程序，不通过 shell 解释参数；stdin/stdout/stderr 继承，MCP stdout 只承载协议。Unix 将 SIGINT/SIGTERM/SIGHUP 转发至子进程，并保持原生退出码或信号终止语义。
+---
 
-Windows 强制结束外层 Node 进程不会运行 Unix 信号处理器，因此 npm 入口通过内部 --launcher-parent-pid 参数，让 Rust 子进程等待父进程的 Windows OS handle；父进程结束时原生服务退出，避免遗留 HTTP listener。该监测仅在 Windows 且传入内部参数时启用，直接原生/容器运行没有此要求；不是新的公共配置项或管理 CLI。
+## 4. 本地打包与探测验证
 
-缺少平台包（例如使用 --omit=optional）和启动器/原生/备用数据版本不一致时，错误写 stderr 并非零退出。不会切回 JS/TS 服务或在用户机器上构建补救。npm install --ignore-scripts 仍可使用完整包装，因为平台程序已经随包提供。
-
-## 构建与验收
-
-以下命令在干净的短分支快照中执行，平台参数必须匹配本机原生 OS/CPU；Windows 原生构建需按 native CI 配置 SDK 和 clang-cl。
+在匹配目标平台 OS/CPU 的机器上，依次执行以下命令完成原生构建、数据准备、npm 打包与闭环安装探测：
 
 ```bash
 node tools/native/build.mjs linux-x64
@@ -46,22 +56,5 @@ node tools/npm/pack.mjs linux-x64
 node tools/npm/probe.mjs linux-x64
 ```
 
-tools/npm/pack.mjs 只接受经过审计、校验清单一致且 dirty=false 的原生 payload，生成五个真实 tarball：当前平台、共享 data、共享 runtime、两个入口。artifacts/npm/{platform}/packages.json 记录精确版本、来源和 tarball SHA/integrity。五个原生 runner 分别构建、安装并执行本机包；M3 汇总五个平台包并按依赖顺序发布，不将单个平台的测试输出直接当作完整发行目录。
-
-probe.mjs 使用只读 loopback registry 和隔离 npm 配置/缓存，执行真实全局双入口安装、npx、npm ci、无用户数据的备用查询、命令与协议、退出码、信号/Windows 父进程终止、版本不匹配和缺少 optional 包的诊断。非当前平台只提供用于锁文件解析的模拟元数据，并断言 npm 没有下载它们；异平台运行结论来自各自原生 runner。具体证据位于 npm-evidence.json 与 npm-runtime-evidence.json，安装包内容不能仅以模板审查认领通过。
-
-M2B 五个平台的实际安装与运行已通过，检查数量和 CI 来源见[验收记录](reports/3.0-m2b-npm-distribution.md)。Windows 的完整数据解包安装需要比协议调用更长的测试预算；超时仍判失败，具体耗时不能当作用户机器上的安装速度承诺。
-
-开发CI留存tarball与验收证据14天，本身不发布。M3正式tag已将九个3.0.0-alpha.3包经Actions/OIDC发布到next；九份provenance签名、源提交/run、integrity均通过，见[验收记录](reports/3.0-m3-candidate-release.md)。匿名公开registry本机Linux x64双入口安装、备用查询/退出及已安装项目内npx调用通过；不扩大为五平台公开registry安装或M4。alpha.2只有一个平台包部分公开，保留其历史字节。
-
-当前候选为3.0.0-alpha.3；测试必须明确选择next或该精确版本；新包首次暂存时npm自动生成的0.0.0-stage并非产品版本。npm要求latest存在，八个新名字的首次自动latest保留原值，正式3.0才切换；不要在预发布期间用新主包的裸安装或@latest代替@next。新主入口默认HTTP，兼容stdio命令保持原传输 profile。
-
-```bash
-npm install -g prts-mcp@next
-prts-mcp
-PRTS_TRANSPORT=stdio prts-mcp
-```
-
-兼容入口可用npm install -g prts-mcp-ts@next，随后运行prts-mcp-ts-stdio。稳定2.x用户继续使用prts-mcp-ts@latest，正式3.0在M5才切换稳定渠道；发行自动化、OIDC和标签保留规则见[候选发行流程](RELEASE-CANDIDATES.md)。
-
-npm 筛选与 optionalDependencies 行为参见 [package.json 官方说明](https://docs.npmjs.com/cli/v11/configuring-npm/package-json/)，锁文件安装见 [npm ci](https://docs.npmjs.com/cli/v11/commands/npm-ci/)，npx 对应 [npm exec](https://docs.npmjs.com/cli/v11/commands/npm-exec/)。
+- **`tools/npm/pack.mjs`**：校验 `artifacts/native/<platform>/` 与备用数据的完整性，在 `artifacts/npm/<platform>/` 下生成当前平台的 5 个 `.tgz` tarball（`prts-mcp`、`prts-mcp-ts`、`runtime`、`data` 及当前 `<platform>` 包），并写入 `packages.json`。
+- **`tools/npm/probe.mjs`**：在本地启动一个隔离的只读回环 npm registry，真实执行 `npm install -g`、`npx` 与 `npm ci`，全面验证双入口命令、离线备用数据查询、stdio/HTTP 双协议时代、信号退出与 Windows 父进程联动退出，以及缺失 `optionalDependencies` 或版本不匹配时的错误诊断。
