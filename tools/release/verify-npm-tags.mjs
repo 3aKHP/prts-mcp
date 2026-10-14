@@ -6,20 +6,22 @@ assert(process.env.RUST_NPM_PUBLISH_ENABLED==='true','npm tag verification requi
 const runId=process.env.GITHUB_RUN_ID;
 assert(/^\d+$/.test(runId||''),'Tag permission verification requires a GitHub run ID');
 const probe=`prts-release-check-${runId}`;
-async function tags(name){
+async function tags(name,timeout=30000){
   const response=await fetch(`https://registry.npmjs.org/-/package/${encodeURIComponent(name)}/dist-tags`,
-    {cache:'no-store',signal:AbortSignal.timeout(30000)});
+    {cache:'no-store',signal:AbortSignal.timeout(timeout)});
   assert(response.ok,`Tag verification returned ${response.status}`);return response.json();
 }
 async function confirmedTags(name,retained,present){
   const deadline=Date.now()+300000;
+  const timeoutMessage=`Verification tag ${present?'addition':'removal'} was not confirmed within five minutes`;
   while(true){
-    const observed=await tags(name),unchanged={...observed};delete unchanged[probe];
+    const remaining=deadline-Date.now();assert(remaining>0,timeoutMessage);
+    const observed=await tags(name,Math.min(30000,remaining)),unchanged={...observed};delete unchanged[probe];
+    assert(Date.now()<=deadline,timeoutMessage);
     assert.deepEqual(unchanged,retained,'Existing publication tags changed');
     assert(!Object.hasOwn(observed,probe)||observed[probe]===manifest.version,'Conflicting verification tag');
     if(Object.hasOwn(observed,probe)===present)return observed;
-    assert(Date.now()<deadline,`Verification tag ${present?'addition':'removal'} was not confirmed within five minutes`);
-    await new Promise(resolve=>setTimeout(resolve,2000));
+    await new Promise(resolve=>setTimeout(resolve,Math.max(0,Math.min(2000,deadline-Date.now()))));
   }
 }
 for(const pkg of manifest.packages){
