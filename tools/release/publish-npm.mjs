@@ -11,7 +11,7 @@ async function registry(url) {
 }
 async function publishedTags(endpoint,pkg) {
   // npm's version and tag endpoints may become readable at different times.
-  const deadline=Date.now()+300000;
+  const deadline=Date.now()+1800000;
   const tagsEndpoint=`https://registry.npmjs.org/-/package/${encodeURIComponent(pkg.name)}/dist-tags`;
   while(true){
     const version=await registry(`${endpoint}/${encodeURIComponent(pkg.version)}`);
@@ -20,7 +20,7 @@ async function publishedTags(endpoint,pkg) {
       const tags=await registry(tagsEndpoint);
       if(tags?.[policy.npmTag]===pkg.version)return tags;
     }
-    assert(Date.now()<deadline,`${pkg.name} version/candidate tag was not readable within five minutes after publishing`);
+    assert(Date.now()<deadline,`${pkg.name} version/candidate tag was not readable within thirty minutes after publishing`);
     await new Promise(resolve=>setTimeout(resolve,2000));
   }
 }

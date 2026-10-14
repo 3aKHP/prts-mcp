@@ -35,7 +35,7 @@ M3A仍不是M4完整真实客户端验收或旧发行物回滚，也不关闭文
 
 发布job下载同一次CI汇总的rust-release-candidate，重新核对完整文件集合/SHA、产品版本和source commit，禁止重打包替换已验收产物。npm按五平台→data→runtime→两入口顺序发布，使用npm11.21.0及Node24支持直接OIDC发布与独立dist-tag权限；已有版本须integrity相同，必要时仅修复所属候选标签。GHCR加载两份已运行验证的镜像档案，检查image ID/CPU，再推送精确版本平台标签并建立双架构版本/next manifest；已有精确版本不允许不同镜像覆盖。GitHub使用相同清单上传档案、tarball、镜像和证据，设置prerelease及latest=false。
 
-npm接受上传后可能仍在服务端校验，版本接口与dist-tag接口可能在不同时刻可读；发布器在同一五分钟预算内确认版本公开/integrity一致以及所属候选标签已指向该版本，再处理后续依赖；超时失败，不把CLI退出0算成公开成功。预发布只推进next，逐项核验所有既有标签保持原值，包括八个新名字首次建立的latest=0.0.0-stage或3.0.0-alpha.1；旧prts-mcp-ts稳定/LTS标签同样不变。npm官方[registry契约](https://github.com/npm/registry/blob/main/docs/REGISTRY-API.md#package)将latest列为必有键，[同类报告](https://github.com/npm/cli/issues/8490)和本次实际删除的E400表明不能以强制删除它作为收口条件。首次注册自动产生的latest只能保留并披露，M5前不得主动推进；候选安装明确使用next或精确版本。
+npm接受上传后可能仍在服务端校验，版本接口与dist-tag接口可能在不同时刻可读；发布器在同一三十分钟预算内确认版本公开/integrity一致以及所属候选标签已指向该版本，再处理后续依赖；npm实际首发处理曾超过二十分钟，因此预算覆盖已观测的延迟；超时仍失败，不把CLI退出0算成公开成功。预发布只推进next，逐项核验所有既有标签保持原值，包括八个新名字首次建立的latest=0.0.0-stage或3.0.0-alpha.1；旧prts-mcp-ts稳定/LTS标签同样不变。npm官方[registry契约](https://github.com/npm/registry/blob/main/docs/REGISTRY-API.md#package)将latest列为必有键，[同类报告](https://github.com/npm/cli/issues/8490)和本次实际删除的E400表明不能以强制删除它作为收口条件。首次注册自动产生的latest只能保留并披露，M5前不得主动推进；候选安装明确使用next或精确版本。
 
 九包发布成功后，verify-npm-tags.mjs用prts-release-check-{GITHUB_RUN_ID}临时标签实际执行add与rm，验证独立dist-tag权限；结束后核对临时标签消失、next/latest/LTS等所有既有标签保持不变。临时验证标签可能在检查期间短暂出现，不是用户安装渠道；同run重试可清理该run遗留且精确指向同版本的标签，冲突版本或任何写入/清理失败均失败，不能以公开GET或同值add当成权限证明。
 

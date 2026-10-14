@@ -36,7 +36,7 @@ function fixture(mode='fresh',version='3.0.0-alpha.1') {
 import {basename} from 'node:path';
 const packages=JSON.parse(readFileSync(new URL('../artifacts/release/RELEASE.json',import.meta.url))).packages;
 const mode=process.env.TEST_NPM_MODE;let reads=0,tagReads=0;
-if(mode==='invisible'||mode==='tags-invisible'){let clock=0;Date.now=()=>clock+=300001;}
+if(mode==='invisible'||mode==='tags-invisible'){let clock=0;Date.now=()=>clock+=1800001;}
 const commands=()=>existsSync(process.env.TEST_COMMAND_LOG)?readFileSync(process.env.TEST_COMMAND_LOG,'utf8').trim().split('\\n').filter(Boolean).map(JSON.parse):[];
 globalThis.fetch=async url=>{
  const path=decodeURIComponent(new URL(url).pathname).slice(1),tagsRequest=path.startsWith('-/package/');
@@ -144,7 +144,7 @@ test('accepted upload waits for a public version before publishing its dependenc
 test('an upload that never becomes public stops before advancing to later packages',()=>{
   const f=fixture();try{
     f.env.RUST_NPM_PUBLISH_ENABLED='true';f.env.TEST_NPM_MODE='invisible';f.env.NODE_OPTIONS='--import='+join(f.root,'mock/fetch.mjs');
-    const r=f.run('publish-npm');assert.notEqual(r.status,0);assert.match(r.stderr,/within five minutes/);
+    const r=f.run('publish-npm');assert.notEqual(r.status,0);assert.match(r.stderr,/within thirty minutes/);
     assert.equal(f.commands().filter(c=>c.args[0]==='publish').length,1);assert(!f.commands().some(c=>c.args[0]==='dist-tag'));
   }finally{f.cleanup();}
 });
@@ -182,7 +182,7 @@ for(const mode of ['tags-delayed','tags-invisible'])test(`public version with ${
     if(mode==='tags-delayed'){
       assert.equal(r.status,0,r.stderr);assert.equal(f.commands().filter(c=>c.args[0]==='publish').length,9);
     }else{
-      assert.notEqual(r.status,0);assert.match(r.stderr,/within five minutes/);
+      assert.notEqual(r.status,0);assert.match(r.stderr,/within thirty minutes/);
       assert.equal(f.commands().filter(c=>c.args[0]==='publish').length,1);
     }
     assert(!f.commands().some(c=>c.args[0]==='dist-tag'),'Tag visibility waits must not write or repair labels');
