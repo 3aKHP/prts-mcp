@@ -31,18 +31,16 @@ for(const pkg of manifest.packages){
   }else run('npm',['publish',file,'--access','public','--tag',policy.npmTag,'--ignore-scripts'],{stdio:'inherit'});
   await publishedVersion(endpoint,pkg);
   const tagsEndpoint=`https://registry.npmjs.org/-/package/${encodeURIComponent(pkg.name)}/dist-tags`;
-  let tags=await registry(tagsEndpoint);assert(tags,`${pkg.name} has no public tags`);
-  // Only the eight new Rust names have bootstrap aliases. Never remove legacy tags.
-  const bootstrapLatest=policy.prerelease&&pkg.name!=='prts-mcp-ts'&&
-    (['0.0.0-stage','3.0.0-alpha.1'].includes(tags.latest)||
-      (!meta['dist-tags']?.latest&&tags.latest===pkg.version));
-  if(bootstrapLatest){
-    run('npm',['dist-tag','rm',pkg.name,'latest'],{stdio:'inherit'});
-    tags=await registry(tagsEndpoint);assert(tags&&!Object.hasOwn(tags,'latest'),'Bootstrap latest removal was not confirmed');
+  const tags=await registry(tagsEndpoint);assert(tags,`${pkg.name} has no public tags`);
+  // npm requires latest and creates it on first registration, even under next.
+  // Preserve that initial alias; only M5 may deliberately advance stable latest.
+  if(policy.prerelease&&!meta['dist-tags']?.latest&&Object.hasOwn(tags,'latest')){
+    assert(pkg.name!=='prts-mcp-ts'&&tags.latest===pkg.version,'Unexpected initial latest tag');
+    console.log(`NPM_INITIAL_LATEST_PRESERVED: ${pkg.name}@${tags.latest}`);
   }
   assert.equal(tags[policy.npmTag],pkg.version,`${pkg.name} candidate tag was not confirmed`);
   for(const [tag,value] of Object.entries(meta['dist-tags']||{})){
-    if(tag===policy.npmTag||(bootstrapLatest&&tag==='latest'))continue;
+    if(tag===policy.npmTag)continue;
     assert.equal(tags[tag],value,`${pkg.name} existing ${tag} tag changed`);
   }
 }

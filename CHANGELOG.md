@@ -2,7 +2,7 @@
 
 ## [Unreleased] — 3.0.0-dev.0
 
-- Wait for npm's asynchronous validation to make an accepted candidate upload publicly readable before advancing dependencies. Remove only known bootstrap latest aliases on the eight new Rust package names and verify retained tags; existing prts-mcp-ts stable/LTS channels remain unchanged.
+- Wait for npm's asynchronous validation to make an accepted candidate upload publicly readable before advancing dependencies. Preserve and verify all existing labels, including npm-required bootstrap latest aliases; candidate releases advance next only and verify independent tag writes with temporary labels that are removed. Existing prts-mcp-ts stable/LTS channels remain unchanged.
 - Add verified-snapshot publishing for Rust candidates on GitHub/GHCR and independently enabled npm OIDC. Prereleases use next and leave stable latest unchanged; npm account setup remains required.
 
 - Prepare full native release candidates with validated read-only fallback data on all five platforms, verify archive installation without developer tools, and collect one exact-version snapshot for npm, native and Docker channels. Public publishing and stable latest are not enabled by this preparation.
