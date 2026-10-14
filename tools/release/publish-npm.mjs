@@ -9,13 +9,18 @@ async function registry(url) {
   assert(response.ok||response.status===404,`Registry returned ${response.status}`);
   return response.ok?await response.json():undefined;
 }
-async function publishedVersion(endpoint,pkg) {
-  // npm may accept an upload before its asynchronous validation makes it public.
+async function publishedTags(endpoint,pkg) {
+  // npm's version and tag endpoints may become readable at different times.
   const deadline=Date.now()+300000;
+  const tagsEndpoint=`https://registry.npmjs.org/-/package/${encodeURIComponent(pkg.name)}/dist-tags`;
   while(true){
     const version=await registry(`${endpoint}/${encodeURIComponent(pkg.version)}`);
-    if(version){assert.equal(version.dist.integrity,pkg.integrity);return;}
-    assert(Date.now()<deadline,`${pkg.name} was not readable within five minutes after publishing`);
+    if(version){
+      assert.equal(version.dist.integrity,pkg.integrity);
+      const tags=await registry(tagsEndpoint);
+      if(tags?.[policy.npmTag]===pkg.version)return tags;
+    }
+    assert(Date.now()<deadline,`${pkg.name} version/candidate tag was not readable within five minutes after publishing`);
     await new Promise(resolve=>setTimeout(resolve,2000));
   }
 }
@@ -29,9 +34,7 @@ for(const pkg of manifest.packages){
     console.log(`NPM_EXISTING_VERIFIED: ${pkg.name}@${pkg.version}`);
     if(meta['dist-tags']?.[policy.npmTag]!==pkg.version)run('npm',['dist-tag','add',`${pkg.name}@${pkg.version}`,policy.npmTag],{stdio:'inherit'});
   }else run('npm',['publish',file,'--access','public','--tag',policy.npmTag,'--ignore-scripts'],{stdio:'inherit'});
-  await publishedVersion(endpoint,pkg);
-  const tagsEndpoint=`https://registry.npmjs.org/-/package/${encodeURIComponent(pkg.name)}/dist-tags`;
-  const tags=await registry(tagsEndpoint);assert(tags,`${pkg.name} has no public tags`);
+  const tags=await publishedTags(endpoint,pkg);
   // npm requires latest and creates it on first registration, even under next.
   // Preserve that initial alias; only M5 may deliberately advance stable latest.
   if(policy.prerelease&&!meta['dist-tags']?.latest&&Object.hasOwn(tags,'latest')){

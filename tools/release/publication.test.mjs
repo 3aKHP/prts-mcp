@@ -35,8 +35,8 @@ function fixture(mode='fresh',version='3.0.0-alpha.1') {
   put('mock/fetch.mjs',`import {readFileSync,existsSync} from 'node:fs';
 import {basename} from 'node:path';
 const packages=JSON.parse(readFileSync(new URL('../artifacts/release/RELEASE.json',import.meta.url))).packages;
-const mode=process.env.TEST_NPM_MODE;let reads=0;
-if(mode==='invisible'){let clock=0;Date.now=()=>clock+=300001;}
+const mode=process.env.TEST_NPM_MODE;let reads=0,tagReads=0;
+if(mode==='invisible'||mode==='tags-invisible'){let clock=0;Date.now=()=>clock+=300001;}
 const commands=()=>existsSync(process.env.TEST_COMMAND_LOG)?readFileSync(process.env.TEST_COMMAND_LOG,'utf8').trim().split('\\n').filter(Boolean).map(JSON.parse):[];
 globalThis.fetch=async url=>{
  const path=decodeURIComponent(new URL(url).pathname).slice(1),tagsRequest=path.startsWith('-/package/');
@@ -51,16 +51,17 @@ globalThis.fetch=async url=>{
  if(fresh&&!published&&!tagsRequest&&pkg.name!=='prts-mcp-ts')return new Response('{}',{status:404});
  const tags={latest:'2.8.1',beta:'1.0.0-beta.1'};
  if(!fresh)tags.next=mode==='repair'?'2.8.1':pkg.version;
- if((mode==='bootstrap'||mode==='bootstrap-upload'||mode==='latest-change')&&pkg.name!=='prts-mcp-ts')tags.latest=pkg===packages[0]||pkg===packages[1]?'3.0.0-alpha.1':'0.0.0-stage';
- if(mode==='bootstrap-upload')tags.next=published?pkg.version:'3.0.0-alpha.1';\n if(fresh&&published){tags.next=pkg.version;if(pkg.name!=='prts-mcp-ts')tags.latest=pkg.version;}
+ if((mode==='bootstrap'||mode==='bootstrap-upload'||mode==='tags-delayed'||mode==='tags-invisible'||mode==='latest-change')&&pkg.name!=='prts-mcp-ts')tags.latest=pkg===packages[0]||pkg===packages[1]?'3.0.0-alpha.1':'0.0.0-stage';
+ if(['bootstrap-upload','tags-delayed','tags-invisible'].includes(mode))tags.next=published?pkg.version:'3.0.0-alpha.1';\n if(fresh&&published){tags.next=pkg.version;if(pkg.name!=='prts-mcp-ts')tags.latest=pkg.version;}
  if(tagsRequest&&((mode==='stable-change'&&pkg.name==='prts-mcp-ts')||(mode==='latest-change'&&pkg.name!=='prts-mcp-ts')))tags.latest=pkg.version;
  for(const call of calls){
   const a=call.args;
   if(a[0]==='dist-tag'&&a[1]==='rm'&&a[2]===pkg.name)delete tags[a[3]];
   if(a[0]==='dist-tag'&&a[1]==='add'&&a[2]===pkg.name+'@'+pkg.version)tags[a[3]]=pkg.version;
  }
+ if(tagsRequest&&pkg===packages[0]&&(mode==='tags-invisible'||(mode==='tags-delayed'&&tagReads++===0)))tags.next='3.0.0-alpha.1';
  if(tagsRequest)return new Response(JSON.stringify(tags));
- const versions=(fresh||mode==='bootstrap-upload')&&!published?{}:{[pkg.version]:{dist:{integrity:mode==='conflict'?'sha512-conflict':pkg.integrity}}};
+ const versions=(fresh||['bootstrap-upload','tags-delayed','tags-invisible'].includes(mode))&&!published?{}:{[pkg.version]:{dist:{integrity:mode==='conflict'?'sha512-conflict':pkg.integrity}}};
  return new Response(JSON.stringify({versions,'dist-tags':tags}));
 };`);
   const env={...process.env,PATH:mock+':'+process.env.PATH,GITHUB_REF:'refs/tags/v'+version,GITHUB_RUN_ID:'12345',GITHUB_REPOSITORY:'3aKHP/prts-mcp',RUST_STABLE_RELEASE_ENABLED:'false',RUST_NPM_PUBLISH_ENABLED:'false',TEST_COMMAND_LOG:log,TEST_MODE:mode,TEST_STATE:join(root,'state')};
@@ -171,5 +172,19 @@ test('public tag reads and successful publish metadata cannot hide missing tag w
     f.env.RUST_NPM_PUBLISH_ENABLED='true';f.env.TEST_NPM_MODE='bootstrap';f.env.NODE_OPTIONS='--import='+join(f.root,'mock/fetch.mjs');
     const r=f.run('verify-npm-tags');assert.notEqual(r.status,0);assert.match(r.stderr,/dist-tag permission denied/);
     assert.equal(f.commands().length,1);
+  }finally{f.cleanup();}
+});
+
+for(const mode of ['tags-delayed','tags-invisible'])test(`public version with ${mode} candidate tag must not advance dependencies prematurely`,()=>{
+  const f=fixture('fresh','3.0.0-alpha.3');try{
+    f.env.RUST_NPM_PUBLISH_ENABLED='true';f.env.TEST_NPM_MODE=mode;f.env.NODE_OPTIONS='--import='+join(f.root,'mock/fetch.mjs');
+    const r=f.run('publish-npm');
+    if(mode==='tags-delayed'){
+      assert.equal(r.status,0,r.stderr);assert.equal(f.commands().filter(c=>c.args[0]==='publish').length,9);
+    }else{
+      assert.notEqual(r.status,0);assert.match(r.stderr,/within five minutes/);
+      assert.equal(f.commands().filter(c=>c.args[0]==='publish').length,1);
+    }
+    assert(!f.commands().some(c=>c.args[0]==='dist-tag'),'Tag visibility waits must not write or repair labels');
   }finally{f.cleanup();}
 });
