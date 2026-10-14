@@ -1,3 +1,5 @@
+> Candidate source: 3.0.0-alpha.3, prepared from reviewed npm label-preservation and permission-verification fixes. No alpha.3 publication is claimed here. develop remains 3.0.0-dev.0 and main remains stable 2.8.1; M3 acceptance is still pending.
+
 # PRTS-MCP Status
 
 | Line | State |
