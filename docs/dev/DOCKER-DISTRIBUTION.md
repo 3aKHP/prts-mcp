@@ -59,4 +59,4 @@ docker run --rm -i --user "$(id -u):$(id -g)" --read-only \
 
 测试 mirror 使用单独 digest 固定的 Node fixture 容器，只在测试网络中提供已校验的固定数据；该容器及 JS 文件不进入发行镜像。旧 TS oracle 从冻结 tag 在 .reference/ 重建，仅用于旧卷写入与读回。图片使用五幅代表性 fixture，不能代替 M4 全部工具和真实上游图片链路验收。旧 TS 对容器写入数据的读回是有限兼容证据，完整实际旧发行物回滚仍在 M4。
 
-文档专场和 data/ 跨渠道/候选运行门禁继续开放；CLI、功能新增和公开发布均不在 M2C。Docker 平台策略参见[官方多平台说明](https://docs.docker.com/build/building/multi-platform/)，构建输入见[官方 context 说明](https://docs.docker.com/build/concepts/context/)。
+后续 M3 已发布候选，M4 已完成候选容器运行、整卷/四子卷回读及跨渠道 data/ 运行验收；旧 GHCR 实际镜像回滚未执行，维护者接受其披露，见 [M4 报告](reports/3.0-m4-e2e.md)。data/ 事项收口，文档专场仍开放；CLI、功能新增不在本次迁移范围。Docker 平台策略参见[官方多平台说明](https://docs.docker.com/build/building/multi-platform/)，构建输入见[官方 context 说明](https://docs.docker.com/build/concepts/context/)。
