@@ -66,6 +66,22 @@ impl DirectoryStore {
         &self.root
     }
 
+    /// Deserialize domain-owned data without first retaining a complete Value tree.
+    pub(crate) fn read_json_as<T: serde::de::DeserializeOwned>(
+        &self,
+        path: &str,
+    ) -> Result<T, StoreError> {
+        let target = self.resolve(path)?;
+        let text = std::fs::read_to_string(&target).map_err(|e| match e.kind() {
+            std::io::ErrorKind::NotFound => StoreError::NotFound(path.to_string()),
+            _ => StoreError::Io(e),
+        })?;
+        serde_json::from_str(&text).map_err(|e| StoreError::BadJson {
+            path: path.to_string(),
+            message: e.to_string(),
+        })
+    }
+
     /// Retain a domain's consumed fields while validating the complete JSON.
     pub(crate) fn read_json_projected(
         &self,

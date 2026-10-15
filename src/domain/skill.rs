@@ -7,7 +7,9 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use serde_json::{json, Map, Value};
+use super::skill_data::{BlackboardValue, SkillLevel, SkillTable};
+use serde_json::{json, Value};
+use std::collections::HashMap;
 
 use crate::app::DataView;
 use crate::domain::messages;
@@ -32,7 +34,7 @@ pub fn has_skill_data(view: &DataView) -> bool {
         .is_some_and(|store| store.exists("skill_table.json").unwrap_or(false))
 }
 
-fn skill_table(view: &DataView) -> Result<Arc<Value>, String> {
+fn skill_table(view: &DataView) -> Result<Arc<SkillTable>, String> {
     let Some(root) = view.excel_root.clone() else {
         return Err("__missing__战斗技能".to_string());
     };
@@ -47,8 +49,8 @@ fn skill_table(view: &DataView) -> Result<Arc<Value>, String> {
                 "战斗技能数据文件不存在：{shown}。数据目录可能为空，或挂载路径有误（GAMEDATA_PATH 应指向游戏数据根目录）。"
             ));
         }
-        store.read_json("skill_table.json").map_err(|e| e.to_string())
-    }, |raw| raw.as_object().map(|m| m.len() as u64).unwrap_or(0))
+        store.read_json_as::<SkillTable>("skill_table.json").map_err(|e| e.to_string())
+    }, |table| table.len() as u64)
 }
 
 // ---------------------------------------------------------------------------
@@ -93,20 +95,10 @@ pub fn format_placeholder_value(value: f64, fmt: &str) -> Option<String> {
 
 /// Scan the description for `{key}` / `{key:fmt}` tokens; non-ASCII keys and
 /// colons inside keys follow the TS regex `[^{}:]+` and `[^{}]*`.
-fn render_skill_description(description: &str, blackboard: Option<&Value>) -> String {
-    let values: Map<String, Value> = blackboard
-        .and_then(Value::as_array)
-        .map(Vec::as_slice)
-        .unwrap_or(&[])
-        .iter()
-        .filter_map(|entry| {
-            entry
-                .get("key")
-                .and_then(Value::as_str)
-                .map(|k| (k.to_string(), entry.clone()))
-        })
-        .collect();
-
+fn render_skill_description(
+    description: &str,
+    values: &HashMap<String, BlackboardValue>,
+) -> String {
     let chars: Vec<char> = description.chars().collect();
     let mut out = String::with_capacity(description.len());
     let mut i = 0;
@@ -124,8 +116,8 @@ fn render_skill_description(description: &str, blackboard: Option<&Value>) -> St
         };
         let inner: String = chars[i + 1..close].iter().collect();
         let rendered = match inner.split_once(':') {
-            Some((key, fmt)) => substitute(&values, key, Some(fmt)),
-            None => substitute(&values, &inner, None),
+            Some((key, fmt)) => substitute(values, key, Some(fmt)),
+            None => substitute(values, &inner, None),
         };
         match rendered {
             Some(text) => {
@@ -150,26 +142,22 @@ fn find_close(chars: &[char], from: usize) -> Option<usize> {
         .filter(|&j| chars[j] == '}')
 }
 
-fn substitute(values: &Map<String, Value>, key: &str, fmt: Option<&str>) -> Option<String> {
+fn substitute(
+    values: &HashMap<String, BlackboardValue>,
+    key: &str,
+    fmt: Option<&str>,
+) -> Option<String> {
     let fmt = fmt.unwrap_or("");
-    // A leading `-` negates the positive twin's numeric value.
     let (negated, lookup_key) = key
         .strip_prefix('-')
         .map_or((false, key), |rest| (true, rest));
-    let entry = values.get(lookup_key)?;
-    if let Some(value_str) = entry.get("valueStr") {
-        if !value_str.is_null() {
-            // Negation only applies to numeric values; a string twin of a
-            // minus key has no defined rendering — keep the literal token.
-            return if negated {
-                None
-            } else {
-                Some(value_str.as_str()?.to_string())
-            };
+    match values.get(lookup_key)? {
+        BlackboardValue::Text(s) if !negated => Some(s.clone()),
+        BlackboardValue::Number(value) => {
+            format_placeholder_value(if negated { -*value } else { *value }, fmt)
         }
+        _ => None,
     }
-    let value = entry.get("value")?.as_f64()?;
-    format_placeholder_value(if negated { -value } else { value }, fmt)
 }
 
 // ---------------------------------------------------------------------------
@@ -184,84 +172,43 @@ fn zh_or_raw(table: &[(&str, &str)], raw: &str) -> String {
         .unwrap_or_else(|| raw.to_string())
 }
 
-fn skill_levels(entry: &Value) -> Vec<Value> {
-    // The level is the 1-based array index; null/primitive entries skip.
-    let mut levels = Vec::new();
-    for (idx, raw_lv) in entry
-        .get("levels")
-        .and_then(Value::as_array)
-        .map(Vec::as_slice)
-        .unwrap_or(&[])
+fn skill_levels(entries: &[SkillLevel]) -> Vec<Value> {
+    entries
         .iter()
-        .enumerate()
-    {
-        if !raw_lv.is_object() {
-            continue;
-        }
-        let sp = raw_lv.get("spData").filter(|v| v.is_object());
-        let sp_get = |key: &str| sp.and_then(|s| s.get(key));
-        let skill_type_raw = raw_lv
-            .get("skillType")
-            .and_then(Value::as_str)
-            .unwrap_or("");
-        // Real passives carry spType as the JSON integer 8 sentinel;
-        // non-string spTypes render as empty.
-        let sp_type_raw = sp_get("spType").and_then(Value::as_str).unwrap_or("");
-        let duration_type_raw = raw_lv
-            .get("durationType")
-            .and_then(Value::as_str)
-            .unwrap_or("");
-        levels.push(json!({
-            "level": idx + 1,
-            "name": raw_lv.get("name").and_then(Value::as_str).unwrap_or(""),
-            "skill_type": zh_or_raw(SKILL_TYPE_ZH, skill_type_raw),
-            "skill_type_raw": skill_type_raw,
-            "sp_type": zh_or_raw(SP_TYPE_ZH, sp_type_raw),
-            "sp_cost": nullish(sp_get("spCost")),
-            "init_sp": nullish(sp_get("initSp")),
-            "max_charge_time": nullish(sp_get("maxChargeTime")),
-            "duration": nullish(raw_lv.get("duration")),
-            "duration_type": duration_type_raw,
-            "description": render_skill_description(
-                raw_lv.get("description").and_then(Value::as_str).unwrap_or(""),
-                raw_lv.get("blackboard"),
-            ),
-        }));
-    }
-    levels
-}
-
-/// JS `x ?? null`: missing and null become null, everything else (including
-/// malformed non-numbers) passes through verbatim.
-fn nullish(value: Option<&Value>) -> Value {
-    match value {
-        Some(v) if !v.is_null() => v.clone(),
-        _ => Value::Null,
-    }
+        .map(|level| {
+            json!({
+                "level":level.level,
+                "name":level.name,
+                "skill_type":zh_or_raw(SKILL_TYPE_ZH,&level.skill_type),
+                "skill_type_raw":level.skill_type,
+                "sp_type":zh_or_raw(SP_TYPE_ZH,&level.sp_type),
+                "sp_cost":level.sp_cost,
+                "init_sp":level.init_sp,
+                "max_charge_time":level.max_charge_time,
+                "duration":level.duration,
+                "duration_type":level.duration_type,
+                "description":render_skill_description(&level.description,&level.blackboard),
+            })
+        })
+        .collect()
 }
 
 /// The character_table ↔ skill_table join: null refs, dangling ids and empty
 /// level lists skip here.
-fn collect_operator_skills(info: &Value, table: &Value) -> Vec<(String, Vec<Value>)> {
-    let mut out = Vec::new();
-    for r#ref in info
-        .get("skills")
+fn skill_entries<'a>(
+    info: &'a Value,
+    table: &'a SkillTable,
+) -> impl Iterator<Item = (&'a str, &'a [SkillLevel])> {
+    info.get("skills")
         .and_then(Value::as_array)
         .map(Vec::as_slice)
         .unwrap_or(&[])
-    {
-        let Some(skill_id) = r#ref.get("skillId").and_then(Value::as_str) else {
-            continue;
-        };
-        let Some(entry) = table.get(skill_id).filter(|e| e.is_object()) else {
-            continue;
-        };
-        let levels = skill_levels(entry);
-        if !levels.is_empty() {
-            out.push((skill_id.to_string(), levels));
-        }
-    }
-    out
+        .iter()
+        .filter_map(|entry| {
+            let id = entry.get("skillId").and_then(Value::as_str)?;
+            let levels = table.get(id)?;
+            (!levels.is_empty()).then_some((id, levels))
+        })
 }
 
 /// Top level's name, falling back to Lv1.
@@ -269,12 +216,12 @@ fn top_level(levels: &[Value]) -> &Value {
     levels.last().expect("collect keeps non-empty lists")
 }
 
-fn skill_display_name(levels: &[Value]) -> String {
-    let top_name = top_level(levels)["name"].as_str().unwrap_or("");
-    if top_name.is_empty() {
-        levels[0]["name"].as_str().unwrap_or("").to_string()
+fn skill_display_name(levels: &[SkillLevel]) -> &str {
+    let top = &levels.last().expect("non-empty skill levels").name;
+    if top.is_empty() {
+        &levels[0].name
     } else {
-        top_name.to_string()
+        top
     }
 }
 
@@ -298,18 +245,16 @@ pub fn build_operator_skills(
     let info = ct
         .as_object()
         .and_then(|m| m.get(&char_id))
-        .cloned()
-        .unwrap_or_else(|| json!({}));
+        .unwrap_or(&Value::Null);
     if !table.is_object() {
         return Err("skill_table.json 顶层不是 JSON 对象。".to_string());
     }
-    let skills: Vec<Value> = collect_operator_skills(&info, &table)
-        .into_iter()
+    let skills: Vec<Value> = skill_entries(info, &table)
         .map(|(skill_id, levels)| {
             json!({
                 "skill_id": skill_id,
-                "name": skill_display_name(&levels),
-                "levels": levels,
+                "name": skill_display_name(levels),
+                "levels": skill_levels(levels),
             })
         })
         .collect();
@@ -383,9 +328,9 @@ pub fn render_operator_skills(data: &Value) -> String {
         "# {} - 战斗技能",
         data["name"].as_str().unwrap_or("")
     )];
-    for skill in data["skills"].as_array().cloned().unwrap_or_default() {
-        let levels = skill["levels"].as_array().cloned().unwrap_or_default();
-        let top = top_level(&levels).clone();
+    for skill in data["skills"].as_array().map(Vec::as_slice).unwrap_or(&[]) {
+        let levels = skill["levels"].as_array().map(Vec::as_slice).unwrap_or(&[]);
+        let top = top_level(levels);
         let mut heading = skill["name"].as_str().unwrap_or("").to_string();
         let skill_type = top["skill_type"].as_str().unwrap_or("");
         if !skill_type.is_empty() {
@@ -397,7 +342,7 @@ pub fn render_operator_skills(data: &Value) -> String {
             heading += "）";
         }
         lines.push(format!("\n## {heading}"));
-        for level in &levels {
+        for level in levels {
             lines.push(format!(
                 "- **{}**：{}{}",
                 level_label(level["level"].as_i64().unwrap_or(0)),
@@ -432,25 +377,25 @@ fn skill_search_records(view: &DataView) -> Result<Arc<Vec<Value>>, String> {
                 let info = ct
                     .as_object()
                     .and_then(|m| m.get(char_id))
-                    .cloned()
-                    .unwrap_or_else(|| json!({}));
-                for (_skill_id, levels) in collect_operator_skills(&info, &table) {
-                    let top = top_level(&levels).clone();
+                    .unwrap_or(&Value::Null);
+                for (_skill_id, levels) in skill_entries(info, &table) {
+                    let mut descriptions: Vec<String> = levels
+                        .iter()
+                        .map(|level| {
+                            render_skill_description(&level.description, &level.blackboard)
+                        })
+                        .collect();
                     let haystack = levels
                         .iter()
-                        .map(|lv| {
-                            format!(
-                                "{} {}",
-                                lv["name"].as_str().unwrap_or(""),
-                                lv["description"].as_str().unwrap_or("")
-                            )
-                        })
+                        .zip(&descriptions)
+                        .map(|(level, description)| format!("{} {}", level.name, description))
                         .collect::<Vec<_>>()
                         .join(" ");
+                    let top_description = descriptions.pop().expect("non-empty skill levels");
                     records.push(json!({
                         "operator": op_name,
-                        "skill": skill_display_name(&levels),
-                        "text": top["description"].clone(),
+                        "skill": skill_display_name(levels),
+                        "text": top_description,
                         "haystack": haystack,
                     }));
                 }
@@ -519,4 +464,59 @@ pub fn render_skill_search(data: &Value) -> String {
         ));
     }
     lines.join("\n")
+}
+
+#[cfg(test)]
+mod compact_tests {
+    use super::*;
+
+    #[test]
+    fn compact_levels_preserve_coercions_indices_and_blackboard_precedence() {
+        let table = SkillTable::from_json(json!({"s":{"levels":[null, {
+            "name":5,"skillType":false,"durationType":{},
+            "duration":{"raw":true},
+            "spData":{"spType":8,"spCost":"30","initSp":false,"maxChargeTime":null},
+            "description":"{atk:0%} {-atk} {text} {-text} {bad} {duplicate} {badstr}",
+            "blackboard":[
+                {"key":"atk","value":1.5}, {"key":"text","valueStr":"word","value":3},
+                {"key":"bad","value":"2"}, {"key":"duplicate","value":1},
+                {"key":"duplicate","value":2}, {"key":"badstr","valueStr":false,"value":3}
+            ]
+        }]},"invalid":false}));
+        assert!(table.is_object());
+        assert_eq!(table.len(), 2);
+        assert!(table.get("invalid").unwrap().is_empty());
+        assert_eq!(
+            skill_levels(table.get("s").unwrap()),
+            vec![json!({
+                "level":2,"name":"","skill_type":"","skill_type_raw":"","sp_type":"",
+                "sp_cost":"30","init_sp":false,"max_charge_time":null,"duration":{"raw":true},
+                "duration_type":"","description":"150% -1.5 word {-text} {bad} 2 {badstr}"
+            })]
+        );
+        for raw in [json!(null), json!([]), json!(42)] {
+            let invalid = SkillTable::from_json(raw);
+            assert!(!invalid.is_object());
+            assert_eq!(invalid.len(), 0);
+        }
+    }
+
+    #[test]
+    fn streamed_skills_keep_duplicate_keys_and_validate_discarded_fields() {
+        let table: SkillTable = serde_json::from_str(r#"{"s":{"levels":[{"name":"old"}]},"s":{"levels":[{"name":"replaced"}],"levels":[false,{"name":"last"}]}}"#).unwrap();
+        let levels = skill_levels(table.get("s").unwrap());
+        assert_eq!(levels[0]["level"], 2);
+        assert_eq!(levels[0]["name"], "last");
+        let invalid: SkillTable =
+            serde_json::from_str(r#"{"s":{"levels":[{}],"levels":{}}}"#).unwrap();
+        assert!(invalid.get("s").unwrap().is_empty());
+        for raw in [
+            r#"{"s":{"unused":1e999}}"#,
+            r#"[1e999]"#,
+            r#"{"s":{"levels":{"ignored":1e999}}}"#,
+            r#"{"s":[]} trailing"#,
+        ] {
+            assert!(serde_json::from_str::<SkillTable>(raw).is_err(), "{raw}");
+        }
+    }
 }

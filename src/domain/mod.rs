@@ -16,3 +16,5 @@ pub mod skill;
 pub mod stage;
 pub mod stage_enemy;
 pub mod story;
+
+mod skill_data;
