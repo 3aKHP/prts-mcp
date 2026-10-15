@@ -220,6 +220,7 @@ pub fn stage_specific_enemy_data(
     merge_selected_enemy_data(base, overwritten)
 }
 
+#[cfg(test)]
 pub(crate) fn cached_stage_specific_enemy_data(
     levels: Option<&super::enemy_cache::EnemyDatabase>,
     enemy_id: &str,
@@ -259,20 +260,28 @@ pub fn format_stats(enemy_data: Option<&Value>) -> String {
     let Some(data) = enemy_data else {
         return "无数据库记录".to_string();
     };
-    let attrs = data.get("attributes").cloned().unwrap_or(json!({}));
-    let get_m = |key: &str| m_value(attrs.get(key)).cloned();
-    let hp = get_m("maxHp");
-    let atk = get_m("atk");
-    let defense = get_m("def");
-    let res = get_m("magicResistance");
-    let speed = get_m("moveSpeed");
-    let atk_time = get_m("baseAttackTime");
+    let attrs = data.get("attributes");
+    format_stat_values(
+        [
+            "maxHp",
+            "atk",
+            "def",
+            "magicResistance",
+            "moveSpeed",
+            "baseAttackTime",
+        ]
+        .map(|key| m_value(attrs.and_then(|a| a.get(key))).cloned()),
+    )
+}
+
+pub(crate) fn format_stat_values(values: [Option<Value>; 6]) -> String {
+    let [hp, atk, defense, res, speed, atk_time] = values;
     let as_str = |v: Option<Value>| format_number(&v.unwrap_or(Value::Null));
     let mut parts = vec![
-        format!("HP {}", as_str(hp.clone())),
-        format!("ATK {}", as_str(atk.clone())),
-        format!("DEF {}", as_str(defense.clone())),
-        format!("RES {}", as_str(res.clone())),
+        format!("HP {}", as_str(hp)),
+        format!("ATK {}", as_str(atk)),
+        format!("DEF {}", as_str(defense)),
+        format!("RES {}", as_str(res)),
     ];
     if let Some(speed) = speed {
         if speed.as_f64().is_some_and(|s| s != 0.0) {

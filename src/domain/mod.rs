@@ -6,6 +6,7 @@ pub mod datasets;
 pub mod enemy;
 mod enemy_cache;
 pub mod enemy_db;
+mod enemy_stage_stats;
 pub mod enemy_stats;
 pub mod item;
 pub mod level_parser;

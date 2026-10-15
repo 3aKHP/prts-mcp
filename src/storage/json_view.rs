@@ -40,6 +40,12 @@ impl<'a> JsonView<'a> {
             Self::Value(Value::Null) | Self::Frozen(FrozenValue::Null)
         )
     }
+    pub fn is_object(self) -> bool {
+        matches!(
+            self,
+            Self::Value(Value::Object(_)) | Self::Frozen(FrozenValue::Object(_))
+        )
+    }
     pub fn is_number(self) -> bool {
         matches!(
             self,

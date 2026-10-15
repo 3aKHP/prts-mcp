@@ -8,10 +8,8 @@ use serde_json::{json, Value};
 use crate::app::DataView;
 use crate::domain::enemy::{db_levels, handbook, name_to_enemy_id};
 use crate::domain::enemy_db::parse_level;
-use crate::domain::enemy_stats::{
-    cached_stage_specific_enemy_data as stage_specific_enemy_data, format_stats,
-    overwritten_enemy_name,
-};
+use crate::domain::enemy_stage_stats::format_cached_stage_stats;
+use crate::domain::enemy_stats::overwritten_enemy_name;
 use crate::domain::level_parser::{enemy_refs, level_path, spawn_counts};
 use crate::domain::messages;
 use crate::domain::stage::stages_map;
@@ -163,7 +161,7 @@ pub fn build_stage_enemies(
         .map(|(enemy_id, count)| {
             let r#ref = sources.ref_of(&enemy_id);
             let level_no = parse_level(r#ref.as_ref().and_then(|r| r.level));
-            let data = stage_specific_enemy_data(
+            let stats_text = format_cached_stage_stats(
                 Some(&db),
                 &enemy_id,
                 level_no,
@@ -177,7 +175,7 @@ pub fn build_stage_enemies(
                 "count": count,
                 "level": level_no,
                 "overwritten": r#ref.as_ref().and_then(|r| r.overwritten_data).is_some(),
-                "stats_text": format_stats(data.as_ref()),
+                "stats_text": stats_text,
             })
         })
         .collect();
@@ -462,7 +460,8 @@ pub fn get_enemy_stage_info(
         Ok(db) => db,
         Err(message) => return format!("读取关卡敌人失败：{message}"),
     };
-    let data = stage_specific_enemy_data(Some(&db), &enemy_id, level_no, r#ref.overwritten_data);
+    let stats_text =
+        format_cached_stage_stats(Some(&db), &enemy_id, level_no, r#ref.overwritten_data);
     let enemy_name = overwritten_enemy_name(r#ref.overwritten_data)
         .unwrap_or_else(|| handbook_name(view, &enemy_id));
     let mut lines = vec![format!(
@@ -474,6 +473,6 @@ pub fn get_enemy_stage_info(
     if r#ref.overwritten_data.is_some() {
         lines.push("- **关卡覆盖**：是".to_string());
     }
-    lines.push(format!("- **战斗属性**：{}", format_stats(data.as_ref())));
+    lines.push(format!("- **战斗属性**：{stats_text}"));
     lines.join("\n")
 }
