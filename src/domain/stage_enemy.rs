@@ -38,7 +38,14 @@ fn load_level_json(view: &DataView, stage: &Value) -> Result<Value, String> {
     if !store.exists(&path).unwrap_or(false) {
         return Err(format!("未找到关卡战斗文件：{path}。"));
     }
-    let raw = store.read_json(&path).map_err(|e| e.to_string())?;
+    // These consumers need spawn actions and enemy overrides, not map tiles
+    // or routes. Projection still validates the entire JSON document.
+    let raw = store
+        .read_json_projected(
+            &path,
+            Projection::Fields(&[("waves", Projection::All), ("enemyDbRefs", Projection::All)]),
+        )
+        .map_err(|e| e.to_string())?;
     if !raw.is_object() {
         return Err(format!("关卡战斗文件格式异常：{path}。"));
     }

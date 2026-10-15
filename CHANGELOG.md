@@ -20,7 +20,7 @@ Implementation: Rust.
 
 ### Changed
 
-- **Stage enemy queries**: read the six displayed combat attributes through stage overrides without reconstructing whole enemy records, preserving override and level-fallback behavior.
+- **Stage enemy queries**: read the six displayed combat attributes through stage overrides without reconstructing whole enemy records, and parse only the consumed wave/reference fields into JSON values, preserving override and level-fallback behavior.
 
 - **Enemy database memory use**: parse combat data directly into a compact cache with shared field names and read attributes without reconstructing whole records, preserving enemy and stage-override results.
 
