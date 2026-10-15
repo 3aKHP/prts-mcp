@@ -3,6 +3,7 @@
 
 pub mod character;
 pub mod memoir;
+mod packed_lines;
 pub mod reader;
 pub mod search;
 pub mod summary;

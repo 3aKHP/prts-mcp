@@ -20,6 +20,8 @@
 
 ### 变更
 
+- **剧情索引内存与搜索**：按章连续存储文本，复用章内重复角色名，并直接遍历记录位置以省去重复数组，保留全部索引台词及搜索顺序。
+
 - **干员内存占用**：干员缓存仅保留面板、天赋及技能查询实际读取的字段，在保持工具输出不变的同时降低内存占用。
 
 - **入口命令与默认传输模式**：新主命令 `prts-mcp`（原生二进制与 npm 主包）默认启动 Streamable HTTP（`:3000/mcp`，设 `PRTS_TRANSPORT=stdio` 切换为 stdio）；`prts-mcp-ts` / `prts-mcp-ts-bun`（固定 HTTP）与 `prts-mcp-ts-stdio`（固定 stdio）在 Rust 二进制之上保留 2.x 固定传输行为（无需安装 Bun）；Docker 镜像入口（`prts-mcp-ghcr`）保留默认 `stdio`（设 `PRTS_TRANSPORT=http` 切换为 HTTP）。

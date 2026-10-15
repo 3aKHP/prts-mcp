@@ -13,8 +13,9 @@ use std::sync::{Arc, Mutex, OnceLock};
 
 use serde_json::{json, Value};
 
+use super::packed_lines::PackedLines;
 use super::reader::{
-    format_line, is_memoir_event, load_event_table, py_repr, read_story_from_store, StoryLine,
+    format_line_parts, is_memoir_event, load_event_table, py_repr, read_story_from_store,
 };
 use crate::storage::ZipStore;
 
@@ -23,14 +24,22 @@ pub struct StorySearchChapter {
     pub story_key: String,
     pub story_code: String,
     pub story_name: String,
-    pub lines: Vec<StoryLine>,
+    pub lines: PackedLines,
 }
 
 pub struct StorySearchIndex {
     pub event_ids: HashSet<String>,
     pub chapters: Vec<StorySearchChapter>,
-    /// (chapter_index, line_index) per record, in build order.
-    pub records: Vec<(usize, usize)>,
+}
+
+impl StorySearchIndex {
+    /// Visit every chapter/line pair in corpus order without a duplicate index.
+    pub fn records(&self) -> impl Iterator<Item = (usize, usize)> + '_ {
+        self.chapters
+            .iter()
+            .enumerate()
+            .flat_map(|(chapter, data)| (0..data.lines.len()).map(move |line| (chapter, line)))
+    }
 }
 
 struct SharedIndex {
@@ -145,15 +154,9 @@ fn build_story_search_index(store: &ZipStore) -> Result<StorySearchIndex, String
         }
     }
     let chapters = load_index_chapters(store, &jobs)?;
-    let records = chapters
-        .iter()
-        .enumerate()
-        .flat_map(|(chapter, data)| (0..data.lines.len()).map(move |line| (chapter, line)))
-        .collect();
     Ok(StorySearchIndex {
         event_ids,
         chapters,
-        records,
     })
 }
 
@@ -195,7 +198,7 @@ fn load_index_chapters(
                                     .and_then(Value::as_str)
                                     .unwrap_or("")
                                     .to_owned(),
-                                lines: chapter.lines,
+                                lines: PackedLines::new(chapter.lines),
                             }
                         });
                         completed.push((ordinal, result));
@@ -275,19 +278,19 @@ pub fn build_story_search(
 
     let mut results: Vec<Value> = Vec::new();
     let character_lower = character.map(str::to_lowercase);
-    for &(chapter_index, line_index) in index.records.iter() {
+    for (chapter_index, line_index) in index.records() {
         if results.len() as i64 >= max_results {
             break;
         }
         let chapter = &index.chapters[chapter_index];
-        let line = &chapter.lines[line_index];
+        let line = chapter.lines.get(line_index).expect("index owns its lines");
         if let Some(event_id) = event_id {
             if chapter.event_id != event_id {
                 continue;
             }
         }
         if let Some(character_lower) = &character_lower {
-            let role = line.role.as_deref().unwrap_or("");
+            let role = line.role.unwrap_or("");
             if line.line_type != "dialog" || role.to_lowercase() != *character_lower {
                 continue;
             }
@@ -297,7 +300,7 @@ pub fn build_story_search(
                 continue;
             }
         }
-        if !regex.is_match(&line.text)? {
+        if !regex.is_match(line.text)? {
             continue;
         }
 
@@ -305,8 +308,9 @@ pub fn build_story_search(
         let end = (line_index + context_lines as usize + 1).min(chapter.lines.len());
         let context: Vec<Value> = (start..end)
             .map(|j| {
+                let context_line = chapter.lines.get(j).expect("bounded context");
                 json!({
-                    "text": format_line(&chapter.lines[j]),
+                    "text": format_line_parts(context_line.line_type, context_line.role, context_line.text),
                     "is_match": j == line_index,
                 })
             })

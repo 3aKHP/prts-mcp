@@ -15,10 +15,8 @@ use crate::storage::ZipStore;
 fn classify_chapter(chapter: &super::search::StorySearchChapter, name_lower: &str) -> (bool, bool) {
     let mut speaks = false;
     let mut mentioned = false;
-    for line in &chapter.lines {
-        if line.line_type == "dialog"
-            && line.role.as_deref().unwrap_or("").to_lowercase() == name_lower
-        {
+    for line in chapter.lines.iter() {
+        if line.line_type == "dialog" && line.role.unwrap_or("").to_lowercase() == name_lower {
             speaks = true;
         }
         if line.text.to_lowercase().contains(name_lower) {
@@ -155,14 +153,14 @@ pub fn build_speakers_in_event(zip_path: &Path, event_id: &str) -> Result<Value,
         if chapter.event_id != event_id {
             continue;
         }
-        for line in &chapter.lines {
+        for line in chapter.lines.iter() {
             if line.line_type == "dialog" {
-                if let Some(role) = &line.role {
+                if let Some(role) = line.role {
                     match pos.get(role) {
                         Some(&i) => counts[i].1 += 1,
                         None => {
-                            pos.insert(role.clone(), counts.len());
-                            counts.push((role.clone(), 1));
+                            pos.insert(role.to_string(), counts.len());
+                            counts.push((role.to_string(), 1));
                         }
                     }
                 }

@@ -18,18 +18,18 @@ fn main() {
             ]))
             .unwrap(),
         );
-        for line in &chapter.lines {
+        for line in chapter.lines.iter() {
             digest.update(
                 serde_json::to_vec(&json!([line.line_type, line.role, line.text])).unwrap(),
             );
         }
     }
-    for record in &index.records {
-        digest.update(serde_json::to_vec(record).unwrap());
+    for record in index.records() {
+        digest.update(serde_json::to_vec(&record).unwrap());
     }
     println!(
         "{}",
-        json!({"chapters":index.chapters.len(),"records":index.records.len(),
+        json!({"chapters":index.chapters.len(),"records":index.records().count(),
         "sha256":format!("{:x}",digest.finalize())})
     );
 }

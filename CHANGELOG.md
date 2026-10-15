@@ -20,6 +20,8 @@ Implementation: Rust.
 
 ### Changed
 
+- **Story index memory and search**: store chapter text contiguously, share repeated speaker names within each chapter, and iterate record positions without a duplicate array, preserving every indexed line and search order.
+
 - **Operator memory use**: retain only fields consumed by operator panels, talents, and skill lookups in the character cache, reducing memory use without changing tool output.
 
 - **Entry-point transport defaults**: the new `prts-mcp` binary and npm package default to Streamable HTTP (`:3000/mcp`, switchable via `PRTS_TRANSPORT=stdio`); `prts-mcp-ts` / `prts-mcp-ts-bun` (HTTP) and `prts-mcp-ts-stdio` (stdio) retain their fixed 2.x transport modes on top of the Rust binary without requiring Bun; the Docker entrypoint (`prts-mcp-ghcr`) retains default `stdio` (switchable via `PRTS_TRANSPORT=http`).

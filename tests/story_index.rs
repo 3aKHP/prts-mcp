@@ -69,7 +69,8 @@ fn swap_rebuilds_once_and_reads_new_content() {
     // per call; reusing one would pin the old file handle).
     let first = story_search_index(&zip, &ZipStore::new(&zip)).expect("index A");
     assert_eq!(
-        first.chapters[0].lines[0].text, "标记AA的台词。",
+        first.chapters[0].lines.get(0).unwrap().text,
+        "标记AA的台词。",
         "first generation content"
     );
     // Hold the old index alive across the swap (an in-flight reader).
@@ -85,7 +86,8 @@ fn swap_rebuilds_once_and_reads_new_content() {
 
     let rebuilt = story_search_index(&zip, &ZipStore::new(&zip)).expect("index B");
     assert_eq!(
-        rebuilt.chapters[0].lines[0].text, "标记B的台词。",
+        rebuilt.chapters[0].lines.get(0).unwrap().text,
+        "标记B的台词。",
         "swap is visible without restart"
     );
     assert_eq!(
@@ -223,6 +225,9 @@ fn parallel_build_preserves_chapter_order_and_skip_semantics() {
             .collect::<Vec<_>>(),
         expected
     );
-    assert_eq!(index.records, (0..30).map(|n| (n, 0)).collect::<Vec<_>>());
+    assert_eq!(
+        index.records().collect::<Vec<_>>(),
+        (0..30).map(|n| (n, 0)).collect::<Vec<_>>()
+    );
     let _ = std::fs::remove_dir_all(zip.parent().unwrap());
 }
