@@ -154,6 +154,54 @@ fn concurrent_first_calls_share_one_build() {
     let _ = std::fs::remove_dir_all(zip.parent().unwrap());
 }
 
+#[test]
+fn repeated_swaps_release_old_readers_and_share_each_rebuild() {
+    let _guard = COUNTER_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let zip = temp_zip("repeated-swaps");
+    write_zip(&zip, "initial");
+    let mut current = story_search_index(&zip, &ZipStore::new(&zip)).unwrap();
+    for generation in 0..20 {
+        let previous_text = current.chapters[0].lines.get(0).unwrap().text.to_owned();
+        let old = Arc::downgrade(&current);
+        let count = index_build_count();
+        let marker = format!("generation-{generation}-{}", "不同长度".repeat(generation));
+        let staging = zip.with_extension("staging");
+        write_zip(&staging, &marker);
+        std::fs::rename(&staging, &zip).unwrap();
+        let barrier = std::sync::Barrier::new(4);
+        let readers = std::thread::scope(|scope| {
+            let handles: Vec<_> = (0..4)
+                .map(|_| {
+                    scope.spawn(|| {
+                        barrier.wait();
+                        story_search_index(&zip, &ZipStore::new(&zip)).unwrap()
+                    })
+                })
+                .collect();
+            handles
+                .into_iter()
+                .map(|h| h.join().unwrap())
+                .collect::<Vec<_>>()
+        });
+        assert_eq!(index_build_count(), count + 1);
+        assert!(readers.iter().all(|r| Arc::ptr_eq(r, &readers[0])));
+        assert_eq!(
+            readers[0].chapters[0].lines.get(0).unwrap().text,
+            format!("标记{marker}的台词。")
+        );
+        assert_eq!(
+            current.chapters[0].lines.get(0).unwrap().text,
+            previous_text
+        );
+        current = Arc::clone(&readers[0]);
+        assert!(
+            old.upgrade().is_none(),
+            "old generation retained after final reader dropped"
+        );
+    }
+    let _ = std::fs::remove_dir_all(zip.parent().unwrap());
+}
+
 /// The search path itself observes the swap (identity coverage end to end).
 #[test]
 fn search_results_follow_zip_identity() {
