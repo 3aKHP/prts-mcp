@@ -4,6 +4,7 @@ pub mod artwork;
 pub mod building;
 pub mod datasets;
 pub mod enemy;
+mod enemy_cache;
 pub mod enemy_db;
 pub mod enemy_stats;
 pub mod item;

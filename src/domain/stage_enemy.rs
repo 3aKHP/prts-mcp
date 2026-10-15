@@ -8,7 +8,10 @@ use serde_json::{json, Value};
 use crate::app::DataView;
 use crate::domain::enemy::{db_levels, handbook, name_to_enemy_id};
 use crate::domain::enemy_db::parse_level;
-use crate::domain::enemy_stats::{format_stats, overwritten_enemy_name, stage_specific_enemy_data};
+use crate::domain::enemy_stats::{
+    cached_stage_specific_enemy_data as stage_specific_enemy_data, format_stats,
+    overwritten_enemy_name,
+};
 use crate::domain::level_parser::{enemy_refs, level_path, spawn_counts};
 use crate::domain::messages;
 use crate::domain::stage::stages_map;

@@ -20,6 +20,8 @@ Implementation: Rust.
 
 ### Changed
 
+- **Enemy database memory use**: parse combat data directly into a compact cache with shared field names and read attributes without reconstructing whole records, preserving enemy and stage-override results.
+
 - **Story index memory and search**: store chapter text contiguously, share repeated speaker names within each chapter, and iterate record positions without a duplicate array, preserving every indexed line and search order.
 
 - **Operator memory use**: retain only fields consumed by operator panels, talents, and skill lookups in the character cache, reducing memory use without changing tool output.
