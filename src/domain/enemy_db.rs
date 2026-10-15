@@ -5,7 +5,47 @@
 
 use std::collections::{BTreeMap, HashMap};
 
+use crate::storage::projection::Projection;
 use serde_json::Value;
+
+// Only combat stats consume normalized enemyData. Stage display names come
+// from the handbook or the level's explicit overwrittenData, not this table.
+const COMBAT_ATTRIBUTES: Projection = Projection::Fields(&[
+    ("maxHp", Projection::All),
+    ("atk", Projection::All),
+    ("def", Projection::All),
+    ("magicResistance", Projection::All),
+    ("moveSpeed", Projection::All),
+    ("baseAttackTime", Projection::All),
+    ("attackSpeed", Projection::All),
+    ("massLevel", Projection::All),
+    ("hpRecoveryPerSec", Projection::All),
+    ("lifePointReduce", Projection::All),
+    ("stunImmune", Projection::All),
+    ("silenceImmune", Projection::All),
+    ("sleepImmune", Projection::All),
+    ("frozenImmune", Projection::All),
+    ("levitateImmune", Projection::All),
+    ("disarmedCombatImmune", Projection::All),
+    ("fearedImmune", Projection::All),
+    ("palsyImmune", Projection::All),
+    ("attractImmune", Projection::All),
+]);
+const ENEMY_DATA: Projection = Projection::Fields(&[
+    ("attributes", COMBAT_ATTRIBUTES),
+    ("skills", Projection::All),
+]);
+const LEVEL_ROW: Projection =
+    Projection::Fields(&[("level", Projection::All), ("enemyData", ENEMY_DATA)]);
+// Both direct ID -> levels and legacy {enemies: [{Key, Value}]} roots.
+const DATABASE_ROW: Projection = Projection::Fields(&[
+    ("level", Projection::All),
+    ("enemyData", ENEMY_DATA),
+    ("Key", Projection::All),
+    ("Value", Projection::Elements(&LEVEL_ROW)),
+]);
+pub(crate) const DATABASE_PROJECTION: Projection =
+    Projection::Values(&Projection::Elements(&DATABASE_ROW));
 
 /// Best-effort int conversion for level numbers (bad values → 0) — TS
 /// `parseLevel`: Number(value ?? 0), truncated when finite.
@@ -225,5 +265,48 @@ mod tests {
         assert!(normalize_enemy_database(json!({"enemies":[]}))
             .unwrap()
             .is_empty());
+    }
+
+    #[test]
+    fn combat_projection_preserves_default_and_stage_override_stats() {
+        use crate::domain::enemy_stats::{extract_enemy_stats, stage_specific_enemy_data};
+        let levels = json!([
+            {"level":0,"enemyData":{"name":{"m_value":"unused"},"attributes":{
+                "maxHp":{"m_defined":true,"m_value":200},
+                "atk":{"m_value":40},"stunImmune":{"m_value":true},
+                "unused":{"nested":[1,2,3]}},"skills":[{"prefabKey":"test","blackboard":[]}]}},
+            {"level":2,"enemyData":{"attributes":{"maxHp":{"m_value":500}},"skills":null}},
+            {"level":9,"enemyData":null},
+            null
+        ]);
+        for raw in [
+            json!({"enemy":levels}),
+            json!({"enemies":[{"Key":"enemy","Value":levels}]}),
+        ] {
+            let full = normalize_enemy_database(raw.clone()).unwrap();
+            let projected =
+                crate::storage::projection::from_str(&raw.to_string(), DATABASE_PROJECTION)
+                    .unwrap();
+            let compact = normalize_enemy_database(projected).unwrap();
+            assert_eq!(
+                extract_enemy_stats(default_entry(&full, "enemy").unwrap()),
+                extract_enemy_stats(default_entry(&compact, "enemy").unwrap())
+            );
+            for level in [0, 2, 8] {
+                for overrides in [
+                    json!(null),
+                    json!({"attributes":{"maxHp":{"m_defined":true,"m_value":123},"atk":{"m_defined":false,"m_value":9}}}),
+                    json!({"skills":[]}),
+                ] {
+                    let a =
+                        stage_specific_enemy_data(Some(&full), "enemy", level, Some(&overrides))
+                            .unwrap();
+                    let b =
+                        stage_specific_enemy_data(Some(&compact), "enemy", level, Some(&overrides))
+                            .unwrap();
+                    assert_eq!(extract_enemy_stats(&a), extract_enemy_stats(&b));
+                }
+            }
+        }
     }
 }

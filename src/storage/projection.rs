@@ -15,6 +15,7 @@ pub(crate) enum Projection {
     All,
     Fields(&'static [(&'static str, Projection)]),
     Values(&'static Projection),
+    Elements(&'static Projection),
     Discard,
 }
 
@@ -84,7 +85,11 @@ impl<'de> Visitor<'de> for Projection {
 
     fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Value, A::Error> {
         let discard = matches!(self, Self::Discard);
-        let child = if discard { Self::Discard } else { Self::All };
+        let child = match self {
+            Self::Discard => Self::Discard,
+            Self::Elements(child) => *child,
+            _ => Self::All,
+        };
         let mut values = Vec::new();
         while let Some(value) = seq.next_element_seed(child)? {
             if !discard {
@@ -104,6 +109,7 @@ impl<'de> Visitor<'de> for Projection {
                     .map(|(_, child)| *child)
                     .unwrap_or(Self::Discard),
                 Self::Values(child) => *child,
+                Self::Elements(_) => Self::All,
                 other => other,
             };
             let value = map.next_value_seed(child)?;
@@ -146,6 +152,21 @@ mod tests {
         for text in ["null", "42", "-0.0", "[1,{}]", "true", r#""a\nb""#] {
             assert_eq!(
                 from_str(text, FIELDS).unwrap(),
+                serde_json::from_str::<Value>(text).unwrap()
+            );
+        }
+    }
+
+    #[test]
+    fn array_projection_preserves_non_array_shapes() {
+        let projection = Projection::Elements(&FIELDS);
+        assert_eq!(
+            from_str(r#"[{"kept":1,"unused":2},null,7]"#, projection).unwrap(),
+            serde_json::json!([{"kept":1},null,7])
+        );
+        for text in [r#"{"nested":[{"unused":2}]}"#, "null", "42"] {
+            assert_eq!(
+                from_str(text, projection).unwrap(),
                 serde_json::from_str::<Value>(text).unwrap()
             );
         }

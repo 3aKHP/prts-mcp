@@ -25,7 +25,7 @@ Implementation: Rust.
 
 ### Fixed
 
-- **Memory use after mixed queries**: share cached stage, search, and artwork data; avoid copying the enemy database for individual queries; and retain only consumed stage and base-skill fields. Enemy appearance indexing parses wave data without allocating unrelated level structures.
+- **Memory use after mixed queries**: share cached stage, search, and artwork data; avoid copying the enemy database for individual queries; and retain only consumed operator, enemy, stage, base-skill, and skin fields. Enemy appearance indexing parses wave data without allocating unrelated level structures.
 - **Concurrent first queries**: serialize each dataset's initial load within a generation so simultaneous requests share the cached result. Failed loads remain retryable.
 
 ### Removed

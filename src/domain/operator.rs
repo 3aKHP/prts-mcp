@@ -11,6 +11,7 @@ use serde_json::{json, Map, Value};
 
 use crate::app::DataView;
 use crate::domain::messages;
+use crate::storage::projection::Projection;
 use crate::storage::{DirectoryStore, JsonStore};
 use crate::text::sanitizer::strip_wikitext;
 
@@ -31,6 +32,31 @@ const POSITION_ZH: &[(&str, &str)] = &[
     ("ALL", "通用"),
     ("NONE", "-"),
 ];
+
+// Basic information, stats, skill joins, and name/search/artwork lookups.
+// Nested payloads keep their complete dynamic values and fallback semantics.
+const CHARACTER_ENTRY: Projection = Projection::Fields(&[
+    ("name", Projection::All),
+    ("displayNumber", Projection::All),
+    ("appellation", Projection::All),
+    ("rarity", Projection::All),
+    ("profession", Projection::All),
+    ("subProfessionId", Projection::All),
+    ("position", Projection::All),
+    ("nationId", Projection::All),
+    ("groupId", Projection::All),
+    ("teamId", Projection::All),
+    ("tagList", Projection::All),
+    ("description", Projection::All),
+    ("itemUsage", Projection::All),
+    ("itemDesc", Projection::All),
+    ("itemObtainApproach", Projection::All),
+    ("talents", Projection::All),
+    ("skills", Projection::All),
+    ("phases", Projection::All),
+    ("favorKeyFrames", Projection::All),
+    ("potentialRanks", Projection::All),
+]);
 
 fn talent_phase_zh(phase: &str) -> String {
     match phase {
@@ -75,6 +101,7 @@ fn load_excel_table(
     file: &str,
     label: &str,
     count_key: Option<&str>,
+    projection: Projection,
 ) -> Result<Arc<Value>, String> {
     let Some(root) = view.excel_root.clone() else {
         return Err(format!("__missing__{label}"));
@@ -87,7 +114,9 @@ fn load_excel_table(
             if !exists {
                 return Err(operator_file_error(label, &store, file));
             }
-            store.read_json(file).map_err(|e| e.to_string())
+            store
+                .read_json_projected(file, projection)
+                .map_err(|e| e.to_string())
         },
         move |table| {
             match count_key {
@@ -111,6 +140,7 @@ pub fn character_table(view: &DataView) -> Result<Arc<Value>, String> {
         "character_table.json",
         "干员",
         None,
+        Projection::Values(&CHARACTER_ENTRY),
     )
 }
 
@@ -121,6 +151,7 @@ pub fn handbook_table(view: &DataView) -> Result<Arc<Value>, String> {
         "handbook_info_table.json",
         "干员",
         Some("/handbookDict"),
+        Projection::All,
     )
 }
 
@@ -131,6 +162,7 @@ pub fn charword_table(view: &DataView) -> Result<Arc<Value>, String> {
         "charword_table.json",
         "干员",
         Some("/charWords"),
+        Projection::All,
     )
 }
 

@@ -7,7 +7,9 @@ use std::sync::Arc;
 use serde_json::{json, Value};
 
 use crate::app::DataView;
-use crate::domain::enemy_db::{default_entry, normalize_enemy_database, OrderedMap};
+use crate::domain::enemy_db::{
+    default_entry, normalize_enemy_database, OrderedMap, DATABASE_PROJECTION,
+};
 use crate::domain::messages;
 use crate::storage::{DirectoryStore, JsonStore};
 use crate::text::js_compat::compare_ids;
@@ -82,7 +84,9 @@ pub fn db_levels(
                 return Ok(OrderedMap::new());
             };
             let store = DirectoryStore::new(root.join("zh_CN").join("gamedata").join("levels"));
-            let raw = store.read_json(DATABASE_FILE).map_err(|e| e.to_string())?;
+            let raw = store
+                .read_json_projected(DATABASE_FILE, DATABASE_PROJECTION)
+                .map_err(|e| e.to_string())?;
             normalize_enemy_database(raw)
         },
         |db| db.len() as u64,
