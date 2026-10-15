@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use prts_mcp_rust::domain::story::search::{
-    build_story_search, index_build_count, story_search_index,
+    build_story_search, index_build_count, story_search_index, zip_descriptor,
 };
 use prts_mcp_rust::storage::{write_zip_entries, ZipStore};
 
@@ -164,10 +164,20 @@ fn repeated_swaps_release_old_readers_and_share_each_rebuild() {
         let previous_text = current.chapters[0].lines.get(0).unwrap().text.to_owned();
         let old = Arc::downgrade(&current);
         let count = index_build_count();
+        let previous_descriptor = zip_descriptor(&zip).unwrap();
         let marker = format!("generation-{generation}-{}", "不同长度".repeat(generation));
         let staging = zip.with_extension("staging");
         write_zip(&staging, &marker);
+        // Different source lengths can still compress to the same ZIP size,
+        // and rapid writes can share a filesystem timestamp on Windows.
+        // Give each fixture generation an explicit, distinct identity.
+        filetime::set_file_mtime(
+            &staging,
+            filetime::FileTime::from_unix_time(1_700_000_000 + generation as i64, 0),
+        )
+        .unwrap();
         std::fs::rename(&staging, &zip).unwrap();
+        assert_ne!(zip_descriptor(&zip).unwrap(), previous_descriptor);
         let barrier = std::sync::Barrier::new(4);
         let readers = std::thread::scope(|scope| {
             let handles: Vec<_> = (0..4)
