@@ -14,7 +14,7 @@ The current public stable release is `2.8.1`. Active development on `develop` ta
 | **M2C** | Build and verify Linux `x64`/`arm64` Docker images and legacy volume compatibility ([DOCKER-DISTRIBUTION.md](docs/dev/DOCKER-DISTRIBUTION.md)). | Complete |
 | **M3** | Release candidate packaging, single-version enforcement, and isolated CD workflows ([RELEASE-CANDIDATES.md](docs/dev/RELEASE-CANDIDATES.md)). | Complete ([`3.0.0-alpha.3`](https://github.com/3aKHP/prts-mcp/releases/tag/v3.0.0-alpha.3)) |
 | **M4** | Real-client E2E validation, data/image sync verification, and upgrade/rollback checks against 2.8.1 volumes ([E2E.md](docs/dev/E2E.md)). | Complete |
-| **M5** | RC production lifecycle observation and targeted stress testing, stable `3.0.0` release, promotion of `latest` channel tags, and back-merge to `develop`. | In progress (documentation complete; RC preparation) |
+| **M5** | RC production lifecycle observation and targeted stress testing, stable `3.0.0` release, promotion of `latest` channel tags, and back-merge to `develop`. | In progress (RC production acceptance) |
 
 ## Post-3.0 Backlog
 

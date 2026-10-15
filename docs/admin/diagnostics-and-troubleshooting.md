@@ -72,7 +72,7 @@ docker logs --tail 100 -f prts-mcp
 sudo journalctl -u prts-mcp -f
 
 # 调试一次性 stdio 容器时，仅将 stderr 重定向到文件（切勿使用 2>&1）
-docker run -i --rm -v prts-data:/data ghcr.io/3akhp/prts-mcp:3.0.0-rc.1 2>prts-stderr.log
+docker run -i --rm -v prts-data:/data ghcr.io/3akhp/prts-mcp:3.0.0-rc.2 2>prts-stderr.log
 ```
 
 **公开提交 Issue 前的日志脱敏检查**：虽然服务端自身不会将 `GITHUB_TOKEN` 或 `PRTS_DEBUG_TOKEN` 打印到日志中，但在贴出启动命令、环境变量列表或系统报错前，请务必手动隐去私有 Token、内部代理地址与个人敏感路径。

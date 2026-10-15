@@ -2,7 +2,7 @@
 
 PRTS-MCP 3.0 将底层业务实现统一为原生 Rust，同时完整保留 2.8.1 的 24 个 MCP 工具契约、参数结构与数据目录格式。本文面向从 2.x（Python 或 TypeScript）升级到 3.x 的部署者。
 
-当前公开稳定版仍为 `2.8.1`，Rust 公开候选版为 `3.0.0-rc.1`；待 3.0.0 正式版发布时才会切换 `latest` 标签。客户端配置见[客户端接入指南](user/quick-start.md)，容器与服务端运维见[服务端部署指南](admin/deployment.md)。
+当前公开稳定版仍为 `2.8.1`，Rust 公开候选版为 `3.0.0-rc.2`；待 3.0.0 正式版发布时才会切换 `latest` 标签。客户端配置见[客户端接入指南](user/quick-start.md)，容器与服务端运维见[服务端部署指南](admin/deployment.md)。
 
 ---
 
@@ -10,18 +10,18 @@ PRTS-MCP 3.0 将底层业务实现统一为原生 Rust，同时完整保留 2.8.
 
 | 2.x 原安装方式 | 3.x 升级选择 | 关键变化说明 |
 | --- | --- | --- |
-| **npm (`prts-mcp-ts`)** | 继续使用 `prts-mcp-ts`，或切换至新主包 `prts-mcp` | 两个 npm 包在 3.x 下均执行预编译 Rust 二进制（需 `Node >= 22`、`npm >= 10` 作为启动桥，不再需要 Bun）。候选期请安装 `@next` 或指定 `@3.0.0-rc.1`。 |
+| **npm (`prts-mcp-ts`)** | 继续使用 `prts-mcp-ts`，或切换至新主包 `prts-mcp` | 两个 npm 包在 3.x 下均执行预编译 Rust 二进制（需 `Node >= 22`、`npm >= 10` 作为启动桥，不再需要 Bun）。候选期请安装 `@next` 或指定 `@3.0.0-rc.2`。 |
 | **Python / PyPI (`prts-mcp`)** | 改用预编译原生归档包、npm 或 Docker | 3.x 不再向 PyPI 发布 Rust 包装包；执行 `pip install -U prts-mcp` 会停留在 2.8.x，不会升级到 3.x。 |
-| **Docker (`ghcr.io/3akhp/prts-mcp`)** | 拉取同一镜像仓库的 `3.x` 标签（当前为 `:3.0.0-rc.1` 或 `:next`） | 保持默认 `stdio` 与 `/data` 数据卷约定不变，移除容器内 Python 运行时。 |
+| **Docker (`ghcr.io/3akhp/prts-mcp`)** | 拉取同一镜像仓库的 `3.x` 标签（当前为 `:3.0.0-rc.2` 或 `:next`） | 保持默认 `stdio` 与 `/data` 数据卷约定不变，移除容器内 Python 运行时。 |
 | **本地 `python/` 或 `ts/` 源码** | 切换为根目录 Cargo 工程或直接使用预编译归档包 | 3.x 主开发分支不再保留 `python/` 与 `ts/` 目录；2.x 源码维护在 `lts/2.8` 分支进行。 |
 
 ```bash
 # 方案 A：保留 2.x 的 prts-mcp-ts 命令名，直接升级到 3.x 候选版
-npm install -g prts-mcp-ts@3.0.0-rc.1
+npm install -g prts-mcp-ts@3.0.0-rc.2
 prts-mcp-ts-stdio
 
 # 方案 B：改用 3.x 新主包 prts-mcp（默认启动 HTTP，可通过环境变量切 stdio）
-npm install -g prts-mcp@3.0.0-rc.1
+npm install -g prts-mcp@3.0.0-rc.2
 ```
 
 > **关于版本标签的说明**：即使未来 3.0.0 正式版切换了 `latest`，已固定 `@2`、`@lts-2.8`、精确 `2.8.x` 版本号或未更新锁文件的部署也不会被自动升级到 3.x。`lts/2.8` 与 `lts/1.7` 分支将继续接收维护修复至 **2027-07-02**。

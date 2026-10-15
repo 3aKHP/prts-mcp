@@ -5,7 +5,7 @@ branch: "develop"
 
 # CLAUDE.md — AI 协作者说明
 
-PRTS-MCP 的 3.x 开发线是位于仓库根目录的原生 Rust 工程，业务行为与工具契约严格对齐冻结的 TS/v2.8.1 基线。当前公开稳定版仍为 `2.8.1`，Rust 公开候选版为 `3.0.0-rc.1`；2.8.x 与 1.7.x 的 Python/TypeScript 实现分别在 `lts/2.8` 与 `lts/1.7` 分支维护，两线 EOL 均为 **2027-07-02**。
+PRTS-MCP 的 3.x 开发线是位于仓库根目录的原生 Rust 工程，业务行为与工具契约严格对齐冻结的 TS/v2.8.1 基线。当前公开稳定版仍为 `2.8.1`，Rust 公开候选版为 `3.0.0-rc.2`；2.8.x 与 1.7.x 的 Python/TypeScript 实现分别在 `lts/2.8` 与 `lts/1.7` 分支维护，两线 EOL 均为 **2027-07-02**。
 
 ## 1. 必读文档导航
 
@@ -51,7 +51,7 @@ PRTS-MCP 的 3.x 开发线是位于仓库根目录的原生 Rust 工程，业务
 
 ## 3. 本机运行与验证环境（WSL2 / Linux）
 
-- 请确保仓库位于 WSL2 原生 Linux 文件系统内（不要放在 `/mnt/c/` 下），并在 POSIX `bash` 中使用 Linux 原生的 `cargo`、`node`（`>= 22`）、`npm`（`>= 10`）与 `bun`（`1.3.14`，仅用于运行冻结 TS 对照 Oracle）。
+- 请确保仓库位于 WSL2 原生 Linux 文件系统内（不要放在 `/mnt/c/` 下），并在 POSIX `bash` 中使用 Linux 原生的 `cargo`、`node`（`>= 22`）、`npm`（`>= 10`）与 `bun`（`1.3.14`，用于冻结 TS 对照 Oracle，并已验证 Linux x64 npm 启动桥）。
 - 常用验证命令：
   ```bash
   # 快速检查工具链与锁文件元数据
