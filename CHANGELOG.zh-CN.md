@@ -6,7 +6,29 @@
 
 2.8.1 基线时的原始分语言更新日志可在 [`ts/v2.8.1` tag](https://github.com/3aKHP/prts-mcp/tree/ts/v2.8.1) 查看（[Python](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/python/CHANGELOG.md) · [TypeScript](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/ts/CHANGELOG.md)），1.7.1 与 1.7.2 的维护记录来自已发布的 [`python/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/python/v1.7.2/python/CHANGELOG.md) 与 [`ts/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/ts/v1.7.2/ts/CHANGELOG.md) 标签。
 
-## [Unreleased] — 3.0.0-dev.0
+## [3.0.0-rc.3] - 2026-10-15
+
+### 变更
+
+- **工具响应分配**：将已有 Markdown、结构化结果和图片字符串直接移入 MCP 响应，减少临时复制，保持各输出通道的行为不变。
+- **关卡敌人查询**：按需读取六项展示属性及其关卡覆盖值，避免重建整条敌人记录，仅为消费的波次与引用字段创建 JSON 对象，保留覆盖与等级回退行为。
+- **敌人数据库内存占用**：直接将战斗数据解析为共享字段名的紧凑缓存，读取属性时无需重建整条记录，保持敌人查询与关卡覆盖结果不变。
+- **剧情索引内存与搜索**：按章连续存储文本，复用章内重复角色名，并直接遍历记录位置以省去重复数组，保留全部索引台词及搜索顺序。
+- **干员内存占用**：干员缓存仅保留面板、天赋及技能查询实际读取的字段，在保持工具输出不变的同时降低内存占用。
+
+### 修复
+
+- **混合查询后的内存占用**：关卡、搜索和立绘查询共享缓存数据，单敌人查询不再复制整个敌人数据库，干员、敌人、关卡、基建与皮肤表仅保留工具实际使用的字段。敌人出场索引解析波次数据时不再为无关关卡结构分配内存。
+- **并发首次查询**：同一数据代际内，每个数据集的首次加载串行执行，让同时到达的请求共享缓存结果；加载失败后仍可重试。
+- **战斗技能加载与搜索**：缓存紧凑的技能数据并直接构建搜索文本，减少常驻内存与临时分配，保留原有等级编号、占位符和输出值语义。
+
+## [3.0.0-rc.2] - 2026-10-15
+
+### 修复
+
+- **旧协议 Streamable HTTP 客户端兼容性**：携带受支持的 2024/2025 `MCP-Protocol-Version` 请求头时，继续使用有状态旧协议。RC.1 错将此类请求判为新协议并要求 `_meta` 信封，导致 Codex 等客户端无法调用工具。
+
+## [3.0.0-rc.1] - 2026-10-15
 
 实现：Rust。
 
@@ -14,30 +36,14 @@
 
 - **统一的原生 Rust 运行时（`prts-mcp`）**：将服务端迁移为仓库根目录下的单一原生 Rust 实现（最低 Rust 版本 `1.89`），静态链接内嵌的 QuickJS C 正则组件（`vendor/quickjs-regexp/`），完整保留 TS/v2.8.1 的 24 个工具契约、新旧两代 MCP 协议（`legacy` 会话与 `2026-07-28` 无状态 `modern` 信封）、`stdio` 与 Streamable HTTP 传输，以及感知数据代际激活的后台游戏数据与立绘同步。
 - **五平台预编译原生归档包**：提供 `linux-x64`、`linux-arm64`（`glibc >= 2.28`）、`windows-x64`（静态链接 CRT）、`darwin-arm64` 与 `darwin-x64`（`macOS 14.0+`）独立发行归档包，内置 5 个入口可执行文件、ABI/构建清单、完整第三方许可声明以及经过校验的只读备用游戏数据（游戏表、关卡、剧情）。
-- **9 包架构的 Rust 版 npm 分发**：新增主入口包 `prts-mcp` 并保留兼容入口包 `prts-mcp-ts`，底层由 `@3akhp/prts-mcp-runtime`（要求 `Node >= 22` 的轻量启动桥，支持 POSIX 信号转发与 Windows 父进程句柄退出联动）、`@3akhp/prts-mcp-data`（共享只读备用数据）及 5 个按平台自动筛选的二进制包（`@3akhp/prts-mcp-<platform>`）支撑，已通过 npm OIDC provenance 签名发布候选版 `3.0.0-alpha.3`（`@next`）。
+- **9 包架构的 Rust 版 npm 分发**：新增主入口包 `prts-mcp` 并保留兼容入口包 `prts-mcp-ts`，底层由 `@3akhp/prts-mcp-runtime`（要求 `Node >= 22` 的轻量启动桥，支持 POSIX 信号转发与 Windows 父进程句柄退出联动）、`@3akhp/prts-mcp-data`（共享只读备用数据）及 5 个按平台自动筛选的二进制包（`@3akhp/prts-mcp-<platform>`）支撑，已通过 npm OIDC provenance 签名发布候选版 `3.0.0-rc.1`（`@next`）。
 - **双架构原生 Docker 镜像**：`ghcr.io/3akhp/prts-mcp`（支持 `linux/amd64` 与 `linux/arm64`）切换为原生 Rust 二进制，由 `tini` 作为 PID 1 转发停止信号，内置 `/app/data` 只读备用数据，并直接兼容 2.x 既有的 `/data` 整卷与分卷挂载。
 - **独立的 `lts/2.8` 长期维护分支**：在 `lts/2.8` 分支保留 Python 与 TypeScript 2.8.x 双实现维护线，与 `lts/1.7` 一同维护至 `2027-07-02`。
 
 ### 变更
 
-- **工具响应分配**：将已有 Markdown、结构化结果和图片字符串直接移入 MCP 响应，减少临时复制，保持各输出通道的行为不变。
-
-- **关卡敌人查询**：按需读取六项展示属性及其关卡覆盖值，避免重建整条敌人记录，仅为消费的波次与引用字段创建 JSON 对象，保留覆盖与等级回退行为。
-
-- **敌人数据库内存占用**：直接将战斗数据解析为共享字段名的紧凑缓存，读取属性时无需重建整条记录，保持敌人查询与关卡覆盖结果不变。
-
-- **剧情索引内存与搜索**：按章连续存储文本，复用章内重复角色名，并直接遍历记录位置以省去重复数组，保留全部索引台词及搜索顺序。
-
-- **干员内存占用**：干员缓存仅保留面板、天赋及技能查询实际读取的字段，在保持工具输出不变的同时降低内存占用。
-
 - **入口命令与默认传输模式**：新主命令 `prts-mcp`（原生二进制与 npm 主包）默认启动 Streamable HTTP（`:3000/mcp`，设 `PRTS_TRANSPORT=stdio` 切换为 stdio）；`prts-mcp-ts` / `prts-mcp-ts-bun`（固定 HTTP）与 `prts-mcp-ts-stdio`（固定 stdio）在 Rust 二进制之上保留 2.x 固定传输行为（无需安装 Bun）；Docker 镜像入口（`prts-mcp-ghcr`）保留默认 `stdio`（设 `PRTS_TRANSPORT=http` 切换为 HTTP）。
-- **原生诊断指标与正则边界（`D-001`–`D-007`）**：`/debug/metrics` 的 `process.runtime` 标识为 `"rust"`，内存统计改为操作系统原生驻留集（`process.rss_bytes`）与采样中观察到的最高 RSS（`process.rss_high_water_bytes`），不再输出 V8/Python 堆字段；`/debug/cache` 保留按领域分组的缓存计数（详见 `contracts/baseline.json`）。
-
-### 修复
-
-- **混合查询后的内存占用**：关卡、搜索和立绘查询共享缓存数据，单敌人查询不再复制整个敌人数据库，干员、敌人、关卡、基建与皮肤表仅保留工具实际使用的字段。敌人出场索引解析波次数据时不再为无关关卡结构分配内存。
-- **并发首次查询**：同一数据代际内，每个数据集的首次加载串行执行，让同时到达的请求共享缓存结果；加载失败后仍可重试。
-- **战斗技能加载与搜索**：缓存紧凑的技能数据并直接构建搜索文本，减少常驻内存与临时分配，保留原有等级编号、占位符和输出值语义。
+- **原生诊断指标（`D-001`、`D-002`）**：`/debug/metrics` 的 `process.runtime` 标识为 `"rust"`，内存统计改为操作系统原生驻留集（`process.rss_bytes`）与采样中观察到的最高 RSS（`process.rss_high_water_bytes`），不再输出 V8/Python 堆字段；`/debug/cache` 保留按领域分组的缓存计数（详见 `contracts/baseline.json`）。
 
 ### 移除
 

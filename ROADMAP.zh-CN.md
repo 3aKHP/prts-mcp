@@ -14,7 +14,7 @@
 | **M2C** | 完成 Linux `x64`/`arm64` 双架构 Docker 镜像与旧版数据卷兼容验证（见 [DOCKER-DISTRIBUTION.md](docs/dev/DOCKER-DISTRIBUTION.md)）。 | 已完成 |
 | **M3** | 建立候选发行物汇总、单一版本校验与隔离的公开发布自动化（见 [RELEASE-CANDIDATES.md](docs/dev/RELEASE-CANDIDATES.md)）。 | 已完成（[`3.0.0-alpha.3`](https://github.com/3aKHP/prts-mcp/releases/tag/v3.0.0-alpha.3)） |
 | **M4** | 基于公开候选发行物完成真实客户端 E2E、数据与立绘同步、以及 2.8.1 旧卷升级与回滚验证（见 [E2E.md](docs/dev/E2E.md)）。 | 已完成 |
-| **M5** | 完成全仓公开文档精校，发布 RC 与 `3.0.0` 正式版，切换 `latest` 稳定标签并回灌 `develop`。 | 待启动（文档精校进行中） |
+| **M5** | 完成 RC 在生产服务器上的全生命周期观测和专项压测，发布 `3.0.0` 正式版，切换 `latest` 稳定标签并回灌 `develop`。 | 进行中（RC 生产验收） |
 
 ## 3.0 之后的规划（Post-3.0 Backlog）
 

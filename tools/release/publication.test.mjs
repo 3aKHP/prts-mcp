@@ -11,10 +11,12 @@ const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 function fixture(mode='fresh',version='3.0.0-alpha.1') {
   const root=mkdtempSync(join(tmpdir(),'prts-publish-test-'));
   const put=(path,body)=>{mkdirSync(dirname(join(root,path)),{recursive:true});writeFileSync(join(root,path),body);};
-  for(const file of ['tools/npm/common.mjs','tools/docker/inventory.mjs','tools/release/common.mjs','tools/release/verify-snapshot.mjs','tools/release/publish-npm.mjs','tools/release/verify-npm-tags.mjs','tools/release/publish-docker.mjs','tools/release/publish-github.mjs','packaging/native/targets.json','packaging/npm/data-release.json']){
+  for(const file of ['tools/npm/common.mjs','tools/docker/inventory.mjs','tools/release/common.mjs','tools/release/verify-snapshot.mjs','tools/release/publish-npm.mjs','tools/release/verify-npm-tags.mjs','tools/release/publish-docker.mjs','tools/release/publish-github.mjs','tools/release/release-notes.mjs','packaging/native/targets.json','packaging/npm/data-release.json']){
     mkdirSync(dirname(join(root,file)),{recursive:true});cpSync(join(project,file),join(root,file));
   }
   put('Cargo.toml',`[package]\nname = "prts-mcp"\nversion = "${version}"\n`);
+  put('CHANGELOG.md',`# Changelog\n\n## [${version}] - 2026-10-15\n\n### Added\n\n- Reviewed English release text.\n\n## [2.8.1] - 2026-10-11\n\n- Historical English text.\n`);
+  put('CHANGELOG.zh-CN.md',`# 更新日志\n\n## [${version}] - 2026-10-15\n\n### 新增\n\n- 已审定的中文发行说明。\n\n## [2.8.1] - 2026-10-11\n\n- 中文历史记录。\n`);
   execFileSync('git',['init','--quiet'],{cwd:root});execFileSync('git',['add','.'],{cwd:root});
   execFileSync('git',['-c','user.name=Test','-c','user.email=test@example.invalid','commit','--quiet','-m','fixture'],{cwd:root});
   const commit=execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim();
@@ -212,4 +214,35 @@ for(const mode of ['probe-delayed','probe-add-invisible','probe-rm-invisible','p
     }
     assert(calls.every(c=>c.args[0]==='dist-tag'&&c.args.includes('prts-release-check-12345')));
   }finally{f.cleanup();}
+});
+
+for (const version of ['3.0.0-rc.1', '3.0.0']) test(`GitHub ${version} notes preserve both reviewed languages and use the matching channel`, () => {
+  const f = fixture('fresh', version);
+  try {
+    f.env.RUST_NPM_PUBLISH_ENABLED = 'true';
+    f.env.RUST_STABLE_RELEASE_ENABLED = version === '3.0.0' ? 'true' : 'false';
+    const result = f.run('publish-github');
+    assert.equal(result.status, 0, result.stderr);
+    const notes = readFileSync(join(f.root, 'artifacts/release-notes.md'), 'utf8');
+    assert(notes.includes('### Added\n\n- Reviewed English release text.'));
+    assert(notes.includes('### 新增\n\n- 已审定的中文发行说明。'));
+    assert(notes.includes(`npm install -g prts-mcp@${version}`));
+    assert(notes.includes(version === '3.0.0' ? '@latest' : '@next'));
+    assert(!notes.includes('Historical English text') && !notes.includes('中文历史记录'));
+    assert(!notes.includes('remain M4') && !notes.includes('gates remain open'));
+    assert(notes.includes(`/blob/${f.manifest.commit}/docs/migration-2.x-to-3.0.md`));
+    const create = f.commands().find(c => c.args[0] === 'release' && c.args[1] === 'create');
+    assert.equal(create.args.includes('--prerelease'), version !== '3.0.0');
+    assert(create.args.includes(version === '3.0.0' ? '--latest=true' : '--latest=false'));
+  } finally { f.cleanup(); }
+});
+test('missing matching Chinese release notes cannot publish another version or Unreleased text', () => {
+  const f = fixture('fresh', '3.0.0-rc.1');
+  try {
+    writeFileSync(join(f.root, 'CHANGELOG.zh-CN.md'), '## [Unreleased]\n\n开发内容\n\n## [3.0.0-rc.10]\n\n另一个版本\n');
+    const result = f.run('publish-github');
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /CHANGELOG requires one section for 3\.0\.0-rc\.1/);
+    assert.deepEqual(f.commands(), []);
+  } finally { f.cleanup(); }
 });
