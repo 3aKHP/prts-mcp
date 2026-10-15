@@ -66,6 +66,23 @@ impl DirectoryStore {
         &self.root
     }
 
+    /// Retain a domain's consumed fields while validating the complete JSON.
+    pub(crate) fn read_json_projected(
+        &self,
+        path: &str,
+        projection: super::projection::Projection,
+    ) -> Result<Value, StoreError> {
+        let target = self.resolve(path)?;
+        let text = std::fs::read_to_string(&target).map_err(|e| match e.kind() {
+            std::io::ErrorKind::NotFound => StoreError::NotFound(path.to_string()),
+            _ => StoreError::Io(e),
+        })?;
+        super::projection::from_str(&text, projection).map_err(|e| StoreError::BadJson {
+            path: path.to_string(),
+            message: e.to_string(),
+        })
+    }
+
     /// Resolve a dataset path (TS `resolvePath`): normalize, join under the
     /// root, reject escapes. Public because diagnostics messages print the
     /// same absolute path the oracle's resolveForDiagnostics shows.

@@ -15,8 +15,10 @@ use std::sync::{Arc, Mutex};
 
 #[derive(Default)]
 pub struct Datasets {
-    slots: Mutex<HashMap<String, Arc<dyn Any + Send + Sync>>>,
+    slots: Mutex<HashMap<String, Arc<Slot>>>,
 }
+
+type Slot = Mutex<Option<Arc<dyn Any + Send + Sync>>>;
 
 impl Datasets {
     pub fn new() -> Self {
@@ -42,13 +44,17 @@ impl Datasets {
         load: impl FnOnce() -> Result<T, String>,
         count_of: impl FnOnce(&T) -> u64,
     ) -> Result<Arc<T>, String> {
-        {
-            let slots = self.slots.lock().expect("datasets lock");
-            if let Some(hit) = slots.get(name) {
-                if let Ok(typed) = Arc::clone(hit).downcast::<T>() {
-                    crate::diagnostics::record_hit(name);
-                    return Ok(typed);
-                }
+        // Serialize a cold load per slot, not per dataset collection: derived
+        // loaders may acquire other slots in this same generation.
+        let slot = {
+            let mut slots = self.slots.lock().expect("datasets lock");
+            Arc::clone(slots.entry(name.to_string()).or_default())
+        };
+        let mut cached = slot.lock().expect("dataset slot lock");
+        if let Some(hit) = cached.as_ref() {
+            if let Ok(typed) = Arc::clone(hit).downcast::<T>() {
+                crate::diagnostics::record_hit(name);
+                return Ok(typed);
             }
         }
         crate::diagnostics::record_miss(name);
@@ -62,16 +68,23 @@ impl Datasets {
         let count = count_of(&value);
         let value = Arc::new(value);
         crate::diagnostics::record_loaded(name, count);
-        self.slots.lock().expect("datasets lock").insert(
-            name.to_string(),
-            Arc::clone(&value) as Arc<dyn Any + Send + Sync>,
-        );
+        *cached = Some(Arc::clone(&value) as Arc<dyn Any + Send + Sync>);
         Ok(value)
     }
 
     /// Slot count (diagnostics / tests).
     pub fn len(&self) -> usize {
-        self.slots.lock().expect("datasets lock").len()
+        let slots: Vec<_> = self
+            .slots
+            .lock()
+            .expect("datasets lock")
+            .values()
+            .cloned()
+            .collect();
+        slots
+            .iter()
+            .filter(|slot| slot.lock().expect("dataset slot lock").is_some())
+            .count()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -114,5 +127,38 @@ mod tests {
         });
         assert!(err.is_err());
         assert_eq!(fails, 2); // failures are not cached
+        assert_eq!(ds.len(), 1); // failed slots do not count as loaded
+    }
+
+    #[test]
+    fn concurrent_cold_load_shares_one_value_and_allows_dependencies() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use std::sync::Barrier;
+        let ds = Arc::new(Datasets::new());
+        let loads = Arc::new(AtomicUsize::new(0));
+        let barrier = Arc::new(Barrier::new(8));
+        let handles: Vec<_> = (0..8)
+            .map(|_| {
+                let (ds, loads, barrier) =
+                    (Arc::clone(&ds), Arc::clone(&loads), Arc::clone(&barrier));
+                std::thread::spawn(move || {
+                    barrier.wait();
+                    ds.get_or_load("derived", || {
+                        loads.fetch_add(1, Ordering::SeqCst);
+                        let source = ds.get_or_load("source", || Ok(vec![1, 2, 3]))?;
+                        std::thread::sleep(std::time::Duration::from_millis(20));
+                        Ok(source)
+                    })
+                    .unwrap()
+                })
+            })
+            .collect();
+        let values: Vec<_> = handles
+            .into_iter()
+            .map(|handle| handle.join().unwrap())
+            .collect();
+        assert_eq!(loads.load(Ordering::SeqCst), 1);
+        assert!(values.iter().all(|value| Arc::ptr_eq(value, &values[0])));
+        assert_eq!(ds.len(), 2);
     }
 }

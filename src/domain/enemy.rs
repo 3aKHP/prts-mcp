@@ -7,7 +7,7 @@ use std::sync::Arc;
 use serde_json::{json, Value};
 
 use crate::app::DataView;
-use crate::domain::enemy_db::{level0_index, normalize_enemy_database, OrderedMap};
+use crate::domain::enemy_db::{default_entry, normalize_enemy_database, OrderedMap};
 use crate::domain::messages;
 use crate::storage::{DirectoryStore, JsonStore};
 use crate::text::js_compat::compare_ids;
@@ -83,7 +83,7 @@ pub fn db_levels(
             };
             let store = DirectoryStore::new(root.join("zh_CN").join("gamedata").join("levels"));
             let raw = store.read_json(DATABASE_FILE).map_err(|e| e.to_string())?;
-            normalize_enemy_database(&raw)
+            normalize_enemy_database(raw)
         },
         |db| db.len() as u64,
     )
@@ -129,7 +129,12 @@ fn resolve_enemy_id(view: &DataView, name: &str) -> Result<Option<String>, Strin
         .map(|(_, id)| id.clone()))
 }
 
-fn search_records(view: &DataView) -> Result<Arc<Vec<Value>>, String> {
+struct EnemySearchRecord {
+    enemy_id: String,
+    search_text: String,
+}
+
+fn search_records(view: &DataView) -> Result<Arc<Vec<EnemySearchRecord>>, String> {
     view.datasets.get_or_load_counted(
         "enemy:enemy_search_records",
         || {
@@ -167,11 +172,10 @@ fn search_records(view: &DataView) -> Result<Arc<Vec<Value>>, String> {
                 .chain(tags.iter().filter_map(|t| t.as_str().map(str::to_string)))
                 .collect::<Vec<_>>()
                 .join(" ");
-                records.push(json!({
-                    "enemy_id": enemy_id,
-                    "info": info,
-                    "search_text": search_text,
-                }));
+                records.push(EnemySearchRecord {
+                    enemy_id: enemy_id.clone(),
+                    search_text,
+                });
             }
             Ok(records)
         },
@@ -387,7 +391,7 @@ pub fn build_enemy_info(view: &DataView, excel_path: &Path, name: &str) -> Resul
     // The stats join replaces the null when a level-0 database entry exists.
     let mut payload = payload;
     let levels = db_levels(view)?;
-    if let Some(db_entry) = level0_index(&levels).get(&eid) {
+    if let Some(db_entry) = default_entry(&levels, &eid) {
         payload["stats"] = crate::domain::enemy_stats::extract_enemy_stats(db_entry);
     }
     Ok(payload)
@@ -533,10 +537,11 @@ pub fn build_enemy_search(
     let regex = crate::text::regex_compat::JsRegex::compile(pattern)
         .map_err(|e| messages::regex_error_message(&e))?;
     let records = search_records(view)?;
-    let mut matches: Vec<Value> = Vec::new();
+    let raw = handbook(view)?;
+    let mut matches = Vec::new();
     for record in records.iter() {
-        if regex.is_match(record["search_text"].as_str().unwrap_or(""))? {
-            matches.push(record.clone());
+        if regex.is_match(&record.search_text)? {
+            matches.push(record);
             if matches.len() as i64 >= max_results {
                 break;
             }
@@ -545,12 +550,7 @@ pub fn build_enemy_search(
     let total = matches.len();
     let results: Vec<Value> = matches
         .iter()
-        .map(|record| {
-            enemy_search_entry(
-                &record["info"],
-                record["enemy_id"].as_str().unwrap_or_default(),
-            )
-        })
+        .map(|record| enemy_search_entry(&raw["enemyData"][&record.enemy_id], &record.enemy_id))
         .collect();
     Ok(json!({
         "scope": "enemies",

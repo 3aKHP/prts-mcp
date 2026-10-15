@@ -107,13 +107,11 @@ fn items(view: &DataView) -> Result<Arc<Map<String, Value>>, String> {
                     .unwrap_or_else(|_| ITEM_FILE.to_string());
                 return Err(format!("物品数据文件不存在：{shown}。"));
             }
-            let raw = store.read_json(ITEM_FILE).map_err(|e| e.to_string())?;
-            let map = raw
-                .pointer("/items")
-                .and_then(Value::as_object)
-                .cloned()
-                .ok_or_else(|| format!("{ITEM_FILE} missing 'items' dict"))?;
-            Ok(map)
+            let mut raw = store.read_json(ITEM_FILE).map_err(|e| e.to_string())?;
+            match raw.get_mut("items").map(Value::take) {
+                Some(Value::Object(items)) => Ok(items),
+                _ => Err(format!("{ITEM_FILE} missing 'items' dict")),
+            }
         },
         |items| items.len() as u64,
     )
@@ -145,17 +143,17 @@ pub fn get_item_name_by_id(view: &DataView, item_id: &str) -> Option<String> {
     if item_id.is_empty() {
         return None;
     }
-    let item = items(view).ok()?.get(item_id).cloned();
-    item.and_then(|i| {
-        i.get("name")
-            .and_then(Value::as_str)
-            .filter(|n| !n.is_empty())
-            .map(str::to_string)
-    })
+    let items = items(view).ok()?;
+    items
+        .get(item_id)?
+        .get("name")
+        .and_then(Value::as_str)
+        .filter(|n| !n.is_empty())
+        .map(str::to_string)
 }
 
-fn visible_items(view: &DataView) -> Result<Vec<(String, Value)>, String> {
-    Ok(items(view)?
+fn visible_items(items: &Map<String, Value>) -> Vec<(&String, &Value)> {
+    items
         .iter()
         .filter(|(_, info)| {
             info.get("hideInItemGet") != Some(&Value::Bool(true))
@@ -164,15 +162,14 @@ fn visible_items(view: &DataView) -> Result<Vec<(String, Value)>, String> {
                     .and_then(Value::as_str)
                     .is_some_and(|n| !n.is_empty())
         })
-        .map(|(id, info)| (id.clone(), info.clone()))
-        .collect())
+        .collect()
 }
 
-fn sort_entries(entries: &mut [(String, Value)]) {
+fn sort_entries(entries: &mut [(&String, &Value)]) {
     entries.sort_by(|a, b| {
         let sa = a.1.get("sortId").and_then(Value::as_i64).unwrap_or(999999);
         let sb = b.1.get("sortId").and_then(Value::as_i64).unwrap_or(999999);
-        sa.cmp(&sb).then_with(|| compare_ids(&a.0, &b.0))
+        sa.cmp(&sb).then_with(|| compare_ids(a.0, b.0))
     });
 }
 
@@ -193,13 +190,14 @@ pub fn build_items_listing(
     {
         return Err(err);
     }
-    let mut entries = visible_items(view).map_err(|message| {
+    let items = items(view).map_err(|message| {
         format!(
             "{}（{message}）",
             messages::excel_missing_message("物品", excel_path)
         )
     })?;
 
+    let mut entries = visible_items(&items);
     let category_filter = category.map(normalize_category);
     if let Some(filter) = &category_filter {
         entries.retain(|(_, info)| {
@@ -512,7 +510,6 @@ pub fn render_item_info(data: &Value) -> String {
 
 struct ItemSearchRecord {
     item_id: String,
-    info: Value,
     search_text: String,
 }
 
@@ -520,7 +517,8 @@ fn item_search_records(view: &DataView) -> Result<Arc<Vec<ItemSearchRecord>>, St
     view.datasets.get_or_load_counted(
         "item:item_search_records",
         || {
-            let mut entries = visible_items(view)?;
+            let items = items(view)?;
+            let mut entries = visible_items(&items);
             sort_entries(&mut entries);
             Ok(entries
                 .into_iter()
@@ -540,8 +538,7 @@ fn item_search_records(view: &DataView) -> Result<Arc<Vec<ItemSearchRecord>>, St
                     .collect();
                     parts.push(item_id.clone());
                     ItemSearchRecord {
-                        item_id,
-                        info,
+                        item_id: item_id.clone(),
                         search_text: parts.join(" "),
                     }
                 })
@@ -569,10 +566,11 @@ pub fn build_item_search(
             messages::excel_missing_message("物品", excel_path)
         )
     })?;
+    let items = items(view)?;
     let mut results: Vec<Value> = Vec::new();
     for record in records.iter() {
         if regex.is_match(&record.search_text)? {
-            results.push(item_search_entry(&record.info, &record.item_id));
+            results.push(item_search_entry(&items[&record.item_id], &record.item_id));
             if results.len() as i64 >= max_results {
                 break;
             }

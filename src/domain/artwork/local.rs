@@ -49,7 +49,7 @@ pub fn data_not_ready_message() -> String {
 
 /// skin_table.json charSkins mapping through the per-generation dataset
 /// cache; empty when excel is unavailable or the file is missing.
-pub fn get_char_skins(view: &DataView) -> CharSkins {
+pub fn get_char_skins(view: &DataView) -> std::sync::Arc<CharSkins> {
     let view = view.clone();
     let skins = view.datasets.get_or_load_counted(
         "images:char_skins",
@@ -95,7 +95,7 @@ pub fn get_char_skins(view: &DataView) -> CharSkins {
         },
         |skins| skins.len() as u64,
     );
-    (*skins.unwrap_or_else(|_: String| std::sync::Arc::new(CharSkins::new()))).clone()
+    skins.unwrap_or_else(|_: String| std::sync::Arc::new(CharSkins::new()))
 }
 
 fn load_index(gen_dir: &Path) -> Option<ImagesIndex> {
