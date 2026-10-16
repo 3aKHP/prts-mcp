@@ -1,6 +1,8 @@
 //! Enemy combat-stats extraction and m_defined override merging — port of
 //! TS `data/enemyStats.ts` + `data/gamedataAttrs.ts`.
 
+use crate::storage::frozen::FrozenValue;
+use crate::storage::json_view::JsonView;
 use serde_json::{json, Map, Value};
 
 use crate::text::numbers::{format_number, js_truthy, json_value_to_string, python_float_string};
@@ -30,29 +32,33 @@ const IMMUNITY_LABELS: &[(&str, &str)] = &[
     ("attractImmune", "牵引"),
 ];
 
-fn attr<'a>(db_entry: &'a Value, key: &str) -> Option<&'a Value> {
-    db_entry.pointer(&format!("/attributes/{key}"))
+fn attr<'a>(db_entry: JsonView<'a>, key: &str) -> Option<JsonView<'a>> {
+    db_entry.get("attributes")?.get(key)
 }
-
-fn m_number(db_entry: &Value, key: &str, default: f64) -> f64 {
-    m_value(attr(db_entry, key))
-        .and_then(Value::as_f64)
+fn m_view(value: Option<JsonView<'_>>) -> Option<JsonView<'_>> {
+    value.map(|v| v.get("m_value").unwrap_or(v))
+}
+fn m_number(db_entry: JsonView<'_>, key: &str, default: f64) -> f64 {
+    m_view(attr(db_entry, key))
+        .and_then(JsonView::as_f64)
         .unwrap_or(default)
 }
-
-fn truthy_m_value(db_entry: &Value, key: &str) -> bool {
-    match m_value(attr(db_entry, key)) {
-        Some(Value::Bool(b)) => *b,
-        _ => false,
-    }
+fn truthy_m_value(db_entry: JsonView<'_>, key: &str) -> bool {
+    m_view(attr(db_entry, key)).and_then(JsonView::as_bool) == Some(true)
 }
 
 /// `extractEnemyStats`: payload field order mirrors the TS interface.
 pub fn extract_enemy_stats(db_entry: &Value) -> Value {
+    extract_stats(JsonView::Value(db_entry))
+}
+pub(crate) fn extract_cached_enemy_stats(db_entry: &FrozenValue) -> Value {
+    extract_stats(JsonView::Frozen(db_entry))
+}
+fn extract_stats(db_entry: JsonView<'_>) -> Value {
     let hp = m_number(db_entry, "maxHp", 0.0);
     let atk = m_number(db_entry, "atk", 0.0);
     let def = m_number(db_entry, "def", 0.0);
-    let res = m_value(attr(db_entry, "magicResistance")).cloned();
+    let res = m_view(attr(db_entry, "magicResistance")).map(JsonView::to_value);
     let speed = m_number(db_entry, "moveSpeed", 0.0);
     let atk_time = m_number(db_entry, "baseAttackTime", 0.0);
     let atk_speed = m_number(db_entry, "attackSpeed", 100.0);
@@ -68,47 +74,50 @@ pub fn extract_enemy_stats(db_entry: &Value) -> Value {
 
     let skills: Vec<Value> = db_entry
         .get("skills")
-        .and_then(Value::as_array)
-        .map(Vec::as_slice)
-        .unwrap_or(&[])
-        .iter()
+        .into_iter()
+        .flat_map(JsonView::array)
         .map(|s| {
-            let prefab = s.get("prefabKey").and_then(Value::as_str).unwrap_or("未知");
+            let prefab = s
+                .get("prefabKey")
+                .and_then(JsonView::as_str)
+                .unwrap_or("未知");
             // `if (cd)` / `if (initCd && initCd !== cd)` / `if (spCost)` are
             // JS truthiness gates, template-literal stringification.
-            let cd = s.get("cooldown").filter(|v| js_truthy(v));
-            let init_cd = s.get("initCooldown").filter(|v| js_truthy(v));
-            let sp_cost = m_value(s.pointer("/spData/spCost")).filter(|v| js_truthy(v));
+            let cd = s.get("cooldown").filter(|v| v.truthy());
+            let init_cd = s.get("initCooldown").filter(|v| v.truthy());
+            let sp_cost =
+                m_view(s.get("spData").and_then(|v| v.get("spCost"))).filter(|v| v.truthy());
             let mut cd_parts: Vec<String> = Vec::new();
             if let Some(cd) = cd {
-                cd_parts.push(format!("冷却 {}s", json_value_to_string(cd)));
+                cd_parts.push(format!("冷却 {}s", json_value_to_string(&cd.to_value())));
             }
             if let Some(init_cd) = init_cd {
-                let same_as_cd = cd.is_some_and(|c| c == init_cd);
+                let same_as_cd = cd.is_some_and(|c| c.to_value() == init_cd.to_value());
                 if !same_as_cd {
-                    cd_parts.push(format!("初始 {}s", json_value_to_string(init_cd)));
+                    cd_parts.push(format!(
+                        "初始 {}s",
+                        json_value_to_string(&init_cd.to_value())
+                    ));
                 }
             }
             if let Some(sp) = sp_cost {
-                cd_parts.push(format!("SP {}", json_value_to_string(sp)));
+                cd_parts.push(format!("SP {}", json_value_to_string(&sp.to_value())));
             }
             let bb_strs: Vec<String> = s
                 .get("blackboard")
-                .and_then(Value::as_array)
-                .map(Vec::as_slice)
-                .unwrap_or(&[])
-                .iter()
+                .into_iter()
+                .flat_map(JsonView::array)
                 .take(6)
-                .filter(|b| !b.get("value").is_none_or(Value::is_null))
+                .filter(|b| !b.get("value").is_none_or(JsonView::is_null))
                 .map(|b| {
                     let value = match b.get("value") {
-                        Some(n @ Value::Number(_)) => python_float_string(n),
-                        Some(other) => json_value_to_string(other),
+                        Some(n) if n.is_number() => python_float_string(&n.to_value()),
+                        Some(other) => json_value_to_string(&other.to_value()),
                         None => String::new(),
                     };
                     format!(
                         "{}={}",
-                        b.get("key").and_then(Value::as_str).unwrap_or(""),
+                        b.get("key").and_then(JsonView::as_str).unwrap_or(""),
                         value
                     )
                 })
@@ -208,6 +217,23 @@ pub fn stage_specific_enemy_data(
     let base = db_entry
         .and_then(|m| m.get(&level).or_else(|| m.get(&0)))
         .filter(|v| v.is_object());
+    merge_selected_enemy_data(base, overwritten)
+}
+
+#[cfg(test)]
+pub(crate) fn cached_stage_specific_enemy_data(
+    levels: Option<&super::enemy_cache::EnemyDatabase>,
+    enemy_id: &str,
+    level: i64,
+    overwritten: Option<&Value>,
+) -> Option<Value> {
+    let base = levels
+        .and_then(|db| db.stage_entry(enemy_id, level))
+        .map(FrozenValue::to_value);
+    merge_selected_enemy_data(base.as_ref(), overwritten)
+}
+
+fn merge_selected_enemy_data(base: Option<&Value>, overwritten: Option<&Value>) -> Option<Value> {
     let Some(base) = base else {
         return overwritten.filter(|v| v.is_object()).cloned();
     };
@@ -234,20 +260,28 @@ pub fn format_stats(enemy_data: Option<&Value>) -> String {
     let Some(data) = enemy_data else {
         return "无数据库记录".to_string();
     };
-    let attrs = data.get("attributes").cloned().unwrap_or(json!({}));
-    let get_m = |key: &str| m_value(attrs.get(key)).cloned();
-    let hp = get_m("maxHp");
-    let atk = get_m("atk");
-    let defense = get_m("def");
-    let res = get_m("magicResistance");
-    let speed = get_m("moveSpeed");
-    let atk_time = get_m("baseAttackTime");
+    let attrs = data.get("attributes");
+    format_stat_values(
+        [
+            "maxHp",
+            "atk",
+            "def",
+            "magicResistance",
+            "moveSpeed",
+            "baseAttackTime",
+        ]
+        .map(|key| m_value(attrs.and_then(|a| a.get(key))).cloned()),
+    )
+}
+
+pub(crate) fn format_stat_values(values: [Option<Value>; 6]) -> String {
+    let [hp, atk, defense, res, speed, atk_time] = values;
     let as_str = |v: Option<Value>| format_number(&v.unwrap_or(Value::Null));
     let mut parts = vec![
-        format!("HP {}", as_str(hp.clone())),
-        format!("ATK {}", as_str(atk.clone())),
-        format!("DEF {}", as_str(defense.clone())),
-        format!("RES {}", as_str(res.clone())),
+        format!("HP {}", as_str(hp)),
+        format!("ATK {}", as_str(atk)),
+        format!("DEF {}", as_str(defense)),
+        format!("RES {}", as_str(res)),
     ];
     if let Some(speed) = speed {
         if speed.as_f64().is_some_and(|s| s != 0.0) {

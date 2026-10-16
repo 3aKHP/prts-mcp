@@ -20,6 +20,14 @@ Implementation: Rust.
 
 ### Changed
 
+- **Tool response allocation**: transfer owned Markdown, structured results, and image strings into MCP responses, reducing temporary copies while preserving all output channels.
+
+- **Stage enemy queries**: read the six displayed combat attributes through stage overrides without reconstructing whole enemy records, and parse only the consumed wave/reference fields into JSON values, preserving override and level-fallback behavior.
+
+- **Enemy database memory use**: parse combat data directly into a compact cache with shared field names and read attributes without reconstructing whole records, preserving enemy and stage-override results.
+
+- **Story index memory and search**: store chapter text contiguously, share repeated speaker names within each chapter, and iterate record positions without a duplicate array, preserving every indexed line and search order.
+
 - **Operator memory use**: retain only fields consumed by operator panels, talents, and skill lookups in the character cache, reducing memory use without changing tool output.
 
 - **Entry-point transport defaults**: the new `prts-mcp` binary and npm package default to Streamable HTTP (`:3000/mcp`, switchable via `PRTS_TRANSPORT=stdio`); `prts-mcp-ts` / `prts-mcp-ts-bun` (HTTP) and `prts-mcp-ts-stdio` (stdio) retain their fixed 2.x transport modes on top of the Rust binary without requiring Bun; the Docker entrypoint (`prts-mcp-ghcr`) retains default `stdio` (switchable via `PRTS_TRANSPORT=http`).

@@ -1,7 +1,9 @@
 //! Directory/ZIP/fallback stores, generation pointers, snapshots.
 
+pub(crate) mod frozen;
 pub mod generation;
 pub(crate) mod identity;
+pub(crate) mod json_view;
 pub(crate) mod projection;
 mod store;
 

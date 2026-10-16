@@ -666,14 +666,14 @@ pub fn read_activity_from_store(
 
 /// The tool layer's chapter formatter (【活动名】章节 + lines).
 pub fn format_line(line: &StoryLine) -> String {
-    match line.line_type {
-        "dialog" => format!(
-            "{}：{}",
-            line.role.as_deref().unwrap_or("（旁白）"),
-            line.text
-        ),
-        "narration" => format!("*{}*", line.text),
-        _ => format!("【选项】{}", line.text),
+    format_line_parts(line.line_type, line.role.as_deref(), &line.text)
+}
+
+pub(super) fn format_line_parts(line_type: &str, role: Option<&str>, text: &str) -> String {
+    match line_type {
+        "dialog" => format!("{}：{text}", role.unwrap_or("（旁白）")),
+        "narration" => format!("*{text}*"),
+        _ => format!("【选项】{text}"),
     }
 }
 

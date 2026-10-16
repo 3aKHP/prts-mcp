@@ -175,6 +175,39 @@ impl ToolOutcome {
             }
         }
     }
+
+    /// Consume a dispatched result without copying its payload. Summary
+    /// generation borrows the structured data before it moves into the result.
+    pub fn into_result(self, channel: OutputChannel) -> Value {
+        let text = match (&self.structured, channel) {
+            (Some(data), OutputChannel::Structured) => {
+                summarize(data, self.summary_override.as_deref())
+            }
+            _ => self.markdown,
+        };
+        let mut text_block = Map::new();
+        text_block.insert("type".into(), Value::String("text".into()));
+        text_block.insert("text".into(), Value::String(text));
+        let mut blocks = vec![Value::Object(text_block)];
+        if let Some(image) = self.image {
+            let mut block = Map::new();
+            block.insert("type".into(), Value::String("image".into()));
+            block.insert("data".into(), Value::String(image.data));
+            block.insert("mimeType".into(), Value::String(image.mime));
+            blocks.push(Value::Object(block));
+        }
+        let mut result = Map::new();
+        result.insert("content".into(), Value::Array(blocks));
+        if channel != OutputChannel::Content {
+            if let Some(data) = self.structured {
+                result.insert("structuredContent".into(), data);
+            }
+        }
+        if self.is_error {
+            result.insert("isError".into(), Value::Bool(true));
+        }
+        Value::Object(result)
+    }
 }
 
 fn content_block(text: &str) -> Value {
@@ -210,6 +243,50 @@ pub fn render_result(outcome: &ToolOutcome, channel: OutputChannel) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn consuming_render_matches_borrowed_bytes_for_all_channels() {
+        let payloads = [
+            None,
+            Some(Value::Null),
+            Some(json!([])),
+            Some(json!(false)),
+            Some(json!({"z":null,"a":["🙂",{"total":2}]})),
+            Some(json!({"total":4})),
+            Some(json!({"total":4.0})),
+            Some(json!({"total":4.5})),
+            Some(json!({"total":"4"})),
+        ];
+        for structured in payloads {
+            for summary in [None, Some(""), Some("摘要🙂\n")] {
+                for error in [false, true] {
+                    for image in [false, true] {
+                        for channel in [
+                            OutputChannel::Content,
+                            OutputChannel::Structured,
+                            OutputChannel::Both,
+                        ] {
+                            let outcome = ToolOutcome {
+                                markdown: "# 正文\n🙂".into(),
+                                structured: structured.clone(),
+                                summary_override: summary.map(str::to_owned),
+                                is_error: error,
+                                image: image.then(|| ImageBlock {
+                                    data: "AA+/==".into(),
+                                    mime: "image/png".into(),
+                                }),
+                            };
+                            let expected = serde_json::to_vec(&outcome.render(channel)).unwrap();
+                            assert_eq!(
+                                expected,
+                                serde_json::to_vec(&outcome.into_result(channel)).unwrap()
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     #[test]
     fn parse_channel_variants() {

@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use prts_mcp_rust::domain::story::search::{
-    build_story_search, index_build_count, story_search_index,
+    build_story_search, index_build_count, story_search_index, zip_descriptor,
 };
 use prts_mcp_rust::storage::{write_zip_entries, ZipStore};
 
@@ -69,7 +69,8 @@ fn swap_rebuilds_once_and_reads_new_content() {
     // per call; reusing one would pin the old file handle).
     let first = story_search_index(&zip, &ZipStore::new(&zip)).expect("index A");
     assert_eq!(
-        first.chapters[0].lines[0].text, "标记AA的台词。",
+        first.chapters[0].lines.get(0).unwrap().text,
+        "标记AA的台词。",
         "first generation content"
     );
     // Hold the old index alive across the swap (an in-flight reader).
@@ -85,7 +86,8 @@ fn swap_rebuilds_once_and_reads_new_content() {
 
     let rebuilt = story_search_index(&zip, &ZipStore::new(&zip)).expect("index B");
     assert_eq!(
-        rebuilt.chapters[0].lines[0].text, "标记B的台词。",
+        rebuilt.chapters[0].lines.get(0).unwrap().text,
+        "标记B的台词。",
         "swap is visible without restart"
     );
     assert_eq!(
@@ -149,6 +151,64 @@ fn concurrent_first_calls_share_one_build() {
         "one actual build attempt, not several builds with one winning publication"
     );
 
+    let _ = std::fs::remove_dir_all(zip.parent().unwrap());
+}
+
+#[test]
+fn repeated_swaps_release_old_readers_and_share_each_rebuild() {
+    let _guard = COUNTER_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let zip = temp_zip("repeated-swaps");
+    write_zip(&zip, "initial");
+    let mut current = story_search_index(&zip, &ZipStore::new(&zip)).unwrap();
+    for generation in 0..20 {
+        let previous_text = current.chapters[0].lines.get(0).unwrap().text.to_owned();
+        let old = Arc::downgrade(&current);
+        let count = index_build_count();
+        let previous_descriptor = zip_descriptor(&zip).unwrap();
+        let marker = format!("generation-{generation}-{}", "不同长度".repeat(generation));
+        let staging = zip.with_extension("staging");
+        write_zip(&staging, &marker);
+        // Different source lengths can still compress to the same ZIP size,
+        // and rapid writes can share a filesystem timestamp on Windows.
+        // Give each fixture generation an explicit, distinct identity.
+        filetime::set_file_mtime(
+            &staging,
+            filetime::FileTime::from_unix_time(1_700_000_000 + generation as i64, 0),
+        )
+        .unwrap();
+        std::fs::rename(&staging, &zip).unwrap();
+        assert_ne!(zip_descriptor(&zip).unwrap(), previous_descriptor);
+        let barrier = std::sync::Barrier::new(4);
+        let readers = std::thread::scope(|scope| {
+            let handles: Vec<_> = (0..4)
+                .map(|_| {
+                    scope.spawn(|| {
+                        barrier.wait();
+                        story_search_index(&zip, &ZipStore::new(&zip)).unwrap()
+                    })
+                })
+                .collect();
+            handles
+                .into_iter()
+                .map(|h| h.join().unwrap())
+                .collect::<Vec<_>>()
+        });
+        assert_eq!(index_build_count(), count + 1);
+        assert!(readers.iter().all(|r| Arc::ptr_eq(r, &readers[0])));
+        assert_eq!(
+            readers[0].chapters[0].lines.get(0).unwrap().text,
+            format!("标记{marker}的台词。")
+        );
+        assert_eq!(
+            current.chapters[0].lines.get(0).unwrap().text,
+            previous_text
+        );
+        current = Arc::clone(&readers[0]);
+        assert!(
+            old.upgrade().is_none(),
+            "old generation retained after final reader dropped"
+        );
+    }
     let _ = std::fs::remove_dir_all(zip.parent().unwrap());
 }
 
@@ -223,6 +283,9 @@ fn parallel_build_preserves_chapter_order_and_skip_semantics() {
             .collect::<Vec<_>>(),
         expected
     );
-    assert_eq!(index.records, (0..30).map(|n| (n, 0)).collect::<Vec<_>>());
+    assert_eq!(
+        index.records().collect::<Vec<_>>(),
+        (0..30).map(|n| (n, 0)).collect::<Vec<_>>()
+    );
     let _ = std::fs::remove_dir_all(zip.parent().unwrap());
 }

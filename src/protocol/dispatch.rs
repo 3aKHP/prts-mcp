@@ -228,7 +228,7 @@ async fn handle_legacy_message(
             };
             let result = (tool.dispatch)(app, &arguments).await;
             let rendered = match result {
-                crate::tools::DispatchResult::Outcome(outcome) => outcome.render(channel),
+                crate::tools::DispatchResult::Outcome(outcome) => outcome.into_result(channel),
                 crate::tools::DispatchResult::RpcError(code, message) => {
                     return Dispatched {
                         outcome: WireOutcome::Response(jsonrpc::error(id, code, &message, None)),
@@ -387,7 +387,7 @@ async fn handle_modern_message(
             };
             let result = (tool.dispatch)(app, &arguments).await;
             let rendered = match result {
-                crate::tools::DispatchResult::Outcome(outcome) => outcome.render(channel),
+                crate::tools::DispatchResult::Outcome(outcome) => outcome.into_result(channel),
                 crate::tools::DispatchResult::RpcError(code, message) => {
                     return Dispatched {
                         outcome: WireOutcome::Response(jsonrpc::error(id, code, &message, None)),

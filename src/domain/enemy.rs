@@ -6,10 +6,9 @@ use std::sync::Arc;
 
 use serde_json::{json, Value};
 
+use super::enemy_cache::EnemyDatabase;
 use crate::app::DataView;
-use crate::domain::enemy_db::{
-    default_entry, normalize_enemy_database, OrderedMap, DATABASE_PROJECTION,
-};
+use crate::domain::enemy_db::DATABASE_PROJECTION;
 use crate::domain::messages;
 use crate::storage::{DirectoryStore, JsonStore};
 use crate::text::js_compat::compare_ids;
@@ -70,24 +69,22 @@ pub fn handbook(view: &DataView) -> Result<Arc<Value>, String> {
     )
 }
 
-/// Raw normalized levels map (empty when the levels side is absent).
-pub fn db_levels(
-    view: &DataView,
-) -> Result<Arc<OrderedMap<crate::domain::enemy_db::LevelMap>>, String> {
+/// Generation-owned compact levels cache (empty when the levels side is absent).
+pub fn db_levels(view: &DataView) -> Result<Arc<EnemyDatabase>, String> {
     view.datasets.get_or_load_counted(
         "enemy:enemy_database",
         || {
             if !has_database(view) {
-                return Ok(OrderedMap::new());
+                return Ok(EnemyDatabase::empty());
             }
             let Some(root) = view.levels_root.clone() else {
-                return Ok(OrderedMap::new());
+                return Ok(EnemyDatabase::empty());
             };
             let store = DirectoryStore::new(root.join("zh_CN").join("gamedata").join("levels"));
             let raw = store
-                .read_json_projected(DATABASE_FILE, DATABASE_PROJECTION)
+                .read_json_frozen(DATABASE_FILE, DATABASE_PROJECTION)
                 .map_err(|e| e.to_string())?;
-            normalize_enemy_database(raw)
+            EnemyDatabase::from_json(raw)
         },
         |db| db.len() as u64,
     )
@@ -395,8 +392,8 @@ pub fn build_enemy_info(view: &DataView, excel_path: &Path, name: &str) -> Resul
     // The stats join replaces the null when a level-0 database entry exists.
     let mut payload = payload;
     let levels = db_levels(view)?;
-    if let Some(db_entry) = default_entry(&levels, &eid) {
-        payload["stats"] = crate::domain::enemy_stats::extract_enemy_stats(db_entry);
+    if let Some(db_entry) = levels.default_entry(&eid) {
+        payload["stats"] = crate::domain::enemy_stats::extract_cached_enemy_stats(db_entry);
     }
     Ok(payload)
 }
