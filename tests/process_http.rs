@@ -58,6 +58,16 @@ async fn post(
     session: Option<&str>,
     query: &str,
 ) -> (u16, Option<String>, Value) {
+    post_with_headers(origin, body, session, query, &[]).await
+}
+
+async fn post_with_headers(
+    origin: &str,
+    body: Value,
+    session: Option<&str>,
+    query: &str,
+    headers: &[(&str, &str)],
+) -> (u16, Option<String>, Value) {
     let mut url = format!("{origin}/mcp");
     if !query.is_empty() {
         url.push('?');
@@ -71,6 +81,9 @@ async fn post(
         .json(&body);
     if let Some(sid) = session {
         request = request.header("mcp-session-id", sid);
+    }
+    for (name, value) in headers {
+        request = request.header(*name, *value);
     }
     let res = request.send().await.expect("post");
     let sid = res
@@ -98,6 +111,99 @@ fn init_body(id: i64) -> Value {
 
 fn call_stages(id: i64) -> Value {
     json!({ "jsonrpc": "2.0", "method": "tools/call", "id": id, "params": {"name": "list_stages", "arguments": {"limit": 2}} })
+}
+
+#[tokio::test]
+async fn legacy_protocol_headers_preserve_session_lifecycle_and_tool_calls() {
+    let port = free_port();
+    let mut child = spawn_http(port, &[]);
+    let origin = format!("http://127.0.0.1:{port}");
+    wait_health(&origin).await;
+
+    for version in ["2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25"] {
+        let headers = [("mcp-protocol-version", version)];
+        let mut init = init_body(1);
+        init["params"]["protocolVersion"] = json!(version);
+        let (status, sid, body) =
+            post_with_headers(&origin, init.clone(), None, "", &headers).await;
+        assert_eq!(status, 200, "initialize {version}: {body}");
+        assert_eq!(body["result"]["protocolVersion"], version);
+        let sid = sid.expect("legacy session id");
+        let (status, _, _) = post_with_headers(
+            &origin,
+            json!({"jsonrpc":"2.0","method":"notifications/initialized"}),
+            Some(&sid),
+            "",
+            &headers,
+        )
+        .await;
+        assert_eq!(status, 202);
+        let (status, _, body) =
+            post_with_headers(&origin, call_stages(2), Some(&sid), "", &headers).await;
+        assert_eq!(status, 200, "tools/call {version}: {body}");
+        assert!(body["result"]["content"][0]["text"]
+            .as_str()
+            .unwrap()
+            .contains("关卡列表"));
+
+        let res = reqwest::Client::new()
+            .delete(format!("{origin}/mcp"))
+            .header("mcp-session-id", &sid)
+            .header("mcp-protocol-version", version)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(res.status().as_u16(), 200);
+        let (status, _, body) =
+            post_with_headers(&origin, call_stages(3), Some(&sid), "", &headers).await;
+        assert_eq!(status, 404);
+        assert_eq!(body["error"]["code"], -32002);
+        let (status, new_sid, body) =
+            post_with_headers(&origin, init, Some(&sid), "", &headers).await;
+        assert_eq!(status, 200, "reinitialize {version}: {body}");
+        assert_ne!(new_sid.as_deref(), Some(sid.as_str()));
+    }
+
+    // The SDK ignores Mcp-Method as an era claim without a modern revision.
+    let (status, sid, body) = post_with_headers(
+        &origin,
+        init_body(10),
+        None,
+        "",
+        &[("mcp-method", "initialize")],
+    )
+    .await;
+    assert_eq!(status, 200, "Mcp-Method only: {body}");
+    assert!(sid.is_some());
+
+    child.kill().unwrap();
+    let _ = child.wait();
+}
+
+#[tokio::test]
+async fn modern_protocol_headers_still_require_the_envelope() {
+    let port = free_port();
+    let mut child = spawn_http(port, &[]);
+    let origin = format!("http://127.0.0.1:{port}");
+    wait_health(&origin).await;
+    for version in ["2026-07-28", "2026-07-29", " 2026-07-28\t"] {
+        let (status, _, body) = post_with_headers(
+            &origin,
+            json!({"jsonrpc":"2.0","method":"tools/list","id":1,"params":{}}),
+            None,
+            "",
+            &[("mcp-protocol-version", version)],
+        )
+        .await;
+        assert_eq!(status, 400, "modern {version}: {body}");
+        assert_eq!(body["error"]["code"], -32602);
+        assert_eq!(
+            body["error"]["data"]["envelope"]["missing"],
+            json!(["_meta"])
+        );
+    }
+    child.kill().unwrap();
+    let _ = child.wait();
 }
 
 #[tokio::test]

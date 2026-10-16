@@ -6,7 +6,29 @@ This file records user-visible changes across PRTS-MCP implementations: Python a
 
 The original per-implementation changelogs at the 2.8.1 baseline remain available on the [`ts/v2.8.1` tag](https://github.com/3aKHP/prts-mcp/tree/ts/v2.8.1) ([Python](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/python/CHANGELOG.md) · [TypeScript](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/ts/CHANGELOG.md)), and the 1.7.1/1.7.2 maintenance records come from the published [`python/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/python/v1.7.2/python/CHANGELOG.md) and [`ts/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/ts/v1.7.2/ts/CHANGELOG.md) tags.
 
-## [Unreleased] — 3.0.0-dev.0
+## [3.0.0-rc.3] - 2026-10-15
+
+### Changed
+
+- **Tool response allocation**: transfer owned Markdown, structured results, and image strings into MCP responses, reducing temporary copies while preserving all output channels.
+- **Stage enemy queries**: read the six displayed combat attributes through stage overrides without reconstructing whole enemy records, and parse only the consumed wave/reference fields into JSON values, preserving override and level-fallback behavior.
+- **Enemy database memory use**: parse combat data directly into a compact cache with shared field names and read attributes without reconstructing whole records, preserving enemy and stage-override results.
+- **Story index memory and search**: store chapter text contiguously, share repeated speaker names within each chapter, and iterate record positions without a duplicate array, preserving every indexed line and search order.
+- **Operator memory use**: retain only fields consumed by operator panels, talents, and skill lookups in the character cache, reducing memory use without changing tool output.
+
+### Fixed
+
+- **Memory use after mixed queries**: share cached stage, search, and artwork data; avoid copying the enemy database for individual queries; and retain only consumed operator, enemy, stage, base-skill, and skin fields. Enemy appearance indexing parses wave data without allocating unrelated level structures.
+- **Concurrent first queries**: serialize each dataset's initial load within a generation so simultaneous requests share the cached result. Failed loads remain retryable.
+- **Combat skill loading and search**: keep compact skill data and build search text directly, reducing retained memory and temporary allocations while preserving level numbering, placeholders, and output values.
+
+## [3.0.0-rc.2] - 2026-10-15
+
+### Fixed
+
+- **Legacy Streamable HTTP clients**: requests carrying a supported 2024/2025 `MCP-Protocol-Version` header retain the session-based protocol. RC.1 incorrectly required the modern `_meta` envelope for these requests, preventing clients such as Codex from calling tools.
+
+## [3.0.0-rc.1] - 2026-10-15
 
 Implementation: Rust.
 
@@ -14,30 +36,14 @@ Implementation: Rust.
 
 - **Unified native Rust runtime (`prts-mcp`)**: migrated the server to a single native Rust implementation at the repository root (MSRV `1.89`) with a statically linked QuickJS regular-expression engine (`vendor/quickjs-regexp/`), preserving the frozen TS/v2.8.1 24-tool contract, both MCP protocol eras (`legacy` and `2026-07-28` stateless `modern`), `stdio` and Streamable HTTP transports, and generation-aware background data/image synchronization.
 - **Five-platform prebuilt native archives**: added standalone release archives (`linux-x64`, `linux-arm64` with `glibc >= 2.28`, `windows-x64` with static CRT, `darwin-arm64`, and `darwin-x64` targeting macOS `14.0+`) containing all five entry executables, ABI/build manifests, third-party license notices, and a verified read-only fallback snapshot of game tables, level data, and stories.
-- **Nine-package Rust-backed npm distribution**: added the new `prts-mcp` main package alongside the compatible `prts-mcp-ts` package, backed by `@3akhp/prts-mcp-runtime` (Node `>= 22` launch bridge with signal forwarding and Windows parent-process lifecycle monitoring), `@3akhp/prts-mcp-data` (shared read-only fallback data), and five platform-filtered binary packages (`@3akhp/prts-mcp-<platform>`), published with npm OIDC provenance on `@next` (`3.0.0-alpha.3`).
+- **Nine-package Rust-backed npm distribution**: added the new `prts-mcp` main package alongside the compatible `prts-mcp-ts` package, backed by `@3akhp/prts-mcp-runtime` (Node `>= 22` launch bridge with signal forwarding and Windows parent-process lifecycle monitoring), `@3akhp/prts-mcp-data` (shared read-only fallback data), and five platform-filtered binary packages (`@3akhp/prts-mcp-<platform>`), published with npm OIDC provenance on `@next` (`3.0.0-rc.1`).
 - **Dual-architecture native Docker images**: updated `ghcr.io/3akhp/prts-mcp` (`linux/amd64` and `linux/arm64`) to run the native Rust server under `tini` (PID 1 signal forwarding) with bundled read-only fallback data in `/app/data` and full compatibility with existing 2.x `/data` named volumes and bind mounts.
 - **Isolated `lts/2.8` maintenance line**: preserved the Python and TypeScript 2.8.x implementations on `lts/2.8` (alongside `lts/1.7`), both supported through `2027-07-02`.
 
 ### Changed
 
-- **Tool response allocation**: transfer owned Markdown, structured results, and image strings into MCP responses, reducing temporary copies while preserving all output channels.
-
-- **Stage enemy queries**: read the six displayed combat attributes through stage overrides without reconstructing whole enemy records, and parse only the consumed wave/reference fields into JSON values, preserving override and level-fallback behavior.
-
-- **Enemy database memory use**: parse combat data directly into a compact cache with shared field names and read attributes without reconstructing whole records, preserving enemy and stage-override results.
-
-- **Story index memory and search**: store chapter text contiguously, share repeated speaker names within each chapter, and iterate record positions without a duplicate array, preserving every indexed line and search order.
-
-- **Operator memory use**: retain only fields consumed by operator panels, talents, and skill lookups in the character cache, reducing memory use without changing tool output.
-
 - **Entry-point transport defaults**: the new `prts-mcp` binary and npm package default to Streamable HTTP (`:3000/mcp`, switchable via `PRTS_TRANSPORT=stdio`); `prts-mcp-ts` / `prts-mcp-ts-bun` (HTTP) and `prts-mcp-ts-stdio` (stdio) retain their fixed 2.x transport modes on top of the Rust binary without requiring Bun; the Docker entrypoint (`prts-mcp-ghcr`) retains default `stdio` (switchable via `PRTS_TRANSPORT=http`).
-- **Native diagnostics and regex boundaries (`D-001`–`D-007`)**: `/debug/metrics` reports `process.runtime: "rust"`, OS-native resident memory (`process.rss_bytes`), and the highest sampled RSS (`process.rss_high_water_bytes`) instead of V8/Python heap fields; `/debug/cache` retains its per-domain cache counters (documented in `contracts/baseline.json`).
-
-### Fixed
-
-- **Memory use after mixed queries**: share cached stage, search, and artwork data; avoid copying the enemy database for individual queries; and retain only consumed operator, enemy, stage, base-skill, and skin fields. Enemy appearance indexing parses wave data without allocating unrelated level structures.
-- **Concurrent first queries**: serialize each dataset's initial load within a generation so simultaneous requests share the cached result. Failed loads remain retryable.
-- **Combat skill loading and search**: keep compact skill data and build search text directly, reducing retained memory and temporary allocations while preserving level numbering, placeholders, and output values.
+- **Native diagnostics (`D-001`, `D-002`)**: `/debug/metrics` reports `process.runtime: "rust"`, OS-native resident memory (`process.rss_bytes`), and the highest sampled RSS (`process.rss_high_water_bytes`) instead of V8/Python heap fields; `/debug/cache` retains its per-domain cache counters (documented in `contracts/baseline.json`).
 
 ### Removed
 

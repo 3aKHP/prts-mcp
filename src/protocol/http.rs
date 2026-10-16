@@ -243,7 +243,7 @@ async fn mcp_endpoint_inner(
     let modern_version_header = headers
         .get("mcp-protocol-version")
         .and_then(|v| v.to_str().ok())
-        .map(str::to_string);
+        .map(|v| v.trim_matches([' ', '\t']).to_string());
     let mcp_method_header = headers
         .get("mcp-method")
         .and_then(|v| v.to_str().ok())
@@ -303,7 +303,12 @@ async fn mcp_endpoint_inner(
     let any_envelope = messages
         .iter()
         .any(|m| m.is_object() && jsonrpc::has_modern_envelope(m));
-    let has_modern_headers = modern_version_header.is_some() || mcp_method_header.is_some();
+    // The frozen SDK classifies revisions before 2026-07-28 as legacy,
+    // including clients that send MCP-Protocol-Version on every request.
+    // Mcp-Method alone does not claim a modern protocol revision.
+    let header_names_modern = modern_version_header
+        .as_deref()
+        .is_some_and(|version| version >= super::MODERN_PROTOCOL_VERSION);
 
     if any_envelope {
         // Modern headers must agree with the envelope.
@@ -323,7 +328,7 @@ async fn mcp_endpoint_inner(
         }
         return handle_modern(shared, messages, query, headers).await;
     }
-    if has_modern_headers {
+    if header_names_modern {
         // Modern headers without envelope must not fall back to legacy.
         return json_response(
             StatusCode::BAD_REQUEST,
