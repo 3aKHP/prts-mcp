@@ -1,0 +1,26 @@
+{
+  "case": "wiki.page.sections.empty",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v1",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "d1a3deb5-dd4b-4bbd-a9ef-45faaafdc140",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "页面 '无目录页面' 没有章节目录。"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9929
+    }
+  }
+}

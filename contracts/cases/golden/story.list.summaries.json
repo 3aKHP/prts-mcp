@@ -1,0 +1,26 @@
+{
+  "case": "story.list.summaries",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "6c01cc12-3c0d-4f52-9ff9-d330f2b565f1",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "活动级长摘要：测试活动全貌。\n\n- TEST-1 [BEG] 开端（key: activities/act_test/level_act_test_01_beg）\n  LLM 长摘要：开端发生了什么。\n- TEST-2 [END] 终章（key: activities/act_test/level_act_test_02_end）\n  官方级：终章一句话。"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9611
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+ "name": "list_stories",
+ "description": "列出指定活动的所有剧情章节（按官方顺序排列）。 返回格式：每行 `- 章节编号 [标签] 章节名（key: story_key）`，其中 story_key 可直接传入 read_story 读取该章台词。 设 include_summaries=true 可一次性了解活动整体剧情脉络。",
+ "inputSchema": {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+   "event_id": {
+    "type": "string",
+    "description": "活动 ID，如 \"act31side\"（可从 list_story_events 获取）。"
+   },
+   "include_summaries": {
+    "default": false,
+    "description": "是否附带梗概，默认 false。设为 true 时顶部附活动级长摘要（若有）、每章下方附一句话梗概。",
+    "type": "boolean"
+   }
+  },
+  "required": [
+   "event_id"
+  ]
+ }
+}

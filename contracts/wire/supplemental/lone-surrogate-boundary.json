@@ -1,0 +1,28 @@
+{
+  "capture_meta": {
+    "captured_at": "2026-10-11T11:14:00Z",
+    "note": "J1 input-boundary probe from docs/02: lone leading surrogate (escaped \ud83d) inside a tools/call string argument"
+  },
+  "ts_oracle": {
+    "status": 200,
+    "body_text": "event: message\ndata: {\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"没有匹配的关卡（filter: zoneId=\\ud83d）。\"}]},\"jsonrpc\":\"2.0\",\"id\":2}\n\n",
+    "behavior": "Bun JSON.parse accepts the lone surrogate escape; the filter runs with it and the response JSON re-escapes it verbatim"
+  },
+  "rust_adapter": {
+    "status": 400,
+    "content_type": "application/json",
+    "body_text_verified": {
+      "surrogate_at_string_end": "{\"jsonrpc\":\"2.0\",\"id\":null,\"error\":{\"code\":-32700,\"message\":\"Parse error: unexpected end of hex escape at line 1 column 108\"}}",
+      "surrogate_mid_string": "{\"jsonrpc\":\"2.0\",\"id\":null,\"error\":{\"code\":-32700,\"message\":\"Parse error: unexpected end of hex escape at line 1 column 109\"}}"
+    },
+    "behavior": "serde_json rejects unpaired surrogate escapes; the whole request body fails with an explicit parse error naming the failure mode and position"
+  },
+  "disposition": {
+    "id": "D-005-input-surrogate-rejection",
+    "status": "approved",
+    "approved_by": "maintainer",
+    "approved_at": "2026-10-11",
+    "decision": "Rust rejects lone UTF-16 surrogate code units in client input with an explicit parse error (HTTP 400 + JSON-RPC -32700 with detail). stdio lines carrying lone surrogates follow the existing unparseable-line contract (silent skip). Valid surrogate pairs and all normal Unicode text remain accepted and must keep matching the oracle — verified by differential case stage.list.chapter-astral-pair and the js_slice complete-character truncation tests.",
+    "scope_guard": "This approval does not extend to any other input, output, or error behavior."
+  }
+}

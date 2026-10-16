@@ -1,400 +1,169 @@
-# 代码规范与架构 — PRTS-MCP
+# 代码规范与架构 — PRTS-MCP 3.x
 
-面向所有协作者（人类与 AI）。本文件记录代码架构硬原则、反模式、CHANGELOG 规则、测试规范以及历史陷阱。
+本文面向编写与审查代码的协作者，定义 PRTS-MCP 3.x 的模块分层、Rust 编码规范、版本与 CHANGELOG 规则、测试要求及已知工程陷阱。
 
-公开贡献流程见 [`../../CONTRIBUTING.md`](../../CONTRIBUTING.md)，跨平台开发环境见 [`ENVIRONMENT.md`](ENVIRONMENT.md)。当前维护者与 AI 的日常工作流见 [`../../CLAUDE.md`](../../CLAUDE.md)；项目现状见 [`../../STATUS.md`](../../STATUS.md)。
+- 公开文档写作规范见 [`DOCUMENTING.md`](DOCUMENTING.md)
+- 跨平台开发环境与验证命令见 [`ENVIRONMENT.md`](ENVIRONMENT.md)
+- PR 分级与双轨评审流程见 [`WORKFLOW.md`](WORKFLOW.md)
+- 外部贡献者指南见 [`CONTRIBUTING.zh-CN.md`](../../CONTRIBUTING.zh-CN.md) / [`CONTRIBUTING.md`](../../CONTRIBUTING.md)
+- AI 协作者日常指令见 [`CLAUDE.md`](../../CLAUDE.md)
 
 ---
 
-## 代码规范与架构
+## 1. 模块分层与职责边界
 
-**项目维护者对代码架构和模块化解耦要求很高**。上帝文件和面条代码是底线问题，在它们出现之前就要阻止。以下是硬性原则，不是"nice to have"。
+### 文件粒度与单一职责
 
-### 文件大小与职责
+- **单一职责**：每个源文件只负责一项核心职责。例如 `domain/operator.rs` 只负责干员数据读取与格式化，不混入搜索逻辑；`text/sanitizer.rs` 只负责 Wikitext 清洗，不发起网络请求。
+- **文件长度预警线**：当单个源文件超过约 **300 行**时，应审视其是否同时持有了无关的状态、更新与查询职责。超过预警线并不意味着必须按行数机械拆分，而应以职责内聚和可独立测试性为准绳。
+- **严禁跨层调用**：
+  - `domain/` 只负责业务数据解析、计算与格式化，不直接发起 HTTP 请求。
+  - 数据同步的 HTTP 请求收敛在 `sync/` 层；PRTS Wiki 的 MediaWiki API 请求收敛在 `wiki/` 层。
+  - `app.rs` 负责启动与运行时 `DataState` 编排；MCP 工具的注册与参数分发由 `tools/` 持有。
 
-- **单一职责**：一个文件只干一件事。`operator.py` 只负责干员数据读取，不混进搜索逻辑；`sanitizer.py` 只管 wikitext 清洗，不放 API 调用
-- **文件长度预警线**：源文件超过 ~300 行就要问"这能不能拆"
-- **模块边界**：`data/` 的数据读取模块只做数据读写和格式化，不混进 HTTP 请求；HTTP 传输统一收敛到 `sync/` 层；`api/` 只做 PRTS Wiki API 调用；`server.py` 只做工具注册和启动编排
+### 架构分层图
 
-> **已审健康的大文件（2.7.0 上帝文件审计归档，P5.1）**：预警线以耦合度为准，不是行数。以下单元在 2.7.0 周期审计中按 STYLE 耦合规则逐个判为单一职责/抽取得当（story_reader 为临界），**不要为行数机械拆分**；表中行数是归档时的快照，结论以耦合度为准；"可选辅助"是审计记录的文件内抽取候选，仅在利于测试/复用时再做，不欠账：
-
-| 模块（PY / TS 行数@2026-08） | 审计结论 | 可选辅助（非必须） |
-|---|---|---|
-| `data/operator`（311 / 402） | 🟢 单一职责（干员数据读+格式化）；TS 大 ~90 行是 JSON-shape interface + per-cache CacheMetrics 的结构不对称，非上帝文件 | `resolve_operator_or_error`（收 3 处重复前置解析） |
-| `data/item`（475 / 496） | 🟢 镜像 operator 的 build/render/entry 形态 | `itemLabels`（纯 label 表 + 格式化，无 IO 可单测） |
-| `data/stage`（526 / 554） | 🟢 validate→load→filter→paginate→shape 线性管线，最大嵌套 2 | `stage_render`（纯 markdown；`stage_search` 契合 ROADMAP 决策原则 7 的统一 search 入口） |
-| `data/story_search`（398 / 356） | 🟢 内聚 | `_validate_search_params`（集中 6 个参数 guard） |
-| `data/story_reader`（540 / 561） | 🟡 临界：默认不拆，仅在利于测试时抽取 | `story_types`（纯数据形状）+ `story_format`（payload+markdown） |
-| `data/images`（227 / 233） | 🟢 免检：单域、抽取得当（sync 在 `sync/images_sync`、缓存生命周期合惯例） | — |
-
-### 分层纪律
-
-```
-server.py/ts          ←  MCP 工具注册、启动同步编排
-api/                  ←  PRTS Wiki MediaWiki API 客户端
-data/                 ←  干员/剧情/搜索/store 抽象
-data/stores           ←  DirectoryStore / ZipStore 底层读写
-sync/                 ←  GitHub Release 数据同步（传输：HTTP/镜像/级联 fetch；发现：release 列表）；数据同步 HTTP 归此层（PRTS Wiki HTTP 归 api/）
-utils/                ←  跨领域纯函数（wikitext 清洗等）
-config.py/ts          ←  路径解析、环境变量
+```text
+app.rs             ← 进程启动、配置加载与 DataState 编排
+protocol/          ← stdio / Streamable HTTP 传输、JSON-RPC、协议时代与会话管理
+tools/             ← 24 个工具的 Schema 声明、参数校验、分发与输出通道包装
+domain/            ← 干员 / 敌人 / 关卡 / 物品 / 剧情 / 搜索 / 立绘等领域逻辑与缓存
+storage/           ← DirectoryStore / ZipStore 抽象、文件身份（FileIdentity）与代际解析
+sync/              ← GitHub Release 发现、下载、manifest/SHA-256 校验、跨进程锁与代际激活
+wiki/              ← PRTS MediaWiki API 客户端（搜索、页面解析、模板提取与图片拉取）
+text/              ← 纯文本清洗、JS 数字/UTF-16 兼容处理与正则引擎封装
+config.rs          ← 命令行 Profile、启动路径与环境变量解析
+native/ + vendor/  ← QuickJS libregexp 与 OS 进程内存统计的 C FFI 绑定
 ```
 
-**允许的依赖方向**：`server → api, data, sync, config` / `data → stores, utils, config` / `sync → stores, utils, config` / `api → utils`。 **禁止**：`stores` 依赖 `data`；`utils` 依赖 `api` 或 `data`；`config` 依赖任何其他模块；`data` 的数据读取模块直接发 HTTP（数据同步 HTTP 归 `sync/`、PRTS Wiki HTTP 归 `api/`）。
+调用方向自上而下：`app` / `protocol` / `tools` 调用 `domain` 与 `wiki`，底层文件读取统一经过 `storage`。禁止从 `storage`、`text` 或 `config` 反向依赖 `domain` 或 `tools`。
 
-> 三个注定的例外：① `data/artwork_mediawiki` 是 wiki-backed 数据源，允许**经 `api/` 客户端**取 PRTS 数据（自身仍不发裸 HTTP、不 import sync）；② `data/artwork_local` 对本地图片代际目录的 PNG 直读豁免 store 抽象——`stores` 是 JSON 文本契约，代际目录是绝对宿主路径而非 store root 相对模型，且读取自带 realpath 遏制守卫（#169）；③ `sync/images_sync` 消费 `data/images` 的 AKDP index 契约（`parse_index`/`ImagesIndex`/`SCHEMA_VERSION`）——index 是 sync 写出、data 读入的对接契约，schema 归 data 域持有，反向搬迁会制造更糟的 `data → sync` 边。
+- **存储抽象**：所有本地数据文件读取均须通过 `storage/` 的 `DirectoryStore` 或 `ZipStore`，禁止在工具函数或领域逻辑中直接调用 `std::fs::read()` 读取原始 JSON。
+- **立绘双后端隔离**：本地立绘后端只读取已激活的图片代际目录并校验路径与 Token 归属；在线立绘后端通过 `wiki/` 客户端按需拉取并缓存。两者通过统一的索引契约衔接，不将底层文件访问逻辑混入 MCP 工具入口。
 
-### 抽象层
+### 函数抽取与重构准则
 
-- 所有数据读写经过 `stores.py` / `stores.ts` 的 `DirectoryStore` / `ZipStore`
-- 不要直接在工具函数里 `open()` / `readFileSync()` 读 JSON
-- 新数据源先加 dataset spec，再实现 reader
+遇到以下情况时，应考虑抽取独立函数或子模块：
 
-### 抽取的触发条件
+- 同一计算公式或校验逻辑在 **≥ 2 处**重复出现；
+- 单个函数超过 **~50 行**，或缩进嵌套超过 **3 层**；
+- 一段逻辑具备明显的“状态 + 更新 + 查询”三要素（适合抽为独立结构体/模块）；
+- 一段纯计算或解析逻辑需要单独编写单元测试。
 
-遇到以下任一情况**立即**抽成独立单元，不要等下次 PR：
+**重构边界**：单次使用、少于 10 行且语义清晰的内联代码无需为了“模块化”强行拆碎。如果在开发新功能前发现既有模块结构需要先清理，请**先单独提交一个 `refactor` PR**，合并后再提交 `feat` PR，不要在同一个 PR 中混入大面积重构与功能变更。
 
-- 同一个公式/逻辑在 ≥2 个地方出现
-- 一个函数超过 ~50 行或嵌套超过 3 层
-- 一段逻辑有明显的"状态 + 更新 + 查询"三要素（→ 独立类/模块）
-- 一段逻辑需要单独测试（→ 独立纯函数）
+### 常见反模式（禁止出现）
 
-### 模块化 vs 过度抽象
+- 职责混杂的巨型文件（所谓 God File）；
+- 在工具入口直接操作文件系统或拼接锁/代际状态机；
+- 堆砌不相关函数的 `utils.rs` / `helpers.rs` 杂物堆（应按职责命名专用模块）；
+- 同一业务常量散落在多个文件中（应收敛至 `config.rs` 或对应模块的顶层常量）；
+- 擅自偏离 TS/v2.8.1 冻结的工具契约，或未经批准扩大 `contracts/baseline.json` 中的差异项；
+- 为新数据域机械复制 `list_X` / `get_X` / `search_X` 三件套（应优先扩展 `search(scope)` 或既有工具的 `action` 枚举）。
 
-不要为了抽而抽。**单次使用、少于 10 行、语义清晰**的内联代码不需要抽。判断基准："如果我明天给这块代码写单测或者重用它，现在的形状会让我想重写吗？"——会就抽，不会就留着。
+---
 
-### 命名与样式
+## 2. MCP 工具描述与错误提示规范
 
-- 公开 API 必须有 docstring / JSDoc，说明 **what + why**，不说 **how**
-- 不写"废话注释"（`# increment i by 1`）；非显而易见的约束必须注释
-- 错误消息用中文，面向最终用户（MCP 客户端会直接展示给用户）
+### 工具描述模板
 
-### Markdown 文档换行
+MCP 工具的 `description` 与参数 Schema 是 LLM 选择工具的核心依据，同时直接消耗客户端的上下文预算。所有工具描述遵循以下四段式结构：
 
-公开 Markdown 文档（根目录与 `python/`、`ts/` 下的 `*.md`）使用**自然语义换行**：每个段落、列表项、引用段写成一行物理行，**不允许 ~80 列 hard-wrap**。硬折行在渲染时会被软连接为一行，只增加 diff 与 blame 噪音、并制造"同段多行"的伪结构。例外：代码栅栏内容、表格、YAML frontmatter、徽章栈（一行一个）等结构性布局不受此约束。
+1. **首句定性**：动词开头的一句话说明“做什么 + 面向哪类数据”；
+2. **返回格式**：简明提示输出结构与大致长度（如“每行格式为 `- 编号 名称`”）；
+3. **工具分流指引**：必要时给出简短指向（如“如需跨干员按技能效果搜索，请使用 `search(scope="skills")`”）；
+4. **参数细节下放**：具体参数取值规则写在参数 Schema 的描述中，不在工具主描述里重复罗列。
 
-### 工具描述规范
+**硬性约束**：
 
-MCP 工具描述（Python `@mcp.tool()` 的 docstring / TS `server.tool()` 的描述串）是 LLM 选择工具的**主要信号**，也是 128K 级模型的 schema 预算大头。所有工具描述遵循统一模板：
-
-1. **第一行**：一句话用途，动词开头，说清"做什么 + 面向哪类数据"
-2. **返回什么 / 输出格式**：结构与大致长度提示（如"每行 `- 编号 名称`"）
-3. **何时用 / 何时别用**：必要时给简洁指向（"如需 X 用 Y"），但不堆砌
-4. **参数语义**写在参数的 `Field` / `.describe()`，正文不重复
-
-硬约束：
-
-- 中文，面向最终用户；只说 what + why，不说 how（不描述实现）
-- 去废话、去过期交叉引用——工具合并/删除后同步清理 `如需…请用…`
-- 正文控制在 ~3 短句内；更长的说明拆到参数描述
-- 两套实现的同名工具描述保持语义一致
-
-参数命名约定（新工具照此长）：实体解析用 `name`；正则搜索用 `pattern` + `max_results`；可浏览列表分页用 `limit` + `offset`；PRTS 维基关键词搜索用 `query` （语义 ≠ 正则 `pattern`）。
+- 使用简洁的中文，面向最终调用方说明 **What & Why**，不描述内部实现细节（How）；
+- 工具主描述控制在 **3 句以内**；
+- 参数命名保持全仓一致：实体名称统一用 `name`，正则搜索统一用 `pattern` + `max_results`，分页列表统一用 `limit` + `offset`，Wiki 关键词搜索用 `query`（与正则 `pattern` 区分）。
 
 ### 错误处理
 
-- 缺失数据：返回人类可读的中文错误消息，不要抛裸异常
-- 网络失败：sync 模块负责重试和降级，工具函数不自己重试
-- 用户输入错误：在工具函数入口验证，返回明确提示
-
-### 公共 API 约束（1.x 兼容性合约）
-
-- 工具名、必填参数、输出格式在 1.x 期间不得破坏性变更
-- 新参数必须有安全默认值（向后兼容）
-- 两套实现的工具签名必须一致
-
-### 触及现有坏味道时
-
-遵循"**童子军规则**"：
-
-- **离开比到来时更干净一点**。改一个函数顺手把它的命名、缩进、局部变量换掉
-- **不做"顺便大重构"**：看到面条不代表可以在 bugfix PR 里顺手拆。**专门开一个 `refactor` PR**，说明动机、范围、验证方式
-- **拆一个坏文件的 PR，不要再顺便加新功能**。保持重构 PR 的 diff 尽量只在移动代码
-
-### 常见反模式（见到就阻止）
-
-这些不要在本仓库出现：
-
-- 千行以上的单文件
-- 工具函数里直接读文件（绕过 store 抽象）
-- `Utils.py` / `helpers.ts` 杂物堆——按主题拆专用模块
-- 同一份常量在多个文件散落（必须走 config 或顶层常量）
-- 跨层调用（data 数据读取模块里直接发起 HTTP 请求；HTTP 传输只归 `sync/` 层）
-- 两套实现的行为不一致（工具名、参数、输出格式）
-- 为每个新数据域机械复制 `list_X` / `get_X` / `search_X` 三件套——优先扩 `search(scope)` 等统一入口的 enum（见 ROADMAP 决策原则 7）
-
-### 何时是重构 PR 的好时机
-
-- 准备在某个模块加新功能，发现"得先清理才能干净地加"——**先开一个 refactor PR，merge 后再开 feature PR**
-- 连续两轮独立 code review 指出同一类坏味道
-- 文件大小、嵌套深度跨过预警线
+- **缺失数据或未同步完成**：返回可读的中文提示（保持与冻结契约一致的文案），绝不向客户端抛出未捕获的裸异常或底层堆栈。
+- **网络与同步失败**：后台同步的重试与降级由 `sync/` 模块统一处理；Wiki 请求失败由 `wiki/` 客户端封装为清晰的错误消息，工具层不自行叠加隐式重试。
+- **用户输入校验**：在工具入口完成参数范围与必填项校验（`tools/zodish.rs` 等），返回明确的校验错误。
 
 ---
 
-## Python 规范
+## 3. Rust 与 FFI 编码规范
 
-### 风格
+### 代码风格与静态检查
 
-- 遵守 PEP 8；最大行宽 88 字符（与 black 默认一致）
-- 类型注解：所有公开函数签名必须有类型注解，内部函数酌情
-- 使用 `from __future__ import annotations` 延迟注解求值
-- 字符串：单引号或双引号均可，同一文件内保持一致
-- 导入顺序：标准库 → 第三方 → 本地模块，用空行分隔
+- 所有代码必须通过 `cargo fmt --all -- --check` 与 `cargo clippy --locked --all-targets -- -D warnings`。
+- 按数据域实际消费的字段定义反序列化结构体，无需为上游 JSON 中未使用的庞大冗余字段建立无意义的类型定义。
+- 公开函数与关键模块边界使用 `///` 或 `//!` 编写注释，聚焦设计意图与非显而易见的约束，不写复述代码字面意思的废话注释。
+- 生产代码保持纯 Rust + 静态链接 C 组件（`native/`、`vendor/quickjs-regexp/`），严禁在生产运行时引入 Node.js / Bun / Python 虚拟机或脚本回退路径。
 
-### 类型
+### 缓存与代际失效
 
-```python
-# 好：用 dict[str, Any] 而非 Dict[str, Any]（3.10+）
-def _load_json(filename: str) -> dict[str, Any]: ...
+- 领域层缓存必须绑定底层文件的 `FileIdentity` 与当前激活代际（Generation）。当后台同步激活新代际时，相关领域缓存必须随之失效，切勿编写不感知数据代际切换的静态全局缓存。
+- 默认路径与数据卷解析必须始终遵循“完整用户数据优先于内置只读备用数据”的规则。
 
-# 好：Optional 用 X | None
-def get_operator(name: str | None) -> dict[str, Any] | None: ...
-```
+### `unsafe` 与原生 C 边界
 
-### 缓存
+- 仓库中的 `unsafe` 仅限两处边界：正则引擎绑定（`text/regex_compat.rs` + `native/regexp.c`）与进程内存统计（`diagnostics/` + `native/process_memory.c`）。
+- 每一处 `unsafe` 块必须注释说明指针有效性、缓冲区长度、生命周期与释放责任；严禁将裸指针泄露到高层业务模块。
 
-- gamedata 域模块经 `data/dataset_access`（TS `data/datasetAccess.ts`）声明缓存：`define_dataset(spec)` 返回 access 对象，loader 默认 `onError: "throw"`（异常传播、下次重试——保住"进程中途数据出现"语义）；缺数据当空/None 由 load 函数自行返回
-- 缓存引擎仍是 activation-aware（generation key），代际变更经各模块唯一一条 `register_activation_listener(clearX_caches)` 触发清除；operator 的清除会经 `on_clear` rider 级联清 search
-- 注意失效机制的不对称：Python 的 generation-key 缓存即使忘注册 listener 也会自愈；TS 的契约层不注册 listener，失效完全依赖各模块的 `registerActivationListener(clearXCaches)`——迁移新域时这条注册不可省
-- 不要缓存 `Config`，它需要反映 sync 后的路径变化
+### 标准流与进程生命周期
 
-### MCP 工具注册
-
-```python
-# server.py 中的模式：本地函数用 _ 前缀，MCP 工具是薄包装
-from prts_mcp.data.operator import get_operator_archives as _get_archives
-
-@mcp.tool()
-async def get_operator_archives(
-    name: Annotated[str, Field(description="干员中文名，如「阿米娅」。")],
-) -> str:
-    """获取干员的档案资料。"""
-    return _get_archives(name)
-```
-
-- 工具函数是薄包装：参数验证 + 委托给 data/api 模块
-- `description` 用中文，面向最终用户
-- 不要在工具函数里做业务逻辑
-
-### 测试
-
-- 测试文件：`python/tests/test_<module>.py`
-- 使用 pytest fixtures，共享 fixture 放 `conftest.py`
-- 大型测试数据（zip 文件）通过 `story_zip` fixture 按需 skip
-- 运行：`uv run --directory python --locked python -m pytest tests/ -v`
+- **`stdout` 仅用于输出 MCP 协议报文**；所有启动、同步与调试日志一律输出至 `stderr`。
+- 保持 stdio EOF 正常退出、HTTP 会话空闲淘汰、POSIX 信号（`SIGINT`/`SIGTERM`/`SIGHUP`）优雅停机以及 Windows 下 npm 启动桥父进程退出的联动清理语义。
 
 ---
 
-## TypeScript 规范
+## 4. 版本号与 CHANGELOG 规范
 
-### 风格
+### 版本源与同步点
 
-- 遵守 ESLint recommended rules
-- 使用 ESM (`"type": "module"`)
-- 文件名：`camelCase.ts`（与 Python 的 `snake_case.py` 对应）
-- 类型：优先 `interface` 定义数据形状，`type` 用于联合/交叉类型
-- 导入：使用 `.js` 扩展名（ESM 要求）
+版本语义与向后兼容承诺见 [`VERSIONING.md`](VERSIONING.md)。在 3.x 中，`Cargo.toml` 的 `[package].version` 是唯一的产品版本源，`Cargo.lock`、npm 包装包、Docker 镜像标签与 MCP `serverInfo.version` 均与其保持一致。
 
-### 类型
+版本变更或发版时需同步检查以下位置：
 
-```typescript
-// 好：interface 定义 JSON 结构
-interface CharacterEntry {
-  name?: string;
-  appellation?: string;
-  rarity?: string;
-  // ...
-}
+| 位置 | 维护内容 |
+| --- | --- |
+| `Cargo.toml` / `Cargo.lock` | 产品版本号与锁定依赖 |
+| `CHANGELOG.md` / `CHANGELOG.zh-CN.md` | 中英双语的用户可见变更记录与升级说明 |
+| `README.md` / `STATUS.*` / `ROADMAP.*` | 当前公开版本、候选版标签与阶段状态 |
+| 原生 / npm / Docker 打包产物 | 由同一干净 Commit 构建并校验版本一致性 |
 
-```
+### CHANGELOG 编写规则
 
-- 只定义实际使用的字段，不要为整个 JSON 定义完整类型
+遵循 [Keep a Changelog](https://keepachangelog.com/) 规范，按 `Added`、`Changed`、`Deprecated`、`Removed`、`Fixed`、`Security`（中文对应 `新增`、`变更`、`弃用`、`移除`、`修复`、`安全`）分类，仅列出当次有条目的分类：
 
-### 缓存
-
-- gamedata 域经 `data/datasetAccess.ts` 的 `defineDataset` 声明缓存（loader 状态机），不再手搓模块级 `let` + `checkActivationChange()` 脚手架；每个域保留恰好一条 `registerActivationListener(clearXCaches)`
-- 不要用 `Map` 做简单缓存（除非需要 LRU 或多 key）
-- Config 不缓存：`loadConfig()` 每次调用重新读取
-
-### MCP 工具注册
-
-```typescript
-// server.ts 中的模式
-import { getOperatorArchives as _getArchives } from "./data/operator.js";
-
-server.tool(
-  "get_operator_archives",
-  "获取干员的档案资料。",
-  { name: z.string().describe("干员中文名，如「阿米娅」。") },
-  async ({ name }) => ({ content: [{ type: "text", text: _getArchives(name) }] }),
-);
-```
-
-### 测试
-
-- 测试文件：`ts/tests/<module>.test.ts`
-- 使用 Node.js 内置 `node:test` + `node:assert`
-- 共享 fixture 放 `ts/tests/fixtures/`
-- 运行：`npm --prefix ts run build && npm --prefix ts test`
+1. **面向用户写作**：描述用户、部署者或客户端可感知的行为变化，不照抄 Git commit message，也不把纯内部文件搬迁或代码格式化塞进 CHANGELOG。
+2. **中英双语同步**：`CHANGELOG.md` 与 `CHANGELOG.zh-CN.md` 保持相同的版本号、发布日期、分类结构与实现标注（历史 0.x–2.x 条目保留 `[Python]` / `[TypeScript]` 归属）。
+3. **日常开发与发版切换**：
+   - 日常合并到 `develop` 的功能与修复写入顶部的 `[Unreleased]` / `[未发布]` 段落；纯内部 `docs` / `style` / `chore` 无需追加条目。
+   - 准备发布时，在 `release/vX.Y.Z` 分支中将 `[Unreleased]` 替换为 `[X.Y.Z] — YYYY-MM-DD`（`main` 分支不保留空的 `Unreleased` 段落）。
+   - 发布合并并回灌 `develop` 时，在 `develop` 顶部重新开启空的 `[Unreleased]` / `[未发布]` 段落，并将版本号推进至下一目标 `-dev.0`。
 
 ---
 
-## 两套实现的对应关系
-
-Python 和 TypeScript 不是翻译关系，但文件结构和模块职责应保持对齐：
-
-| Python | TypeScript | 职责 |
-|--------|-----------|------|
-| `server.py` | `server.ts` | MCP 工具注册、启动同步 |
-| `config.py` | `config.ts` | 路径解析、环境变量 |
-| `data/stores.py` | `data/stores.ts` | DirectoryStore / ZipStore 抽象 |
-| `data/operator.py` | `data/operator.ts` | 干员数据读取和格式化 |
-| `data/enemy.py` | `data/enemy.ts` | 敌人图鉴/数据库读取编排 + payload/render（消费下方纯模块） |
-| `data/enemy_database.py` | `data/enemyDatabase.ts` | enemy_database.json 归一化 + level0_index 投影（纯） |
-| `data/enemy_stats.py` | `data/enemyStats.ts` | 战斗属性抽取 + m_defined 覆盖合并（纯；TS 侧另持 pythonFloatString/formatNumber 格式化 shim，无 PY 对应） |
-| `data/enemy_render.py` | `data/enemyRender.ts` | 敌人图鉴卡片 + 战斗属性块渲染（首个 render 模块范式：纯 dict → markdown lines） |
-| `data/level_parser.py` | `data/levelParser.ts` | zh_CN-levels 关卡 JSON 纯解析（level_path/spawn_counts/enemy_refs/parse_level） |
-| `data/stage.py` | `data/stage.ts` | 关卡数据读取和格式化（导出共享 load_stage_table/getStageTable） |
-| `data/stage_enemy.py` | `data/stageEnemy.ts` | 关卡×敌人融合编排（消费 enemy/stage 共享访问器，own dataset 仅 enemy_appearance_index） |
-| `data/artwork_local.py` | `data/artworkLocal.ts` | 本地 AKDP 立绘后端（char-id 别名解析、index 加载、受守卫 PNG 读取；接收已解析 gen_dir，不 import sync/api/output） |
-| `data/artwork_mediawiki.py` | `data/artworkMediawiki.ts` | MediaWiki 立绘后端（list/get 编排 + LRU + label/ownership；经 api 客户端取数） |
-| `data/artwork_format.py` | `data/artworkFormat.ts` | artwork 结果形状（ListOutcome/GetOutcome）+ 共享列表 markdown 渲染 |
-| `data/building.py` | `data/building.ts` | 基建技能读取（building_data.json：按 buff 槽位取最高相位 + building_skills 搜索记录。与 operator 存在受控回边：PY 在记录构建函数内 lazy import operator 的 `_build_name_to_id`，TS 为静态 import 但仅在函数体内使用其绑定——两种形式都保证环引用不在模块求值期触碰对方绑定；operator/search 单向消费本模块的其余部分） |
-| `data/story.py` | `data/story.ts` | 剧情数据读取和格式化 |
-| `data/search.py` | `data/search.ts` | 全文搜索 |
-| `data/sync.py` | `data/sync.ts` | re-export barrel（全 sync 状态机已迁入 `sync/`） |
-| `sync/transport.py` | `sync/transport.ts` | GitHub Release HTTP 传输（镜像/级联 fetch） |
-| `sync/release_discovery.py` | `sync/releaseDiscovery.ts` | Release 发现（list/latest-by-prefix/asset_url/check_latest） |
-| `sync/_types.py` | `sync/types.ts` | 共享 spec/result 类型（RepoSpec/ReleaseArchiveSpec/SyncResult） |
-| `sync/gamedata_pair.py` | `sync/gamedataPair.ts` | GameData pair 状态机（archive 激活 + pair 协调，含 #152 幂等双守卫） |
-| `sync/images_sync.py` | `sync/imagesSync.ts` | AKDP 图片资产同步状态机（shard/delta 下载 + 代际激活） |
-| `sync/generation_store.py` | `sync/generationStore.ts` | 图片代际文件系统 store（.images_meta 指针 + active 代际解析 + prune） |
-| `sync/primitives.py` | `sync/primitives.ts` | sync 层共享原语（atomic_write_json + prune_old_trees） |
-| `sync/release_activation.py` | `sync/releaseActivation.ts` | 跨进程锁 + 代际树 + staging + extract-meta + zip 校验/解压 |
-| `sync/release.py` | `sync/release.ts` | Release 下载 + manifest 校验 + sync_release 状态机 |
-| `data/datasets.py` | `data/datasets.ts` | 数据集 spec 定义 |
-| `data/dataset_access.py` | `data/datasetAccess.ts` | DatasetAccess 契约（define_dataset/defineDataset 工厂 + 具名注册表 + excel/levels store 工厂） |
-| `data/gamedata_attrs.py` | `data/gamedataAttrs.ts` | 共享 gamedata 属性 unwrap（m_value/mValue） |
-| `data/messages.py` | `data/messages.ts` | canonical 缺数据/边界校验/正则错误文案（两侧符号 1:1） |
-| `api/prts_wiki.py` | `api/prtsWiki.ts` | PRTS MediaWiki API 客户端 |
-| `utils/sanitizer.py` | `utils/sanitizer.ts` | Wikitext 清洗 |
-
-TS 文件头注释应注明对应的 Python 文件：`Mirrors python/src/prts_mcp/data/operator.py.`
-
----
-
-## 版本号与发布
-
-版本语义与兼容性承诺见 [`VERSIONING.md`](VERSIONING.md)（SemVer 形状 + 封闭枚举的偏离）。预发布用 `-alpha.N` / `-beta.N` / `-rc.N` 后缀。
-
-**`develop` 分支上的版本号**始终带开发后缀，发布时去掉：
-
-| 文件 | develop 分支 | main 分支（发布时） |
-|------|---------|-------------------|
-| `python/pyproject.toml` | `X.Y.Z.dev0` | `X.Y.Z` |
-| `python/uv.lock` | `X.Y.Z.dev0` | `X.Y.Z` |
-| `ts/package.json` | `X.Y.Z-dev.0` | `X.Y.Z` |
-| `ts/package-lock.json` | `X.Y.Z-dev.0` | `X.Y.Z` |
-
-`X.Y.Z` = 下一计划发布目标（选择规则见 [`VERSIONING.md`](VERSIONING.md)）。
-
-**版本号需要同步更新的地方**：
-
-| 文件 | 内容 |
-|------|------|
-| `python/pyproject.toml` | `version` 字段（develop 分支带 `.dev0` 后缀） |
-| `python/uv.lock` | Python 项目版本和锁定依赖 |
-| `ts/package.json` | `version` 字段（develop 分支带 `-dev.0` 后缀） |
-| `python/CHANGELOG.md` | 新版本条目 |
-| `ts/CHANGELOG.md` | 新版本条目 |
-| `ts/package-lock.json` | npm lockfile 顶层版本 |
-| `ROADMAP.md` | 当前版本号 |
-| `ROADMAP.zh-CN.md` | 当前版本号（与 `ROADMAP.md` 成对同步） |
-| `STATUS.md` | 当前版本 / 分支状态 |
-| `CLAUDE.md` / `AGENTS.md` | 分支模型表的当前版本口径（成对同步） |
-| `README.md` | 用户可见版本、工具数、工具清单 |
-
-Tag 使用实现级前缀：`python/vX.Y.Z` 和 `ts/vX.Y.Z`。稳定版 tag 必须打在 `main` 分支的发布 merge commit 上；1.7.x LTS patch tag 打在 `lts/1.7` 的对应 merge commit 上。预发布 tag（`-alpha` / `-beta` / `-rc` 后缀）打在 `develop` 的 merge commit 上；CD 的 verify job 会校验稳定版 tag 目标在 `main`、预发布 tag 目标在 `develop`，不匹配则拒绝发布（预发布完整流程见 CLAUDE.md 路径 F）。
-
----
-
-## CHANGELOG 规则
-
-遵循 [Keep a Changelog](https://keepachangelog.com/) 规范。**英文撰写**。
-
-**核心原则：面向用户描述变更，不记 commit 细节（不写哈希、不抄 commit message）。**
-
-变更分类（仅列出有内容的分类）：**Added** / **Changed** / **Deprecated** / **Removed** / **Fixed** / **Security**。
-
-### 日常开发
-
-在 `develop` 分支上，每个模块级改动（feat / fix / refactor）在 `## [Unreleased]` 段落对应分类下追加一行。小型 chore / docs / style 无需改 CHANGELOG。
-
-`main` 分支上不应出现 `[Unreleased]` 段——main 的 CHANGELOG 只包含已发布版本。
-
-### 准备发版（release/* → main + develop 发布时）
-
-1. 从 `develop` 拉 `release/vX.Y.Z`
-2. 在 release 分支将 `## [Unreleased]` 改为 `## [X.Y.Z] - YYYY-MM-DD`
-3. release PR 到 `main` 时不保留空 `## [Unreleased]` 段
-4. 版本号去掉 `-dev` 后缀后通过 PR 合并到 `main`，在 `main` 的 merge commit 上打 tag
-5. 将同一个 release 分支通过 PR merge 回 `develop`（不要 squash）；合并前往同一 release 分支追加 reopen commit：bump 到下个开发版本并重新打开空 `## [Unreleased]` 段（完整流程见 `CLAUDE.md` 路径 D）
-
----
-
-## 测试与构建
-
-### 常用命令
-
-```bash
-# Python
-uv run --directory python --locked python -m pytest tests/ -v             # 全量单测
-uv run --directory python --locked python -m pytest tests/ -v -k test_xxx # 单个测试
-
-# TypeScript
-npm --prefix ts run build                           # 先生成 stdio e2e 所需 dist
-npm --prefix ts test                                # 全量单测
-npm --prefix ts run typecheck                       # 类型检查
-```
+## 5. 测试要求与已知工程陷阱
 
 ### 测试规范
 
-- 新增的数据处理逻辑**必须**带单测
-- Python 用 pytest，位于 `python/tests/`
-- TS 用 Node.js 内置 `node:test`，位于 `ts/tests/`
-- 大型 fixture（zip 文件）通过环境变量或 skip 机制按需启用
-- 涉及 PRTS Wiki API 的测试用 mock/fixture，不要在 CI 中打真实 API
+本地验证命令详见 [`ENVIRONMENT.md`](ENVIRONMENT.md)，验证分级详见 [`WORKFLOW.md`](WORKFLOW.md)：
 
-### 双实现验证
+- **契约与差分测试**：修改工具名、参数校验、输出通道、渲染逻辑或数据同步时，必须通过 `./scripts/check-runtime.sh --full` 跑通 384 个冻结 TS/v2.8.1 对照用例与生命周期测试。严禁通过篡改或重录 `contracts/` 下的 golden 快照来掩盖回归错误。
+- **网络隔离**：常规单元测试与 CI 测试一律使用本地 fixture 或回放（`contracts/wiki-replay/`），不直接请求公网 `prts.wiki` 或 GitHub API；若因缺少验证资产导致测试无法执行，必须报错失败，不得静默跳过（skip）后伪装成全部通过。
 
-改动一个实现时，**必须检查**另一个实现是否有对应改动：
+### 已知工程陷阱（踩坑记录）
 
-- 工具名、参数名、输出格式
-- 错误消息内容
-- 数据处理逻辑（如 wikitext 清洗规则、搜索过滤条件）
+#### PRTS Wiki MediaWiki API
+- **必须使用 `action=parse&prop=text`**：MediaWiki 的 `action=query&prop=extracts` 会剥离模板渲染内容，导致干员档案与词条大量信息丢失。
+- **命名空间与技术页过滤**：搜索接口需限定 `srnamespace=0`，且主命名空间下仍存在 `/spine`、`/data` 等技术子页，需配合 `filter_technical` 过滤。
+- **章节编号格式**：模板嵌入产生的章节 `index` 可能带有 `T-` 前缀（如 `T-1`），并非总是纯数字。
 
----
+#### 游戏数据与剧情 ZIP 结构
+- **`story_review_table.json` 结构**：顶层直接是以 `event_id` 为键的对象映射，没有外层包装键。
+- **`StoryJson` 压缩包路径**：`zh_CN.zip` 内的条目路径带有 `zh_CN/` 前缀；`character_table.json` 的顶层键为 `char_002_amiya` 等内部干员 ID，而非干员中文名（需排除 `trap_` / `token_` 等召唤物或装置同名实体碰撞）。
 
-## 已知陷阱（踩过的坑）
-
-避免重复踩，按主题记录。
-
-### PRTS Wiki API
-
-- `action=query&prop=extracts` 丢失模板内容，**必须**用 `action=parse&prop=text`
-- MediaWiki 搜索需 `srnamespace=0`，否则技术页面污染结果
-- PRTS `/spine`、`/data` 页面在主命名空间（ns=0），需客户端 `filter_technical` 过滤
-- `action=parse&prop=sections` 返回的 `index` 可能是 `T-N` 格式（模板转译），不只是纯数字
-- Free-text snippets 从 MediaWiki 搜索索引提取，天然不精确；唯一可靠方式是 `action=parse` 获取完整渲染内容
-
-### 数据格式
-
-- `story_review_table.json` 顶层直接是 `{event_id: entry}`，不是嵌套在某个 key 下
-- ArknightsStoryJson zip 内所有路径以 `zh_CN/` 为前缀
-- `character_table.json` 用干员 ID（如 `char_002_amiya`）作 key，不是中文名
-
-### 网络与同步
-
-- `GITHUB_MIRRORS` 条目的首尾空白与尾部斜杠已由双实现一致地自动归一化，无需用户手动处理
-- Python `httpx` 和 TS `fetch` 行为不完全一致（重试、超时策略），sync 逻辑不要假设相同
-- TS `adm-zip` 和 Python `zipfile` 对损坏 zip 的容错不同，sync 里的完整性检查两边都要有
-- GitHub API 匿名请求有严格限速，建议配置 `GITHUB_TOKEN`
+#### 数据同步与运行配置
+- **环境变量空值陷阱**：`GAMEDATA_PATH` 只要存在于进程环境中（哪怕值为空字符串）就会禁用游戏表与关卡自动同步；`STORYJSON_PATH` 设为非空值时禁用剧情自动同步。
+- **镜像与轮询语义**：`GITHUB_MIRRORS` 是直连失败后的回退前缀列表，而非“强制仅走镜像”；`PRTS_AUTO_SYNC_INTERVAL_SECONDS=0` 仅禁用后续定时轮询，启动时的首次同步检查仍会执行。
+- **跨进程锁机制**：共享数据卷上的同步锁 owner 是随机生成的不透明标识（而非 OS PID），依赖心跳与租约过期（lease）机制协调，切勿对正在运行的活跃数据卷手动删除锁文件或激活指针。
+- **尚无 CLI 子命令**：当前版本未设 `--version` 或 `--help` 命令行参数，传入未知参数仍会直接启动 MCP 服务（管理 CLI 规划在 3.0 之后）。

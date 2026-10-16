@@ -1,52 +1,60 @@
-# 全量 E2E 真机测试流程（production-simulation pass）
+# 全量 E2E 真机测试流程（Rust）
 
-面向维护者的**最高层级验证**：把两套实现按生产方式部署（打包 → 全局安装 / uv → systemd 常驻），用真实 MCP Client 走完整数据同步与全部工具组，重点覆盖图像工具的两条数据源路径。单测 / parity fixtures / `check-runtime.sh` 都替代不了它——它们验证的是代码形状，这里验证的是**实际可用性**。
+本文面向项目维护者，说明如何使用公开发行的原生归档包、npm 包与 Docker 镜像，配合真实 MCP 客户端和完整数据/立绘链路开展生产级端到端（E2E）验收。
 
-## 建议执行的场景
+> **何时需要执行本流程？**
+> 由于全量 E2E 涉及大体积游戏数据与立绘资产同步，耗时与网络流量开销较大，因此**不作为日常 PR 或常规发版的强制门禁**。
+> 当变更涉及以下高风险领域时，强烈建议按影响范围执行全部或部分阶段：
+> - 跨模块大型架构重构；
+> - `sync/` 层（传输、镜像回退、manifest/ZIP 校验、代际激活、跨进程锁）；
+> - PRTS Wiki 解析或 `operator_artwork` 双数据源衔接逻辑；
+> - `protocol/` 传输层（stdio / Streamable HTTP）或会话生命周期管理。
+>
+> 具体执行全量流程还是定向轻量化真机验证，由维护者根据 [`WORKFLOW.md`](WORKFLOW.md) 当次裁量，并在 PR 或验收记录中如实说明已验证范围与未执行项。
 
-本流程沉重（三路数据全量同步 + 双实现生产式部署 + 全工具组真机调用），**任何变更等级都不设强制门禁**。以下大规模、高风险、跨模块改动**强烈建议**跑一次完整流程：
+---
 
-- 程序级重构（量级参照：2.7 上帝文件重构程序）
-- `sync/` 层（传输 / 镜像 / 激活 / 代际 / 锁）或 `api/` 层的行为改动
-- artwork / images 域（两条数据源的缝合处历来是回归重灾区）
-- MCP 传输层（stdio / Streamable HTTP）或会话管理改动
+## 1. 环境隔离与流量控制原则（必读）
 
-普通单模块 PR 不需要本流程——验证矩阵的常规行已覆盖。Release 不单独构成触发：发布内容命中上述场景时，是否执行由构成它的各 PR 按自身等级处理。
+1. **目录与端口严格隔离**：
+   - 测试自动同步时，**请勿设置 `GAMEDATA_PATH` 或 `STORYJSON_PATH`**（设置后会禁用对应数据集的自动同步）。
+   - 在 Linux / macOS 下通过独立的 `XDG_DATA_HOME`，在 Windows 下通过独立的 `LOCALAPPDATA` 将测试数据重定向到专用临时目录（如 `/tmp/prts-e2e/data`）。
+   - 使用 `HOST=127.0.0.1`、独立的非默认端口（如 `39171`）与临时诊断 Token，切勿影响本机正在运行的生产服务或真实用户数据卷。
+2. **数据卷备份**：
+   - 测试旧版本升级与回滚前，必须先停止写入进程，并完整拷贝一份数据目录或 Docker 卷副本（包含 `.gamedata_pair.json`、`archives/`、`.releases/` 等隐藏元数据与 PNG 文件），在副本上执行升级与回读。
+3. **大体积资产与代理流量控制**：
+   - 若本机处于按流量计费的网络或全局/TUN 代理环境中，开始前请先盘点本地是否已有缓存好的候选安装包、Docker 镜像、上游数据 ZIP 与立绘分片。
+   - **重要提示**：`GITHUB_MIRRORS` 是“直连原地址失败后的回退列表”，而非“强制仅走镜像”。若需在离线或本地回放环境下测试镜像回退链路，可将 `HTTP_PROXY` / `HTTPS_PROXY` / `ALL_PROXY`（含小写）指向本机未监听的回环端口，并将 `NO_PROXY` 设为 `127.0.0.1,localhost`，使公网直连快速失败后自动切入本地回环镜像服务。
 
-**维护者裁量**：命中上述场景时是否执行、或以何种范围的验证替代，由维护者按 [`WORKFLOW.md`](WORKFLOW.md) "高风险域"一节的裁量规则当次决定；披露义务与先例同归该节拥有。
+---
 
-## 隔离原则（先读，勿跳）
+## 2. 阶段一：安装发行物并启动服务
 
-- **不要设置 `GAMEDATA_PATH` / `STORYJSON_PATH`**：`GAMEDATA_PATH` 会置 `is_custom_gamedata` 关掉 gamedata auto-sync，`STORYJSON_PATH` 有独立的同效门——而本流程的核心观察项之一就是 auto-sync。用 `XDG_DATA_HOME=<测试目录>` 重定向默认数据根——两侧实现都支持，既保 sync 又保隔离。`PRTS_IMAGE_DIR` 不受该语义影响，可直接设。
-- `HOST=127.0.0.1` + 独立端口（如 39171/39172）+ `PRTS_DEBUG_TOKEN` 方便 `/debug/cache` 检查（`/debug/metrics` **仅 TS** 且需另设 `PRTS_METRICS_ENABLED=true`；Python 无该端点）。
-- 测试目录建议 `~/prts-e2e/`，一轮结束后按需清空。
+请直接使用待验收的公开发行物（原生归档包、精确版本 npm 包或已构建的 Docker 镜像），不要用临时 `cargo build` 产物代替发行物。
 
-## 阶段 1 — TS：打包 → bun 全局装 → systemd 注册
+### 方式 A：直接前台启动原生二进制
 
 ```bash
-cd ts && npm run build && npm pack          # 产出 prts-mcp-ts-<ver>.tgz
-bun add -g <tarball 路径>                    # 全局安装（bin: prts-mcp-ts / -bun / -stdio）
+XDG_DATA_HOME=/tmp/prts-e2e/data-rust HOST=127.0.0.1 PORT=39171 PRTS_AUTO_SYNC_INTERVAL_SECONDS=0 /absolute/path/to/candidate/bin/prts-mcp
 ```
 
-systemd **user** 单元（`~/.config/systemd/user/prts-e2e-ts.service`）：
+### 方式 B：通过 systemd 用户单元常驻运行（Linux）
+
+创建 `~/.config/systemd/user/prts-e2e-rust.service`（请将路径替换为实际测试路径）：
 
 ```ini
 [Unit]
-Description=PRTS-MCP TS E2E (LOCAL_IMAGE=false)
-# user 单元的 After=network-online.target 实际不等待系统网络就绪，仅作标记；启动失败由 Restart 兜底
+Description=PRTS-MCP Rust E2E Test Instance
 After=network-online.target
 
 [Service]
 Environment=HOST=127.0.0.1
 Environment=PORT=39171
-Environment=XDG_DATA_HOME=/home/<user>/prts-e2e/data-ts/xdg
+Environment=XDG_DATA_HOME=/tmp/prts-e2e/data-rust
 Environment=IMAGES_ENABLED=true
 Environment=LOCAL_IMAGE=false
-Environment=PRTS_IMAGE_CACHE=true
-Environment=PRTS_DEBUG_TOKEN=e2e-debug-token
-Environment=PRTS_METRICS_ENABLED=true
-Environment=PATH=/home/<user>/.bun/bin:/usr/local/bin:/usr/bin:/bin
-ExecStart=/home/<user>/.bun/bin/bun /home/<user>/.bun/install/global/node_modules/prts-mcp-ts/dist/server-bun.js
+Environment=PRTS_AUTO_SYNC_INTERVAL_SECONDS=0
+ExecStart=/absolute/path/to/candidate/bin/prts-mcp
 Restart=on-failure
 RestartSec=3
 
@@ -54,85 +62,86 @@ RestartSec=3
 WantedBy=default.target
 ```
 
-已知坑：
-
-- bun shim 的 `#!/usr/bin/env bun` 在 systemd 的 PATH 之外 → `ExecStart` 用**绝对 bun 路径**直接跑 `dist/server-bun.js`（上面的写法）。
-- `prts-mcp-ts --help` 不存在且会**真启动服务**（占用真实默认数据目录）——勿试。
+启动并检查监听状态：
 
 ```bash
-systemctl --user daemon-reload && systemctl --user start prts-e2e-ts
-curl -s http://127.0.0.1:39171/health        # {"status":"ok"}
+systemctl --user daemon-reload
+systemctl --user start prts-e2e-rust
+curl -fsS http://127.0.0.1:39171/health
+# 预期返回：{"status":"ok"}
 ```
 
-## 阶段 2 — LOCAL_IMAGE=false：观察 auto-sync
+**入口与信号核对点**：
+- 验证 `prts-mcp` 默认启动 HTTP、传入 `PRTS_TRANSPORT=stdio` 启动 stdio；
+- 验证 `prts-mcp-ts` / `prts-mcp-ts-bun`（固定 HTTP）、`prts-mcp-ts-stdio`（固定 stdio）以及 Docker `prts-mcp-ghcr`（默认 stdio，`-e PRTS_TRANSPORT=http` 切 HTTP）；
+- 验证 stdio 模式下 `stdout` 仅输出纯净 JSON-RPC 协议帧，关闭 `stdin`（EOF）后进程以状态码 `0` 正常退出。
+
+---
+
+## 3. 阶段二：观察首次自动同步（`LOCAL_IMAGE=false`）
+
+通过日志观察后台同步进度，并检查数据目录落盘情况：
 
 ```bash
-journalctl --user -u prts-e2e-ts -f
-du -sh ~/prts-e2e/data-ts/xdg/prts-mcp/*
+journalctl --user -u prts-e2e-rust -f
+du -sh /tmp/prts-e2e/data-rust/prts-mcp/*
 ```
 
-预期：storyjson（~33M）+ gamedata excel（~108M）+ levels（~384M）三路从 `arknights-data-pipeline` Release 同步完成并各自打 `updated` 日志；`LOCAL_IMAGE=false` 下**不**触发图片同步；随后 `Next auto-sync check in 3600s`。
+**核对要点**：
+1. **备用数据与用户数据切换**：在后台同步完成前，自带备用数据的发行包即可正常响应本地查询；同步完成后，查询自动切换至新激活的用户数据（`gamedata` 与 `gamedata-levels` 成对激活，`.gamedata_pair.json` 与各目录 `extract_meta.json` 一致）。
+2. **失败保持上一代**：若模拟网络中断或坏包，服务应拒绝激活损坏代际，继续使用上一代可用数据或内置备用数据。
+3. **轮询开关**：`PRTS_AUTO_SYNC_INTERVAL_SECONDS=0` 在完成启动时的首次同步检查后不再安排后续周期轮询；默认 `3600` 则每小时检查一次。
 
-## 阶段 3 — MCP Client 全工具组调用
+---
 
-最小可用 client（initialize → session → tools/list → tools/call），保存为 `~/prts-e2e/mcp-client.mjs`：
+## 4. 阶段三：真实 MCP 客户端全工具组调用
 
-```javascript
-// mcp-client.mjs <url> list | call <tool> <json-args> [--out file]
-// 完整实现见本文件配套产物；核心：POST /mcp，accept: application/json, text/event-stream，
-// 从响应头取 mcp-session-id 回传，notifications/initialized 后即可 tools/*。
-// call 结果汇总：isError / image 块 mime+bytes+PNG magic / structuredKeys / textPreview。
-```
+使用真实 MCP 客户端（如 Claude Code、Claude Desktop 或 Codex）及协议测试套件接入服务，核对 `tools/list`（默认 24 个工具）并按数据域执行调用验证（具体示例参数可参考[工具使用指南](../user/tools-guide.md#2-全部-24-个工具参数示例速查表)）：
 
-（该脚本的完整版本随 2.7.0 E2E 存档于维护者 `~/prts-e2e/mcp-client.mjs`；同一协议在仓内已有实现可参照：`ts/tests/e2e.test.ts` 与 `python/tests/test_e2e_http.py`，按上述协议 ~60 行即可重写。）
+| 工具域 | 代表性调用链路 | 关键验证点 |
+| --- | --- | --- |
+| **PRTS Wiki** | `search_prts` → `prts_page(action="sections" / "read" / "template")` | 词条搜索、章节目录（含 `T-` 模板节）、正文清洗与顶层模板结构化渲染正常。 |
+| **干员资料** | `get_operator_basic_info(action="basic" / "skills" / "stats")`、`archives`、`voicelines`、`memoirs` | 基础档案、技能专精逐级数值、指定精英阶段/等级面板插值、语音与密录 `story_key` 解析正常。 |
+| **关卡与物品** | `list_stages` / `get_stage_info`、`list_enemies` / `get_enemy_info`、`get_stage_enemies`、`get_enemy_appearances`、`list_items` / `get_item_info`、`search` | 分页过滤、关卡级敌方数值覆盖、跨干员基建/战斗技能反查与结构化输出正常。 |
+| **剧情检索** | `list_story_events` → `list_stories` → `get_story_summary` / `read_story` / `read_activity` / `search_stories` / `find_character_appearances` / `find_speakers_in` | 主线、活动与集成战略（`roguelike`）剧情目录完整，角色出场统计与正则上下文搜索准确。 |
+| **干员立绘** | `operator_artwork(action="list")` → `operator_artwork(action="get")` | 在线 MediaWiki 模式下返回有效 `artwork_id`，`get` 返回真实可解码的 base64 PNG 图像，二次请求命中内存缓存。 |
 
-冒烟清单——**24 个工具全部调用**（2.8.0 起，另覆盖 `get_operator_basic_info` 的 `basic` / `skills` / `stats` action），每组至少一个代表：
+同时抽查 `PRTS_OUTPUT_CHANNEL`（`content` / `structured` / `both`）、HTTP 请求头/查询参数覆盖，以及 legacy 有状态会话与 `2026-07-28` 无状态现代信封的协议行为。
 
-| 组 | 代表调用 | 验证点 |
-|---|---|---|
-| wiki | `search_prts`、`prts_page(action=sections)` | 真实 MediaWiki 命中 |
-| 干员 | basic_info(action=basic/skills/stats) / archives / voicelines / memoirs | 中文渲染、占位符数值渲染、插值面板、缺数据优雅降级 |
-| gamedata | list/get × items/enemies/stages/stage_enemies/appearances、`search` | 数字格式、structuredContent |
-| 剧情 | events → stories → summary → read_story → read_activity → search_stories → appearances → speakers | key 链路可串联 |
-| 图像 | `operator_artwork` list + get（MediaWiki 真图） | PNG magic、字节数、二次调用 LRU 命中 |
+---
 
-图像工具重点：`--out` 落盘后 `file` 验证真 PNG；`/debug/cache` 的 `artwork_mediawiki.image_cache` 出现 `hits`（**仅 TS**——TS 带 hits/misses/clears 计数器，PY 的 cache_stats 只有 `{loaded, count, bytes}`，这是已知的 debug 载荷分歧，勿当作 Python 回归）。
+## 5. 阶段四与阶段五：本地全量立绘同步与读取（`LOCAL_IMAGE=true`）
 
-## 阶段 4 — LOCAL_IMAGE=true：观察图片 auto-sync
+在确认磁盘空间充足或已配置好本地镜像回放源后，将隔离测试实例切换为 `LOCAL_IMAGE=true`：
 
-改单元 `Environment=LOCAL_IMAGE=true`（**不设 ORIGINAL_IMAGE**）→ `daemon-reload` + `restart`。预期：
+1. **基线与增量同步（Baseline & Delta）**：
+   - 观察首次基线分片（baseline shards）下载、SHA-256 校验、解压与 `.releases/<generation>/index.json`、`.images_meta.json` 原子激活。
+   - 重启服务，确认已处于最新代际时直接命中 `up-to-date` 快捷路径，不会重复下载基线包。
+   - 若有增量包（delta），验证增量合并后新代际正常激活且旧代际缓存自动失效。
+2. **本地立绘工具验证**：
+   - `operator_artwork(action="list")` 返回包含皮肤系列与获取方式元数据的立绘列表；
+   - `action="get"` 获取 `large`（最大 1024px）与 `preview`（最大 256px）变体，解码验证 PNG 魔法字节与实际宽高；
+   - 当 `ORIGINAL_IMAGE=false` 时，请求 `variant="original"` 应返回清晰的中文提示而非崩溃；
+   - 验证阿米娅升变形态及跨干员伪造 `artwork_id` 时的归属校验拒绝。
+3. **诊断端点检查（可选）**：
+   - 配置 `PRTS_DEBUG_TOKEN` 与 `PRTS_METRICS_ENABLED=true`，验证未带 Bearer Token 时 `/debug/cache` 与 `/debug/metrics` 返回 `404 Not Found`，带正确 Token 时返回符合 Rust 诊断 Schema（`D-001` / `D-002`）的 JSON。
 
-- `Images synced: baseline=… current=… (N artworks)` 完成日志，~1.5GB 量级落盘（large+preview 四个 shard； artworks 数与字节数随 release 漂移，核量级即可）。
-- 慢链路中段停滞是正常的——30-min 预算会吸收后自恢复，勿急着重启。
-- 重启一次验证 tag 快捷：`Images are up to date` 秒级返回、不重新下载。
+---
 
-## 阶段 5 — 本地模式图像工具
+## 6. 阶段六：旧版数据卷升级与回滚验证
 
-- list（不透明 token + 变体清单）→ get large/preview（真 PNG，尺寸与变体一致）。
-- `variant=original`（未同步）→ `图片文件缺失：…` 优雅拒绝。
-- 表单别名 `阿米娅(近卫)` 独立解析；跨 form token → `不属于` 拒绝。
-- `/debug/cache` 十一模块齐全（Bearer debug token，含 `skill`）。
+1. 使用 2.8.1 稳定版（如 `prts-mcp-ts@2.8.1` 或 `ghcr.io/3akhp/prts-mcp:2.8.1`）在独立测试数据卷上完成初始化与代表性查询，停止服务并完整备份该数据卷。
+2. 将 3.x 候选版指向该数据卷副本启动，确认无需重拉全量数据即可直接读取既有 `gamedata`、`gamedata-levels`、`storyjson` 与 `images`，并可正常执行增量更新。
+3. 停止 3.x 候选版，切回 2.8.1 稳定版重新挂载同一数据卷，验证旧版对升级后的数据卷仍可正常回读与查询。
 
-## 阶段 6 — 清空缓存后复测 Python
+---
 
-```bash
-systemctl --user stop prts-e2e-ts   # 先停 TS：避免端口与 XDG 数据目录竞争
-rm -rf ~/prts-e2e/data-ts           # 按需保留产物
-```
+## 7. 已知正常现象（勿误判为缺陷）
 
-Python 单元差异（`PORT=39172`）：`ExecStart=<uv 绝对路径> run --directory <repo>/python --locked python -m prts_mcp.server`（**uv 同样不在 systemd PATH 内，须绝对路径**），另加 `Environment=PRTS_TRANSPORT=http`，`XDG_DATA_HOME` 指向 `data-py/xdg`。然后**重复阶段 2–5**。注意 Python 的 sync 日志措辞与 TS 不同（如 `Data is up to date (…)` 而非 `Images are up to date`），核对状态而非逐字 grep。重点对拍：
+- **先监听后同步**：服务启动后立即监听端口（`/health` 返回 200），后台同步异步执行；源码构建在首次同步完成前提示数据暂不可用属于正常现象。
+- **跨进程锁残留与自动接管**：进程被强制杀死（`SIGKILL`）后可能遗留 `.lock` 文件；锁内记录的 `owner` 是随机 UUID 而非 PID，新进程会在租约（lease）过期后自动安全接管，无需手动删锁。
+- **自定义路径自动停用同步**：设置了 `GAMEDATA_PATH` 或非空 `STORYJSON_PATH` 时，日志提示对应 auto-sync 已禁用属于预期设计。
 
-- 三路 sync 数据量与 TS 同量级（快照时点 108M/384M/33M）
-- MediaWiki artwork 载荷与 TS **逐字节一致**（同一 artwork_id 的 base64）
-- 24 工具输出及干员信息的 basic/skills/stats action 与 TS 侧抽查一致（文案漂移按 D2 台账记录）
+## 8. 清理与收尾
 
-## 已知正常行为（勿误报为 bug）
-
-- 网络抖动下：TS 图片同步可能长时间停滞再自恢复；Python storyjson 停滞会走 httpx 120s 超时 → 30s/120s/600s 重试梯。
-- 进程被杀遗留 `.release.lock`：新进程 120s 锁等待超时 + 30-min staleness 自动回收；测试中可手动删孤儿锁加速——**活性判断看 `owner` 文件的 mtime**（持锁者会心跳续期；注意 `owner` 内容是 UUID 不是 pid，不能按 pid 查）或直接确认没有存活的 prts 进程。
-- `ls` 空列表不等于卡死——大 shard 下载期间 staging 目录可能数分钟无新文件。
-
-## 收尾
-
-- `systemctl --user stop/disable prts-e2e-*`；测试数据目录按需清空；产物（真 PNG、client 脚本）可留档。
-- 发现的 PY/TS 文案 / 行为漂移：小的一并开 `fix(parity)` PR，大的记 D2 台账。
+测试完成后，停止并移除测试专用的 systemd 单元、容器、临时网络与客户端测试配置；清理临时目录前请再次确认路径，切勿误删真实用户数据卷或复用的测试资产缓存。

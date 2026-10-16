@@ -1,0 +1,29 @@
+{
+  "case": "proto.http.modern.malformed-envelope",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v1",
+  "expected": {
+    "status": 400,
+    "content_type": "application/json",
+    "session_id": null,
+    "body": {
+      "jsonrpc": "2.0",
+      "error": {
+        "code": -32602,
+        "message": "Invalid params: the MCP-Protocol-Version header names protocol revision 2026-07-28, but the request is missing the required per-request envelope key(s): _meta",
+        "data": {
+          "envelope": {
+            "missing": [
+              "_meta"
+            ]
+          }
+        }
+      },
+      "id": 9103
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "case": "fs.stage.list",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "full-story-r2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "e29707a3-df3f-4413-99ef-1ff88f0529f5",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "# 关卡列表（共 30 个）\n- **坍塌** [主线] 0-1 — 普通 — 序章-黑暗时代·上（id: main_00-01）\n- **坍塌** [主线] 0-1 — 突袭 — 序章-黑暗时代·上（id: main_00-01#f#）\n- **守卫** [主线] 0-2 — 普通 — 序章-黑暗时代·上（id: main_00-02）\n- **守卫** [主线] 0-2 — 突袭 — 序章-黑暗时代·上（id: main_00-02#f#）\n- **追击** [主线] 0-3 — 普通 — 序章-黑暗时代·上（id: main_00-03）\n\n（显示第 1–5 条，共 30 条。使用 offset=5 查看下一页）"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9820
+    }
+  }
+}

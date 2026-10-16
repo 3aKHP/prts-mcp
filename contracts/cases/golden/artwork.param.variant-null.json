@@ -1,0 +1,27 @@
+{
+  "case": "artwork.param.variant-null",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-images-v1",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "f8d2ef58-b2f7-4360-bf99-adaa62860699",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Input validation error: Invalid arguments for tool operator_artwork: variant: Invalid option: expected one of \"original\"|\"large\"|\"preview\""
+          }
+        ],
+        "isError": true
+      },
+      "jsonrpc": "2.0",
+      "id": 9988
+    }
+  }
+}

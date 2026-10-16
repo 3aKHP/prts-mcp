@@ -1,0 +1,26 @@
+{
+  "case": "stage.list.default",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v1",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "d73e59aa-5a16-4375-b946-f625160dcea2",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "# 关卡列表（共 4 个）\n- **测试活动关** [活动] AS-1 — 普通 — 火山旅梦（id: act31side_01）\n- **货物运送** [每日] CE-5 — 普通 — daily_zone1（id: daily_01）\n- **坍塌** [主线] 0-1 — 普通 — 序章-黑暗时代·上（id: main_00-01）\n- **坍塌·突袭** [主线] TR-1 — 突袭 — 序章-黑暗时代·上（id: main_00-01#f#）\n\n（显示第 1–4 条，共 4 条。使用 offset=50 查看下一页）"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9006
+    }
+  }
+}

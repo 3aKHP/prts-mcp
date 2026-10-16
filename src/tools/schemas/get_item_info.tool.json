@@ -1,0 +1,17 @@
+{
+ "name": "get_item_info",
+ "description": "获取指定物品/材料的详细信息。 返回物品的描述、用途、获取方式、掉落关卡、基建产出和商店/凭证关联等。",
+ "inputSchema": {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+   "name": {
+    "type": "string",
+    "description": "物品中文名或 itemId，如「固源岩」、「招聘许可」或 \"30012\"。"
+   }
+  },
+  "required": [
+   "name"
+  ]
+ }
+}

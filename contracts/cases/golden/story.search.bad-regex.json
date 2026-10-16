@@ -1,0 +1,26 @@
+{
+  "case": "story.search.bad-regex",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "8ea6d798-8a0e-4eed-af7a-e182be8563a1",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "正则表达式无效：<engine-detail>"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9641
+    }
+  }
+}

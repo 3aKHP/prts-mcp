@@ -1,119 +1,122 @@
 # 变更分级、评审与验证工作流
 
-本文件定义"一次变更需要什么级别的评审与验证"：变更分级、高风险域、双轨 CR 机制（含 KHPilot 行为特征）、评审输出处置与最小验证矩阵。操作步骤（分支命名、迭代路径 A–F、命令清单）以 `CLAUDE.md` 为单一来源；版本语义与兼容承诺见 [`VERSIONING.md`](VERSIONING.md)；全量 E2E 真机流程见 [`E2E.md`](E2E.md)。
+本文件定义 PRTS-MCP 中“一次变更需要什么级别的评审与验证”，涵盖变更分级、高风险域识别、双轨 Code Review 机制（含 KHPilot 行为特征）、评审意见处置与最小验证矩阵。
 
-## 硬规则
+- 具体分支命名与迭代路径（A–F）见 [`CLAUDE.md`](../../CLAUDE.md)
+- 版本语义与兼容性承诺见 [`VERSIONING.md`](VERSIONING.md)
+- 本地构建与测试命令见 [`ENVIRONMENT.md`](ENVIRONMENT.md)
+- 全量 E2E 真机测试流程见 [`E2E.md`](E2E.md)
 
-- 一切改动经 PR；不直推 `main` / `develop` / `lts/1.7`（本仓库不引入 Develop Direct）。
-- 一个分支或 PR 只承载一个主要意图；大变更先拆分。
-- 行为、配置、协议、部署契约或用户文档变化时，同一变更更新拥有该事实的文档。
-- 难以判断属于哪一级时，**向上分级**。
-- 无法执行的验证必须在 PR / 交接中明确报告为未验证，不得当作通过。
+---
 
-## 变更分级
+## 1. 核心硬规则
 
-| 等级 | 范围 | 评审 | 合并路径 |
+- **一切改动必须经由 PR**：禁止直接向 `main`、`develop`、`lts/1.7` 或 `lts/2.8` 推送提交（本仓库不采用 Develop Direct 模式）。
+- **单一意图原则**：每个分支或 PR 只承载一个主要意图；跨模块的大型改动须先拆分为多个独立 PR。
+- **文档同改原则**：当改动影响工具行为、配置项、协议、部署契约或用户可见说明时，必须在同一 PR 中同步更新拥有该事实的文档。
+- **存疑向上分级**：难以判断某次变更属于哪一等级时，一律**向上分级**。
+- **如实披露验证边界**：因环境或条件限制未能执行的验证项，必须在 PR 描述或交接记录中明确标注为“未验证”，严禁当作已通过。
+- **CI 触发与成本控制**：短分支日常 push 不触发全量五平台矩阵；打开或更新 PR 时由 GitHub Actions 自动运行完整 Rust 检查与五平台矩阵（更新 PR HEAD 时自动取消在途旧运行）。`release/v3.*` 分支在 PR 阶段已完成同源候选产物验证，打 `v3.*` tag 时直接运行发布工作流，不在每次发版前额外增设临时探测门禁。
+
+---
+
+## 2. 变更分级与高风险域
+
+### 变更分级表
+
+| 等级 | 适用范围 | 评审要求 | 合并条件 |
 |---|---|---|---|
-| **Quick PR** | 小/中型、低风险、不触高风险域 | KHPilot Bot Review 一轮 | Bot 无 Blocking 后人工合并 |
-| **Standard PR** | 中型，或触及任一高风险域 | 独立 CR + Bot Review **并行**（"双轨 CR"） | 无未解决 Blocking / Should-fix 后人工合并 |
-| **Huge PR** | 大型、跨模块、高风险 | 专题计划 + 拆分为多个 Standard PR + 整体多透镜审查（全量 E2E 强烈建议，非门禁） | Deep-CR 结论收口后人工合并 |
-| **Hot-Fix** | `main` / 已发布 tag 的阻断回归 | 非平凡变更至少独立 CR | PR 到 `main`，再回灌 `develop` |
-| **Release** | 公开发布（含 patch / minor / 预发布） | 至少 Standard；命中 Huge 条件按 Huge 执行 | release PR 合 `main` 后打 tag |
+| **Quick PR** | 小/中型、低风险、未触及高风险域 | KHPilot Bot Review 一轮 | Bot 无 Blocking 项后，由维护者人工合并 |
+| **Standard PR** | 中型改动，或触及任一高风险域 | 本地独立 CR + Bot Review **并行**（“双轨 CR”） | 全部 Blocking / Should-fix 项闭环后，由维护者人工合并 |
+| **Huge PR** | 大型、跨模块、架构级高风险改动 | 事前专题计划 + 拆分为多个 Standard PR + 整体多透镜审查（强烈建议全量 E2E，非硬门禁） | 多透镜审查结论全部闭环后，由维护者人工合并 |
+| **Hot-Fix** | `main` 或已发布稳定版 tag 的阻断性回归 | 非平凡变更至少完成独立 CR | PR 合并至 `main` 并打补丁 tag 后，按需同步/移植至维护线与 `develop` |
+| **Release** | 公开发布（含 Patch / Minor / 预发布版本） | 至少按 Standard PR 执行；命中 Huge 条件时按 Huge 执行 | 完成版本/CHANGELOG/产物校验与评审后合并发布 |
 
-评审输出统一四分类：**Blocking**（合并前必须修复）、**Should-fix**（除非 PR 记录延后理由否则修复）、**Nits**（酌情）、**Verified claims**（可记录于 PR / merge notes）。
+评审意见统一按四级分类处置：
+- **Blocking**：合并前必须修复；
+- **Should-fix**：原则上在当前 PR 修复，若确需延后须在 PR 中写明理由与后续跟踪方式；
+- **Nits**：细节打磨建议，酌情处理；
+- **Verified claims**：已核实通过的结论，可记录于 PR 或合并说明中。
 
-## 高风险域
+### 高风险域清单
 
-命中以下任一领域的改动，最低按 Standard PR 执行：
+触及以下任一领域的改动，**最低按 Standard PR（双轨 CR）执行**：
 
-- `sync/` 层（传输 / 镜像 / 激活 / 代际 / 锁）
-- `api/` 工具契约与双实现 parity 面（工具名、参数、输出格式）
-- MCP 传输层（stdio / Streamable HTTP）与会话管理
-- artwork / images 域（两条数据源的缝合处）
-- 部署、CI/CD 与发布 workflow
-- debug / 鉴权端点
+1. `sync/` 层（Release 发现、下载传输、镜像回退、manifest/ZIP 校验、代际激活与跨进程锁）；
+2. MCP 工具契约面（工具名、参数 Schema、输出格式与 TS/v2.8.1 对齐基线）；
+3. `protocol/` 传输层（stdio / Streamable HTTP、协议时代切换与会话生命周期管理）；
+4. `operator_artwork` 立绘域（MediaWiki 在线模式与 AKDP 本地资产模式的衔接与校验）；
+5. 打包、容器、CI/CD 与发布工作流（`packaging/`、`tools/`、`.github/workflows/`、`Dockerfile`）；
+6. 诊断与鉴权端点（`/debug/cache`、`/debug/metrics`、`PRTS_DEBUG_TOKEN`）。
 
-其中 `sync/` 层、`api/` 行为改动、MCP 传输层与会话管理、artwork/images 同时属于 [`E2E.md`](E2E.md) 枚举的全量 E2E 建议场景（该清单由 E2E.md 拥有，另含程序级重构）。全量 E2E 沉重（三路数据全量同步 + 双实现生产式部署 + 全工具组真机调用），**任何等级均不设强制门禁**：命中建议场景时，是否执行全量流程、或以面向改动范围的轻量化真机验证替代，由维护者按改动范围与验证成本当次决定（先例：PR #194 会话管理改动，合并前经维护者指示执行轻量化验证——双实现生产式部署 + 会话生命周期探测——并在 PR 记录中披露范围与未执行的重型环节）。替代时 PR 必须披露验证范围与未执行环节。替代是维护者对单次改动的裁量，不是作者的自助降级通道。
+> **关于全量 E2E 真机测试的裁量规则**：
+> 上述第 1–4 项及程序级重构同时属于 [`E2E.md`](E2E.md) 建议执行真机验证的场景。由于全量 E2E 涉及多路数据与大体积立绘同步、真实客户端调用，时间与流量成本较高，因此**任何变更等级均不将其设为强制合并门禁**。命中建议场景时，是否执行全量 E2E，或以针对改动范围的轻量化真机验证替代，由维护者按当次改动的风险与成本决定；若采用轻量化验证替代，必须在 PR 描述中明确说明实际验证范围与未执行的重型环节。
 
-## 各级说明
+---
+
+## 3. 各等级执行细则
 
 ### Quick PR
-
-小/中型低风险改动。流程：短分支 → 实现与验证 → PR → KHPilot Bot Review 一轮并处理结论 → 无 Blocking 后请求人工合并。不要求独立 CR。
+适用于不触及高风险域的低风险改动或纯文档修正。流程：创建短分支 → 实现并完成本地验证 → 打开 PR → 等待 KHPilot Bot Review 一轮并处理反馈 → 无 Blocking 项后交由维护者人工合并。
 
 ### Standard PR（双轨 CR）
+适用于中型改动或触及高风险域的变更。流程：创建短分支 → 实现并完成本地验证 → **先打开 PR**（触发远端 KHPilot Bot）→ **立即并行启动本地独立 CR** → 汇总两轨结论并按四级分类闭环 → 维护者人工合并。
 
-中型改动或触及高风险域。流程：短分支 → 实现与验证 → **先开 PR**（触发 Bot）→ **再启动本地独立 CR**，两轨并行 → 汇总两轨结论按四分类处置 → 人工合并。
-
-独立 CR 契约（Tier 1）：
-
-- 由未参与实现会话的干净上下文 reviewer 执行（通常为 SubAgent），只读，不修改代码；
-- 每条 finding 须引用契约与 `file:line` 举证；
-- 输出按四分类整理；明确给出"可合并 / 不可合并"结论。
-
-reviewer 独立性、不可信输入处理、交叉核对与 finding 处置的操作契约见 `CLAUDE.md` "双轨 CR 规范"一节。
+**本地独立 CR（Tier 1）要求**：
+- 由未参与当前实现会话的干净上下文 Reviewer（通常为只读 SubAgent）执行，不直接修改代码；
+- 每条实质问题（finding）必须附带契约依据与具体的 `file:line` 代码位置；
+- 最终按四级分类输出审查报告，并明确给出“可合并 / 不可合并”结论（详细指令见 [`CLAUDE.md`](../../CLAUDE.md)）。
 
 ### Huge PR
-
-大型、跨模块、高风险改动，或面向 release 的大型收束。
-
-- 开始前编写专题计划：目标与验收条件、涉及子系统、风险与失败模式、拆分方案；
-- 实现拆分为多个 Standard PR，每个只承载一个主要意图，各自走完双轨；
-- 整体变更做多透镜审查，透镜按本仓库风险面设定：① sync 数据管线；② api / parity 契约；③ MCP 传输与会话；④ artwork 双数据源缝合；⑤ 跨实现结构、配置与部署一致性；
-- 全量 E2E 为强烈建议（[`E2E.md`](E2E.md)），不是合并门禁；未执行时按"高风险域"一节的裁量规则在 PR 披露验证范围与替代方案。
+适用于跨多个子系统的大型特性或架构迁移：
+1. 动手前先编写专题设计计划（明确目标、验收条件、涉及模块、失败模式与拆分方案）；
+2. 将实现拆分为多个单一意图的 Standard PR，逐个通过双轨 CR；
+3. 对整体变更开展多透镜审查（按数据同步、工具契约对齐、传输与会话、立绘双源、打包与配置五个维度逐一核查）。
 
 ### Hot-Fix
+仅用于修复 `main` 或已发布稳定版上的**阻断性生产回归**（如服务无法启动、工具全面报错、数据卷损坏或凭据泄露）；非阻断的日常修复一律走 `develop`。流程：从 `main` 创建 `fix/vX.Y.Z-<topic>` → 最小化修复与回归测试 → 更新 CHANGELOG → 打开 PR 至 `main` 并完成审查 → 合并打 tag → 将适用修复同步至维护线与 `develop`（版本号衔接规则见 [`VERSIONING.md`](VERSIONING.md)）。
 
-仅用于 `main` 或已发布 tag 的**阻断回归**（服务无法启动、工具面全面失败、数据损坏、凭据泄漏等）；日常紧急修复仍走 `develop`。流程：从 `main` 建 `fix/vX.Y.Z-<topic>` → 最小修复 + 可行时回归测试 → CHANGELOG → PR 到 `main`（非平凡变更至少独立 CR）→ 打 patch tag → 回灌 `develop`。Hotfix 占用 develop 目标版本时按 [`VERSIONING.md`](VERSIONING.md) 的回灌对照表处理。
+### Release 与 3.0 过渡期预发布
+- **正式版发布（Release）**：按 `CLAUDE.md` 路径 D 执行，至少完成 Standard PR 级别的双轨审查与发布产物核对，合并至 `main` 打 tag 后原分支回灌 `develop`。
+- **3.0 过渡期预发布（M5 前）**：在 `main` 仍为 2.8.1 期间，Rust 候选版（`3.0.0-alpha.N` / `beta.N` / `rc.N`）从已审查的 `develop` 快照拉出 `release/v3.x.y-...` 短分支，完成独立审查与完整 CI 后直接在该远端发布分支的提交上打 `v3.*` tag 触发 [`release-rust.yml`](../../.github/workflows/release-rust.yml)，过渡期内不提前合并进 `main`，也不改变 `develop` 的 `-dev.0` 版本号。
 
-### Release
+---
 
-按 `CLAUDE.md` 路径 D / F 执行；评审至少 Standard，命中 Huge 条件时按 Huge 执行；合并前完成 CD 产物核对。全量 E2E 不构成发布前置项——发布内容命中 [`E2E.md`](E2E.md) 建议场景时，是否执行由维护者按"高风险域"一节的裁量规则当次决定。回灌完成后核对 develop 的下一目标版本（规则见 [`VERSIONING.md`](VERSIONING.md)）。
+## 4. KHPilot Bot Review 协同机制
 
-## KHPilot Bot Review 机制
+KHPilot 是仓库配置的自动代码评审 GitHub App，具有以下运行特征：
 
-KHPilot 是 PR 侧的自动评审 Bot，行为特征：
+1. **仅在 PR 打开时自动触发一次**：后续向同一 PR 推送新提交时，Bot **不会自动复审**。为避免主 Agent 与 Bot 陷入无限复审循环，**仅当修复了重大问题且维护者合并决策确需 Bot 复核时**，才在 PR 评论中通过 `@khpilot`（或 `@khpilot[bot]`）手动请求复审。
+2. **评审耗时**：视 Diff 规模通常需要 **3–5 分钟至近 1 小时**。
+3. **在途中断**：若 Bot 正在评审时向 PR 推送了新提交（HEAD 移动），该次在途评审会立即中断。因此推荐**先开 PR 触发 Bot，同时在本地跑独立 CR**，待两轨都完成后再统一推送修复提交。
 
-- **仅在开 PR 时主动评审一次**（不请自来）；后续 head **不自动复审**。为避免主执行 Agent 与 Bot 陷入循环，**仅在 Bot 结论对合并决策确有必要时**才在 PR 评论中 `@khpilot`（或 App 提及形式 `@khpilot[bot]`）请求 re-review；
-- 评审耗时视 diff 规模约 **3–5 分钟至近 1 小时**；
-- 评审进行中 PR **HEAD 移动会立即中断**该次评审——本地 CR 修复推送后若 Bot 在途评审被中断，一般不补审；确有必要再按上条请求复审。
-
-据此的工作流编排：
-
-1. 双轨 PR **先开 PR、再启动本地独立 CR**——本地 CR 完工时，Bot Review 通常也已到达，两轨结论正好汇合；
-2. Bot Review 未到时（Quick PR 等待唯一评审轨，或双轨本地先完工），安排**后台轮询**等待其到达，上限 **1 小时**（可按 diff 规模缩短），减少人工介入：
+等待 Bot 评审到达时，可使用以下后台轮询脚本（每 3 分钟检查一次，上限 60 分钟）：
 
 ```bash
-# 等待 KHPilot 评审到达：每 3 分钟查一次，20 次（60 分钟）封顶
-# 观测到的 review author login 为 "khpilot"；startswith 同时兼容 App 形式 "khpilot[bot]"
-pr=123  # PR 号
+pr=123  # 替换为实际 PR 编号
 for i in $(seq 1 20); do
-  gh pr view "$pr" --json reviews \
-    --jq '[.reviews[].author.login] | any(startswith("khpilot"))' \
-    2>/dev/null | grep -q true && break
+  gh pr view "$pr" --json reviews --jq '[.reviews[].author.login] | any(startswith("khpilot"))' 2>/dev/null | grep -q true && break
   sleep 180
 done
-gh pr view "$pr" --json reviews \
-  --jq '[.reviews[] | select(.author.login | startswith("khpilot"))] | last | {state, submittedAt}'
+gh pr view "$pr" --json reviews --jq '[.reviews[] | select(.author.login | startswith("khpilot"))] | last | {state, submittedAt}'
 ```
 
-3. 后续将以 KHPilot 的**状态查询接口 / Webhook** 替代轮询（规划项，落地后修订本节）。
+---
 
-## 最小验证矩阵
+## 5. 最小验证矩阵
 
-按改动风险选最小验证集；命令清单以 `CLAUDE.md` 路径 A 步骤 4 为单一来源，本表只标层级：
+根据改动风险选择对应的本地验证层级（具体命令见 [`ENVIRONMENT.md`](ENVIRONMENT.md)）：
 
-| 改动类型 | 最小验证 |
+| 改动类型 | 最小本地验证要求 |
 |---|---|
-| 仅文档 | 术语 / 链接 targeted grep；引用代码时按需 `pytest -k <topic>`。CI 仅在改动命中 paths 过滤（`python/**` 与 `ts/**`——含两实现的 CHANGELOG——以及 `.github/workflows/{ci,cd,cd-ts}.yml`、`scripts/test-shared-volume-sync.sh`）时运行；`docs/**` 与根目录 .md 不触发 CI |
-| 小代码（单实现） | 对应实现的全量单测（Python pytest 或 TS build + test + typecheck） |
-| 工具面 / 数据 / sync 运行时 | 双实现全量 + `./scripts/check-runtime.sh --full` |
-| 高风险域改动 | 双实现全量 + check-runtime --full；全量 E2E 强烈建议，维护者可按上节规则当次裁量（替代时 PR 披露范围与未执行环节） |
-| Huge PR | 上述全部 + 双实现 parity 测试 + 整体多透镜审查；全量 E2E 强烈建议（[`E2E.md`](E2E.md)），非门禁 |
-| Release | 上述全部 + 双实现 parity 测试 + CHANGELOG / 版本号 / STATUS 口径核对 + CD 产物核对 |
+| **仅文档改动** | 核对技术事实、示例语法与本地相对链接；打开 PR 后通过 CI 检查。 |
+| **局部低风险 Rust 代码** | `cargo fmt --all -- --check`、`cargo clippy --locked --all-targets -- -D warnings` 及对应模块的 `cargo test --locked`；若触及公共输出再补跑差分测试。 |
+| **工具面 / 数据解析 / 同步运行时** | 全量 Rust 测试 + `./scripts/check-runtime.sh --full`（含 384 个冻结 TS 对照用例与生命周期测试）。 |
+| **高风险域改动** | 上述全量验证（`./scripts/check-runtime.sh --full`）；强烈建议按维护者裁量执行真机 E2E 或定向真机验证（并在 PR 中披露验证范围）。 |
+| **Huge PR** | 全量验证 + 整体多透镜审查 + 维护者裁量的 E2E 验证。 |
+| **Release 发布** | 全量验证 + 版本号 / CHANGELOG / STATUS 一致性核对 + 发行产物与校验和核对。 |
 
-## 其他约定
+## 6. 其他协作约定
 
-- 解决 Issue 的 PR 正文使用单独一行 `Closes #<issue>`；仅关联但未完成的使用 `Refs #<issue>`。
-- 合并一律由人执行；协作者不自行 merge。
-- PR 保留 merge 历史，不 squash（仓库现行惯例）。
+- **Issue 关联语法**：PR 完整解决某个 Issue 时，在描述中单独成行写 `Closes #<issue>`；若仅部分关联或提供前置铺垫，写 `Refs #<issue>`。
+- **合并权限与历史**：所有 PR 一律由人类维护者合并（保留 merge commit 历史，不 squash）。

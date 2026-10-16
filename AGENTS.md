@@ -1,65 +1,50 @@
 # Codex Instructions for PRTS-MCP
 
-This file is intentionally repo-local so a fresh Codex session starts with the known-good runtime in the current WSL2 workspace.
+## 1. Branch Model
 
-## Branch Model
+| Branch | Purpose |
+| --- | --- |
+| `main` | Latest public stable release (native Rust `3.0.0`). |
+| `develop` | Active 3.x Rust integration branch (`3.0.1-dev.0`). Root Cargo project; no `python/` or `ts/` directories. |
+| `lts/2.8` | Python/TypeScript 2.8.x long-term maintenance branch (EOL `2027-07-02`). |
+| `lts/1.7` | Python/TypeScript 1.7.x long-term maintenance branch (EOL `2027-07-02`). |
 
-Long-lived branches after the 1.7.0 LTS release:
+Never push directly to any long-lived branch. Create a topic branch (`<type>/v<version>-<topic>`) from the appropriate base branch and open a Pull Request. Human maintainers perform all merges. When porting fixes from `lts/2.8` or `lts/1.7` to 3.x, reimplement them in Rust on `develop` — never merge a legacy branch into `develop`.
 
-| Branch | Purpose | Version suffix |
-|--------|---------|---------------|
-| `main` | Latest stable release. Currently `2.8.1`. | (none) |
-| `lts/1.7` | 1.7.x long-term maintenance. Created from the 1.7.0 release commit (EOL 2027-07-02). | (none) |
-| `develop` | Development integration. All non-LTS changes land here. | Next release target + `.dev0` (rule: `docs/dev/VERSIONING.md`) |
+## 2. Startup Reads
 
-- Feature / refactor / perf / non-urgent fix / general docs / chore -> branch from `develop`, PR to `develop`.
-- 1.7.x LTS fix -> branch from `lts/1.7`, PR to `lts/1.7`, then cherry-pick or reimplement on `develop` if applicable.
-- Hotfix for the latest stable line -> branch from `main`, PR to `main`, then forward-merge/cherry-pick to `develop`.
-- Release -> branch from `develop` as `release/vX.Y.Z`, merge the release branch to `main` by PR, tag on `main`, then merge the same release branch back to `develop` by PR.
+Before making non-trivial changes, consult the authoritative guides:
 
-Never push directly to `main`, `develop`, or `lts/1.7`. Always create a feature/fix branch and open a PR. See `CLAUDE.md` and `docs/dev/LTS.md` for the detailed iteration cycles. Version semantics and the compatibility commitment live in `docs/dev/VERSIONING.md`; change grading (Quick / Standard / Huge / Hot-Fix / Release) and the dual-track review workflow (independent CR + KHPilot Bot Review) live in `docs/dev/WORKFLOW.md`.
+- [`CLAUDE.md`](CLAUDE.md) and [`docs/dev/STYLE.md`](docs/dev/STYLE.md) — collaboration rules, module architecture, Rust conventions, and known pitfalls.
+- [`docs/dev/DOCUMENTING.md`](docs/dev/DOCUMENTING.md) — required standards whenever writing, editing, or reviewing public documentation.
+- [`docs/dev/WORKFLOW.md`](docs/dev/WORKFLOW.md) and [`docs/dev/VERSIONING.md`](docs/dev/VERSIONING.md) — PR grading, dual-track code review, minimum verification matrix, and SemVer compatibility promises.
+- [`docs/dev/LTS.md`](docs/dev/LTS.md) — maintenance scope and release rules for `lts/2.8` and `lts/1.7`.
+- [`STATUS.md`](STATUS.md) and [`ROADMAP.md`](ROADMAP.md) — current release state, 3.0 migration milestones, and post-3.0 backlog.
 
-## Startup Reads
+**Documentation task assignment**: GPT-family models should focus on fact-based review and small, evidence-backed corrections that preserve the existing writing style. Assign new-document drafting, substantial rewrites, large-scale translation, and prose refinement to a human maintainer or a maintainer-designated non-GPT model. This applies to both primary agents and subagents. Follow [`docs/dev/DOCUMENTING.md`](docs/dev/DOCUMENTING.md); explicit task-specific authorization takes precedence.
 
-- Read `CLAUDE.md` and `docs/dev/STYLE.md` before non-trivial code changes.
-- Read `docs/dev/VERSIONING.md` and `docs/dev/WORKFLOW.md` before versioning, release, or review-process work.
-- Read `docs/dev/LTS.md` before 1.7.x compatibility, security, or release work.
-- Use `STATUS.md` for current project shape and version state.
-- Use `ROADMAP.md` / `ROADMAP.zh-CN.md` when planning feature work.
+*(Note: Local working notes, phase plans, and historical archives live under gitignored `./dev/docs/`. Never add links to `./dev/` in tracked public documentation.)*
 
-## Runtime Environment
+## 3. Runtime and Packaging
 
-- Host: WSL2 Linux. Keep the repository on the Linux filesystem rather than under `/mnt/<drive>` for predictable permissions and filesystem performance.
-- Shell: use the current POSIX shell for interactive work; repository scripts target Bash when they need Bash-specific behavior.
-- Python: `uv` owns the project environment under `python/`. Bootstrap with `uv sync --directory python --locked` and run Python commands through `uv run --directory python ...`. Do not invoke `python/.venv` directly or rely on ambient `python`.
-- `python/uv.lock` is committed and must stay in sync with `pyproject.toml`.
-- Node.js: project requirement is Node >=22; `ts/package.json` carries the preferred Volta version. Bun >=1.3.14 is the default TS production runtime.
-- In WSL use normal `npm` / `npx` commands.
+- **Native Rust Server**: The repository root is a Cargo workspace-free package (`Cargo.toml` declares MSRV `1.89`, `rust-toolchain.toml` pins `1.96.1`). Source builds require a C compiler for the statically linked QuickJS regexp engine (`vendor/quickjs-regexp/`) and OS memory diagnostics (`native/process_memory.c`). Prebuilt native archives and Docker images require no compiler or language runtime.
+- **Distribution Guides**:
+  - [`docs/dev/NATIVE-PLATFORMS.md`](docs/dev/NATIVE-PLATFORMS.md) — 5 native targets (`linux-x64`, `linux-arm64`, `windows-x64`, `darwin-arm64`, `darwin-x64`) and ABI baselines.
+  - [`docs/dev/NPM-DISTRIBUTION.md`](docs/dev/NPM-DISTRIBUTION.md) — 9-package npm layout (`prts-mcp`, `prts-mcp-ts`, `@3akhp/prts-mcp-runtime`, `@3akhp/prts-mcp-data`, and 5 platform packages).
+  - [`docs/dev/DOCKER-DISTRIBUTION.md`](docs/dev/DOCKER-DISTRIBUTION.md) — Linux `x64`/`arm64` Docker images and volume compatibility.
+  - [`docs/dev/RELEASE-CANDIDATES.md`](docs/dev/RELEASE-CANDIDATES.md) and [`docs/dev/RELEASE-CD-RECOVERY.md`](docs/dev/RELEASE-CD-RECOVERY.md) — candidate aggregation, publishing, and failure recovery.
+- **WSL2 Workspace**: Keep the repository checkout on the native Linux filesystem (never under `/mnt/c/`). `Node.js >= 22` and `Bun 1.3.14` are used only for development verification harnesses, packaging scripts, and the frozen TS/v2.8.1 oracle (reconstructed under gitignored `.reference/ts-v2.8.1/`).
 
-## Quick Verification
+## 4. Verification
 
-Run the repo-local environment audit first when a session starts or when command behavior looks suspicious:
-
-```bash
-./scripts/check-runtime.sh
-```
-
-Run the full validation set before merging runtime-sensitive changes:
+Run `./scripts/check-runtime.sh` for a fast toolchain and metadata check. For full verification (fixture setup, `cargo fmt`, `cargo clippy`, unit/integration tests, release binary build, 384 frozen differential cases, process lifecycle, and extended regex checks), run:
 
 ```bash
 ./scripts/check-runtime.sh --full
 ```
 
-**After large-scale high-risk cross-module changes** (program-level refactors, `sync/`/`api/` behavior changes, the artwork/images domain, MCP transport changes), the full E2E real-machine pass is **strongly recommended, never a hard gate** — production-style deployment of both implementations plus a real MCP client exercising every tool group. The pass is heavyweight, so the maintainer decides per change whether to run it or substitute scoped real-machine verification (scope and skipped stages disclosed in the PR); releases are not a standalone trigger. Procedure: [`docs/dev/E2E.md`](docs/dev/E2E.md). The discretion rule is owned by `docs/dev/WORKFLOW.md`.
+See [`docs/dev/ENVIRONMENT.md`](docs/dev/ENVIRONMENT.md) for single-target test commands and platform-specific notes, and [`docs/dev/E2E.md`](docs/dev/E2E.md) for full real-client E2E procedures.
 
-Equivalent manual commands:
+## 5. Code Review
 
-```bash
-uv run --directory python --locked python -m pytest tests -q
-
-cd ts
-npm run build
-npm test
-npm run typecheck
-npm run smoke:bun
-```
+Standard and higher-tier PRs require **dual-track review**: open the PR first to trigger KHPilot Bot Review, and run an independent clean-context, read-only review in parallel (see [`docs/dev/WORKFLOW.md`](docs/dev/WORKFLOW.md) and [`CLAUDE.md`](CLAUDE.md)).

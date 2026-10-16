@@ -1,33 +1,14 @@
-# Git
-.git/
-.gitignore
-
-# Node
-ts/node_modules/
-ts/dist/
-
-# Python build artifacts
-python/__pycache__/
-python/src/**/__pycache__/
-python/*.egg-info/
-python/dist/
-python/build/
-
-# Local dev / secrets
+.git
+.reference
+.runtime
+artifacts
+target
+build
+dev
+node_modules
 .env
-.mcp.json
-docker-compose.override.yml
-local_repo.jsonc
+.env.*
 
-# Archives
-*.tar
-*.zip
-*.7z
-
-# Exceptions: bundled fallback data must reach the Docker image even though
-# it ships as .zip archives. Without these, .dockerignore's *.zip rule above
-# strips the CI-pre-fetched storyjson/gamedata bundles from COPY data/ data/,
-# leaving the container without offline fallback data.
-!data/storyjson/zh_CN.zip
-!data/gamedata/archives/zh_CN-excel.zip
-!data/gamedata-levels/archives/zh_CN-levels.zip
+# Root data/ contains local downloads. Validated release bundles are staged
+# separately by distribution tooling; never copy a developer's local cache.
+/data/

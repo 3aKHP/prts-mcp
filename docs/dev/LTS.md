@@ -1,74 +1,106 @@
 # LTS Maintenance Policy
 
-PRTS-MCP 1.7.0 is the final 1.x feature release and the baseline for the `lts/1.7` maintenance line. The purpose of the LTS line is to keep existing 1.x users stable while new feature and breaking-change work moves to 2.0.
+PRTS-MCP maintains two legacy long-term support (LTS) lines alongside the 3.x Rust product line: `lts/1.7` for 1.7.x and `lts/2.8` for 2.8.x. Both branches retain their dual Python and TypeScript implementations and reach end of life (EOL) on **2027-07-02**.
 
-## Scope
+| Maintenance Branch | Baseline Release | MCP Tools | End of Life (EOL) |
+| --- | --- | --- | --- |
+| `lts/1.7` | `1.7.0` | 32 | 2027-07-02 |
+| `lts/2.8` | `2.8.1` (`e0ba36096cdd46640166b0a5db02902fa9a6a24c`) | 24 | 2027-07-02 |
 
-Allowed in `1.7.x`:
+---
 
-- Compatibility fixes for upstream data schema drift, MCP client behavior, or packaging metadata.
-- Security fixes, including dependency CVEs, unsafe parsing behavior, and transport hardening.
-- Data-sync fixes for GitHub Release lookup, zip validation, retry behavior, and fallback behavior.
-- Critical bug fixes for incorrect results, crashes, resource leaks, or Python/TypeScript parity regressions.
-- Documentation corrections for deployment, support policy, or migration notes.
+## 1. Maintenance Scope
 
-Not allowed in `1.7.x`:
+**Allowed in `lts/1.7` and `lts/2.8`:**
 
-- New MCP tools.
-- New required parameters.
-- Default output-format changes.
-- New data domains.
-- Tool-surface consolidation or alias removal.
-- Python/TypeScript transport role changes.
+- Compatibility fixes for upstream data schema changes, MCP client behavior, or package metadata.
+- Security fixes, including dependency CVEs, archive/input validation, and transport hardening.
+- Data-sync fixes for GitHub Release discovery, ZIP verification, retry logic, and mirror fallback.
+- Critical bug fixes for incorrect query outputs, crashes, resource leaks, or Python/TypeScript parity regressions.
+- Documentation updates covering deployment, support policy, or migration instructions.
 
-## Branches
+**Out of scope for LTS branches:**
+
+- New MCP tools or new data domains.
+- New required tool parameters or changes to default output formats.
+- Tool-surface consolidation or removal of legacy aliases.
+- Architectural rewrites or transport role changes.
+
+---
+
+## 2. Long-Lived Branches
 
 | Branch | Purpose |
 |--------|---------|
-| `main` | Latest stable release line. Currently 2.x. |
-| `lts/1.7` | Long-term 1.7.x maintenance branch, created from the 1.7.0 release commit. |
-| `develop` | Active development integration after the 1.7.0 LTS release. |
+| `main` | Latest public stable release line (native Rust `3.0.0` since M5). |
+| `develop` | Active 3.x Rust integration branch (`3.0.1-dev.0`). Does not contain `python/` or `ts/` directories. |
+| `lts/2.8` | Long-term 2.8.x Python/TypeScript maintenance branch, forked from the `2.8.1` release commit. |
+| `lts/1.7` | Long-term 1.7.x Python/TypeScript maintenance branch, forked from the `1.7.0` release commit. |
 
-Do not push directly to any long-lived branch. Use PRs. Version semantics and the develop target-version rule live in [`VERSIONING.md`](VERSIONING.md); change grading and the dual-track review workflow live in [`WORKFLOW.md`](WORKFLOW.md).
+Never push directly to any long-lived branch; all changes must go through Pull Requests. For version semantics and compatibility rules, see [`VERSIONING.md`](VERSIONING.md); for PR grading and review requirements, see [`WORKFLOW.md`](WORKFLOW.md).
 
-## Lifecycle
+---
 
-The `lts/1.7` line is maintained for **12 months from the 1.7.0 baseline** (released 2026-07-02): end of life is **2027-07-02**.
+## 3. Support Lifecycle and Data Sources
 
-Until EOL, 1.7.x receives the fixes listed in [Scope](#scope). After EOL:
+Both `lts/1.7` and `lts/2.8` are supported through **2027-07-02** (the 12-month support window established when `1.7.0` shipped on `2026-07-02`). Release workflow guards on `lts/2.8` enforce this cutoff and reject publications after `2027-07-02` UTC.
 
-- No further 1.7.x releases. The `lts/1.7` branch and all `python/v1.7.*` / `ts/v1.7.*` tags remain available read-only and are not deleted.
-- The AKDP projection workflows in `3aKHP/ArknightsGameData` and `3aKHP/ArknightsStoryJson` are stopped. 1.7 clients keep working with the last published data but no longer receive game-data updates.
-- Users still on 1.x should follow [the 1.x → 2.0 migration guide](../migration-1.x-to-2.0.md).
+After EOL:
 
-**Data-source note:** 1.7 auto-sync reads the `3aKHP/ArknightsGameData` / `3aKHP/ArknightsStoryJson` forks via `/releases/latest`. These forks no longer track the original upstreams; their releases are projections of `3aKHP/arknights-data-pipeline` factory output, produced by each fork's own `sync-and-release.yml` workflow. Until EOL these forks must **not** be archived — archiving makes a repository read-only, which blocks new projection releases and would freeze 1.7 data.
+- No further `1.7.x` or `2.8.x` maintenance releases will be published.
+- The `lts/1.7` and `lts/2.8` branches, Git tags (`python/v*`, `ts/v*`), and published registry packages/images remain available read-only for reproducible installs and rollback.
+- Users still on `1.7.x` or `2.8.x` should upgrade following [`docs/migration-1.x-to-2.0.md`](../migration-1.x-to-2.0.md) and [`docs/migration-2.x-to-3.0.md`](../migration-2.x-to-3.0.md).
 
-**Revision-release note:** from 2.7.3 the modern implementations additionally discover `datarev-<versionId>-r<N>` repair revisions directly from `3aKHP/arknights-data-pipeline` (ordered by `(versionId, publicationRevision)`). 1.7 never sees them: it follows `/releases/latest` on the projection forks, and `datarev-` releases are neither marked latest nor projected. Repair content reaches 1.7 only through the next normal `data-` release's projection.
+### Data Pipeline Compatibility Notes
 
-## 1.7.x Fix Flow
+- **`lts/2.8` data sync**: consumes `3aKHP/arknights-data-pipeline` (AKDP) directly, including `datarev-<versionId>-r<N>` repair revisions introduced in 2.7.3. Since 3.x also consumes AKDP, `2.8.x` deployments continue to receive normal data updates throughout and after the 3.0 transition.
+- **`lts/1.7` projection forks**: 1.7 auto-sync reads `/releases/latest` from the `3aKHP/ArknightsGameData` and `3aKHP/ArknightsStoryJson` forks, which are populated by projection workflows from AKDP.
+  - **Do not archive** those two fork repositories before `2027-07-02` — archiving a GitHub repository makes it read-only and would halt automated projection releases for 1.7 users.
+  - After `2027-07-02`, the projection workflows in both forks will be disabled; existing 1.7 instances will continue running with the final projected dataset.
+  - Note that `datarev-` repair releases are not marked `latest` and are not projected to the 1.7 forks; repair content reaches 1.7 on the next standard `data-` release.
 
-1. Branch from `lts/1.7` with `fix/v1.7.x-<topic>` or `docs/v1.7.x-<topic>`.
-2. Make the smallest compatible fix.
-3. Run `./scripts/check-runtime.sh --full` for runtime-sensitive changes.
-4. Open a PR to `lts/1.7`.
-5. After merge, tag the LTS commit with both implementation tags:
+---
 
+## 4. Maintenance Workflows
+
+### 1.7.x Fix and Release Flow
+
+1. Create a topic branch from `lts/1.7` named `fix/v1.7.x-<topic>` or `docs/v1.7.x-<topic>`.
+2. Implement the minimal compatible fix in both `python/` and `ts/` (keeping behavior and versions in lockstep).
+3. Run the 1.7 test suites (and `./scripts/check-runtime.sh --full` on that branch for runtime-sensitive changes).
+4. Open a PR targeting `lts/1.7` and complete the review required by [`WORKFLOW.md`](WORKFLOW.md).
+5. When publishing a 1.7.x maintenance release, tag the merged release commit on `lts/1.7` with both implementation tags:
    ```bash
    git tag python/v1.7.x
    git tag ts/v1.7.x
    git push origin python/v1.7.x ts/v1.7.x
    ```
+6. If the bug also affects 2.8.x or 3.x Rust, port the fix to `lts/2.8` and/or reimplement it in Rust on `develop` via separate PRs. Never merge `lts/1.7` into `main` or `develop`.
 
-6. Cherry-pick or reimplement the fix on `develop` when it also applies to the current development line.
+### 2.8.x Fix and Release Flow
 
-`main` follows the latest stable 2.x release. Do not merge `lts/1.7` into `main`; cherry-pick or reimplement applicable fixes on `develop` instead.
+1. Create a topic branch from `lts/2.8` named `fix/v2.8.x-<topic>` or `docs/v2.8.x-<topic>`, keeping Python and TypeScript behavior and lockfiles aligned.
+2. Run the 2.8 verification suite (`./scripts/check-runtime.sh --full` on the `lts/2.8` checkout for runtime or workflow changes).
+3. Open a PR targeting `lts/2.8` and complete review per [`WORKFLOW.md`](WORKFLOW.md).
+4. For a `2.8.x` maintenance release, open a release PR to `lts/2.8` bumping `python/pyproject.toml`, `ts/package.json`, and both changelogs. Once merged, tag the commit with `python/v2.8.x` and `ts/v2.8.x` (prerelease `-alpha`/`-beta`/`-rc` tags are rejected on `lts/2.8`).
+5. The `lts/2.8` CD workflow verifies that the tag commit is an ancestor of `origin/lts/2.8`, that tag and package versions match, and that the current UTC date is on or before `2027-07-02`.
+6. If a fix also applies to 3.x, reimplement and verify it in Rust on `develop` in a separate PR. **Never merge `lts/2.8` into `develop`**, as doing so would reintroduce the removed `python/` and `ts/` source trees.
 
-## 2.0 Boundary
+### 2.8.x Publishing Channels
 
-2.0 work may break the 1.x compatibility contract. The 2.0 branch must provide migration notes before prerelease for:
+To prevent 2.8 maintenance releases from overwriting 3.x stable tags after cutover, `lts/2.8` publishes under dedicated maintenance channels:
 
-- Final tool-surface consolidation.
-- Output channel (`structuredContent`) behavior — note 2.0 keeps markdown as the default `content` and does **not** flip to a JSON default; the originally proposed per-call `output_format=markdown|json` parameter was rejected during design.
-- Removed or hidden legacy tool aliases.
+| Channel | `lts/2.8` Publication Behavior |
+| --- | --- |
+| **npm (`prts-mcp-ts`)** | Publishes with `--tag lts-2.8`; never updates `latest` or `lts-1.7`. |
+| **GHCR (`ghcr.io/3akhp/prts-mcp`)** | Publishes `:2.8.x` and `:2`; never updates `:latest` or `:3`. |
+| **GitHub Releases** | Publishes `python/v2.8.x` and `ts/v2.8.x` releases with `make_latest: false`. |
+| **PyPI (`prts-mcp`)** | Publishes `2.8.x` Python packages (3.x does not publish to PyPI; users can pin `'prts-mcp>=2.8,<2.9'`). |
 
-Cross-transport parity was deferred from 2.0 and delivered in 2.3.0: Python gained Streamable HTTP and TypeScript gained stdio, while both original transport entry points remained compatible. See [`docs/migration-1.x-to-2.0.md`](../migration-1.x-to-2.0.md) for the delivered 2.0 changes.
+Downstream users who wish to stay on the 2.8 maintenance line can pin:
+
+```bash
+npm install -g prts-mcp-ts@lts-2.8
+docker pull ghcr.io/3akhp/prts-mcp:2
+pip install 'prts-mcp>=2.8,<2.9'
+```

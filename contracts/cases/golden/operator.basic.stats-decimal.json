@@ -1,0 +1,26 @@
+{
+  "case": "operator.basic.stats-decimal",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "ba0026d3-3c3d-4102-b660-e1e5bc295771",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "# 阿米娅 - 面板数值\n\n**精英1 Lv35**（上限 Lv70）\n\n- 生命上限：1076\n- 攻击：451\n- 防御：95\n- 法术抗性：15\n- 部署费用：19\n- 阻挡数：1\n- 攻击速度：100\n- 攻击间隔（秒）：1.8\n- 再部署时间（秒）：70\n\n## 满信赖加成\n\n- 生命上限+200，攻击+70\n\n## 潜能加成\n\n- 部署费用-2\n- 攻击力+25"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9310
+    }
+  }
+}

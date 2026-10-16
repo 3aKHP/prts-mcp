@@ -1,0 +1,26 @@
+{
+  "case": "activity.read.not-found",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "6e0cba40-cfbc-4c21-b375-4b36b0ec41a4",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "未找到活动：\"nope\"。请先调用 list_story_events 确认活动 ID。"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9628
+    }
+  }
+}

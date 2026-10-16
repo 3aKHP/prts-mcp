@@ -1,0 +1,26 @@
+{
+  "case": "fs.appearances",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "full-story-r2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "9ab98191-c37a-4cd3-a31b-33a02bfb41c8",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "# 「阿米娅」的出场（共 1 章）\n- [mentioned] act9d0 / DM-5 旗帜（key: activities/act9d0/level_act9d0_03_end）"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9812
+    }
+  }
+}

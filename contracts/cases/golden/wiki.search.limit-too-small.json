@@ -1,0 +1,27 @@
+{
+  "case": "wiki.search.limit-too-small",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v1",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "ef6a0d07-7543-4207-a37f-f4a7e0db6a0d",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Input validation error: Invalid arguments for tool search_prts: limit: Too small: expected number to be >=1"
+          }
+        ],
+        "isError": true
+      },
+      "jsonrpc": "2.0",
+      "id": 9909
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "case": "enemy.info.stage-not-spawning",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "eb32154b-9de8-4397-a643-fb6c5f8e82bd",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "霜星（enemy_1505_frstar）未在关卡 \"main_00-01\" 实际出场。"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9334
+    }
+  }
+}

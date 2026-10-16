@@ -1,0 +1,39 @@
+{
+  "capture_meta": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1",
+    "fixture": "minimal-gamedata-v1",
+    "captured_at": "2026-10-11T10:55:00Z",
+    "note": "ad-hoc probe (P1 prep); raw SSE bodies verbatim"
+  },
+  "steps": [
+    {
+      "label": "multi-field zod error (chapter=5, limit='x', offset=-1)",
+      "response": {
+        "status": 200,
+        "body_text": "event: message\ndata: {\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"Input validation error: Invalid arguments for tool list_stages: chapter: Invalid input: expected string, received number, limit: Invalid input: expected number, received string, offset: Too small: expected number to be >=0\"}],\"isError\":true},\"jsonrpc\":\"2.0\",\"id\":2}\n\n"
+      }
+    },
+    {
+      "label": "arguments null -> SDK-level params validation",
+      "response": {
+        "status": 200,
+        "body_text": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":3,\"error\":{\"code\":-32602,\"message\":\"Invalid tools/call request: [\\n  {\\n    \\\"expected\\\": \\\"record\\\",\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"path\\\": [\\n      \\\"params\\\",\\n      \\\"arguments\\\"\\n    ],\\n    \\\"message\\\": \\\"Invalid input: expected record, received null\\\"\\n  }\\n]\"}}\n\n"
+      }
+    },
+    {
+      "label": "arguments null + unknown tool (params validated before tool lookup)",
+      "response": {
+        "status": 200,
+        "body_text": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":4,\"error\":{\"code\":-32602,\"message\":\"Invalid tools/call request: [\\n  {\\n    \\\"expected\\\": \\\"record\\\",\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"path\\\": [\\n      \\\"params\\\",\\n      \\\"arguments\\\"\\n    ],\\n    \\\"message\\\": \\\"Invalid input: expected record, received null\\\"\\n  }\\n]\"}}\n\n"
+      }
+    },
+    {
+      "label": "chapter empty string (filters everything, displays filter: none)",
+      "response": {
+        "status": 200,
+        "body_text": "event: message\ndata: {\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"没有匹配的关卡（filter: none）。\"}]},\"jsonrpc\":\"2.0\",\"id\":5}\n\n"
+      }
+    }
+  ]
+}

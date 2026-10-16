@@ -1,0 +1,26 @@
+{
+  "case": "matrix.operator_voicelines.stdio-legacy",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "stdio",
+    "session_id": null,
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "# 阿米娅 - 语音记录\n\n**任命助理**: 博士，今天也请多指教。\n**信赖提升后交谈**: 博士，[[罗德岛|这片土地]]需要我们。"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9386
+    }
+  }
+}

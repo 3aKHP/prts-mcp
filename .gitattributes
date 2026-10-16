@@ -5,6 +5,11 @@
 # Binary types are marked explicitly to avoid any heuristic mis-detection.
 
 # Text — source
+*.rs     text eol=lf
+*.c      text eol=lf
+*.h      text eol=lf
+*.mjs    text eol=lf
+*.cjs    text eol=lf
 *.py     text eol=lf
 *.ts     text eol=lf
 *.js     text eol=lf
@@ -22,6 +27,7 @@
 # Text — dotfiles without extensions
 Dockerfile   text eol=lf
 LICENSE      text eol=lf
+NOTICE       text eol=lf
 
 # Binary
 *.zip   binary

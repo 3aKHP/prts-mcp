@@ -1,0 +1,26 @@
+{
+  "case": "speakers.default",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v2",
+  "expected": {
+    "status": 200,
+    "content_type": "text/event-stream",
+    "session_id": "4d91eb42-537d-4ea5-a474-a55c176072da",
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "# act_test 的发言角色（共 2 位）\n- 博士（1 句）\n- 阿米娅（1 句）"
+          }
+        ]
+      },
+      "jsonrpc": "2.0",
+      "id": 9658
+    }
+  }
+}

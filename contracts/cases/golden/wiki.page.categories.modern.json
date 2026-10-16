@@ -1,0 +1,33 @@
+{
+  "case": "wiki.page.categories.modern",
+  "source": "ts-oracle",
+  "recorded_with": {
+    "runtime": "bun 1.3.14",
+    "server_version": "2.8.1"
+  },
+  "dataset": "minimal-gamedata-v1",
+  "expected": {
+    "status": 200,
+    "content_type": "application/json",
+    "session_id": null,
+    "body": {
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "- 干员\n- 主角"
+          }
+        ],
+        "resultType": "complete",
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "PRTS_Wiki_Assistant",
+            "version": "<server-version>"
+          }
+        }
+      },
+      "jsonrpc": "2.0",
+      "id": 9945
+    }
+  }
+}
