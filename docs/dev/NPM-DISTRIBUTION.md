@@ -1,6 +1,6 @@
 # Rust npm 分发说明
 
-本文面向构建与维护 npm 发行包的协作者，说明 PRTS-MCP 3.x 的 9 包架构、Node.js 启动桥生命周期、内置备用数据打包及本地验证流程。
+本文面向构建与维护 npm 发行包的协作者，说明 PRTS-MCP 3.x 的 9 包架构、npm 启动桥生命周期、内置备用数据打包及本地验证流程。
 
 - 终端用户的 npm 安装与服务端部署见[客户端接入指南](../user/quick-start.md)与[服务端部署指南](../admin/deployment.md)
 - 五大平台的底层二进制与 ABI 基线见 [`NATIVE-PLATFORMS.md`](NATIVE-PLATFORMS.md)
@@ -10,13 +10,13 @@
 
 ## 1. 九包架构与命令职责
 
-在 3.x 中，npm 渠道不再分发 TypeScript 业务源码，而是通过精简的 Node.js 启动桥拉起对应平台的预编译 Rust 二进制。整套分发由 **9 个同版本 npm 包**组成：
+在 3.x 中，npm 渠道不再分发 TypeScript 业务源码，而是通过精简的启动桥拉起对应平台的预编译 Rust 二进制。整套分发由 **9 个同版本 npm 包**组成：
 
 | 包名 | 角色 | 提供的命令与职责 |
 | --- | --- | --- |
 | `prts-mcp` | 3.x 新主入口包 | 提供 `prts-mcp` 命令：默认启动 Streamable HTTP（`:3000/mcp`），设 `PRTS_TRANSPORT=stdio` 切换为 stdio。 |
 | `prts-mcp-ts` | 2.x 命令兼容入口包 | 提供 `prts-mcp-ts`、`prts-mcp-ts-bun`（固定 HTTP）与 `prts-mcp-ts-stdio`（固定 stdio），底层同样调用 Rust 二进制，无需安装 Bun。 |
-| `@3akhp/prts-mcp-runtime` | 共享 Node 启动桥 | 不含业务逻辑；负责按当前 OS/CPU 定向解析平台二进制与内置数据目录、透传标准流与退出信号。 |
+| `@3akhp/prts-mcp-runtime` | 共享启动桥 | 不含业务逻辑；负责按当前 OS/CPU 定向解析平台二进制与内置数据目录、透传标准流与退出信号。 |
 | `@3akhp/prts-mcp-data` | 共享只读备用数据包 | 打包经过校验的 `gamedata/`、`gamedata-levels/` 与 `storyjson/` 备用快照（含 `BUNDLE.json` 与 `SHA256SUMS`）。 |
 | `@3akhp/prts-mcp-<platform>` | 5 个平台二进制包 | 对应 `linux-x64`、`linux-arm64`、`windows-x64`、`darwin-arm64`、`darwin-x64`；携带预编译 Rust 二进制、ABI 审计记录与完整第三方许可证。 |
 
@@ -24,7 +24,9 @@
 
 - **精确同版依赖**：`prts-mcp` 与 `prts-mcp-ts` 均以精确版本号依赖 `@3akhp/prts-mcp-runtime`；`runtime` 以精确版本号依赖 `@3akhp/prts-mcp-data`，并将 5 个平台包列为精确版本的 `optionalDependencies`。
 - **按平台自动筛选**：每个平台包在 `package.json` 中声明了对应的 `os`、`cpu`（以及 Linux 下的 `libc: ["glibc"]`）字段。`npm install` 时仅会下载匹配当前机器的那个平台包，无需在用户机器上执行 `postinstall` 下载脚本或现场编译（因此 `npm install --ignore-scripts` 也可正常工作）。
-- **环境要求**：启动桥要求 `Node.js >= 22`、`npm >= 10`，Linux 下额外检查 `glibc >= 2.28`。若安装时传入了 `--omit=optional` 导致平台包缺失，或在不支持的 `musl`/架构上运行，启动桥会向 `stderr` 输出明确错误并以非零状态码退出。
+- **环境要求**：npm 安装及默认入口要求 `Node.js >= 22`、`npm >= 10`，Linux 下额外检查 `glibc >= 2.28`。若安装时传入了 `--omit=optional` 导致平台包缺失，或在不支持的 `musl`/架构上运行，启动桥会向 `stderr` 输出明确错误并以非零状态码退出。
+
+- **沿用 Bun**：Linux `x64` 已验证使用 Bun `1.3.14` 显式运行兼容入口，例如 `bun /usr/bin/prts-mcp-ts-bun`。既有 Bun 服务可保留启动方式，Node 作为兼容路径。两种启动桥的业务逻辑均由 Rust 子进程执行；直接执行 npm bin 时仍按 Node shebang 启动。
 
 ---
 
