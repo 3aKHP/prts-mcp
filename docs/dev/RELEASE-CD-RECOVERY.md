@@ -39,12 +39,12 @@ gh run view "$release_run_id"
 
 ```bash
 # 1. 检查 npm 包版本、SRI integrity 与 dist-tag 状态
-npm view prts-mcp@3.0.0-alpha.3 version dist.integrity --json
+npm view prts-mcp@3.0.0 version dist.integrity --json
 npm dist-tag ls prts-mcp
 npm dist-tag ls prts-mcp-ts
 
 # 2. 检查 GitHub Release 已上传的资产列表
-gh release view v3.0.0-alpha.3 --repo 3aKHP/prts-mcp
+gh release view v3.0.0 --repo 3aKHP/prts-mcp
 ```
 
 ### 第三步：在原始 Run 上重跑失败任务

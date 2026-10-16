@@ -1,6 +1,6 @@
 # PRTS-MCP Roadmap
 
-The current public stable release is `2.8.1`. Active development on `develop` targets `3.0.0` (`3.0.0-dev.0`), unifying the server into a single native Rust implementation while preserving the frozen TS/v2.8.1 tool contract. [简体中文](ROADMAP.zh-CN.md).
+The current public stable release is `3.0.0`, a single native Rust implementation that preserves the frozen TS/v2.8.1 tool contract. Active development continues on `develop` (`3.0.1-dev.0`). [简体中文](ROADMAP.zh-CN.md).
 
 ## 3.0 Rust Migration
 
@@ -14,7 +14,7 @@ The current public stable release is `2.8.1`. Active development on `develop` ta
 | **M2C** | Build and verify Linux `x64`/`arm64` Docker images and legacy volume compatibility ([DOCKER-DISTRIBUTION.md](docs/dev/DOCKER-DISTRIBUTION.md)). | Complete |
 | **M3** | Release candidate packaging, single-version enforcement, and isolated CD workflows ([RELEASE-CANDIDATES.md](docs/dev/RELEASE-CANDIDATES.md)). | Complete ([`3.0.0-alpha.3`](https://github.com/3aKHP/prts-mcp/releases/tag/v3.0.0-alpha.3)) |
 | **M4** | Real-client E2E validation, data/image sync verification, and upgrade/rollback checks against 2.8.1 volumes ([E2E.md](docs/dev/E2E.md)). | Complete |
-| **M5** | RC production lifecycle observation and targeted stress testing, stable `3.0.0` release, promotion of `latest` channel tags, and back-merge to `develop`. | In progress (RC production acceptance) |
+| **M5** | RC production lifecycle observation and targeted stress testing, stable `3.0.0` release, promotion of `latest` channel tags, and back-merge to `develop`. | Complete ([`3.0.0`](https://github.com/3aKHP/prts-mcp/releases/tag/v3.0.0)) |
 
 ## Post-3.0 Backlog
 

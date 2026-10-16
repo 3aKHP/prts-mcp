@@ -6,7 +6,7 @@
 - 接入后如何高效组合使用 24 个工具，请参阅[工具使用与同人创作工作流指南](tools-guide.md)。
 - 如果你需要在服务器、NAS 或 Docker 环境中长期托管独立 HTTP 服务、管理大体积本地立绘或配置代理镜像，请参阅运维文档：[服务端部署与容器运维指南](../admin/deployment.md)。
 
-> **版本说明**：当前公开稳定版为 `2.8.1`，Rust 公开候选版为 `3.0.0-rc.3`。在 3.0.0 正式发布前，安装 3.x 候选版请显式指定 `@3.0.0-rc.3` 或 `@next`。
+> **版本说明**：当前公开稳定版为 `3.0.0`，以下示例固定该版本号。如需继续使用 2.8.x，请改用 `prts-mcp-ts@lts-2.8` 或 `ghcr.io/3akhp/prts-mcp:2`。
 
 ---
 
@@ -25,7 +25,7 @@
 
 - **使用 Docker**：只需本机已安装 Docker，无需安装 Node.js、Python 或任何编译工具。
 - **使用 npm / npx**：需本机已安装 `Node.js >= 22` 与 `npm >= 10`（自动拉起内置的预编译 Rust 二进制，无需安装 Bun 或编译器）。
-- **使用预编译原生归档包**：从 [3.0.0-rc.3 Release](https://github.com/3aKHP/prts-mcp/releases/tag/v3.0.0-rc.3) 下载对应系统的压缩包（支持 Linux `x64`/`arm64` `glibc >= 2.28`、Windows `x64`、macOS `14.0+` `arm64`/`x64`），解压后即可直接运行（请完整保留解压目录内的 `bin/` 与 `data/` 结构）。
+- **使用预编译原生归档包**：从 [3.0.0 Release](https://github.com/3aKHP/prts-mcp/releases/tag/v3.0.0) 下载对应系统的压缩包（支持 Linux `x64`/`arm64` `glibc >= 2.28`、Windows `x64`、macOS `14.0+` `arm64`/`x64`），解压后即可直接运行（请完整保留解压目录内的 `bin/` 与 `data/` 结构）。
 
 ---
 
@@ -45,7 +45,7 @@
   "mcpServers": {
     "prts_wiki": {
       "command": "docker",
-      "args": ["run", "-i", "--rm", "-v", "prts-data:/data", "ghcr.io/3akhp/prts-mcp:3.0.0-rc.3"]
+      "args": ["run", "-i", "--rm", "-v", "prts-data:/data", "ghcr.io/3akhp/prts-mcp:3.0.0"]
     }
   }
 }
@@ -58,7 +58,7 @@
   "mcpServers": {
     "prts_wiki": {
       "command": "npx",
-      "args": ["-y", "--package=prts-mcp-ts@3.0.0-rc.3", "prts-mcp-ts-stdio"]
+      "args": ["-y", "--package=prts-mcp-ts@3.0.0", "prts-mcp-ts-stdio"]
     }
   }
 }
@@ -88,10 +88,10 @@
 
 ```bash
 # 方式 1：通过 npx 启动本地 stdio 进程
-claude mcp add --transport stdio prts_wiki -- npx -y --package=prts-mcp-ts@3.0.0-rc.3 prts-mcp-ts-stdio
+claude mcp add --transport stdio prts_wiki -- npx -y --package=prts-mcp-ts@3.0.0 prts-mcp-ts-stdio
 
 # 方式 2：通过 Docker 启动本地 stdio 进程
-claude mcp add --transport stdio prts_wiki -- docker run -i --rm -v prts-data:/data ghcr.io/3akhp/prts-mcp:3.0.0-rc.3
+claude mcp add --transport stdio prts_wiki -- docker run -i --rm -v prts-data:/data ghcr.io/3akhp/prts-mcp:3.0.0
 
 # 方式 3：连接已启动的 Streamable HTTP 服务
 claude mcp add --transport http prts_wiki http://127.0.0.1:3000/mcp
@@ -189,7 +189,7 @@ MCP 生态目前并存两代协议通信方式：
 | --- | --- |
 | **HTTP 模式下提示 `MCP session lost`（错误码 `-32002`）** | 在传统有状态协议（Legacy）下，当远端 HTTP 服务容器重启、或连接连续空闲超过 **24 小时**被服务端自动清理后，客户端缓存的旧 `Mcp-Session-Id` 会失效。<br>**解决办法**：若客户端未自动重新发起 `initialize`，只需在客户端设置中**将该 MCP 连接开关关闭再重新打开**（或重启客户端应用），即可立即建立新会话。 |
 | **客户端报错 `Connection closed` 或连接立即断开** | 1. 若使用 `prts-mcp` 原生二进制或新主包，请检查是否在 `env` 中配置了 `"PRTS_TRANSPORT": "stdio"`（未设置时它会按默认的 HTTP 模式启动）。<br>2. 若使用 Docker，请确认参数中有 `-i` 且没有加 `-t`。 |
-| **Windows 下 `npx` 或 `npm` 命令无法启动** | 部分桌面客户端在 Windows 下直接拉起进程时不解析 `.ps1`，请将 `command` 改为 `"npx.cmd"`，或先执行 `npm.cmd install -g prts-mcp-ts@3.0.0-rc.3` 再将 `command` 设为 `"prts-mcp-ts-stdio.cmd"`。 |
+| **Windows 下 `npx` 或 `npm` 命令无法启动** | 部分桌面客户端在 Windows 下直接拉起进程时不解析 `.ps1`，请将 `command` 改为 `"npx.cmd"`，或先执行 `npm.cmd install -g prts-mcp-ts@3.0.0` 再将 `command` 设为 `"prts-mcp-ts-stdio.cmd"`。 |
 | **提示缺少平台二进制包** | 执行 `npm install` 时请勿添加 `--omit=optional` 参数；重新执行正常安装即可拉取平台二进制。 |
 | **干员/剧情能查到，但 `search_prts` 维基检索失败** | 干员与剧情拥有本地/内置备用数据，而 `search_prts` / `prts_page` 需要实时请求 `https://prts.wiki`，请检查本机网络或代理设置。 |
 

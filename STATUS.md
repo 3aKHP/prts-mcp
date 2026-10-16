@@ -6,8 +6,8 @@
 
 | Line / Branch | Current State |
 | --- | --- |
-| Public stable (`main`) | `2.8.1` (Python and TypeScript); `latest` stable channels remain on `2.8.1` until 3.0.0 stable (M5). |
-| Active development (`develop`) | `3.0.0-dev.0` (native Rust Cargo project at the repository root). Public candidate [`3.0.0-rc.3`](https://github.com/3aKHP/prts-mcp/releases/tag/v3.0.0-rc.3) is published on npm (`@next`), GitHub Releases, and GHCR. |
+| Public stable (`main`) | [`3.0.0`](https://github.com/3aKHP/prts-mcp/releases/tag/v3.0.0) (native Rust), published on npm (`latest`), GitHub Releases, and GHCR (`:latest`, `:3`). |
+| Active development (`develop`) | `3.0.1-dev.0` (native Rust Cargo project at the repository root). |
 | `lts/2.8` | Python and TypeScript 2.8.x maintenance branch (`2.8.1` baseline, 24 tools). |
 | `lts/1.7` | Python and TypeScript 1.7.x maintenance branch (latest patch `1.7.2`, `1.7.0` feature baseline, 32 tools). |
 | LTS End of Life | Both `lts/2.8` and `lts/1.7` are supported through **2027-07-02**. |
@@ -31,7 +31,7 @@
   - **M2C**: Verified Linux `x64`/`arm64` Docker images and backward-compatible volume layouts (see [DOCKER-DISTRIBUTION.md](docs/dev/DOCKER-DISTRIBUTION.md)).
 - **M3 (Candidate Release Automation — Complete)**: Published [`3.0.0-alpha.3`](https://github.com/3aKHP/prts-mcp/releases/tag/v3.0.0-alpha.3) via `.github/workflows/release-rust.yml` with npm OIDC provenance across all 9 packages, 44 GitHub Release assets, and dual-architecture GHCR manifests, while keeping `latest` and LTS channels untouched (see [RELEASE-CANDIDATES.md](docs/dev/RELEASE-CANDIDATES.md)).
 - **M4 (Candidate E2E, Upgrade & Rollback — Complete within Accepted Scope)**: Verified `3.0.0-alpha.3` on WSL across the full 24-tool harness, real MCP client operator/artwork workflows, game-data and artwork baseline/delta sync, and live upgrade/rollback against npm `2.8.1` user volumes (see [E2E.md](docs/dev/E2E.md)).
-- **M5 (Stable 3.0.0 Release — In Progress)**: Documentation work is complete; the RC is `3.0.0-rc.3`. Stable release follows RC lifecycle observation and targeted stress testing on the production server, with real-client usability testing if needed. Then promote `latest` tags on npm/GHCR/GitHub Releases and back-merge to `develop`. Standalone `crates.io` publication, management CLI, and new feature work are scheduled after 3.0.0.
+- **M5 (Stable 3.0.0 Release — Complete)**: `3.0.0-rc.3` passed production lifecycle observation, including a natural data and image generation update, and same-load memory comparison against 2.8.1. `3.0.0` was released from `main` with `latest` promoted on npm, GHCR, and GitHub Releases, then back-merged to `develop`. Standalone `crates.io` publication, management CLI, and new feature work are scheduled after 3.0.0.
 
 ## Release History (Python / TypeScript)
 

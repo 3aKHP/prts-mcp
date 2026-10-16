@@ -65,7 +65,7 @@ node tools/release/probe-native.mjs linux-x64
 | --- | --- |
 | `RUST_NPM_PUBLISH_ENABLED` | 设为 `true` 时执行 `publish-npm` 任务（通过 GitHub OIDC Trusted Publishing 发布 9 个 npm 包）。 |
 | `RUST_NON_NPM_PUBLISH_ENABLED` | 设为 `true` 时执行 `publish-non-npm` 任务（推送 GHCR 双架构镜像并创建 GitHub Release）。 |
-| `RUST_STABLE_RELEASE_ENABLED` | 稳定版总闸门；在 M5 正式发布前保持关闭，防止预发布期误推进稳定版标签。 |
+| `RUST_STABLE_RELEASE_ENABLED` | 稳定版总闸门；M5 前保持关闭以防预发布期误推进稳定版标签，自 3.0.0 起开启。 |
 
 ---
 
@@ -74,11 +74,12 @@ node tools/release/probe-native.mjs linux-x64
 1. **npm（9 包有序发布）**：
    - 使用 Node 24 与 `npm >= 11.21.0` 通过 OIDC provenance 签名按依赖顺序发布：`5 个平台包 → @3akhp/prts-mcp-data → @3akhp/prts-mcp-runtime → prts-mcp & prts-mcp-ts`。
    - 预发布版本显式使用 `--tag next` 发布，并在 30 分钟传播窗口内轮询确认 registry 上的版本 `integrity` 与 `next` 标签均已就位，同时核验 `prts-mcp-ts` 的 `latest` / `lts-2.8` / `lts-1.7` 等既有标签未被改动。
+   - 正式版（自 `3.0.0` 起）以 `--tag latest` 发布并确认 `latest` 就位，其余既有标签（包括 `next`）保持不变。
    - *注：npm registry 要求每个新创建的包名必须拥有 `latest` dist-tag；8 个 3.x 新增包名在首次注册时自动生成的占位 `latest` 标签在 M5 前保持不动，候选期安装请始终显式指定 `@next` 或精确版本号。*
 2. **GHCR（双架构容器镜像）**：
-   - 加载经过验证的 `linux-x64` 与 `linux-arm64` 镜像归档，校验 Image ID 与架构后推送单架构标签，并合成多架构 manifest（`:3.x.y-...` 与 `:next`；M5 前不更新 `:latest` 或 `:3`）。
+   - 加载经过验证的 `linux-x64` 与 `linux-arm64` 镜像归档，校验 Image ID 与架构后推送单架构标签，并合成多架构 manifest（预发布为 `:3.x.y-...` 与 `:next`；正式版为 `:3.x.y`、`:3` 与 `:latest`，不更新 `:next`）。
 3. **GitHub Releases**：
-   - 上传 `artifacts/release/` 中的全部 44 项资产与校验清单；预发布版本自动标记为 `--prerelease --latest=false`。
+   - 上传 `artifacts/release/` 中的全部 44 项资产与校验清单；预发布版本自动标记为 `--prerelease --latest=false`，正式版以 `--latest=true` 发布。
    - 发行说明直接取自中英文 `CHANGELOG` 中与发布版本精确对应的段落，并附精确版本的安装命令和迁移指南链接；发布分支须先将 `Unreleased` 更新为对应版本及日期。
 
 如果在发布过程中遇到网络抖动、registry 传播延迟或单个渠道任务失败，请勿重新打 tag 或全量重跑构建，应直接按照 [`RELEASE-CD-RECOVERY.md`](RELEASE-CD-RECOVERY.md) 在原始 workflow run 上重跑失败的发布任务（`Re-run failed jobs`）。

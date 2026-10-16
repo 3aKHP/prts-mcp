@@ -6,8 +6,8 @@
 
 | 分支 / 版本线 | 当前状态 |
 | --- | --- |
-| 公开稳定版（`main`） | `2.8.1`（Python 与 TypeScript）；在 3.0.0 正式版（M5）发布前，`latest` 稳定渠道保持不变。 |
-| 主开发分支（`develop`） | `3.0.0-dev.0`（根目录原生 Rust Cargo 工程）。公开候选版 [`3.0.0-rc.3`](https://github.com/3aKHP/prts-mcp/releases/tag/v3.0.0-rc.3) 已发布至 npm（`@next`）、GitHub Releases 与 GHCR。 |
+| 公开稳定版（`main`） | [`3.0.0`](https://github.com/3aKHP/prts-mcp/releases/tag/v3.0.0)（原生 Rust），已发布至 npm（`latest`）、GitHub Releases 与 GHCR（`:latest`、`:3`）。 |
+| 主开发分支（`develop`） | `3.0.1-dev.0`（根目录原生 Rust Cargo 工程）。 |
 | `lts/2.8` | Python 与 TypeScript 2.8.x 长期维护线（基于 `2.8.1`，24 个工具）。 |
 | `lts/1.7` | Python 与 TypeScript 1.7.x 长期维护线（最新补丁版本 `1.7.2`，功能基线 `1.7.0`，32 个工具）。 |
 | LTS 维护截止日（EOL） | `lts/2.8` 与 `lts/1.7` 均维护至 **2027-07-02**。 |
@@ -31,7 +31,7 @@
   - **M2C**：完成 Linux `x64` / `arm64` 双架构 Docker 镜像构建与旧版数据卷兼容验证（见 [DOCKER-DISTRIBUTION.md](docs/dev/DOCKER-DISTRIBUTION.md)）。
 - **M3（候选版发布自动化 — 已完成）**：通过 `.github/workflows/release-rust.yml` 公开发布 [`3.0.0-alpha.3`](https://github.com/3aKHP/prts-mcp/releases/tag/v3.0.0-alpha.3)，完成 9 个 npm 包的 OIDC provenance 签名发布、GitHub Release 44 项资产上传与 GHCR 双架构镜像发布，同时保持 `latest` 及 LTS 渠道标签不变（见 [RELEASE-CANDIDATES.md](docs/dev/RELEASE-CANDIDATES.md)）。
 - **M4（候选版真机 E2E、升级与回滚 — 已完成）**：在 WSL 环境下基于公开 `3.0.0-alpha.3` 完成 24 工具套件校验、真实 MCP 客户端干员与立绘交互、游戏数据与立绘基线/增量同步，以及 npm `2.8.1` 旧数据卷的平滑升级与回滚验证（见 [E2E.md](docs/dev/E2E.md)）。
-- **M5（3.0.0 正式版发布 — 进行中）**：文档工作已完成，RC 版本为 `3.0.0-rc.3`。RC 在生产服务器上通过全生命周期观测和专项压测后即可发布正式版，必要时调用真实客户端进行使用性测试。随后切换 `latest` 稳定标签并回灌 `develop`。`crates.io` 独立上架、管理 CLI 与新功能开发均安排在 3.0.0 正式发布之后。
+- **M5（3.0.0 正式版发布 — 已完成）**：`3.0.0-rc.3` 通过生产服务器全生命周期观测（含一次自然的数据与立绘代际更新）及与 2.8.1 的同负载内存对照。`3.0.0` 从 `main` 发布，npm、GHCR 与 GitHub Releases 的 `latest` 已切换，并已回灌 `develop`。`crates.io` 独立上架、管理 CLI 与新功能开发均安排在 3.0.0 正式发布之后。
 
 ## 历史版本发布记录（Python / TypeScript）
 
