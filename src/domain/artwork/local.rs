@@ -9,6 +9,7 @@ use super::format::{
 };
 use crate::app::DataView;
 use crate::domain::operator;
+use crate::storage::projection::Projection;
 use crate::storage::JsonStore;
 use crate::sync::images_meta::{parse_index, ImagesIndex, VARIANT_ORDER};
 
@@ -17,6 +18,14 @@ pub const ARTWORK_FORM_CHAR_IDS: [(&str, &str); 2] = [
     ("阿米娅(近卫)", "char_1001_amiya2"),
     ("阿米娅(医疗)", "char_1037_amiya3"),
 ];
+
+const DISPLAY_SKIN: Projection = Projection::Fields(&[
+    ("skinName", Projection::All),
+    ("skinGroupName", Projection::All),
+    ("obtainApproach", Projection::All),
+    ("description", Projection::All),
+]);
+const SKIN_ENTRY: Projection = Projection::Fields(&[("displaySkin", DISPLAY_SKIN)]);
 
 pub fn resolve_artwork_char_id(
     view: &DataView,
@@ -49,7 +58,7 @@ pub fn data_not_ready_message() -> String {
 
 /// skin_table.json charSkins mapping through the per-generation dataset
 /// cache; empty when excel is unavailable or the file is missing.
-pub fn get_char_skins(view: &DataView) -> CharSkins {
+pub fn get_char_skins(view: &DataView) -> std::sync::Arc<CharSkins> {
     let view = view.clone();
     let skins = view.datasets.get_or_load_counted(
         "images:char_skins",
@@ -62,7 +71,10 @@ pub fn get_char_skins(view: &DataView) -> CharSkins {
                 return Ok(CharSkins::new());
             }
             let table = store
-                .read_json("skin_table.json")
+                .read_json_projected(
+                    "skin_table.json",
+                    Projection::Fields(&[("charSkins", Projection::Values(&SKIN_ENTRY))]),
+                )
                 .map_err(|e| format!("skin_table: {e}"))?;
             let mut out = CharSkins::new();
             if let Some(raw) = table.get("charSkins").and_then(|c| c.as_object()) {
@@ -95,7 +107,7 @@ pub fn get_char_skins(view: &DataView) -> CharSkins {
         },
         |skins| skins.len() as u64,
     );
-    (*skins.unwrap_or_else(|_: String| std::sync::Arc::new(CharSkins::new()))).clone()
+    skins.unwrap_or_else(|_: String| std::sync::Arc::new(CharSkins::new()))
 }
 
 fn load_index(gen_dir: &Path) -> Option<ImagesIndex> {

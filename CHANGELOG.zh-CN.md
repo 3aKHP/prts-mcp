@@ -23,6 +23,11 @@
 - **入口命令与默认传输模式**：新主命令 `prts-mcp`（原生二进制与 npm 主包）默认启动 Streamable HTTP（`:3000/mcp`，设 `PRTS_TRANSPORT=stdio` 切换为 stdio）；`prts-mcp-ts` / `prts-mcp-ts-bun`（固定 HTTP）与 `prts-mcp-ts-stdio`（固定 stdio）在 Rust 二进制之上保留 2.x 固定传输行为（无需安装 Bun）；Docker 镜像入口（`prts-mcp-ghcr`）保留默认 `stdio`（设 `PRTS_TRANSPORT=http` 切换为 HTTP）。
 - **原生诊断指标与正则边界（`D-001`–`D-007`）**：`/debug/metrics` 的 `process.runtime` 标识为 `"rust"`，内存统计改为操作系统原生驻留集（`process.rss_bytes`）与采样中观察到的最高 RSS（`process.rss_high_water_bytes`），不再输出 V8/Python 堆字段；`/debug/cache` 保留按领域分组的缓存计数（详见 `contracts/baseline.json`）。
 
+### 修复
+
+- **混合查询后的内存占用**：关卡、搜索和立绘查询共享缓存数据，单敌人查询不再复制整个敌人数据库，干员、敌人、关卡、基建与皮肤表仅保留工具实际使用的字段。敌人出场索引解析波次数据时不再为无关关卡结构分配内存。
+- **并发首次查询**：同一数据代际内，每个数据集的首次加载串行执行，让同时到达的请求共享缓存结果；加载失败后仍可重试。
+
 ### 移除
 
 - **从 `develop` 移除旧 `python/` 与 `ts/` 目录及 3.x PyPI 渠道**：从 3.x 主开发树移除双语言源码目录及 `data/` 下过时的四表样本数据。Python 与 TypeScript 的 2.8.x / 1.7.x 维护在各自 LTS 分支进行；3.x 通过 npm、GitHub Release 原生归档与 GHCR 容器镜像分发（`crates.io` 计划在 3.0.0 正式发布后独立上架）。

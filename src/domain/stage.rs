@@ -11,12 +11,33 @@ use serde_json::{json, Map, Value};
 
 use crate::app::DataView;
 use crate::domain::messages;
+use crate::storage::projection::Projection;
 use crate::storage::{DirectoryStore, JsonStore};
 use crate::text::js_compat::compare_ids;
 use crate::tools::output::ToolOutcome;
 
 const STAGE_FILE: &str = "stage_table.json";
 const ZONE_FILE: &str = "zone_table.json";
+
+// All fields consumed by stage tools and stage_enemy; drop/unlock payloads
+// remain complete Values because they are returned in structured output.
+const STAGE_ENTRY: Projection = Projection::Fields(&[
+    ("stageId", Projection::All),
+    ("name", Projection::All),
+    ("code", Projection::All),
+    ("stageType", Projection::All),
+    ("difficulty", Projection::All),
+    ("zoneId", Projection::All),
+    ("apCost", Projection::All),
+    ("dangerLevel", Projection::All),
+    ("bossMark", Projection::All),
+    ("description", Projection::All),
+    ("stageDropInfo", Projection::All),
+    ("unlockCondition", Projection::All),
+    ("hardStagedId", Projection::All),
+    ("sixStarStageId", Projection::All),
+    ("levelId", Projection::All),
+]);
 
 fn stage_type_label(t: &str) -> String {
     match t {
@@ -73,9 +94,9 @@ fn has_stage_data(view: &DataView) -> bool {
         .is_some_and(|store| store.exists(STAGE_FILE).unwrap_or(false))
 }
 
-/// The raw stage table mapping (`getStageTable`); Err carries the TS loader
+/// The stage mapping (`getStageTable`); Err carries the TS loader
 /// wording (`关卡数据文件不存在：stage_table.json` / `stage_table.json 格式异常`).
-pub fn stage_table(view: &DataView) -> Result<Arc<Value>, String> {
+pub fn stage_table(view: &DataView) -> Result<Arc<Map<String, Value>>, String> {
     let Some(root) = view.excel_root.clone() else {
         return Err(format!("关卡数据文件不存在：{STAGE_FILE}"));
     };
@@ -86,33 +107,34 @@ pub fn stage_table(view: &DataView) -> Result<Arc<Value>, String> {
             if !store.exists(STAGE_FILE).unwrap_or(false) {
                 return Err(format!("关卡数据文件不存在：{STAGE_FILE}"));
             }
-            let raw = store
-                .read_json(STAGE_FILE)
+            let mut raw = store
+                .read_json_projected(
+                    STAGE_FILE,
+                    Projection::Fields(&[("stages", Projection::Values(&STAGE_ENTRY))]),
+                )
                 .map_err(|_| format!("{STAGE_FILE} 格式异常"))?;
             if !raw.pointer("/stages").is_some_and(Value::is_object) {
                 return Err(format!("{STAGE_FILE} 格式异常"));
             }
-            Ok(raw)
-        },
-        |raw| raw.as_object().map(|m| m.len() as u64).unwrap_or(0),
-    )
-}
-
-/// `stages` inner mapping extracted from the raw table.
-pub fn stages_map(view: &DataView) -> Result<Arc<Map<String, Value>>, String> {
-    view.datasets.get_or_load_counted(
-        "stage:stages_map",
-        || {
-            let raw = stage_table(view)?;
-            let map = raw
-                .pointer("/stages")
-                .and_then(Value::as_object)
-                .cloned()
-                .unwrap_or_default();
-            Ok(map)
+            // Move the required subtree out before dropping unused root fields.
+            // JS returns raw.stages by reference; cloning a Value duplicates it.
+            let Value::Object(stages) = raw["stages"].take() else {
+                unreachable!("validated stages object")
+            };
+            Ok(stages)
         },
         |stages| stages.len() as u64,
     )
+}
+
+/// Shared alias of the table, retaining the existing cache diagnostics slot.
+pub fn stages_map(view: &DataView) -> Result<Arc<Map<String, Value>>, String> {
+    let shared = view.datasets.get_or_load_counted(
+        "stage:stages_map",
+        || stage_table(view),
+        |stages| stages.len() as u64,
+    )?;
+    Ok(Arc::clone(&shared))
 }
 
 /// zone table, or None when absent/malformed (loaded-null contract).
@@ -128,10 +150,12 @@ fn zone_table(view: &DataView) -> Result<Arc<Option<Map<String, Value>>>, String
                 return Ok(None);
             }
             // Malformed zone JSON is a loaded-null, not an error.
-            let zones = store
-                .read_json(ZONE_FILE)
-                .ok()
-                .and_then(|raw| raw.pointer("/zones").and_then(Value::as_object).cloned());
+            let zones = store.read_json(ZONE_FILE).ok().and_then(|mut raw| {
+                match raw.get_mut("zones").map(Value::take) {
+                    Some(Value::Object(zones)) => Some(zones),
+                    _ => None,
+                }
+            });
             Ok(zones)
         },
         |z| z.as_ref().map(|m| m.len() as u64).unwrap_or(0),
@@ -202,13 +226,14 @@ pub fn list_stages(view: &DataView, excel_path: &Path, args: &ListingArgs) -> To
             return ToolOutcome::text(format!("{missing_message}（{message}）"));
         }
     };
-    let zones = zone_table(view).ok().and_then(|z| z.as_ref().clone());
+    let zones = zone_table(view).ok();
+    let zones = zones.as_deref().and_then(Option::as_ref);
 
     // Object.entries insertion order, then compareIds (UTF-16) ordering.
     let mut entries: Vec<(&String, &Value)> = stages.iter().collect();
     entries.sort_by(|a, b| compare_ids(a.0, b.0));
 
-    let filtered: Vec<(String, Value)> = entries
+    let filtered: Vec<(&String, &Value)> = entries
         .into_iter()
         .filter(|(_, entry)| {
             if let Some(chapter) = &args.chapter {
@@ -223,7 +248,6 @@ pub fn list_stages(view: &DataView, excel_path: &Path, args: &ListingArgs) -> To
             }
             true
         })
-        .map(|(id, entry)| (id.clone(), entry.clone()))
         .collect();
 
     let total = filtered.len();
@@ -252,7 +276,7 @@ pub fn list_stages(view: &DataView, excel_path: &Path, args: &ListingArgs) -> To
             "type_label": stage_type_label(type_raw),
             "difficulty_label": difficulty_label(get_str(e, "difficulty").unwrap_or("")),
             "zone_id": zone_id,
-            "zone_display": zone_display(zone_id, zones.as_ref()),
+            "zone_display": zone_display(zone_id, zones),
         }));
     }
 
@@ -376,8 +400,9 @@ pub fn build_stage_info(
     let type_raw = get_str(entry, "stageType").unwrap_or("");
     let difficulty_raw = get_str(entry, "difficulty").unwrap_or("");
     let zone_id = get_str(entry, "zoneId").unwrap_or("");
-    let zones = zone_table(view).ok().and_then(|z| z.as_ref().clone());
-    let zd = zone_display(zone_id, zones.as_ref());
+    let zones = zone_table(view).ok();
+    let zones = zones.as_deref().and_then(Option::as_ref);
+    let zd = zone_display(zone_id, zones);
     let ap = entry
         .get("apCost")
         .filter(|v| !v.is_null())
@@ -616,7 +641,6 @@ pub fn render_stage_info(view: &DataView, data: &Value) -> String {
 
 struct StageSearchRecord {
     stage_id: String,
-    entry: Value,
     search_text: String,
 }
 
@@ -631,7 +655,6 @@ fn stage_search_records(view: &DataView) -> Result<Arc<Vec<StageSearchRecord>>, 
                 .into_iter()
                 .map(|(stage_id, entry)| StageSearchRecord {
                     stage_id: stage_id.clone(),
-                    entry: entry.clone(),
                     search_text: [
                         get_str(entry, "name").unwrap_or(""),
                         get_str(entry, "code").unwrap_or(""),
@@ -665,7 +688,8 @@ pub fn build_stage_search(
             messages::excel_missing_message("关卡", excel_path)
         )
     })?;
-    let zones = zone_table(view).ok().and_then(|z| z.as_ref().clone());
+    let zones = zone_table(view).ok();
+    let zones = zones.as_deref().and_then(Option::as_ref);
     let mut matched: Vec<&StageSearchRecord> = Vec::new();
     for record in records.iter() {
         if regex.is_match(&record.search_text)? {
@@ -675,10 +699,11 @@ pub fn build_stage_search(
             }
         }
     }
+    let stages = stages_map(view)?;
     let total = matched.len();
     let results: Vec<Value> = matched
         .iter()
-        .map(|record| stage_search_entry(&record.entry, &record.stage_id, zones.as_ref()))
+        .map(|record| stage_search_entry(&stages[&record.stage_id], &record.stage_id, zones))
         .collect();
     Ok(json!({
         "scope": "stages",
@@ -754,4 +779,40 @@ pub fn render_stage_search(data: &Value) -> String {
 /// Exposed for the diagnostics/tests: whether the stage dataset is available.
 pub fn stage_available(view: &DataView) -> bool {
     has_stage_data(view)
+}
+
+#[cfg(test)]
+mod cache_tests {
+    use super::*;
+
+    #[test]
+    fn stage_alias_shares_ownership_and_failed_load_retries() {
+        let root = std::env::temp_dir().join(format!("prts-stage-cache-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&root).unwrap();
+        let file = root.join(STAGE_FILE);
+        let view = DataView {
+            excel_root: Some(root.clone()),
+            levels_root: None,
+            story_zip: None,
+            datasets: Arc::new(crate::domain::datasets::Datasets::new()),
+        };
+        std::fs::write(&file, r#"{"stages":null}"#).unwrap();
+        assert_eq!(stages_map(&view).unwrap_err(), "stage_table.json 格式异常");
+        std::fs::write(&file, r#"{"stages":{"b":{"name":"B","stageDropInfo":{"unknown":7}},"a":{"name":"A"}},"unused":[1,2,3]}"#).unwrap();
+        let stages = stages_map(&view).unwrap();
+        let table = stage_table(&view).unwrap();
+        assert!(Arc::ptr_eq(&stages, &table));
+        assert_eq!(
+            stages.keys().map(String::as_str).collect::<Vec<_>>(),
+            ["b", "a"]
+        );
+        assert_eq!(stages["b"]["stageDropInfo"]["unknown"], 7);
+        let weak = Arc::downgrade(&stages);
+        drop(view);
+        assert!(weak.upgrade().is_some()); // in-flight callers retain their generation
+        drop(table);
+        drop(stages);
+        assert!(weak.upgrade().is_none());
+        std::fs::remove_dir_all(root).unwrap();
+    }
 }

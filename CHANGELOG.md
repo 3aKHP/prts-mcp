@@ -23,6 +23,11 @@ Implementation: Rust.
 - **Entry-point transport defaults**: the new `prts-mcp` binary and npm package default to Streamable HTTP (`:3000/mcp`, switchable via `PRTS_TRANSPORT=stdio`); `prts-mcp-ts` / `prts-mcp-ts-bun` (HTTP) and `prts-mcp-ts-stdio` (stdio) retain their fixed 2.x transport modes on top of the Rust binary without requiring Bun; the Docker entrypoint (`prts-mcp-ghcr`) retains default `stdio` (switchable via `PRTS_TRANSPORT=http`).
 - **Native diagnostics and regex boundaries (`D-001`–`D-007`)**: `/debug/metrics` reports `process.runtime: "rust"`, OS-native resident memory (`process.rss_bytes`), and the highest sampled RSS (`process.rss_high_water_bytes`) instead of V8/Python heap fields; `/debug/cache` retains its per-domain cache counters (documented in `contracts/baseline.json`).
 
+### Fixed
+
+- **Memory use after mixed queries**: share cached stage, search, and artwork data; avoid copying the enemy database for individual queries; and retain only consumed operator, enemy, stage, base-skill, and skin fields. Enemy appearance indexing parses wave data without allocating unrelated level structures.
+- **Concurrent first queries**: serialize each dataset's initial load within a generation so simultaneous requests share the cached result. Failed loads remain retryable.
+
 ### Removed
 
 - **Legacy `python/` and `ts/` source trees on `develop` and PyPI 3.x publishing**: removed the dual-language source directories and the outdated 4-table sample under `data/` from the 3.x development tree. Python and TypeScript 2.8.x/1.7.x remain maintained on their respective LTS branches; 3.x is distributed via npm, GitHub Release native archives, and GHCR Docker images (with `crates.io` planned after 3.0.0 stable).

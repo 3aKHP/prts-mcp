@@ -7,6 +7,7 @@ use serde_json::{json, Value};
 
 use crate::app::DataView;
 use crate::domain::messages;
+use crate::storage::projection::Projection;
 use crate::storage::{DirectoryStore, JsonStore};
 
 const ROOM_ZH: &[(&str, &str)] = &[
@@ -53,7 +54,9 @@ fn building_table(view: &DataView) -> Result<Arc<Value>, String> {
                 "基建技能数据文件不存在：{shown}。数据目录可能为空，或挂载路径有误（GAMEDATA_PATH 应指向游戏数据根目录）。"
             ));
         }
-        store.read_json("building_data.json").map_err(|e| e.to_string())
+        store.read_json_projected("building_data.json", Projection::Fields(&[
+            ("chars", Projection::All), ("buffs", Projection::All),
+        ])).map_err(|e| e.to_string())
     }, |raw| raw.pointer("/buffs").and_then(serde_json::Value::as_object).map(|m| m.len() as u64).unwrap_or(0))
 }
 

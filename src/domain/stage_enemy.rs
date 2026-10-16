@@ -12,6 +12,7 @@ use crate::domain::enemy_stats::{format_stats, overwritten_enemy_name, stage_spe
 use crate::domain::level_parser::{enemy_refs, level_path, spawn_counts};
 use crate::domain::messages;
 use crate::domain::stage::stages_map;
+use crate::storage::projection::Projection;
 use crate::storage::{DirectoryStore, JsonStore};
 
 /// TS `levelsStore()`: rooted at `<effectiveLevelsPath>/zh_CN/gamedata/levels`
@@ -235,7 +236,7 @@ fn enemy_appearance_index(view: &DataView) -> Result<Arc<AppearanceIndex>, Strin
             let Some(store) = levels_store(view) else {
                 return Ok(crate::domain::enemy_db::OrderedMap::new());
             };
-            let mut index = crate::domain::enemy_db::OrderedMap::new();
+            let mut index: AppearanceIndex = crate::domain::enemy_db::OrderedMap::new();
             for (stage_id, stage) in stages.iter() {
                 if stage.get("levelId").and_then(Value::as_str).is_none() {
                     continue;
@@ -249,17 +250,23 @@ fn enemy_appearance_index(view: &DataView) -> Result<Arc<AppearanceIndex>, Strin
                 if !store.exists(&path).unwrap_or(false) {
                     continue;
                 }
-                let Ok(level) = store.read_json(&path) else {
+                // Reverse lookup only counts wave actions. Map tiles, routes,
+                // and enemy attribute overrides are used by other tools, not
+                // by this index, and need not become temporary Value trees.
+                let Ok(level) = store
+                    .read_json_projected(&path, Projection::Fields(&[("waves", Projection::All)]))
+                else {
                     continue;
                 };
                 if !level.is_object() {
                     continue;
                 }
                 for (enemy_id, count) in spawn_counts(&level).iter() {
-                    let mut entry: Vec<(String, i64)> =
-                        index.get(enemy_id).cloned().unwrap_or_default();
-                    entry.push((stage_id.clone(), *count));
-                    index.insert(enemy_id, entry);
+                    if let Some(entry) = index.get_mut(enemy_id) {
+                        entry.push((stage_id.clone(), *count));
+                    } else {
+                        index.insert(enemy_id, vec![(stage_id.clone(), *count)]);
+                    }
                 }
             }
             Ok(index)
