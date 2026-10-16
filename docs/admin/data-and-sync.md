@@ -47,7 +47,7 @@ PRTS-MCP 运行依赖两类外部数据源：
 
 ## 2. 内置只读备用数据 vs. 用户数据优先级
 
-公开发布的 3.x 原生候选归档包（`bin/../data`）、npm 包（`@3akhp/prts-mcp-data`）与 Docker 镜像（`/app/data`）均内置了一份经过完整校验的只读备用数据（涵盖 `gamedata`、`gamedata-levels` 与 `storyjson`）。
+公开发布的 3.x 原生归档包（`bin/../data`）、npm 包（`@3akhp/prts-mcp-data`）与 Docker 镜像（`/app/data`）均内置了一份经过完整校验的只读备用数据（涵盖 `gamedata`、`gamedata-levels` 与 `storyjson`）。
 
 服务端在读取数据时遵循严格的**优先级与只读隔离原则**：
 1. **用户数据优先**：只要可写数据根目录（如 `/data`）中存在完整且校验通过的用户数据，服务端始终优先读取用户数据。
@@ -89,7 +89,7 @@ PRTS-MCP 运行依赖两类外部数据源：
 如果你在宿主机上自己维护了 `ArknightsGameData` 仓库克隆或离线 `zh_CN.zip` 剧情包，可通过 `GAMEDATA_PATH` 与 `STORYJSON_PATH` 指向本地路径：
 
 ```bash
-docker run -d --name prts-mcp -p 127.0.0.1:3000:3000 -e PRTS_TRANSPORT=http -v /srv/ArknightsGameData:/data/custom:ro -e GAMEDATA_PATH=/data/custom -v prts-data:/data ghcr.io/3akhp/prts-mcp:3.0.0-rc.3
+docker run -d --name prts-mcp -p 127.0.0.1:3000:3000 -e PRTS_TRANSPORT=http -v /srv/ArknightsGameData:/data/custom:ro -e GAMEDATA_PATH=/data/custom -v prts-data:/data ghcr.io/3akhp/prts-mcp:3.0.0
 ```
 
 **管理员必须注意的三条路径规则**：

@@ -6,6 +6,31 @@ This file records user-visible changes across PRTS-MCP implementations: Python a
 
 The original per-implementation changelogs at the 2.8.1 baseline remain available on the [`ts/v2.8.1` tag](https://github.com/3aKHP/prts-mcp/tree/ts/v2.8.1) ([Python](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/python/CHANGELOG.md) · [TypeScript](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/ts/CHANGELOG.md)), and the 1.7.1/1.7.2 maintenance records come from the published [`python/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/python/v1.7.2/python/CHANGELOG.md) and [`ts/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/ts/v1.7.2/ts/CHANGELOG.md) tags.
 
+## [3.0.0] - 2026-10-16
+
+Implementation: Rust.
+
+3.0.0 is the first stable native Rust release. Tool names, parameters, output formats, and data synchronization semantics match 2.8.1, apart from the closed set of approved differences in `contracts/baseline.json`. See the [2.x → 3.0 migration guide](https://github.com/3aKHP/prts-mcp/blob/main/docs/migration-2.x-to-3.0.md) before upgrading. The release-candidate entries below record the 3.0.0 prerelease history.
+
+### Added
+
+- **Unified native Rust runtime (`prts-mcp`)**: the server is a single native Rust implementation at the repository root (MSRV `1.89`) with a statically linked QuickJS regular-expression engine (`vendor/quickjs-regexp/`). It preserves the frozen TS/v2.8.1 24-tool contract, both MCP protocol eras (session-based `legacy` and stateless `2026-07-28` `modern`), `stdio` and Streamable HTTP transports, and generation-aware background data and image synchronization.
+- **Five-platform prebuilt native archives**: standalone release archives for `linux-x64`, `linux-arm64` (`glibc >= 2.28`), `windows-x64` (static CRT), `darwin-arm64`, and `darwin-x64` (macOS `14.0+`) contain all five entry executables, ABI/build manifests, third-party license notices, and a verified read-only fallback snapshot of game tables, level data, and stories. No Node, Bun, or Python installation is required.
+- **Nine-package Rust-backed npm distribution**: the new `prts-mcp` main package and the compatible `prts-mcp-ts` package run the native binary through `@3akhp/prts-mcp-runtime` (Node `>= 22` launch bridge with signal forwarding and Windows parent-process lifecycle monitoring), with `@3akhp/prts-mcp-data` (shared read-only fallback data) and five platform-filtered binary packages (`@3akhp/prts-mcp-<platform>`). All nine packages are published with npm OIDC provenance.
+- **Dual-architecture native Docker images**: `ghcr.io/3akhp/prts-mcp` (`linux/amd64` and `linux/arm64`) runs the native Rust server under `tini` with bundled read-only fallback data in `/app/data`, and remains compatible with existing 2.x `/data` named volumes and bind mounts.
+- **Isolated `lts/2.8` maintenance line**: the Python and TypeScript 2.8.x implementations continue on `lts/2.8` alongside `lts/1.7`; both are supported through `2027-07-02`.
+
+### Changed
+
+- **Stable channels**: npm `latest` for `prts-mcp-ts` and the new packages, GHCR `:latest` and `:3`, and the GitHub Latest release now point to 3.0.0. `main` now carries the Rust project. 2.8.x installations stay available through npm `lts-2.8` and GHCR `:2`.
+- **Entry-point transport defaults**: the new `prts-mcp` command defaults to Streamable HTTP (`:3000/mcp`, `PRTS_TRANSPORT=stdio` selects stdio). `prts-mcp-ts` / `prts-mcp-ts-bun` (HTTP) and `prts-mcp-ts-stdio` (stdio) keep their fixed 2.x transport modes without requiring Bun. The Docker entrypoint (`prts-mcp-ghcr`) keeps `stdio` as its default (`PRTS_TRANSPORT=http` selects HTTP).
+- **Memory use**: datasets load on first use and retain only the fields the tools read; skills, enemies, and story text use compact shared structures, and concurrent first queries share one load per data generation. Under mixed query load, resident memory stays below 2.8.1 without its transient peaks.
+- **Native diagnostics (`D-001`, `D-002`)**: `/debug/metrics` reports `process.runtime: "rust"`, OS-native resident memory (`process.rss_bytes`), and the highest sampled RSS (`process.rss_high_water_bytes`) instead of V8/Python heap fields. `/debug/cache` keeps its per-domain cache counters (documented in `contracts/baseline.json`).
+
+### Removed
+
+- **Python and TypeScript sources on the 3.x line, and PyPI 3.x publishing**: the dual-language source directories and the outdated 4-table sample under `data/` are no longer part of the 3.x tree. Python and TypeScript 2.8.x/1.7.x remain maintained on their LTS branches. 3.x is distributed through npm, GitHub Release native archives, and GHCR images; `crates.io` publication is planned after 3.0.0.
+
 ## [3.0.0-rc.3] - 2026-10-15
 
 ### Changed

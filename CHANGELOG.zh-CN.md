@@ -6,6 +6,31 @@
 
 2.8.1 基线时的原始分语言更新日志可在 [`ts/v2.8.1` tag](https://github.com/3aKHP/prts-mcp/tree/ts/v2.8.1) 查看（[Python](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/python/CHANGELOG.md) · [TypeScript](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/ts/CHANGELOG.md)），1.7.1 与 1.7.2 的维护记录来自已发布的 [`python/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/python/v1.7.2/python/CHANGELOG.md) 与 [`ts/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/ts/v1.7.2/ts/CHANGELOG.md) 标签。
 
+## [3.0.0] - 2026-10-16
+
+实现：Rust。
+
+3.0.0 是首个原生 Rust 正式版。工具名、参数、输出格式与数据同步语义与 2.8.1 一致，仅保留 `contracts/baseline.json` 中封闭枚举的已批准差异。升级前请阅读 [2.x → 3.0 迁移指南](https://github.com/3aKHP/prts-mcp/blob/main/docs/migration-2.x-to-3.0.md)。下方的候选版条目记录了 3.0.0 的预发布历史。
+
+### 新增
+
+- **统一的原生 Rust 运行时（`prts-mcp`）**：服务端为仓库根目录下的单一原生 Rust 实现（最低 Rust 版本 `1.89`），静态链接内嵌的 QuickJS C 正则组件（`vendor/quickjs-regexp/`），完整保留 TS/v2.8.1 的 24 个工具契约、新旧两代 MCP 协议（有状态 `legacy` 会话与无状态 `2026-07-28` `modern` 信封）、`stdio` 与 Streamable HTTP 传输，以及感知数据代际激活的后台游戏数据与立绘同步。
+- **五平台预编译原生归档包**：提供 `linux-x64`、`linux-arm64`（`glibc >= 2.28`）、`windows-x64`（静态链接 CRT）、`darwin-arm64` 与 `darwin-x64`（`macOS 14.0+`）独立归档包，内置 5 个入口可执行文件、ABI/构建清单、完整第三方许可声明以及经过校验的只读备用游戏数据（游戏表、关卡、剧情），无需安装 Node、Bun 或 Python。
+- **9 包架构的 Rust 版 npm 分发**：新主入口包 `prts-mcp` 与兼容入口包 `prts-mcp-ts` 通过 `@3akhp/prts-mcp-runtime`（要求 `Node >= 22` 的轻量启动桥，支持信号转发与 Windows 父进程退出联动）启动原生二进制，配套 `@3akhp/prts-mcp-data`（共享只读备用数据）与 5 个按平台自动筛选的二进制包（`@3akhp/prts-mcp-<platform>`），9 个包均附带 npm OIDC provenance 签名。
+- **双架构原生 Docker 镜像**：`ghcr.io/3akhp/prts-mcp`（`linux/amd64` 与 `linux/arm64`）以 `tini` 运行原生 Rust 服务，内置 `/app/data` 只读备用数据，并兼容 2.x 既有的 `/data` 整卷与分卷挂载。
+- **独立的 `lts/2.8` 长期维护分支**：Python 与 TypeScript 2.8.x 双实现在 `lts/2.8` 继续维护，与 `lts/1.7` 一同维护至 `2027-07-02`。
+
+### 变更
+
+- **稳定渠道**：`prts-mcp-ts` 与各新增包的 npm `latest`、GHCR `:latest` 与 `:3`，以及 GitHub Latest 发行版均指向 3.0.0，`main` 分支改为承载 Rust 工程。2.8.x 仍可通过 npm `lts-2.8` 与 GHCR `:2` 安装。
+- **入口命令与默认传输模式**：新主命令 `prts-mcp` 默认启动 Streamable HTTP（`:3000/mcp`，设 `PRTS_TRANSPORT=stdio` 切换为 stdio）；`prts-mcp-ts` / `prts-mcp-ts-bun`（固定 HTTP）与 `prts-mcp-ts-stdio`（固定 stdio）保留 2.x 固定传输行为，无需安装 Bun；Docker 镜像入口（`prts-mcp-ghcr`）保留默认 `stdio`（设 `PRTS_TRANSPORT=http` 切换为 HTTP）。
+- **内存占用**：各数据集在首次使用时加载，且仅保留工具实际读取的字段；技能、敌人与剧情文本采用紧凑的共享结构，同一数据代际内并发的首次查询共享一次加载。在混合查询负载下，常驻内存低于 2.8.1，且没有旧版的瞬时峰值。
+- **原生诊断指标（`D-001`、`D-002`）**：`/debug/metrics` 的 `process.runtime` 标识为 `"rust"`，内存统计改为操作系统原生驻留集（`process.rss_bytes`）与采样中观察到的最高 RSS（`process.rss_high_water_bytes`），不再输出 V8/Python 堆字段；`/debug/cache` 保留按领域分组的缓存计数（详见 `contracts/baseline.json`）。
+
+### 移除
+
+- **3.x 线不再包含 Python 与 TypeScript 源码，并停止 3.x PyPI 发布**：双语言源码目录及 `data/` 下过时的四表样本数据不再属于 3.x 工程。Python 与 TypeScript 的 2.8.x / 1.7.x 在各自 LTS 分支继续维护；3.x 通过 npm、GitHub Release 原生归档与 GHCR 镜像分发，`crates.io` 计划在 3.0.0 之后上架。
+
 ## [3.0.0-rc.3] - 2026-10-15
 
 ### 变更

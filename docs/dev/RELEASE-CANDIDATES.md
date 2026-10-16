@@ -65,7 +65,7 @@ node tools/release/probe-native.mjs linux-x64
 | --- | --- |
 | `RUST_NPM_PUBLISH_ENABLED` | 设为 `true` 时执行 `publish-npm` 任务（通过 GitHub OIDC Trusted Publishing 发布 9 个 npm 包）。 |
 | `RUST_NON_NPM_PUBLISH_ENABLED` | 设为 `true` 时执行 `publish-non-npm` 任务（推送 GHCR 双架构镜像并创建 GitHub Release）。 |
-| `RUST_STABLE_RELEASE_ENABLED` | 稳定版总闸门；在 M5 正式发布前保持关闭，防止预发布期误推进稳定版标签。 |
+| `RUST_STABLE_RELEASE_ENABLED` | 稳定版总闸门；M5 前保持关闭以防预发布期误推进稳定版标签，自 3.0.0 起开启。 |
 
 ---
 
