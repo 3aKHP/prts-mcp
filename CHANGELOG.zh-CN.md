@@ -6,6 +6,8 @@
 
 2.8.1 基线时的原始分语言更新日志可在 [`ts/v2.8.1` tag](https://github.com/3aKHP/prts-mcp/tree/ts/v2.8.1) 查看（[Python](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/python/CHANGELOG.md) · [TypeScript](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/ts/CHANGELOG.md)），1.7.1 与 1.7.2 的维护记录来自已发布的 [`python/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/python/v1.7.2/python/CHANGELOG.md) 与 [`ts/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/ts/v1.7.2/ts/CHANGELOG.md) 标签。
 
+## [Unreleased]
+
 ## [3.0.0] - 2026-10-16
 
 实现：Rust。
