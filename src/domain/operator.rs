@@ -33,8 +33,43 @@ const POSITION_ZH: &[(&str, &str)] = &[
     ("NONE", "-"),
 ];
 
+// Only panel fields are consumed from attribute frames. Projection preserves
+// malformed container types and validates discarded values as ordinary JSON.
+const PANEL_DATA: Projection = Projection::Fields(&[
+    ("maxHp", Projection::All),
+    ("atk", Projection::All),
+    ("def", Projection::All),
+    ("magicResistance", Projection::All),
+    ("cost", Projection::All),
+    ("blockCnt", Projection::All),
+    ("attackSpeed", Projection::All),
+    ("baseAttackTime", Projection::All),
+    ("respawnTime", Projection::All),
+]);
+const ATTRIBUTE_FRAME: Projection =
+    Projection::Fields(&[("level", Projection::All), ("data", PANEL_DATA)]);
+const PHASE_ENTRY: Projection = Projection::Fields(&[
+    ("maxLevel", Projection::All),
+    (
+        "attributesKeyFrames",
+        Projection::Elements(&ATTRIBUTE_FRAME),
+    ),
+]);
+const TALENT_CANDIDATE: Projection = Projection::Fields(&[
+    ("name", Projection::All),
+    ("description", Projection::All),
+    ("requiredPotentialRank", Projection::All),
+    (
+        "unlockCondition",
+        Projection::Fields(&[("phase", Projection::All), ("level", Projection::All)]),
+    ),
+]);
+const TALENT_SLOT: Projection =
+    Projection::Fields(&[("candidates", Projection::Elements(&TALENT_CANDIDATE))]);
+const SKILL_REF: Projection = Projection::Fields(&[("skillId", Projection::All)]);
+const POTENTIAL_RANK: Projection = Projection::Fields(&[("description", Projection::All)]);
+
 // Basic information, stats, skill joins, and name/search/artwork lookups.
-// Nested payloads keep their complete dynamic values and fallback semantics.
 const CHARACTER_ENTRY: Projection = Projection::Fields(&[
     ("name", Projection::All),
     ("displayNumber", Projection::All),
@@ -51,11 +86,11 @@ const CHARACTER_ENTRY: Projection = Projection::Fields(&[
     ("itemUsage", Projection::All),
     ("itemDesc", Projection::All),
     ("itemObtainApproach", Projection::All),
-    ("talents", Projection::All),
-    ("skills", Projection::All),
-    ("phases", Projection::All),
-    ("favorKeyFrames", Projection::All),
-    ("potentialRanks", Projection::All),
+    ("talents", Projection::Elements(&TALENT_SLOT)),
+    ("skills", Projection::Elements(&SKILL_REF)),
+    ("phases", Projection::Elements(&PHASE_ENTRY)),
+    ("favorKeyFrames", Projection::Elements(&ATTRIBUTE_FRAME)),
+    ("potentialRanks", Projection::Elements(&POTENTIAL_RANK)),
 ]);
 
 fn talent_phase_zh(phase: &str) -> String {
@@ -606,4 +641,101 @@ pub fn render_operator_basic_info(data: &Value) -> String {
         }
     }
     lines.join("\n")
+}
+
+#[cfg(test)]
+mod projection_tests {
+    use super::*;
+    use crate::domain::datasets::Datasets;
+    use crate::domain::operator_stats::{build_operator_stats, PANEL_FIELDS};
+
+    fn view(table: Value) -> DataView {
+        let datasets = Arc::new(Datasets::new());
+        datasets
+            .get_or_load("operator:character_table", || Ok(table))
+            .unwrap();
+        DataView {
+            excel_root: Some(
+                Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("tests/fixtures/native-smoke/zh_CN/gamedata/excel"),
+            ),
+            levels_root: None,
+            story_zip: None,
+            datasets,
+        }
+    }
+
+    #[test]
+    fn panel_projection_covers_every_consumed_field() {
+        let Projection::Fields(fields) = PANEL_DATA else {
+            unreachable!()
+        };
+        assert_eq!(
+            fields.iter().map(|(key, _)| *key).collect::<Vec<_>>(),
+            PANEL_FIELDS.iter().map(|(key, _)| *key).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn nested_projection_preserves_basic_and_stats_for_malformed_shapes() {
+        let original = json!({"char_test": {
+            "name":"测试", "rarity":"TIER_5", "profession":"CASTER",
+            "talents":[{"candidates":[{"name":"天赋", "description":"描述",
+                "unlockCondition":{"phase":"PHASE_1","level":0,"unused":true},
+                "requiredPotentialRank":4,"blackboard":[{"ignored":true}]}]}],
+            "phases":[{"maxLevel":50,"evolveCost":[{"unused":42}],"attributesKeyFrames":[
+                {"level":1,"data":{"maxHp":100,"atk":10,"unused":42}},
+                {"level":50,"data":{"maxHp":500,"atk":20,"unused":42}}]}],
+            "favorKeyFrames":[{"level":200,"data":{"atk":25,"unused":42}}],
+            "potentialRanks":[{"description":"部署费用-1","buff":{"unused":true}}]
+        }});
+        let mut cases = vec![original.clone()];
+        for path in [
+            "talents",
+            "talents/0/candidates",
+            "talents/0/candidates/0/unlockCondition",
+            "phases",
+            "phases/0",
+            "phases/0/attributesKeyFrames",
+            "phases/0/attributesKeyFrames/0/data",
+            "favorKeyFrames",
+            "favorKeyFrames/0/data",
+            "potentialRanks",
+        ] {
+            for shape in [
+                json!(null),
+                json!(false),
+                json!(7),
+                json!("x"),
+                json!({}),
+                json!([]),
+                json!([null, {}, false]),
+            ] {
+                let mut case = original.clone();
+                *case.pointer_mut(&format!("/char_test/{path}")).unwrap() = shape;
+                cases.push(case);
+            }
+        }
+        for table in cases {
+            let projected = crate::storage::projection::from_str(
+                &table.to_string(),
+                Projection::Values(&CHARACTER_ENTRY),
+            )
+            .unwrap();
+            let full = view(table.clone());
+            let compact = view(projected);
+            assert_eq!(
+                build_operator_basic_info(&full, Path::new(""), "测试"),
+                build_operator_basic_info(&compact, Path::new(""), "测试"),
+                "{table}"
+            );
+            for (phase, level) in [(None, None), (Some(0), Some(10)), (Some(1), Some(90))] {
+                assert_eq!(
+                    build_operator_stats(&full, Path::new(""), "测试", phase, level),
+                    build_operator_stats(&compact, Path::new(""), "测试", phase, level),
+                    "{table}"
+                );
+            }
+        }
+    }
 }
