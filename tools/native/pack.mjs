@@ -18,7 +18,7 @@ writeFileSync(join(stage, 'README.txt'), `PRTS-MCP ${version} (${id})\n\n` +
   'Set PRTS_TRANSPORT=stdio for an MCP stdio client. Legacy command profiles are included.\n' +
   'No Node/Bun/Python, compiler or extra native library installation is required.\n' +
   'Game data is synchronized on first startup; use GAMEDATA_PATH/STORYJSON_PATH for existing data.\n' +
-  'This development artifact is not a public stable release. Support/evidence: BUILD.json and ABI.json.\n');
+  `${version.includes('-') ? 'This development artifact is not a public stable release.' : 'Stable release.'} Support/evidence: BUILD.json and ABI.json.\n`);
 json(join(stage, 'BUILD.json'), {
   product: 'prts-mcp', version, platform: id, target: config.target,
   commit: run('git', ['rev-parse', 'HEAD']).trim(),

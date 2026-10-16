@@ -27,7 +27,7 @@ rmSync(out, { recursive: true, force: true });
 mkdirSync(packages, { recursive: true });
 mkdirSync(tarballs);
 const base = { version, repository: { type: 'git', url: 'https://github.com/3aKHP/prts-mcp.git' },
-  engines: { node: '>=22', npm: '>=10' }, publishConfig: { access: 'public', tag: 'next' } };
+  engines: { node: '>=22', npm: '>=10' }, publishConfig: { access: 'public', tag: version.includes('-') ? 'next' : 'latest' } };
 const manifest = [];
 function make(name, fields, fill, expectedFiles = []) {
   const dir = join(packages, name.replace('@','').replace('/','-'));
@@ -86,7 +86,7 @@ for (const [name, commands] of [['prts-mcp',['prts-mcp']],['prts-mcp-ts',['prts-
       writeFileSync(path,`#!/usr/bin/env node\n"use strict";\nrequire("@3akhp/prts-mcp-runtime").run(${JSON.stringify(bin)});\n`);
       chmodSync(path,0o755);
     }
-    writeFileSync(join(dir,'README.md'),`# ${name}\n\nPRTS-MCP ${version} uses the shared native Rust runtime and a validated read-only data fallback.\n\n${name === 'prts-mcp' ? 'prts-mcp defaults to Streamable HTTP. Set PRTS_TRANSPORT=stdio for stdio.' : 'prts-mcp-ts and prts-mcp-ts-bun preserve HTTP; prts-mcp-ts-stdio preserves stdio. Bun is not required.'}\n\nRequires Node >=22 for this npm launcher; no compiler or extra native-library setup is required. User-data updates are stored outside the installed package. Enable npm optional dependencies to install the matching native platform.\n\nThis development package is not a published stable release.\n`);
+    writeFileSync(join(dir,'README.md'),`# ${name}\n\nPRTS-MCP ${version} uses the shared native Rust runtime and a validated read-only data fallback.\n\n${name === 'prts-mcp' ? 'prts-mcp defaults to Streamable HTTP. Set PRTS_TRANSPORT=stdio for stdio.' : 'prts-mcp-ts and prts-mcp-ts-bun preserve HTTP; prts-mcp-ts-stdio preserves stdio. Bun is not required.'}\n\nRequires Node >=22 for this npm launcher; no compiler or extra native-library setup is required. User-data updates are stored outside the installed package. Enable npm optional dependencies to install the matching native platform.\n\n${version.includes('-') ? 'This development package is not a published stable release.' : 'This is a stable release.'}\n`);
   });
 }
 json(join(out,'packages.json'),{ version,platform:id,nativeBuild:build,dataBundle:readJson(join(root,'artifacts/npm-bundle/data/BUNDLE.json')),packages:manifest });
