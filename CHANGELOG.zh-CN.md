@@ -8,6 +8,10 @@
 
 ## [Unreleased]
 
+### 变更
+
+- **GitHub Release 下载附件**：提供 5 个采用简洁平台文件名的原生安装包、1 个发行验证资料 ZIP 和统一的 `SHA256SUMS`。npm 包通过 npm 获取，Docker 镜像通过 GHCR 获取。
+
 ## [3.0.0] - 2026-10-16
 
 实现：Rust。
