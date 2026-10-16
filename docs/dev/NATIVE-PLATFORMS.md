@@ -67,4 +67,4 @@ In CI, [`.github/workflows/native-platforms.yml`](../../.github/workflows/native
   - `LICENSE`, `NOTICE`, and `licenses/` (upstream license files for locked Cargo dependencies, Rust standard library notices, and QuickJS regexp notices);
   - `THIRD-PARTY.json`: machine-readable dependency license inventory;
   - `BUILD.json` and `ABI.json`: source commit SHA, compiler version, target baseline, and audited shared-library imports;
-  - `SHA256SUMS` (covering all files inside the archive) and an external `.sha256` sidecar file covering the compressed `.tar.gz` / `.zip` archive itself.
+  - `SHA256SUMS` covers all files inside the archive. Internal candidate builds also retain an external `.sha256` sidecar. Public GitHub downloads use a single `SHA256SUMS` for the five native archives and the release metadata ZIP; see [`RELEASE-CANDIDATES.md`](RELEASE-CANDIDATES.md) for public filenames and metadata contents.

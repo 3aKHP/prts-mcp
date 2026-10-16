@@ -8,6 +8,10 @@ The original per-implementation changelogs at the 2.8.1 baseline remain availabl
 
 ## [Unreleased]
 
+### Changed
+
+- **GitHub Release downloads**: publish five native archives with concise platform filenames, one release metadata ZIP, and a shared `SHA256SUMS`. npm packages remain available from npm and Docker images from GHCR.
+
 ## [3.0.0] - 2026-10-16
 
 Implementation: Rust.

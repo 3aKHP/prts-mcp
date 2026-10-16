@@ -10,7 +10,7 @@
 ## 1. 核心原则：严禁重建覆盖已部分公开的版本
 
 `release-rust.yml` 采用**“先构建汇总、后分渠道发布”**的两阶段设计：
-1. 构建与汇总阶段生成唯一且经过完整校验的 `rust-release-candidate` 工件（内含 5 平台原生包、9 个 npm tarball、2 个 Docker 镜像归档及 `RELEASE.json` 哈希清单）；
+1. 构建与汇总阶段生成唯一且经过完整校验的 `rust-release-candidate` 工件（内含 5 平台原生包、9 个 npm tarball、2 个 Docker 镜像归档及 `RELEASE.json` 哈希清单，并含预生成的 `github/` 公开附件）；
 2. `publish-npm` 与 `publish-non-npm`（GHCR + GitHub Release）两个发布任务只读取该工件，核对 SHA-256 后向外发布，绝不现场重新打包。
 
 一旦某个版本的任意一个 npm 包、Docker 镜像或 GitHub Release 资产已经对外公开，该版本的字节内容即视为**不可变（Immutable）**：
@@ -60,7 +60,7 @@ gh run rerun "$release_run_id" --failed
 **发布脚本的幂等恢复机制**：
 - **npm（`publish-npm.mjs`）**：按依赖顺序逐包检查。若某包在 registry 上已存在且 `dist.integrity` 与 `rust-release-candidate` 中的 tarball 完全一致，脚本会自动跳过重复上传，仅核对并修复缺失的 dist-tag（如 `next`）。
 - **GHCR（`publish-docker.mjs`）**：若远端已存在同版本镜像且 Image ID 一致，复用该镜像；多架构 manifest 按两个原生架构的 digest 核对并补齐。若已有镜像或版本 manifest 不一致则立即报错中止，防止覆盖。
-- **GitHub Release（`publish-github.mjs`）**：逐项比对已上传资产的 SHA-256，仅补传缺失的资产，且绝不使用 `--clobber` 覆盖哈希不匹配的同名文件。
+- **GitHub Release（`publish-github.mjs`）**：核验快照中 `github/` 的 7 项公开附件，并逐项比对已上传资产的 SHA-256，仅补传缺失的附件，且绝不使用 `--clobber` 覆盖哈希不匹配的同名文件。
 
 ---
 

@@ -57,7 +57,7 @@ English readers: the root [README](../README.md#english) and [Security Policy](.
   - [dev/NATIVE-PLATFORMS.md](dev/NATIVE-PLATFORMS.md)：五平台预编译原生归档包的 ABI 基线、构建与验证说明。
   - [dev/NPM-DISTRIBUTION.md](dev/NPM-DISTRIBUTION.md)：Rust 版 npm 9 包架构、Node 启动桥与打包验证。
   - [dev/DOCKER-DISTRIBUTION.md](dev/DOCKER-DISTRIBUTION.md)：Rust 版 Docker 镜像构建、运行权限与数据卷验证。
-  - [dev/RELEASE-CANDIDATES.md](dev/RELEASE-CANDIDATES.md)：候选版本（alpha/beta/rc）跨平台汇总、发布门禁与渠道保护。
+  - [dev/RELEASE-CANDIDATES.md](dev/RELEASE-CANDIDATES.md)：跨平台汇总、GitHub 下载附件与验证资料、发布门禁与渠道保护。
   - [dev/RELEASE-CD-RECOVERY.md](dev/RELEASE-CD-RECOVERY.md)：CD 发布工作流（`release-rust.yml`）异常中断时的幂等重跑与恢复手册。
 
 ---

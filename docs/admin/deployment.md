@@ -99,12 +99,12 @@ docker run -d --name prts-mcp --user 10001:10001 --read-only --tmpfs /tmp:rw,nos
 
 ### 3.1 解压与目录结构要求
 
-从 [3.0.0 Release](https://github.com/3aKHP/prts-mcp/releases/tag/v3.0.0) 下载对应平台的归档包与 `.sha256` 校验文件（文件名沿用 `-candidate` 后缀）：
+从 [3.0.0 Release](https://github.com/3aKHP/prts-mcp/releases/tag/v3.0.0) 下载对应平台的归档包与 `SHA256SUMS` 校验清单：
 
 ```bash
-sha256sum -c prts-mcp-3.0.0-linux-x64-candidate.tar.gz.sha256
+sha256sum --ignore-missing -c SHA256SUMS
 sudo mkdir -p /opt/prts-mcp
-sudo tar -xzf prts-mcp-3.0.0-linux-x64-candidate.tar.gz -C /opt/prts-mcp
+sudo tar -xzf prts-mcp-3.0.0-linux-x64.tar.gz -C /opt/prts-mcp
 ```
 
 > **切勿破坏目录相对结构**：`/opt/prts-mcp/bin/prts-mcp` 启动时会自动从相邻的 `../data`（即 `/opt/prts-mcp/data`）定位内置只读备用数据。如果只把 `bin/prts-mcp` 单独复制到 `/usr/local/bin`，程序将无法找到内置备用数据。
