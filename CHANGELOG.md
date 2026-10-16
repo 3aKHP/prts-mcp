@@ -10,7 +10,7 @@ The original per-implementation changelogs at the 2.8.1 baseline remain availabl
 
 Implementation: Rust.
 
-3.0.0 is the first stable native Rust release. Tool names, parameters, output formats, and data synchronization semantics match 2.8.1, apart from the closed set of approved differences in `contracts/baseline.json`. See the [2.x → 3.0 migration guide](https://github.com/3aKHP/prts-mcp/blob/main/docs/migration-2.x-to-3.0.md) before upgrading. The release-candidate entries below record the 3.0.0 prerelease history.
+3.0.0 is the first stable native Rust release. Tool names, parameters, output formats, and data synchronization semantics match 2.8.1, apart from the closed set of approved differences in `contracts/baseline.json`. See the [2.x → 3.0 migration guide](https://github.com/3aKHP/prts-mcp/blob/main/docs/migration-2.x-to-3.0.md) before upgrading. The `3.0.0-rc.1` through `3.0.0-rc.3` entries in `CHANGELOG.md` record the prerelease history.
 
 ### Added
 

@@ -65,7 +65,7 @@
 - **预发布后缀**：Git tag、`Cargo.toml` 与 `package.json` 统一使用连字符形式：`-alpha.N`、`-beta.N`、`-rc.N`（例如 `3.0.0-alpha.3`）。
   - *注：在 `lts/1.7` 与 `lts/2.8` 旧线中，`python/pyproject.toml` 遵循 PEP 440 格式（如 `2.6.0a1`），旧线 CD 会自动将 tag 中的 `-alpha.` 归一化为 `a` 后比对。*
 - **3.x 单一版本源**：在 3.x Rust 工程中，`Cargo.toml` 是唯一版本源，`Cargo.lock`、9 个 npm 包、Docker 镜像与 MCP `serverInfo.version` 必须严格一致。3.x 发布使用裸版本 tag（`v3.x.y` 或 `v3.x.y-alpha.N`）；旧线继续使用成对前缀 tag（`python/v2.8.x` + `ts/v2.8.x`）。
-- **开发分支版本后缀**：`develop` 分支上的版本号始终设为**下一计划发布的目标版本 + `-dev.0`**（当前为 `3.0.0-dev.0`；旧线 Python 对应 `.dev0`）。
+- **开发分支版本后缀**：`develop` 分支上的版本号始终设为**下一计划发布的目标版本 + `-dev.0`**（当前为 `3.0.1-dev.0`；旧线 Python 对应 `.dev0`）。
 - **Patch 是日常累积更新的常规载体**：非紧急的缺陷修复、性能优化和小型兼容增补一律合入 `develop` 累积，随常规 Patch 版本发布；只有命中 [`WORKFLOW.md`](WORKFLOW.md) 阻断性回归标准的紧急修复才走直通 `main` 的 Hot-Fix 流程。
 
 ### 发布回灌后的 `develop` 版本号推进规则

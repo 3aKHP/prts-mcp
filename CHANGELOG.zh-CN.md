@@ -10,7 +10,7 @@
 
 实现：Rust。
 
-3.0.0 是首个原生 Rust 正式版。工具名、参数、输出格式与数据同步语义与 2.8.1 一致，仅保留 `contracts/baseline.json` 中封闭枚举的已批准差异。升级前请阅读 [2.x → 3.0 迁移指南](https://github.com/3aKHP/prts-mcp/blob/main/docs/migration-2.x-to-3.0.md)。下方的候选版条目记录了 3.0.0 的预发布历史。
+3.0.0 是首个原生 Rust 正式版。工具名、参数、输出格式与数据同步语义与 2.8.1 一致，仅保留 `contracts/baseline.json` 中封闭枚举的已批准差异。升级前请阅读 [2.x → 3.0 迁移指南](https://github.com/3aKHP/prts-mcp/blob/main/docs/migration-2.x-to-3.0.md)。`CHANGELOG.zh-CN.md` 中的 `3.0.0-rc.1` 至 `3.0.0-rc.3` 条目记录了预发布历史。
 
 ### 新增
 
