@@ -20,7 +20,7 @@ const out = join(root, 'artifacts/candidate', id), stage = join(out, 'payload');
 rmSync(out, { recursive: true, force: true });mkdirSync(stage, { recursive: true });
 for (const entry of readdirSync(native)) if (entry !== 'SHA256SUMS') cpSync(join(native, entry), join(stage, entry), { recursive: true });
 cpSync(bundle, join(stage, 'data'), { recursive: true });
-writeFileSync(join(stage, 'README.txt'), `PRTS-MCP ${version} (${id})\n\nRun bin/prts-mcp: Streamable HTTP defaults to port 3000; PRTS_TRANSPORT=stdio selects stdio.\nValidated read-only fallback game data is in data/. User synchronization writes outside this installation.\nNo Node/Bun/Python, compiler or additional native library setup is required.\nA development candidate is not a stable release; inspect CANDIDATE.json, BUILD.json, ABI.json and NOTICE.\n`);
+writeFileSync(join(stage, 'README.txt'), `PRTS-MCP ${version} (${id})\n\nRun bin/prts-mcp: Streamable HTTP defaults to port 3000; PRTS_TRANSPORT=stdio selects stdio.\nValidated read-only fallback game data is in data/. User synchronization writes outside this installation.\nNo Node/Bun/Python, compiler or additional native library setup is required.\n${version.includes('-') ? 'A development candidate is not a stable release; inspect' : 'Stable release; build and license evidence:'} CANDIDATE.json, BUILD.json, ABI.json and NOTICE.\n`);
 json(join(stage, 'CANDIDATE.json'), { schema: 'prts-mcp-candidate/v1', version, commit, platform: id,
   nativeBuild: build, dataBundle: data, originalNativeFiles: nativeFiles.length, dataFiles: dataFiles.length,
   noticeReferences: notices, nativeSdkSha256: sha(join(nativeOut, `prts-mcp-${version}-${id}.${config.os === 'win32' ? 'zip' : 'tar.gz'}`)), publicPublication: false });
