@@ -37,28 +37,34 @@ export function verifyCurrentPr(event, current) {
     'PR verification tier changed; use the latest PR run');
 }
 
+export function githubApi(path) {
+  return JSON.parse(execFileSync('gh', ['api', path], { encoding: 'utf8', timeout: 30_000, maxBuffer: 8 * 1024 * 1024 }));
+}
+
+export function verifyLivePr(eventName, event) {
+  if (eventName !== 'pull_request') return;
+  assert.ok(Number.isSafeInteger(event.number) && event.number > 0, 'Missing PR number');
+  verifyCurrentPr(event, githubApi(`repos/${process.env.GITHUB_REPOSITORY}/pulls/${event.number}`));
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
   const run = shouldRun(process.env.GITHUB_EVENT_NAME, event);
   const full = String(requiresFull(process.env.GITHUB_EVENT_NAME, event));
-  if (run && process.env.GITHUB_EVENT_NAME === 'pull_request') {
-    // Reruns retain their original event. Check live metadata both before the
-    // expensive jobs and at the final gate, with a read-only token.
-    assert.ok(Number.isSafeInteger(event.number) && event.number > 0, 'Missing PR number');
-    const current = JSON.parse(execFileSync('gh', ['api', `repos/${process.env.GITHUB_REPOSITORY}/pulls/${event.number}`],
-      { encoding: 'utf8', timeout: 30_000 }));
-    verifyCurrentPr(event, current);
-  }
   switch (process.argv[2]) {
     case 'select':
+      // Preserve the selected result identity even when the live check fails.
+      // Failed lint still prevents all expensive dependent jobs from starting.
       appendFileSync(process.env.GITHUB_OUTPUT, `run=${run}\nfull=${full}\n`);
       if (!run) {
         console.log('CI metadata update: existing verification continues unchanged');
         break;
       }
+      verifyLivePr(process.env.GITHUB_EVENT_NAME, event);
       console.log(`CI tier: ${full === 'true' ? 'full (five platforms)' : 'ordinary (Linux)'}; PR HEAD: ${event.pull_request?.head?.sha ?? process.env.GITHUB_SHA}`);
       break;
     case 'gate':
+      verifyLivePr(process.env.GITHUB_EVENT_NAME, event);
       assert.equal(run, true, 'Metadata-only events do not produce a CI gate');
       assert.equal(process.env.CI_FULL, full, 'Selected tier does not match this event');
       verifyGate(full, JSON.parse(process.env.CI_NEEDS));
