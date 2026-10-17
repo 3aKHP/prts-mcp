@@ -44,7 +44,7 @@ node tools/native/pack.mjs linux-x64
 node tools/native/probe.mjs linux-x64
 ```
 
-In CI, [`.github/workflows/native-platforms.yml`](../../.github/workflows/native-platforms.yml) executes all five platform builds and probes on native runners without requiring publishing credentials.
+In CI, [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) calls [`.github/workflows/native-platforms.yml`](../../.github/workflows/native-platforms.yml) for PRs targeting `main` or carrying the `ci:full` label. The native workflow executes all five platform builds and probes without requiring publishing credentials, and remains available for manual runs and release workflow calls. Other PRs use the ordinary Linux checks described in [WORKFLOW.md](WORKFLOW.md).
 
 ### What the Build and Probe Scripts Verify
 

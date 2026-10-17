@@ -49,7 +49,7 @@ English readers: the root [README](../README.md#english) and [Security Policy](.
   - [dev/ENVIRONMENT.md](dev/ENVIRONMENT.md)：跨平台开发环境搭建与本地验证命令（Linux/WSL、Windows、macOS）。
   - [dev/STYLE.md](dev/STYLE.md)：Rust 架构分层、代码规范、CHANGELOG 编写规则与已知工程陷阱。
   - [dev/DOCUMENTING.md](dev/DOCUMENTING.md)：公开文档写作、角色划分与审查规范。
-  - [dev/WORKFLOW.md](dev/WORKFLOW.md)：变更分级、双轨 Code Review 机制与最小验证矩阵。
+  - [dev/WORKFLOW.md](dev/WORKFLOW.md)：变更分级、双轨 Code Review、普通与全量 CI 策略及最小验证矩阵。
   - [dev/VERSIONING.md](dev/VERSIONING.md)：版本号语义与向后兼容性承诺。
   - [dev/LTS.md](dev/LTS.md)：`lts/1.7` 与 `lts/2.8` 两条长期支持分支的维护规则。
   - [dev/E2E.md](dev/E2E.md)：全量 E2E 真机测试流程。
