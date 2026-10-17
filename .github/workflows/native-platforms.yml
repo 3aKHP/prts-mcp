@@ -71,7 +71,7 @@ jobs:
           key: npm-bundle-data-${{ hashFiles('packaging/npm/data-release.json') }}
           enableCrossOsArchive: true
       - name: Prepare pinned and validated read-only game data
-        run: node tools/npm/prepare-data.mjs
+        run: node tools/npm/prepare-data.mjs ${{ matrix.platform }}
       - name: Pack shared npm runtime/data and native platform tarballs
         run: node tools/npm/pack.mjs ${{ matrix.platform }}
       - name: Verify real npm install, npx, lockfile and native entry behavior

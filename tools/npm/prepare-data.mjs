@@ -23,8 +23,12 @@ for (const asset of pin.assets) {
   if (sha(dest) !== asset.sha256) throw new Error(`Cached bundle checksum mismatch: ${asset.name}`);
 }
 const output = resolve(root, 'artifacts/npm-bundle/data');
+const args = [join(root, 'packaging/npm/data-release.json'), cache, output];
+// Native CI builds this internal helper alongside the release binaries, with
+// the same target/flags. Standalone data preparation still builds it locally.
+const native = process.argv[2] ? await import('../native/common.mjs') : null;
 // Owned staging directory only; no user data or root data/ is changed.
 rmSync(output, { recursive: true, force: true });
-run('cargo', ['run', '--locked', '--release', '--example', 'package_data', '--',
-  join(root, 'packaging/npm/data-release.json'), cache, output], { stdio: 'inherit' });
+if (native) run(join(native.release, 'examples', `package_data${native.suffix}`), args, { stdio: 'inherit' });
+else run('cargo', ['run', '--locked', '--release', '--example', 'package_data', '--', ...args], { stdio: 'inherit' });
 if (readJson(join(output, 'BUNDLE.json')).productVersion !== version) throw new Error('Bundle product version mismatch');

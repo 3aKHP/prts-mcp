@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::fs;
-use std::io::Read;
+use std::io::{BufReader, Read};
 use std::path::{Path, PathBuf};
 
 use prts_mcp_rust::sync::{activation, datasets, validation};
@@ -59,7 +59,9 @@ fn check_json_entries(path: &Path) -> Result<usize> {
     for index in 0..archive.len() {
         let mut entry = archive.by_index(index)?;
         if !entry.is_dir() && entry.name().ends_with(".json") {
-            let _: Value = serde_json::from_reader(&mut entry)
+            // serde_json's reader requests individual bytes. Buffer the
+            // decompressor while retaining full Value/EOF/CRC validation.
+            let _: Value = serde_json::from_reader(BufReader::with_capacity(64 * 1024, &mut entry))
                 .map_err(|e| format!("Invalid JSON in {}: {e}", entry.name()))?;
             count += 1;
         }
@@ -174,4 +176,60 @@ fn main() -> Result<()> {
         );
     }
     prepare(&args[0], &args[1], &args[2])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::{Cursor, Write};
+    use zip::write::SimpleFileOptions;
+
+    #[test]
+    fn buffered_json_validation_rejects_invalid_content_and_crc() -> Result<()> {
+        let path = std::env::temp_dir().join(format!("prts-bundle-{}.zip", uuid::Uuid::new_v4()));
+        let cases: &[(&[u8], bool)] = &[
+            (
+                r#"{"text":"中文","values":[null,true,1.5]}"#.as_bytes(),
+                true,
+            ),
+            (b"{} \n\t", true),
+            (b"{", false),
+            (b"{} []", false),
+            (b"1e9999", false),
+            (b"\"\xff\"", false),
+        ];
+        let result = (|| -> Result<()> {
+            for (content, valid) in cases {
+                let mut zip = zip::ZipWriter::new(Cursor::new(Vec::new()));
+                let options =
+                    SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
+                zip.start_file("data.json", options)?;
+                zip.write_all(content)?;
+                zip.start_file("ignored.txt", options)?;
+                zip.write_all(b"not JSON")?;
+                let mut bytes = zip.finish()?.into_inner();
+                fs::write(&path, &bytes)?;
+                if *valid {
+                    assert_eq!(check_json_entries(&path)?, 1);
+                } else {
+                    let error = check_json_entries(&path).unwrap_err().to_string();
+                    assert!(error.contains("Invalid JSON in data.json"), "{error}");
+                }
+                if content == &b"{} \n\t" {
+                    // Change only legal whitespace, leaving syntactically valid
+                    // JSON but breaking the ZIP entry's original CRC.
+                    let offset = bytes
+                        .windows(content.len())
+                        .position(|b| b == *content)
+                        .unwrap();
+                    bytes[offset + 2] = b'\t';
+                    fs::write(&path, bytes)?;
+                    assert!(check_json_entries(&path).is_err());
+                }
+            }
+            Ok(())
+        })();
+        fs::remove_file(path)?;
+        result
+    }
 }

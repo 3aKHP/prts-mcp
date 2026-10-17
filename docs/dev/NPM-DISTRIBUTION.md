@@ -33,7 +33,7 @@
 ## 2. 内置备用数据与优先级
 
 1. **独立版本固定**：[`packaging/npm/data-release.json`](../../packaging/npm/data-release.json) 固定了发行备用数据所使用的上游 `arknights-data-pipeline` Release、manifest 与三个 ZIP 的 SHA-256（与开发测试专用的 `contracts/validation-assets.json` 互不干扰）。
-2. **数据准备与校验**：`node tools/npm/prepare-data.mjs` 下载并校验三个上游归档后，调用 `cargo run --locked --example package_data` 执行安全解压、必需表格校验、剧情引用检查，并生成 `BUNDLE.json` 与 `SHA256SUMS`。
+2. **数据准备与校验**：`node tools/npm/prepare-data.mjs` 下载并校验三个上游归档后，调用 `cargo run --locked --release --example package_data` 执行安全解压、必需表格校验、剧情引用检查，并生成 `BUNDLE.json` 与 `SHA256SUMS`。原生 CI 使用 `node tools/npm/prepare-data.mjs <platform>`，执行同一次原生 release 构建生成的内部 `package_data` 工具，避免再次编译；JSON 校验使用带缓冲的 ZIP 读取，仍完整解析每个 JSON 并检查归档 CRC。
 3. **运行时优先级**：启动桥通过内部参数将 `@3akhp/prts-mcp-data` 的路径传给 Rust 进程作为只读备用源。当用户数据目录已有完整数据时，服务优先读取用户数据；后台同步始终写入可写的用户数据目录，绝不修改 `node_modules` 内的备用数据包。
 
 ---
