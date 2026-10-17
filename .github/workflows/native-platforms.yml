@@ -39,7 +39,7 @@ jobs:
       - name: Optimized native data preparation
         run: node tools/npm/prepare-data.mjs ${{ matrix.platform }}
       - name: Compile comparison helper with the same flags
-        run: node --input-type=module -e "const n = await import('./tools/native/common.mjs'); n.run('cargo', ['build', '--locked', '--release', '--target', n.config.target, '--example', 'package_data_baseline'], {stdio:'inherit'});" ${{ matrix.platform }}
+        run: node --input-type=module -e "process.argv.splice(1, 0, 'benchmark'); const n = await import('./tools/native/common.mjs'); n.run('cargo', ['build', '--locked', '--release', '--target', n.config.target, '--example', 'package_data_baseline'], {stdio:'inherit'});" ${{ matrix.platform }}
       - name: Paired full bundle preparation and inventory equality
         run: node tools/native/data-benchmark.mjs ${{ matrix.platform }}
       - uses: actions/upload-artifact@v6
