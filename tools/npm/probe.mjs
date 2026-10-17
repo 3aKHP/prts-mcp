@@ -13,6 +13,16 @@ import { stdio } from './mcp.mjs';
 const id = process.argv[2], target = targets[id];
 assert(target && target.os === process.platform && target.arch === process.arch,'npm runtime verification requires its native host');
 const out = join(root,'artifacts/npm',id);
+const started = performance.now(), timings = [];
+async function timed(name, run) {
+  const start = performance.now();
+  try { return await run(); }
+  finally {
+    const entry = {name,ms:Math.round(performance.now()-start)};
+    timings.push(entry);
+    console.log(`NPM_TIMING: ${JSON.stringify(entry)}`);
+  }
+}
 const receipt = readJson(join(out,'packages.json'));
 for (const p of receipt.packages) assert.equal(sha(join(out,'tarballs',p.filename)),p.sha256);
 const temp = mkdtempSync(join(tmpdir(),'prts-npm 空格-'));
@@ -26,12 +36,13 @@ const config = join(temp,'empty.npmrc'); writeFileSync(config,'');
 const globalConfig = join(temp,'global.npmrc'); writeFileSync(globalConfig,'');
 Object.assign(env,{NPM_CONFIG_USERCONFIG:config,NPM_CONFIG_GLOBALCONFIG:globalConfig,
   NPM_CONFIG_REGISTRY:registry.url,NPM_CONFIG_AUDIT:'false',NPM_CONFIG_FUND:'false',
+  NPM_CONFIG_TIMING:'true',NPM_CONFIG_LOGS_DIR:join(out,'npm-logs'),
   IMAGES_ENABLED:'false',LOCAL_IMAGE:'false',PRTS_OUTPUT_CHANNEL:'content',
   PRTS_AUTO_SYNC_INTERVAL_SECONDS:'0',GITHUB_MIRRORS:'http://127.0.0.1:9',
   XDG_DATA_HOME:join(temp,'empty-user'),LOCALAPPDATA:join(temp,'empty-user'),USERPROFILE:join(temp,'empty-profile'),
 });
 const install = async args => {
-  const result = await capture('npm',args,{env,cwd:temp});
+  const result = await timed('global-install',()=>capture('npm',args,{env,cwd:temp}));
   assert.equal(result.code,0,result.stderr);
   return result.stdout.trim();
 };
@@ -83,12 +94,14 @@ try {
   assert.equal(nativePkg.version,version);
   assert.deepEqual(nativePkg.os,[process.platform]);assert.deepEqual(nativePkg.cpu,[process.arch]);
   checks.push({case:'matching native platform selected',platform:id});
-  const nativeHashes=verifyInventory(nativeRoot),notices=verifyNotices(nativeRoot);
+  const nativeHashes=await timed('native-inventory',()=>verifyInventory(nativeRoot)),notices=verifyNotices(nativeRoot);
   const installedData=join(req.resolve('@3akhp/prts-mcp-data/package.json'),'..','data');
-  const dataHashes=verifyInventory(installedData);
+  const dataHashes=await timed('data-inventory',()=>verifyInventory(installedData));
   checks.push({case:'actual installed tarball payload and license integrity',nativeHashes:nativeHashes.length,noticeReferences:notices,dataHashes:dataHashes.length});
-  const profile = spawn(process.execPath,['tools/native/probe.mjs',id,'--npm-root',globalRoot],{cwd:root,env,stdio:'inherit'});
-  const [code] = await once(profile,'close'); assert.equal(code,0);
+  await timed('installed-entry-profiles',async()=>{
+    const profile = spawn(process.execPath,['tools/native/probe.mjs',id,'--npm-root',globalRoot],{cwd:root,env,stdio:'inherit'});
+    const [code] = await once(profile,'close'); assert.equal(code,0);
+  });
   checks.push({case:'installed new/compat entry profiles, frozen outputs and protocols',evidence:`artifacts/native/${id}/npm-runtime-evidence.json`});
   console.log(`NPM_STAGE: ${id} offline fallback and actual global shim`);
   checks.push({case:'fresh empty-user offline fallback',...await stdio(launch(main,{PRTS_TRANSPORT:'stdio'}),version)});
@@ -103,17 +116,20 @@ try {
   for(const name of ['prts-mcp','prts-mcp-ts']){
     console.log(`NPM_STAGE: ${id} clean-cache npx ${name}`);
     const bin=name==='prts-mcp'?'prts-mcp':'prts-mcp-ts-stdio';
-    const child=npmSpawn('npx',['--yes','--cache',join(temp,`npx-${name}`),'--registry',registry.url,'--package',`${name}@${version}`,bin],
-      {cwd:temp,env:{...env,PRTS_TRANSPORT:'stdio'},stdio:['pipe','pipe','pipe']});
-    checks.push({case:`npx ${name} with clean cache`,...await stdio(child,version)});
+    const result=await timed(`npx-${name}`,async()=>{
+      const child=npmSpawn('npx',['--yes','--cache',join(temp,`npx-${name}`),'--registry',registry.url,'--package',`${name}@${version}`,bin],
+        {cwd:temp,env:{...env,PRTS_TRANSPORT:'stdio'},stdio:['pipe','pipe','pipe']});
+      return stdio(child,version);
+    });
+    checks.push({case:`npx ${name} with clean cache`,...result});
   }
   const project=join(temp,'locked-project');mkdirSync(project);
   console.log(`NPM_STAGE: ${id} locked project install and clean npm ci`);
   json(join(project,'package.json'),{name:'npm-install-probe',private:true,dependencies:{'prts-mcp':version,'prts-mcp-ts':version}});
-  const local = await capture('npm',['install','--ignore-scripts','--cache',join(temp,'lock-cache')],{cwd:project,env});assert.equal(local.code,0,local.stderr);
+  const local = await timed('project-install',()=>capture('npm',['install','--ignore-scripts','--cache',join(temp,'lock-cache')],{cwd:project,env}));assert.equal(local.code,0,local.stderr);
   const lock=readFileSync(join(project,'package-lock.json'),'utf8');
-  rmSync(join(project,'node_modules'),{recursive:true,force:true});
-  const ci=await capture('npm',['ci','--ignore-scripts','--cache',join(temp,'ci-cache')],{cwd:project,env});assert.equal(ci.code,0,ci.stderr);
+  await timed('remove-project-install',()=>rmSync(join(project,'node_modules'),{recursive:true,force:true}));
+  const ci=await timed('npm-ci',()=>capture('npm',['ci','--ignore-scripts','--cache',join(temp,'ci-cache')],{cwd:project,env}));assert.equal(ci.code,0,ci.stderr);
   assert.equal(readFileSync(join(project,'package-lock.json'),'utf8'),lock);
   const localMain=join(project,'node_modules/prts-mcp/bin/prts-mcp.cjs');
   const localCompat=join(project,'node_modules/prts-mcp-ts/bin/prts-mcp-ts-stdio.cjs');
@@ -121,7 +137,7 @@ try {
   assert.equal(requireMain.resolve('@3akhp/prts-mcp-runtime'),requireCompat.resolve('@3akhp/prts-mcp-runtime'));
   checks.push({case:'npm ci with fresh cache and unchanged lockfile; shared runtime/data deduplicated',...await stdio(launch(localCompat),version)});
   console.log(`NPM_STAGE: ${id} lifecycle and error diagnostics`);
-  for(const signal of process.platform==='win32'?['SIGTERM']:['SIGTERM','SIGINT','SIGHUP']) await signalCheck(main,signal);
+  for(const signal of process.platform==='win32'?['SIGTERM']:['SIGTERM','SIGINT','SIGHUP']) await timed(`lifecycle-${signal}`,()=>signalCheck(main,signal));
   const occupied=createServer();occupied.listen(0,'127.0.0.1');await once(occupied,'listening');
   const badPort=launch(main,{PORT:String(occupied.address().port),HOST:'127.0.0.1',PRTS_TRANSPORT:'http'});
   let badOut='';badPort.stdout.on('data',d=>{badOut+=d;});badPort.stderr.resume();
@@ -143,7 +159,7 @@ try {
     checks.push({case:label,exit:1,classification:'isolated selector simulation; not a native OS support claim'});
   }
   const omitted=join(temp,'no-optional');mkdirSync(omitted);json(join(omitted,'package.json'),{private:true});
-  const noOptional=await capture('npm',['install','--omit=optional','--ignore-scripts','--cache',join(temp,'omit-cache'),`prts-mcp@${version}`],{env,cwd:omitted});
+  const noOptional=await timed('omit-optional-install',()=>capture('npm',['install','--omit=optional','--ignore-scripts','--cache',join(temp,'omit-cache'),`prts-mcp@${version}`],{env,cwd:omitted}));
   assert.equal(noOptional.code,0,noOptional.stderr);
   const absent=launch(join(omitted,'node_modules/prts-mcp/bin/prts-mcp.cjs'));let absentErr='',absentOut='';absent.stderr.on('data',d=>{absentErr+=d;});absent.stdout.on('data',d=>{absentOut+=d;});
   const [absentCode]=await once(absent,'close');assert.equal(absentCode,1);assert.equal(absentOut,'');assert.match(absentErr,/缺少平台包.*optional dependencies/);
@@ -159,5 +175,9 @@ try {
 } finally {
   await Promise.allSettled([...children].map(child=>{const close=once(child,'close');child.kill();return close;}));
   await registry.close();
-  rmSync(temp,{recursive:true,force:true});
+  try { await timed('cleanup',()=>rmSync(temp,{recursive:true,force:true})); }
+  finally {
+    json(join(out,'npm-timings.json'),{platform:id,os:osRelease(),node:process.version,
+      tempRoot:tmpdir(),totalMs:Math.round(performance.now()-started),timings});
+  }
 }
