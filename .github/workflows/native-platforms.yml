@@ -4,77 +4,14 @@ on:
     branches: [develop]
   pull_request:
   workflow_dispatch:
-    inputs:
-      npm-diagnostics:
-        description: Run isolated npm data installation diagnostics
-        type: boolean
-        default: false
-      artifact-run:
-        description: Completed run containing npm-windows-x64 (required for diagnostics)
-        type: string
   workflow_call:
 permissions:
   contents: read
 concurrency:
-  group: native-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}-${{ inputs.npm-diagnostics && 'diagnostics' || 'native' }}
+  group: native-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 jobs:
-  npm-diagnostics:
-    if: github.event_name == 'workflow_dispatch' && inputs.npm-diagnostics
-    permissions:
-      contents: read
-      actions: read
-    strategy:
-      fail-fast: false
-      matrix:
-        runner: [ubuntu-24.04, windows-2022]
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 25
-    steps:
-      - name: Validate diagnostics source run
-        env:
-          SOURCE_RUN: ${{ inputs.artifact-run }}
-        run: node -e "if (!/^[1-9][0-9]*$/.test(process.env.SOURCE_RUN)) throw Error('Provide artifact-run for npm diagnostics')"
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: '24'
-      - uses: actions/download-artifact@v8
-        with:
-          name: npm-windows-x64
-          path: artifacts/npm-diagnostics/input
-          run-id: ${{ inputs.artifact-run }}
-          github-token: ${{ github.token }}
-      - name: Select exact data tarball
-        shell: bash
-        run: |
-          node --input-type=module -e "import {globSync,copyFileSync} from 'node:fs'; const files=globSync('artifacts/npm-diagnostics/input/**/3akhp-prts-mcp-data-*.tgz'); if(files.length!==1)throw Error('Expected one data tarball'); copyFileSync(files[0],'artifacts/npm-diagnostics/data.tgz');"
-      - name: Record Windows security and disk configuration
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          Get-MpComputerStatus | Select-Object AMRunningMode,AntivirusEnabled,RealTimeProtectionEnabled | ConvertTo-Json
-          Get-Volume | Select-Object DriveLetter,FileSystem,SizeRemaining,Size | ConvertTo-Json
-      - name: Compare npm cold install, warm install and tar extraction
-        if: runner.os != 'Windows'
-        run: node tools/npm/install-benchmark.mjs artifacts/npm-diagnostics
-      - name: Compare Windows runner and system temporary directories
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          foreach ($probeRoot in @($env:RUNNER_TEMP, $env:TEMP, $env:RUNNER_TEMP)) {
-            $env:PRTS_BENCH_TEMP = $probeRoot
-            node tools/npm/install-benchmark.mjs artifacts/npm-diagnostics
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          }
-      - uses: actions/upload-artifact@v6
-        if: always()
-        with:
-          name: npm-diagnostics-${{ matrix.runner }}
-          path: artifacts/npm-diagnostics/result-*/
-          retention-days: 14
   native:
-    if: github.event_name != 'workflow_dispatch' || !inputs.npm-diagnostics
     name: Native ${{ matrix.platform }}
     strategy:
       fail-fast: false

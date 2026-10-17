@@ -44,9 +44,14 @@ function run(command, args, cwd = temp) {
     const child = spawn(command, args, { env, cwd, stdio: ['ignore', 'pipe', 'pipe'] });
     let stdout = '', stderr = '';
     child.stdout.on('data', d => { stdout += d; }); child.stderr.on('data', d => { stderr += d; });
-    const timer = setTimeout(() => { child.kill(); reject(Error('command timed out')); }, 600000);
+    let timedOut = false;
+    const timer = setTimeout(() => { timedOut = true; child.kill(); }, 600000);
     child.once('error', e => { clearTimeout(timer); reject(e); });
-    child.once('close', code => { clearTimeout(timer); code === 0 ? resolve({ stdout, stderr }) : reject(Error(`${code}: ${stderr}`)); });
+    child.once('close', code => {
+      clearTimeout(timer);
+      if (code === 0 && !timedOut) resolve({ stdout, stderr });
+      else reject(Error(`${timedOut ? 'command timed out' : `exit ${code}`}: ${stderr}\n${stdout}`));
+    });
   });
 }
 function flush() { writeFileSync(join(output, 'evidence.json'), JSON.stringify(report, null, 2)); }
