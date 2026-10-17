@@ -69,7 +69,7 @@ try {
   await npm('cold-install', ['install', `${name}@${version}`, '--ignore-scripts', '--cache', cache], project);
   await npm('warm-ci', ['ci', '--ignore-scripts', '--cache', cache], project);
   const extracted = join(temp, 'tar'); mkdirSync(extracted);
-  await measure('tar-extract', async () => { await run('tar', ['-xf', file, '-C', extracted]); });
+  await measure('tar-extract', async () => { await run('tar', ['-xf', file], extracted); });
   await measure('copy-tree', () => cpSync(join(extracted, 'package'), join(temp, 'copy'), { recursive: true }));
   await measure('hash-tree', () => {
     let count = 0, total = 0;
