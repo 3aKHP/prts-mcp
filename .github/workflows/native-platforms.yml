@@ -54,7 +54,7 @@ jobs:
             ~/.cargo/git
             .native-cache
             target
-          key: native-${{ matrix.platform }}-${{ hashFiles('Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', 'build.rs', 'native/**', 'vendor/**', 'packaging/native/targets.json') }}
+          key: native-${{ matrix.platform }}-${{ hashFiles('Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', 'build.rs', 'native/**', 'vendor/**', 'packaging/native/targets.json', 'tools/native/build.mjs', 'tools/native/common.mjs', 'tools/native/linux-build.sh') }}
           restore-keys: native-${{ matrix.platform }}-
       - name: Native build, minimum Rust check and native corpus
         run: node tools/native/build.mjs ${{ matrix.platform }}

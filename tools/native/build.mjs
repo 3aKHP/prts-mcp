@@ -12,7 +12,7 @@ if (config.os === 'linux') {
     config.builder, 'bash', 'tools/native/linux-build.sh'], { stdio: 'inherit' });
 } else {
   run('rustup', ['toolchain', 'install', '1.89.0', '--profile', 'minimal'], { stdio: 'inherit' });
-  run('cargo', ['+1.89.0', 'check', '--locked', '--bins', '--target', config.target], { stdio: 'inherit' });
+  run('cargo', ['+1.89.0', 'check', '--locked', '--bins', '--example', 'package_data', '--target', config.target], { stdio: 'inherit' });
   run('cargo', ['test', '--locked', '--target', config.target, '--lib', '--test', 'native_text_corpus',
     '--test', 'regex_corpus', '--test', 'story_index', '--example', 'package_data'], { stdio: 'inherit' });
   run('cargo', ['build', '--locked', '--release', '--bins', '--example', 'package_data', '--target', config.target], { stdio: 'inherit' });
