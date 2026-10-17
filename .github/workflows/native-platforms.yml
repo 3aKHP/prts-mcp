@@ -57,8 +57,10 @@ jobs:
             ~/.cargo/git
             .native-cache
             target
-          key: native-${{ matrix.platform }}-${{ hashFiles('Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', 'build.rs', 'native/**', 'vendor/**', 'packaging/native/targets.json') }}
-          restore-keys: native-${{ matrix.platform }}-
+          # Start clean after retiring full-debug profiles and the host-only helper.
+          # Keep fallback restores within this generation to avoid carrying both layouts.
+          key: native-v2-${{ matrix.platform }}-${{ hashFiles('Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', 'build.rs', 'native/**', 'vendor/**', 'packaging/native/targets.json', 'tools/native/build.mjs', 'tools/native/common.mjs', 'tools/native/linux-build.sh') }}
+          restore-keys: native-v2-${{ matrix.platform }}-
       - name: Native build, minimum Rust check and native corpus
         run: node tools/native/build.mjs ${{ matrix.platform }}
       - name: Package binaries, notices and audited ABI
@@ -74,7 +76,7 @@ jobs:
           key: npm-bundle-data-${{ hashFiles('packaging/npm/data-release.json') }}
           enableCrossOsArchive: true
       - name: Prepare pinned and validated read-only game data
-        run: node tools/npm/prepare-data.mjs
+        run: node tools/npm/prepare-data.mjs ${{ matrix.platform }}
       - name: Pack shared npm runtime/data and native platform tarballs
         run: node tools/npm/pack.mjs ${{ matrix.platform }}
       - name: Verify real npm install, npx, lockfile and native entry behavior

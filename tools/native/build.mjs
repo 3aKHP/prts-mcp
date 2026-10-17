@@ -12,10 +12,10 @@ if (config.os === 'linux') {
     config.builder, 'bash', 'tools/native/linux-build.sh'], { stdio: 'inherit' });
 } else {
   run('rustup', ['toolchain', 'install', '1.89.0', '--profile', 'minimal'], { stdio: 'inherit' });
-  run('cargo', ['+1.89.0', 'check', '--locked', '--bins', '--target', config.target], { stdio: 'inherit' });
+  run('cargo', ['+1.89.0', 'check', '--locked', '--bins', '--example', 'package_data', '--target', config.target], { stdio: 'inherit' });
   run('cargo', ['test', '--locked', '--target', config.target, '--lib', '--test', 'native_text_corpus',
-    '--test', 'regex_corpus', '--test', 'story_index'], { stdio: 'inherit' });
-  run('cargo', ['build', '--locked', '--release', '--bins', '--target', config.target], { stdio: 'inherit' });
+    '--test', 'regex_corpus', '--test', 'story_index', '--example', 'package_data'], { stdio: 'inherit' });
+  run('cargo', ['build', '--locked', '--release', '--bins', '--example', 'package_data', '--target', config.target], { stdio: 'inherit' });
   writeFileSync(join(out, 'cargo-metadata.json'), run('cargo', ['metadata', '--locked', '--format-version', '1',
     '--filter-platform', config.target]));
   writeFileSync(join(out, 'rust-sysroot.txt'), run('rustc', ['--print', 'sysroot']).trim());
