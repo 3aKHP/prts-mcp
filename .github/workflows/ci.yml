@@ -8,6 +8,7 @@ on:
 permissions:
   contents: read
   pull-requests: read
+  actions: read
 concurrency:
   # Metadata-only edits and explicit reruns must not cancel the current PR run.
   group: >-
@@ -36,7 +37,7 @@ jobs:
         run: node tools/ci/policy.mjs select
       - name: Test CI selection and gate policy
         if: steps.policy.outputs.run == 'true'
-        run: node --test tools/ci/policy.test.mjs
+        run: node --test tools/ci/*.test.mjs
       - uses: actions/setup-go@v6
         if: steps.policy.outputs.run == 'true'
         with:
@@ -117,8 +118,8 @@ jobs:
     needs: workflow-lint
     if: needs.workflow-lint.outputs.run == 'true' && needs.workflow-lint.outputs.full == 'true'
     uses: ./.github/workflows/native-platforms.yml
-  gate:
-    name: ${{ needs.workflow-lint.outputs.run == 'false' && 'CI metadata update' || 'CI gate' }}
+  result:
+    name: ${{ format('CI result / {0} / {1} / {2} / {3}', github.event_name, github.event.pull_request.number || 0, github.base_ref || github.ref, needs.workflow-lint.outputs.full == 'true' && 'full' || 'ordinary') }}
     if: always() && needs.workflow-lint.outputs.run != 'false'
     needs: [workflow-lint, msrv, rust-validation, native]
     runs-on: ubuntu-24.04
@@ -131,11 +132,23 @@ jobs:
           CI_FULL: ${{ needs.workflow-lint.outputs.full }}
           CI_NEEDS: ${{ toJSON(needs) }}
         run: node tools/ci/policy.mjs gate
+  gate:
+    # Register the required check immediately. A new workflow suite can block
+    # protection even when it omits a check that passed in an older suite.
+    name: CI gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+      - name: Wait for current validation or matching metadata proof
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node tools/ci/wait-for-result.mjs
   full-gate:
     # A skipped job counts as success in branch protection. Never emit the
     # required main check name for an ordinary run, even as a skipped job.
-    name: ${{ needs.workflow-lint.outputs.run == 'true' && needs.workflow-lint.outputs.full == 'true' && 'Full CI gate' || 'Full CI not requested' }}
-    if: always() && needs.workflow-lint.outputs.run == 'true' && needs.workflow-lint.outputs.full == 'true'
+    name: ${{ needs.workflow-lint.outputs.full == 'true' && 'Full CI gate' || 'Full CI not requested' }}
+    if: always() && needs.workflow-lint.outputs.full == 'true'
     needs: [workflow-lint, gate]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
