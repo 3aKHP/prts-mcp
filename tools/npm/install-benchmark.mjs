@@ -69,6 +69,7 @@ try {
   const project = join(temp, 'project'); mkdirSync(project); writeFileSync(join(project, 'package.json'), '{"private":true}');
   const cache = join(temp, 'cache');
   await npm('cold-install', ['install', `${name}@${version}`, '--ignore-scripts', '--cache', cache], project);
+  if (!process.env.PRTS_BENCH_COLD_ONLY) {
   await npm('warm-ci', ['ci', '--ignore-scripts', '--cache', cache], project);
   const extracted = join(temp, 'tar'); mkdirSync(extracted);
   await measure('tar-extract', async () => { await run('tar', ['-xf', file], extracted); });
@@ -82,6 +83,7 @@ try {
     } }
     walk(extracted); return { count, bytes: total };
   });
+  }
 } finally {
   server.closeAllConnections(); await new Promise(resolve => server.close(resolve));
   await measure('cleanup', () => rmSync(temp, { recursive: true, force: true })); flush();

@@ -62,7 +62,10 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          foreach ($probeRoot in @($env:RUNNER_TEMP, $env:TEMP, $env:RUNNER_TEMP)) {
+          $roots = @($env:RUNNER_TEMP, $env:TEMP, "$env:USERPROFILE\AppData\Local\Temp", "C:\prts-npm-diagnostic", $env:RUNNER_TEMP)
+          $env:PRTS_BENCH_COLD_ONLY = 'true'
+          foreach ($probeRoot in $roots) {
+            New-Item -ItemType Directory -Force -Path $probeRoot | Out-Null
             $env:PRTS_BENCH_TEMP = $probeRoot
             node tools/npm/install-benchmark.mjs artifacts/npm-diagnostics
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
