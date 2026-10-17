@@ -1,14 +1,11 @@
 name: Native platforms
 on:
-  push:
-    branches: [develop]
-  pull_request:
   workflow_dispatch:
   workflow_call:
 permissions:
   contents: read
 concurrency:
-  group: native-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  group: native-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-${{ github.run_attempt > 1 && github.run_id || 'checks' }}
   cancel-in-progress: true
 jobs:
   native:
@@ -180,3 +177,16 @@ jobs:
           path: artifacts/release/
           compression-level: 0
           retention-days: 14
+
+  complete:
+    name: Native verification gate
+    if: always()
+    needs: [native, collect]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require all platforms and the complete candidate snapshot
+        env:
+          NATIVE_RESULT: ${{ needs.native.result }}
+          COLLECT_RESULT: ${{ needs.collect.result }}
+        run: test "$NATIVE_RESULT" = success && test "$COLLECT_RESULT" = success

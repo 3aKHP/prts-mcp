@@ -3,25 +3,74 @@ on:
   push:
     branches: [main, develop]
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled, edited]
   workflow_dispatch:
 permissions:
   contents: read
+  pull-requests: read
+  actions: read
 concurrency:
-  group: ci-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.head_ref || github.ref_name }}
+  # Metadata-only edits and explicit reruns must not cancel the current PR run.
+  group: >-
+    ci-${{ github.event.pull_request.number || github.ref }}-${{
+      (github.run_attempt > 1 || (github.event_name == 'pull_request' &&
+      ((github.event.action == 'edited' && !github.event.changes.base) ||
+      ((github.event.action == 'labeled' || github.event.action == 'unlabeled') && github.event.label.name != 'ci:full'))))
+      && github.run_id || 'checks' }}
   cancel-in-progress: true
 jobs:
   workflow-lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      full: ${{ steps.policy.outputs.full }}
+      run: ${{ steps.policy.outputs.run }}
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Select current verification tier
+        id: policy
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node tools/ci/policy.mjs select
+      - name: Test CI selection and gate policy
+        if: steps.policy.outputs.run == 'true'
+        run: node --test tools/ci/*.test.mjs
       - uses: actions/setup-go@v6
+        if: steps.policy.outputs.run == 'true'
         with:
           go-version: '1.25.x'
           cache: false
-      - run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
-  rust-validation:
+      - if: steps.policy.outputs.run == 'true'
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+  msrv:
+    needs: workflow-lint
+    if: needs.workflow-lint.outputs.run == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install minimum Rust and isolate its build cache
+        run: |
+          echo "CARGO_TARGET_DIR=$RUNNER_TEMP/msrv-target" >> "$GITHUB_ENV"
+          rustup toolchain install 1.89.0 --profile minimal
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ${{ runner.temp }}/msrv-target
+          key: msrv-${{ runner.os }}-1.89.0-${{ hashFiles('Cargo.toml', 'Cargo.lock', 'build.rs', 'native/**', 'vendor/**') }}
+          restore-keys: msrv-${{ runner.os }}-1.89.0-
+      - name: Check shipped binaries and packaging helper on minimum Rust
+        run: cargo +1.89.0 check --locked --bins --example package_data
+  rust-validation:
+    needs: workflow-lint
+    if: needs.workflow-lint.outputs.run == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
         with:
@@ -51,7 +100,9 @@ jobs:
       - name: Native tests, frozen differential suite and lifecycle
         run: ./scripts/check-runtime.sh --full
       - name: Verify candidate publication and channel guards
-        run: node --test tools/release/policy.test.mjs tools/npm/canonical-entry.test.mjs tools/release/publication.test.mjs
+        run: |
+          node tools/release/check-version.mjs
+          node --test tools/release/policy.test.mjs tools/npm/canonical-entry.test.mjs tools/release/publication.test.mjs
       - name: Verify standalone source package
         run: |
           node tools/check-source-package.mjs
@@ -63,3 +114,46 @@ jobs:
           name: rust-validation-evidence
           path: artifacts/
           retention-days: 14
+  native:
+    needs: workflow-lint
+    if: needs.workflow-lint.outputs.run == 'true' && needs.workflow-lint.outputs.full == 'true'
+    uses: ./.github/workflows/native-platforms.yml
+  result:
+    name: ${{ format('CI result / {0} / {1} / {2} / {3}', github.event_name, github.event.pull_request.number || 0, github.base_ref || github.ref, needs.workflow-lint.outputs.full == 'true' && 'full' || 'ordinary') }}
+    if: always() && needs.workflow-lint.outputs.run != 'false'
+    needs: [workflow-lint, msrv, rust-validation, native]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - name: Require every selected check to succeed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CI_FULL: ${{ needs.workflow-lint.outputs.full }}
+          CI_NEEDS: ${{ toJSON(needs) }}
+        run: node tools/ci/policy.mjs gate
+  gate:
+    # Register the required check immediately. A new workflow suite can block
+    # protection even when it omits a check that passed in an older suite.
+    name: CI gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+      - name: Wait for current validation or matching metadata proof
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node tools/ci/wait-for-result.mjs
+  full-gate:
+    # A skipped job counts as success in branch protection. Never emit the
+    # required main check name for an ordinary run, even as a skipped job.
+    name: ${{ needs.workflow-lint.outputs.full == 'true' && 'Full CI gate' || 'Full CI not requested' }}
+    if: always() && needs.workflow-lint.outputs.full == 'true'
+    needs: [workflow-lint, gate]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require successful full verification
+        env:
+          GATE_RESULT: ${{ needs.gate.result }}
+        run: test "$GATE_RESULT" = success
