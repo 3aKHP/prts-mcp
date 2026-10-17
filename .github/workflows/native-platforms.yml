@@ -10,14 +10,13 @@ on:
         type: boolean
         default: false
       artifact-run:
-        description: Completed run containing npm-windows-x64
+        description: Completed run containing npm-windows-x64 (required for diagnostics)
         type: string
-        default: '38934243478'
   workflow_call:
 permissions:
   contents: read
 concurrency:
-  group: native-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  group: native-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}-${{ inputs.npm-diagnostics && 'diagnostics' || 'native' }}
   cancel-in-progress: true
 jobs:
   npm-diagnostics:
@@ -32,6 +31,10 @@ jobs:
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 25
     steps:
+      - name: Validate diagnostics source run
+        env:
+          SOURCE_RUN: ${{ inputs.artifact-run }}
+        run: node -e "if (!/^[1-9][0-9]*$/.test(process.env.SOURCE_RUN)) throw Error('Provide artifact-run for npm diagnostics')"
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
@@ -50,12 +53,12 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          Get-MpComputerStatus | Select-Object AMRunningMode,AntivirusEnabled,RealTimeProtectionEnabled
-          Get-Volume | Select-Object DriveLetter,FileSystem,SizeRemaining,Size
+          Get-MpComputerStatus | Select-Object AMRunningMode,AntivirusEnabled,RealTimeProtectionEnabled | ConvertTo-Json
+          Get-Volume | Select-Object DriveLetter,FileSystem,SizeRemaining,Size | ConvertTo-Json
       - name: Compare npm cold install, warm install and tar extraction
         if: runner.os != 'Windows'
         run: node tools/npm/install-benchmark.mjs artifacts/npm-diagnostics
-      - name: Compare Windows runner and system temporary disks
+      - name: Compare Windows runner and system temporary directories
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
@@ -100,10 +103,13 @@ jobs:
       - name: Configure Windows compiler and SDK
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1
-      - name: Select Windows native C compiler
+      - name: Select Windows compiler and runner temporary storage
         if: runner.os == 'Windows'
         shell: pwsh
-        run: '"CC=clang-cl" >> $env:GITHUB_ENV'
+        run: |
+          "CC=clang-cl" >> $env:GITHUB_ENV
+          "TEMP=$env:RUNNER_TEMP" >> $env:GITHUB_ENV
+          "TMP=$env:RUNNER_TEMP" >> $env:GITHUB_ENV
       - name: Prepare desktop Rust compiler
         if: runner.os != 'Linux'
         run: rustup show
@@ -114,7 +120,7 @@ jobs:
             ~/.cargo/git
             .native-cache
             target
-          key: native-${{ matrix.platform }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml', 'build.rs', 'native/**', 'vendor/**', 'packaging/native/targets.json') }}
+          key: native-${{ matrix.platform }}-${{ hashFiles('Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', 'build.rs', 'native/**', 'vendor/**', 'packaging/native/targets.json') }}
           restore-keys: native-${{ matrix.platform }}-
       - name: Native build, minimum Rust check and native corpus
         run: node tools/native/build.mjs ${{ matrix.platform }}
@@ -172,6 +178,8 @@ jobs:
             artifacts/npm/${{ matrix.platform }}/tarballs/*.tgz
             artifacts/npm/${{ matrix.platform }}/packages.json
             artifacts/npm/${{ matrix.platform }}/npm-evidence.json
+            artifacts/npm/${{ matrix.platform }}/npm-timings.json
+            artifacts/npm/${{ matrix.platform }}/npm-logs/*timing.json
             artifacts/native/${{ matrix.platform }}/npm-runtime-evidence.json
           retention-days: 14
       - name: Retain installable archive and evidence (no publication)

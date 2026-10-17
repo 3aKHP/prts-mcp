@@ -7,7 +7,6 @@ import { dirname, join, resolve } from 'node:path';
 import { once } from 'node:events';
 import { performance } from 'node:perf_hooks';
 import os from 'node:os';
-import assert from 'node:assert/strict';
 const root = resolve(process.argv[2] || '.');
 const file = join(root, 'data.tgz');
 const output = join(root, `result-${Date.now()}`); mkdirSync(output);
@@ -18,7 +17,9 @@ const npmArgs = npmCli ? [npmCli] : [];
 const { name, version } = JSON.parse(execFileSync('tar', ['-xOf', file, 'package/package.json'], { encoding: 'utf8' }));
 const bytes = readFileSync(file);
 const report = { node: process.version, platform: process.platform, os: os.release(), cpu: os.cpus()[0]?.model,
-  cores: os.cpus().length, npmCli, temp, sha256: createHash('sha256').update(bytes).digest('hex'), bytes: bytes.length, rows: [], requests: [] };
+  cores: os.cpus().length, npmCli, temp, name, version,
+  image: {name:process.env.ImageOS,version:process.env.ImageVersion},
+  sha256: createHash('sha256').update(bytes).digest('hex'), bytes: bytes.length, rows: [], requests: [] };
 const integrity = 'sha512-' + createHash('sha512').update(bytes).digest('base64');
 let url;
 const server = createServer((req, res) => {
@@ -50,7 +51,7 @@ function run(command, args, cwd = temp) {
 }
 function flush() { writeFileSync(join(output, 'evidence.json'), JSON.stringify(report, null, 2)); }
 async function measure(label, fn) {
-  const row = { label }, start = performance.now();
+  const row = { label, startedAt:new Date().toISOString() }, start = performance.now();
   try { row.result = await fn(); } catch (e) { row.error = String(e.stack); throw e; }
   finally { row.ms = Math.round(performance.now() - start); report.rows.push(row); flush(); console.log(JSON.stringify(row)); }
 }
@@ -64,6 +65,7 @@ async function npm(label, args, cwd) {
 }
 try {
   report.npm = (await run(npmCommand, [...npmArgs, '--version'])).stdout.trim(); flush();
+  console.log(`NPM_BENCHMARK: ${JSON.stringify({temp,node:report.node,npm:report.npm,sha256:report.sha256})}`);
   const project = join(temp, 'project'); mkdirSync(project); writeFileSync(join(project, 'package.json'), '{"private":true}');
   const cache = join(temp, 'cache');
   await npm('cold-install', ['install', `${name}@${version}`, '--ignore-scripts', '--cache', cache], project);
