@@ -1,6 +1,6 @@
 // Standalone data-install diagnostic. Run from an isolated directory on native storage.
 import { createServer } from 'node:http';
-import { createReadStream, readFileSync, writeFileSync, mkdirSync, rmSync, readdirSync, statSync, cpSync } from 'node:fs';
+import { createReadStream, readFileSync, writeFileSync, mkdirSync, mkdtempSync, rmSync, readdirSync, statSync, cpSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { spawn, execFileSync } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
@@ -11,14 +11,14 @@ import assert from 'node:assert/strict';
 const root = resolve(process.argv[2] || '.');
 const file = join(root, 'data.tgz');
 const output = join(root, `result-${Date.now()}`); mkdirSync(output);
-const temp = join(output, 'installs'); mkdirSync(temp);
+const temp = mkdtempSync(join(process.env.PRTS_BENCH_TEMP || output, 'prts-npm 空格-'));
 const npmCli = process.argv[3] || (process.platform === 'win32' ? join(dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js') : null);
 const npmCommand = npmCli ? process.execPath : 'npm';
 const npmArgs = npmCli ? [npmCli] : [];
 const { name, version } = JSON.parse(execFileSync('tar', ['-xOf', file, 'package/package.json'], { encoding: 'utf8' }));
 const bytes = readFileSync(file);
 const report = { node: process.version, platform: process.platform, os: os.release(), cpu: os.cpus()[0]?.model,
-  cores: os.cpus().length, npmCli, sha256: createHash('sha256').update(bytes).digest('hex'), bytes: bytes.length, rows: [], requests: [] };
+  cores: os.cpus().length, npmCli, temp, sha256: createHash('sha256').update(bytes).digest('hex'), bytes: bytes.length, rows: [], requests: [] };
 const integrity = 'sha512-' + createHash('sha512').update(bytes).digest('base64');
 let url;
 const server = createServer((req, res) => {
