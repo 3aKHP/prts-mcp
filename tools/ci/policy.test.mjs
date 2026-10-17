@@ -4,9 +4,10 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { requiresFull, verifyGate } from './policy.mjs';
+import { requiresFull, shouldRun, verifyCurrentPr, verifyGate } from './policy.mjs';
 
 const pr = (base = 'develop', labels = []) => ({
+  number: 261,
   pull_request: { base: { ref: base }, head: { sha: 'current-head' }, labels: labels.map(name => ({ name })) },
 });
 const checks = full => Object.fromEntries([
@@ -31,6 +32,32 @@ test('only main or the exact opt-in label selects full PR verification', () => {
   assert.throws(() => requiresFull('schedule', {}));
 });
 
+test('base and ci:full edits run CI; unrelated metadata does not', () => {
+  assert.equal(shouldRun('pull_request', { action: 'edited', changes: { base: { ref: { from: 'develop' } } } }), true);
+  for (const changes of [{ title: { from: 'old' } }, { body: { from: 'old' } }, {}]) {
+    assert.equal(shouldRun('pull_request', { action: 'edited', changes }), false);
+  }
+  for (const action of ['labeled', 'unlabeled']) {
+    assert.equal(shouldRun('pull_request', { action, label: { name: 'ci:full' } }), true);
+    assert.equal(shouldRun('pull_request', { action, label: { name: 'bug' } }), false);
+  }
+  assert.equal(shouldRun('pull_request', { action: 'synchronize' }), true);
+  assert.equal(shouldRun('push', {}), true);
+});
+
+test('live PR metadata rejects obsolete HEAD, retargeting and both tier changes', () => {
+  const current = event => ({ ...event.pull_request, state: 'open' });
+  verifyCurrentPr(pr(), current(pr()));
+  assert.throws(() => verifyCurrentPr(pr(), { ...current(pr()), head: { sha: 'new-head' } }));
+  assert.throws(() => verifyCurrentPr(pr(), current(pr('other-base'))));
+  assert.throws(() => verifyCurrentPr(pr(), current(pr('main'))));
+  assert.throws(() => verifyCurrentPr(pr(), current(pr('develop', ['ci:full']))));
+  assert.throws(() => verifyCurrentPr(pr('develop', ['ci:full']), current(pr())));
+  assert.throws(() => verifyCurrentPr(pr(), { ...current(pr()), state: 'closed' }));
+  // Unrelated labels do not invalidate proof for the same head/base/tier.
+  verifyCurrentPr(pr(), current(pr('develop', ['bug'])));
+});
+
 test('both tiers fail closed for every failed, cancelled, skipped or absent required job', () => {
   for (const full of [false, true]) {
     verifyGate(String(full), checks(full));
@@ -53,14 +80,29 @@ test('real selection and gate entry points reject stale tier outputs and missing
   try {
     const env = { ...process.env, GITHUB_EVENT_NAME: 'pull_request',
       GITHUB_EVENT_PATH: join(dir, 'event.json'), GITHUB_OUTPUT: join(dir, 'output'),
-      GITHUB_STEP_SUMMARY: join(dir, 'summary') };
+      GITHUB_STEP_SUMMARY: join(dir, 'summary'), GITHUB_REPOSITORY: 'example/repo',
+      MOCK_PR_FILE: join(dir, 'current.json'), PATH: `${dir}:${process.env.PATH}` };
+    writeFileSync(join(dir, 'gh'), `#!${process.execPath}\nconst fs = require('node:fs');
+      if (process.argv.slice(2).join(' ') !== 'api repos/example/repo/pulls/261') process.exit(1);
+      process.stdout.write(fs.readFileSync(process.env.MOCK_PR_FILE));\n`, { mode: 0o755 });
+    const setCurrent = event => writeFileSync(env.MOCK_PR_FILE, JSON.stringify({ ...event.pull_request, state: 'open' }));
     const args = ['tools/ci/policy.mjs'];
     writeFileSync(env.GITHUB_EVENT_PATH, JSON.stringify(pr()));
+    setCurrent(pr());
     execFileSync(process.execPath, [...args, 'select'], { env });
-    assert.equal(readFileSync(env.GITHUB_OUTPUT, 'utf8'), 'full=false\n');
+    assert.equal(readFileSync(env.GITHUB_OUTPUT, 'utf8'), 'run=true\nfull=false\n');
     execFileSync(process.execPath, [...args, 'gate'], { env: { ...env, CI_FULL: 'false', CI_NEEDS: JSON.stringify(checks(false)) } });
+    // An actual rerun reads the old event with internally consistent outputs.
+    // It must still fail if the live PR has since opted into the full tier.
+    setCurrent(pr('develop', ['ci:full']));
+    for (const command of ['select', 'gate']) {
+      assert.notEqual(spawnSync(process.execPath, [...args, command], {
+        env: { ...env, CI_FULL: 'false', CI_NEEDS: JSON.stringify(checks(false)) },
+      }).status, 0);
+    }
     for (const event of [pr('main'), pr('develop', ['ci:full'])]) {
       writeFileSync(env.GITHUB_EVENT_PATH, JSON.stringify(event));
+      setCurrent(event);
       for (const [full, needs] of [['false', checks(false)], ['true', checks(false)]]) {
         assert.notEqual(spawnSync(process.execPath, [...args, 'gate'], {
           env: { ...env, CI_FULL: full, CI_NEEDS: JSON.stringify(needs) },
@@ -69,6 +111,13 @@ test('real selection and gate entry points reject stale tier outputs and missing
       execFileSync(process.execPath, [...args, 'gate'], { env: { ...env, CI_FULL: 'true', CI_NEEDS: JSON.stringify(checks(true)) } });
     }
     assert.match(readFileSync(env.GITHUB_STEP_SUMMARY, 'utf8'), /full, five platforms.*current-head/);
+    const metadata = { ...pr(), action: 'edited', changes: { body: { from: 'old' } } };
+    writeFileSync(env.GITHUB_EVENT_PATH, JSON.stringify(metadata));
+    // Metadata filtering must not require a successful network lookup.
+    writeFileSync(env.MOCK_PR_FILE, 'invalid JSON');
+    execFileSync(process.execPath, [...args, 'select'], { env });
+    assert.match(readFileSync(env.GITHUB_OUTPUT, 'utf8'), /run=false\nfull=false\n$/);
+    assert.notEqual(spawnSync(process.execPath, [...args, 'gate'], { env }).status, 0);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
