@@ -1,175 +1,49 @@
 name: Native platforms
 on:
-  push:
-    branches: [develop]
-  pull_request:
   workflow_dispatch:
-  workflow_call:
 permissions:
   contents: read
-concurrency:
-  group: native-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
-  cancel-in-progress: true
 jobs:
-  native:
-    name: Native ${{ matrix.platform }}
+  benchmark:
     strategy:
       fail-fast: false
       matrix:
         include:
-          - platform: linux-x64
-            runner: ubuntu-24.04
-          - platform: linux-arm64
-            runner: ubuntu-24.04-arm
-          - platform: windows-x64
-            runner: windows-2022
           - platform: darwin-arm64
             runner: macos-14
           - platform: darwin-x64
             runner: macos-15-intel
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 60
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          fetch-depth: 0
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
-      - name: Configure Windows compiler and SDK
-        if: runner.os == 'Windows'
-        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1
-      - name: Select Windows native C compiler
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: '"CC=clang-cl" >> $env:GITHUB_ENV'
-      - name: Prepare desktop Rust compiler
-        if: runner.os != 'Linux'
-        run: rustup show
+      - run: rustup show
       - uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            .native-cache
             target
-          key: native-${{ matrix.platform }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml', 'build.rs', 'native/**', 'vendor/**', 'packaging/native/targets.json') }}
+          key: darwin-bench-${{ matrix.platform }}-${{ hashFiles('Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', 'build.rs', 'native/**', 'vendor/**', 'packaging/native/targets.json') }}
           restore-keys: native-${{ matrix.platform }}-
-      - name: Native build, minimum Rust check and native corpus
+      - name: Native build with shared release helper
         run: node tools/native/build.mjs ${{ matrix.platform }}
-      - name: Package binaries, notices and audited ABI
-        run: node tools/native/pack.mjs ${{ matrix.platform }}
-      - name: Run extracted archive without a runtime/toolchain PATH
-        run: node tools/native/probe.mjs ${{ matrix.platform }}
-      - name: Run Linux archive in minimal glibc 2.28 runtime
-        if: runner.os == 'Linux'
-        run: node tools/native/probe.mjs ${{ matrix.platform }} --baseline
       - uses: actions/cache@v6
         with:
           path: .runtime/npm-data
           key: npm-bundle-data-${{ hashFiles('packaging/npm/data-release.json') }}
           enableCrossOsArchive: true
-      - name: Prepare pinned and validated read-only game data
+      - name: Optimized native data preparation
         run: node tools/npm/prepare-data.mjs ${{ matrix.platform }}
-      - name: Pack shared npm runtime/data and native platform tarballs
-        run: node tools/npm/pack.mjs ${{ matrix.platform }}
-      - name: Verify real npm install, npx, lockfile and native entry behavior
-        run: node tools/npm/probe.mjs ${{ matrix.platform }}
-      - uses: oven-sh/setup-bun@v2
-        if: runner.os == 'Linux'
-        with:
-          bun-version: '1.3.14'
-      - name: Prepare frozen legacy volume writers
-        if: runner.os == 'Linux'
-        run: node tools/prepare-validation.mjs --minimal
-      - name: Build and export native Docker image (no publication)
-        if: runner.os == 'Linux'
-        run: |
-          node tools/docker/check-inputs.mjs
-          node tools/docker/build.mjs ${{ matrix.platform }}
-      - name: Verify Docker transport, signals, old volumes and real sync
-        if: runner.os == 'Linux'
-        run: node tools/docker/probe.mjs ${{ matrix.platform }}
-      - name: Retain loadable Docker image and native lifecycle evidence
-        if: always() && runner.os == 'Linux'
-        uses: actions/upload-artifact@v6
-        with:
-          name: docker-${{ matrix.platform }}
-          path: |
-            artifacts/docker/${{ matrix.platform }}/*.docker.tar.gz
-            artifacts/docker/${{ matrix.platform }}/*.sha256
-            artifacts/docker/${{ matrix.platform }}/image.json
-            artifacts/docker/${{ matrix.platform }}/docker-evidence.json
-          compression-level: 0
-          retention-days: 14
-      - name: Retain npm tarballs and installation evidence (no publication)
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: npm-${{ matrix.platform }}
-          path: |
-            artifacts/npm/${{ matrix.platform }}/tarballs/*.tgz
-            artifacts/npm/${{ matrix.platform }}/packages.json
-            artifacts/npm/${{ matrix.platform }}/npm-evidence.json
-            artifacts/native/${{ matrix.platform }}/npm-runtime-evidence.json
-          retention-days: 14
-      - name: Retain installable archive and evidence (no publication)
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: native-${{ matrix.platform }}
-          path: |
-            artifacts/native/${{ matrix.platform }}/*.tar.gz
-            artifacts/native/${{ matrix.platform }}/*.zip
-            artifacts/native/${{ matrix.platform }}/*.sha256
-            artifacts/native/${{ matrix.platform }}/runtime-evidence.json
-            artifacts/native/${{ matrix.platform }}/runtime-baseline-evidence.json
-            artifacts/native/${{ matrix.platform }}/compiler.*
-            artifacts/native/${{ matrix.platform }}/payload/BUILD.json
-            artifacts/native/${{ matrix.platform }}/payload/ABI.json
-            artifacts/native/${{ matrix.platform }}/payload/SHA256SUMS
-          retention-days: 14
-      - name: Package and run actual native candidate with bundled data
-        run: |
-          node tools/release/check-version.mjs
-          node --test tools/release/policy.test.mjs tools/npm/canonical-entry.test.mjs
-          node tools/release/pack-native.mjs ${{ matrix.platform }}
-          node tools/release/probe-native.mjs ${{ matrix.platform }}
-      - name: Retain native candidate and data acceptance (no publication)
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: candidate-${{ matrix.platform }}
-          path: |
-            artifacts/candidate/${{ matrix.platform }}/*-candidate.tar.gz
-            artifacts/candidate/${{ matrix.platform }}/*-candidate.zip
-            artifacts/candidate/${{ matrix.platform }}/*.sha256
-            artifacts/candidate/${{ matrix.platform }}/candidate.json
-            artifacts/candidate/${{ matrix.platform }}/candidate-evidence.json
-          compression-level: 0
-          retention-days: 14
-
-  collect:
-    name: Complete Rust candidate snapshot
-    needs: native
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          fetch-depth: 0
-      - uses: actions/setup-node@v7
-        with:
-          node-version: '24'
-      - uses: actions/download-artifact@v8
-        with:
-          path: artifacts/incoming
-      - name: Verify all native candidates, npm packages and Docker images
-        run: node tools/release/collect.mjs artifacts/incoming
+      - name: Compile comparison helper with the same flags
+        run: node --input-type=module -e "const n = await import('./tools/native/common.mjs'); n.run('cargo', ['build', '--locked', '--release', '--target', n.config.target, '--example', 'package_data_baseline'], {stdio:'inherit'});" ${{ matrix.platform }}
+      - name: Paired full bundle preparation and inventory equality
+        run: node tools/native/data-benchmark.mjs ${{ matrix.platform }}
       - uses: actions/upload-artifact@v6
+        if: always()
         with:
-          name: rust-release-candidate
-          path: artifacts/release/
-          compression-level: 0
-          retention-days: 14
+          name: data-benchmark-${{ matrix.platform }}
+          path: artifacts/native/${{ matrix.platform }}/
