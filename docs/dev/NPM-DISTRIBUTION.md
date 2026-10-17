@@ -60,3 +60,4 @@ node tools/npm/probe.mjs linux-x64
 
 - **`tools/npm/pack.mjs`**：校验 `artifacts/native/<platform>/` 与备用数据的完整性，在 `artifacts/npm/<platform>/` 下生成当前平台的 5 个 `.tgz` tarball（`prts-mcp`、`prts-mcp-ts`、`runtime`、`data` 及当前 `<platform>` 包），并写入 `packages.json`。
 - **`tools/npm/probe.mjs`**：在本地启动一个隔离的只读回环 npm registry，真实执行 `npm install -g`、`npx` 与 `npm ci`，全面验证双入口命令、离线备用数据查询、stdio/HTTP 双协议时代、信号退出与 Windows 父进程联动退出，以及缺失 `optionalDependencies` 或版本不匹配时的错误诊断。
+- CI 的 npm 工件同时保留 `npm-timings.json` 和 npm 自身的 `*-timing.json`，分别记录安装、校验、入口探测、清理与 npm 内部阶段的耗时。手动运行 `Npm installation diagnostics` 工作流时，提供 `artifact-run`（含未过期 `npm-windows-x64` 工件的已完成运行 ID），可复用同一数据 tarball 对照 Windows/Linux 的冷安装、热缓存安装及直接解包；Windows 还会在同一 runner 上按工作临时目录、系统临时目录、工作临时目录的顺序重复测量。

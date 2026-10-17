@@ -40,10 +40,13 @@ jobs:
       - name: Configure Windows compiler and SDK
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1
-      - name: Select Windows native C compiler
+      - name: Select Windows compiler and runner temporary storage
         if: runner.os == 'Windows'
         shell: pwsh
-        run: '"CC=clang-cl" >> $env:GITHUB_ENV'
+        run: |
+          "CC=clang-cl" >> $env:GITHUB_ENV
+          "TEMP=$env:RUNNER_TEMP" >> $env:GITHUB_ENV
+          "TMP=$env:RUNNER_TEMP" >> $env:GITHUB_ENV
       - name: Prepare desktop Rust compiler
         if: runner.os != 'Linux'
         run: rustup show
@@ -112,6 +115,8 @@ jobs:
             artifacts/npm/${{ matrix.platform }}/tarballs/*.tgz
             artifacts/npm/${{ matrix.platform }}/packages.json
             artifacts/npm/${{ matrix.platform }}/npm-evidence.json
+            artifacts/npm/${{ matrix.platform }}/npm-timings.json
+            artifacts/npm/${{ matrix.platform }}/npm-logs/*timing.json
             artifacts/native/${{ matrix.platform }}/npm-runtime-evidence.json
           retention-days: 14
       - name: Retain installable archive and evidence (no publication)
