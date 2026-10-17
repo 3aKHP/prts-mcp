@@ -72,5 +72,9 @@ default = []
 # dev-dependency so the selection evidence stays reproducible.
 rmcp = { version = "3.5.1", default-features = false, features = ["server", "transport-io", "transport-streamable-http-server", "transport-streamable-http-server-session", "macros", "schemars"] }
 
+[profile.dev]
+debug = "line-tables-only"
+incremental = true
+
 [profile.release]
 debug = false

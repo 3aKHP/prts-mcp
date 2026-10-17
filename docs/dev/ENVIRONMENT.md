@@ -62,6 +62,8 @@ cargo build --locked
 4. Release 二进制构建（`cargo build --locked --release --bins`）；
 5. 384 个冻结 MCP 差分对照用例、进程级生命周期测试与扩展原生正则测试。
 
+开发与测试构建默认只保留文件名和行号所需的调试信息（`debug = "line-tables-only"`），并启用增量编译，以减少本地产物占用。需要在调试器中查看变量和类型时，可临时使用 `CARGO_PROFILE_DEV_DEBUG=2 cargo build --locked`；测试使用 `CARGO_PROFILE_TEST_DEBUG=2 cargo test --locked`。Release 构建仍关闭调试信息。
+
 日常开发中也可按需执行单项检查：
 
 ```bash
