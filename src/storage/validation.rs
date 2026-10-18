@@ -19,6 +19,7 @@ pub(crate) struct Observation {
 struct Receipt {
     observed: Observation,
     descriptor: String,
+    _lease: File,
 }
 
 impl Observation {
@@ -68,6 +69,17 @@ pub(crate) fn remember(observed: Observation, descriptor: String) -> Result<(), 
     if cfg!(windows) {
         return Ok(());
     }
+    // A receipt pins disk blocks like a reader. Make that pin visible to
+    // other processes so shared-volume GC cannot unlink a retained inode.
+    let lease = match File::open(super::database::lease_path(&observed.path)) {
+        Ok(file) => {
+            file.try_lock_shared().map_err(|e| e.to_string())?;
+            file
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => return Err(error.to_string()),
+    };
+    observed.check()?;
     let mut receipts = RECEIPTS
         .get_or_init(Mutex::default)
         .lock()
@@ -79,6 +91,7 @@ pub(crate) fn remember(observed: Observation, descriptor: String) -> Result<(), 
     receipts.push_back(Receipt {
         observed,
         descriptor,
+        _lease: lease,
     });
     Ok(())
 }
@@ -101,11 +114,23 @@ mod tests {
     fn proof_is_bound_to_descriptor_and_rejects_in_place_rewrite() {
         let path = std::env::temp_dir().join(format!("prts-receipt-{}", uuid::Uuid::new_v4()));
         std::fs::write(&path, b"old").unwrap();
+        let lease_path = super::super::database::lease_path(&path);
+        std::fs::write(&lease_path, b"").unwrap();
         let observed = Observation::begin(&path).unwrap();
         remember(observed, "descriptor".into()).unwrap();
         assert_eq!(contains(&path, Some("descriptor")), cfg!(unix));
         assert!(!contains(&path, Some("different")));
         std::fs::write(&path, b"new").unwrap();
+        assert!(!contains(&path, None));
+        std::fs::remove_file(path).unwrap();
+        std::fs::remove_file(lease_path).unwrap();
+    }
+
+    #[test]
+    fn an_unleased_file_does_not_create_a_reusable_receipt() {
+        let path = std::env::temp_dir().join(format!("prts-receipt-{}", uuid::Uuid::new_v4()));
+        std::fs::write(&path, b"old").unwrap();
+        remember(Observation::begin(&path).unwrap(), "descriptor".into()).unwrap();
         assert!(!contains(&path, None));
         std::fs::remove_file(path).unwrap();
     }

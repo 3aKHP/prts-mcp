@@ -227,6 +227,9 @@ pub fn prune(root: &Path, current: &ActiveDatabase) {
         else {
             continue;
         };
+        // Our obsolete proof must not block our own cleanup. Other processes'
+        // receipts and live readers remain visible through their shared lease.
+        validation::forget(&path);
         if lease.try_lock().is_err() {
             continue;
         }
