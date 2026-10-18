@@ -231,6 +231,9 @@ pub fn prune(root: &Path, current: &ActiveDatabase) {
             continue;
         }
         if fs::remove_file(&path).is_ok() {
+            // A receipt pins the inode too: release it now so an unlinked
+            // generation cannot consume disk until another validation runs.
+            validation::forget(&path);
             let _ = fs::remove_file(lease_path(&path));
         }
     }

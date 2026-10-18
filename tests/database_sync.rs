@@ -356,6 +356,8 @@ async fn gc_keeps_previous_across_polls_and_every_pinned_generation() {
     let root = temp.0.join("runtime");
     sync::sync(&fake, &root).await.unwrap();
     let oldest = database::active(&root).unwrap().unwrap();
+    #[cfg(target_os = "linux")]
+    let oldest_metadata = std::fs::metadata(oldest.path(&root)).unwrap();
     let pinned = GameDb::open(&oldest.path(&root)).unwrap();
     // The fake release tag follows the changing descriptor revision.
     revision(&temp, &mut fake, 3);
@@ -371,6 +373,19 @@ async fn gc_keeps_previous_across_polls_and_every_pinned_generation() {
     assert!(!sync::sync(&fake, &root).await.unwrap());
     assert!(!oldest.path(&root).exists());
     assert!(previous.path(&root).exists());
+    #[cfg(target_os = "linux")]
+    {
+        use std::os::unix::fs::MetadataExt;
+        let identity = (oldest_metadata.dev(), oldest_metadata.ino());
+        assert!(
+            std::fs::read_dir("/proc/self/fd")
+                .unwrap()
+                .flatten()
+                .filter_map(|entry| std::fs::metadata(entry.path()).ok())
+                .all(|meta| (meta.dev(), meta.ino()) != identity),
+            "deleted generations must release their disk blocks immediately"
+        );
+    }
 }
 #[tokio::test]
 async fn rollback_and_same_generation_mutation_fail_closed() {

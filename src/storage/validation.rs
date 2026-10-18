@@ -83,6 +83,16 @@ pub(crate) fn remember(observed: Observation, descriptor: String) -> Result<(), 
     Ok(())
 }
 
+pub(crate) fn forget(path: &Path) {
+    let Some(receipts) = RECEIPTS.get() else {
+        return;
+    };
+    receipts
+        .lock()
+        .expect("SQLite receipts lock")
+        .retain(|receipt| receipt.observed.path != path);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
