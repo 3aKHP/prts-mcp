@@ -195,6 +195,30 @@ pub fn build_search(
     pattern: &str,
     max_results: i64,
 ) -> Result<Value, String> {
+    if let Some(db) = view.database() {
+        if db.derived_ready()
+            && db
+                .metadata(&format!("search_unavailable:{scope}"))?
+                .as_deref()
+                != Some("1")
+            && [
+                "operators",
+                "enemies",
+                "stages",
+                "items",
+                "building_skills",
+                "skills",
+            ]
+            .contains(&scope)
+        {
+            if let Some(error) =
+                messages::validate_bounds("max_results", max_results, Some(1), Some(100))
+            {
+                return Err(error);
+            }
+            return database_search(&db, scope, pattern, max_results);
+        }
+    }
     match scope {
         "operators" => build_operator_search(view, excel_path, pattern, max_results),
         "enemies" => crate::domain::enemy::build_enemy_search(view, excel_path, pattern, max_results),
@@ -220,4 +244,71 @@ pub fn render_search(data: &Value) -> String {
         "skills" => crate::domain::skill::render_skill_search(data),
         other => unreachable!("unregistered scope {other} cannot reach render"),
     }
+}
+
+pub fn sqlite_export(view: &DataView) -> Result<Vec<(String, Value)>, String> {
+    Ok(operator_search_records(view)?
+        .iter()
+        .map(|r| {
+            (
+                r.text.clone(),
+                json!({"operator":r.operator,"category":r.category,"field":r.field,"text":r.text}),
+            )
+        })
+        .collect())
+}
+
+fn database_search(
+    db: &crate::storage::sqlite::GameDb,
+    scope: &str,
+    pattern: &str,
+    max_results: i64,
+) -> Result<Value, String> {
+    let regex = crate::text::regex_compat::JsRegex::compile(pattern)
+        .map_err(|e| crate::domain::messages::regex_error_message(&e))?;
+    let connection = db.scan_connection()?;
+    let mut results = Vec::new();
+    let mut statement=connection.prepare_cached("SELECT first_ordinal,last_ordinal,payload FROM search_blocks WHERE scope=?1 ORDER BY block").map_err(|e| e.to_string())?;
+    let mut blocks = statement.query([scope]).map_err(|e| e.to_string())?;
+    'blocks: while let Some(block) = blocks.next().map_err(|e| e.to_string())? {
+        crate::text::cancellation::check()?;
+        if !regex.may_match_bytes(
+            block
+                .get_ref(2)
+                .map_err(|e| e.to_string())?
+                .as_blob()
+                .map_err(|e| e.to_string())?,
+        ) {
+            continue;
+        }
+        let first: i64 = block.get(0).map_err(|e| e.to_string())?;
+        let last: i64 = block.get(1).map_err(|e| e.to_string())?;
+        let mut entries=connection.prepare_cached("SELECT text,payload FROM searches WHERE scope=?1 AND ordinal BETWEEN ?2 AND ?3 ORDER BY ordinal").map_err(|e| e.to_string())?;
+        let mut rows = entries
+            .query(rusqlite::params![scope, first, last])
+            .map_err(|e| e.to_string())?;
+        while let Some(row) = rows.next().map_err(|e| e.to_string())? {
+            crate::text::cancellation::check()?;
+            let text = row
+                .get_ref(0)
+                .map_err(|e| e.to_string())?
+                .as_str()
+                .map_err(|e| e.to_string())?;
+            if regex.is_match(text)? {
+                results.push(
+                    serde_json::from_str::<Value>(
+                        row.get_ref(1)
+                            .map_err(|e| e.to_string())?
+                            .as_str()
+                            .map_err(|e| e.to_string())?,
+                    )
+                    .map_err(|e| e.to_string())?,
+                );
+                if results.len() as i64 >= max_results {
+                    break 'blocks;
+                }
+            }
+        }
+    }
+    Ok(serde_json::json!({"scope":scope,"pattern":pattern,"total":results.len(),"results":results}))
 }

@@ -59,14 +59,14 @@ pub fn data_not_ready_message() -> String {
 /// skin_table.json charSkins mapping through the per-generation dataset
 /// cache; empty when excel is unavailable or the file is missing.
 pub fn get_char_skins(view: &DataView) -> std::sync::Arc<CharSkins> {
+    let datasets = std::sync::Arc::clone(&view.datasets);
     let view = view.clone();
-    let skins = view.datasets.get_or_load_counted(
+    let skins = datasets.get_or_load_counted(
         "images:char_skins",
         move || {
-            let Some(excel) = view.excel_root.clone() else {
+            let Some(store) = view.excel_store() else {
                 return Ok(CharSkins::new());
             };
-            let store = crate::storage::DirectoryStore::new(excel);
             if !store.exists("skin_table.json").unwrap_or(false) {
                 return Ok(CharSkins::new());
             }

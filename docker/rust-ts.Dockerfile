@@ -15,7 +15,7 @@ COPY THIRD-PARTY-NOTICES.txt /app/THIRD-PARTY-NOTICES.txt
 ENV PRTS_MCP_ROOT=/app
 ENV PORT=3000
 
-RUN mkdir -p /data/gamedata /data/gamedata-levels /data/storyjson /data/images
+RUN mkdir -p /data/gamedata /data/gamedata-levels /data/storyjson /data/images /data/database
 
 EXPOSE 3000
 

@@ -7,7 +7,7 @@ use serde_json::{json, Map, Value};
 
 use crate::app::DataView;
 use crate::domain::messages;
-use crate::storage::{DirectoryStore, JsonStore};
+use crate::storage::JsonStore;
 use crate::text::js_compat::compare_ids;
 
 const ITEM_FILE: &str = "item_table.json";
@@ -91,12 +91,11 @@ fn short_text(text: &str, limit: usize) -> String {
 // ---------------------------------------------------------------------------
 
 fn items(view: &DataView) -> Result<Arc<Map<String, Value>>, String> {
-    let Some(root) = view.excel_root.clone() else {
+    let Some(store) = view.excel_store() else {
         // TS excelStore() throws this exact wording when the effective path
         // is null; the listing tools append it to the missing-data message.
         return Err("effectiveExcelPath is null — GAMEDATA_PATH may be unset".to_string());
     };
-    let store = DirectoryStore::new(&root);
     view.datasets.get_or_load_counted(
         "item:items",
         move || {
@@ -641,4 +640,17 @@ pub fn render_item_search(data: &Value) -> String {
         }
     }
     lines.join("\n")
+}
+
+pub fn sqlite_export(view: &DataView) -> Result<Vec<(String, Value)>, String> {
+    let items = items(view)?;
+    Ok(item_search_records(view)?
+        .iter()
+        .map(|r| {
+            (
+                r.search_text.clone(),
+                item_search_entry(&items[&r.item_id], &r.item_id),
+            )
+        })
+        .collect())
 }

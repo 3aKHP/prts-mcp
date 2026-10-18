@@ -8,6 +8,8 @@
 
 ## [Unreleased]
 
+- **实验性 SQLite 数据后端（3.1）**：设置 `PRTS_DATA_BACKEND=sqlite` 启用，或通过 `PRTS_DATA_DB` 选择预编译离线 DB。默认仍为 JSON，保留旧路径、数据卷和同步开关；只运行所选后端的游戏数据同步与缓存，安装包备用数据继续为 JSON。计划在 3.2 翻转普通默认值，3.x 持续支持 JSON。
+
 ### 变更
 
 - **GitHub Release 下载附件**：提供 5 个采用简洁平台文件名的原生安装包、1 个发行验证资料 ZIP 和统一的 `SHA256SUMS`。npm 包通过 npm 获取，Docker 镜像通过 GHCR 获取。

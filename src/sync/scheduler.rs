@@ -304,6 +304,7 @@ fn schedule_sync_retry(
                 async move {
                     match label {
                         "Gamedata" => run_gamedata_sync(&cfg, transport.as_ref(), true).await,
+                        "Images" => run_images_sync(&cfg, transport.as_ref(), true).await,
                         _ => run_story_sync(&cfg, transport.as_ref(), true).await,
                     }
                 }
@@ -352,7 +353,44 @@ pub async fn run_startup_sync(cfg: Arc<RuntimeConfig>, transport: Arc<dyn Transp
 
 /// `startAutoSync` — the background task set for a running server. Returns
 /// immediately; all cycles/retries run as spawned tasks.
+fn start_sqlite_sync(cfg: Arc<RuntimeConfig>, transport: Arc<dyn Transport>) {
+    super::database::start(Arc::clone(&cfg), Arc::clone(&transport));
+    if cfg.local_image && cfg.images_enabled {
+        let single_flight = Arc::new(SingleFlight::default());
+        tokio::spawn(async move {
+            let mut force = false;
+            loop {
+                let outcome = single_flight
+                    .run("Images", run_images_sync(&cfg, transport.as_ref(), force))
+                    .await;
+                if !force && matches!(outcome, FlightOutcome::Retry) {
+                    schedule_sync_retry(
+                        "Images",
+                        0,
+                        Arc::clone(&cfg),
+                        Arc::clone(&transport),
+                        Arc::clone(&single_flight),
+                    );
+                }
+                if cfg.auto_sync_interval_ms == 0 {
+                    return;
+                }
+                tokio::time::sleep(Duration::from_millis(cfg.auto_sync_interval_ms)).await;
+                force = true;
+            }
+        });
+    }
+}
+
+/// Only the selected backend starts game-data workers. Images are shared.
 pub fn start_background_sync(cfg: Arc<RuntimeConfig>, transport: Arc<dyn Transport>) {
+    match cfg.data_backend {
+        crate::config::DataBackend::Json => start_json_sync(cfg, transport),
+        crate::config::DataBackend::Sqlite => start_sqlite_sync(cfg, transport),
+    }
+}
+
+fn start_json_sync(cfg: Arc<RuntimeConfig>, transport: Arc<dyn Transport>) {
     let interval_ms = cfg.auto_sync_interval_ms;
     tokio::spawn(async move {
         let mut force = false;

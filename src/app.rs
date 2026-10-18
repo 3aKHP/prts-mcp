@@ -10,14 +10,14 @@
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
-use crate::config::{BundleRoots, RuntimeConfig};
+use crate::config::{DataBackend, RuntimeConfig};
+
+mod json;
 use crate::diagnostics::RuntimeMetrics;
 use crate::protocol::http::{self, Shared};
 use crate::protocol::session::SessionTable;
 use crate::protocol::stdio;
-use crate::storage::generation::{
-    activated_pair, activated_root, excel_path_of, gamedata_pair_path_for_read,
-};
+
 use crate::sync::scheduler::start_background_sync;
 use crate::sync::transport::ReqwestTransport;
 use crate::tools::{registry_for, AppHandle};
@@ -32,87 +32,124 @@ pub struct DataView {
     pub levels_root: Option<PathBuf>,
     pub story_zip: Option<PathBuf>,
     pub datasets: Arc<crate::domain::datasets::Datasets>,
+    pub database: Option<Arc<crate::storage::sqlite::GameDb>>,
 }
 
-/// TS `loadConfig`'s data-path half: pair pointer first, extract_meta
-/// fallback, completeness gates. The bundled-data fallback joins in P7 with
-/// the package layout.
-fn resolve_view(config: &RuntimeConfig) -> DataView {
-    let pair = activated_pair(&config.gamedata_path, &config.levels_path);
-    let excel_active = pair
-        .clone()
-        .map(|(excel, _)| excel)
-        .unwrap_or_else(|| activated_root(&config.gamedata_path));
-    let excel_root = excel_path_of(&excel_active);
-    let excel_root = crate::config::files_complete(&excel_root).then_some(excel_root);
+impl DataView {
+    pub fn from_database(
+        db: Arc<crate::storage::sqlite::GameDb>,
+        excel: PathBuf,
+        levels: PathBuf,
+    ) -> Result<Self, String> {
+        let has = |key| db.metadata(key).map(|value| value.as_deref() == Some("1"));
+        Ok(Self {
+            excel_root: has("excel_available")?.then_some(excel),
+            levels_root: has("levels_available")?.then_some(levels),
+            story_zip: has("story_available")?.then(|| db.path.clone()),
+            datasets: Arc::new(crate::domain::datasets::Datasets::new()),
+            database: Some(db),
+        })
+    }
 
-    let levels_active = pair
-        .map(|(_, levels)| levels)
-        .unwrap_or_else(|| activated_root(&config.levels_path));
-    let levels_root = crate::config::levels_complete(&levels_active).then_some(levels_active);
+    pub fn database(&self) -> Option<Arc<crate::storage::sqlite::GameDb>> {
+        self.database.clone()
+    }
 
-    let story_zip = if config.storyjson_zip.is_file() {
-        Some(config.storyjson_zip.clone())
-    } else if PathBuf::from("/data/storyjson/zh_CN.zip").is_file() {
-        Some(PathBuf::from("/data/storyjson/zh_CN.zip"))
-    } else {
-        None
-    };
+    pub fn excel_store(&self) -> Option<crate::storage::DirectoryStore> {
+        let root = self.excel_root.clone()?;
+        Some(match &self.database {
+            Some(db) => crate::storage::DirectoryStore::database(root, Arc::clone(db), "excel"),
+            None => crate::storage::DirectoryStore::new(root),
+        })
+    }
 
-    // Bundled read-only fallback (TS loadConfig's BUNDLED_*_PATH half):
-    // only when the sync target is incomplete; resolution mirrors the sync
-    // path (pair pointer first, extract_meta fallback, completeness gates).
-    let bundles = config.bundle_root.as_deref().map(BundleRoots::of);
-    let excel_root = excel_root.or_else(|| {
-        let roots = bundles.as_ref()?;
-        let pair = activated_pair(&roots.gamedata, &roots.levels);
-        let bundled_root = pair
-            .clone()
-            .map(|(excel, _)| excel)
-            .unwrap_or_else(|| activated_root(&roots.gamedata));
-        let bundled_excel = excel_path_of(&bundled_root);
-        crate::config::files_complete(&bundled_excel).then_some(bundled_excel)
-    });
-    let levels_root = levels_root.or_else(|| {
-        let roots = bundles.as_ref()?;
-        let pair = activated_pair(&roots.gamedata, &roots.levels);
-        let bundled_root = pair
-            .map(|(_, levels)| levels)
-            .unwrap_or_else(|| activated_root(&roots.levels));
-        crate::config::levels_complete(&bundled_root).then_some(bundled_root)
-    });
-    let story_zip = story_zip.or_else(|| {
-        let roots = bundles.as_ref()?;
-        roots
-            .storyjson_zip
-            .is_file()
-            .then(|| roots.storyjson_zip.clone())
-    });
-
-    DataView {
-        excel_root,
-        levels_root,
-        story_zip,
-        datasets: Arc::new(crate::domain::datasets::Datasets::new()),
+    pub fn levels_store(&self) -> Option<crate::storage::DirectoryStore> {
+        let root = self.levels_root.as_ref()?.join("zh_CN/gamedata/levels");
+        Some(match &self.database {
+            Some(db) => crate::storage::DirectoryStore::database(root, Arc::clone(db), "levels"),
+            None => crate::storage::DirectoryStore::new(root),
+        })
     }
 }
 
-/// TS `activationPathToken`: [path, ino, size, mtime, ctime] of one pointer
-/// file; a missing file is [path, null]. The signature covers the pair file
-/// and both extract_meta files — exactly the files an activation rewrites.
+/// Resolve only database files: explicit path, active/previous cache, bundle.
+fn resolve_database_view(config: &RuntimeConfig) -> DataView {
+    let paths = crate::storage::database::candidates(
+        config.custom_database.as_deref(),
+        &config.database_dir,
+        config.bundle_root.as_deref(),
+    );
+    for path in paths {
+        if !path.is_file() {
+            if config.custom_database.is_some() {
+                crate::log_warn(&format!(
+                    "Explicit SQLite dataset missing: {}",
+                    path.display()
+                ));
+            }
+            continue;
+        }
+        match crate::storage::database::open_ready(&path).and_then(|db| {
+            DataView::from_database(db, config.excel_path.clone(), config.levels_path.clone())
+        }) {
+            Ok(view) => {
+                if config.custom_database.is_none()
+                    && view.excel_root.is_none()
+                    && view.levels_root.is_none()
+                    && view.story_zip.is_none()
+                {
+                    continue;
+                }
+                return view;
+            }
+            Err(error) => crate::log_warn(&format!(
+                "SQLite dataset unavailable ({}): {error}",
+                path.display()
+            )),
+        }
+    }
+    DataView {
+        excel_root: None,
+        levels_root: None,
+        story_zip: None,
+        datasets: Arc::new(crate::domain::datasets::Datasets::new()),
+        database: None,
+    }
+}
+
+/// File identity invalidates cached snapshots when a pointer or DB changes.
 fn path_token(path: &std::path::Path) -> String {
     let token = crate::storage::identity::path_token(path).unwrap_or_else(|| "null".into());
     format!("{path:?}|{token}")
 }
 
+fn database_signature(config: &RuntimeConfig) -> String {
+    let mut tokens = vec![
+        path_token(&config.database_dir.join("active")),
+        path_token(&config.database_dir.join("previous")),
+    ];
+    for path in crate::storage::database::candidates(
+        config.custom_database.as_deref(),
+        &config.database_dir,
+        config.bundle_root.as_deref(),
+    ) {
+        tokens.push(path_token(&path));
+    }
+    tokens.join(";")
+}
+
+fn resolve_view(config: &RuntimeConfig) -> DataView {
+    match config.data_backend {
+        DataBackend::Json => json::resolve_view(config),
+        DataBackend::Sqlite => resolve_database_view(config),
+    }
+}
+
 fn activation_signature(config: &RuntimeConfig) -> String {
-    let pair = gamedata_pair_path_for_read(&config.gamedata_path, &config.levels_path);
-    format!(
-        "{};{};{}",
-        path_token(&pair),
-        path_token(&config.gamedata_path.join("archives/extract_meta.json")),
-        path_token(&config.levels_path.join("archives/extract_meta.json")),
-    )
+    match config.data_backend {
+        DataBackend::Json => json::activation_signature(config),
+        DataBackend::Sqlite => database_signature(config),
+    }
 }
 
 /// Shared dynamic data state with signature-keyed snapshot caching: same
@@ -215,9 +252,12 @@ impl App {
     /// `prts-mcp` bin parses PORT like python `int()` and exits 1 on a
     /// non-numeric value (only reached when PRTS_TRANSPORT=http).
     pub fn run_http_profile(self, profile: HttpProfile) -> std::io::Result<()> {
-        let runtime = tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()?;
+        let mut builder = tokio::runtime::Builder::new_multi_thread();
+        if self.config.data_backend == DataBackend::Sqlite {
+            // Six query slots plus room for sync and async filesystem work.
+            builder.max_blocking_threads(8);
+        }
+        let runtime = builder.enable_all().build()?;
         runtime.block_on(async move {
             self.spawn_background_sync();
             let metrics = self.config.metrics_enabled.then(|| {
@@ -282,10 +322,12 @@ impl App {
     }
 
     pub fn run_stdio(self) -> i32 {
-        let runtime = tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .expect("tokio runtime builds");
+        let mut builder = tokio::runtime::Builder::new_multi_thread();
+        if self.config.data_backend == DataBackend::Sqlite {
+            // Six query slots plus room for sync and async filesystem work.
+            builder.max_blocking_threads(8);
+        }
+        let runtime = builder.enable_all().build().expect("tokio runtime builds");
         runtime.block_on(async move {
             self.spawn_background_sync();
             stdio::run_stdio(
@@ -316,88 +358,93 @@ mod tests {
 
     fn config_for(root: &std::path::Path) -> RuntimeConfig {
         RuntimeConfig::from_lookup(|name| match name {
+            "PRTS_DATA_BACKEND" => Some("sqlite".into()),
             "GAMEDATA_PATH" => Some(root.join("gamedata").to_string_lossy().into_owned()),
             "STORYJSON_PATH" => Some(root.join("nope.zip").to_string_lossy().into_owned()),
             _ => None,
         })
     }
 
-    #[test]
-    fn snapshot_tracks_activation_changes() {
-        let root = temp_root("swap");
-        let config = Arc::new(config_for(&root));
-        let state = DataState::new(Arc::clone(&config));
-
-        // Empty volume → no data, but the service still resolves.
-        let view = state.snapshot();
-        assert!(view.excel_root.is_none());
-        assert!(view.levels_root.is_none());
-
-        // Publish a generation via the pair pointer (TS-written format).
-        let excel_gen = root.join("gamedata/.releases/g1");
-        let levels_gen = root.join("gamedata-levels/.releases/g1");
-        for (root_dir, file) in [
-            (&excel_gen, "zh_CN/gamedata/excel/stage_table.json"),
-            (
-                &levels_gen,
-                "zh_CN/gamedata/levels/enemydata/enemy_database.json",
-            ),
+    fn database(path: &std::path::Path) {
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        let db = rusqlite::Connection::open(path).unwrap();
+        db.execute_batch(include_str!("../contracts/sqlite-schema-v1.sql"))
+            .unwrap();
+        for (key, value) in [
+            ("contract", "prts-mcp-sqlite/v1"),
+            ("index_version", "1"),
+            ("language", "zh_CN"),
+            ("sources_complete", "1"),
+            ("derived_complete", "1"),
+            ("excel_available", "1"),
+            ("levels_available", "1"),
+            ("story_available", "1"),
         ] {
-            write(&root_dir.join(file), "{}");
+            db.execute("INSERT INTO meta VALUES(?1,?2)", [key, value])
+                .unwrap();
         }
-        for file in [
-            "character_table.json",
-            "handbook_info_table.json",
-            "charword_table.json",
-            "story_review_table.json",
-        ] {
-            write(&excel_gen.join("zh_CN/gamedata/excel").join(file), "{}");
-        }
-        write(
-            &root.join(".gamedata_pair.json"),
-            r#"{"commit_sha":"sha1","excel_data_root":".releases/g1","levels_data_root":".releases/g1"}"#,
-        );
-
-        // Same signature → cached view; the cached snapshot stays None until
-        // the pointer files change on disk (they just did).
-        let view = state.snapshot();
-        let expected_excel = excel_gen.join("zh_CN/gamedata/excel");
-        assert_eq!(
-            view.excel_root.as_deref(),
-            Some(expected_excel.canonicalize().unwrap().as_path())
-        );
-        assert_eq!(
-            view.levels_root.as_deref(),
-            Some(levels_gen.canonicalize().unwrap().as_path())
-        );
-
-        // A second snapshot with unchanged pointers reuses the same Arc.
-        assert!(Arc::ptr_eq(&state.snapshot(), &state.snapshot()));
-
-        // Removing the pair pointer degrades to the extract_meta fallback.
-        std::fs::remove_file(root.join(".gamedata_pair.json")).unwrap();
-        write(
-            &root.join("gamedata/archives/extract_meta.json"),
-            r#"{"commit_sha":"sha1","data_root":".releases/g1"}"#,
-        );
-        let view = state.snapshot();
-        assert!(view.excel_root.is_some());
-        assert!(view.levels_root.is_none()); // levels still resolves via its own root (no meta) → legacy root, incomplete
-        let _ = std::fs::remove_dir_all(&root);
     }
 
     #[test]
-    fn story_zip_resolution_prefers_configured_path() {
-        let root = temp_root("story");
-        let zip = root.join("storyjson/zh_CN.zip");
-        write(&zip, "PK");
-        let config = RuntimeConfig::from_lookup(|name| match name {
-            "GAMEDATA_PATH" => Some(root.join("gamedata").to_string_lossy().into_owned()),
-            "STORYJSON_PATH" => Some(zip.to_string_lossy().into_owned()),
-            _ => None,
-        });
-        let state = DataState::new(Arc::new(config));
-        assert_eq!(state.snapshot().story_zip.as_deref(), Some(zip.as_path()));
-        let _ = std::fs::remove_dir_all(&root);
+    fn snapshot_tracks_database_activation_and_pins_old_generation() {
+        use crate::storage::database::ActiveDatabase;
+        let root = temp_root("swap");
+        let config = Arc::new(config_for(&root));
+        let state = DataState::new(Arc::clone(&config));
+        assert!(state.snapshot().database.is_none());
+        for name in ["first.sqlite", "second.sqlite"] {
+            database(&config.database_dir.join(name));
+        }
+        let pointer = |file: &str| {
+            ActiveDatabase {
+                file_name: file.into(),
+                source_version: "fixture".into(),
+                revision: 1,
+                sha256: "a".repeat(64),
+            }
+            .encode()
+            .unwrap()
+        };
+        write(
+            &config.database_dir.join("active"),
+            &pointer("first.sqlite"),
+        );
+        let first = state.snapshot();
+        assert!(first.database.is_some());
+        assert!(Arc::ptr_eq(&first, &state.snapshot()));
+        write(
+            &config.database_dir.join("active"),
+            &pointer("second.sqlite"),
+        );
+        let second = state.snapshot();
+        assert!(!Arc::ptr_eq(&first, &second));
+        assert!(first
+            .database
+            .as_ref()
+            .unwrap()
+            .path
+            .ends_with("first.sqlite"));
+        assert!(second
+            .database
+            .as_ref()
+            .unwrap()
+            .path
+            .ends_with("second.sqlite"));
+        drop((first, second, state));
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn raw_files_and_story_zip_are_not_runtime_sources() {
+        let root = temp_root("raw");
+        write(
+            &root.join("gamedata/zh_CN/gamedata/excel/character_table.json"),
+            "{}",
+        );
+        write(&root.join("storyjson/zh_CN.zip"), "PK");
+        let state = DataState::new(Arc::new(config_for(&root)));
+        assert!(state.snapshot().database.is_none());
+        assert!(state.snapshot().story_zip.is_none());
+        std::fs::remove_dir_all(root).unwrap();
     }
 }

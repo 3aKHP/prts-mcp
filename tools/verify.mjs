@@ -26,11 +26,13 @@ import { execFileSync } from "node:child_process";
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const TS = join(ROOT, ".reference", "ts-v2.8.1", "ts");
 const CASES = join(ROOT, "contracts", "cases");
-const ARTIFACTS = join(ROOT, "artifacts", "runs");
 
 const args = process.argv.slice(2);
 const flag = (name) => args.includes(name);
 const flagValue = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
+const DATA_BACKEND = flagValue("--backend") ?? "json";
+if (!["json", "sqlite"].includes(DATA_BACKEND)) throw new Error("--backend must be json or sqlite");
+const ARTIFACTS = join(ROOT, "artifacts", "runs", DATA_BACKEND);
 const PHASE_ARG = flagValue("--phase") ?? (flag("--all") ? "ALL" : null);
 const ONLY = flagValue("--only");
 const RUST_BIN = flagValue("--rust-bin")
@@ -89,6 +91,10 @@ function childEnv(dataset, extra = {}) {
     PATH: process.env.PATH,
     HOME: process.env.HOME,
     GAMEDATA_PATH: data,
+    ...(DATA_BACKEND === "sqlite" ? {
+      PRTS_DATA_BACKEND: "sqlite",
+      PRTS_DATA_DB: join(data, "database/zh_CN.sqlite"),
+    } : {}),
     STORYJSON_PATH: existsSync(storyZip) ? storyZip : join(data, "does-not-exist.zip"),
     GITHUB_MIRRORS: "",
     IMAGES_ENABLED: "true",

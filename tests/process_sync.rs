@@ -111,6 +111,7 @@ fn sha256_hex(bytes: &[u8]) -> String {
 /// response until the test has observed the missing-data state.
 pub struct Mirror {
     pub port: u16,
+    requests: Arc<std::sync::Mutex<Vec<String>>>,
     hits: Arc<std::sync::atomic::AtomicUsize>,
     gate: Arc<(std::sync::Mutex<bool>, std::sync::Condvar)>,
 }
@@ -130,23 +131,31 @@ impl Mirror {
 }
 
 fn start_mirror() -> Mirror {
+    let requests = Arc::new(std::sync::Mutex::new(Vec::new()));
     let assets = Arc::new(release_assets());
     let hits = Arc::new(std::sync::atomic::AtomicUsize::new(0));
     let gate = Arc::new((std::sync::Mutex::new(true), std::sync::Condvar::new()));
     let listener = TcpListener::bind(("127.0.0.1", 0)).expect("mirror bind");
     let port = listener.local_addr().expect("addr").port();
+    let requests_for_threads = Arc::clone(&requests);
     let hits_for_threads = Arc::clone(&hits);
     let gate_for_threads = Arc::clone(&gate);
     std::thread::spawn(move || {
         for stream in listener.incoming() {
             let Ok(stream) = stream else { break };
+            let requests = Arc::clone(&requests_for_threads);
             let assets = Arc::clone(&assets);
             let hits = Arc::clone(&hits_for_threads);
             let gate = Arc::clone(&gate_for_threads);
-            std::thread::spawn(move || handle(stream, assets, hits, gate));
+            std::thread::spawn(move || handle(stream, assets, hits, gate, requests));
         }
     });
-    Mirror { port, hits, gate }
+    Mirror {
+        port,
+        hits,
+        gate,
+        requests,
+    }
 }
 
 fn handle(
@@ -154,6 +163,7 @@ fn handle(
     assets: Arc<Vec<(String, Vec<u8>)>>,
     hits: Arc<std::sync::atomic::AtomicUsize>,
     gate: Arc<(std::sync::Mutex<bool>, std::sync::Condvar)>,
+    requests: Arc<std::sync::Mutex<Vec<String>>>,
 ) {
     let mut buffer = [0u8; 8192];
     let mut read = 0;
@@ -175,6 +185,7 @@ fn handle(
         .unwrap_or_default()
         .to_string();
     hits.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+    requests.lock().unwrap().push(path.clone());
 
     let (status, content_type, body) = if path.contains("api.github.com") {
         // First discovery is held until the test releases the gate, so the
@@ -487,6 +498,19 @@ async fn missing_data_background_sync_readable_without_restart() {
     assert!(xdg.join("prts-mcp/storyjson/zh_CN.zip").is_file());
     // The mirror actually served the release (API + manifest + assets).
     assert!(mirror.hits() >= 5);
+    assert!(mirror
+        .requests
+        .lock()
+        .unwrap()
+        .iter()
+        .any(|path| path.ends_with("zh_CN-excel.zip")));
+    assert!(!mirror
+        .requests
+        .lock()
+        .unwrap()
+        .iter()
+        .any(|path| path.ends_with(".sqlite.gz")));
+    assert!(!xdg.join("prts-mcp/database").exists());
 
     // Server stays healthy after activation.
     let res = reqwest::get(format!("{origin}/health")).await.unwrap();

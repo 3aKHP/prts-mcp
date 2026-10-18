@@ -266,6 +266,21 @@ pub fn build_story_search(
         }
     }
 
+    if crate::storage::sqlite::is_database(zip_path) {
+        let db = crate::storage::sqlite::GameDb::open(zip_path)?;
+        if db.derived_ready() {
+            return super::sqlite_search::search(
+                &db,
+                pattern,
+                &regex,
+                character,
+                line_type,
+                context_lines,
+                max_results,
+                event_id,
+            );
+        }
+    }
     let store = ZipStore::new(zip_path);
     let index =
         story_search_index(zip_path, &store).map_err(|e| format!("读取剧情数据索引失败：{e}"))?;

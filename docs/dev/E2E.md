@@ -17,7 +17,7 @@
 ## 1. 环境隔离与流量控制原则（必读）
 
 1. **目录与端口严格隔离**：
-   - 测试自动同步时，**请勿设置 `GAMEDATA_PATH` 或 `STORYJSON_PATH`**（设置后会禁用对应数据集的自动同步）。
+   - 测试 JSON 后端自动同步时，**请勿设置 `GAMEDATA_PATH` 或 `STORYJSON_PATH`**（设置后会禁用对应数据集的自动同步）。
    - 在 Linux / macOS 下通过独立的 `XDG_DATA_HOME`，在 Windows 下通过独立的 `LOCALAPPDATA` 将测试数据重定向到专用临时目录（如 `/tmp/prts-e2e/data`）。
    - 使用 `HOST=127.0.0.1`、独立的非默认端口（如 `39171`）与临时诊断 Token，切勿影响本机正在运行的生产服务或真实用户数据卷。
 2. **数据卷备份**：
@@ -140,7 +140,7 @@ du -sh /tmp/prts-e2e/data-rust/prts-mcp/*
 
 - **先监听后同步**：服务启动后立即监听端口（`/health` 返回 200），后台同步异步执行；源码构建在首次同步完成前提示数据暂不可用属于正常现象。
 - **跨进程锁残留与自动接管**：进程被强制杀死（`SIGKILL`）后可能遗留 `.lock` 文件；锁内记录的 `owner` 是随机 UUID 而非 PID，新进程会在租约（lease）过期后自动安全接管，无需手动删锁。
-- **自定义路径自动停用同步**：设置了 `GAMEDATA_PATH` 或非空 `STORYJSON_PATH` 时，日志提示对应 auto-sync 已禁用属于预期设计。
+- **自定义路径自动停用同步**：JSON 后端设置了 `GAMEDATA_PATH` 或非空 `STORYJSON_PATH` 时，日志提示对应 auto-sync 已禁用属于预期设计。
 
 ## 8. 清理与收尾
 

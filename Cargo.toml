@@ -1,13 +1,13 @@
 [package]
 name = "prts-mcp"
-version = "3.0.1-dev.0"
+version = "3.1.0-dev.0"
 edition = "2021"
 rust-version = "1.89"
 publish = false
 description = "Arknights fan-creation MCP server with native Rust runtime"
 repository = "https://github.com/3aKHP/prts-mcp"
 readme = "README.md"
-include = ["/Cargo.toml", "/Cargo.lock", "/build.rs", "/rust-toolchain.toml", "/src/**", "/native/**", "/vendor/**", "/contracts/data-declarations.json", "/LICENSE", "/NOTICE", "/README.md", "/CHANGELOG.md"]
+include = ["/Cargo.toml", "/Cargo.lock", "/build.rs", "/rust-toolchain.toml", "/src/**", "/native/**", "/vendor/**", "/contracts/data-declarations.json", "/contracts/sqlite-schema-v1.sql", "/examples/data_compiler.rs", "/examples/data_compiler/**", "/LICENSE", "/NOTICE", "/README.md", "/CHANGELOG.md"]
 license = "MIT"
 
 [lib]
@@ -57,6 +57,8 @@ thiserror = "2"
 
 # Mandatory-literal scanning; native regexp sources are pinned under vendor/.
 memchr = "2"
+rusqlite = { version = "0.40.2", features = ["bundled"] }
+flate2 = "1"
 
 [build-dependencies]
 cc = "1"

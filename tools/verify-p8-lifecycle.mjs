@@ -34,18 +34,21 @@ const check = (name, ok, detail = "") => {
 const gh = (tag, asset) => `https://github.com/3aKHP/arknights-data-pipeline/releases/download/${tag}/${asset}`;
 
 function buildMirror(tag) {
-  const releaseDir = join(DATA_RELEASE_DIR, tag);
+  const artifactOption = process.argv.indexOf("--artifact-dir");
+  const releaseDir = artifactOption >= 0 ? process.argv[artifactOption + 1] : join(DATA_RELEASE_DIR, tag);
   const fixtureDir = join(WORK, "mirror");
   mkdirSync(fixtureDir, { recursive: true });
   const lines = [];
-  for (const asset of ["manifest.json", "zh_CN-excel.zip", "zh_CN-levels.zip", "zh_CN.zip"]) {
+  const assets = ["manifest.json", "zh_CN-excel.zip", "zh_CN-levels.zip", "zh_CN.zip"];
+  if (existsSync(join(releaseDir, "zh_CN.sqlite.gz"))) assets.push("zh_CN.sqlite.gz");
+  for (const asset of assets) {
     execFileSync("cp", [join(releaseDir, asset), join(fixtureDir, asset)]);
     lines.push(`${gh(tag, asset)} ${asset}`);
   }
   writeFileSync(join(fixtureDir, "assets.txt"), lines.join("\n") + "\n");
   writeFileSync(join(fixtureDir, "releases.json"), JSON.stringify([
     { tag_name: tag, created_at: "2026-10-08T05:00:00Z",
-      assets: ["manifest.json", "zh_CN-excel.zip", "zh_CN-levels.zip", "zh_CN.zip"].map((name) => ({ name, browser_download_url: gh(tag, name) })) },
+      assets: assets.map((name) => ({ name, browser_download_url: gh(tag, name) })) },
   ]));
   return fixtureDir;
 }
@@ -59,6 +62,7 @@ function startRustHttp(vol, mirrors) {
       PATH: process.env.PATH, HOME: process.env.HOME,
       XDG_DATA_HOME: vol,
       GITHUB_MIRRORS: mirrors,
+      HTTPS_PROXY: "http://127.0.0.1:9",
       IMAGES_ENABLED: "false",
       HOST: "127.0.0.1", PORT: "0",
     },
@@ -126,8 +130,7 @@ function stdioCall(env, calls) {
 }
 
 async function main() {
-  const tags = readdirSync(DATA_RELEASE_DIR).filter((d) => d.startsWith("datarev-"));
-  const tag = tags.sort().at(-1);
+  const tag = JSON.parse(readFileSync(join(ROOT, "packaging/npm/data-release.json"))).release_tag;
   const mirror = spawn("node", [join(ROOT, "tools/images-mirror.mjs"), buildMirror(tag)], {
     env: { PATH: process.env.PATH }, stdio: ["ignore", "pipe", "inherit"],
   });

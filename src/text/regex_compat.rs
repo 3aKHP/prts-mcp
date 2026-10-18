@@ -22,6 +22,8 @@ unsafe extern "C" {
         start: c_int,
         match_start: *mut c_int,
         match_end: *mut c_int,
+        cancel: extern "C" fn(*mut std::ffi::c_void) -> c_int,
+        cancel_opaque: *mut std::ffi::c_void,
     ) -> c_int;
     fn prts_re_prefix(
         bytecode: *const u8,
@@ -137,7 +139,17 @@ impl JsRegex {
         (prefix, complete != 0)
     }
 
+    /// Conservative block prefilter: binary metadata may add false positives.
+    pub(crate) fn may_match_bytes(&self, bytes: &[u8]) -> bool {
+        match &self.prefix {
+            Some(Prefix::Exact(text)) => memchr::memmem::find(bytes, text.as_bytes()).is_some(),
+            Some(Prefix::AsciiFold { literal, .. }) => ascii_iu_contains(bytes, literal.as_bytes()),
+            None => true,
+        }
+    }
+
     pub fn is_match(&self, text: &str) -> Result<bool, String> {
+        super::cancellation::check()?;
         if let Some(prefix) = &self.prefix {
             let found = match prefix {
                 Prefix::Exact(literal) => text.contains(literal),
@@ -184,6 +196,8 @@ impl JsRegex {
                 start as i32,
                 &mut from,
                 &mut to,
+                super::cancellation::cancelled,
+                std::ptr::null_mut(),
             )
         } {
             0 => Ok(None),
@@ -233,6 +247,43 @@ impl JsRegex {
     }
 }
 
+// ASCII IU prefixes have only two non-ASCII equivalents in the pinned
+// QuickJS Unicode table: long s and Kelvin sign. Match those explicitly so
+// arbitrary non-ASCII bytes after an unrelated ASCII candidate do not force
+// an entire text block through the native engine.
+fn ascii_iu_contains(text: &[u8], literal: &[u8]) -> bool {
+    let first = literal[0].to_ascii_lowercase();
+    let matches_at = |mut cursor: usize| {
+        for expected in literal {
+            let expected = expected.to_ascii_lowercase();
+            let Some(&actual) = text.get(cursor) else {
+                return false;
+            };
+            if actual.is_ascii() && actual.to_ascii_lowercase() == expected {
+                cursor += 1;
+            } else if expected == b's' && text[cursor..].starts_with("ſ".as_bytes()) {
+                cursor += 2;
+            } else if expected == b'k' && text[cursor..].starts_with("K".as_bytes()) {
+                cursor += 3;
+            } else {
+                return false;
+            }
+        }
+        true
+    };
+    if first == b's' || first == b'k' {
+        memchr::memchr3_iter(
+            first,
+            first.to_ascii_uppercase(),
+            if first == b's' { 0xc5 } else { 0xe2 },
+            text,
+        )
+        .any(matches_at)
+    } else {
+        memchr::memchr2_iter(first, first.to_ascii_uppercase(), text).any(matches_at)
+    }
+}
+
 fn ascii_fold_contains(text: &[u8], literal: &[u8], special_folds: bool) -> Option<bool> {
     let first = literal[0];
     if (first == b's' && memchr::memmem::find(text, "ſ".as_bytes()).is_some())
@@ -256,6 +307,31 @@ fn ascii_fold_contains(text: &[u8], literal: &[u8], special_folds: bool) -> Opti
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn block_ascii_prefilter_matches_native_unicode_folds() {
+        for pattern in ["sqlite_poc_absent", "ask", "sk", "k", "s", "SQLITE"] {
+            let re = JsRegex::compile(pattern).unwrap();
+            for text in [
+                "S汉字",
+                "😀S汉字sqlite_poc_absent",
+                "aſK",
+                "ſK",
+                "K",
+                "ſ",
+                "SQLITE",
+                "sqlite",
+                "aSk",
+                "",
+            ] {
+                assert_eq!(
+                    re.may_match_bytes(text.as_bytes()),
+                    re.native_match(text).unwrap(),
+                    "{pattern:?} {text:?}"
+                );
+            }
+        }
+    }
 
     #[test]
     fn unicode_table_proves_literal_shortcut_folding_assumptions() {
@@ -317,6 +393,15 @@ mod tests {
         for pattern in patterns {
             let re = JsRegex::compile(pattern).unwrap();
             for text in texts {
+                if re.native_match(text).unwrap() {
+                    let mut block = vec![0, 255, 0, 0, 0, 0, 0, 0, 0];
+                    block.extend_from_slice(text.as_bytes());
+                    block.extend_from_slice(&[0, 255, 0]);
+                    assert!(
+                        re.may_match_bytes(&block),
+                        "block prefilter lost {pattern:?}: {text:?}"
+                    );
+                }
                 assert_eq!(
                     re.is_match(text).unwrap(),
                     re.native_match(text).unwrap(),

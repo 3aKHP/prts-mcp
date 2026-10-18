@@ -127,7 +127,7 @@ fn operator_file_error(label: &str, store: &DirectoryStore, file: &str) -> Strin
 }
 
 fn excel_store(view: &DataView) -> Option<DirectoryStore> {
-    view.excel_root.as_ref().map(DirectoryStore::new)
+    view.excel_store()
 }
 
 fn load_excel_table(
@@ -138,10 +138,9 @@ fn load_excel_table(
     count_key: Option<&str>,
     projection: Projection,
 ) -> Result<Arc<Value>, String> {
-    let Some(root) = view.excel_root.clone() else {
+    let Some(store) = view.excel_store() else {
         return Err(format!("__missing__{label}"));
     };
-    let store = DirectoryStore::new(&root);
     view.datasets.get_or_load_counted(
         slot,
         move || {
@@ -201,11 +200,45 @@ pub fn charword_table(view: &DataView) -> Result<Arc<Value>, String> {
     )
 }
 
+/// Read only the selected operator while preserving the original builder shape.
+pub fn character_for(view: &DataView, id: Option<&str>) -> Result<Arc<Value>, String> {
+    if let Some(db) = view.database() {
+        return Ok(Arc::new(Value::Object(db.entity_map(
+            "character_table",
+            "",
+            Some(id.unwrap_or("__absent__")),
+            None,
+        )?)));
+    }
+    character_table(view)
+}
+
+fn handbook_for(view: &DataView, id: &str) -> Result<Arc<Value>, String> {
+    if let Some(db) = view.database() {
+        return Ok(Arc::new(
+            json!({"handbookDict":db.entity_map("handbook_info_table","handbookDict",Some(id),None)?}),
+        ));
+    }
+    handbook_table(view)
+}
+
+fn charword_for(view: &DataView, id: &str) -> Result<Arc<Value>, String> {
+    if let Some(db) = view.database() {
+        return Ok(Arc::new(
+            json!({"charWords":db.entity_map("charword_table","charWords",None,Some(id))?}),
+        ));
+    }
+    charword_table(view)
+}
+
 /// name → charId folding (`buildNameToIdImpl`): only `char_`-prefixed ids
 /// with a name enter the map; duplicate names collapse to the LAST cid while
 /// JS Map.set keeps first-insertion position (later set overwrites value,
 /// not position).
 pub fn name_to_char_id(view: &DataView) -> Result<Arc<Vec<(String, String)>>, String> {
+    if let Some(db) = view.database() {
+        return Ok(Arc::new(db.names("character_table")?));
+    }
     view.datasets.get_or_load_counted(
         "operator:name_to_id",
         || {
@@ -251,6 +284,9 @@ pub fn name_to_char_id(view: &DataView) -> Result<Arc<Vec<(String, String)>>, St
 }
 
 pub fn resolve_char_id(view: &DataView, name: &str) -> Result<Option<String>, String> {
+    if let Some(db) = view.database() {
+        return db.name_id("character_table", name);
+    }
     Ok(name_to_char_id(view)?
         .iter()
         .find(|(n, _)| n == name)
@@ -275,7 +311,7 @@ pub fn get_operator_archives(view: &DataView, excel_path: &Path, name: &str) -> 
         Ok(None) => return operator_not_found(name),
         Err(err) => return err,
     };
-    let handbook = match handbook_table(view) {
+    let handbook = match handbook_for(view, &char_id) {
         Ok(t) => t,
         Err(err) => return err,
     };
@@ -326,7 +362,7 @@ pub fn get_operator_voicelines(view: &DataView, excel_path: &Path, name: &str) -
         Ok(None) => return operator_not_found(name),
         Err(err) => return err,
     };
-    let charwords = match charword_table(view) {
+    let charwords = match charword_for(view, &char_id) {
         Ok(t) => t,
         Err(err) => return err,
     };
@@ -404,7 +440,7 @@ pub fn build_operator_basic_info(
         Some(id) => id,
         None => return Err(operator_not_found(name)),
     };
-    let ct = character_table(view)?;
+    let ct = character_for(view, Some(&char_id))?;
     let Some(info) = ct.as_object().and_then(|m| m.get(&char_id)) else {
         return Err(format!("干员 '{name}' 暂无基本信息。"));
     };
@@ -662,6 +698,7 @@ mod projection_tests {
             levels_root: None,
             story_zip: None,
             datasets,
+            database: None,
         }
     }
 

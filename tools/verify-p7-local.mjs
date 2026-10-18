@@ -18,7 +18,8 @@ const ROOT = new URL("..", import.meta.url).pathname;
 const STAGE = join(ROOT, "build/package/prts-mcp-rust-local");
 const BIN = join(STAGE, "bin/prts-mcp-rust");
 const EMPTY = join(ROOT, ".runtime/fixtures/empty-gamedata-v1");
-const IMAGES_VOL = join(ROOT, ".runtime/images-fullscale/rust-volume");
+const imagesOption = process.argv.indexOf("--images-volume");
+const IMAGES_VOL = imagesOption >= 0 ? process.argv[imagesOption+1] : join(ROOT, ".runtime/images-fullscale/rust-volume");
 
 let failures = 0;
 const check = (name, ok, detail = "") => {
@@ -39,6 +40,7 @@ function stdioRound(calls) {
         GAMEDATA_PATH: EMPTY, // custom-but-empty → bundled data fallback
         STORYJSON_PATH: `${EMPTY}/none.zip`,
         GITHUB_MIRRORS: "",
+        HTTPS_PROXY: "http://127.0.0.1:9",
         IMAGES_ENABLED: "true",
         LOCAL_IMAGE: "true",
         PRTS_IMAGE_DIR: IMAGES_VOL,
