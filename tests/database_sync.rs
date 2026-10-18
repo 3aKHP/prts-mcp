@@ -387,6 +387,88 @@ async fn gc_keeps_previous_across_polls_and_every_pinned_generation() {
         );
     }
 }
+
+#[cfg(unix)]
+#[tokio::test]
+async fn receipt_lease_child() {
+    use std::io::Read;
+    let Some(root) = std::env::var_os("PRTS_TEST_RECEIPT_ROOT").map(PathBuf::from) else {
+        return;
+    };
+    let fake = Fake {
+        manifest: serde_json::from_slice(&std::fs::read(root.join("child-manifest.json")).unwrap())
+            .unwrap(),
+        payload: std::fs::read(root.join("zh_CN.sqlite.gz")).unwrap(),
+        requested: Mutex::new(vec![]),
+        pause: Mutex::new(None),
+    };
+    sync::sync(&fake, &root.join("runtime")).await.unwrap();
+    // No runtime GameDb exists: only the verification receipt pins this file.
+    std::fs::write(root.join("child-ready"), b"ready").unwrap();
+    let mut release = [0];
+    std::io::stdin().read_exact(&mut release).unwrap();
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn shared_volume_gc_respects_another_process_verification_receipt() {
+    use std::{
+        io::Write,
+        process::{Child, Command, Stdio},
+        time::Duration,
+    };
+    struct ChildGuard(Child);
+    impl Drop for ChildGuard {
+        fn drop(&mut self) {
+            let _ = self.0.kill();
+            let _ = self.0.wait();
+        }
+    }
+    let (temp, mut fake) = artifact();
+    let root = temp.0.join("runtime");
+    std::fs::write(
+        temp.0.join("child-manifest.json"),
+        serde_json::to_vec(&fake.manifest).unwrap(),
+    )
+    .unwrap();
+    let mut child = ChildGuard(
+        Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", "receipt_lease_child", "--nocapture"])
+            .env("PRTS_TEST_RECEIPT_ROOT", &temp.0)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .spawn()
+            .unwrap(),
+    );
+    tokio::time::timeout(Duration::from_secs(15), async {
+        while !temp.0.join("child-ready").exists() {
+            assert!(
+                child.0.try_wait().unwrap().is_none(),
+                "receipt child exited before ready"
+            );
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .unwrap();
+    let first = database::active(&root).unwrap().unwrap();
+    revision(&temp, &mut fake, 3);
+    sync::sync(&fake, &root).await.unwrap();
+    revision(&temp, &mut fake, 4);
+    sync::sync(&fake, &root).await.unwrap();
+    assert!(
+        first.path(&root).exists(),
+        "another process's receipt must keep its inode linked"
+    );
+    child.0.stdin.take().unwrap().write_all(b"x").unwrap();
+    assert!(child.0.wait().unwrap().success());
+    assert!(!sync::sync(&fake, &root).await.unwrap());
+    assert!(
+        !first.path(&root).exists(),
+        "a released receipt must permit the next prune"
+    );
+}
+
 #[tokio::test]
 async fn rollback_and_same_generation_mutation_fail_closed() {
     let (temp, mut fake) = artifact();
