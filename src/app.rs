@@ -254,7 +254,7 @@ impl App {
     pub fn run_http_profile(self, profile: HttpProfile) -> std::io::Result<()> {
         let mut builder = tokio::runtime::Builder::new_multi_thread();
         if self.config.data_backend == DataBackend::Sqlite {
-            // Six query slots plus room for sync and async filesystem work.
+            // Seven query slots plus room for sync and async filesystem work.
             builder.max_blocking_threads(8);
         }
         let runtime = builder.enable_all().build()?;
@@ -324,7 +324,7 @@ impl App {
     pub fn run_stdio(self) -> i32 {
         let mut builder = tokio::runtime::Builder::new_multi_thread();
         if self.config.data_backend == DataBackend::Sqlite {
-            // Six query slots plus room for sync and async filesystem work.
+            // Seven query slots plus room for sync and async filesystem work.
             builder.max_blocking_threads(8);
         }
         let runtime = builder.enable_all().build().expect("tokio runtime builds");

@@ -748,3 +748,73 @@ pub fn format_chapter(chapter: &StoryChapter) -> String {
     }
     parts.join("\n")
 }
+
+#[cfg(test)]
+mod projection_tests {
+    use super::*;
+
+    #[test]
+    fn compact_metadata_preserves_listings_order_and_malformed_shapes() {
+        let table = json!({
+            "main": {"entryType":"MAINLINE", "name":"主线", "unused":{"large":[1,2,3]},
+                "infoUnlockDatas":[
+                    {"storyTxt":"later", "storyCode":"2", "storyName":"后", "storySort":2,
+                     "avgTag":"行动后", "unlock":true},
+                    null, 42, {"storyTxt":false},
+                    {"storyTxt":"first", "storyCode":"1", "storyName":"前", "storySort":-1,
+                     "avgTag":null},
+                    {"storyTxt":"equal", "storyCode":false, "storyName":{}, "storySort":2}
+                ]},
+            "story_op_set_1":{"entryType":"NONE", "name":null, "infoUnlockDatas":[]},
+            "wrong_chapters":{"entryType":42, "infoUnlockDatas":{"unexpected":true}},
+            "scalar":false
+        })
+        .as_object()
+        .unwrap()
+        .clone();
+        let compact = compact_event_table(table.clone());
+        assert_eq!(
+            compact.keys().collect::<Vec<_>>(),
+            table.keys().collect::<Vec<_>>()
+        );
+        for category in [
+            None,
+            Some("main"),
+            Some("activities"),
+            Some("memoirs"),
+            Some("roguelike"),
+            Some("unknown"),
+        ] {
+            assert_eq!(
+                list_story_events(&compact, category),
+                list_story_events(&table, category)
+            );
+        }
+        let rows = |table: &Map<String, Value>, event| {
+            list_stories(table, event).map(|rows| {
+                rows.into_iter()
+                    .map(|row| {
+                        (
+                            row.story_key,
+                            row.story_code,
+                            row.story_name,
+                            row.avg_tag,
+                            row.sort_order,
+                        )
+                    })
+                    .collect::<Vec<_>>()
+            })
+        };
+        for event in [
+            "main",
+            "story_op_set_1",
+            "wrong_chapters",
+            "scalar",
+            "missing",
+        ] {
+            assert_eq!(rows(&compact, event), rows(&table, event));
+        }
+        assert_eq!(compact["wrong_chapters"], table["wrong_chapters"]);
+        assert_eq!(compact["scalar"], table["scalar"]);
+    }
+}

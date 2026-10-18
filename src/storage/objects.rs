@@ -43,6 +43,27 @@ fn value_charge(value: &Value) -> usize {
         _ => 0,
     }
 }
+
+// serde_json does not expose object capacity. Rebuild maps after projection or
+// merging so the charge cannot miss buckets retained by removed source fields.
+fn compact_objects(object: Object) -> Object {
+    fn compact(value: Value) -> Value {
+        match value {
+            Value::Object(object) => Value::Object(compact_objects(object)),
+            Value::Array(mut values) => {
+                for value in &mut values {
+                    *value = compact(std::mem::take(value));
+                }
+                Value::Array(values)
+            }
+            value => value,
+        }
+    }
+    object
+        .into_iter()
+        .map(|(key, value)| (key, compact(value)))
+        .collect()
+}
 impl Objects {
     pub(crate) fn get_or_load(
         &self,
@@ -55,7 +76,7 @@ impl Objects {
         if let Some(entry) = entries.iter().find(|entry| entry.key == key) {
             return Ok(Arc::clone(&entry.value));
         }
-        let value = Arc::new(load()?);
+        let value = Arc::new(compact_objects(load()?));
         let charge = object_charge(&value);
         if charge <= BUDGET {
             let mut used: usize = entries.iter().map(|entry| entry.charge).sum();
@@ -77,6 +98,38 @@ impl Objects {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn concurrent_cold_readers_share_one_load() {
+        use std::sync::{
+            atomic::{AtomicUsize, Ordering},
+            Barrier,
+        };
+        let cache = Objects::default();
+        let loads = AtomicUsize::new(0);
+        let barrier = Barrier::new(8);
+        std::thread::scope(|scope| {
+            let handles: Vec<_> = (0..8)
+                .map(|_| {
+                    scope.spawn(|| {
+                        barrier.wait();
+                        cache
+                            .get_or_load("shared", || {
+                                loads.fetch_add(1, Ordering::SeqCst);
+                                Ok(Map::new())
+                            })
+                            .unwrap()
+                    })
+                })
+                .collect();
+            let values: Vec<_> = handles
+                .into_iter()
+                .map(|handle| handle.join().unwrap())
+                .collect();
+            assert!(values.iter().all(|value| Arc::ptr_eq(value, &values[0])));
+        });
+        assert_eq!(loads.load(Ordering::SeqCst), 1);
+    }
+
     #[test]
     fn shares_success_retries_failure_and_does_not_retain_oversized_objects() {
         let cache = Objects::default();
