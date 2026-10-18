@@ -7,7 +7,7 @@
 
 use std::io::Read;
 use std::path::{Component, Path, PathBuf};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use serde_json::Value;
 use zip::ZipArchive;
@@ -55,11 +55,26 @@ fn normalize_path(path: &str) -> Result<String, StoreError> {
 
 pub struct DirectoryStore {
     root: PathBuf,
+    database: Option<(Arc<super::sqlite::GameDb>, &'static str)>,
 }
 
 impl DirectoryStore {
     pub fn new(root: impl Into<PathBuf>) -> Self {
-        Self { root: root.into() }
+        Self {
+            root: root.into(),
+            database: None,
+        }
+    }
+
+    pub fn database(
+        root: PathBuf,
+        database: Arc<super::sqlite::GameDb>,
+        namespace: &'static str,
+    ) -> Self {
+        Self {
+            root,
+            database: Some((database, namespace)),
+        }
     }
 
     pub fn root(&self) -> &Path {
@@ -71,6 +86,13 @@ impl DirectoryStore {
         &self,
         path: &str,
     ) -> Result<T, StoreError> {
+        if let Some(result) = self.sqlite_read(path) {
+            let text = result?;
+            return serde_json::from_str(&text).map_err(|e| StoreError::BadJson {
+                path: path.into(),
+                message: e.to_string(),
+            });
+        }
         let target = self.resolve(path)?;
         let text = std::fs::read_to_string(&target).map_err(|e| match e.kind() {
             std::io::ErrorKind::NotFound => StoreError::NotFound(path.to_string()),
@@ -88,6 +110,15 @@ impl DirectoryStore {
         path: &str,
         projection: super::projection::Projection,
     ) -> Result<Value, StoreError> {
+        if let Some(result) = self.sqlite_read(path) {
+            let text = result?;
+            return super::projection::from_str(&text, projection).map_err(|e| {
+                StoreError::BadJson {
+                    path: path.into(),
+                    message: e.to_string(),
+                }
+            });
+        }
         let target = self.resolve(path)?;
         let text = std::fs::read_to_string(&target).map_err(|e| match e.kind() {
             std::io::ErrorKind::NotFound => StoreError::NotFound(path.to_string()),
@@ -105,6 +136,13 @@ impl DirectoryStore {
         path: &str,
         projection: super::projection::Projection,
     ) -> Result<super::frozen::FrozenValue, StoreError> {
+        if let Some(result) = self.sqlite_read(path) {
+            let text = result?;
+            return super::frozen::from_str(&text, projection).map_err(|e| StoreError::BadJson {
+                path: path.into(),
+                message: e.to_string(),
+            });
+        }
         let target = self.resolve(path)?;
         let text = std::fs::read_to_string(&target).map_err(|e| match e.kind() {
             std::io::ErrorKind::NotFound => StoreError::NotFound(path.to_string()),
@@ -114,6 +152,17 @@ impl DirectoryStore {
             path: path.to_string(),
             message: e.to_string(),
         })
+    }
+
+    fn sqlite_read(&self, path: &str) -> Option<Result<String, StoreError>> {
+        let (db, namespace) = self.database.as_ref()?;
+        Some((|| {
+            let path = normalize_path(path)?;
+            let bytes = db
+                .raw(namespace, &path)
+                .map_err(|e| StoreError::Io(std::io::Error::other(e)))?;
+            String::from_utf8(bytes).map_err(|e| StoreError::Io(std::io::Error::other(e)))
+        })())
     }
 
     /// Resolve a dataset path (TS `resolvePath`): normalize, join under the
@@ -139,11 +188,23 @@ impl DirectoryStore {
 
 impl JsonStore for DirectoryStore {
     fn exists(&self, path: &str) -> Result<bool, StoreError> {
+        if let Some((db, namespace)) = self.database.as_ref() {
+            let path = normalize_path(path)?;
+            return db
+                .exists(namespace, &path)
+                .map_err(|e| StoreError::Io(std::io::Error::other(e)));
+        }
         // Unsafe paths propagate (TS throws); the `?` keeps that error.
         Ok(self.resolve(path)?.is_file())
     }
 
     fn read_json(&self, path: &str) -> Result<Value, StoreError> {
+        if let Some(result) = self.sqlite_read(path) {
+            return serde_json::from_str(&result?).map_err(|e| StoreError::BadJson {
+                path: path.into(),
+                message: e.to_string(),
+            });
+        }
         let target = self.resolve(path)?;
         let text = std::fs::read_to_string(&target).map_err(|e| match e.kind() {
             std::io::ErrorKind::NotFound => StoreError::NotFound(path.to_string()),
@@ -205,11 +266,27 @@ impl JsonStore for ZipStore {
             return Ok(false);
         }
         let inner = normalize_path(path)?;
+        if super::sqlite::is_database(&self.zip_path) {
+            return super::sqlite::GameDb::open(&self.zip_path)
+                .and_then(|db| db.exists("story", &inner))
+                .map_err(|e| StoreError::Io(std::io::Error::other(e)));
+        }
         self.with_archive(|archive| Ok(archive.by_name(&inner).is_ok()))
     }
 
     fn read_json(&self, path: &str) -> Result<Value, StoreError> {
         let inner = normalize_path(path)?;
+        if super::sqlite::is_database(&self.zip_path) {
+            let db = super::sqlite::GameDb::open(&self.zip_path)
+                .map_err(|e| StoreError::Io(std::io::Error::other(e)))?;
+            let bytes = db
+                .raw("story", &inner)
+                .map_err(|_| StoreError::ZipEntryNotFound(path.to_string()))?;
+            return serde_json::from_slice(&bytes).map_err(|e| StoreError::BadJson {
+                path: path.into(),
+                message: e.to_string(),
+            });
+        }
         let text = self.with_archive(|archive| {
             let mut entry = archive
                 .by_name(&inner)

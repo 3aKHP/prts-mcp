@@ -49,4 +49,5 @@ if (!process.argv.includes("--minimal")) {
   }
   run("node", ["tools/make-fullscale.mjs", "--runtime-only"]);
 }
+run("node", ["tools/prepare-sqlite-fixtures.mjs"]);
 console.log(`Validation fixtures ready; frozen TS oracle ${baseline}`);

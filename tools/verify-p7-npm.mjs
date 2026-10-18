@@ -17,6 +17,7 @@ const baseEnv = (extra = {}) => ({
   GAMEDATA_PATH: EMPTY, // custom-but-empty → bundle fallback must engage
   STORYJSON_PATH: `${EMPTY}/nope.zip`,
   GITHUB_MIRRORS: "",
+        HTTPS_PROXY: "http://127.0.0.1:9",
   IMAGES_ENABLED: "true",
   HOST: "127.0.0.1",
   ...extra,

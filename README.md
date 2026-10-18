@@ -26,7 +26,7 @@ Starting with 3.x, PRTS-MCP is unified into a single native Rust implementation 
 | Line | Version | Tools | Status |
 |------|---------|-------|--------|
 | Public stable (`main`) | 3.0.0 | 24 | Native Rust stable release on npm (`latest`), GitHub Releases, and GHCR (`:latest`, `:3`). |
-| Rust (`develop`) | 3.0.1-dev.0 | 24 | Active 3.x development line. |
+| Rust (`develop`) | 3.1.0-dev.0 | 24 | Active 3.x development line. |
 | `lts/2.8` | 2.8.x | 24 | Python/TypeScript long-term maintenance; EOL 2027-07-02. |
 | `lts/1.7` | 1.7.x | 32 | Python/TypeScript long-term maintenance; EOL 2027-07-02. |
 
@@ -172,7 +172,7 @@ Public Rust native archives, Docker images, and npm packages ship with a verifie
 | 版本线 | 版本 | 工具数 | 状态 |
 |--------|------|--------|------|
 | 公开稳定版（`main`） | 3.0.0 | 24 | 原生 Rust 正式版，已发布至 npm（`latest`）、GitHub Releases 与 GHCR（`:latest`、`:3`）。 |
-| Rust 开发线（`develop`） | 3.0.1-dev.0 | 24 | 3.x 主开发线。 |
+| Rust 开发线（`develop`） | 3.1.0-dev.0 | 24 | 3.x 主开发线。 |
 | `lts/2.8` | 2.8.x | 24 | Python/TypeScript 长期维护线，维护至 2027-07-02（EOL）。 |
 | `lts/1.7` | 1.7.x | 32 | Python/TypeScript 长期维护线，维护至 2027-07-02（EOL）。 |
 

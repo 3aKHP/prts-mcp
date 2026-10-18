@@ -14,7 +14,7 @@ use std::collections::HashMap;
 use crate::app::DataView;
 use crate::domain::messages;
 use crate::domain::operator::{character_table, name_to_char_id, resolve_char_id};
-use crate::storage::{DirectoryStore, JsonStore};
+use crate::storage::JsonStore;
 use crate::text::numbers::{is_js_integer, js_number_to_string, js_to_fixed, round_half_away};
 use crate::text::sanitizer::strip_wikitext;
 
@@ -28,17 +28,14 @@ const SP_TYPE_ZH: &[(&str, &str)] = &[
 
 /// Whether skill_table.json exists in the effective excel store.
 pub fn has_skill_data(view: &DataView) -> bool {
-    view.excel_root
-        .as_ref()
-        .map(DirectoryStore::new)
+    view.excel_store()
         .is_some_and(|store| store.exists("skill_table.json").unwrap_or(false))
 }
 
 fn skill_table(view: &DataView) -> Result<Arc<SkillTable>, String> {
-    let Some(root) = view.excel_root.clone() else {
+    let Some(store) = view.excel_store() else {
         return Err("__missing__战斗技能".to_string());
     };
-    let store = DirectoryStore::new(&root);
     view.datasets.get_or_load_counted("skill:skill_table", move || {
         if !store.exists("skill_table.json").unwrap_or(false) {
             let shown = store
@@ -51,6 +48,34 @@ fn skill_table(view: &DataView) -> Result<Arc<SkillTable>, String> {
         }
         store.read_json_as::<SkillTable>("skill_table.json").map_err(|e| e.to_string())
     }, |table| table.len() as u64)
+}
+
+fn skill_table_for(view: &DataView, id: Option<&str>) -> Result<Arc<SkillTable>, String> {
+    if let Some(db) = view.database() {
+        let mut entries = serde_json::Map::new();
+        if let Some(info) = id
+            .map(|id| db.entity("character_table", "", id))
+            .transpose()?
+            .flatten()
+        {
+            for entry in info
+                .get("skills")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+            {
+                if let Some(id) = entry.get("skillId").and_then(Value::as_str) {
+                    if let Some(value) = db.entity("skill_table", "", id)? {
+                        entries.insert(id.into(), value);
+                    }
+                }
+            }
+        }
+        return serde_json::from_value(Value::Object(entries))
+            .map(Arc::new)
+            .map_err(|e| e.to_string());
+    }
+    skill_table(view)
 }
 
 // ---------------------------------------------------------------------------
@@ -235,8 +260,8 @@ pub fn build_operator_skills(
         return Err(messages::excel_missing_message("战斗技能", excel_path));
     }
     let char_id = resolve_char_id(view, name)?;
-    let table = skill_table(view)?;
-    let ct = character_table(view)?;
+    let table = skill_table_for(view, char_id.as_deref())?;
+    let ct = crate::domain::operator::character_for(view, char_id.as_deref())?;
     let Some(char_id) = char_id else {
         return Err(format!(
             "未找到干员 '{name}'。请使用游戏内中文名称（如'阿米娅'）。"
@@ -464,6 +489,18 @@ pub fn render_skill_search(data: &Value) -> String {
         ));
     }
     lines.join("\n")
+}
+
+pub fn sqlite_export(view: &DataView) -> Result<Vec<(String, Value)>, String> {
+    Ok(skill_search_records(view)?
+        .iter()
+        .map(|r| {
+            (
+                r["haystack"].as_str().unwrap_or("").into(),
+                json!({"operator":r["operator"],"skill":r["skill"],"text":r["text"]}),
+            )
+        })
+        .collect())
 }
 
 #[cfg(test)]

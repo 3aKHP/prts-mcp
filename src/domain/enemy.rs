@@ -10,7 +10,7 @@ use super::enemy_cache::EnemyDatabase;
 use crate::app::DataView;
 use crate::domain::enemy_db::DATABASE_PROJECTION;
 use crate::domain::messages;
-use crate::storage::{DirectoryStore, JsonStore};
+use crate::storage::JsonStore;
 use crate::text::js_compat::compare_ids;
 
 const HANDBOOK_FILE: &str = "enemy_handbook_table.json";
@@ -29,25 +29,20 @@ fn enemy_level_zh(raw: &str) -> String {
 }
 
 pub fn has_enemy_data(view: &DataView) -> bool {
-    view.excel_root
-        .as_ref()
-        .map(DirectoryStore::new)
+    view.excel_store()
         .is_some_and(|store| store.exists(HANDBOOK_FILE).unwrap_or(false))
 }
 
 fn has_database(view: &DataView) -> bool {
     // Same zh_CN/gamedata/levels join as TS levelsStore().
-    view.levels_root
-        .as_ref()
-        .map(|root| DirectoryStore::new(root.join("zh_CN").join("gamedata").join("levels")))
+    view.levels_store()
         .is_some_and(|store| store.exists(DATABASE_FILE).unwrap_or(false))
 }
 
 pub fn handbook(view: &DataView) -> Result<Arc<Value>, String> {
-    let Some(root) = view.excel_root.clone() else {
+    let Some(store) = view.excel_store() else {
         return Err(messages::excel_missing_message("敌人图鉴", Path::new("")));
     };
-    let store = DirectoryStore::new(&root);
     view.datasets.get_or_load_counted(
         "enemy:enemy_handbook",
         move || {
@@ -77,10 +72,9 @@ pub fn db_levels(view: &DataView) -> Result<Arc<EnemyDatabase>, String> {
             if !has_database(view) {
                 return Ok(EnemyDatabase::empty());
             }
-            let Some(root) = view.levels_root.clone() else {
+            let Some(store) = view.levels_store() else {
                 return Ok(EnemyDatabase::empty());
             };
-            let store = DirectoryStore::new(root.join("zh_CN").join("gamedata").join("levels"));
             let raw = store
                 .read_json_frozen(DATABASE_FILE, DATABASE_PROJECTION)
                 .map_err(|e| e.to_string())?;
@@ -610,4 +604,17 @@ pub fn render_enemy_search(data: &Value) -> String {
         lines.push(String::new());
     }
     lines.join("\n").trim().to_string()
+}
+
+pub fn sqlite_export(view: &DataView) -> Result<Vec<(String, Value)>, String> {
+    let raw = handbook(view)?;
+    Ok(search_records(view)?
+        .iter()
+        .map(|r| {
+            (
+                r.search_text.clone(),
+                enemy_search_entry(&raw["enemyData"][&r.enemy_id], &r.enemy_id),
+            )
+        })
+        .collect())
 }

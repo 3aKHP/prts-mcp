@@ -1,10 +1,12 @@
 //! Directory/ZIP/fallback stores, generation pointers, snapshots.
 
+pub mod database;
 pub(crate) mod frozen;
 pub mod generation;
 pub(crate) mod identity;
 pub(crate) mod json_view;
 pub(crate) mod projection;
+pub mod sqlite;
 mod store;
 
 pub use generation::{activated_pair, activated_root, excel_path_of, gamedata_pair_path_for_read};

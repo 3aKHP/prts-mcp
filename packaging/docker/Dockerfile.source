@@ -20,5 +20,5 @@ COPY --from=builder /build/target/release/prts-mcp-ghcr /app/bin/prts-mcp-ghcr
 COPY LICENSE NOTICE /app/
 COPY vendor/quickjs-regexp/NOTICES.txt /app/THIRD-PARTY-NOTICES.txt
 ENV PRTS_MCP_ROOT=/app
-RUN mkdir -p /app/data /data/gamedata /data/gamedata-levels /data/storyjson /data/images
+RUN mkdir -p /app/data /data/gamedata /data/gamedata-levels /data/storyjson /data/images /data/database
 ENTRYPOINT ["/app/bin/prts-mcp-ghcr"]

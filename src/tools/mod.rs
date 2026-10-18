@@ -42,6 +42,7 @@ pub enum DispatchResult {
 /// sync-target paths the missing-data messages print (exactly the TS
 /// `cfg.excelPath`/`cfg.levelsPath` the oracle shows, not the effective
 /// generation directory).
+#[derive(Clone)]
 pub struct AppHandle {
     pub data: std::sync::Arc<crate::app::DataState>,
     pub excel_missing_message: String,
@@ -95,6 +96,56 @@ impl AppHandle {
     }
 }
 
+/// Keep SQLite scans off async transport workers and cap active scan jobs.
+/// Waiting callers retain only their arguments, not a blocked OS thread.
+async fn sqlite_dispatch(
+    app: AppHandle,
+    args: Value,
+    dispatch: fn(&AppHandle, &Value) -> DispatchResult,
+    scan: bool,
+) -> DispatchResult {
+    static SCANS: std::sync::OnceLock<std::sync::Arc<tokio::sync::Semaphore>> =
+        std::sync::OnceLock::new();
+    static POINTS: std::sync::OnceLock<std::sync::Arc<tokio::sync::Semaphore>> =
+        std::sync::OnceLock::new();
+    let permit = if scan {
+        Some(
+            SCANS
+                .get_or_init(|| std::sync::Arc::new(tokio::sync::Semaphore::new(2)))
+                .clone()
+                .acquire_owned()
+                .await
+                .expect("scan semaphore remains open"),
+        )
+    } else {
+        Some(
+            POINTS
+                .get_or_init(|| std::sync::Arc::new(tokio::sync::Semaphore::new(4)))
+                .clone()
+                .acquire_owned()
+                .await
+                .expect("query semaphore remains open"),
+        )
+    };
+    let token = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    struct CancelOnDrop(std::sync::Arc<std::sync::atomic::AtomicBool>);
+    impl Drop for CancelOnDrop {
+        fn drop(&mut self) {
+            self.0.store(true, std::sync::atomic::Ordering::Relaxed);
+        }
+    }
+    let _cancel = CancelOnDrop(std::sync::Arc::clone(&token));
+    tokio::task::spawn_blocking(move || {
+        let _permit = permit;
+        let _scope = crate::text::cancellation::Scope::enter(token);
+        dispatch(&app, &args)
+    })
+    .await
+    .unwrap_or_else(|e| {
+        DispatchResult::RpcError(-32603, format!("SQLite query worker failed: {e}"))
+    })
+}
+
 /// Embed a tool declaration captured from the oracle (name/description/
 /// inputSchema with the captured key order) and wrap a synchronous
 /// dispatcher into the boxed-future slot.
@@ -109,7 +160,27 @@ macro_rules! tool {
                 ".tool.json"
             )))
             .expect(concat!("embedded declaration parses: ", $name)),
-            dispatch: |app, args| Box::pin(std::future::ready(($dispatch)(app, args))),
+            dispatch: |app, args| {
+                Box::pin(async move {
+                    if app.config().data_backend == crate::config::DataBackend::Json {
+                        $dispatch(app, args)
+                    } else {
+                        sqlite_dispatch(
+                            app.clone(),
+                            args.clone(),
+                            $dispatch,
+                            matches!(
+                                $name,
+                                "search"
+                                    | "search_stories"
+                                    | "find_character_appearances"
+                                    | "find_speakers_in"
+                            ),
+                        )
+                        .await
+                    }
+                })
+            },
         }
     };
 }

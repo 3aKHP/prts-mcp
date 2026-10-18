@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 WORKDIR /app
 COPY native-payload/ /app/
 COPY bundle/ /app/data/
-RUN chmod -R a+rX /app && mkdir -p /data/gamedata /data/gamedata-levels /data/storyjson /data/images
+RUN chmod -R a+rX /app && mkdir -p /data/gamedata /data/gamedata-levels /data/storyjson /data/images /data/database
 ENV PRTS_MCP_ROOT=/app
 USER 0:0
 EXPOSE 3000

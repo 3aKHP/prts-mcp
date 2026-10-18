@@ -20,9 +20,7 @@ use crate::storage::{DirectoryStore, JsonStore};
 /// (the view's levels_root IS effectiveLevelsPath — the data root, not the
 /// levels subdir).
 fn levels_store(view: &DataView) -> Option<DirectoryStore> {
-    view.levels_root
-        .as_ref()
-        .map(|root| DirectoryStore::new(root.join("zh_CN").join("gamedata").join("levels")))
+    view.levels_store()
 }
 
 /// TS prints the STATIC sync target in the missing message, not the
@@ -329,9 +327,20 @@ pub fn build_enemy_appearances(
         }
         Err(message) => return Err(format!("读取敌人出场关卡失败：{message}")),
     };
-    let appearances = match enemy_appearance_index(view) {
-        Ok(index) => index.get(&enemy_id).cloned().unwrap_or_default(),
-        Err(message) => return Err(format!("读取敌人出场关卡失败：{message}")),
+    let appearances = if let Some(db) = view.database().filter(|db| {
+        db.metadata("appearances_unavailable")
+            .ok()
+            .flatten()
+            .as_deref()
+            != Some("1")
+    }) {
+        db.enemy_appearances(&enemy_id)
+            .map_err(|message| format!("读取敌人出场关卡失败：{message}"))?
+    } else {
+        match enemy_appearance_index(view) {
+            Ok(index) => index.get(&enemy_id).cloned().unwrap_or_default(),
+            Err(message) => return Err(format!("读取敌人出场关卡失败：{message}")),
+        }
     };
     let stages = match stages_map(view) {
         Ok(s) => s,
@@ -482,4 +491,14 @@ pub fn get_enemy_stage_info(
     }
     lines.push(format!("- **战斗属性**：{stats_text}"));
     lines.join("\n")
+}
+
+pub fn sqlite_export(view: &DataView) -> Result<Vec<(String, String, i64)>, String> {
+    Ok(enemy_appearance_index(view)?
+        .iter()
+        .flat_map(|(enemy, rows)| {
+            rows.iter()
+                .map(move |(stage, count)| (enemy.to_owned(), stage.clone(), *count))
+        })
+        .collect())
 }

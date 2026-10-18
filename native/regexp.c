@@ -11,16 +11,34 @@ enum {
 };
 #undef DEF
 
+/* Use the real call stack: ASan may place address-taken locals on its fake stack. */
+#if defined(_MSC_VER)
+#include <intrin.h>
+#endif
+static uintptr_t stack_position(void) {
+#if defined(_MSC_VER)
+    return (uintptr_t)_AddressOfReturnAddress();
+#else
+    return (uintptr_t)__builtin_frame_address(0);
+#endif
+}
+
 /* Each synchronous entry records its own stack origin, including worker threads. */
-typedef struct { uintptr_t stack_origin; } RegexCall;
+typedef struct {
+    uintptr_t stack_origin;
+    int (*cancel)(void *);
+    void *cancel_opaque;
+} RegexCall;
 bool lre_check_stack_overflow(void *opaque, size_t extra) {
-    char here;
     uintptr_t origin = ((RegexCall *)opaque)->stack_origin;
-    uintptr_t position = (uintptr_t)&here;
+    uintptr_t position = stack_position();
     size_t distance = origin > position ? origin - position : position - origin;
     return extra > 256 * 1024 || distance > 256 * 1024 - extra;
 }
-int lre_check_timeout(void *opaque) { (void)opaque; return 0; }
+int lre_check_timeout(void *opaque) {
+    RegexCall *call = (RegexCall *)opaque;
+    return call->cancel ? call->cancel(call->cancel_opaque) : 0;
+}
 void *lre_realloc(void *opaque, void *ptr, size_t size) {
     (void)opaque;
     if (!size) { free(ptr); return NULL; }
@@ -28,14 +46,15 @@ void *lre_realloc(void *opaque, void *ptr, size_t size) {
 }
 uint8_t *prts_re_compile(const char *pattern, size_t length, int flags,
                         int *length_out, char *error, int error_length) {
-    RegexCall call = { (uintptr_t)&call };
+    RegexCall call = { stack_position(), NULL, NULL };
     return lre_compile(length_out, error, error_length, pattern, length, flags, &call);
 }
 void prts_re_free(void *ptr) { free(ptr); }
 int prts_re_exec(const uint8_t *bytecode, const uint16_t *text, int length,
-                 int start, int *match_start, int *match_end) {
+                 int start, int *match_start, int *match_end,
+                 int (*cancel)(void *), void *cancel_opaque) {
     uint8_t *captures[510] = {0}; /* max 255 captures, including the full match */
-    RegexCall call = { (uintptr_t)&call };
+    RegexCall call = { stack_position(), cancel, cancel_opaque };
     int result = lre_exec(captures, bytecode, (const uint8_t *)text,
                           start, length, 1, &call);
     if (result == 1) {

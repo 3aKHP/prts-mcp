@@ -7,7 +7,7 @@
 | 分支 / 版本线 | 当前状态 |
 | --- | --- |
 | 公开稳定版（`main`） | [`3.0.0`](https://github.com/3aKHP/prts-mcp/releases/tag/v3.0.0)（原生 Rust），已发布至 npm（`latest`）、GitHub Releases 与 GHCR（`:latest`、`:3`）。 |
-| 主开发分支（`develop`） | `3.0.1-dev.0`（根目录原生 Rust Cargo 工程）。 |
+| 主开发分支（`develop`） | `3.1.0-dev.0`（根目录原生 Rust Cargo 工程）。 |
 | `lts/2.8` | Python 与 TypeScript 2.8.x 长期维护线（基于 `2.8.1`，24 个工具）。 |
 | `lts/1.7` | Python 与 TypeScript 1.7.x 长期维护线（最新补丁版本 `1.7.2`，功能基线 `1.7.0`，32 个工具）。 |
 | LTS 维护截止日（EOL） | `lts/2.8` 与 `lts/1.7` 均维护至 **2027-07-02**。 |
