@@ -149,6 +149,62 @@ async fn corrupt_transfer_never_replaces_active_pointer() {
         .flatten()
         .any(|e| e.file_name().to_string_lossy().starts_with(".stage-")));
 }
+
+#[tokio::test]
+async fn verified_file_rewrite_with_same_size_and_preserved_mtime_is_rejected() {
+    use std::io::{Seek, SeekFrom, Write};
+    let (temp, fake) = artifact();
+    let root = temp.0.join("runtime");
+    sync::sync(&fake, &root).await.unwrap();
+    let active = database::active(&root).unwrap().unwrap();
+    let path = active.path(&root);
+    let metadata = std::fs::metadata(&path).unwrap();
+    let mtime = filetime::FileTime::from_last_modification_time(&metadata);
+    let connection = rusqlite::Connection::open(&path).unwrap();
+    let page: i64 = connection
+        .query_row(
+            "SELECT rootpage FROM sqlite_schema WHERE name='entities'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    let size: i64 = connection
+        .pragma_query_value(None, "page_size", |r| r.get(0))
+        .unwrap();
+    drop(connection);
+    let mut file = std::fs::OpenOptions::new().write(true).open(&path).unwrap();
+    file.seek(SeekFrom::Start(u64::try_from((page - 1) * size).unwrap()))
+        .unwrap();
+    file.write_all(&[0]).unwrap();
+    drop(file);
+    filetime::set_file_mtime(&path, mtime).unwrap();
+    assert_eq!(std::fs::metadata(&path).unwrap().len(), metadata.len());
+    assert!(GameDb::open(&path).is_err());
+    assert!(sync::sync(&fake, &root).await.unwrap());
+    let repaired = database::active(&root).unwrap().unwrap();
+    assert_ne!(active.file_name, repaired.file_name);
+    assert!(GameDb::open(&repaired.path(&root)).unwrap().derived_ready());
+}
+
+#[tokio::test]
+async fn receipt_cannot_bypass_changed_manifest_metadata() {
+    let (temp, mut fake) = artifact();
+    let root = temp.0.join("runtime");
+    sync::sync(&fake, &root).await.unwrap();
+    let before = std::fs::read(root.join("active")).unwrap();
+    fake.manifest["sqlite"]["compilerVersion"] = json!("different-compiler");
+    assert!(sync::sync(&fake, &root).await.is_err());
+    assert_eq!(std::fs::read(root.join("active")).unwrap(), before);
+    let files = std::fs::read_dir(&root)
+        .unwrap()
+        .flatten()
+        .filter(|entry| entry.path().extension().is_some_and(|v| v == "sqlite"))
+        .count();
+    assert_eq!(
+        files, 1,
+        "failed publication removes its unpublished database"
+    );
+}
 #[tokio::test]
 async fn incompatible_manifest_rejected_before_download() {
     let (temp, mut fake) = artifact();
@@ -300,6 +356,8 @@ async fn gc_keeps_previous_across_polls_and_every_pinned_generation() {
     let root = temp.0.join("runtime");
     sync::sync(&fake, &root).await.unwrap();
     let oldest = database::active(&root).unwrap().unwrap();
+    #[cfg(target_os = "linux")]
+    let oldest_metadata = std::fs::metadata(oldest.path(&root)).unwrap();
     let pinned = GameDb::open(&oldest.path(&root)).unwrap();
     // The fake release tag follows the changing descriptor revision.
     revision(&temp, &mut fake, 3);
@@ -315,7 +373,102 @@ async fn gc_keeps_previous_across_polls_and_every_pinned_generation() {
     assert!(!sync::sync(&fake, &root).await.unwrap());
     assert!(!oldest.path(&root).exists());
     assert!(previous.path(&root).exists());
+    #[cfg(target_os = "linux")]
+    {
+        use std::os::unix::fs::MetadataExt;
+        let identity = (oldest_metadata.dev(), oldest_metadata.ino());
+        assert!(
+            std::fs::read_dir("/proc/self/fd")
+                .unwrap()
+                .flatten()
+                .filter_map(|entry| std::fs::metadata(entry.path()).ok())
+                .all(|meta| (meta.dev(), meta.ino()) != identity),
+            "deleted generations must release their disk blocks immediately"
+        );
+    }
 }
+
+#[cfg(unix)]
+#[tokio::test]
+async fn receipt_lease_child() {
+    use std::io::Read;
+    let Some(root) = std::env::var_os("PRTS_TEST_RECEIPT_ROOT").map(PathBuf::from) else {
+        return;
+    };
+    let fake = Fake {
+        manifest: serde_json::from_slice(&std::fs::read(root.join("child-manifest.json")).unwrap())
+            .unwrap(),
+        payload: std::fs::read(root.join("zh_CN.sqlite.gz")).unwrap(),
+        requested: Mutex::new(vec![]),
+        pause: Mutex::new(None),
+    };
+    sync::sync(&fake, &root.join("runtime")).await.unwrap();
+    // No runtime GameDb exists: only the verification receipt pins this file.
+    std::fs::write(root.join("child-ready"), b"ready").unwrap();
+    let mut release = [0];
+    std::io::stdin().read_exact(&mut release).unwrap();
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn shared_volume_gc_respects_another_process_verification_receipt() {
+    use std::{
+        io::Write,
+        process::{Child, Command, Stdio},
+        time::Duration,
+    };
+    struct ChildGuard(Child);
+    impl Drop for ChildGuard {
+        fn drop(&mut self) {
+            let _ = self.0.kill();
+            let _ = self.0.wait();
+        }
+    }
+    let (temp, mut fake) = artifact();
+    let root = temp.0.join("runtime");
+    std::fs::write(
+        temp.0.join("child-manifest.json"),
+        serde_json::to_vec(&fake.manifest).unwrap(),
+    )
+    .unwrap();
+    let mut child = ChildGuard(
+        Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", "receipt_lease_child", "--nocapture"])
+            .env("PRTS_TEST_RECEIPT_ROOT", &temp.0)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .spawn()
+            .unwrap(),
+    );
+    tokio::time::timeout(Duration::from_secs(15), async {
+        while !temp.0.join("child-ready").exists() {
+            assert!(
+                child.0.try_wait().unwrap().is_none(),
+                "receipt child exited before ready"
+            );
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .unwrap();
+    let first = database::active(&root).unwrap().unwrap();
+    revision(&temp, &mut fake, 3);
+    sync::sync(&fake, &root).await.unwrap();
+    revision(&temp, &mut fake, 4);
+    sync::sync(&fake, &root).await.unwrap();
+    assert!(
+        first.path(&root).exists(),
+        "another process's receipt must keep its inode linked"
+    );
+    child.0.stdin.take().unwrap().write_all(b"x").unwrap();
+    assert!(child.0.wait().unwrap().success());
+    assert!(!sync::sync(&fake, &root).await.unwrap());
+    assert!(
+        !first.path(&root).exists(),
+        "a released receipt must permit the next prune"
+    );
+}
+
 #[tokio::test]
 async fn rollback_and_same_generation_mutation_fail_closed() {
     let (temp, mut fake) = artifact();
