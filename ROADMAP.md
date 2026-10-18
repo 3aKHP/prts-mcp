@@ -1,10 +1,10 @@
 # PRTS-MCP Roadmap
 
-The current public stable release is `3.0.0`, a single native Rust implementation that preserves the frozen TS/v2.8.1 tool contract. Active development continues on `develop` (`3.1.0-dev.0`). [简体中文](ROADMAP.zh-CN.md).
+The current public stable release is `3.1.0`, a single native Rust implementation that preserves the frozen TS/v2.8.1 tool contract. Active development continues on `develop` (`3.1.0-dev.0`). [简体中文](ROADMAP.zh-CN.md).
 
 ## 3.1 — Optional SQLite Data Backend
 
-Keep JSON/ZIP as the default, preserving existing paths, volumes and sync switches. Add opt-in SQLite with complete source retention, bounded story scans and independent atomic sync. Observe production use before the planned 3.2 default switch; JSON remains supported throughout 3.x.
+JSON/ZIP remains the default, preserving existing paths, volumes and sync switches. Version 3.1 provides opt-in SQLite with complete source retention, bounded story scans and independent atomic sync. Observe production use before the planned 3.2 default switch; JSON remains supported throughout 3.x.
 
 ## 3.0 Rust Migration
 
