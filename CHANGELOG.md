@@ -11,6 +11,7 @@ The original per-implementation changelogs at the 2.8.1 baseline remain availabl
 ### Changed
 
 - **SQLite validation**: avoid overlapping quick/full checks during sync. On Unix, reuse full verification within the same process while the database file identity and manifest remain unchanged; restart or file changes require fresh verification.
+- **SQLite queries**: isolate cross-domain searches from long story scans and reuse story metadata in a bounded cache owned by each database generation.
 
 ## [3.1.0] - 2026-10-18
 

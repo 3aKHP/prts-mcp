@@ -96,35 +96,39 @@ impl AppHandle {
     }
 }
 
+enum SqliteWork {
+    Point,
+    Search,
+    Story,
+}
+
 /// Keep SQLite scans off async transport workers and cap active scan jobs.
 /// Waiting callers retain only their arguments, not a blocked OS thread.
 async fn sqlite_dispatch(
     app: AppHandle,
     args: Value,
     dispatch: fn(&AppHandle, &Value) -> DispatchResult,
-    scan: bool,
+    work: SqliteWork,
 ) -> DispatchResult {
     static SCANS: std::sync::OnceLock<std::sync::Arc<tokio::sync::Semaphore>> =
         std::sync::OnceLock::new();
     static POINTS: std::sync::OnceLock<std::sync::Arc<tokio::sync::Semaphore>> =
         std::sync::OnceLock::new();
-    let permit = if scan {
+    static SEARCHES: std::sync::OnceLock<std::sync::Arc<tokio::sync::Semaphore>> =
+        std::sync::OnceLock::new();
+    let (semaphore, limit) = match work {
+        SqliteWork::Point => (&POINTS, 4),
+        SqliteWork::Search => (&SEARCHES, 1),
+        SqliteWork::Story => (&SCANS, 2),
+    };
+    let permit = {
         Some(
-            SCANS
-                .get_or_init(|| std::sync::Arc::new(tokio::sync::Semaphore::new(2)))
+            semaphore
+                .get_or_init(|| std::sync::Arc::new(tokio::sync::Semaphore::new(limit)))
                 .clone()
                 .acquire_owned()
                 .await
                 .expect("scan semaphore remains open"),
-        )
-    } else {
-        Some(
-            POINTS
-                .get_or_init(|| std::sync::Arc::new(tokio::sync::Semaphore::new(4)))
-                .clone()
-                .acquire_owned()
-                .await
-                .expect("query semaphore remains open"),
         )
     };
     let token = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
@@ -169,13 +173,13 @@ macro_rules! tool {
                             app.clone(),
                             args.clone(),
                             $dispatch,
-                            matches!(
-                                $name,
-                                "search"
-                                    | "search_stories"
-                                    | "find_character_appearances"
-                                    | "find_speakers_in"
-                            ),
+                            match $name {
+                                "search" => SqliteWork::Search,
+                                "search_stories"
+                                | "find_character_appearances"
+                                | "find_speakers_in" => SqliteWork::Story,
+                                _ => SqliteWork::Point,
+                            },
                         )
                         .await
                     }

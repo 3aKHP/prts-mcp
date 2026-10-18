@@ -19,6 +19,8 @@ pub struct GameDb {
     pub path: PathBuf,
     pub(crate) connection: Mutex<Connection>,
     scans: [Mutex<Connection>; 2],
+    searches: Mutex<Connection>,
+    pub(crate) objects: super::objects::Objects,
     next_scan: AtomicUsize,
     _lease: Option<std::fs::File>,
 }
@@ -58,6 +60,9 @@ fn verify_schema(connection: &Connection) -> Result<(), String> {
 }
 
 impl GameDb {
+    pub(crate) fn search_connection(&self) -> Result<MutexGuard<'_, Connection>, String> {
+        self.searches.lock().map_err(err)
+    }
     /// A fixed scan pool isolates ordinary entity reads from long regex scans.
     /// Two bounded page caches are shared across all clients in a generation.
     pub(crate) fn scan_connection(&self) -> Result<MutexGuard<'_, Connection>, String> {
@@ -156,6 +161,8 @@ impl GameDb {
             path: path.to_owned(),
             connection: Mutex::new(connection),
             scans: [Mutex::new(reader(path)?), Mutex::new(reader(path)?)],
+            searches: Mutex::new(reader(path)?),
+            objects: super::objects::Objects::default(),
             next_scan: AtomicUsize::new(0),
             _lease: lease,
         });
