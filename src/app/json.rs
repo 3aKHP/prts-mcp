@@ -4,8 +4,12 @@ use crate::config::{BundleRoots, RuntimeConfig};
 use crate::storage::generation::{
     activated_pair, activated_root, excel_path_of, gamedata_pair_path_for_read,
 };
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
+
+fn story_archive(path: &Path) -> Option<PathBuf> {
+    (path.is_file() && !crate::storage::sqlite::is_database(path)).then(|| path.to_owned())
+}
 
 /// TS `loadConfig`'s data-path half: pair pointer first, extract_meta
 /// fallback, completeness gates. The bundled-data fallback joins in P7 with
@@ -24,13 +28,8 @@ pub(super) fn resolve_view(config: &RuntimeConfig) -> DataView {
         .unwrap_or_else(|| activated_root(&config.levels_path));
     let levels_root = crate::config::levels_complete(&levels_active).then_some(levels_active);
 
-    let story_zip = if config.storyjson_zip.is_file() {
-        Some(config.storyjson_zip.clone())
-    } else if PathBuf::from("/data/storyjson/zh_CN.zip").is_file() {
-        Some(PathBuf::from("/data/storyjson/zh_CN.zip"))
-    } else {
-        None
-    };
+    let story_zip = story_archive(&config.storyjson_zip)
+        .or_else(|| story_archive(Path::new("/data/storyjson/zh_CN.zip")));
 
     // Bundled read-only fallback (TS loadConfig's BUNDLED_*_PATH half):
     // only when the sync target is incomplete; resolution mirrors the sync
@@ -56,10 +55,7 @@ pub(super) fn resolve_view(config: &RuntimeConfig) -> DataView {
     });
     let story_zip = story_zip.or_else(|| {
         let roots = bundles.as_ref()?;
-        roots
-            .storyjson_zip
-            .is_file()
-            .then(|| roots.storyjson_zip.clone())
+        story_archive(&roots.storyjson_zip)
     });
 
     DataView {

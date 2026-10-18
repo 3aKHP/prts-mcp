@@ -37,6 +37,26 @@ fn reader(path: &Path) -> Result<Connection, String> {
     Ok(connection)
 }
 
+fn verify_schema(connection: &Connection) -> Result<(), String> {
+    for sql in [
+        "SELECT namespace,path,sha256 FROM sources LIMIT 0",
+        "SELECT sha256,raw_len,body FROM source_blobs LIMIT 0",
+        "SELECT dataset,bucket,key,ordinal,payload,aux FROM entities LIMIT 0",
+        "SELECT dataset,name,key,ordinal FROM names LIMIT 0",
+        "SELECT scope,ordinal,text,payload FROM searches LIMIT 0",
+        "SELECT scope,block,first_ordinal,last_ordinal,payload FROM search_blocks LIMIT 0",
+        "SELECT id FROM story_events LIMIT 0",
+        "SELECT ordinal,event,story_key,code,name,line_count FROM story_chapters LIMIT 0",
+        "SELECT id,chapter,line,kind,role,role_fold,text,text_fold FROM story_lines LIMIT 0",
+        "SELECT chapter,block,first_line,last_line,payload FROM story_blocks LIMIT 0",
+        "SELECT event,role,count FROM story_speakers LIMIT 0",
+        "SELECT enemy,ordinal,stage,count FROM enemy_appearances LIMIT 0",
+    ] {
+        connection.prepare(sql).map_err(err)?;
+    }
+    Ok(())
+}
+
 impl GameDb {
     /// A fixed scan pool isolates ordinary entity reads from long regex scans.
     /// Two bounded page caches are shared across all clients in a generation.
@@ -110,6 +130,7 @@ impl GameDb {
                 return Err(format!("unsupported SQLite {key}: {value:?}"));
             }
         }
+        verify_schema(&connection)?;
         let db = Arc::new(Self {
             path: path.to_owned(),
             connection: Mutex::new(connection),
@@ -277,23 +298,7 @@ impl GameDb {
         if !self.derived_ready_unlocked(&connection)? {
             return Err("missing derived data".into());
         }
-        for sql in [
-            "SELECT namespace,path,sha256 FROM sources LIMIT 0",
-            "SELECT sha256,raw_len,body FROM source_blobs LIMIT 0",
-            "SELECT dataset,bucket,key,ordinal,payload,aux FROM entities LIMIT 0",
-            "SELECT dataset,name,key,ordinal FROM names LIMIT 0",
-            "SELECT scope,ordinal,text,payload FROM searches LIMIT 0",
-            "SELECT scope,block,first_ordinal,last_ordinal,payload FROM search_blocks LIMIT 0",
-            "SELECT id FROM story_events LIMIT 0",
-            "SELECT ordinal,event,story_key,code,name,line_count FROM story_chapters LIMIT 0",
-            "SELECT id,chapter,line,kind,role,role_fold,text,text_fold FROM story_lines LIMIT 0",
-            "SELECT chapter,block,first_line,last_line,payload FROM story_blocks LIMIT 0",
-            "SELECT event,role,count FROM story_speakers LIMIT 0",
-            "SELECT enemy,ordinal,stage,count FROM enemy_appearances LIMIT 0",
-        ] {
-            connection.prepare(sql).map_err(err)?;
-        }
-        Ok(())
+        verify_schema(&connection)
     }
 
     fn derived_ready_unlocked(&self, connection: &Connection) -> Result<bool, String> {

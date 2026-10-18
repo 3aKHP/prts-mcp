@@ -71,6 +71,28 @@ async fn backend_outputs_match_and_unselected_files_are_not_required() {
 
     let expected = calls(&root, "json").await;
     assert_eq!(expected, calls(&root, "sqlite").await);
+    // Even a valid database explicitly supplied as a story archive must not
+    // route JSON-mode story tools through the SQLite adapter.
+    let mut explicit_story_database = config(&root, "json");
+    let database_path = root.join("database/zh_CN.sqlite");
+    explicit_story_database.storyjson_zip = database_path.clone();
+    explicit_story_database.bundle_root = None;
+    let view = AppHandle::from_config(&explicit_story_database).snapshot();
+    assert!(view.database.is_none());
+    assert_ne!(view.story_zip.as_ref(), Some(&database_path));
+    drop(view);
+
+    // A database renamed as the bundled story ZIP is also excluded.
+    let bundled_story = root.join("bundle/storyjson/zh_CN.zip");
+    std::fs::create_dir_all(bundled_story.parent().unwrap()).unwrap();
+    std::fs::copy(&database_path, &bundled_story).unwrap();
+    explicit_story_database.storyjson_zip = root.join("absent.zip");
+    explicit_story_database.bundle_root = Some(root.join("bundle"));
+    let view = AppHandle::from_config(&explicit_story_database).snapshot();
+    assert!(view.database.is_none());
+    assert_ne!(view.story_zip.as_ref(), Some(&bundled_story));
+    drop(view);
+
     // SQLite must work on a fresh data view with every raw input absent.
     std::fs::rename(root.join("zh_CN"), root.join("raw-hidden")).unwrap();
     std::fs::rename(root.join("storyjson"), root.join("story-hidden")).unwrap();
@@ -107,4 +129,66 @@ fn invalid_backend_exits_before_starting_the_protocol_or_sync() {
         assert!(String::from_utf8_lossy(&output.stderr)
             .contains("PRTS_DATA_BACKEND must be json or sqlite"));
     }
+}
+
+#[tokio::test]
+async fn incomplete_schema_is_rejected_and_previous_generation_is_selected() {
+    use prts_mcp_rust::storage::{database::ActiveDatabase, sqlite::GameDb};
+
+    let root = std::env::temp_dir().join(format!("prts-schema-{}", uuid::Uuid::new_v4()));
+    let fixture =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join(".runtime/fixtures/minimal-gamedata-v2");
+    copy_tree(&fixture.join("zh_CN"), &root.join("zh_CN"));
+    copy_tree(&fixture.join("storyjson"), &root.join("storyjson"));
+    sqlite_fixture::compile(&root);
+
+    let database_dir = root.join("database");
+    let healthy = database_dir.join("zh_CN.sqlite");
+    let expected = calls(&root, "sqlite").await;
+    let previous = ActiveDatabase {
+        file_name: "zh_CN.sqlite".into(),
+        source_version: "fixture".into(),
+        revision: 1,
+        sha256: "a".repeat(64),
+    };
+    std::fs::write(database_dir.join("previous"), previous.encode().unwrap()).unwrap();
+    for (index, corruption) in [
+        "DROP TABLE names",
+        "DROP TABLE story_blocks",
+        "ALTER TABLE names RENAME COLUMN name TO missing_name",
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let mut active = previous.clone();
+        active.file_name = format!("broken-{index}.sqlite");
+        let broken = active.path(&database_dir);
+        std::fs::copy(&healthy, &broken).unwrap();
+        rusqlite::Connection::open(&broken)
+            .unwrap()
+            .execute_batch(corruption)
+            .unwrap();
+        assert!(GameDb::open(&broken).is_err(), "{corruption}");
+
+        let mut explicit = config(&root, "sqlite");
+        explicit.custom_database = Some(broken);
+        assert!(AppHandle::from_config(&explicit)
+            .snapshot()
+            .database
+            .is_none());
+
+        std::fs::write(database_dir.join("active"), active.encode().unwrap()).unwrap();
+        assert_eq!(
+            AppHandle::from_config(&config(&root, "sqlite"))
+                .snapshot()
+                .database
+                .as_ref()
+                .unwrap()
+                .path,
+            healthy,
+            "{corruption}"
+        );
+        assert_eq!(expected, calls(&root, "sqlite").await, "{corruption}");
+    }
+    std::fs::remove_dir_all(root).unwrap();
 }
