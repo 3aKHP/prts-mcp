@@ -6,6 +6,8 @@
 
 2.8.1 基线时的原始分语言更新日志可在 [`ts/v2.8.1` tag](https://github.com/3aKHP/prts-mcp/tree/ts/v2.8.1) 查看（[Python](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/python/CHANGELOG.md) · [TypeScript](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/ts/CHANGELOG.md)），1.7.1 与 1.7.2 的维护记录来自已发布的 [`python/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/python/v1.7.2/python/CHANGELOG.md) 与 [`ts/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/ts/v1.7.2/ts/CHANGELOG.md) 标签。
 
+## [未发布]
+
 ## [3.1.0] - 2026-10-18
 
 - **实验性 SQLite 数据后端（3.1）**：设置 `PRTS_DATA_BACKEND=sqlite` 启用，或通过 `PRTS_DATA_DB` 选择预编译离线 DB。默认仍为 JSON，保留旧路径、数据卷和同步开关；只运行所选后端的游戏数据同步与缓存，安装包备用数据继续为 JSON。计划在 3.2 翻转普通默认值，3.x 持续支持 JSON。
