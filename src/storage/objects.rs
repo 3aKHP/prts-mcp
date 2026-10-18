@@ -27,6 +27,8 @@ fn object_charge(object: &Object) -> usize {
         .unwrap_or(usize::MAX);
     let entries =
         capacity.saturating_mul(size_of::<String>() + size_of::<Value>() + 4 * size_of::<usize>());
+    // Even one-entry IndexMaps allocate a minimum hash table/control group.
+    let entries = entries.saturating_add(4 * size_of::<usize>());
     object.iter().fold(entries, |sum, (key, value)| {
         sum.saturating_add(key.capacity())
             .saturating_add(value_charge(value))
@@ -77,7 +79,8 @@ impl Objects {
             return Ok(Arc::clone(&entry.value));
         }
         let value = Arc::new(compact_objects(load()?));
-        let charge = object_charge(&value);
+        let charge =
+            object_charge(&value).saturating_add(size_of::<Object>() + 2 * size_of::<usize>());
         if charge <= BUDGET {
             let mut used: usize = entries.iter().map(|entry| entry.charge).sum();
             while used.saturating_add(charge) > BUDGET {
@@ -176,5 +179,25 @@ mod tests {
         assert!(weak.upgrade().is_some());
         drop(old);
         assert!(weak.upgrade().is_none());
+    }
+
+    #[test]
+    #[cfg(target_pointer_width = "64")]
+    fn many_small_nested_objects_cannot_escape_the_heap_budget() {
+        let cache = Objects::default();
+        let value = cache
+            .get_or_load("nested", || {
+                Ok(Map::from_iter([(
+                    "event".into(),
+                    serde_json::json!({"infoUnlockDatas": (0..40_000)
+                .map(|_| serde_json::json!({"storyTxt":"x"})).collect::<Vec<_>>()}),
+                )]))
+            })
+            .unwrap();
+        assert_eq!(
+            value["event"]["infoUnlockDatas"].as_array().unwrap().len(),
+            40_000
+        );
+        assert!(cache.entries.lock().unwrap().is_empty());
     }
 }
