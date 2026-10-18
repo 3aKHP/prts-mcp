@@ -23,19 +23,20 @@ const code=`#include <stdint.h>
 #include <assert.h>
 uint8_t *prts_re_compile(const char*,size_t,int,int*,char*,int);
 void prts_re_free(void*);
-int prts_re_exec(const uint8_t*,const uint16_t*,int,int,int*,int*);
+int prts_re_exec(const uint8_t*,const uint16_t*,int,int,int*,int*,int (*)(void*),void*);
 int prts_re_prefix(const uint8_t*,int,uint32_t*,int,int*,int*);
 ${declarations.join('\n')}
 static void check(const char *p,size_t n,const uint16_t *text,int size,int reject,int expected) {
  char error[256]={0}; int length=0;
  uint8_t *bc=prts_re_compile(p,n,18,&length,error,256);
+ if ((bc==NULL)!=reject) fprintf(stderr,"compile mismatch: reject=%d error=%s pattern=%s\\n",reject,error,p);
  assert((bc==NULL)==reject);
  if(!bc) return;
  uint32_t prefix[32]; int fold=0,complete=0;
  int count=prts_re_prefix(bc,length,prefix,32,&fold,&complete);
  assert(count>=0&&count<=32);
  int from=-1,to=-1;
- int matched=prts_re_exec(bc,text,size,0,&from,&to);
+ int matched=prts_re_exec(bc,text,size,0,&from,&to,NULL,NULL);
  assert(matched==expected);
  if(matched) assert(from>=0&&to>=from&&to<=size);
  prts_re_free(bc);

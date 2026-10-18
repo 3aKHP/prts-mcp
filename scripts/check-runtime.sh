@@ -21,8 +21,10 @@ if [[ "${1:-}" == --full ]]; then
   cargo fmt --all -- --check
   cargo clippy --locked --all-targets -- -D warnings
   cargo test --locked
-  cargo build --locked --release --bins
+  cargo test --locked --example package_data
+  cargo build --locked --release --bins --example package_data
   node tools/verify.mjs --all
+  node tools/verify.mjs --all --backend sqlite
   node tools/verify-p8-lifecycle.mjs --images-volume .runtime/fixtures/ts-images-v1
   node tools/check-native-regexp.mjs
 fi

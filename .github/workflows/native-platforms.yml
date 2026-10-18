@@ -1,14 +1,11 @@
 name: Native platforms
 on:
-  push:
-    branches: [develop]
-  pull_request:
   workflow_dispatch:
   workflow_call:
 permissions:
   contents: read
 concurrency:
-  group: native-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  group: native-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-${{ github.run_attempt > 1 && github.run_id || 'checks' }}
   cancel-in-progress: true
 jobs:
   native:
@@ -40,10 +37,13 @@ jobs:
       - name: Configure Windows compiler and SDK
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1
-      - name: Select Windows native C compiler
+      - name: Select Windows compiler and runner temporary storage
         if: runner.os == 'Windows'
         shell: pwsh
-        run: '"CC=clang-cl" >> $env:GITHUB_ENV'
+        run: |
+          "CC=clang-cl" >> $env:GITHUB_ENV
+          "TEMP=$env:RUNNER_TEMP" >> $env:GITHUB_ENV
+          "TMP=$env:RUNNER_TEMP" >> $env:GITHUB_ENV
       - name: Prepare desktop Rust compiler
         if: runner.os != 'Linux'
         run: rustup show
@@ -54,8 +54,10 @@ jobs:
             ~/.cargo/git
             .native-cache
             target
-          key: native-${{ matrix.platform }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml', 'build.rs', 'native/**', 'vendor/**', 'packaging/native/targets.json') }}
-          restore-keys: native-${{ matrix.platform }}-
+          # Start clean after retiring full-debug profiles and the host-only helper.
+          # Keep fallback restores within this generation to avoid carrying both layouts.
+          key: native-v2-${{ matrix.platform }}-${{ hashFiles('Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', 'build.rs', 'native/**', 'vendor/**', 'packaging/native/targets.json', 'tools/native/build.mjs', 'tools/native/common.mjs', 'tools/native/linux-build.sh') }}
+          restore-keys: native-v2-${{ matrix.platform }}-
       - name: Native build, minimum Rust check and native corpus
         run: node tools/native/build.mjs ${{ matrix.platform }}
       - name: Package binaries, notices and audited ABI
@@ -71,7 +73,7 @@ jobs:
           key: npm-bundle-data-${{ hashFiles('packaging/npm/data-release.json') }}
           enableCrossOsArchive: true
       - name: Prepare pinned and validated read-only game data
-        run: node tools/npm/prepare-data.mjs
+        run: node tools/npm/prepare-data.mjs ${{ matrix.platform }}
       - name: Pack shared npm runtime/data and native platform tarballs
         run: node tools/npm/pack.mjs ${{ matrix.platform }}
       - name: Verify real npm install, npx, lockfile and native entry behavior
@@ -112,6 +114,8 @@ jobs:
             artifacts/npm/${{ matrix.platform }}/tarballs/*.tgz
             artifacts/npm/${{ matrix.platform }}/packages.json
             artifacts/npm/${{ matrix.platform }}/npm-evidence.json
+            artifacts/npm/${{ matrix.platform }}/npm-timings.json
+            artifacts/npm/${{ matrix.platform }}/npm-logs/*timing.json
             artifacts/native/${{ matrix.platform }}/npm-runtime-evidence.json
           retention-days: 14
       - name: Retain installable archive and evidence (no publication)
@@ -173,3 +177,16 @@ jobs:
           path: artifacts/release/
           compression-level: 0
           retention-days: 14
+
+  complete:
+    name: Native verification gate
+    if: always()
+    needs: [native, collect]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require all platforms and the complete candidate snapshot
+        env:
+          NATIVE_RESULT: ${{ needs.native.result }}
+          COLLECT_RESULT: ${{ needs.collect.result }}
+        run: test "$NATIVE_RESULT" = success && test "$COLLECT_RESULT" = success

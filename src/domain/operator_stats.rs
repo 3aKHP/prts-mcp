@@ -11,7 +11,7 @@ use serde_json::{json, Map, Value};
 
 use crate::app::DataView;
 use crate::domain::messages;
-use crate::domain::operator::{character_table, resolve_char_id};
+use crate::domain::operator::{operator_not_found, resolve_char_id};
 use crate::text::numbers::{is_js_integer, js_number_to_string, round_half_away};
 
 /// Curated panel field set (raw key, Chinese label), in payload order.
@@ -173,16 +173,14 @@ pub fn build_operator_stats(
         return Err(messages::excel_missing_message("干员", excel_path));
     }
     let char_id = resolve_char_id(view, name)?;
-    let table = character_table(view)?;
+    let table = crate::domain::operator::character_for(view, char_id.as_deref())?;
     let info = char_id
         .as_deref()
         .and_then(|id| table.as_object().and_then(|m| m.get(id)))
         .cloned()
         .unwrap_or_else(|| json!({}));
     let Some(char_id) = char_id else {
-        return Err(format!(
-            "未找到干员 '{name}'。请使用游戏内中文名称（如'阿米娅'）。"
-        ));
+        return Err(operator_not_found(name));
     };
     let phases = valid_phases(&info);
     if phases.is_empty() {

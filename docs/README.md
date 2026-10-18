@@ -49,7 +49,7 @@ English readers: the root [README](../README.md#english) and [Security Policy](.
   - [dev/ENVIRONMENT.md](dev/ENVIRONMENT.md)：跨平台开发环境搭建与本地验证命令（Linux/WSL、Windows、macOS）。
   - [dev/STYLE.md](dev/STYLE.md)：Rust 架构分层、代码规范、CHANGELOG 编写规则与已知工程陷阱。
   - [dev/DOCUMENTING.md](dev/DOCUMENTING.md)：公开文档写作、角色划分与审查规范。
-  - [dev/WORKFLOW.md](dev/WORKFLOW.md)：变更分级、双轨 Code Review 机制与最小验证矩阵。
+  - [dev/WORKFLOW.md](dev/WORKFLOW.md)：变更分级、双轨 Code Review、普通与全量 CI 策略及最小验证矩阵。
   - [dev/VERSIONING.md](dev/VERSIONING.md)：版本号语义与向后兼容性承诺。
   - [dev/LTS.md](dev/LTS.md)：`lts/1.7` 与 `lts/2.8` 两条长期支持分支的维护规则。
   - [dev/E2E.md](dev/E2E.md)：全量 E2E 真机测试流程。
@@ -57,7 +57,7 @@ English readers: the root [README](../README.md#english) and [Security Policy](.
   - [dev/NATIVE-PLATFORMS.md](dev/NATIVE-PLATFORMS.md)：五平台预编译原生归档包的 ABI 基线、构建与验证说明。
   - [dev/NPM-DISTRIBUTION.md](dev/NPM-DISTRIBUTION.md)：Rust 版 npm 9 包架构、Node 启动桥与打包验证。
   - [dev/DOCKER-DISTRIBUTION.md](dev/DOCKER-DISTRIBUTION.md)：Rust 版 Docker 镜像构建、运行权限与数据卷验证。
-  - [dev/RELEASE-CANDIDATES.md](dev/RELEASE-CANDIDATES.md)：候选版本（alpha/beta/rc）跨平台汇总、发布门禁与渠道保护。
+  - [dev/RELEASE-CANDIDATES.md](dev/RELEASE-CANDIDATES.md)：跨平台汇总、GitHub 下载附件与验证资料、发布门禁与渠道保护。
   - [dev/RELEASE-CD-RECOVERY.md](dev/RELEASE-CD-RECOVERY.md)：CD 发布工作流（`release-rust.yml`）异常中断时的幂等重跑与恢复手册。
 
 ---

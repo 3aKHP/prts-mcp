@@ -45,6 +45,12 @@ pub fn build_character_appearances(
     if max_events > 200 {
         return Err("max_events 必须 <= 200。".to_string());
     }
+    if crate::storage::sqlite::is_database(zip_path) {
+        let db = crate::storage::sqlite::GameDb::open(zip_path)?;
+        if db.derived_ready() {
+            return super::sqlite_search::appearances(&db, name, scope, max_events);
+        }
+    }
     let store = ZipStore::new(zip_path);
     let index = story_search_index(zip_path, &store)?;
     if let Some(scope) = scope {
@@ -137,6 +143,12 @@ pub fn render_character_appearances(data: &Value) -> String {
 
 /// `buildSpeakersInEventFromStore`: Err is the thrown message.
 pub fn build_speakers_in_event(zip_path: &Path, event_id: &str) -> Result<Value, String> {
+    if crate::storage::sqlite::is_database(zip_path) {
+        let db = crate::storage::sqlite::GameDb::open(zip_path)?;
+        if db.derived_ready() {
+            return super::sqlite_search::speakers(&db, event_id);
+        }
+    }
     let store = ZipStore::new(zip_path);
     let index = story_search_index(zip_path, &store)?;
     if !index.event_ids.contains(event_id) {

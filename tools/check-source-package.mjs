@@ -10,11 +10,17 @@ const topLevel = new Set([
   "Cargo.toml", "Cargo.toml.orig", "Cargo.lock", "build.rs", "rust-toolchain.toml",
   "LICENSE", "NOTICE", "README.md", "CHANGELOG.md", ".cargo_vcs_info.json",
 ]);
-const allowed = (name) => topLevel.has(name) || /^(src|native|vendor)\//.test(name) || name === "contracts/data-declarations.json";
+const compilerFiles = [
+  "examples/data_compiler.rs", "examples/data_compiler/derive.rs", "examples/data_compiler/entities.rs",
+  "examples/data_compiler/sources.rs", "examples/data_compiler/tests.rs",
+];
+const contractFiles = ["contracts/data-declarations.json", "contracts/sqlite-schema-v1.sql"];
+const includedFiles = new Set([...compilerFiles, ...contractFiles]);
+const allowed = (name) => topLevel.has(name) || /^(src|native|vendor)\//.test(name) || includedFiles.has(name);
 const extra = names.filter((name) => !allowed(name));
 if (extra.length) throw new Error(`Unexpected source package paths: ${extra.join(", ")}`);
 for (const required of ["Cargo.lock", "build.rs", "src/bin/prts-mcp.rs", "native/regexp.c", "vendor/quickjs-regexp/libregexp.c",
-  "vendor/quickjs-regexp/libunicode.c", "vendor/quickjs-regexp/NOTICES.txt", "contracts/data-declarations.json", "LICENSE", "NOTICE"]) {
+  "vendor/quickjs-regexp/libunicode.c", "vendor/quickjs-regexp/NOTICES.txt", ...includedFiles, "LICENSE", "NOTICE"]) {
   if (!names.includes(required)) throw new Error(`Required source file missing: ${required}`);
 }
 console.log(`SOURCE_PACKAGE_FILES_PASS: ${names.length} files; root include allowlist excludes validation caches`);

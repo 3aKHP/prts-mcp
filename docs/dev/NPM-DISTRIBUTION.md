@@ -33,7 +33,7 @@
 ## 2. 内置备用数据与优先级
 
 1. **独立版本固定**：[`packaging/npm/data-release.json`](../../packaging/npm/data-release.json) 固定了发行备用数据所使用的上游 `arknights-data-pipeline` Release、manifest 与三个 ZIP 的 SHA-256（与开发测试专用的 `contracts/validation-assets.json` 互不干扰）。
-2. **数据准备与校验**：`node tools/npm/prepare-data.mjs` 下载并校验三个上游归档后，调用 `cargo run --locked --example package_data` 执行安全解压、必需表格校验、剧情引用检查，并生成 `BUNDLE.json` 与 `SHA256SUMS`。
+2. **数据准备与校验**：`node tools/npm/prepare-data.mjs` 下载并校验三个上游归档后，调用 `cargo run --locked --release --example package_data` 执行安全解压、必需表格校验、剧情引用检查，并生成 `BUNDLE.json` 与 `SHA256SUMS`。原生 CI 使用 `node tools/npm/prepare-data.mjs <platform>`，执行同一次原生 release 构建生成的内部 `package_data` 工具，避免再次编译；JSON 校验使用带缓冲的 ZIP 读取，仍完整解析每个 JSON 并检查归档 CRC。
 3. **运行时优先级**：启动桥通过内部参数将 `@3akhp/prts-mcp-data` 的路径传给 Rust 进程作为只读备用源。当用户数据目录已有完整数据时，服务优先读取用户数据；后台同步始终写入可写的用户数据目录，绝不修改 `node_modules` 内的备用数据包。
 
 ---
@@ -60,3 +60,4 @@ node tools/npm/probe.mjs linux-x64
 
 - **`tools/npm/pack.mjs`**：校验 `artifacts/native/<platform>/` 与备用数据的完整性，在 `artifacts/npm/<platform>/` 下生成当前平台的 5 个 `.tgz` tarball（`prts-mcp`、`prts-mcp-ts`、`runtime`、`data` 及当前 `<platform>` 包），并写入 `packages.json`。
 - **`tools/npm/probe.mjs`**：在本地启动一个隔离的只读回环 npm registry，真实执行 `npm install -g`、`npx` 与 `npm ci`，全面验证双入口命令、离线备用数据查询、stdio/HTTP 双协议时代、信号退出与 Windows 父进程联动退出，以及缺失 `optionalDependencies` 或版本不匹配时的错误诊断。
+- CI 的 npm 工件同时保留 `npm-timings.json` 和 npm 自身的 `*-timing.json`，分别记录安装、校验、入口探测、清理与 npm 内部阶段的耗时。手动运行 `Npm installation diagnostics` 工作流时，提供 `artifact-run`（含未过期 `npm-windows-x64` 工件的已完成运行 ID），可复用同一数据 tarball 对照 Windows/Linux 的冷安装、热缓存安装及直接解包；Windows 还会在同一 runner 上按工作临时目录、系统临时目录、工作临时目录的顺序重复测量。

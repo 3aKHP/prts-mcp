@@ -37,11 +37,17 @@ node tools/release/probe-native.mjs linux-x64
    - 校验 `candidate-<五平台>`、`npm-<五平台>` 与 `docker-<两Linux架构>` 全部来自同一个干净的 Git Commit SHA 与同一个 `Cargo.toml` 版本号；
    - 校验每份归档、tarball 与 Docker 镜像的 SHA-256 均与其运行验证回执（`*-evidence.json`）严格绑定；
    - 校验 5 个平台各自生成的共享 npm 包（`prts-mcp`、`prts-mcp-ts`、`@3akhp/prts-mcp-runtime`、`@3akhp/prts-mcp-data`）在归一化可执行权限位与 gzip 头后字节完全一致。
-2. **汇总输出（共 44 项 GitHub Release 资产）**：
+2. **内部完整快照**：
    - 5 个平台的原生候选归档包（`.tar.gz` / `.zip`）及其 `.sha256`；
-   - 9 个唯一 npm tarball（`.tgz`）及其 `.sha256`；
+   - 9 个唯一 npm tarball（`.tgz`）；
    - 2 个 Linux 架构的 Docker 镜像归档（`.docker.tar.gz`）及其 `.sha256`；
    - 各平台构建/运行验证回执、顶层 `RELEASE.json` 与总 `SHA256SUMS`。
+3. **公开附件（`github/`，共 7 项）**：
+   - 5 个原生安装包，文件名为 `prts-mcp-<version>-<platform>.tar.gz`（Windows 为 `.zip`）。公开文件名移除 `-candidate`，macOS 使用 `macos-arm64` / `macos-x64`；归档字节与内部候选包一致，内部平台标识与 npm 包名保持 `darwin-*`。
+   - `prts-mcp-<version>-release-metadata.zip`，包含构建/运行验证 JSON、原始 `RELEASE.json`、原始完整快照校验清单，以及记录公开文件名与候选文件名、哈希对应关系的 `PUBLIC-ASSETS.json`。
+   - `SHA256SUMS`，覆盖上述 5 个安装包与 metadata ZIP。顶层完整快照的 `SHA256SUMS` 还覆盖整个 `github/` 子目录；ZIP 内保留加入公开附件前的校验清单，避免循环哈希。
+
+公开附件由汇总阶段使用 `zip` 预先生成。npm tarball 仅经 npm 分发，Docker 镜像经 GHCR 分发；二者仍保留在内部快照中供发布与重试使用。
 
 汇总生成的 `rust-release-candidate` 工件作为后续所有发布任务的唯一输入源；后续发布任务只读取并复核该工件，绝不重新编译或重新打包。
 
@@ -79,7 +85,7 @@ node tools/release/probe-native.mjs linux-x64
 2. **GHCR（双架构容器镜像）**：
    - 加载经过验证的 `linux-x64` 与 `linux-arm64` 镜像归档，校验 Image ID 与架构后推送单架构标签，并合成多架构 manifest（预发布为 `:3.x.y-...` 与 `:next`；正式版为 `:3.x.y`、`:3` 与 `:latest`，不更新 `:next`）。
 3. **GitHub Releases**：
-   - 上传 `artifacts/release/` 中的全部 44 项资产与校验清单；预发布版本自动标记为 `--prerelease --latest=false`，正式版以 `--latest=true` 发布。
-   - 发行说明直接取自中英文 `CHANGELOG` 中与发布版本精确对应的段落，并附精确版本的安装命令和迁移指南链接；发布分支须先将 `Unreleased` 更新为对应版本及日期。
+   - 仅上传 `artifacts/release/github/` 中预生成的 7 项附件；预发布版本自动标记为 `--prerelease --latest=false`，正式版以 `--latest=true` 发布。
+   - 发行说明直接取自中英文 `CHANGELOG` 中与发布版本精确对应的段落，并附平台下载表、精确版本的安装命令和迁移指南链接；发布分支须先将 `Unreleased` 更新为对应版本及日期。
 
 如果在发布过程中遇到网络抖动、registry 传播延迟或单个渠道任务失败，请勿重新打 tag 或全量重跑构建，应直接按照 [`RELEASE-CD-RECOVERY.md`](RELEASE-CD-RECOVERY.md) 在原始 workflow run 上重跑失败的发布任务（`Re-run failed jobs`）。

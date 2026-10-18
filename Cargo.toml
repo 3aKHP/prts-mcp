@@ -1,13 +1,13 @@
 [package]
 name = "prts-mcp"
-version = "3.0.0"
+version = "3.1.0"
 edition = "2021"
 rust-version = "1.89"
 publish = false
 description = "Arknights fan-creation MCP server with native Rust runtime"
 repository = "https://github.com/3aKHP/prts-mcp"
 readme = "README.md"
-include = ["/Cargo.toml", "/Cargo.lock", "/build.rs", "/rust-toolchain.toml", "/src/**", "/native/**", "/vendor/**", "/contracts/data-declarations.json", "/LICENSE", "/NOTICE", "/README.md", "/CHANGELOG.md"]
+include = ["/Cargo.toml", "/Cargo.lock", "/build.rs", "/rust-toolchain.toml", "/src/**", "/native/**", "/vendor/**", "/contracts/data-declarations.json", "/contracts/sqlite-schema-v1.sql", "/examples/data_compiler.rs", "/examples/data_compiler/**", "/LICENSE", "/NOTICE", "/README.md", "/CHANGELOG.md"]
 license = "MIT"
 
 [lib]
@@ -43,9 +43,6 @@ sha2 = "0.10"
 async-trait = "0.1"
 filetime = "0.2"
 
-# XML/HTML parsing for the Wiki template renderer (P5).
-quick-xml = "0.38"
-
 # SSE hold streams for GET /mcp (session channel with no server push).
 tokio-stream = { version = "0.1", features = ["sync"] }
 uuid = { version = "1", features = ["v4"] }
@@ -57,6 +54,8 @@ thiserror = "2"
 
 # Mandatory-literal scanning; native regexp sources are pinned under vendor/.
 memchr = "2"
+rusqlite = { version = "0.40.2", features = ["bundled"] }
+flate2 = "1"
 
 [build-dependencies]
 cc = "1"
@@ -71,6 +70,10 @@ default = []
 # product uses the thin adapter in src/protocol instead. Kept as a
 # dev-dependency so the selection evidence stays reproducible.
 rmcp = { version = "3.5.1", default-features = false, features = ["server", "transport-io", "transport-streamable-http-server", "transport-streamable-http-server-session", "macros", "schemars"] }
+
+[profile.dev]
+debug = "line-tables-only"
+incremental = true
 
 [profile.release]
 debug = false

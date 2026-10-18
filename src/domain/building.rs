@@ -7,8 +7,9 @@ use serde_json::{json, Value};
 
 use crate::app::DataView;
 use crate::domain::messages;
+use crate::domain::operator::phase_zh;
 use crate::storage::projection::Projection;
-use crate::storage::{DirectoryStore, JsonStore};
+use crate::storage::JsonStore;
 
 const ROOM_ZH: &[(&str, &str)] = &[
     ("CONTROL", "控制中枢"),
@@ -22,28 +23,16 @@ const ROOM_ZH: &[(&str, &str)] = &[
     ("MEETING", "会客室"),
 ];
 
-fn phase_zh(phase: &str) -> String {
-    match phase {
-        "PHASE_0" => "精英0".to_string(),
-        "PHASE_1" => "精英1".to_string(),
-        "PHASE_2" => "精英2".to_string(),
-        other => other.to_string(),
-    }
-}
-
 /// Whether building_data.json exists in the effective excel store.
 pub fn has_building_data(view: &DataView) -> bool {
-    view.excel_root
-        .as_ref()
-        .map(DirectoryStore::new)
+    view.excel_store()
         .is_some_and(|store| store.exists("building_data.json").unwrap_or(false))
 }
 
 fn building_table(view: &DataView) -> Result<Arc<Value>, String> {
-    let Some(root) = view.excel_root.clone() else {
+    let Some(store) = view.excel_store() else {
         return Err("__missing__基建技能".to_string());
     };
-    let store = DirectoryStore::new(&root);
     view.datasets.get_or_load_counted("building:building_table", move || {
         if !store.exists("building_data.json").unwrap_or(false) {
             let shown = store
@@ -83,7 +72,34 @@ fn phase_rank(buff_data: &Value) -> i64 {
 /// An operator's base skills, highest phase per buff slot (payload field
 /// order: name, room, description, unlock).
 pub fn building_skills_for(view: &DataView, char_id: &str) -> Result<Vec<Value>, String> {
-    let table = building_table(view)?;
+    let table = if let Some(db) = view.database() {
+        let chars = db.entity_map("building_data", "chars", Some(char_id), None)?;
+        let mut buffs = serde_json::Map::new();
+        if let Some(entry) = chars.get(char_id) {
+            for slot in entry
+                .get("buffChar")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+            {
+                for data in slot
+                    .get("buffData")
+                    .and_then(Value::as_array)
+                    .into_iter()
+                    .flatten()
+                {
+                    if let Some(id) = data.get("buffId").and_then(Value::as_str) {
+                        if let Some(value) = db.entity("building_data", "buffs", id)? {
+                            buffs.insert(id.into(), value);
+                        }
+                    }
+                }
+            }
+        }
+        Arc::new(json!({"chars":chars,"buffs":buffs}))
+    } else {
+        building_table(view)?
+    };
     if !table.is_object() {
         return Err("building_data.json 顶层不是 JSON 对象".to_string());
     }
@@ -231,4 +247,21 @@ pub fn render_building_skill_search(data: &Value) -> String {
         ));
     }
     lines.join("\n")
+}
+
+pub fn sqlite_export(view: &DataView) -> Result<Vec<(String, Value)>, String> {
+    Ok(building_skill_records(view)?
+        .iter()
+        .map(|r| {
+            (
+                format!(
+                    "{} {} {}",
+                    r["skill"].as_str().unwrap_or(""),
+                    r["room"].as_str().unwrap_or(""),
+                    r["text"].as_str().unwrap_or("")
+                ),
+                r.clone(),
+            )
+        })
+        .collect())
 }

@@ -44,7 +44,7 @@ node tools/native/pack.mjs linux-x64
 node tools/native/probe.mjs linux-x64
 ```
 
-In CI, [`.github/workflows/native-platforms.yml`](../../.github/workflows/native-platforms.yml) executes all five platform builds and probes on native runners without requiring publishing credentials.
+In CI, [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) calls [`.github/workflows/native-platforms.yml`](../../.github/workflows/native-platforms.yml) for PRs targeting `main` or carrying the `ci:full` label. The native workflow executes all five platform builds and probes without requiring publishing credentials, and remains available for manual runs and release workflow calls. Other PRs use the ordinary Linux checks described in [WORKFLOW.md](WORKFLOW.md).
 
 ### What the Build and Probe Scripts Verify
 
@@ -67,4 +67,4 @@ In CI, [`.github/workflows/native-platforms.yml`](../../.github/workflows/native
   - `LICENSE`, `NOTICE`, and `licenses/` (upstream license files for locked Cargo dependencies, Rust standard library notices, and QuickJS regexp notices);
   - `THIRD-PARTY.json`: machine-readable dependency license inventory;
   - `BUILD.json` and `ABI.json`: source commit SHA, compiler version, target baseline, and audited shared-library imports;
-  - `SHA256SUMS` (covering all files inside the archive) and an external `.sha256` sidecar file covering the compressed `.tar.gz` / `.zip` archive itself.
+  - `SHA256SUMS` covers all files inside the archive. Internal candidate builds also retain an external `.sha256` sidecar. Public GitHub downloads use a single `SHA256SUMS` for the five native archives and the release metadata ZIP; see [`RELEASE-CANDIDATES.md`](RELEASE-CANDIDATES.md) for public filenames and metadata contents.

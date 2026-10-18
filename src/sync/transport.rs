@@ -66,6 +66,25 @@ pub trait Transport: Send + Sync {
         timeout_ms: u64,
     ) -> Result<DownloadStats, TransportError>;
 
+    /// Database downloads stop before writing bytes beyond the manifest.
+    /// Fakes may use this fallback; the network implementation enforces the
+    /// limit before each write.
+    async fn download_limited(
+        &self,
+        url: &str,
+        dest: &Path,
+        timeout_ms: u64,
+        limit: u64,
+    ) -> Result<DownloadStats, TransportError> {
+        let stats = self.download(url, dest, timeout_ms).await?;
+        if stats.bytes > limit {
+            return Err(TransportError::Network(
+                "download exceeds declared length".into(),
+            ));
+        }
+        Ok(stats)
+    }
+
     /// `parseMirrors()` at construction time — the blind-download fallback
     /// only exists when mirrors are configured.
     fn mirrors(&self) -> Vec<String>;
@@ -174,7 +193,25 @@ impl Transport for ReqwestTransport {
         dest: &Path,
         timeout_ms: u64,
     ) -> Result<DownloadStats, TransportError> {
+        self.download_limited(url, dest, timeout_ms, u64::MAX).await
+    }
+
+    async fn download_limited(
+        &self,
+        url: &str,
+        dest: &Path,
+        timeout_ms: u64,
+        limit: u64,
+    ) -> Result<DownloadStats, TransportError> {
         let mut response = self.consume(url, timeout_ms).await?;
+        if response
+            .content_length()
+            .is_some_and(|length| length > limit)
+        {
+            return Err(TransportError::Network(
+                "download exceeds declared length".into(),
+            ));
+        }
         if let Some(parent) = dest.parent() {
             std::fs::create_dir_all(parent).map_err(|e| TransportError::Network(e.to_string()))?;
         }
@@ -192,11 +229,16 @@ impl Transport for ReqwestTransport {
                 .await
                 .map_err(|e| TransportError::Network(e.to_string()))?;
             let Some(chunk) = chunk else { break };
+            bytes = bytes
+                .checked_add(chunk.len() as u64)
+                .filter(|bytes| *bytes <= limit)
+                .ok_or_else(|| {
+                    TransportError::Network("download exceeds declared length".into())
+                })?;
             file.write_all(&chunk)
                 .await
                 .map_err(|e| TransportError::Network(e.to_string()))?;
             hasher.update(&chunk);
-            bytes += chunk.len() as u64;
         }
         file.flush()
             .await

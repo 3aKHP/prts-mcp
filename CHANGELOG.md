@@ -6,6 +6,18 @@ This file records user-visible changes across PRTS-MCP implementations: Python a
 
 The original per-implementation changelogs at the 2.8.1 baseline remain available on the [`ts/v2.8.1` tag](https://github.com/3aKHP/prts-mcp/tree/ts/v2.8.1) ([Python](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/python/CHANGELOG.md) · [TypeScript](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/ts/CHANGELOG.md)), and the 1.7.1/1.7.2 maintenance records come from the published [`python/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/python/v1.7.2/python/CHANGELOG.md) and [`ts/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/ts/v1.7.2/ts/CHANGELOG.md) tags.
 
+## [3.1.0] - 2026-10-18
+
+- **Experimental SQLite data backend (3.1)**: opt in with `PRTS_DATA_BACKEND=sqlite`, or select a precompiled offline file with `PRTS_DATA_DB`. JSON remains the default, including legacy paths, volumes and sync switches. Only the selected backend runs game-data sync and caches; installed fallback data remains JSON. A default switch is planned for 3.2, with JSON support retained throughout 3.x.
+
+### Changed
+
+- **GitHub Release downloads**: publish five native archives with concise platform filenames, one release metadata ZIP, and a shared `SHA256SUMS`. npm packages remain available from npm and Docker images from GHCR.
+
+### Fixed
+
+- **SQLite pointer recovery**: repair a malformed active pointer when the verified previous database already matches the latest release, without downloading it again.
+
 ## [3.0.0] - 2026-10-16
 
 Implementation: Rust.

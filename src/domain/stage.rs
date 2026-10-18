@@ -12,7 +12,7 @@ use serde_json::{json, Map, Value};
 use crate::app::DataView;
 use crate::domain::messages;
 use crate::storage::projection::Projection;
-use crate::storage::{DirectoryStore, JsonStore};
+use crate::storage::JsonStore;
 use crate::text::js_compat::compare_ids;
 use crate::tools::output::ToolOutcome;
 
@@ -88,19 +88,16 @@ fn get_str<'a>(entry: &'a Value, key: &str) -> Option<&'a str> {
 // ---------------------------------------------------------------------------
 
 fn has_stage_data(view: &DataView) -> bool {
-    view.excel_root
-        .as_ref()
-        .map(DirectoryStore::new)
+    view.excel_store()
         .is_some_and(|store| store.exists(STAGE_FILE).unwrap_or(false))
 }
 
 /// The stage mapping (`getStageTable`); Err carries the TS loader
 /// wording (`关卡数据文件不存在：stage_table.json` / `stage_table.json 格式异常`).
 pub fn stage_table(view: &DataView) -> Result<Arc<Map<String, Value>>, String> {
-    let Some(root) = view.excel_root.clone() else {
+    let Some(store) = view.excel_store() else {
         return Err(format!("关卡数据文件不存在：{STAGE_FILE}"));
     };
-    let store = DirectoryStore::new(&root);
     view.datasets.get_or_load_counted(
         "stage:stage_table",
         move || {
@@ -142,10 +139,9 @@ fn zone_table(view: &DataView) -> Result<Arc<Option<Map<String, Value>>>, String
     let cached = view.datasets.get_or_load_counted(
         "stage:zone_table",
         || {
-            let Some(root) = view.excel_root.clone() else {
+            let Some(store) = view.excel_store() else {
                 return Ok(None);
             };
-            let store = DirectoryStore::new(&root);
             if !store.exists(ZONE_FILE).unwrap_or(false) {
                 return Ok(None);
             }
@@ -781,6 +777,21 @@ pub fn stage_available(view: &DataView) -> bool {
     has_stage_data(view)
 }
 
+pub fn sqlite_export(view: &DataView) -> Result<Vec<(String, Value)>, String> {
+    let stages = stages_map(view)?;
+    let zones = zone_table(view).ok();
+    let zones = zones.as_deref().and_then(Option::as_ref);
+    Ok(stage_search_records(view)?
+        .iter()
+        .map(|r| {
+            (
+                r.search_text.clone(),
+                stage_search_entry(&stages[&r.stage_id], &r.stage_id, zones),
+            )
+        })
+        .collect())
+}
+
 #[cfg(test)]
 mod cache_tests {
     use super::*;
@@ -795,6 +806,7 @@ mod cache_tests {
             levels_root: None,
             story_zip: None,
             datasets: Arc::new(crate::domain::datasets::Datasets::new()),
+            database: None,
         };
         std::fs::write(&file, r#"{"stages":null}"#).unwrap();
         assert_eq!(stages_map(&view).unwrap_err(), "stage_table.json 格式异常");

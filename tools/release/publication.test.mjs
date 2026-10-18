@@ -1,17 +1,19 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { mkdtempSync,mkdirSync,writeFileSync,readFileSync,cpSync,rmSync,existsSync } from 'node:fs';
+import { mkdtempSync,mkdirSync,writeFileSync,readFileSync,cpSync,rmSync,existsSync,readdirSync,utimesSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join,dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync,spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import { prepareGithubAssets, githubAssetNames, nativeArchives } from './github-assets.mjs';
+import { verifyExactInventory } from '../docker/inventory.mjs';
 const project=fileURLToPath(new URL('../../',import.meta.url));
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 function fixture(mode='fresh',version='3.0.0-alpha.1') {
   const root=mkdtempSync(join(tmpdir(),'prts-publish-test-'));
   const put=(path,body)=>{mkdirSync(dirname(join(root,path)),{recursive:true});writeFileSync(join(root,path),body);};
-  for(const file of ['tools/npm/common.mjs','tools/docker/inventory.mjs','tools/release/common.mjs','tools/release/verify-snapshot.mjs','tools/release/publish-npm.mjs','tools/release/verify-npm-tags.mjs','tools/release/publish-docker.mjs','tools/release/publish-github.mjs','tools/release/release-notes.mjs','packaging/native/targets.json','packaging/npm/data-release.json']){
+  for(const file of ['tools/npm/common.mjs','tools/docker/inventory.mjs','tools/release/common.mjs','tools/release/verify-snapshot.mjs','tools/release/publish-npm.mjs','tools/release/verify-npm-tags.mjs','tools/release/publish-docker.mjs','tools/release/publish-github.mjs','tools/release/release-notes.mjs','tools/release/github-assets.mjs','packaging/native/targets.json','packaging/npm/data-release.json']){
     mkdirSync(dirname(join(root,file)),{recursive:true});cpSync(join(project,file),join(root,file));
   }
   put('Cargo.toml',`[package]\nname = "prts-mcp"\nversion = "${version}"\n`);
@@ -24,15 +26,24 @@ function fixture(mode='fresh',version='3.0.0-alpha.1') {
   const names=[...Object.keys(targets).map(id=>`@3akhp/prts-mcp-${id}`),'@3akhp/prts-mcp-data','@3akhp/prts-mcp-runtime','prts-mcp','prts-mcp-ts'];
   const files=[],add=(filename,bytes,kind='evidence')=>{put('artifacts/release/'+filename,bytes);files.push({filename,sha256:hash(bytes),kind});};
   const packages=names.map((name,i)=>{const filename=`pkg-${i}.tgz`,body=`fixture-${name}`;add(filename,body,'npm');return{name,version,filename,sha256:hash(body),integrity:'sha512-fixture'};});
+  for(const {platform,sourceFilename} of nativeArchives(version)){
+    add(sourceFilename,`verified native ${platform}`,'native-candidate');
+    add(sourceFilename+'.sha256',hash(`verified native ${platform}`)+'  '+sourceFilename+'\n','checksum');
+    for(const suffix of ['candidate','candidate-evidence','npm-evidence'])add(`${platform}-${suffix}.json`,JSON.stringify({version,commit,platform}));
+  }
   for(const id of ['linux-x64','linux-arm64']){
     add(`${id}-image.json`,JSON.stringify({commit,image:`local:${id}`,imageId:`sha256:${id}`}));
-    add(`prts-mcp-${version}-${id}.docker.tar.gz`,'mock verified image');
+    const archive=`prts-mcp-${version}-${id}.docker.tar.gz`;
+    add(archive,'mock verified image','docker');
+    add(archive+'.sha256',hash('mock verified image')+'  '+archive+'\n','checksum');
+    add(`${id}-docker-evidence.json`,JSON.stringify({version,commit,platform:id}));
   }
   const manifest={schema:'prts-mcp-release/v1',version,commit,platforms:Object.keys(targets).map(platform=>({platform})),packages,files};
   put('artifacts/release/RELEASE.json',JSON.stringify(manifest));
   put('artifacts/release/SHA256SUMS',[...files.map(f=>`${f.sha256}  ${f.filename}`),`${hash(JSON.stringify(manifest))}  RELEASE.json`].join('\n')+'\n');
+  prepareGithubAssets(join(root,'artifacts/release'),manifest);
   const mock=join(root,'mock'),log=join(root,'commands.jsonl');mkdirSync(mock);
-  const program=`#!${process.execPath}\nconst fs=require('node:fs');const args=process.argv.slice(2),name=require('node:path').basename(process.argv[1]);fs.appendFileSync(process.env.TEST_COMMAND_LOG,JSON.stringify({name,args})+'\\n');const mode=process.env.TEST_MODE;\nif(name==='npm'&&args[0]==='dist-tag'&&mode==='disttag-forbidden'){console.error('HTTP 403: dist-tag permission denied');process.exit(1);}\nif(name==='npm'&&args[0]==='dist-tag'&&args[1]==='rm'&&args[3]==='latest'){console.error('HTTP 400: latest is required');process.exit(1);}\nif(name==='gh'){if(args[0]==='api'){if(mode==='partial')console.log(JSON.stringify({tag_name:'v3.0.0-alpha.1',prerelease:true,assets:[]}));else{console.error('HTTP 404');process.exit(1);}}}\nif(name==='docker'){if(args[0]==='pull'){if(mode==='conflict'||mode==='wrong-index')process.exit(0);console.error('manifest unknown');process.exit(1);}if(args[0]==='image'){const id=args[2].includes('arm64')?'linux-arm64':'linux-x64';console.log(JSON.stringify([{Id:args[2].startsWith('ghcr.io')&&mode==='conflict'?'sha256:wrong':'sha256:'+id,Architecture:id==='linux-arm64'?'arm64':'amd64'}]));}if(args[0]==='buildx'&&args[2]==='inspect'){if(args.includes('--format'))console.log('sha256:'+(args[3].includes('arm64')?'arm64':'amd64'));else{const state=process.env.TEST_STATE;if(!fs.existsSync(state)&&mode!=='wrong-index'){console.error('manifest unknown');process.exit(1);}console.log(JSON.stringify({manifests:[{digest:'sha256:amd64',platform:{os:'linux',architecture:mode==='wrong-index'?'arm64':'amd64'}},{digest:'sha256:arm64',platform:{os:'linux',architecture:mode==='wrong-index'?'amd64':'arm64'}}]}));}}if(args[0]==='buildx'&&args[2]==='create')fs.writeFileSync(process.env.TEST_STATE,'yes');}\n`;
+  const program=`#!${process.execPath}\nconst fs=require('node:fs');const args=process.argv.slice(2),name=require('node:path').basename(process.argv[1]);fs.appendFileSync(process.env.TEST_COMMAND_LOG,JSON.stringify({name,args})+'\\n');const mode=process.env.TEST_MODE;\nif(name==='npm'&&args[0]==='dist-tag'&&mode==='disttag-forbidden'){console.error('HTTP 403: dist-tag permission denied');process.exit(1);}\nif(name==='npm'&&args[0]==='dist-tag'&&args[1]==='rm'&&args[3]==='latest'){console.error('HTTP 400: latest is required');process.exit(1);}\nif(name==='gh'){if(args[0]==='api'){if(mode==='partial'||mode.startsWith('github-')){const path=require('node:path'),dir=path.join(process.cwd(),'artifacts/release/github');const assets=mode==='partial'?[]:fs.readdirSync(dir).map(name=>({name,browser_download_url:'data:application/octet-stream;base64,'+(mode==='github-conflict'?Buffer.from('conflict'):fs.readFileSync(path.join(dir,name))).toString('base64')}));console.log(JSON.stringify({tag_name:process.env.GITHUB_REF.slice(10),prerelease:process.env.GITHUB_REF.includes('-'),assets}));}else{console.error('HTTP 404');process.exit(1);}}}\nif(name==='docker'){if(args[0]==='pull'){if(mode==='conflict'||mode==='wrong-index')process.exit(0);console.error('manifest unknown');process.exit(1);}if(args[0]==='image'){const id=args[2].includes('arm64')?'linux-arm64':'linux-x64';console.log(JSON.stringify([{Id:args[2].startsWith('ghcr.io')&&mode==='conflict'?'sha256:wrong':'sha256:'+id,Architecture:id==='linux-arm64'?'arm64':'amd64'}]));}if(args[0]==='buildx'&&args[2]==='inspect'){if(args.includes('--format'))console.log('sha256:'+(args[3].includes('arm64')?'arm64':'amd64'));else{const state=process.env.TEST_STATE;if(!fs.existsSync(state)&&mode!=='wrong-index'){console.error('manifest unknown');process.exit(1);}console.log(JSON.stringify({manifests:[{digest:'sha256:amd64',platform:{os:'linux',architecture:mode==='wrong-index'?'arm64':'amd64'}},{digest:'sha256:arm64',platform:{os:'linux',architecture:mode==='wrong-index'?'amd64':'arm64'}}]}));}}if(args[0]==='buildx'&&args[2]==='create')fs.writeFileSync(process.env.TEST_STATE,'yes');}\n`;
   for(const name of ['docker','gh','npm']){put('mock/'+name,program);execFileSync('chmod',['+x',join(mock,name)]);}
   put('mock/fetch.mjs',`import {readFileSync,existsSync} from 'node:fs';
 import {basename} from 'node:path';
@@ -98,7 +109,49 @@ test('GitHub candidate publication sets prerelease and keeps Latest unchanged',(
   const f=fixture();try{const r=f.run('publish-github');assert.equal(r.status,0,r.stderr);const create=f.commands().find(x=>x.args[0]==='release'&&x.args[1]==='create');assert(create.args.includes('--latest=false'));assert(create.args.includes('--prerelease'));assert(create.args.includes('--verify-tag'));}finally{f.cleanup();}
 });
 test('partial GitHub release retries upload missing assets without overwriting',()=>{
-  const f=fixture('partial');try{const r=f.run('publish-github');assert.equal(r.status,0,r.stderr);const c=f.commands();assert.equal(c.filter(x=>x.args[0]==='release'&&x.args[1]==='upload').length,f.manifest.files.length+2);assert(!c.some(x=>x.args.includes('--clobber')));assert(!c.some(x=>x.args[1]==='create'));}finally{f.cleanup();}
+  const f=fixture('partial');try{const r=f.run('publish-github');assert.equal(r.status,0,r.stderr);const c=f.commands();assert.equal(c.filter(x=>x.args[0]==='release'&&x.args[1]==='upload').length,7);assert(!c.some(x=>x.args.includes('--clobber')));assert(!c.some(x=>x.args[1]==='create'));}finally{f.cleanup();}
+});
+
+test('public layout preserves native bytes and bundles evidence with the original source inventory',()=>{
+  const f=fixture();try{
+    const directory=join(f.root,'artifacts/release'),publicDirectory=join(directory,'github');
+    assert.equal(f.manifest.files.length,42);
+    assert.equal(verifyExactInventory(directory).length,50);
+    assert.equal(verifyExactInventory(publicDirectory).length,6);
+    assert.deepEqual(readdirSync(publicDirectory).sort(),githubAssetNames(f.manifest.version).sort());
+    const zip=join(publicDirectory,`prts-mcp-${f.manifest.version}-release-metadata.zip`);
+    const members=execFileSync('unzip',['-Z1',zip],{encoding:'utf8'}).trim().split('\n');
+    assert.equal(members.length,22);
+    assert(members.every(name=>name.endsWith('.json')||name==='SHA256SUMS'));
+    const member=name=>execFileSync('unzip',['-p',zip,name]);
+    assert.deepEqual(member('RELEASE.json'),readFileSync(join(directory,'RELEASE.json')));
+    const sourceChecksums=member('SHA256SUMS').toString();
+    assert.equal(sourceChecksums.trim().split('\n').length,43);
+    assert(!sourceChecksums.includes('github/'));
+    assert(readFileSync(join(directory,'SHA256SUMS'),'utf8').startsWith(sourceChecksums));
+    const aliases=JSON.parse(member('PUBLIC-ASSETS.json'));
+    assert.equal(aliases.commit,f.manifest.commit);
+    assert.equal(aliases.version,f.manifest.version);
+    for(const row of aliases.assets){
+      assert.deepEqual(readFileSync(join(publicDirectory,row.filename)),readFileSync(join(directory,row.sourceFilename)));
+      assert.equal(hash(readFileSync(join(publicDirectory,row.filename))),row.sha256);
+    }
+    // Rebuilding the same collected evidence ignores source file timestamps.
+    const original=readFileSync(zip);
+    rmSync(publicDirectory,{recursive:true});
+    writeFileSync(join(directory,'SHA256SUMS'),sourceChecksums);
+    for(const row of f.manifest.files)utimesSync(join(directory,row.filename),new Date(),new Date());
+    prepareGithubAssets(directory,f.manifest);
+    assert.deepEqual(readFileSync(zip),original);
+  }finally{f.cleanup();}
+});
+for(const mode of ['github-existing','github-conflict'])test(`${mode} verifies published bytes without replacement`,()=>{
+  const f=fixture(mode);try{
+    const result=f.run('publish-github');
+    if(mode==='github-existing')assert.equal(result.status,0,result.stderr);
+    else {assert.notEqual(result.status,0);assert.match(result.stderr,/cannot be overwritten/);}
+    assert(!f.commands().some(call=>call.args[0]==='release'));
+  }finally{f.cleanup();}
 });
 
 test('npm publishes nine dependencies in snapshot order under next',()=>{
@@ -234,6 +287,10 @@ for (const version of ['3.0.0-rc.1', '3.0.0']) test(`GitHub ${version} notes pre
     const create = f.commands().find(c => c.args[0] === 'release' && c.args[1] === 'create');
     assert.equal(create.args.includes('--prerelease'), version !== '3.0.0');
     assert(create.args.includes(version === '3.0.0' ? '--latest=true' : '--latest=false'));
+    const uploaded=create.args.filter(arg=>arg.startsWith(join(f.root,'artifacts/release/github')+'/'));
+    assert.deepEqual(uploaded.map(arg=>arg.split('/').at(-1)).sort(),githubAssetNames(version).sort());
+    for(const name of githubAssetNames(version))assert(notes.includes(`/releases/download/v${version}/${name})`));
+    assert(!uploaded.some(name=>name.includes('candidate')||name.includes('darwin')||name.includes('.docker.')));
   } finally { f.cleanup(); }
 });
 test('missing matching Chinese release notes cannot publish another version or Unreleased text', () => {

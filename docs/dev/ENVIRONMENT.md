@@ -58,9 +58,11 @@ cargo build --locked
 `./scripts/check-runtime.sh --full` 会依次执行：
 1. 准备测试夹具与 `contracts/validation-assets.json` 中固定 SHA-256 的四项 AKDP 验证资产（写入 `.runtime/`）；
 2. `cargo fmt --all -- --check` 与 `cargo clippy --locked --all-targets -- -D warnings`；
-3. 全量 Rust 单元测试与集成测试（`cargo test --locked`）；
-4. Release 二进制构建（`cargo build --locked --release --bins`）；
+3. 全量 Rust 单元与集成测试（`cargo test --locked`）及打包辅助程序测试（`cargo test --locked --example package_data`）；
+4. Release 二进制与打包辅助程序联合构建（`cargo build --locked --release --bins --example package_data`）；
 5. 384 个冻结 MCP 差分对照用例、进程级生命周期测试与扩展原生正则测试。
+
+开发与测试构建默认只保留文件名和行号所需的调试信息（`debug = "line-tables-only"`），并启用增量编译，以减少本地产物占用。需要在调试器中查看变量和类型时，可临时使用 `CARGO_PROFILE_DEV_DEBUG=2 cargo build --locked`；测试使用 `CARGO_PROFILE_TEST_DEBUG=2 cargo test --locked`。Release 构建仍关闭调试信息。
 
 日常开发中也可按需执行单项检查：
 

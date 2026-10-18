@@ -1,6 +1,9 @@
 //! Release discovery/transfer/validation/activation and image sync.
 
 pub mod activation;
+pub mod database;
+pub mod database_io;
+pub mod database_manifest;
 pub mod datasets;
 pub mod discovery;
 pub mod images_meta;

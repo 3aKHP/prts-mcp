@@ -13,7 +13,7 @@ COPY THIRD-PARTY-NOTICES.txt /app/THIRD-PARTY-NOTICES.txt
 
 ENV PRTS_MCP_ROOT=/app
 
-RUN mkdir -p /data/gamedata /data/gamedata-levels /data/storyjson /data/images
+RUN mkdir -p /data/gamedata /data/gamedata-levels /data/storyjson /data/images /data/database
 
 # stdio by default — MCP client spawns; PRTS_TRANSPORT=http for HTTP.
 ENTRYPOINT ["/app/bin/prts-mcp-ghcr"]

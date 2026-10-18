@@ -3,6 +3,7 @@ import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 import { root, version, targets, packageNames, verifyVersion, verifyBundle, verifyNpmEvidence, verifyDockerEvidence, zipMemberPattern, readJson, json, sha, run } from './common.mjs';
+import { prepareGithubAssets } from './github-assets.mjs';
 verifyVersion();
 const input = resolve(process.argv[2] ?? join(root,'artifacts/incoming'));
 const output = join(root,'artifacts/release');
@@ -70,6 +71,8 @@ for(const [id,target]of Object.entries(targets)){
 }
 assert.deepEqual([...packages.keys()].sort(),[...packageNames].sort(),'All nine unique npm packages are required');
 const publishOrder=packageNames.map(name=>packages.get(name));
-json(join(output,'RELEASE.json'),{schema:'prts-mcp-release/v1',version,commit,platforms,packages:publishOrder,files:inventory,publicPublication:false});
+const manifest={schema:'prts-mcp-release/v1',version,commit,platforms,packages:publishOrder,files:inventory,publicPublication:false};
+json(join(output,'RELEASE.json'),manifest);
 writeFileSync(join(output,'SHA256SUMS'),[...inventory.map(f=>`${f.sha256}  ${f.filename}`),`${sha(join(output,'RELEASE.json'))}  RELEASE.json`].join('\n')+'\n');
+prepareGithubAssets(output,manifest);
 console.log(`RELEASE_COLLECT_PASS: ${platforms.length} native candidates, ${packages.size} npm packages, 2 Docker images (${commit})`);

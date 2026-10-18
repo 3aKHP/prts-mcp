@@ -20,8 +20,42 @@ const REQUIRED_OPERATOR_FILES: [&str; 4] = [
     "story_review_table.json",
 ];
 
+/// Startup-only game-data backend. JSON remains the 3.1 default.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DataBackend {
+    Json,
+    Sqlite,
+}
+
+impl DataBackend {
+    fn resolve(
+        explicit: Option<&str>,
+        custom_database: bool,
+        custom_json: bool,
+        default: Self,
+    ) -> Result<Self, String> {
+        let explicit = explicit.map(str::trim).filter(|value| !value.is_empty());
+        match explicit {
+            Some("json") if custom_database => {
+                Err("PRTS_DATA_BACKEND=json conflicts with PRTS_DATA_DB".into())
+            }
+            Some("json") => Ok(Self::Json),
+            Some("sqlite") => Ok(Self::Sqlite),
+            Some(_) => Err("PRTS_DATA_BACKEND must be json or sqlite".into()),
+            None if custom_database => Ok(Self::Sqlite),
+            None if custom_json => Ok(Self::Json),
+            None => Ok(default),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct RuntimeConfig {
+    pub data_backend: DataBackend,
+    /// Writable generation directory, used only by the SQLite backend.
+    pub database_dir: PathBuf,
+    /// Explicit read-only SQLite file; disables game-data auto-sync.
+    pub custom_database: Option<PathBuf>,
     /// Sync write target / custom root when GAMEDATA_PATH is set.
     pub gamedata_path: PathBuf,
     /// GAMEDATA_PATH was explicitly present in the environment (even empty).
@@ -230,12 +264,19 @@ fn excel_path_of(root: &Path) -> PathBuf {
 
 impl RuntimeConfig {
     pub fn from_env() -> Self {
-        Self::from_lookup(|name| std::env::var(name).ok())
+        Self::try_from_lookup(|name| std::env::var(name).ok()).unwrap_or_else(|error| {
+            crate::log_err(&error);
+            std::process::exit(2);
+        })
     }
 
     /// Testable core: `lookup` stands in for the process environment. Tests
     /// inject GAMEDATA_PATH so the default-path branch stays inert.
     pub fn from_lookup(lookup: impl Fn(&str) -> Option<String>) -> Self {
+        Self::try_from_lookup(lookup).expect("valid runtime configuration")
+    }
+
+    pub fn try_from_lookup(lookup: impl Fn(&str) -> Option<String>) -> Result<Self, String> {
         let is_custom_gamedata = lookup("GAMEDATA_PATH").is_some();
         let gamedata_path = lookup("GAMEDATA_PATH")
             .map(PathBuf::from)
@@ -266,7 +307,32 @@ impl RuntimeConfig {
                     .join("images")
             });
 
-        Self {
+        let database_dir = lookup("PRTS_DATA_DIR")
+            .filter(|s| !s.trim().is_empty())
+            .map(PathBuf::from)
+            .unwrap_or_else(|| {
+                if is_custom_gamedata {
+                    gamedata_path.join("database")
+                } else {
+                    gamedata_path
+                        .parent()
+                        .unwrap_or(&gamedata_path)
+                        .join("database")
+                }
+            });
+        let custom_database = lookup("PRTS_DATA_DB")
+            .filter(|s| !s.trim().is_empty())
+            .map(PathBuf::from);
+        let data_backend = DataBackend::resolve(
+            lookup("PRTS_DATA_BACKEND").as_deref(),
+            custom_database.is_some(),
+            is_custom_gamedata || !story_sync_enabled,
+            DataBackend::Json,
+        )?;
+        Ok(Self {
+            data_backend,
+            database_dir,
+            custom_database,
             gamedata_path,
             is_custom_gamedata,
             excel_path,
@@ -295,7 +361,7 @@ impl RuntimeConfig {
             debug_token: lookup("PRTS_DEBUG_TOKEN").filter(|t| !t.is_empty()),
             metrics_enabled: lookup("PRTS_METRICS_ENABLED").as_deref() == Some("true"),
             bundle_root: None,
-        }
+        })
     }
 
     /// `from_env` plus the argv-dependent bundle root.
@@ -443,12 +509,82 @@ pub fn windows_default_gamedata(localappdata: Option<&str>, home: &Path) -> Path
 mod tests {
     use super::*;
 
+    #[test]
+    fn backend_selection_is_explicit_and_json_remains_the_default() {
+        assert_eq!(cfg(&[]).data_backend, DataBackend::Json);
+        assert_eq!(
+            cfg(&[("PRTS_DATA_BACKEND", "")]).data_backend,
+            DataBackend::Json
+        );
+        assert_eq!(
+            cfg(&[("PRTS_DATA_BACKEND", "sqlite")]).data_backend,
+            DataBackend::Sqlite
+        );
+        assert_eq!(
+            cfg(&[("PRTS_DATA_DB", "/data/offline.sqlite")]).data_backend,
+            DataBackend::Sqlite
+        );
+        assert_eq!(
+            cfg(&[("PRTS_DATA_DIR", "/data/database")]).data_backend,
+            DataBackend::Json
+        );
+        for value in ["auto", "db", "SQLITE"] {
+            assert!(RuntimeConfig::try_from_lookup(|key| {
+                (key == "PRTS_DATA_BACKEND").then(|| value.into())
+            })
+            .is_err());
+        }
+        assert!(RuntimeConfig::try_from_lookup(|key| match key {
+            "PRTS_DATA_BACKEND" => Some("json".into()),
+            "PRTS_DATA_DB" => Some("offline.sqlite".into()),
+            _ => None,
+        })
+        .is_err());
+    }
+
+    #[test]
+    fn a_future_default_flip_preserves_explicit_and_legacy_choices() {
+        let select =
+            |mode, db, json| DataBackend::resolve(mode, db, json, DataBackend::Sqlite).unwrap();
+        assert_eq!(select(None, false, false), DataBackend::Sqlite);
+        assert_eq!(select(Some("json"), false, false), DataBackend::Json);
+        assert_eq!(select(None, false, true), DataBackend::Json);
+        assert_eq!(select(Some("sqlite"), false, true), DataBackend::Sqlite);
+        for pairs in [
+            vec![("GAMEDATA_PATH", "")],
+            vec![("STORYJSON_PATH", "/custom/zh_CN.zip")],
+        ] {
+            assert_eq!(cfg(&pairs).data_backend, DataBackend::Json);
+        }
+    }
+
     fn cfg(pairs: &[(&str, &str)]) -> RuntimeConfig {
         let map: std::collections::HashMap<String, String> = pairs
             .iter()
             .map(|(k, v)| (k.to_string(), v.to_string()))
             .collect();
         RuntimeConfig::from_lookup(|name| map.get(name).cloned())
+    }
+
+    #[test]
+    fn database_paths_are_explicit_and_empty_values_are_ignored() {
+        let c = cfg(&[("GAMEDATA_PATH", "/tmp/legacy")]);
+        assert_eq!(c.database_dir, PathBuf::from("/tmp/legacy/database"));
+        assert!(c.custom_database.is_none());
+        let c = cfg(&[
+            ("GAMEDATA_PATH", "/tmp/legacy"),
+            ("PRTS_DATA_DIR", "/tmp/databases"),
+            ("PRTS_DATA_DB", "/tmp/data.db"),
+        ]);
+        assert_eq!(c.database_dir, PathBuf::from("/tmp/databases"));
+        assert_eq!(c.custom_database, Some(PathBuf::from("/tmp/data.db")));
+        let c = cfg(&[
+            ("GAMEDATA_PATH", "/tmp/legacy"),
+            ("PRTS_DATA_DIR", " "),
+            ("PRTS_DATA_DB", ""),
+        ]);
+        assert_eq!(c.database_dir, PathBuf::from("/tmp/legacy/database"));
+        assert!(c.custom_database.is_none());
     }
 
     #[test]

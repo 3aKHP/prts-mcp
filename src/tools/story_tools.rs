@@ -1,32 +1,24 @@
 //! Story tool dispatchers — port of TS `tools/storyTools.ts`.
 
-use std::path::PathBuf;
+use std::sync::Arc;
 
 use serde_json::Value;
 
 use super::output::ToolOutcome;
 use super::zodish::{validation_error, Args};
 use super::{AppHandle, DispatchResult};
+use crate::app::DataView;
 use crate::domain::story::{self, reader};
 
 fn invalid_args(tool: &str, joined: String) -> DispatchResult {
     DispatchResult::Outcome(ToolOutcome::error_text(validation_error(tool, &joined)))
 }
 
-/// The missing-story-zip message (text result, no channel wrapping).
-fn missing_zip(app: &AppHandle) -> Option<ToolOutcome> {
+/// Validate and retain one generation throughout the entire story dispatch.
+fn story_view(app: &AppHandle) -> Result<Arc<DataView>, String> {
     let view = app.snapshot();
-    match story::require_story_zip(&view, &app.storyjson_path()) {
-        Ok(_) => None,
-        Err(message) => Some(ToolOutcome::text(message)),
-    }
-}
-
-fn zip_of(app: &AppHandle) -> PathBuf {
-    app.snapshot()
-        .story_zip
-        .clone()
-        .expect("caller checked require")
+    story::require_story_zip(&view, &app.storyjson_path())?;
+    Ok(view)
 }
 
 // --- listings ----------------------------------------------------------------
@@ -37,12 +29,12 @@ pub fn list_story_events(app: &AppHandle, arguments: &Value) -> DispatchResult {
     if let Err(joined) = args.finish() {
         return invalid_args("list_story_events", joined);
     }
-    if let Some(outcome) = missing_zip(app) {
-        return DispatchResult::Outcome(outcome);
-    }
-    let view = app.snapshot();
-    let zip = view.story_zip.clone().expect("checked");
-    let store = crate::storage::ZipStore::new(&zip);
+    let view = match story_view(app) {
+        Ok(view) => view,
+        Err(message) => return DispatchResult::Outcome(ToolOutcome::text(message)),
+    };
+    let zip = view.story_zip.as_deref().expect("checked");
+    let store = crate::storage::ZipStore::new(zip);
     match reader::build_story_events_listing(&store, category.as_deref()) {
         Ok(data) => DispatchResult::Outcome(ToolOutcome::structured(
             reader::render_story_events_listing(&data),
@@ -67,11 +59,12 @@ pub fn list_stories(app: &AppHandle, arguments: &Value) -> DispatchResult {
             "event_id: Invalid input: expected string, received undefined".to_string(),
         );
     };
-    if let Some(outcome) = missing_zip(app) {
-        return DispatchResult::Outcome(outcome);
-    }
-    let zip = zip_of(app);
-    let store = crate::storage::ZipStore::new(&zip);
+    let view = match story_view(app) {
+        Ok(view) => view,
+        Err(message) => return DispatchResult::Outcome(ToolOutcome::text(message)),
+    };
+    let zip = view.story_zip.as_deref().expect("checked");
+    let store = crate::storage::ZipStore::new(zip);
     match reader::build_stories_listing(&store, &event_id, include_summaries) {
         Ok(data) => DispatchResult::Outcome(ToolOutcome::structured(
             reader::render_stories_listing(&data),
@@ -100,14 +93,15 @@ pub fn get_story_summary(app: &AppHandle, arguments: &Value) -> DispatchResult {
             "story_key: Invalid input: expected string, received undefined".to_string(),
         );
     };
-    if let Some(outcome) = missing_zip(app) {
-        return DispatchResult::Outcome(outcome);
-    }
-    let zip = zip_of(app);
+    let view = match story_view(app) {
+        Ok(view) => view,
+        Err(message) => return DispatchResult::Outcome(ToolOutcome::text(message)),
+    };
+    let zip = view.story_zip.as_deref().expect("checked");
     // getStorySummary cannot throw for its own reads (all inner errors
     // degrade to the 未找到梗概 message), so there is no catch branch here.
     DispatchResult::Outcome(ToolOutcome::text(story::summary::get_story_summary(
-        &zip, &story_key,
+        zip, &story_key,
     )))
 }
 
@@ -124,11 +118,12 @@ pub fn read_story(app: &AppHandle, arguments: &Value) -> DispatchResult {
             "story_key: Invalid input: expected string, received undefined".to_string(),
         );
     };
-    if let Some(outcome) = missing_zip(app) {
-        return DispatchResult::Outcome(outcome);
-    }
-    let zip = zip_of(app);
-    let store = crate::storage::ZipStore::new(&zip);
+    let view = match story_view(app) {
+        Ok(view) => view,
+        Err(message) => return DispatchResult::Outcome(ToolOutcome::text(message)),
+    };
+    let zip = view.story_zip.as_deref().expect("checked");
+    let store = crate::storage::ZipStore::new(zip);
     match reader::read_story_from_store(&store, &story_key, include_narration) {
         Ok(chapter) => DispatchResult::Outcome(ToolOutcome::text(reader::format_chapter(&chapter))),
         Err(message) => {
@@ -157,11 +152,12 @@ pub fn read_activity(app: &AppHandle, arguments: &Value) -> DispatchResult {
             "event_id: Invalid input: expected string, received undefined".to_string(),
         );
     };
-    if let Some(outcome) = missing_zip(app) {
-        return DispatchResult::Outcome(outcome);
-    }
-    let zip = zip_of(app);
-    let store = crate::storage::ZipStore::new(&zip);
+    let view = match story_view(app) {
+        Ok(view) => view,
+        Err(message) => return DispatchResult::Outcome(ToolOutcome::text(message)),
+    };
+    let zip = view.story_zip.as_deref().expect("checked");
+    let store = crate::storage::ZipStore::new(zip);
     match reader::read_activity_from_store(&store, &event_id, include_narration, page, page_size) {
         Ok(result) => {
             if result.page_out_of_range {
@@ -244,12 +240,13 @@ pub fn search_stories(app: &AppHandle, arguments: &Value) -> DispatchResult {
             "pattern: Invalid input: expected string, received undefined".to_string(),
         );
     };
-    if let Some(outcome) = missing_zip(app) {
-        return DispatchResult::Outcome(outcome);
-    }
-    let zip = zip_of(app);
+    let view = match story_view(app) {
+        Ok(view) => view,
+        Err(message) => return DispatchResult::Outcome(ToolOutcome::text(message)),
+    };
+    let zip = view.story_zip.as_deref().expect("checked");
     match story::search::build_story_search(
-        &zip,
+        zip,
         &pattern,
         character.as_deref(),
         line_type.as_deref(),
@@ -281,11 +278,12 @@ pub fn get_operator_memoirs(app: &AppHandle, arguments: &Value) -> DispatchResul
             "name: Invalid input: expected string, received undefined".to_string(),
         );
     };
-    if let Some(outcome) = missing_zip(app) {
-        return DispatchResult::Outcome(outcome);
-    }
-    let zip = zip_of(app);
-    match story::memoir::build_operator_memoirs(&zip, &name) {
+    let view = match story_view(app) {
+        Ok(view) => view,
+        Err(message) => return DispatchResult::Outcome(ToolOutcome::text(message)),
+    };
+    let zip = view.story_zip.as_deref().expect("checked");
+    match story::memoir::build_operator_memoirs(zip, &name) {
         Ok(data) => DispatchResult::Outcome(ToolOutcome {
             summary_override: Some(format!(
                 "{} 的密录列表（共 {} 章）",
@@ -317,11 +315,12 @@ pub fn find_character_appearances(app: &AppHandle, arguments: &Value) -> Dispatc
             "name: Invalid input: expected string, received undefined".to_string(),
         );
     };
-    if let Some(outcome) = missing_zip(app) {
-        return DispatchResult::Outcome(outcome);
-    }
-    let zip = zip_of(app);
-    match story::character::build_character_appearances(&zip, &name, scope.as_deref(), max_events) {
+    let view = match story_view(app) {
+        Ok(view) => view,
+        Err(message) => return DispatchResult::Outcome(ToolOutcome::text(message)),
+    };
+    let zip = view.story_zip.as_deref().expect("checked");
+    match story::character::build_character_appearances(zip, &name, scope.as_deref(), max_events) {
         Ok(data) => DispatchResult::Outcome(ToolOutcome::structured(
             story::character::render_character_appearances(&data),
             data,
@@ -350,11 +349,12 @@ pub fn find_speakers_in(app: &AppHandle, arguments: &Value) -> DispatchResult {
             "event_id: Invalid input: expected string, received undefined".to_string(),
         );
     };
-    if let Some(outcome) = missing_zip(app) {
-        return DispatchResult::Outcome(outcome);
-    }
-    let zip = zip_of(app);
-    match story::character::build_speakers_in_event(&zip, &event_id) {
+    let view = match story_view(app) {
+        Ok(view) => view,
+        Err(message) => return DispatchResult::Outcome(ToolOutcome::text(message)),
+    };
+    let zip = view.story_zip.as_deref().expect("checked");
+    match story::character::build_speakers_in_event(zip, &event_id) {
         Ok(data) => DispatchResult::Outcome(ToolOutcome::structured(
             story::character::render_speakers_in_event(&data),
             data,
@@ -365,5 +365,90 @@ pub fn find_speakers_in(app: &AppHandle, arguments: &Value) -> DispatchResult {
             }
             DispatchResult::Outcome(ToolOutcome::text(format!("查询发言角色失败：{message}")))
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::RuntimeConfig;
+    use crate::storage::{database::lease_path, database::ActiveDatabase, JsonStore, ZipStore};
+    use crate::sync::database_io::prune;
+    use std::io::Write;
+
+    #[test]
+    fn story_view_keeps_its_generation_readable_across_two_updates() {
+        let root = std::env::temp_dir().join(format!("prts-story-lease-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&root).unwrap();
+        let source_path = "zh_CN/gamedata/excel/story_review_table.json";
+        let source = serde_json::json!({"retained": true});
+        let mut encoder =
+            flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::default());
+        let source_bytes = serde_json::to_vec(&source).unwrap();
+        encoder.write_all(&source_bytes).unwrap();
+        let body = encoder.finish().unwrap();
+        let mut pointers = Vec::new();
+        for revision in 1..=3 {
+            let pointer = ActiveDatabase {
+                file_name: format!("{}-{revision:032x}.sqlite", "a".repeat(64)),
+                source_version: "fixture".into(),
+                revision,
+                sha256: "a".repeat(64),
+            };
+            let connection = rusqlite::Connection::open(pointer.path(&root)).unwrap();
+            connection
+                .execute_batch(include_str!("../../contracts/sqlite-schema-v1.sql"))
+                .unwrap();
+            for (key, value) in [
+                ("contract", crate::storage::sqlite::CONTRACT),
+                ("index_version", "1"),
+                ("language", "zh_CN"),
+                ("sources_complete", "1"),
+                ("derived_complete", "1"),
+                ("story_available", "1"),
+            ] {
+                connection
+                    .execute("INSERT INTO meta VALUES(?1,?2)", [key, value])
+                    .unwrap();
+            }
+            connection
+                .execute(
+                    "INSERT INTO source_blobs VALUES('fixture',?1,?2)",
+                    rusqlite::params![source_bytes.len() as i64, body],
+                )
+                .unwrap();
+            connection
+                .execute(
+                    "INSERT INTO sources VALUES('story',?1,'fixture')",
+                    [source_path],
+                )
+                .unwrap();
+            std::fs::File::create(lease_path(&pointer.path(&root))).unwrap();
+            pointers.push(pointer);
+        }
+        std::fs::write(root.join("active"), pointers[0].encode().unwrap()).unwrap();
+        let config = RuntimeConfig::from_lookup(|key| match key {
+            "PRTS_DATA_BACKEND" => Some("sqlite".into()),
+            "PRTS_DATA_DIR" => Some(root.to_string_lossy().into_owned()),
+            _ => None,
+        });
+        let app = AppHandle::from_config(&config);
+        let view = story_view(&app).ok().unwrap();
+        let old_path = view.story_zip.as_ref().unwrap().clone();
+        let store = ZipStore::new(&old_path);
+        assert_eq!(store.read_json(source_path).unwrap(), source);
+        for pointer in &pointers[1..] {
+            std::fs::write(root.join("active"), pointer.encode().unwrap()).unwrap();
+            drop(app.snapshot());
+        }
+        std::fs::write(root.join("previous"), pointers[1].encode().unwrap()).unwrap();
+        prune(&root, &pointers[2]);
+        assert!(old_path.exists());
+        assert_eq!(store.read_json(source_path).unwrap(), source);
+        drop(view);
+        prune(&root, &pointers[2]);
+        assert!(!old_path.exists());
+        drop(app);
+        std::fs::remove_dir_all(root).unwrap();
     }
 }

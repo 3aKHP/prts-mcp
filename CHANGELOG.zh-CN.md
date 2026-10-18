@@ -6,6 +6,18 @@
 
 2.8.1 基线时的原始分语言更新日志可在 [`ts/v2.8.1` tag](https://github.com/3aKHP/prts-mcp/tree/ts/v2.8.1) 查看（[Python](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/python/CHANGELOG.md) · [TypeScript](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/ts/CHANGELOG.md)），1.7.1 与 1.7.2 的维护记录来自已发布的 [`python/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/python/v1.7.2/python/CHANGELOG.md) 与 [`ts/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/ts/v1.7.2/ts/CHANGELOG.md) 标签。
 
+## [3.1.0] - 2026-10-18
+
+- **实验性 SQLite 数据后端（3.1）**：设置 `PRTS_DATA_BACKEND=sqlite` 启用，或通过 `PRTS_DATA_DB` 选择预编译离线 DB。默认仍为 JSON，保留旧路径、数据卷和同步开关；只运行所选后端的游戏数据同步与缓存，安装包备用数据继续为 JSON。计划在 3.2 翻转普通默认值，3.x 持续支持 JSON。
+
+### 变更
+
+- **GitHub Release 下载附件**：提供 5 个采用简洁平台文件名的原生安装包、1 个发行验证资料 ZIP 和统一的 `SHA256SUMS`。npm 包通过 npm 获取，Docker 镜像通过 GHCR 获取。
+
+### 修复
+
+- **SQLite 指针恢复**：当已校验的上一份 DB 与最新发行版相同时，修复损坏的当前指针，无需重新下载。
+
 ## [3.0.0] - 2026-10-16
 
 实现：Rust。
