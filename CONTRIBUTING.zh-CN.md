@@ -2,7 +2,7 @@
 
 [English](CONTRIBUTING.md)
 
-感谢你参与 PRTS-MCP 的开发与维护。本指南适用于仓库根目录下的原生 Rust 工程（`develop` 分支，当前目标版本 `3.0.1-dev.0`）；2.8.x 与 1.7.x 的 Python/TypeScript 维护工作分别在 `lts/2.8` 与 `lts/1.7` 分支上进行。
+感谢你参与 PRTS-MCP 的开发与维护。本指南适用于仓库根目录下的原生 Rust 工程（`develop` 分支，当前目标版本 `3.1.1-dev.0`）；2.8.x 与 1.7.x 的 Python/TypeScript 维护工作分别在 `lts/2.8` 与 `lts/1.7` 分支上进行。
 
 开始前建议先阅读以下文档（全仓文档索引见 [`docs/README.md`](docs/README.md)）：
 
