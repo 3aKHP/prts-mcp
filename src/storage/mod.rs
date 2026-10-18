@@ -5,6 +5,7 @@ pub(crate) mod frozen;
 pub mod generation;
 pub(crate) mod identity;
 pub(crate) mod json_view;
+mod objects;
 pub(crate) mod projection;
 pub mod sqlite;
 mod store;

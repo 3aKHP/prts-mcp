@@ -228,6 +228,25 @@ pub struct ZipStore {
 }
 
 impl ZipStore {
+    pub(crate) fn uses_database(&self) -> bool {
+        super::sqlite::is_database(&self.zip_path)
+    }
+
+    /// SQLite metadata belongs to its admitted generation. ZIP behavior remains
+    /// uncached; failed loads and over-budget objects are retried by callers.
+    pub(crate) fn cached_object(
+        &self,
+        key: &'static str,
+        load: impl FnOnce() -> Result<serde_json::Map<String, Value>, String>,
+    ) -> Result<std::sync::Arc<serde_json::Map<String, Value>>, String> {
+        if self.uses_database() {
+            return super::sqlite::GameDb::open(&self.zip_path)?
+                .objects
+                .get_or_load(key, load);
+        }
+        load().map(std::sync::Arc::new)
+    }
+
     pub fn new(zip_path: impl Into<PathBuf>) -> Self {
         Self {
             zip_path: zip_path.into(),

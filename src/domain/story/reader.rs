@@ -106,22 +106,60 @@ pub fn py_repr(value: Option<&str>) -> String {
 /// on eventId collision the review entry wins; a missing/invalid supplement
 /// degrades to the plain review table.
 pub fn load_event_table(store: &ZipStore) -> Result<Arc<Map<String, Value>>, String> {
+    if !store.uses_database() {
+        return load_event_table_uncached(store, false).map(Arc::new);
+    }
+    store
+        .cached_object("story:events", || {
+            load_event_table_uncached(store, true).map(compact_event_table)
+        })
+        .or_else(|_| load_event_table_uncached(store, false).map(Arc::new))
+}
+
+/// Retain every event/chapter and consumed field, including malformed shapes;
+/// the complete source is still archived in SQLite. Avoid caching unlock/UI data.
+fn compact_event_table(mut table: Map<String, Value>) -> Map<String, Value> {
+    for entry in table.values_mut() {
+        if let Some(event) = entry.as_object_mut() {
+            event.retain(|key, _| matches!(key.as_str(), "entryType" | "name" | "infoUnlockDatas"));
+            if let Some(chapters) = event
+                .get_mut("infoUnlockDatas")
+                .and_then(Value::as_array_mut)
+            {
+                for chapter in chapters {
+                    if let Some(chapter) = chapter.as_object_mut() {
+                        chapter.retain(|key, _| {
+                            matches!(
+                                key.as_str(),
+                                "storyCode" | "storyName" | "storyTxt" | "avgTag" | "storySort"
+                            )
+                        });
+                    }
+                }
+            }
+        }
+    }
+    table
+}
+
+fn load_event_table_uncached(store: &ZipStore, strict: bool) -> Result<Map<String, Value>, String> {
     // Caller caches by descriptor; this is the raw build.
     let table = store
         .read_json(STORY_REVIEW_TABLE)
         .map_err(|e| e.to_string())?;
     let Some(mut merged) = table.as_object().cloned() else {
-        return Ok(Arc::new(Map::new()));
+        return Ok(Map::new());
     };
     if !store.exists(STORY_SUPPLEMENT).unwrap_or(false) {
-        return Ok(Arc::new(merged));
+        return Ok(merged);
     }
     let raw = match store.read_json(STORY_SUPPLEMENT) {
         Ok(raw) => raw,
-        Err(_) => return Ok(Arc::new(merged)),
+        Err(error) if strict => return Err(error.to_string()),
+        Err(_) => return Ok(merged),
     };
     let Some(events) = raw.get("events").and_then(Value::as_array) else {
-        return Ok(Arc::new(merged));
+        return Ok(merged);
     };
     for event in events {
         let Some(ev) = event.as_object() else {
@@ -165,7 +203,7 @@ pub fn load_event_table(store: &ZipStore) -> Result<Arc<Map<String, Value>>, Str
             }),
         );
     }
-    Ok(Arc::new(merged))
+    Ok(merged)
 }
 
 // ---------------------------------------------------------------------------
@@ -403,14 +441,32 @@ pub fn list_stories(
 }
 
 /// `loadChapterSummariesFromStore`: storyinfo first, summaries overrides.
-pub fn load_chapter_summaries(store: &ZipStore) -> Map<String, Value> {
+pub fn load_chapter_summaries(store: &ZipStore) -> Arc<Map<String, Value>> {
+    if !store.uses_database() {
+        return Arc::new(load_chapter_summaries_uncached(store, false).unwrap_or_default());
+    }
+    store
+        .cached_object("story:summaries", || {
+            load_chapter_summaries_uncached(store, true)
+        })
+        .unwrap_or_else(|_| {
+            Arc::new(load_chapter_summaries_uncached(store, false).unwrap_or_default())
+        })
+}
+
+fn load_chapter_summaries_uncached(
+    store: &ZipStore,
+    strict: bool,
+) -> Result<Map<String, Value>, String> {
     let mut summaries = Map::new();
     for path in [STORYINFO, SUMMARIES] {
         if !store.exists(path).unwrap_or(false) {
             continue;
         }
-        let Ok(raw) = store.read_json(path) else {
-            continue;
+        let raw = match store.read_json(path) {
+            Ok(raw) => raw,
+            Err(error) if strict => return Err(error.to_string()),
+            Err(_) => continue,
         };
         let Some(obj) = raw.as_object() else {
             continue;
@@ -423,7 +479,7 @@ pub fn load_chapter_summaries(store: &ZipStore) -> Map<String, Value> {
             }
         }
     }
-    summaries
+    Ok(summaries)
 }
 
 /// `chapterSummaryFromStore`: summaries → chapter storyInfo → "".
@@ -454,12 +510,17 @@ pub fn build_stories_listing(
 ) -> Result<Value, String> {
     let table = load_event_table(store)?;
     let chapters = list_stories(&table, event_id)?;
-    let mut chapter_summaries = Map::new();
+    let mut chapter_summaries = Arc::new(Map::new());
     let mut event_summary = String::new();
     if include_summaries {
         chapter_summaries = load_chapter_summaries(store);
         if store.exists(EVENT_SUMMARIES).unwrap_or(false) {
-            if let Ok(raw) = store.read_json(EVENT_SUMMARIES) {
+            if let Ok(raw) = store.cached_object("story:event-summaries", || {
+                let value = store
+                    .read_json(EVENT_SUMMARIES)
+                    .map_err(|e| e.to_string())?;
+                Ok(value.as_object().cloned().unwrap_or_default())
+            }) {
                 if let Some(text) = raw.get(event_id).and_then(Value::as_str) {
                     event_summary = text.trim().to_string();
                 }
@@ -686,4 +747,74 @@ pub fn format_chapter(chapter: &StoryChapter) -> String {
         parts.push(format_line(line));
     }
     parts.join("\n")
+}
+
+#[cfg(test)]
+mod projection_tests {
+    use super::*;
+
+    #[test]
+    fn compact_metadata_preserves_listings_order_and_malformed_shapes() {
+        let table = json!({
+            "main": {"entryType":"MAINLINE", "name":"主线", "unused":{"large":[1,2,3]},
+                "infoUnlockDatas":[
+                    {"storyTxt":"later", "storyCode":"2", "storyName":"后", "storySort":2,
+                     "avgTag":"行动后", "unlock":true},
+                    null, 42, {"storyTxt":false},
+                    {"storyTxt":"first", "storyCode":"1", "storyName":"前", "storySort":-1,
+                     "avgTag":null},
+                    {"storyTxt":"equal", "storyCode":false, "storyName":{}, "storySort":2}
+                ]},
+            "story_op_set_1":{"entryType":"NONE", "name":null, "infoUnlockDatas":[]},
+            "wrong_chapters":{"entryType":42, "infoUnlockDatas":{"unexpected":true}},
+            "scalar":false
+        })
+        .as_object()
+        .unwrap()
+        .clone();
+        let compact = compact_event_table(table.clone());
+        assert_eq!(
+            compact.keys().collect::<Vec<_>>(),
+            table.keys().collect::<Vec<_>>()
+        );
+        for category in [
+            None,
+            Some("main"),
+            Some("activities"),
+            Some("memoirs"),
+            Some("roguelike"),
+            Some("unknown"),
+        ] {
+            assert_eq!(
+                list_story_events(&compact, category),
+                list_story_events(&table, category)
+            );
+        }
+        let rows = |table: &Map<String, Value>, event| {
+            list_stories(table, event).map(|rows| {
+                rows.into_iter()
+                    .map(|row| {
+                        (
+                            row.story_key,
+                            row.story_code,
+                            row.story_name,
+                            row.avg_tag,
+                            row.sort_order,
+                        )
+                    })
+                    .collect::<Vec<_>>()
+            })
+        };
+        for event in [
+            "main",
+            "story_op_set_1",
+            "wrong_chapters",
+            "scalar",
+            "missing",
+        ] {
+            assert_eq!(rows(&compact, event), rows(&table, event));
+        }
+        assert_eq!(compact["wrong_chapters"], table["wrong_chapters"]);
+        assert_eq!(compact["scalar"], table["scalar"]);
+    }
 }

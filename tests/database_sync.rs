@@ -357,7 +357,9 @@ async fn gc_keeps_previous_across_polls_and_every_pinned_generation() {
     sync::sync(&fake, &root).await.unwrap();
     let oldest = database::active(&root).unwrap().unwrap();
     #[cfg(target_os = "linux")]
-    let oldest_metadata = std::fs::metadata(oldest.path(&root)).unwrap();
+    // Reserve the inode without a lease or metadata changes. Otherwise another
+    // parallel test can reuse its identity between GC and the /proc FD scan.
+    let oldest_anchor = std::fs::File::open(oldest.path(&root)).unwrap();
     let pinned = GameDb::open(&oldest.path(&root)).unwrap();
     // The fake release tag follows the changing descriptor revision.
     revision(&temp, &mut fake, 3);
@@ -375,16 +377,20 @@ async fn gc_keeps_previous_across_polls_and_every_pinned_generation() {
     assert!(previous.path(&root).exists());
     #[cfg(target_os = "linux")]
     {
-        use std::os::unix::fs::MetadataExt;
+        use std::os::{fd::AsRawFd, unix::fs::MetadataExt};
+        let oldest_metadata = oldest_anchor.metadata().unwrap();
         let identity = (oldest_metadata.dev(), oldest_metadata.ino());
+        let anchor_fd = PathBuf::from(format!("/proc/self/fd/{}", oldest_anchor.as_raw_fd()));
         assert!(
             std::fs::read_dir("/proc/self/fd")
                 .unwrap()
                 .flatten()
+                .filter(|entry| entry.path() != anchor_fd)
                 .filter_map(|entry| std::fs::metadata(entry.path()).ok())
                 .all(|meta| (meta.dev(), meta.ino()) != identity),
-            "deleted generations must release their disk blocks immediately"
+            "GC must close every runtime descriptor for a deleted generation"
         );
+        drop(oldest_anchor);
     }
 }
 

@@ -266,7 +266,7 @@ fn database_search(
 ) -> Result<Value, String> {
     let regex = crate::text::regex_compat::JsRegex::compile(pattern)
         .map_err(|e| crate::domain::messages::regex_error_message(&e))?;
-    let connection = db.scan_connection()?;
+    let connection = db.search_connection()?;
     let mut results = Vec::new();
     let mut statement=connection.prepare_cached("SELECT first_ordinal,last_ordinal,payload FROM search_blocks WHERE scope=?1 ORDER BY block").map_err(|e| e.to_string())?;
     let mut blocks = statement.query([scope]).map_err(|e| e.to_string())?;
