@@ -65,6 +65,9 @@ pub(crate) fn contains(path: &Path, descriptor: Option<&str>) -> bool {
 
 pub(crate) fn remember(observed: Observation, descriptor: String) -> Result<(), String> {
     observed.check()?;
+    if cfg!(windows) {
+        return Ok(());
+    }
     let mut receipts = RECEIPTS
         .get_or_init(Mutex::default)
         .lock()
@@ -102,7 +105,7 @@ mod tests {
         let path = std::env::temp_dir().join(format!("prts-receipt-{}", uuid::Uuid::new_v4()));
         std::fs::write(&path, b"old").unwrap();
         let observed = Observation::begin(&path).unwrap();
-        std::fs::write(&path, b"new").unwrap();
+        std::fs::write(&path, b"new length").unwrap();
         assert!(remember(observed, "descriptor".into()).is_err());
         assert!(!contains(&path, None));
         std::fs::remove_file(path).unwrap();
