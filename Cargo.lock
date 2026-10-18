@@ -1001,7 +1001,7 @@ dependencies = [
 
 [[package]]
 name = "prts-mcp"
-version = "3.1.0-dev.0"
+version = "3.1.1-dev.0"
 dependencies = [
  "async-trait",
  "axum",
@@ -1009,7 +1009,6 @@ dependencies = [
  "filetime",
  "flate2",
  "memchr",
- "quick-xml",
  "reqwest",
  "rmcp",
  "rusqlite",
@@ -1023,15 +1022,6 @@ dependencies = [
  "tracing-subscriber",
  "uuid",
  "zip",
-]
-
-[[package]]
-name = "quick-xml"
-version = "0.38.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b66c2058c55a409d601666cffe35f04333cf1013010882cec174a7467cd4e21c"
-dependencies = [
- "memchr",
 ]
 
 [[package]]
@@ -1301,9 +1291,9 @@ checksum = "6b1e7f9a428571be2dc5bc0505c13fb6bf936822b894ec87abf8a08a4e51742d"
 
 [[package]]
 name = "rustls"
-version = "0.23.45"
+version = "0.23.46"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d41d731c7d2f962d1ccc364cec258de3c0e93b38c2fb3ba97ac74513048d634"
+checksum = "48e13bd8c0e9365c43cfa5c9e8f9ad49d3c8444926c9aac819e0e4dc503c8fdf"
 dependencies = [
  "once_cell",
  "ring",

@@ -93,7 +93,8 @@ const CHARACTER_ENTRY: Projection = Projection::Fields(&[
     ("potentialRanks", Projection::Elements(&POTENTIAL_RANK)),
 ]);
 
-fn talent_phase_zh(phase: &str) -> String {
+/// Shared elite-phase labels for talent and base-skill unlock conditions.
+pub(super) fn phase_zh(phase: &str) -> String {
     match phase {
         "PHASE_0" => "精英0".to_string(),
         "PHASE_1" => "精英1".to_string(),
@@ -294,7 +295,7 @@ pub fn resolve_char_id(view: &DataView, name: &str) -> Result<Option<String>, St
 }
 
 /// TS `未找到干员` message shared by every operator entry point.
-fn operator_not_found(name: &str) -> String {
+pub(super) fn operator_not_found(name: &str) -> String {
     format!("未找到干员 '{name}'。请使用游戏内中文名称（如'阿米娅'）。")
 }
 
@@ -420,7 +421,7 @@ fn talent_candidates(slot: &Value) -> Vec<Value> {
         out.push(json!({
             "name": name,
             "description": strip_wikitext(c.get("description").and_then(Value::as_str).unwrap_or("")),
-            "unlock": talent_phase_zh(phase),
+            "unlock": phase_zh(phase),
             "unlock_level": unlock_level,
             "potential_rank": c.get("requiredPotentialRank").and_then(Value::as_i64).unwrap_or(0),
         }));

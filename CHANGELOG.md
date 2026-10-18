@@ -8,11 +8,17 @@ The original per-implementation changelogs at the 2.8.1 baseline remain availabl
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-10-18
+
 - **Experimental SQLite data backend (3.1)**: opt in with `PRTS_DATA_BACKEND=sqlite`, or select a precompiled offline file with `PRTS_DATA_DB`. JSON remains the default, including legacy paths, volumes and sync switches. Only the selected backend runs game-data sync and caches; installed fallback data remains JSON. A default switch is planned for 3.2, with JSON support retained throughout 3.x.
 
 ### Changed
 
 - **GitHub Release downloads**: publish five native archives with concise platform filenames, one release metadata ZIP, and a shared `SHA256SUMS`. npm packages remain available from npm and Docker images from GHCR.
+
+### Fixed
+
+- **SQLite pointer recovery**: repair a malformed active pointer when the verified previous database already matches the latest release, without downloading it again.
 
 ## [3.0.0] - 2026-10-16
 

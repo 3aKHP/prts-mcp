@@ -1,16 +1,16 @@
 {
   "schema_version": "prts-rust-plan/dependency-licenses/v2",
-  "recorded_at": "2026-10-17",
+  "recorded_at": "2026-10-18",
   "toolchain": "1.96.1 (rust-toolchain.toml)",
   "lockfile": "Cargo.lock (committed)",
-  "lock_package_count": 229,
+  "lock_package_count": 228,
   "source": "cargo metadata --format-version 1 (full transitive closure)",
   "license_summary": {
     "0BSD OR MIT OR Apache-2.0": 1,
     "Unlicense OR MIT": 2,
     "MIT OR Apache-2.0": 125,
     "Apache-2.0 OR MIT": 10,
-    "MIT": 45,
+    "MIT": 44,
     "MIT/Apache-2.0": 7,
     "Zlib": 2,
     "Apache-2.0 OR ISC OR MIT": 2,
@@ -681,12 +681,6 @@
       "repository": "https://github.com/dtolnay/proc-macro2"
     },
     {
-      "name": "quick-xml",
-      "version": "0.38.4",
-      "license": "MIT",
-      "repository": "https://github.com/tafia/quick-xml"
-    },
-    {
       "name": "quinn",
       "version": "0.11.12",
       "license": "MIT OR Apache-2.0",
@@ -802,7 +796,7 @@
     },
     {
       "name": "rustls",
-      "version": "0.23.45",
+      "version": "0.23.46",
       "license": "Apache-2.0 OR ISC OR MIT",
       "repository": "https://github.com/rustls/rustls"
     },

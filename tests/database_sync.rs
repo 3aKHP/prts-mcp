@@ -271,6 +271,30 @@ async fn orphan_database_and_broken_pointer_recover_without_redownload() {
     );
 }
 #[tokio::test]
+async fn broken_active_pointer_is_repaired_when_previous_matches_latest() {
+    let (temp, fake) = artifact();
+    let root = temp.0.join("runtime");
+    assert!(sync::sync(&fake, &root).await.unwrap());
+    let first = database::active(&root).unwrap().unwrap();
+    let encoded = std::fs::read(root.join("active")).unwrap();
+    std::fs::write(root.join("previous"), &encoded).unwrap();
+    std::fs::write(root.join("active"), b"truncated").unwrap();
+
+    assert!(sync::sync(&fake, &root).await.unwrap());
+    assert_eq!(database::active(&root).unwrap().unwrap(), first);
+    assert_eq!(std::fs::read(root.join("previous")).unwrap(), encoded);
+    assert!(!sync::sync(&fake, &root).await.unwrap());
+    assert_eq!(
+        fake.requested
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|url| url.ends_with(".gz"))
+            .count(),
+        1
+    );
+}
+#[tokio::test]
 async fn gc_keeps_previous_across_polls_and_every_pinned_generation() {
     let (temp, mut fake) = artifact();
     let root = temp.0.join("runtime");

@@ -6,8 +6,8 @@
 
 | 分支 / 版本线 | 当前状态 |
 | --- | --- |
-| 公开稳定版（`main`） | [`3.0.0`](https://github.com/3aKHP/prts-mcp/releases/tag/v3.0.0)（原生 Rust），已发布至 npm（`latest`）、GitHub Releases 与 GHCR（`:latest`、`:3`）。 |
-| 主开发分支（`develop`） | `3.1.0-dev.0`（根目录原生 Rust Cargo 工程）。 |
+| 公开稳定版（`main`） | [`3.1.0`](https://github.com/3aKHP/prts-mcp/releases/tag/v3.1.0)（原生 Rust），已发布至 npm（`latest`）、GitHub Releases 与 GHCR（`:latest`、`:3`）。 |
+| 主开发分支（`develop`） | `3.1.1-dev.0`（根目录原生 Rust Cargo 工程）。 |
 | `lts/2.8` | Python 与 TypeScript 2.8.x 长期维护线（基于 `2.8.1`，24 个工具）。 |
 | `lts/1.7` | Python 与 TypeScript 1.7.x 长期维护线（最新补丁版本 `1.7.2`，功能基线 `1.7.0`，32 个工具）。 |
 | LTS 维护截止日（EOL） | `lts/2.8` 与 `lts/1.7` 均维护至 **2027-07-02**。 |
@@ -21,6 +21,10 @@
   - `prts-mcp-ts`、`prts-mcp-ts-bun`（HTTP）与 `prts-mcp-ts-stdio`（stdio）：底层调用 Rust 二进制，保留 2.x 固定传输行为。
   - `prts-mcp-ghcr`（Docker 镜像默认入口）：保留默认 `stdio`；设置 `PRTS_TRANSPORT=http` 切换为 HTTP。
 - **仓库目录结构**：根目录包含 `Cargo.toml`、`src/`、`native/`、`vendor/`、`tests/`、`contracts/`、`tools/`、`packaging/` 与 `Dockerfile`。旧 Python 与 TypeScript 实现在 `lts/2.8` 与 `lts/1.7` 分支独立维护（见 [LTS 维护政策](docs/dev/LTS.md)）。源码许可证与第三方内容版权声明分别见 [LICENSE](LICENSE) 与 [NOTICE](NOTICE)。
+
+## 3.1 SQLite 后端
+
+SQLite 为实验性可选后端，通过 `PRTS_DATA_BACKEND=sqlite` 或 `PRTS_DATA_DB` 启用；默认仍为 JSON。工具契约与既有 JSON 数据卷保持兼容。
 
 ## 3.0 迁移阶段进展
 

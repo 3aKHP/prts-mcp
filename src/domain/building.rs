@@ -7,6 +7,7 @@ use serde_json::{json, Value};
 
 use crate::app::DataView;
 use crate::domain::messages;
+use crate::domain::operator::phase_zh;
 use crate::storage::projection::Projection;
 use crate::storage::JsonStore;
 
@@ -21,15 +22,6 @@ const ROOM_ZH: &[(&str, &str)] = &[
     ("HIRE", "人力办公室"),
     ("MEETING", "会客室"),
 ];
-
-fn phase_zh(phase: &str) -> String {
-    match phase {
-        "PHASE_0" => "精英0".to_string(),
-        "PHASE_1" => "精英1".to_string(),
-        "PHASE_2" => "精英2".to_string(),
-        other => other.to_string(),
-    }
-}
 
 /// Whether building_data.json exists in the effective excel store.
 pub fn has_building_data(view: &DataView) -> bool {

@@ -6,8 +6,8 @@
 
 | Line / Branch | Current State |
 | --- | --- |
-| Public stable (`main`) | [`3.0.0`](https://github.com/3aKHP/prts-mcp/releases/tag/v3.0.0) (native Rust), published on npm (`latest`), GitHub Releases, and GHCR (`:latest`, `:3`). |
-| Active development (`develop`) | `3.1.0-dev.0` (native Rust Cargo project at the repository root). |
+| Public stable (`main`) | [`3.1.0`](https://github.com/3aKHP/prts-mcp/releases/tag/v3.1.0) (native Rust), published on npm (`latest`), GitHub Releases, and GHCR (`:latest`, `:3`). |
+| Active development (`develop`) | `3.1.1-dev.0` (native Rust Cargo project at the repository root). |
 | `lts/2.8` | Python and TypeScript 2.8.x maintenance branch (`2.8.1` baseline, 24 tools). |
 | `lts/1.7` | Python and TypeScript 1.7.x maintenance branch (latest patch `1.7.2`, `1.7.0` feature baseline, 32 tools). |
 | LTS End of Life | Both `lts/2.8` and `lts/1.7` are supported through **2027-07-02**. |
@@ -21,6 +21,10 @@
   - `prts-mcp-ts`, `prts-mcp-ts-bun` (HTTP), and `prts-mcp-ts-stdio` (stdio) preserve fixed 2.x transport modes on top of the Rust binary.
   - `prts-mcp-ghcr` (Docker image entrypoint) preserves default `stdio`; set `PRTS_TRANSPORT=http` for HTTP mode.
 - **Repository Structure**: The root directory holds `Cargo.toml`, `src/`, `native/`, `vendor/`, `tests/`, `contracts/`, `tools/`, `packaging/`, and `Dockerfile`. Legacy Python and TypeScript implementations are maintained on `lts/2.8` and `lts/1.7` (see [LTS Policy](docs/dev/LTS.md)). Code and third-party content licensing are documented in [LICENSE](LICENSE) and [NOTICE](NOTICE).
+
+## 3.1 SQLite Backend
+
+SQLite is experimental and opt-in with `PRTS_DATA_BACKEND=sqlite` or `PRTS_DATA_DB`; JSON remains the default. Tool contracts and existing JSON data volumes are preserved.
 
 ## 3.0 Migration Progress
 

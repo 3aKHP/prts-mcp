@@ -1,6 +1,6 @@
 [package]
 name = "prts-mcp"
-version = "3.1.0-dev.0"
+version = "3.1.1-dev.0"
 edition = "2021"
 rust-version = "1.89"
 publish = false
@@ -42,9 +42,6 @@ sha2 = "0.10"
 # fs.promises.utimes; std has no setter).
 async-trait = "0.1"
 filetime = "0.2"
-
-# XML/HTML parsing for the Wiki template renderer (P5).
-quick-xml = "0.38"
 
 # SSE hold streams for GET /mcp (session channel with no server push).
 tokio-stream = { version = "0.1", features = ["sync"] }

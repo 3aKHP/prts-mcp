@@ -7,7 +7,7 @@ bash /tmp/prts-rustup.sh -y --no-modify-path --profile minimal --default-toolcha
 export PATH="$CARGO_HOME/bin:$PATH"
 rustup toolchain install 1.89.0 --profile minimal
 cargo +1.89.0 check --locked --bins --example package_data --example data_compiler --target "$PRTS_NATIVE_TARGET"
-cargo test --locked --target "$PRTS_NATIVE_TARGET" --lib --test native_text_corpus --test regex_corpus --test story_index --example package_data --example data_compiler
+cargo test --locked --target "$PRTS_NATIVE_TARGET" --lib --test native_text_corpus --test regex_corpus --test story_index --test data_backends --test database_sync --example package_data --example data_compiler
 cargo build --locked --release --bins --example package_data --example data_compiler --target "$PRTS_NATIVE_TARGET"
 cargo metadata --locked --format-version 1 --filter-platform "$PRTS_NATIVE_TARGET" > "$out/cargo-metadata.json"
 rustc --print sysroot > "$out/rust-sysroot.txt"

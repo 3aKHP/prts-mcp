@@ -88,13 +88,14 @@ enum Prepared {
 }
 
 fn prepare(root: &Path, manifest: &DatabaseManifest) -> Result<Prepared, String> {
-    let previous = match database::active(root) {
-        Ok(pointer) => pointer,
+    let (previous, repair_active) = match database::active(root) {
+        Ok(pointer) => (pointer, false),
         Err(error) => {
             crate::log_warn(&format!("Repairing invalid SQLite pointer: {error}"));
-            std::fs::read_to_string(root.join("previous"))
+            let previous = std::fs::read_to_string(root.join("previous"))
                 .ok()
-                .and_then(|text| database::ActiveDatabase::parse(&text).ok())
+                .and_then(|text| database::ActiveDatabase::parse(&text).ok());
+            (previous, true)
         }
     };
     if let Some(previous) = &previous {
@@ -109,8 +110,11 @@ fn prepare(root: &Path, manifest: &DatabaseManifest) -> Result<Prepared, String>
         }
         if previous.sha256 == manifest.sha256 && io::verify(&previous.path(root), manifest).is_ok()
         {
+            if repair_active {
+                io::activate(root, previous)?;
+            }
             io::prune(root, previous);
-            return Ok(Prepared::Ready(false));
+            return Ok(Prepared::Ready(repair_active));
         }
     }
     if let Some(path) = io::cached(root, manifest) {
