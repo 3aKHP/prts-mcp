@@ -138,7 +138,7 @@ MCP 工具的 `description` 与参数 Schema 是 LLM 选择工具的核心依据
 3. **日常开发与发版切换**：
    - 日常合并到 `develop` 的功能与修复写入顶部的 `[Unreleased]` / `[未发布]` 段落；纯内部 `docs` / `style` / `chore` 无需追加条目。
    - 准备发布时，在 `release/vX.Y.Z` 分支中将 `[Unreleased]` 替换为 `[X.Y.Z] — YYYY-MM-DD`（`main` 分支不保留空的 `Unreleased` 段落）。
-   - 发布合并并回灌 `develop` 时，在 `develop` 顶部重新开启空的 `[Unreleased]` / `[未发布]` 段落，并将版本号推进至下一目标 `-dev.0`。
+   - 发布合并后的回灌与开发版本重开步骤见 [`CLAUDE.md`](../../CLAUDE.md) 路径 D。
 
 ---
 

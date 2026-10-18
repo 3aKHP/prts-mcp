@@ -13,7 +13,9 @@ use std::collections::HashMap;
 
 use crate::app::DataView;
 use crate::domain::messages;
-use crate::domain::operator::{character_table, name_to_char_id, resolve_char_id};
+use crate::domain::operator::{
+    character_table, name_to_char_id, operator_not_found, resolve_char_id,
+};
 use crate::storage::JsonStore;
 use crate::text::numbers::{is_js_integer, js_number_to_string, js_to_fixed, round_half_away};
 use crate::text::sanitizer::strip_wikitext;
@@ -236,7 +238,7 @@ fn skill_entries<'a>(
         })
 }
 
-/// Top level's name, falling back to Lv1.
+/// Last skill level; callers provide a non-empty list.
 fn top_level(levels: &[Value]) -> &Value {
     levels.last().expect("collect keeps non-empty lists")
 }
@@ -263,9 +265,7 @@ pub fn build_operator_skills(
     let table = skill_table_for(view, char_id.as_deref())?;
     let ct = crate::domain::operator::character_for(view, char_id.as_deref())?;
     let Some(char_id) = char_id else {
-        return Err(format!(
-            "未找到干员 '{name}'。请使用游戏内中文名称（如'阿米娅'）。"
-        ));
+        return Err(operator_not_found(name));
     };
     let info = ct
         .as_object()
