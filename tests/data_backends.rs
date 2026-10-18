@@ -132,8 +132,9 @@ fn invalid_backend_exits_before_starting_the_protocol_or_sync() {
 }
 
 #[tokio::test]
-async fn incomplete_schema_is_rejected_and_previous_generation_is_selected() {
+async fn invalid_database_is_rejected_and_previous_generation_is_selected() {
     use prts_mcp_rust::storage::{database::ActiveDatabase, sqlite::GameDb};
+    use std::io::{Seek, SeekFrom, Write};
 
     let root = std::env::temp_dir().join(format!("prts-schema-{}", uuid::Uuid::new_v4()));
     let fixture =
@@ -152,10 +153,14 @@ async fn incomplete_schema_is_rejected_and_previous_generation_is_selected() {
         sha256: "a".repeat(64),
     };
     std::fs::write(database_dir.join("previous"), previous.encode().unwrap()).unwrap();
-    for (index, corruption) in [
-        "DROP TABLE names",
-        "DROP TABLE story_blocks",
-        "ALTER TABLE names RENAME COLUMN name TO missing_name",
+    for (index, (corruption, sql)) in [
+        ("missing names", Some("DROP TABLE names")),
+        ("missing story blocks", Some("DROP TABLE story_blocks")),
+        (
+            "missing name column",
+            Some("ALTER TABLE names RENAME COLUMN name TO missing_name"),
+        ),
+        ("corrupt names page", None),
     ]
     .into_iter()
     .enumerate()
@@ -164,10 +169,31 @@ async fn incomplete_schema_is_rejected_and_previous_generation_is_selected() {
         active.file_name = format!("broken-{index}.sqlite");
         let broken = active.path(&database_dir);
         std::fs::copy(&healthy, &broken).unwrap();
-        rusqlite::Connection::open(&broken)
-            .unwrap()
-            .execute_batch(corruption)
+        let connection = rusqlite::Connection::open(&broken).unwrap();
+        if let Some(sql) = sql {
+            connection.execute_batch(sql).unwrap();
+        } else {
+            let root_page: i64 = connection
+                .query_row(
+                    "SELECT rootpage FROM sqlite_schema WHERE name='names'",
+                    [],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            let page_size: i64 = connection
+                .pragma_query_value(None, "page_size", |row| row.get(0))
+                .unwrap();
+            drop(connection);
+            let mut file = std::fs::OpenOptions::new()
+                .write(true)
+                .open(&broken)
+                .unwrap();
+            file.seek(SeekFrom::Start(
+                u64::try_from((root_page - 1) * page_size).unwrap(),
+            ))
             .unwrap();
+            file.write_all(&[0]).unwrap();
+        }
         assert!(GameDb::open(&broken).is_err(), "{corruption}");
 
         let mut explicit = config(&root, "sqlite");

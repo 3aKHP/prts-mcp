@@ -131,6 +131,14 @@ impl GameDb {
             }
         }
         verify_schema(&connection)?;
+        // Validate pages once per opened identity, before publishing the shared
+        // handle. Steady-state snapshots reuse the admitted connection pool.
+        let check: String = connection
+            .query_row("PRAGMA quick_check", [], |r| r.get(0))
+            .map_err(err)?;
+        if check != "ok" {
+            return Err(format!("SQLite quick_check failed: {check}"));
+        }
         let db = Arc::new(Self {
             path: path.to_owned(),
             connection: Mutex::new(connection),
