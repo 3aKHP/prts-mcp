@@ -63,8 +63,7 @@ async fn calls(root: &Path, backend: &str) -> Vec<Value> {
 #[tokio::test]
 async fn backend_outputs_match_and_unselected_files_are_not_required() {
     let root = std::env::temp_dir().join(format!("prts-dual-{}", uuid::Uuid::new_v4()));
-    let fixture =
-        Path::new(env!("CARGO_MANIFEST_DIR")).join(".runtime/fixtures/minimal-gamedata-v2");
+    let fixture = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/native-smoke");
     copy_tree(&fixture.join("zh_CN"), &root.join("zh_CN"));
     copy_tree(&fixture.join("storyjson"), &root.join("storyjson"));
     sqlite_fixture::compile(&root);
@@ -137,8 +136,7 @@ async fn invalid_database_is_rejected_and_previous_generation_is_selected() {
     use std::io::{Seek, SeekFrom, Write};
 
     let root = std::env::temp_dir().join(format!("prts-schema-{}", uuid::Uuid::new_v4()));
-    let fixture =
-        Path::new(env!("CARGO_MANIFEST_DIR")).join(".runtime/fixtures/minimal-gamedata-v2");
+    let fixture = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/native-smoke");
     copy_tree(&fixture.join("zh_CN"), &root.join("zh_CN"));
     copy_tree(&fixture.join("storyjson"), &root.join("storyjson"));
     sqlite_fixture::compile(&root);
