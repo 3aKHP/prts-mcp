@@ -149,6 +149,62 @@ async fn corrupt_transfer_never_replaces_active_pointer() {
         .flatten()
         .any(|e| e.file_name().to_string_lossy().starts_with(".stage-")));
 }
+
+#[tokio::test]
+async fn verified_file_rewrite_with_same_size_and_preserved_mtime_is_rejected() {
+    use std::io::{Seek, SeekFrom, Write};
+    let (temp, fake) = artifact();
+    let root = temp.0.join("runtime");
+    sync::sync(&fake, &root).await.unwrap();
+    let active = database::active(&root).unwrap().unwrap();
+    let path = active.path(&root);
+    let metadata = std::fs::metadata(&path).unwrap();
+    let mtime = filetime::FileTime::from_last_modification_time(&metadata);
+    let connection = rusqlite::Connection::open(&path).unwrap();
+    let page: i64 = connection
+        .query_row(
+            "SELECT rootpage FROM sqlite_schema WHERE name='entities'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    let size: i64 = connection
+        .pragma_query_value(None, "page_size", |r| r.get(0))
+        .unwrap();
+    drop(connection);
+    let mut file = std::fs::OpenOptions::new().write(true).open(&path).unwrap();
+    file.seek(SeekFrom::Start(u64::try_from((page - 1) * size).unwrap()))
+        .unwrap();
+    file.write_all(&[0]).unwrap();
+    drop(file);
+    filetime::set_file_mtime(&path, mtime).unwrap();
+    assert_eq!(std::fs::metadata(&path).unwrap().len(), metadata.len());
+    assert!(GameDb::open(&path).is_err());
+    assert!(sync::sync(&fake, &root).await.unwrap());
+    let repaired = database::active(&root).unwrap().unwrap();
+    assert_ne!(active.file_name, repaired.file_name);
+    assert!(GameDb::open(&repaired.path(&root)).unwrap().derived_ready());
+}
+
+#[tokio::test]
+async fn receipt_cannot_bypass_changed_manifest_metadata() {
+    let (temp, mut fake) = artifact();
+    let root = temp.0.join("runtime");
+    sync::sync(&fake, &root).await.unwrap();
+    let before = std::fs::read(root.join("active")).unwrap();
+    fake.manifest["sqlite"]["compilerVersion"] = json!("different-compiler");
+    assert!(sync::sync(&fake, &root).await.is_err());
+    assert_eq!(std::fs::read(root.join("active")).unwrap(), before);
+    let files = std::fs::read_dir(&root)
+        .unwrap()
+        .flatten()
+        .filter(|entry| entry.path().extension().is_some_and(|v| v == "sqlite"))
+        .count();
+    assert_eq!(
+        files, 1,
+        "failed publication removes its unpublished database"
+    );
+}
 #[tokio::test]
 async fn incompatible_manifest_rejected_before_download() {
     let (temp, mut fake) = artifact();

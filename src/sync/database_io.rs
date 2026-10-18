@@ -3,6 +3,7 @@ use super::database_manifest::DatabaseManifest;
 use crate::storage::{
     database::{lease_path, ActiveDatabase},
     sqlite::GameDb,
+    validation::{self, Observation},
 };
 use sha2::{Digest, Sha256};
 use std::{
@@ -26,12 +27,17 @@ pub fn hash(path: &Path) -> Result<String, String> {
 }
 
 pub fn verify(path: &Path, manifest: &DatabaseManifest) -> Result<(), String> {
+    let descriptor = serde_json::to_string(manifest).map_err(|e| e.to_string())?;
+    if validation::contains(path, Some(&descriptor)) {
+        return Ok(());
+    }
+    let observed = Observation::begin(path)?;
     if fs::metadata(path).map_err(|e| e.to_string())?.len() != manifest.size
         || hash(path)? != manifest.sha256
     {
         return Err("SQLite file size/SHA-256 mismatch".into());
     }
-    let db = GameDb::open_detached(path)?;
+    let db = GameDb::for_verification(path)?;
     db.verify()?;
     for (key, wanted) in [
         ("source_version", manifest.source_version.clone()),
@@ -45,7 +51,7 @@ pub fn verify(path: &Path, manifest: &DatabaseManifest) -> Result<(), String> {
             return Err(format!("SQLite metadata mismatch: {key}"));
         }
     }
-    Ok(())
+    validation::remember(observed, descriptor)
 }
 
 pub fn decode(input: &Path, output: &Path, manifest: &DatabaseManifest) -> Result<(), String> {
@@ -107,6 +113,14 @@ pub fn publish(
         .map_err(|e| e.to_string())?;
     lease.sync_all().map_err(|e| e.to_string())?;
     fs::rename(path, &destination).map_err(|e| e.to_string())?;
+    // The unique final path is not a runtime candidate until activation. Check
+    // it here so the receipt remains valid across first runtime admission.
+    if let Err(error) = verify(&destination, manifest) {
+        drop(lease);
+        let _ = fs::remove_file(&destination);
+        let _ = fs::remove_file(lease_path(&destination));
+        return Err(error);
+    }
     let pointer = ActiveDatabase {
         file_name,
         source_version: manifest.source_version.clone(),

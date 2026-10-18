@@ -72,7 +72,6 @@ pub async fn sync(transport: &dyn Transport, root: &Path) -> Result<bool, String
         let stage = stage;
         let decoded = stage.0.join("data.sqlite");
         io::decode(&stage.0.join("data.sqlite.gz"), &decoded, &manifest)?;
-        io::verify(&decoded, &manifest)?;
         let current = io::publish(&root, &decoded, &manifest)?;
         io::prune(&root, &current);
         Ok::<_, String>(())

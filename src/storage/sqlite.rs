@@ -85,6 +85,17 @@ impl GameDb {
     }
 
     pub fn open_detached(path: &Path) -> Result<Arc<Self>, String> {
+        Self::open_checked(path, true)
+    }
+
+    /// Only the sync verifier may defer page checks to its full integrity pass.
+    pub(crate) fn for_verification(path: &Path) -> Result<Arc<Self>, String> {
+        Self::open_checked(path, false)
+    }
+
+    fn open_checked(path: &Path, quick: bool) -> Result<Arc<Self>, String> {
+        let observed = super::validation::Observation::begin(path)?;
+        let quick = quick && !super::validation::contains(path, None);
         let lease_path = super::database::lease_path(path);
         let lease = match std::fs::File::open(lease_path) {
             Ok(file) => {
@@ -133,11 +144,13 @@ impl GameDb {
         verify_schema(&connection)?;
         // Validate pages once per opened identity, before publishing the shared
         // handle. Steady-state snapshots reuse the admitted connection pool.
-        let check: String = connection
-            .query_row("PRAGMA quick_check", [], |r| r.get(0))
-            .map_err(err)?;
-        if check != "ok" {
-            return Err(format!("SQLite quick_check failed: {check}"));
+        if quick {
+            let check: String = connection
+                .query_row("PRAGMA quick_check", [], |r| r.get(0))
+                .map_err(err)?;
+            if check != "ok" {
+                return Err(format!("SQLite quick_check failed: {check}"));
+            }
         }
         let db = Arc::new(Self {
             path: path.to_owned(),
@@ -146,6 +159,7 @@ impl GameDb {
             next_scan: AtomicUsize::new(0),
             _lease: lease,
         });
+        observed.check()?;
         Ok(db)
     }
 

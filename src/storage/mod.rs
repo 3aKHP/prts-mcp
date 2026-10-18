@@ -8,6 +8,7 @@ pub(crate) mod json_view;
 pub(crate) mod projection;
 pub mod sqlite;
 mod store;
+pub(crate) mod validation;
 
 pub use generation::{activated_pair, activated_root, excel_path_of, gamedata_pair_path_for_read};
 pub use store::{
