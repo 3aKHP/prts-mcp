@@ -10,7 +10,8 @@ build/
 venv/
 /dev/
 .env
-.claude/
+.claude/*.local.*
+.claude/worktrees/
 *.so
 .mypy_cache/
 .ruff_cache/
