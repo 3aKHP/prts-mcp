@@ -14,7 +14,8 @@ def main():
         expected = case["input"]["required"]
         descriptions = [item.get("description", "").strip() for item in properties.values()]
         coverage = sum(bool(text) for text in descriptions) / max(1, len(properties))
-        declared = sum(name in properties for name in expected) / max(1, len(expected))
+        required = tool["inputSchema"].get("required", [])
+        declared = sum(name in properties and name in required for name in expected) / max(1, len(expected))
         characters = len(tool.get("description", "")) + sum(len(text) for text in descriptions)
         cases.append({"id": case["id"], "metrics": {
             "parameter_coverage": coverage, "required_declared": declared,

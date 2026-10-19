@@ -3,17 +3,20 @@ import copy
 import io
 import json
 import os
+import signal
+import subprocess
 from pathlib import Path
 import sys
 import tarfile
 import tempfile
+import time
 import unittest
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from lab import analysis, evidence, runner
 from lab.bundle import extract
-from lab.common import LabError, file_hash, inventory, read_json, write_json
+from lab.common import LabError, RunLock, file_hash, inventory, read_json, write_json
 from lab.config import TOOLS, contract, load, orders
 from lab.initialize import initialize
 from lab.drivers import Driver
@@ -82,6 +85,14 @@ class LabTests(unittest.TestCase):
         self.change(self.plan, lambda p:p.update(typo=True))
         with self.assertRaises(LabError):
             load(self.plan)
+
+    def test_exclusive_metadata_is_whole_and_never_replaced(self):
+        path = self.root / 'metadata.json'
+        write_json(path, {'first':True}, exclusive=True)
+        with self.assertRaises(FileExistsError):
+            write_json(path, {'second':True}, exclusive=True)
+        self.assertEqual(read_json(path), {'first':True})
+        self.assertEqual(list(self.root.glob('.lab-*')), [])
 
     def test_profile_discovery_and_operations(self):
         with mock.patch.dict(os.environ, {'EXPERIMENT_PROFILE':str(self.profile)}):
@@ -234,8 +245,129 @@ class LabTests(unittest.TestCase):
             with self.assertRaises(LabError):
                 self.create()
         run = next((self.root / 'runs').iterdir())
+        state = read_json(run / 'state.json')
+        state['phase'] = 'staging'  # Durable state left by a hard coordinator exit.
+        write_json(run / 'state.json', state)
         evidence.archive(run, self.root / 'failed-stage.tar.gz')
+        remote = Path(read_json(run / 'snapshot.json')['config']['work_root']) / run.name
+        if os.name != 'nt':
+            with RunLock(remote / '.lock'):
+                with self.assertRaises(LabError):
+                    runner.cleanup(run)
         self.assertTrue(runner.cleanup(run)['staging_removed'])
+        self.assertEqual({path.name for path in remote.iterdir()}, {'.lock','owner.json'})
+
+    def test_partial_metadata_keeps_attempt_and_allows_retry(self):
+        for broken in ('invocation.json','result.json'):
+            run = self.create()
+            snapshot = read_json(run / 'snapshot.json')
+            remote = Path(snapshot['config']['work_root']) / run.name
+            raw = remote / 'raw/r0000-A/0001'
+            raw.mkdir(parents=True)
+            request = {'trial':'r0000-A','attempt':1,'round':0,'variant':'A','timeout_seconds':2}
+            write_json(run / 'dispatches/r0000-A/0001.json', request)
+            write_json(raw / 'invocation.json', request)
+            (raw / broken).write_text('{"partial":')
+            self.assertTrue(runner.execute(run, retry_errors=True)['passed'])
+            self.assertEqual(analysis.attempts(run)['r0000-A'][0]['status'], 'interrupted')
+            self.assertEqual((run / 'evidence/raw/r0000-A/0001' / broken).read_text(), '{"partial":')
+
+    def test_full_length_variant_identifier(self):
+        self.change(self.plan, lambda p:p['variants'][0].update(id='A'*64))
+        self.change(self.plan, lambda p:p['checks'][0].update(baseline='A'*64))
+        self.assertTrue(runner.execute(self.create())['passed'])
+
+    def test_description_guardrail_and_private_preview(self):
+        definitions = self.root / 'definitions.json'
+        write_json(definitions, {'tool':{'description':'sample','inputSchema':{
+            'properties':{'name':{'description':'name'}},'required':[]}}})
+        request = {'parameters':{'definitions':str(definitions)},
+                   'cases':[{'id':'one','input':{'tool':'tool','required':['name']}}]}
+        result = subprocess.run([sys.executable,str(TOOLS/'benchmarks/adapters/description_coverage.py')],
+            input=json.dumps(request).encode(),stdout=subprocess.PIPE,check=True)
+        self.assertEqual(json.loads(result.stdout)['cases'][0]['metrics']['required_declared'],0)
+        result = subprocess.run([sys.executable,str(TOOLS/'experiment.py'),'preview','--plan',str(self.plan)],
+                                stdout=subprocess.PIPE,check=True)
+        preview = json.loads(result.stdout)
+        self.assertEqual(preview['variants'][0]['command'],['{python}','{bundle}/adapter.py'])
+        self.assertIn('benchmark_parameters', preview)
+
+    def test_large_inline_request_can_be_collected(self):
+        self.change(self.benchmark, lambda b:b['cases'][0].update(input='x'*(20*1048576)))
+        self.change(self.profile, lambda p:p['limits'].update(max_output_mib=1))
+        self.change(self.plan, lambda p:p['design'].update(rounds=1,max_attempts=1,trial_seconds=10))
+        self.assertTrue(runner.execute(self.create())['passed'])
+
+    @unittest.skipUnless(sys.platform.startswith('linux'), 'Linux process-group fault injection')
+    def test_worker_hup_and_kill_stop_owned_descendants(self):
+        code = '''import json,os,signal,subprocess,sys,time
+from pathlib import Path
+r=json.load(sys.stdin)
+child=subprocess.Popen([sys.executable,'-c','import signal,time;signal.signal(signal.SIGTERM,signal.SIG_IGN);time.sleep(30)'])
+signal.signal(signal.SIGTERM,signal.SIG_IGN)
+Path(r['parameters']['pids']).write_text(json.dumps([os.getppid(),os.getpid(),child.pid]))
+time.sleep(30)
+'''
+        self.adapter.write_text(code)
+        marker = self.root / 'pids.json'
+        self.change(self.plan, lambda p:[v['parameters'].update(pids=str(marker)) for v in p['variants']])
+        for number in (signal.SIGHUP,signal.SIGTERM,signal.SIGKILL):
+            if marker.exists():
+                marker.unlink()
+            run = self.create()
+            snapshot, driver = runner.verified(run)
+            remote = Path(snapshot['config']['work_root']) / run.name
+            request = {'trial':'r0000-A','attempt':1,'round':0,'variant':'A','timeout_seconds':2}
+            write_json(run / 'dispatches/r0000-A/0001.json',request)
+            worker = subprocess.Popen([sys.executable,'-B',str(remote/'bundle/control/worker.py'),
+                'execute',run.name,driver.state['job_sha256']],stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,stderr=subprocess.PIPE,start_new_session=True)
+            worker.stdin.write(json.dumps(request).encode()); worker.stdin.close()
+            deadline = time.monotonic()+3
+            while not marker.exists() and time.monotonic()<deadline:
+                time.sleep(0.01)
+            self.assertTrue(marker.exists())
+            pids = read_json(marker)
+            with self.assertRaises(LabError):
+                with RunLock(remote/'.lock'):
+                    pass
+            os.kill(worker.pid,number)
+            worker.wait(timeout=4)
+            worker.stdout.close();worker.stderr.close()
+            def alive(pid):
+                path=Path('/proc')/str(pid)/'stat'
+                try:
+                    return path.read_text().split(') ',1)[1][0]!='Z'
+                except (FileNotFoundError, ProcessLookupError):
+                    return False
+            deadline=time.monotonic()+3
+            while any(alive(pid) for pid in pids) and time.monotonic()<deadline:
+                time.sleep(0.02)
+            self.assertFalse(any(alive(pid) for pid in pids))
+            with RunLock(remote/'.lock'):
+                pass
+            evidence.collect(run,driver)
+            self.assertEqual(analysis.attempts(run)['r0000-A'][0]['status'],'interrupted')
+
+    @unittest.skipUnless(sys.platform.startswith('linux'), 'Linux descendant check')
+    def test_normal_adapter_exit_stops_descendants_ignoring_term(self):
+        output=self.root/'normal-exit'
+        output.mkdir()
+        code=('import subprocess,sys; p=subprocess.Popen([sys.executable,"-c",'
+              '"import signal,time;signal.signal(signal.SIGTERM,signal.SIG_IGN);time.sleep(30)"]);'
+              'print(p.pid,flush=True)')
+        result=capture([sys.executable,'-c',code],b'',self.root,os.environ.copy(),output,2,1000)
+        self.assertEqual(result['status'],'complete')
+        path=Path('/proc')/(output/'stdout.json').read_text().strip()/'stat'
+        def alive():
+            try:
+                return path.read_text().split(') ',1)[1][0]!='Z'
+            except (FileNotFoundError, ProcessLookupError):
+                return False
+        deadline=time.monotonic()+2
+        while alive() and time.monotonic()<deadline:
+            time.sleep(0.02)
+        self.assertFalse(alive())
 
     def test_container_owner_mismatch_prevents_commands(self):
         config = load(self.plan)

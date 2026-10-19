@@ -56,7 +56,9 @@ def main():
                       "operations_path": config["operations_path"],
                       "operations": Path(config["operations_path"]).read_text(encoding="utf-8"),
                       "hypothesis": config["plan"]["hypothesis"], "orders": config["orders"],
-                      "checks": config["plan"]["checks"], "artifacts": config["files"]}
+                      "checks": config["plan"]["checks"], "artifacts": config["files"],
+                      "benchmark_parameters": config["benchmark"].get("parameters", {}),
+                      "variants": config["plan"]["variants"]}
         elif args.action == "doctor":
             result = {"ready": True, "observed": Driver(config).doctor()}
         else:

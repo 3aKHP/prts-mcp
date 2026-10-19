@@ -39,6 +39,8 @@ def create(plan_path, profile_path, output):
         write_json(run / "snapshot.json", snapshot, exclusive=True)
         state["phase"] = "staging"
         driver.state.update({"key": key, "job_sha256": frozen["job_sha256"]})
+        if config["profile"]["driver"] == "container":
+            driver.state["container_name"] = "prts-lab-" + key
         state["driver"] = driver.state
         write_json(run / "state.json", state)
         driver.stage(run, identity, frozen)
@@ -86,6 +88,8 @@ def execute(run, retry_errors=False):
         state = read_json(run / "state.json")
         if state["phase"] == "cleaned":
             raise LabError("This run was cleaned; analysis is available but execution cannot resume")
+        if state["phase"] in ("staging", "stage_failed"):
+            raise LabError("Staging did not finish; archive and clean this owned stage, then start a new run")
         evidence.collect(run, driver)
         groups = analysis.attempts(run)
         used = sum(item.get("elapsed_seconds", 0) for group in groups.values() for item in group)
@@ -150,7 +154,7 @@ def cleanup(run):
         state = read_json(run / "state.json")
         if state["phase"] == "cleaned":
             return state["cleanup"]
-        if state["phase"] == "stage_failed":
+        if state["phase"] in ("staging", "stage_failed"):
             result = driver.cleanup_stage()
             state.update({"phase": "cleaned", "cleanup": result})
             write_json(run / "state.json", state)

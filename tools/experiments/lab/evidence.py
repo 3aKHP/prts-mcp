@@ -24,9 +24,13 @@ def collect(run, driver):
     temporary = collections / "{:04d}".format(number)
     temporary.mkdir()
     # Transfer size is bounded by the preregistered number of attempts/logs.
-    config = read_json(run / "snapshot.json")["config"]
-    ceiling = (config["profile"]["limits"]["max_output_mib"] * 1048576 * 4 *
-               config["plan"]["design"]["rounds"] * len(config["plan"]["variants"]) *
+    snapshot = read_json(run / "snapshot.json")
+    config = snapshot["config"]
+    limits = config["profile"]["limits"]
+    job_bytes = snapshot["bundle"]["files"]["control/job.json"]["size"]
+    per_attempt = ((limits["max_bundle_mib"] + limits["max_output_mib"] * 4) * 1048576
+                   + job_bytes * 2 + 32768)
+    ceiling = (per_attempt * config["plan"]["design"]["rounds"] * len(config["plan"]["variants"]) *
                config["plan"]["design"]["max_attempts"] + 10485760)
     with archive.open("rb") as stream:
         extract(stream, temporary, ceiling)
@@ -98,6 +102,11 @@ def export(run, summary):
         "system": observed.get("system"), "architecture": observed.get("architecture"),
         "python": observed.get("python"), "memory_bytes": observed.get("memory_bytes"),
         "capabilities": observed.get("capabilities", [])}
+    profile = snapshot["config"]["profile"]
+    if profile["driver"] == "container":
+        report["environment"]["container"] = {key: profile["container"][key]
+            for key in ("memory_mib", "cpus", "pids", "network")}
+        report["environment"]["image_id"] = state["driver"]["image_id"]
     report["orders"] = snapshot["config"]["orders"]
     report["evidence_identity"] = {"job_sha256": state["driver"]["job_sha256"],
                                    "bundle_sha256": snapshot["bundle"]["archive_sha256"]}

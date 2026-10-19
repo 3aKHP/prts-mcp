@@ -90,7 +90,7 @@ stdin 接收一个 JSON：
 {"version":1,"cases":[{"id":"task-1","input":{}}],"parameters":{},"context":{"round":0,"variant":"A","seed":1729,"unit":"task-run"}}
 ```
 
-stdout 只输出一个 JSON；诊断写 stderr。返回每个 case 的全部已声明数值指标，顺序不限，不允许缺失、额外 case/metric、布尔数值或非有限值：
+stdout 只输出一个 JSON；诊断写 stderr。展开后的请求和命令合计不能超过 profile 的 `max_bundle_mib`，收集预算同时计入请求、日志与元数据。返回每个 case 的全部已声明数值指标，顺序不限，不允许缺失、额外 case/metric、布尔数值或非有限值：
 
 ```json
 {"version":1,"cases":[{"id":"task-1","metrics":{"success":1},"output":{"answer":"example"},"details":{"trace":"private details"}}]}
@@ -126,7 +126,7 @@ python3 tools/experiments/experiment.py analyze --run RUN
 
 已完成的合法测量不重跑。失败尝试只允许在登记的 `max_attempts` 内追加；遇到新的执行失败立即停止，排查后再次显式续跑。传输断开时先重新收集证据；无法确认的派发记录会保留并按完整 deadline 计入预算，不复用其尝试编号。执行端锁防止同一 run 并行操作；远端仍在运行时稍后重新收集，不另起同一尝试。
 
-`max_run_seconds` 统计适配器执行时间，未知/中断尝试保守按其 timeout 计费；不含传输、归档与 cooldown，因此不是总墙钟时间或外部费用限制。超时和日志上限会停止所属进程组。容器层资源限制可约束整个任务；本地/SSH 进程若自行脱离进程组，需环境自己的进程隔离措施。
+`max_run_seconds` 统计适配器执行时间，未知/中断尝试保守按其 timeout 计费；不含传输、归档与 cooldown，因此不是总墙钟时间或外部费用限制。超时和日志上限会停止所属进程组。POSIX 驱动的独立监护进程保留 run 锁，以死亡管道监测 worker，处理其 HUP/TERM 或硬退出后清理所属进程组。容器层资源限制可约束整个任务；进程若自行脱离进程组，需环境自己的进程隔离措施。当前实测覆盖 Linux 本地、SSH 和容器，Windows/macOS 执行路径尚未经真机验证。
 
 改变源码、数据、配置、操作规范或工具后，执行续跑会拒绝混入新版本。创建新计划并用 `parent` 填写先前的 job SHA-256，说明方法修订；不会自动混合新旧数据。离线分析、导出、归档以及按原快照清理仍可进行。
 
@@ -146,7 +146,7 @@ python3 tools/experiments/experiment.py cleanup --run RUN
 
 `export` 重新构造白名单报告，只含指标定义、统计、检查、顺序、公开标识、产物哈希和有限环境摘要；不复制原始配置、拓扑、路径、日志、参数、details 或操作手册。公开 ID、revision、单位仍由作者选择，分享前检查这些字段。完整 tar.gz 归档含私有证据，不能直接当公开报告上传。
 
-`archive` 校验归档内每个文件与源清单一致，归档必须放在 RUN 之外。`cleanup` 重新收集证据、核对备份和所有权后仅移除本次 work；本机快照、冻结输入、raw 和归档保留。容器还会移除匹配标签及镜像 ID 的本次容器。若产生了新证据，先重新归档。初始化失败目录仅在无 raw/work 且归属匹配时可清理。磁盘管理需另行决定已归档历史 bundle 的保留期，不运行全局 prune。
+`archive` 校验归档内每个文件与源清单一致，归档必须放在 RUN 之外。`cleanup` 重新收集证据、核对备份和所有权后仅移除本次 work；本机快照、冻结输入、raw 和归档保留。容器还会移除匹配标签及镜像 ID 的本次容器。若产生了新证据，先重新归档。初始化失败内容仅在无 raw/work 且归属匹配时可清理，保留所有权文件和锁；活动的初始化会拒绝并发清理。磁盘管理需另行决定已归档历史 bundle 的保留期，不运行全局 prune。
 
 ## 8. 仓库协作与验证
 

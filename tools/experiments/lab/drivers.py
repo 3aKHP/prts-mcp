@@ -144,20 +144,41 @@ class Driver:
 
     def cleanup_stage(self):
         """Remove a failed, exclusively owned staging area with no trial data."""
+        if self.profile["driver"] == "container":
+            name = self.state["container_name"]
+            names = self.host(["docker", "container", "ls", "--all", "--format", "{{.Names}}",
+                               "--filter", "name=^" + name + "$"]).decode().splitlines()
+            if not names:
+                return {"staging_removed": True, "container_absent": True}
         self.checked_container()
-        script = '''import json,shutil,sys
+        script = '''import json,os,shutil,stat,sys
 from pathlib import Path
+def readonly(function,name,error):
+ if os.name!='nt' or not isinstance(error[1],PermissionError) or os.path.islink(name): raise error[1]
+ os.chmod(name,stat.S_IREAD|stat.S_IWRITE)
+ function(name)
 root=Path(sys.argv[1]); key=sys.argv[2]; expected=sys.argv[3]
 run=root/key
 if not root.is_absolute() or root.is_symlink() or run.is_symlink():
  raise ValueError('Unsafe staging directory')
 if run.exists():
+ lock=(run/'.lock').open('a+b')
+ if os.name=='nt':
+  import msvcrt
+  lock.write(b'0'); lock.flush(); lock.seek(0)
+  msvcrt.locking(lock.fileno(),msvcrt.LK_NBLCK,1)
+ else:
+  import fcntl
+  fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
  if json.loads((run/'owner.json').read_text()) != {'key':key,'job_sha256':expected}:
   raise ValueError('Staging ownership mismatch')
  if (run/'raw').exists() or (run/'work').exists():
   raise ValueError('Trial data exists; collect it before cleanup')
- shutil.rmtree(str(run))
-print(json.dumps({'staging_removed':True}))
+ for child in run.iterdir():
+  if child.name not in ('.lock','owner.json'):
+   if child.is_dir() and not child.is_symlink(): shutil.rmtree(str(child),onerror=readonly)
+   else: child.unlink()
+print(json.dumps({'staging_removed':True,'ownership_retained':True}))
 '''
         command = [self.python, "-c", script, self.config["work_root"],
                    self.state["key"], self.state["job_sha256"]]

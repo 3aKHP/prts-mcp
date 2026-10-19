@@ -4,12 +4,13 @@ import os
 from pathlib import Path
 import platform
 import shutil
+import signal
 import sys
 import tarfile
 import time
 
-from lab.common import (LabError, RunLock, digest, encoded, file_hash, identifier,
-                        inventory, read_json, relative_name, write_json)
+from lab.common import (LabError, RunLock, digest, encoded, file_hash,
+                        inventory, read_json, relative_name, remove_tree, write_json)
 from lab.process import capture
 from lab.response import check_response
 
@@ -39,15 +40,15 @@ def changed_files(root, job):
     return changed
 
 
-def execute(root, job, request):
-    trial = identifier(request["trial"])
+def execute(root, job, request, lease_fd=None):
+    trial = request["trial"]
     attempt = request["attempt"]
     if isinstance(attempt, bool) or not isinstance(attempt, int) or not 1 <= attempt <= job["design"]["max_attempts"]:
         raise LabError("Invalid attempt number")
     variants = {variant["id"]: variant for variant in job["variants"]}
     variant = variants[request["variant"]]
     round_number = request["round"]
-    if not isinstance(round_number, int) or not 0 <= round_number < job["design"]["rounds"]:
+    if isinstance(round_number, bool) or not isinstance(round_number, int) or not 0 <= round_number < job["design"]["rounds"]:
         raise LabError("Invalid round")
     if trial != "r{:04d}-{}".format(round_number, variant["id"]):
         raise LabError("Trial does not match its round and variant")
@@ -89,14 +90,17 @@ def execute(root, job, request):
 
     command = [expand(argument) for argument in variant["command"]]
     adapter_request["parameters"] = expand_parameters(parameters)
-    # Store requests before launch and measurements before any assertion.
-    write_json(raw / "request.json", adapter_request, exclusive=True)
-    write_json(raw / "command.json", command, exclusive=True)
     result = {"version": 1, "trial": trial, "attempt": attempt, "variant": variant["id"],
-              "round": round_number, "request_sha256": digest(adapter_request),
-              "status": "execution_error", "elapsed_seconds": 0}
+              "round": round_number, "status": "execution_error", "elapsed_seconds": 0}
     started = time.monotonic()
     try:
+        adapter_data = encoded(adapter_request) + b"\n"
+        if len(adapter_data) + len(encoded(command)) > job["limits"]["max_bundle_mib"] * 1048576:
+            raise LabError("Expanded adapter request/command exceeds the bundle-size budget")
+        # Store requests before launch and measurements before any assertion.
+        write_json(raw / "request.json", adapter_request, exclusive=True)
+        write_json(raw / "command.json", command, exclusive=True)
+        result["request_sha256"] = digest(adapter_request)
         if shutil.disk_usage(str(root)).free < job["limits"]["min_free_mib"] * 1048576:
             raise LabError("Execution disk reserve reached")
         changed = changed_files(root, job)
@@ -110,10 +114,10 @@ def execute(root, job, request):
             if name not in os.environ:
                 raise LabError("Missing environment credential reference: " + name)
             environment[name] = os.environ[name]
-        result.update(capture(command, encoded(adapter_request) + b"\n", work,
+        result.update(capture(command, adapter_data, work,
                               environment, raw, timeout,
                               job["limits"]["max_output_mib"] * 1048576,
-                              job["limits"].get("address_space_mib", 0)))
+                              job["limits"].get("address_space_mib", 0), lease_fd))
         if result["status"] == "complete":
             measured = read_json(raw / "stdout.json")
             write_json(raw / "measured.json", measured, exclusive=True)
@@ -152,9 +156,18 @@ def main():
     action, key, expected = sys.argv[1:]
     root = Path(__file__).resolve().parents[2]
     job = checked_job(root, key, expected)
-    with RunLock(root / ".lock"):
+    def interrupted(number, frame):
+        for name in ("SIGINT", "SIGTERM", "SIGHUP"):
+            if hasattr(signal, name):
+                signal.signal(getattr(signal, name), signal.SIG_IGN)
+        raise KeyboardInterrupt("Worker interrupted")
+
+    for name in ("SIGINT", "SIGTERM", "SIGHUP"):
+        if hasattr(signal, name):
+            signal.signal(getattr(signal, name), interrupted)
+    with RunLock(root / ".lock") as lock:
         if action == "execute":
-            print(json.dumps(execute(root, job, json.load(sys.stdin))))
+            print(json.dumps(execute(root, job, json.load(sys.stdin), lock.stream.fileno())))
         elif action == "collect":
             collect(root, job, json.load(sys.stdin).get("known", {}))
         elif action == "status":
@@ -169,7 +182,7 @@ def main():
             if work.is_symlink():
                 raise LabError("Owned work directory is a symlink")
             if work.exists():
-                shutil.rmtree(str(work))
+                remove_tree(work)
             print(json.dumps({"work_removed": True, "identity": job["identity"]}))
         else:
             raise LabError("Unknown worker action")
@@ -178,6 +191,9 @@ def main():
 if __name__ == "__main__":
     try:
         main()
+    except KeyboardInterrupt:
+        print("Worker interrupted; attempt evidence retained", file=sys.stderr)
+        sys.exit(130)
     except Exception as error:
         print(str(error), file=sys.stderr)
         sys.exit(1)

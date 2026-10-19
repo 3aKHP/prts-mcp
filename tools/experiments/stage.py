@@ -23,6 +23,14 @@ def main():
         raise ValueError("Insufficient free disk for staging")
     run = root / key
     run.mkdir()  # Exclusive ownership: never adopt an existing directory.
+    lock = (run / ".lock").open("a+b")
+    if os.name == "nt":
+        import msvcrt
+        lock.write(b"0"); lock.flush(); lock.seek(0)
+        msvcrt.locking(lock.fileno(), msvcrt.LK_NBLCK, 1)
+    else:
+        import fcntl
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     (run / "owner.json").write_text(json.dumps({"key": key, "job_sha256": expected}))
     bundle = run / "bundle"
     bundle.mkdir()

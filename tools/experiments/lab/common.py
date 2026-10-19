@@ -4,6 +4,8 @@ import json
 import math
 import os
 import re
+import shutil
+import stat
 import tempfile
 from pathlib import Path
 
@@ -55,19 +57,24 @@ def write_json(path, value, exclusive=False):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     data = encoded(value) + b"\n"
-    if exclusive:
-        with path.open("xb") as stream:
-            stream.write(data)
-            stream.flush()
-            os.fsync(stream.fileno())
-        return
     descriptor, temporary = tempfile.mkstemp(prefix=".lab-", dir=str(path.parent))
     try:
         with os.fdopen(descriptor, "wb") as stream:
             stream.write(data)
             stream.flush()
             os.fsync(stream.fileno())
-        os.replace(temporary, str(path))
+        if exclusive:
+            # Publish the whole file atomically without replacing an existing
+            # attempt. A crash can leave a temp file, never partial metadata.
+            os.link(temporary, str(path))
+        else:
+            os.replace(temporary, str(path))
+        if os.name != "nt":
+            directory = os.open(str(path.parent), os.O_RDONLY)
+            try:
+                os.fsync(directory)
+            finally:
+                os.close(directory)
     finally:
         if os.path.exists(temporary):
             os.unlink(temporary)
@@ -105,6 +112,15 @@ def inventory(root):
             result[path.relative_to(root).as_posix()] = {
                 "sha256": file_hash(path), "size": path.stat().st_size}
     return result
+
+
+def remove_tree(path):
+    def readonly(function, name, error):
+        if os.name != "nt" or not isinstance(error[1], PermissionError) or os.path.islink(name):
+            raise error[1]
+        os.chmod(name, stat.S_IREAD | stat.S_IWRITE)
+        function(name)
+    shutil.rmtree(str(path), onerror=readonly)
 
 
 class RunLock:

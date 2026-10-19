@@ -1,12 +1,15 @@
 """Bounded subprocess capture with descendant cleanup and retained partial logs."""
 import os
+from pathlib import Path
 import signal
+import select
 import subprocess
+import sys
 import threading
 import time
 
 
-def capture(command, request, cwd, environment, output, timeout, maximum, address_space=0):
+def capture(command, request, cwd, environment, output, timeout, maximum, address_space=0, lease_fd=None):
     overflow = threading.Event()
     started = time.monotonic()
 
@@ -24,7 +27,25 @@ def capture(command, request, cwd, environment, output, timeout, maximum, addres
         options["start_new_session"] = True
         if address_space:
             options["preexec_fn"] = limits
-    process = subprocess.Popen(command, **options)
+    heartbeat = None
+    status_read = None
+    if os.name != "nt":
+        read_end, heartbeat = os.pipe()
+        status_read, status_write = os.pipe()
+        options["pass_fds"] = (read_end, status_write) + ((lease_fd,) if lease_fd is not None else ())
+        command = [sys.executable, "-B", str(Path(__file__).with_name("supervise.py")),
+                   str(read_end), str(status_write), str(timeout + 0.2)] + list(command)
+    try:
+        process = subprocess.Popen(command, **options)
+    except BaseException:
+        if heartbeat is not None:
+            os.close(heartbeat)
+            os.close(status_read)
+        raise
+    finally:
+        if os.name != "nt":
+            os.close(read_end)
+            os.close(status_write)
 
     def copy(source, path):
         count = 0
@@ -55,7 +76,13 @@ def capture(command, request, cwd, environment, output, timeout, maximum, addres
         thread.daemon = True
         thread.start()
 
+    adapter_code = []
     def ended():
+        if status_read is not None and select.select([status_read], [], [], 0)[0]:
+            value = os.read(status_read, 64)
+            if value:
+                adapter_code.append(int(value))
+                return True
         # On Linux, retain the zombie until its process group is cleaned up;
         # this prevents PID reuse between detecting exit and killing children.
         if hasattr(os, "waitid") and hasattr(os, "WNOWAIT"):
@@ -88,6 +115,13 @@ def capture(command, request, cwd, environment, output, timeout, maximum, addres
             thread.join(timeout=3)
         for pipe in (process.stdout, process.stderr):
             pipe.close()
+        if heartbeat is not None:
+            os.close(heartbeat)
+            os.close(status_read)
+    if adapter_code:
+        returncode = adapter_code[0]
+    elif status == "complete" and time.monotonic() - started >= timeout:
+        status = "timeout"
     if overflow.is_set():
         status = "output_limit"
     if status == "complete" and returncode != 0:

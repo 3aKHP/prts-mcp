@@ -25,12 +25,30 @@ def attempts(run):
         if not path.is_dir():
             raise LabError("Unexpected raw evidence entry")
         trial = path.parent.name
-        record = read_json(path / "result.json") if (path / "result.json").exists() else {
-            "status": "interrupted", "attempt": int(path.name), "trial": trial}
-        record = dict(record)
-        invocation = read_json(path / "invocation.json")
-        if record["status"] == "interrupted":
-            record["elapsed_seconds"] = invocation["timeout_seconds"]
+        dispatch = Path(run) / "dispatches" / trial / (path.name + ".json")
+        request = read_json(dispatch)
+        metadata_error = False
+        record = None
+        for name in ("invocation.json", "result.json"):
+            try:
+                value = read_json(path / name)
+            except (FileNotFoundError, ValueError, LabError, UnicodeError):
+                metadata_error = True
+                continue
+            if name == "invocation.json" and value != request:
+                raise LabError("Worker invocation differs from its durable dispatch")
+            if name == "result.json":
+                if not isinstance(value, dict):
+                    raise LabError("Invalid result metadata")
+                record = value
+        if record is None:
+            record = dict(request, status="interrupted", elapsed_seconds=request["timeout_seconds"])
+        elif metadata_error:
+            # A complete result without the matching invocation is inconsistent
+            # evidence, rather than permission to discard a successful sample.
+            raise LabError("Result exists without intact invocation metadata")
+        else:
+            record = dict(record)
         record["directory"] = str(path)
         result.setdefault(trial, []).append(record)
     # A lost transport may have dispatched work even if no remote bytes have
