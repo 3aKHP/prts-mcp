@@ -7,7 +7,7 @@ import subprocess
 import sys
 
 from lab import analysis, evidence, runner
-from lab.common import LabError, RunLock, read_json, write_json
+from lab.integrity import LabError, RunLock, write_json
 from lab.config import ROOT, load
 from lab.drivers import Driver
 from lab.initialize import initialize

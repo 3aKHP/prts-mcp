@@ -1,5 +1,4 @@
 """Contract, evidence, failure and lifecycle checks; no network or dependencies."""
-import copy
 import io
 import json
 import os
@@ -14,10 +13,10 @@ import unittest
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from lab import analysis, evidence, runner
+from lab import analysis, bundle, evidence, runner
 from lab.bundle import extract
-from lab.common import LabError, RunLock, file_hash, inventory, read_json, write_json
-from lab.config import TOOLS, contract, load, orders
+from lab.integrity import LabError, RunLock, file_hash, inventory, read_json, write_json
+from lab.config import TOOLS, load, orders
 from lab.initialize import initialize
 from lab.drivers import Driver
 from lab.process import capture
@@ -224,6 +223,152 @@ class LabTests(unittest.TestCase):
             runner.execute(run, retry_errors=True)
         with self.assertRaises(LabError):
             runner.cleanup(run)
+
+    def test_collection_receipts_verify_durable_transfers(self):
+        run = self.create()
+        runner.execute(run)
+        self.assertFalse(any(path.is_dir() for path in (run / 'collections').iterdir()))
+        receipts = sorted((run / 'collections').glob('*.json'))
+        first = receipts[0].with_suffix('.tar')
+        original = first.read_bytes()
+        first.write_bytes(original + b'tamper')
+        with self.assertRaisesRegex(LabError, 'Collection archive/receipt'):
+            evidence.archive(run, self.root / 'tampered.tar.gz')
+        first.write_bytes(original)
+        latest = receipts[-1].with_suffix('.tar')
+        latest.write_bytes(latest.read_bytes() + b'tamper')
+        with self.assertRaisesRegex(LabError, 'Collection archive/receipt'):
+            runner.execute(run)
+
+    def test_interrupted_atomic_merge_resumes_without_repeating_measurements(self):
+        run = self.create()
+        original = evidence.publish_file
+        published = []
+        def interrupt(source, target, replace=False):
+            original(source, target, replace)
+            if '/evidence/raw/' in str(target):
+                published.append((target, file_hash(target)))
+                raise OSError('injected interruption after atomic publication')
+        with mock.patch.object(evidence, 'publish_file', interrupt):
+            with self.assertRaises(OSError):
+                runner.execute(run)
+        self.assertEqual(len(published), 1)
+        self.assertFalse(any(path.is_dir() for path in (run / 'collections').iterdir()))
+        # Retain a stale extraction like a hard-killed coordinator would leave.
+        last = sorted((run / 'collections').glob('*.tar'))[-1]
+        temporary = last.with_suffix('')
+        temporary.mkdir()
+        (temporary / 'partial').write_bytes(b'incomplete extraction')
+        self.assertTrue(runner.execute(run)['passed'])
+        self.assertEqual(file_hash(published[0][0]), published[0][1])
+        self.assertEqual(len(analysis.attempts(run)), 4)
+        self.assertTrue(all(len(group) == 1 for group in analysis.attempts(run).values()))
+        self.assertFalse(any(path.is_dir() for path in (run / 'collections').iterdir()))
+
+    def test_uncommitted_partial_copy_is_readopted(self):
+        run = self.create()
+        original = evidence.publish_file
+        damaged = []
+        def legacy_partial(source, target, replace=False):
+            if '/evidence/raw/' in str(target):
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(b'partial')
+                damaged.append(target)
+                raise OSError('injected legacy half-copy')
+            return original(source, target, replace)
+        with mock.patch.object(evidence, 'publish_file', legacy_partial):
+            with self.assertRaises(OSError):
+                runner.execute(run)
+        self.assertEqual(len(damaged), 1)
+        self.assertTrue(runner.execute(run)['passed'])
+        self.assertNotEqual(damaged[0].read_bytes(), b'partial')
+        self.assertEqual(len(analysis.attempts(run)['r0000-A']), 1)
+
+    def test_committed_raw_evidence_is_not_silently_repaired(self):
+        run = self.create()
+        runner.execute(run)
+        target = next((run / 'evidence/raw').glob('*/*/stderr.log'))
+        target.write_bytes(b'tampered committed bytes')
+        with self.assertRaisesRegex(LabError, 'Previously collected evidence changed'):
+            runner.execute(run)
+        with self.assertRaisesRegex(LabError, 'Previously collected evidence changed'):
+            evidence.archive(run, self.root / 'tampered.tar.gz')
+        self.assertEqual(target.read_bytes(), b'tampered committed bytes')
+
+    def test_receipt_manifest_is_bound_to_its_transfer(self):
+        run = self.create()
+        runner.execute(run)
+        latest = sorted((run / 'collections').glob('*.json'))[-1]
+        self.change(latest, lambda receipt:receipt.update(raw_files={}))
+        target = next((run / 'evidence/raw').glob('*/*/stderr.log'))
+        target.write_bytes(b'tampered committed bytes')
+        with self.assertRaisesRegex(LabError, 'manifest does not match'):
+            runner.execute(run)
+        with self.assertRaisesRegex(LabError, 'manifest does not match'):
+            evidence.archive(run, self.root / 'tampered.tar.gz')
+        self.assertEqual(target.read_bytes(), b'tampered committed bytes')
+
+    @unittest.skipUnless(os.name != 'nt', 'Requires unprivileged directory symlinks')
+    def test_collection_never_traverses_symlink_roots(self):
+        run = self.create()
+        outside = self.root / 'outside'
+        (outside / '0001').mkdir(parents=True)
+        (outside / '0001/keep').write_bytes(b'outside evidence')
+        (outside / '0001.tar').write_bytes(b'not an owned transfer')
+        before = inventory(outside)
+        for name in ('collections', 'evidence', 'evidence/raw'):
+            link = run / name
+            link.parent.mkdir(exist_ok=True)
+            link.symlink_to(outside, target_is_directory=True)
+            with self.assertRaisesRegex(LabError, 'symlink'):
+                evidence.collect(run, mock.Mock())
+            link.unlink()
+            self.assertEqual(inventory(outside), before)
+        collections = run / 'collections'
+        collections.symlink_to(outside, target_is_directory=True)
+        with self.assertRaisesRegex(LabError, 'symlink'):
+            evidence.discard_extractions(collections)
+        with self.assertRaisesRegex(LabError, 'symlink'):
+            evidence.collection_checkpoint(run)
+        self.assertEqual(inventory(outside), before)
+
+    def test_local_freeze_failure_can_be_archived_and_cleaned(self):
+        def partial(run, config, identity):
+            (run / 'bundle').mkdir()
+            (run / 'bundle/partial').write_bytes(b'frozen input prefix')
+            raise LabError('injected freezing failure')
+        for phase in ('freeze_failed', 'freezing'):
+            with mock.patch.object(bundle, 'make', partial):
+                with self.assertRaises(LabError):
+                    self.create()
+            run = next(path for path in (self.root / 'runs').iterdir()
+                       if read_json(path / 'state.json')['phase'] == 'freeze_failed')
+            state = read_json(run / 'state.json')
+            self.assertFalse((run / 'snapshot.json').exists())
+            state['phase'] = phase
+            write_json(run / 'state.json', state)
+            with self.assertRaisesRegex(LabError, 'Freezing did not finish'):
+                runner.execute(run)
+            evidence.archive(run, self.root / (phase + '.tar.gz'))
+            with mock.patch.object(Driver, 'cleanup_stage', side_effect=AssertionError('No remote stage')):
+                self.assertTrue(runner.cleanup(run)['local_freeze_only'])
+            self.assertEqual((run / 'bundle/partial').read_bytes(), b'frozen input prefix')
+            self.assertEqual(read_json(run / 'state.json')['phase'], 'cleaned')
+
+    def test_final_resume_clears_pending_and_updates_budget(self):
+        run = self.create()
+        runner.execute(run)
+        before = inventory(run / 'evidence/raw')
+        state = read_json(run / 'state.json')
+        state.update(phase='running', pending=read_json(run / 'dispatches/r0001-A/0001.json'),
+                     run_seconds_used=0)
+        write_json(run / 'state.json', state)
+        self.assertTrue(runner.execute(run)['passed'])
+        state = read_json(run / 'state.json')
+        self.assertNotIn('pending', state)
+        used = sum(record['elapsed_seconds'] for group in analysis.attempts(run).values() for record in group)
+        self.assertEqual(state['run_seconds_used'], used)
+        self.assertEqual(before, inventory(run / 'evidence/raw'))
 
     def test_cleanup_survives_source_changes_but_checks_owner(self):
         run = self.create()

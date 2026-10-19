@@ -2,7 +2,7 @@
 import math
 import re
 
-from .common import LabError
+from .integrity import LabError
 
 
 def validate(value, schema, document=None, location="$", depth=0):

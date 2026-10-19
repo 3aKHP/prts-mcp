@@ -1,9 +1,8 @@
-"""Small, dependency-free evidence and path primitives (Python 3.6+)."""
+"""Evidence integrity, durable publication and owned-path primitives (Python 3.6+)."""
 import hashlib
 import json
 import math
 import os
-import re
 import shutil
 import stat
 import tempfile
@@ -31,7 +30,7 @@ def file_hash(path):
     return result.hexdigest()
 
 
-def read_json(path):
+def decode_json(text):
     def pairs(items):
         result = {}
         for key, value in items:
@@ -49,8 +48,21 @@ def read_json(path):
             invalid(value)
         return result
 
-    return json.loads(Path(path).read_text(encoding="utf-8"),
+    return json.loads(text,
                       object_pairs_hook=pairs, parse_constant=invalid, parse_float=number)
+
+
+def read_json(path):
+    return decode_json(Path(path).read_text(encoding="utf-8"))
+
+
+def sync_directory(path):
+    if os.name != "nt":
+        descriptor = os.open(str(path), os.O_RDONLY)
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
 
 
 def write_json(path, value, exclusive=False):
@@ -69,12 +81,7 @@ def write_json(path, value, exclusive=False):
             os.link(temporary, str(path))
         else:
             os.replace(temporary, str(path))
-        if os.name != "nt":
-            directory = os.open(str(path.parent), os.O_RDONLY)
-            try:
-                os.fsync(directory)
-            finally:
-                os.close(directory)
+        sync_directory(path.parent)
     finally:
         if os.path.exists(temporary):
             os.unlink(temporary)
@@ -91,12 +98,6 @@ def relative_name(value):
     return value
 
 
-def identifier(value):
-    if not isinstance(value, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}", value):
-        raise LabError("Expected a public-safe identifier (letters, digits, _ or -)")
-    return value
-
-
 def resolve(base, value):
     path = Path(value).expanduser()
     return (Path(base) / path).resolve() if not path.is_absolute() else path.resolve()
@@ -104,6 +105,8 @@ def resolve(base, value):
 
 def inventory(root):
     root = Path(root)
+    if root.is_symlink():
+        raise LabError("Evidence contains a symlink: " + str(root))
     result = {}
     for path in sorted(root.rglob("*")):
         if path.is_symlink():

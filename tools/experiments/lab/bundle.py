@@ -1,11 +1,10 @@
 """Freeze runtime, evaluator and inputs without copying private operations."""
-import io
 import os
 import shutil
 import tarfile
 from pathlib import Path
 
-from .common import LabError, file_hash, inventory, relative_name, write_json
+from .integrity import LabError, file_hash, inventory, relative_name, write_json
 from .config import TOOLS
 
 

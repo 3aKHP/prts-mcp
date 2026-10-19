@@ -2,14 +2,13 @@
 import json
 import os
 from pathlib import Path
-import platform
 import shutil
 import signal
 import sys
 import tarfile
 import time
 
-from lab.common import (LabError, RunLock, digest, encoded, file_hash,
+from lab.integrity import (LabError, RunLock, digest, encoded, file_hash,
                         inventory, read_json, relative_name, remove_tree, write_json)
 from lab.process import capture
 from lab.response import check_response

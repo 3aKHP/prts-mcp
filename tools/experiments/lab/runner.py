@@ -6,8 +6,8 @@ import time
 import uuid
 
 from . import analysis, bundle, evidence
-from .common import LabError, RunLock, digest, file_hash, inventory, read_json, write_json
-from .config import TOOLS, ROOT, load, source_identity
+from .integrity import LabError, RunLock, digest, file_hash, inventory, read_json, write_json
+from .config import TOOLS, load, source_identity
 from .drivers import Driver
 
 
@@ -48,7 +48,7 @@ def create(plan_path, profile_path, output):
         state["phase"] = "ready"
         write_json(run / "state.json", state)
     except BaseException as error:
-        state["phase"] = "stage_failed"
+        state["phase"] = "freeze_failed" if state["phase"] == "freezing" else "stage_failed"
         state["driver"] = driver.state
         state["error"] = str(error)
         write_json(run / "state.json", state)
@@ -59,6 +59,8 @@ def create(plan_path, profile_path, output):
 
 def verified(run, execution=True):
     run = Path(run).resolve()
+    if read_json(run / "state.json")["phase"] in ("freezing", "freeze_failed"):
+        raise LabError("Freezing did not finish; archive and clean this local run, then start a new run")
     snapshot = read_json(run / "snapshot.json")
     config = snapshot["config"]
     # A resume must not silently pick up changed code, credentials policy,
@@ -138,7 +140,9 @@ def execute(run, retry_errors=False):
                     time.sleep(cooldown)
         summary = analysis.summarize(run)
         write_json(run / "summary.json", summary)
-        state.update({"phase": "complete", "passed": summary["passed"], "completed_at": time.time()})
+        state.update({"phase": "complete", "passed": summary["passed"],
+                      "run_seconds_used": used, "completed_at": time.time()})
+        state.pop("pending", None)
         write_json(run / "state.json", state)
         return summary
 
@@ -146,14 +150,24 @@ def execute(run, retry_errors=False):
 def cleanup(run):
     run = Path(run).resolve()
     with RunLock(run / ".lock"):
-        snapshot, driver = verified(run, execution=False)
+        state = read_json(run / "state.json")
         receipt = read_json(run / "archive-receipt.json")
         if file_hash(receipt["path"]) != receipt["sha256"]:
             raise LabError("Verified evidence backup is missing or changed")
         evidence.verify_archive(receipt["path"], receipt["files"])
-        state = read_json(run / "state.json")
         if state["phase"] == "cleaned":
             return state["cleanup"]
+        if state["phase"] in ("freezing", "freeze_failed"):
+            # Staging starts only after the durable phase transition. Preserve
+            # partial local inputs; there is no remote workspace to remove.
+            for name, metadata in inventory(run).items():
+                if name not in (".lock", "archive-receipt.json") and receipt["files"].get(name) != metadata:
+                    raise LabError("Local freezing evidence changed; archive it before cleanup")
+            result = {"local_freeze_only": True, "partial_inputs_retained": True}
+            state.update({"phase": "cleaned", "cleanup": result})
+            write_json(run / "state.json", state)
+            return result
+        snapshot, driver = verified(run, execution=False)
         if state["phase"] in ("staging", "stage_failed"):
             result = driver.cleanup_stage()
             state.update({"phase": "cleaned", "cleanup": result})

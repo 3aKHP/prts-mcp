@@ -2,7 +2,7 @@
 import os
 from pathlib import Path
 
-from .common import LabError, read_json, resolve, write_json
+from .integrity import LabError, read_json, resolve, write_json
 from .config import TOOLS
 
 

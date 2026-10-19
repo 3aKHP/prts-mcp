@@ -1,9 +1,8 @@
 """Case/round pairing and metric-defined estimates; no universal score."""
-import math
 import statistics
 from pathlib import Path
 
-from .common import LabError, digest, file_hash, inventory, read_json
+from .integrity import LabError, digest, file_hash, inventory, read_json
 from .response import check_response
 
 

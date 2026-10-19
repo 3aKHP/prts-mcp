@@ -1,13 +1,12 @@
 """Local, explicit SSH and Docker transports share the same frozen worker."""
 import json
-import os
 import re
 from pathlib import Path, PurePosixPath
 import shlex
 import subprocess
 import sys
 
-from .common import LabError, encoded
+from .integrity import LabError, encoded
 from .config import TOOLS
 
 PROBE = r'''

@@ -3,7 +3,7 @@ import itertools
 import os
 from pathlib import Path
 
-from .common import LabError, digest, file_hash, read_json, relative_name, resolve
+from .integrity import LabError, digest, file_hash, read_json, relative_name, resolve
 from .schema import validate
 
 TOOLS = Path(__file__).resolve().parent.parent

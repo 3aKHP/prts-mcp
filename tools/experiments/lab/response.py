@@ -1,7 +1,7 @@
 """Benchmark response checks, shared by the coordinator and execution worker."""
 from pathlib import Path
 
-from .common import LabError, read_json
+from .integrity import LabError, read_json
 from .schema import validate
 
 
