@@ -1,6 +1,8 @@
 //! Both backends expose the same tools and ignore the other backend's files.
 #[path = "support/sqlite.rs"]
 mod sqlite_fixture;
+#[path = "support/story_filters.rs"]
+mod story_filters;
 
 use std::{path::Path, process::Command};
 

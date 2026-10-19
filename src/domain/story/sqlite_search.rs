@@ -17,7 +17,7 @@ fn event_exists(connection: &Connection, event: &str) -> Result<bool, String> {
         .map_err(error)
 }
 
-fn context(
+pub(super) fn context(
     connection: &Connection,
     chapter: i64,
     line: i64,
@@ -42,11 +42,11 @@ fn context(
     Ok(result)
 }
 
-struct Line<'a> {
-    kind: &'static str,
-    text: &'a str,
+pub(super) struct Line<'a> {
+    pub(super) kind: &'static str,
+    pub(super) text: &'a str,
 }
-fn decode(mut payload: &[u8]) -> Result<Vec<Line<'_>>, String> {
+pub(super) fn decode(mut payload: &[u8]) -> Result<Vec<Line<'_>>, String> {
     let mut result = Vec::new();
     while !payload.is_empty() {
         if payload.len() < 9 {
@@ -136,27 +136,16 @@ pub fn search(
             }
         }
     } else {
-        let mut statement=connection.prepare_cached("SELECT c.ordinal,c.event,c.story_key,c.code,b.first_line,b.payload FROM story_chapters c JOIN story_blocks b ON b.chapter=c.ordinal WHERE (?1 IS NULL OR c.event=?1) ORDER BY c.ordinal,b.block").map_err(error)?;
-        let mut rows = statement.query([event]).map_err(error)?;
-        'blocks: while let Some(row) = rows.next().map_err(error)? {
-            crate::text::cancellation::check()?;
-            let chapter: i64 = row.get(0).map_err(error)?;
-            let first: i64 = row.get(4).map_err(error)?;
-            let payload = row.get_ref(5).map_err(error)?.as_blob().map_err(error)?;
-            if !regex.may_match_bytes(payload) {
-                continue;
-            }
-            for (offset, line) in decode(payload)?.iter().enumerate() {
-                if line_type.is_some_and(|kind| kind != line.kind) || !regex.is_match(line.text)? {
-                    continue;
-                }
-                let number = first + offset as i64;
-                results.push(json!({"event_id":row.get::<_,String>(1).map_err(error)?,"story_key":row.get::<_,String>(2).map_err(error)?,"story_code":row.get::<_,String>(3).map_err(error)?,"line_number":number+1,"context":context(&connection,chapter,number,radius)?}));
-                if results.len() as i64 >= maximum {
-                    break 'blocks;
-                }
-            }
-        }
+        super::sqlite_blocks::search(
+            db,
+            &connection,
+            regex,
+            line_type,
+            radius,
+            maximum,
+            event,
+            &mut results,
+        )?;
     }
     Ok(
         json!({"pattern":pattern,"filters":{"character":character,"line_type":line_type,"context_lines":radius,"event_id":event},"total":results.len(),"results":results}),

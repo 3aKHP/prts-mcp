@@ -57,6 +57,7 @@ pub struct JsRegex {
     scratch: RefCell<Vec<u16>>,
     prefix: Option<Prefix>,
     complete_literal: bool,
+    block_filterable: bool,
 }
 
 impl JsRegex {
@@ -89,11 +90,18 @@ impl JsRegex {
         let bytecode = unsafe { std::slice::from_raw_parts(ptr, length as usize) }.to_vec();
         unsafe { prts_re_free(ptr.cast()) };
         let (prefix, complete_literal) = Self::literal_prefix(&bytecode, flags);
+        let block_filterable = match &prefix {
+            Some(Prefix::Exact(text)) | Some(Prefix::AsciiFold { literal: text, .. }) => {
+                super::block_filter::BlockFilter::supports(text.as_bytes())
+            }
+            None => false,
+        };
         Ok(Self {
             bytecode,
             scratch: RefCell::new(Vec::new()),
             prefix,
             complete_literal,
+            block_filterable,
         })
     }
 
@@ -144,6 +152,19 @@ impl JsRegex {
         match &self.prefix {
             Some(Prefix::Exact(text)) => memchr::memmem::find(bytes, text.as_bytes()).is_some(),
             Some(Prefix::AsciiFold { literal, .. }) => ascii_iu_contains(bytes, literal.as_bytes()),
+            None => true,
+        }
+    }
+
+    pub(crate) fn has_block_filter(&self) -> bool {
+        self.block_filterable
+    }
+
+    pub(crate) fn may_match_filter(&self, filter: &super::block_filter::BlockFilter) -> bool {
+        match &self.prefix {
+            Some(Prefix::Exact(text)) | Some(Prefix::AsciiFold { literal: text, .. }) => {
+                filter.may_contain(text.as_bytes())
+            }
             None => true,
         }
     }
@@ -309,6 +330,22 @@ mod tests {
     use super::*;
 
     #[test]
+    fn a_single_normalized_byte_uses_the_streaming_path() {
+        for pattern in ["Q", "Q.*", "K", "S", r"\x01", "(?-i:K)"] {
+            assert!(
+                !JsRegex::compile(pattern).unwrap().has_block_filter(),
+                "{pattern}"
+            );
+        }
+        for pattern in ["QZ", "博士", r"\x01\x02"] {
+            assert!(
+                JsRegex::compile(pattern).unwrap().has_block_filter(),
+                "{pattern}"
+            );
+        }
+    }
+
+    #[test]
     fn block_ascii_prefilter_matches_native_unicode_folds() {
         for pattern in ["sqlite_poc_absent", "ask", "sk", "k", "s", "SQLITE"] {
             let re = JsRegex::compile(pattern).unwrap();
@@ -397,6 +434,12 @@ mod tests {
                     let mut block = vec![0, 255, 0, 0, 0, 0, 0, 0, 0];
                     block.extend_from_slice(text.as_bytes());
                     block.extend_from_slice(&[0, 255, 0]);
+                    assert!(
+                        re.may_match_filter(
+                            &super::super::block_filter::BlockFilter::new(&block).unwrap()
+                        ),
+                        "block filter lost {pattern:?}: {text:?}"
+                    );
                     assert!(
                         re.may_match_bytes(&block),
                         "block prefilter lost {pattern:?}: {text:?}"

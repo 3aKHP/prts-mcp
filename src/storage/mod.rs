@@ -1,5 +1,6 @@
 //! Directory/ZIP/fallback stores, generation pointers, snapshots.
 
+pub(crate) mod block_filters;
 pub mod database;
 pub(crate) mod frozen;
 pub mod generation;

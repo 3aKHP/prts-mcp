@@ -23,6 +23,7 @@ pub struct GameDb {
     scans: [Mutex<Connection>; 2],
     searches: Mutex<Connection>,
     pub(crate) objects: super::objects::Objects,
+    pub(crate) story_filters: super::block_filters::BlockFilters,
     next_scan: AtomicUsize,
     _lease: Option<std::fs::File>,
 }
@@ -176,6 +177,7 @@ impl GameDb {
             scans: [Mutex::new(reader(path)?), Mutex::new(reader(path)?)],
             searches: Mutex::new(reader(path)?),
             objects: super::objects::Objects::default(),
+            story_filters: super::block_filters::BlockFilters::default(),
             next_scan: AtomicUsize::new(0),
             _lease: lease,
         });
