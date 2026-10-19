@@ -15,7 +15,7 @@ The original per-implementation changelogs at the 2.8.1 baseline remain availabl
 ### Changed
 
 - **Sync checksums**: reduce SHA-256 costs for release downloads and SQLite synchronization on CPUs without SHA extensions.
-- **SQLite validation**: avoid overlapping quick/full checks during sync. On Unix, reuse full verification within the same process while the database file identity and manifest remain unchanged; restart or file changes require fresh verification.
+- **SQLite validation**: add `PRTS_VALIDATION_MODE=normal|strict` (default `normal`). New synchronized databases receive full validation. Normal mode rehashes managed databases on restart and reuses a matching structural-validation record; strict mode repeats integrity and foreign-key checks. Missing or stale records trigger full validation. Both modes retain read-back checksums and publication protections. Remove duplicate decoded-body hashing and unused image-download checksums.
 - **SQLite queries**: isolate cross-domain searches from long story scans and reuse story metadata in a bounded cache owned by each database generation.
 
 ## [3.1.0] - 2026-10-18

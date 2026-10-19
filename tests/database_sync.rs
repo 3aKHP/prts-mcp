@@ -19,6 +19,27 @@ const VERSION: &str = "26-10-08-04-51-28-56071834";
 fn digest(bytes: &[u8]) -> String {
     format!("{:x}", Sha256::digest(bytes))
 }
+
+#[tokio::test]
+async fn both_modes_preserve_the_active_pointer_when_repair_download_is_corrupt() {
+    for mode in [
+        prts_mcp_rust::config::ValidationMode::Normal,
+        prts_mcp_rust::config::ValidationMode::Strict,
+    ] {
+        let (temp, mut fake) = artifact();
+        let root = temp.0.join("mode-runtime");
+        sync::sync_with_mode(&fake, &root, mode).await.unwrap();
+        let before = std::fs::read(root.join("active")).unwrap();
+        let active = database::active(&root).unwrap().unwrap();
+        assert!(root
+            .join(format!("{}.verified.json", active.file_name))
+            .is_file());
+        std::fs::write(active.path(&root), b"broken").unwrap();
+        fake.payload[0] ^= 1;
+        assert!(sync::sync_with_mode(&fake, &root, mode).await.is_err());
+        assert_eq!(std::fs::read(root.join("active")).unwrap(), before);
+    }
+}
 struct Fake {
     manifest: Value,
     payload: Vec<u8>,

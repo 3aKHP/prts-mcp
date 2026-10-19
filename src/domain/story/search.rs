@@ -237,6 +237,28 @@ pub fn build_story_search(
     max_results: i64,
     event_id: Option<&str>,
 ) -> Result<Value, String> {
+    let store = ZipStore::new(zip_path);
+    build_story_search_from_store(
+        &store,
+        pattern,
+        character,
+        line_type,
+        context_lines,
+        max_results,
+        event_id,
+    )
+}
+
+pub(crate) fn build_story_search_from_store(
+    store: &ZipStore,
+    pattern: &str,
+    character: Option<&str>,
+    line_type: Option<&str>,
+    context_lines: i64,
+    max_results: i64,
+    event_id: Option<&str>,
+) -> Result<Value, String> {
+    let zip_path = store.zip_path();
     if max_results < 1 {
         return Err("max_results 必须 >= 1。".to_string());
     }
@@ -266,8 +288,7 @@ pub fn build_story_search(
         }
     }
 
-    if crate::storage::sqlite::is_database(zip_path) {
-        let db = crate::storage::sqlite::GameDb::open(zip_path)?;
+    if let Some(db) = store.database_handle()? {
         if db.derived_ready() {
             return super::sqlite_search::search(
                 &db,
@@ -281,9 +302,8 @@ pub fn build_story_search(
             );
         }
     }
-    let store = ZipStore::new(zip_path);
     let index =
-        story_search_index(zip_path, &store).map_err(|e| format!("读取剧情数据索引失败：{e}"))?;
+        story_search_index(zip_path, store).map_err(|e| format!("读取剧情数据索引失败：{e}"))?;
 
     if let Some(event_id) = event_id {
         if !index.event_ids.contains(event_id) {

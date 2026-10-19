@@ -19,6 +19,8 @@ pub(crate) struct Observation {
 struct Receipt {
     observed: Observation,
     descriptor: String,
+    sha256: Option<String>,
+    full_in_process: bool,
     _lease: File,
 }
 
@@ -33,6 +35,10 @@ impl Observation {
         };
         observed.check()?;
         Ok(observed)
+    }
+
+    pub(crate) fn identity(&self) -> &str {
+        &self.token
     }
 
     fn current(&self) -> bool {
@@ -64,7 +70,17 @@ pub(crate) fn contains(path: &Path, descriptor: Option<&str>) -> bool {
     })
 }
 
+#[cfg(test)]
 pub(crate) fn remember(observed: Observation, descriptor: String) -> Result<(), String> {
+    remember_proof(observed, descriptor, None, true)
+}
+
+pub(crate) fn remember_proof(
+    observed: Observation,
+    descriptor: String,
+    sha256: Option<String>,
+    full_in_process: bool,
+) -> Result<(), String> {
     observed.check()?;
     if cfg!(windows) {
         return Ok(());
@@ -91,9 +107,27 @@ pub(crate) fn remember(observed: Observation, descriptor: String) -> Result<(), 
     receipts.push_back(Receipt {
         observed,
         descriptor,
+        sha256,
+        full_in_process,
         _lease: lease,
     });
     Ok(())
+}
+
+pub(crate) fn verified_digest(path: &Path, sha256: &str, strict: bool) -> bool {
+    if cfg!(windows) {
+        return false;
+    }
+    let mut receipts = RECEIPTS
+        .get_or_init(Mutex::default)
+        .lock()
+        .expect("SQLite receipts lock");
+    receipts.retain(|receipt| receipt.observed.current());
+    receipts.iter().any(|receipt| {
+        receipt.observed.path == path
+            && receipt.sha256.as_deref() == Some(sha256)
+            && (!strict || receipt.full_in_process)
+    })
 }
 
 pub(crate) fn forget(path: &Path) {

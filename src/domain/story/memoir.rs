@@ -68,7 +68,15 @@ fn resolve_operator_code(char_dict: &Map<String, Value>, operator_name: &str) ->
 /// `buildOperatorMemoirsFromStore`: Err is the thrown message.
 pub fn build_operator_memoirs(zip_path: &Path, operator_name: &str) -> Result<Value, String> {
     let store = ZipStore::new(zip_path);
-    let char_dict = load_char_dict(zip_path, &store);
+    build_operator_memoirs_from_store(&store, operator_name)
+}
+
+pub(crate) fn build_operator_memoirs_from_store(
+    store: &ZipStore,
+    operator_name: &str,
+) -> Result<Value, String> {
+    let zip_path = store.zip_path();
+    let char_dict = load_char_dict(zip_path, store);
     if char_dict.is_empty() {
         return Err("chardict.json 未在 story zip 中找到。".to_string());
     }

@@ -221,6 +221,7 @@ type ZipCache = Mutex<Option<ZipArchive<std::fs::File>>>;
 
 pub struct ZipStore {
     zip_path: PathBuf,
+    database: Option<Arc<super::sqlite::GameDb>>,
     // Mirrors the TS lazy `_zip: AdmZip | null` — opened on first use and
     // dropped by close(). ZipArchive keeps a file handle, not the archive in
     // memory: entries are read from disk per request.
@@ -229,7 +230,7 @@ pub struct ZipStore {
 
 impl ZipStore {
     pub(crate) fn uses_database(&self) -> bool {
-        super::sqlite::is_database(&self.zip_path)
+        self.database.is_some() || super::sqlite::is_database(&self.zip_path)
     }
 
     /// SQLite metadata belongs to its admitted generation. ZIP behavior remains
@@ -239,10 +240,8 @@ impl ZipStore {
         key: &'static str,
         load: impl FnOnce() -> Result<serde_json::Map<String, Value>, String>,
     ) -> Result<std::sync::Arc<serde_json::Map<String, Value>>, String> {
-        if self.uses_database() {
-            return super::sqlite::GameDb::open(&self.zip_path)?
-                .objects
-                .get_or_load(key, load);
+        if let Some(db) = self.database_handle()? {
+            return db.objects.get_or_load(key, load);
         }
         load().map(std::sync::Arc::new)
     }
@@ -250,8 +249,27 @@ impl ZipStore {
     pub fn new(zip_path: impl Into<PathBuf>) -> Self {
         Self {
             zip_path: zip_path.into(),
+            database: None,
             cache: Mutex::new(None),
         }
+    }
+
+    pub(crate) fn from_database(db: Arc<super::sqlite::GameDb>) -> Self {
+        Self {
+            zip_path: db.path.clone(),
+            database: Some(db),
+            cache: Mutex::new(None),
+        }
+    }
+
+    pub(crate) fn database_handle(&self) -> Result<Option<Arc<super::sqlite::GameDb>>, String> {
+        if let Some(db) = &self.database {
+            return Ok(Some(Arc::clone(db)));
+        }
+        if super::sqlite::is_database(&self.zip_path) {
+            return super::sqlite::GameDb::open(&self.zip_path).map(Some);
+        }
+        Ok(None)
     }
 
     pub fn zip_path(&self) -> &Path {
@@ -281,13 +299,16 @@ impl ZipStore {
 
 impl JsonStore for ZipStore {
     fn exists(&self, path: &str) -> Result<bool, StoreError> {
-        if !self.zip_path.is_file() {
+        if self.database.is_none() && !self.zip_path.is_file() {
             return Ok(false);
         }
         let inner = normalize_path(path)?;
-        if super::sqlite::is_database(&self.zip_path) {
-            return super::sqlite::GameDb::open(&self.zip_path)
-                .and_then(|db| db.exists("story", &inner))
+        if let Some(db) = self
+            .database_handle()
+            .map_err(|e| StoreError::Io(std::io::Error::other(e)))?
+        {
+            return db
+                .exists("story", &inner)
                 .map_err(|e| StoreError::Io(std::io::Error::other(e)));
         }
         self.with_archive(|archive| Ok(archive.by_name(&inner).is_ok()))
@@ -295,9 +316,10 @@ impl JsonStore for ZipStore {
 
     fn read_json(&self, path: &str) -> Result<Value, StoreError> {
         let inner = normalize_path(path)?;
-        if super::sqlite::is_database(&self.zip_path) {
-            let db = super::sqlite::GameDb::open(&self.zip_path)
-                .map_err(|e| StoreError::Io(std::io::Error::other(e)))?;
+        if let Some(db) = self
+            .database_handle()
+            .map_err(|e| StoreError::Io(std::io::Error::other(e)))?
+        {
             let bytes = db
                 .raw("story", &inner)
                 .map_err(|_| StoreError::ZipEntryNotFound(path.to_string()))?;
