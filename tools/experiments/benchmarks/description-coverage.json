@@ -1,0 +1,14 @@
+{
+  "version": 1, "id": "description-coverage-demo", "revision": "1",
+  "unit": "task-run", "equivalence": "none",
+  "files": [{"source": "adapters/description_coverage.py", "target": "adapter.py"}],
+  "cases": [
+    {"id": "lookup", "input": {"tool": "lookup", "required": ["name"]}},
+    {"id": "search", "input": {"tool": "search", "required": ["query", "scope"]}}
+  ],
+  "metrics": {
+    "parameter_coverage": {"unit": "ratio", "direction": "higher", "role": "primary", "aggregate": "mean", "minimum": 0, "maximum": 1},
+    "required_declared": {"unit": "ratio", "direction": "higher", "role": "guardrail", "aggregate": "mean", "minimum": 0, "maximum": 1},
+    "description_characters": {"unit": "count", "direction": "lower", "role": "secondary", "aggregate": "mean", "minimum": 0}
+  }
+}

@@ -33,8 +33,7 @@ pub fn list_story_events(app: &AppHandle, arguments: &Value) -> DispatchResult {
         Ok(view) => view,
         Err(message) => return DispatchResult::Outcome(ToolOutcome::text(message)),
     };
-    let zip = view.story_zip.as_deref().expect("checked");
-    let store = crate::storage::ZipStore::new(zip);
+    let store = view.story_store().expect("checked");
     match reader::build_story_events_listing(&store, category.as_deref()) {
         Ok(data) => DispatchResult::Outcome(ToolOutcome::structured(
             reader::render_story_events_listing(&data),
@@ -63,8 +62,7 @@ pub fn list_stories(app: &AppHandle, arguments: &Value) -> DispatchResult {
         Ok(view) => view,
         Err(message) => return DispatchResult::Outcome(ToolOutcome::text(message)),
     };
-    let zip = view.story_zip.as_deref().expect("checked");
-    let store = crate::storage::ZipStore::new(zip);
+    let store = view.story_store().expect("checked");
     match reader::build_stories_listing(&store, &event_id, include_summaries) {
         Ok(data) => DispatchResult::Outcome(ToolOutcome::structured(
             reader::render_stories_listing(&data),
@@ -97,12 +95,14 @@ pub fn get_story_summary(app: &AppHandle, arguments: &Value) -> DispatchResult {
         Ok(view) => view,
         Err(message) => return DispatchResult::Outcome(ToolOutcome::text(message)),
     };
-    let zip = view.story_zip.as_deref().expect("checked");
     // getStorySummary cannot throw for its own reads (all inner errors
     // degrade to the 未找到梗概 message), so there is no catch branch here.
-    DispatchResult::Outcome(ToolOutcome::text(story::summary::get_story_summary(
-        zip, &story_key,
-    )))
+    DispatchResult::Outcome(ToolOutcome::text(
+        story::summary::get_story_summary_from_store(
+            &view.story_store().expect("checked"),
+            &story_key,
+        ),
+    ))
 }
 
 pub fn read_story(app: &AppHandle, arguments: &Value) -> DispatchResult {
@@ -122,8 +122,7 @@ pub fn read_story(app: &AppHandle, arguments: &Value) -> DispatchResult {
         Ok(view) => view,
         Err(message) => return DispatchResult::Outcome(ToolOutcome::text(message)),
     };
-    let zip = view.story_zip.as_deref().expect("checked");
-    let store = crate::storage::ZipStore::new(zip);
+    let store = view.story_store().expect("checked");
     match reader::read_story_from_store(&store, &story_key, include_narration) {
         Ok(chapter) => DispatchResult::Outcome(ToolOutcome::text(reader::format_chapter(&chapter))),
         Err(message) => {
@@ -156,8 +155,7 @@ pub fn read_activity(app: &AppHandle, arguments: &Value) -> DispatchResult {
         Ok(view) => view,
         Err(message) => return DispatchResult::Outcome(ToolOutcome::text(message)),
     };
-    let zip = view.story_zip.as_deref().expect("checked");
-    let store = crate::storage::ZipStore::new(zip);
+    let store = view.story_store().expect("checked");
     match reader::read_activity_from_store(&store, &event_id, include_narration, page, page_size) {
         Ok(result) => {
             if result.page_out_of_range {
@@ -244,9 +242,8 @@ pub fn search_stories(app: &AppHandle, arguments: &Value) -> DispatchResult {
         Ok(view) => view,
         Err(message) => return DispatchResult::Outcome(ToolOutcome::text(message)),
     };
-    let zip = view.story_zip.as_deref().expect("checked");
-    match story::search::build_story_search(
-        zip,
+    match story::search::build_story_search_from_store(
+        &view.story_store().expect("checked"),
         &pattern,
         character.as_deref(),
         line_type.as_deref(),
@@ -282,8 +279,10 @@ pub fn get_operator_memoirs(app: &AppHandle, arguments: &Value) -> DispatchResul
         Ok(view) => view,
         Err(message) => return DispatchResult::Outcome(ToolOutcome::text(message)),
     };
-    let zip = view.story_zip.as_deref().expect("checked");
-    match story::memoir::build_operator_memoirs(zip, &name) {
+    match story::memoir::build_operator_memoirs_from_store(
+        &view.story_store().expect("checked"),
+        &name,
+    ) {
         Ok(data) => DispatchResult::Outcome(ToolOutcome {
             summary_override: Some(format!(
                 "{} 的密录列表（共 {} 章）",
@@ -319,8 +318,12 @@ pub fn find_character_appearances(app: &AppHandle, arguments: &Value) -> Dispatc
         Ok(view) => view,
         Err(message) => return DispatchResult::Outcome(ToolOutcome::text(message)),
     };
-    let zip = view.story_zip.as_deref().expect("checked");
-    match story::character::build_character_appearances(zip, &name, scope.as_deref(), max_events) {
+    match story::character::build_character_appearances_from_store(
+        &view.story_store().expect("checked"),
+        &name,
+        scope.as_deref(),
+        max_events,
+    ) {
         Ok(data) => DispatchResult::Outcome(ToolOutcome::structured(
             story::character::render_character_appearances(&data),
             data,
@@ -353,8 +356,10 @@ pub fn find_speakers_in(app: &AppHandle, arguments: &Value) -> DispatchResult {
         Ok(view) => view,
         Err(message) => return DispatchResult::Outcome(ToolOutcome::text(message)),
     };
-    let zip = view.story_zip.as_deref().expect("checked");
-    match story::character::build_speakers_in_event(zip, &event_id) {
+    match story::character::build_speakers_in_event_from_store(
+        &view.story_store().expect("checked"),
+        &event_id,
+    ) {
         Ok(data) => DispatchResult::Outcome(ToolOutcome::structured(
             story::character::render_speakers_in_event(&data),
             data,
@@ -372,7 +377,7 @@ pub fn find_speakers_in(app: &AppHandle, arguments: &Value) -> DispatchResult {
 mod tests {
     use super::*;
     use crate::config::RuntimeConfig;
-    use crate::storage::{database::lease_path, database::ActiveDatabase, JsonStore, ZipStore};
+    use crate::storage::{database::lease_path, database::ActiveDatabase, JsonStore};
     use crate::sync::database_io::prune;
     use std::io::Write;
 
@@ -389,7 +394,7 @@ mod tests {
         let body = encoder.finish().unwrap();
         let mut pointers = Vec::new();
         for revision in 1..=3 {
-            let pointer = ActiveDatabase {
+            let mut pointer = ActiveDatabase {
                 file_name: format!("{}-{revision:032x}.sqlite", "a".repeat(64)),
                 source_version: "fixture".into(),
                 revision,
@@ -423,6 +428,17 @@ mod tests {
                     [source_path],
                 )
                 .unwrap();
+            connection
+                .execute("INSERT INTO meta VALUES('source_version','fixture')", [])
+                .unwrap();
+            connection
+                .execute(
+                    "INSERT INTO meta VALUES('publication_revision',?1)",
+                    [revision.to_string()],
+                )
+                .unwrap();
+            drop(connection);
+            pointer.sha256 = crate::storage::digest::hash_file(&pointer.path(&root)).unwrap();
             std::fs::File::create(lease_path(&pointer.path(&root))).unwrap();
             pointers.push(pointer);
         }
@@ -435,7 +451,7 @@ mod tests {
         let app = AppHandle::from_config(&config);
         let view = story_view(&app).ok().unwrap();
         let old_path = view.story_zip.as_ref().unwrap().clone();
-        let store = ZipStore::new(&old_path);
+        let store = view.story_store().unwrap();
         assert_eq!(store.read_json(source_path).unwrap(), source);
         for pointer in &pointers[1..] {
             std::fs::write(root.join("active"), pointer.encode().unwrap()).unwrap();
@@ -446,6 +462,10 @@ mod tests {
         assert!(old_path.exists());
         assert_eq!(store.read_json(source_path).unwrap(), source);
         drop(view);
+        prune(&root, &pointers[2]);
+        assert!(old_path.exists());
+        assert_eq!(store.read_json(source_path).unwrap(), source);
+        drop(store);
         prune(&root, &pointers[2]);
         assert!(!old_path.exists());
         drop(app);

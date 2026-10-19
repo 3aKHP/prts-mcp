@@ -2,10 +2,22 @@
 use super::{
     database_io as io, database_manifest::DatabaseManifest, discovery, transport::Transport,
 };
-use crate::{config::RuntimeConfig, storage::database};
+use crate::{
+    config::{RuntimeConfig, ValidationMode},
+    storage::database,
+};
 use std::{fs::OpenOptions, path::Path, sync::Arc, time::Duration};
 
 pub async fn sync(transport: &dyn Transport, root: &Path) -> Result<bool, String> {
+    sync_with_mode(transport, root, ValidationMode::Normal).await
+}
+
+/// Sync using the process startup validation policy.
+pub async fn sync_with_mode(
+    transport: &dyn Transport,
+    root: &Path,
+    mode: ValidationMode,
+) -> Result<bool, String> {
     std::fs::create_dir_all(root).map_err(|e| e.to_string())?;
     let lock = OpenOptions::new()
         .read(true)
@@ -40,7 +52,7 @@ pub async fn sync(transport: &dyn Transport, root: &Path) -> Result<bool, String
     let check_lock = Arc::clone(&lock);
     match tokio::task::spawn_blocking(move || {
         let _lock = check_lock;
-        prepare(&check_root, &check_manifest)
+        prepare(&check_root, &check_manifest, mode)
     })
     .await
     .map_err(|e| e.to_string())??
@@ -72,8 +84,7 @@ pub async fn sync(transport: &dyn Transport, root: &Path) -> Result<bool, String
         let stage = stage;
         let decoded = stage.0.join("data.sqlite");
         io::decode(&stage.0.join("data.sqlite.gz"), &decoded, &manifest)?;
-        io::verify(&decoded, &manifest)?;
-        let current = io::publish(&root, &decoded, &manifest)?;
+        let current = io::publish(&root, &decoded, &manifest, mode)?;
         io::prune(&root, &current);
         Ok::<_, String>(())
     })
@@ -87,7 +98,11 @@ enum Prepared {
     Download,
 }
 
-fn prepare(root: &Path, manifest: &DatabaseManifest) -> Result<Prepared, String> {
+fn prepare(
+    root: &Path,
+    manifest: &DatabaseManifest,
+    mode: ValidationMode,
+) -> Result<Prepared, String> {
     let (previous, repair_active) = match database::active(root) {
         Ok(pointer) => (pointer, false),
         Err(error) => {
@@ -108,7 +123,8 @@ fn prepare(root: &Path, manifest: &DatabaseManifest) -> Result<Prepared, String>
                 "same SQLite generation has a different digest; publish a new revision".into(),
             );
         }
-        if previous.sha256 == manifest.sha256 && io::verify(&previous.path(root), manifest).is_ok()
+        if previous.sha256 == manifest.sha256
+            && io::verify(&previous.path(root), manifest, mode, false).is_ok()
         {
             if repair_active {
                 io::activate(root, previous)?;
@@ -117,7 +133,7 @@ fn prepare(root: &Path, manifest: &DatabaseManifest) -> Result<Prepared, String>
             return Ok(Prepared::Ready(repair_active));
         }
     }
-    if let Some(path) = io::cached(root, manifest) {
+    if let Some(path) = io::cached(root, manifest, mode) {
         let pointer = database::ActiveDatabase {
             file_name: path
                 .file_name()
@@ -149,7 +165,13 @@ pub fn start(config: Arc<RuntimeConfig>, transport: Arc<dyn Transport>) {
                 if delay > 0 {
                     tokio::time::sleep(Duration::from_millis(delay)).await;
                 }
-                match sync(transport.as_ref(), &config.database_dir).await {
+                match sync_with_mode(
+                    transport.as_ref(),
+                    &config.database_dir,
+                    config.validation_mode,
+                )
+                .await
+                {
                     Ok(updated) => {
                         crate::log_info(if updated {
                             "SQLite dataset updated."

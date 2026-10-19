@@ -4,8 +4,8 @@
 
 | Branch | Purpose |
 | --- | --- |
-| `main` | Latest public stable release (native Rust `3.1.0`). |
-| `develop` | Active 3.x Rust integration branch (`3.1.0-dev.0`). Root Cargo project; no `python/` or `ts/` directories. |
+| `main` | Latest public stable release (native Rust `3.1.1`). |
+| `develop` | Active 3.x Rust integration branch (`3.1.2-dev.0`). Root Cargo project; no `python/` or `ts/` directories. |
 | `lts/2.8` | Python/TypeScript 2.8.x long-term maintenance branch (EOL `2027-07-02`). |
 | `lts/1.7` | Python/TypeScript 1.7.x long-term maintenance branch (EOL `2027-07-02`). |
 
@@ -44,6 +44,8 @@ Run `./scripts/check-runtime.sh` for a fast toolchain and metadata check. For fu
 ```
 
 See [`docs/dev/ENVIRONMENT.md`](docs/dev/ENVIRONMENT.md) for single-target test commands and platform-specific notes, and [`docs/dev/E2E.md`](docs/dev/E2E.md) for full real-client E2E procedures.
+
+For quantitative code or benchmark comparisons, use [`docs/dev/COMPARATIVE-EVALUATION.md`](docs/dev/COMPARATIVE-EVALUATION.md). Select the contributor's own private environment profile and operations document; the public workflow does not assume maintainer infrastructure.
 
 ## 5. Code Review
 

@@ -17,8 +17,13 @@ static DATABASES: OnceLock<Mutex<SharedDatabases>> = OnceLock::new();
 
 pub struct GameDb {
     pub path: PathBuf,
+    identity: String,
+    checked: AtomicUsize,
     pub(crate) connection: Mutex<Connection>,
     scans: [Mutex<Connection>; 2],
+    searches: Mutex<Connection>,
+    pub(crate) objects: super::objects::Objects,
+    pub(crate) story_filters: super::block_filters::BlockFilters,
     next_scan: AtomicUsize,
     _lease: Option<std::fs::File>,
 }
@@ -58,6 +63,9 @@ fn verify_schema(connection: &Connection) -> Result<(), String> {
 }
 
 impl GameDb {
+    pub(crate) fn search_connection(&self) -> Result<MutexGuard<'_, Connection>, String> {
+        self.searches.lock().map_err(err)
+    }
     /// A fixed scan pool isolates ordinary entity reads from long regex scans.
     /// Two bounded page caches are shared across all clients in a generation.
     pub(crate) fn scan_connection(&self) -> Result<MutexGuard<'_, Connection>, String> {
@@ -72,19 +80,44 @@ impl GameDb {
     }
 
     pub fn open(path: &Path) -> Result<Arc<Self>, String> {
-        let mut databases = DATABASES.get_or_init(Mutex::default).lock().map_err(err)?;
-        let identity = super::identity::path_token(path).ok_or("SQLite file is unavailable")?;
-        let key = (path.to_owned(), identity);
-        if let Some(db) = databases.get(&key).and_then(Weak::upgrade) {
+        let flight = super::admission::flight(path)?;
+        let _guard = flight.lock().map_err(err)?;
+        if let Some(db) = Self::cached(path)? {
             return Ok(db);
         }
         let db = Self::open_detached(path)?;
-        databases.retain(|_, value| value.strong_count() > 0);
-        databases.insert(key, Arc::downgrade(&db));
+        Self::retain(&db)?;
         Ok(db)
     }
 
+    pub(crate) fn cached(path: &Path) -> Result<Option<Arc<Self>>, String> {
+        let databases = DATABASES.get_or_init(Mutex::default).lock().map_err(err)?;
+        let identity = super::identity::path_token(path).ok_or("SQLite file is unavailable")?;
+        Ok(databases
+            .get(&(path.to_owned(), identity))
+            .and_then(Weak::upgrade))
+    }
+
+    pub(crate) fn retain(db: &Arc<Self>) -> Result<(), String> {
+        let identity = db.identity.clone();
+        let mut databases = DATABASES.get_or_init(Mutex::default).lock().map_err(err)?;
+        databases.retain(|_, value| value.strong_count() > 0);
+        databases.insert((db.path.clone(), identity), Arc::downgrade(db));
+        Ok(())
+    }
+
     pub fn open_detached(path: &Path) -> Result<Arc<Self>, String> {
+        Self::open_checked(path, true)
+    }
+
+    /// Only the sync verifier may defer page checks to its full integrity pass.
+    pub(crate) fn for_verification(path: &Path) -> Result<Arc<Self>, String> {
+        Self::open_checked(path, false)
+    }
+
+    fn open_checked(path: &Path, quick: bool) -> Result<Arc<Self>, String> {
+        let observed = super::validation::Observation::begin(path)?;
+        let quick = quick && !super::validation::contains(path, None);
         let lease_path = super::database::lease_path(path);
         let lease = match std::fs::File::open(lease_path) {
             Ok(file) => {
@@ -133,20 +166,51 @@ impl GameDb {
         verify_schema(&connection)?;
         // Validate pages once per opened identity, before publishing the shared
         // handle. Steady-state snapshots reuse the admitted connection pool.
+        if quick {
+            Self::quick_connection(&connection)?;
+        }
+        let db = Arc::new(Self {
+            path: path.to_owned(),
+            identity: observed.identity().into(),
+            checked: AtomicUsize::new(usize::from(quick)),
+            connection: Mutex::new(connection),
+            scans: [Mutex::new(reader(path)?), Mutex::new(reader(path)?)],
+            searches: Mutex::new(reader(path)?),
+            objects: super::objects::Objects::default(),
+            story_filters: super::block_filters::BlockFilters::default(),
+            next_scan: AtomicUsize::new(0),
+            _lease: lease,
+        });
+        observed.check()?;
+        Ok(db)
+    }
+
+    fn quick_connection(connection: &Connection) -> Result<(), String> {
         let check: String = connection
             .query_row("PRAGMA quick_check", [], |r| r.get(0))
             .map_err(err)?;
         if check != "ok" {
             return Err(format!("SQLite quick_check failed: {check}"));
         }
-        let db = Arc::new(Self {
-            path: path.to_owned(),
-            connection: Mutex::new(connection),
-            scans: [Mutex::new(reader(path)?), Mutex::new(reader(path)?)],
-            next_scan: AtomicUsize::new(0),
-            _lease: lease,
-        });
-        Ok(db)
+        Ok(())
+    }
+
+    pub(crate) fn quick_check(&self) -> Result<(), String> {
+        Self::quick_connection(&*self.connection.lock().map_err(err)?)
+    }
+
+    pub(crate) fn check_custom(&self, strict: bool) -> Result<(), String> {
+        let level = if strict { 2 } else { 1 };
+        if !cfg!(windows) && self.checked.load(Ordering::Acquire) >= level {
+            return Ok(());
+        }
+        if strict {
+            self.verify_contents()?;
+        } else {
+            self.quick_check()?;
+        }
+        self.checked.fetch_max(level, Ordering::Release);
+        Ok(())
     }
 
     pub fn metadata(&self, key: &str) -> Result<Option<String>, String> {
@@ -284,6 +348,13 @@ impl GameDb {
     }
 
     pub fn verify(&self) -> Result<(), String> {
+        self.verify_contents()?;
+        verify_schema(&*self.connection.lock().map_err(err)?)
+    }
+
+    pub(crate) fn verify_contents(&self) -> Result<(), String> {
+        #[cfg(test)]
+        FULL_CHECKS.with(|count| count.set(count.get() + 1));
         let connection = self.connection.lock().map_err(err)?;
         let check: String = connection
             .query_row("PRAGMA integrity_check", [], |r| r.get(0))
@@ -306,7 +377,7 @@ impl GameDb {
         if !self.derived_ready_unlocked(&connection)? {
             return Err("missing derived data".into());
         }
-        verify_schema(&connection)
+        Ok(())
     }
 
     fn derived_ready_unlocked(&self, connection: &Connection) -> Result<bool, String> {
@@ -329,4 +400,9 @@ pub fn is_database(path: &Path) -> bool {
         .and_then(|mut file| file.read_exact(&mut header))
         .is_ok()
         && &header == b"SQLite format 3\0"
+}
+
+#[cfg(test)]
+thread_local! {
+    pub(crate) static FULL_CHECKS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }

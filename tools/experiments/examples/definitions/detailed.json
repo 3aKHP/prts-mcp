@@ -1,0 +1,4 @@
+{
+  "lookup": {"description": "Retrieve a single operator's basic information when the user supplies the operator's name. Use search to discover a name first when it is unknown.", "inputSchema": {"type": "object", "properties": {"name": {"type": "string", "description": "The complete in-game operator name, such as 阿米娅. Supply a name obtained from search when the user's spelling is uncertain."}}, "required": ["name"]}},
+  "search": {"description": "Search one category of game records for the user's query. Return matching names and identifiers so that a subsequent lookup can request one specific record.", "inputSchema": {"type": "object", "properties": {"query": {"type": "string", "description": "The user's search term, preserving the original language and spelling."}, "scope": {"type": "string", "description": "The category to search: operators or items. Select the category that matches the user's request."}}, "required": ["query", "scope"]}}
+}

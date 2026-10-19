@@ -25,12 +25,12 @@ Starting with 3.x, PRTS-MCP is unified into a single native Rust implementation 
 
 | Line | Version | Tools | Status |
 |------|---------|-------|--------|
-| Public stable (`main`) | 3.1.0 | 24 | Native Rust stable release on npm (`latest`), GitHub Releases, and GHCR (`:latest`, `:3`). |
-| Rust (`develop`) | 3.1.0-dev.0 | 24 | Active 3.x development line. |
+| Public stable (`main`) | 3.1.1 | 24 | Native Rust stable release on npm (`latest`), GitHub Releases, and GHCR (`:latest`, `:3`). |
+| Rust (`develop`) | 3.1.2-dev.0 | 24 | Active 3.x development line. |
 | `lts/2.8` | 2.8.x | 24 | Python/TypeScript long-term maintenance; EOL 2027-07-02. |
 | `lts/1.7` | 1.7.x | 32 | Python/TypeScript long-term maintenance; EOL 2027-07-02. |
 
-On npm, install `prts-mcp` (or pin `3.1.0`). If you want to keep existing 2.x command names (`prts-mcp-ts`, `prts-mcp-ts-bun`, `prts-mcp-ts-stdio`), install `prts-mcp-ts`; from 3.0.0 it is also backed by the Rust binary. To stay on 2.8.x, pin `prts-mcp-ts@lts-2.8` or `ghcr.io/3akhp/prts-mcp:2`. See the [roadmap](ROADMAP.md), [2.x → 3.0 migration guide](docs/migration-2.x-to-3.0.md), and [2.8.1 documentation](https://github.com/3aKHP/prts-mcp/tree/ts/v2.8.1).
+On npm, install `prts-mcp` (or pin `3.1.1`). If you want to keep existing 2.x command names (`prts-mcp-ts`, `prts-mcp-ts-bun`, `prts-mcp-ts-stdio`), install `prts-mcp-ts`; from 3.0.0 it is also backed by the Rust binary. To stay on 2.8.x, pin `prts-mcp-ts@lts-2.8` or `ghcr.io/3akhp/prts-mcp:2`. See the [roadmap](ROADMAP.md), [2.x → 3.0 migration guide](docs/migration-2.x-to-3.0.md), and [2.8.1 documentation](https://github.com/3aKHP/prts-mcp/tree/ts/v2.8.1).
 
 Prebuilt binaries are provided for **Linux x64/ARM64** (`glibc >= 2.28`), **Windows x64**, and **macOS ARM64/x64** (macOS 14.0+). Linux musl/Alpine and other CPU architectures are not supported by the prebuilt native archives. Docker images are published for Linux x64 and ARM64. See [NATIVE-PLATFORMS.md](docs/dev/NATIVE-PLATFORMS.md) for platform ABI baselines and verification details.
 
@@ -40,21 +40,21 @@ Prebuilt binaries are provided for **Linux x64/ARM64** (`glibc >= 2.28`), **Wind
 
 ```bash
 # Install globally and start Streamable HTTP (default on port 3000):
-npm install -g prts-mcp@3.1.0
+npm install -g prts-mcp@3.1.1
 prts-mcp
 
 # Or run in stdio mode for local MCP clients:
 PRTS_TRANSPORT=stdio prts-mcp
 
 # Or keep legacy 2.x command names via the compatibility package:
-npm install -g prts-mcp-ts@3.1.0
+npm install -g prts-mcp-ts@3.1.1
 prts-mcp-ts-stdio
 ```
 
 For a one-off trial without global installation:
 
-- **HTTP mode**: `npx -y prts-mcp@3.1.0`
-- **stdio mode**: `npx -y --package=prts-mcp-ts@3.1.0 prts-mcp-ts-stdio`
+- **HTTP mode**: `npx -y prts-mcp@3.1.1`
+- **stdio mode**: `npx -y --package=prts-mcp-ts@3.1.1 prts-mcp-ts-stdio`
 
 Default transport behavior by entry point:
 
@@ -66,12 +66,12 @@ Default transport behavior by entry point:
 
 ```bash
 # Run as an HTTP service with persistent data:
-docker run -d --name prts-mcp -p 127.0.0.1:3000:3000 -e PRTS_TRANSPORT=http -v prts-data:/data ghcr.io/3akhp/prts-mcp:3.1.0
+docker run -d --name prts-mcp -p 127.0.0.1:3000:3000 -e PRTS_TRANSPORT=http -v prts-data:/data ghcr.io/3akhp/prts-mcp:3.1.1
 ```
 
 #### 3. Prebuilt Native Archives & Source Builds
 
-Download the archive for your OS and CPU from the [3.1.0 GitHub Release](https://github.com/3aKHP/prts-mcp/releases/tag/v3.1.0), verify its SHA-256 checksum, extract it while keeping the `bin/` and `data/` directory structure intact, and run `bin/prts-mcp` (`bin\prts-mcp.exe` on Windows). To build from source, run `cargo build --locked --release --bins`.
+Download the archive for your OS and CPU from the [3.1.1 GitHub Release](https://github.com/3aKHP/prts-mcp/releases/tag/v3.1.1), verify its SHA-256 checksum, extract it while keeping the `bin/` and `data/` directory structure intact, and run `bin/prts-mcp` (`bin\prts-mcp.exe` on Windows). To build from source, run `cargo build --locked --release --bins`.
 
 For MCP client configuration snippets (`Claude Desktop`, `Claude Code`, `Roo Code`, `Codex`), see the [Agent & MCP Beginner Guide](docs/user/mcp-and-agent-basics.md), [Client Quick Start Guide](docs/user/quick-start.md), and [Tools & Workflow Guide](docs/user/tools-guide.md). For server deployment, Docker volume mounting, and troubleshooting, see the [Server Deployment Guide](docs/admin/deployment.md).
 
@@ -171,12 +171,12 @@ Public Rust native archives, Docker images, and npm packages ship with a verifie
 
 | 版本线 | 版本 | 工具数 | 状态 |
 |--------|------|--------|------|
-| 公开稳定版（`main`） | 3.1.0 | 24 | 原生 Rust 正式版，已发布至 npm（`latest`）、GitHub Releases 与 GHCR（`:latest`、`:3`）。 |
-| Rust 开发线（`develop`） | 3.1.0-dev.0 | 24 | 3.x 主开发线。 |
+| 公开稳定版（`main`） | 3.1.1 | 24 | 原生 Rust 正式版，已发布至 npm（`latest`）、GitHub Releases 与 GHCR（`:latest`、`:3`）。 |
+| Rust 开发线（`develop`） | 3.1.2-dev.0 | 24 | 3.x 主开发线。 |
 | `lts/2.8` | 2.8.x | 24 | Python/TypeScript 长期维护线，维护至 2027-07-02（EOL）。 |
 | `lts/1.7` | 1.7.x | 32 | Python/TypeScript 长期维护线，维护至 2027-07-02（EOL）。 |
 
-通过 npm 安装时，请安装 `prts-mcp`（或指定精确版本 `3.1.0`）。若希望保留 2.x 的旧命令名（`prts-mcp-ts`、`prts-mcp-ts-bun`、`prts-mcp-ts-stdio`），可安装兼容包 `prts-mcp-ts`，它自 3.0.0 起同样运行 Rust 二进制。如需继续使用 2.8.x，请固定 `prts-mcp-ts@lts-2.8` 或 `ghcr.io/3akhp/prts-mcp:2`。详见[路线图](ROADMAP.zh-CN.md)、[2.x → 3.0 迁移指南](docs/migration-2.x-to-3.0.md)与 [2.8.1 旧版文档](https://github.com/3aKHP/prts-mcp/tree/ts/v2.8.1)。
+通过 npm 安装时，请安装 `prts-mcp`（或指定精确版本 `3.1.1`）。若希望保留 2.x 的旧命令名（`prts-mcp-ts`、`prts-mcp-ts-bun`、`prts-mcp-ts-stdio`），可安装兼容包 `prts-mcp-ts`，它自 3.0.0 起同样运行 Rust 二进制。如需继续使用 2.8.x，请固定 `prts-mcp-ts@lts-2.8` 或 `ghcr.io/3akhp/prts-mcp:2`。详见[路线图](ROADMAP.zh-CN.md)、[2.x → 3.0 迁移指南](docs/migration-2.x-to-3.0.md)与 [2.8.1 旧版文档](https://github.com/3aKHP/prts-mcp/tree/ts/v2.8.1)。
 
 预编译二进制支持 **Linux x64/ARM64**（`glibc >= 2.28`）、**Windows x64** 与 **macOS ARM64/x64**（macOS 14.0+）；暂不支持 Linux musl/Alpine 及其他 CPU 架构。Docker 镜像支持 Linux x64 与 ARM64。各平台的 ABI 基线与验证详情见[原生平台说明](docs/dev/NATIVE-PLATFORMS.md)。
 
@@ -186,21 +186,21 @@ Public Rust native archives, Docker images, and npm packages ship with a verifie
 
 ```bash
 # 全局安装并启动 Streamable HTTP 服务（默认监听 3000 端口）：
-npm install -g prts-mcp@3.1.0
+npm install -g prts-mcp@3.1.1
 prts-mcp
 
 # 本地客户端以 stdio 子进程方式接入：
 PRTS_TRANSPORT=stdio prts-mcp
 
 # 若需保留 2.x 旧命令配置，可安装兼容入口包：
-npm install -g prts-mcp-ts@3.1.0
+npm install -g prts-mcp-ts@3.1.1
 prts-mcp-ts-stdio
 ```
 
 免安装临时试用可直接通过 `npx` 启动：
 
-- **HTTP 模式**：`npx -y prts-mcp@3.1.0`
-- **stdio 模式**：`npx -y --package=prts-mcp-ts@3.1.0 prts-mcp-ts-stdio`
+- **HTTP 模式**：`npx -y prts-mcp@3.1.1`
+- **stdio 模式**：`npx -y --package=prts-mcp-ts@3.1.1 prts-mcp-ts-stdio`
 
 各入口的默认传输方式如下：
 
@@ -212,12 +212,12 @@ prts-mcp-ts-stdio
 
 ```bash
 # 以 HTTP 模式后台运行镜像，并挂载数据卷：
-docker run -d --name prts-mcp -p 127.0.0.1:3000:3000 -e PRTS_TRANSPORT=http -v prts-data:/data ghcr.io/3akhp/prts-mcp:3.1.0
+docker run -d --name prts-mcp -p 127.0.0.1:3000:3000 -e PRTS_TRANSPORT=http -v prts-data:/data ghcr.io/3akhp/prts-mcp:3.1.1
 ```
 
 #### 3. 预编译原生归档包与源码构建
 
-从 [3.1.0 Release](https://github.com/3aKHP/prts-mcp/releases/tag/v3.1.0) 下载对应系统与架构的归档包，校验 SHA-256 后解压（请完整保留解压目录内的 `bin/` 与 `data/` 相对结构），直接运行 `bin/prts-mcp`（Windows 为 `bin\prts-mcp.exe`）。从源码编译请执行 `cargo build --locked --release --bins`。
+从 [3.1.1 Release](https://github.com/3aKHP/prts-mcp/releases/tag/v3.1.1) 下载对应系统与架构的归档包，校验 SHA-256 后解压（请完整保留解压目录内的 `bin/` 与 `data/` 相对结构），直接运行 `bin/prts-mcp`（Windows 为 `bin\prts-mcp.exe`）。从源码编译请执行 `cargo build --locked --release --bins`。
 
 各大 MCP 客户端的零基础入门、配置片段与工具串联工作流请参阅[Agent 与 MCP 零基础入门指南](docs/user/mcp-and-agent-basics.md)、[客户端接入与快速上手指南](docs/user/quick-start.md)和[工具使用与同人创作工作流指南](docs/user/tools-guide.md)；服务器常驻部署、Docker 卷挂载与故障排查请参阅[服务端部署与容器运维指南](docs/admin/deployment.md)。
 

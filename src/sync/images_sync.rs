@@ -255,7 +255,10 @@ async fn sync_images_locked(
         Err(err) => return offline_or_no_data(image_dir, &err.to_string()),
     };
     let index_tmp = rel_dir.join(format!(".index.{}.tmp", random_suffix()));
-    let index_bytes: Vec<u8> = match transport.download(&index_url, &index_tmp, 30_000).await {
+    let index_bytes: Vec<u8> = match transport
+        .download_file(&index_url, &index_tmp, 30_000)
+        .await
+    {
         Ok(_) => match tokio::fs::read(&index_tmp).await {
             Ok(bytes) => {
                 let _ = tokio::fs::remove_file(&index_tmp).await;
@@ -405,7 +408,7 @@ async fn sync_images_locked(
                 }
                 let shard_zip = staging.join(format!(".{shard_key}.zip"));
                 transport
-                    .download(
+                    .download_file(
                         &release_download_url(&baseline_tag, shard_file),
                         &shard_zip,
                         30_000,
@@ -428,7 +431,7 @@ async fn sync_images_locked(
             };
             let delta_zip = staging.join(".delta.zip");
             transport
-                .download(&delta_url, &delta_zip, 30_000)
+                .download_file(&delta_url, &delta_zip, 30_000)
                 .await
                 .map_err(|e| {
                     SyncError::Message(format!(

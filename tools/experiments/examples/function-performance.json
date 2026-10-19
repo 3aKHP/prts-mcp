@@ -1,0 +1,11 @@
+{
+  "version": 1, "id": "sort-comparison",
+  "hypothesis": "The built-in sort reduces batch latency while preserving paired outputs.",
+  "benchmark": "../benchmarks/function-performance.json", "environment": "local.json",
+  "variants": [
+    {"id": "A", "revision": "insertion-v1", "command": ["{python}", "{bundle}/adapter.py"], "parameters": {"algorithm": "insertion"}, "files": []},
+    {"id": "B", "revision": "builtin-v1", "command": ["{python}", "{bundle}/adapter.py"], "parameters": {"algorithm": "builtin"}, "files": []}
+  ],
+  "design": {"rounds": 4, "seed": 1729, "trial_seconds": 10, "cooldown_seconds": 0, "max_attempts": 2},
+  "checks": [{"variant": "B", "baseline": "A", "case": "aggregate", "metric": "batch_ms", "operator": "ratio_lte", "value": 1.05}]
+}

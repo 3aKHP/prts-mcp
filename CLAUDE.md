@@ -5,7 +5,7 @@ branch: "develop"
 
 # CLAUDE.md — AI 协作者说明
 
-PRTS-MCP 的 3.x 开发线是位于仓库根目录的原生 Rust 工程，业务行为与工具契约严格对齐冻结的 TS/v2.8.1 基线。当前公开稳定版为原生 Rust `3.1.0`；2.8.x 与 1.7.x 的 Python/TypeScript 实现分别在 `lts/2.8` 与 `lts/1.7` 分支维护，两线 EOL 均为 **2027-07-02**。
+PRTS-MCP 的 3.x 开发线是位于仓库根目录的原生 Rust 工程，业务行为与工具契约严格对齐冻结的 TS/v2.8.1 基线。当前公开稳定版为原生 Rust `3.1.1`；2.8.x 与 1.7.x 的 Python/TypeScript 实现分别在 `lts/2.8` 与 `lts/1.7` 分支维护，两线 EOL 均为 **2027-07-02**。
 
 ## 1. 必读文档导航
 
@@ -22,6 +22,7 @@ PRTS-MCP 的 3.x 开发线是位于仓库根目录的原生 Rust 工程，业务
 | 五平台原生归档、npm 分发、Docker 分发与候选版发布 | [`NATIVE-PLATFORMS.md`](docs/dev/NATIVE-PLATFORMS.md) · [`NPM-DISTRIBUTION.md`](docs/dev/NPM-DISTRIBUTION.md) · [`DOCKER-DISTRIBUTION.md`](docs/dev/DOCKER-DISTRIBUTION.md) · [`RELEASE-CANDIDATES.md`](docs/dev/RELEASE-CANDIDATES.md) |
 | CD 发布故障排查与重跑恢复 | [`docs/dev/RELEASE-CD-RECOVERY.md`](docs/dev/RELEASE-CD-RECOVERY.md) |
 | 全量 E2E 真机测试流程 | [`docs/dev/E2E.md`](docs/dev/E2E.md) |
+| 量化对照实验与贡献者私有环境配置 | [`docs/dev/COMPARATIVE-EVALUATION.md`](docs/dev/COMPARATIVE-EVALUATION.md) |
 | 客户端接入与工具使用工作流 | [`docs/user/quick-start.md`](docs/user/quick-start.md) · [`docs/user/tools-guide.md`](docs/user/tools-guide.md) |
 | 服务端部署、数据同步、环境变量与监控排障 | [`docs/admin/deployment.md`](docs/admin/deployment.md) · [`docs/admin/data-and-sync.md`](docs/admin/data-and-sync.md) · [`docs/admin/environment-variables.md`](docs/admin/environment-variables.md) · [`docs/admin/diagnostics-and-troubleshooting.md`](docs/admin/diagnostics-and-troubleshooting.md) |
 | 历史架构演进与技术复盘档案（1.0–3.0） | [`docs/archive/README.md`](docs/archive/README.md) |
@@ -68,8 +69,8 @@ PRTS-MCP 的 3.x 开发线是位于仓库根目录的原生 Rust 工程，业务
 
 | 分支 | 定位 | 版本与发布规则 |
 | --- | --- | --- |
-| `main` | 公开稳定版分支（当前为 `3.1.0`） | 承载最新正式版；自 M5 发布 `3.0.0` 起为 Rust 主线，正式版 tag 推进 `latest` 标签。 |
-| `develop` | 3.x Rust 开发集成分支（当前为 `3.1.0-dev.0`） | 根目录 Cargo 工程，不包含 `python/` 或 `ts/` 目录；日常功能与修复在此集成。 |
+| `main` | 公开稳定版分支（当前为 `3.1.1`） | 承载最新正式版；自 M5 发布 `3.0.0` 起为 Rust 主线，正式版 tag 推进 `latest` 标签。 |
+| `develop` | 3.x Rust 开发集成分支（当前为 `3.1.2-dev.0`） | 根目录 Cargo 工程，不包含 `python/` 或 `ts/` 目录；日常功能与修复在此集成。 |
 | `lts/2.8` | 2.8.x Python/TypeScript 长期维护线 | 使用 `python/v2.8.x` + `ts/v2.8.x` 成对 tag，发布至 npm `lts-2.8` 与 Docker `:2`，不更新 `latest`；EOL 为 `2027-07-02`。 |
 | `lts/1.7` | 1.7.x Python/TypeScript 长期维护线 | 使用 `python/v1.7.x` + `ts/v1.7.x` 成对 tag；EOL 为 `2027-07-02`。 |
 

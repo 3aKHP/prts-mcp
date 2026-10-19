@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "environment-v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "id", "driver", "ready", "operations", "work_root", "limits"],
+  "properties": {
+    "version": {"enum": [1]},
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"},
+    "driver": {"enum": ["local", "ssh", "container"]},
+    "ready": {"type": "boolean"},
+    "operations": {"type": "string", "minLength": 1},
+    "work_root": {"type": "string", "minLength": 1},
+    "python": {"type": "string", "minLength": 1},
+    "env_from": {"type": "array", "items": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"}},
+    "ssh": {
+      "type": "object", "additionalProperties": false, "required": ["alias"],
+      "properties": {
+        "alias": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$"},
+        "connect_timeout_seconds": {"type": "integer", "minimum": 1, "maximum": 120}
+      }
+    },
+    "container": {
+      "type": "object", "additionalProperties": false,
+      "required": ["image", "memory_mib", "cpus", "pids", "network"],
+      "properties": {
+        "image": {"type": "string", "minLength": 1},
+        "memory_mib": {"type": "integer", "minimum": 64},
+        "cpus": {"type": "number", "minimum": 0.1},
+        "pids": {"type": "integer", "minimum": 16},
+        "network": {"enum": ["none", "bridge"]}
+      }
+    },
+    "limits": {
+      "type": "object", "additionalProperties": false,
+      "required": ["min_free_mib", "max_bundle_mib", "max_trial_seconds", "max_run_seconds", "max_output_mib"],
+      "properties": {
+        "min_free_mib": {"type": "integer", "minimum": 1},
+        "max_bundle_mib": {"type": "integer", "minimum": 1},
+        "max_trial_seconds": {"type": "number", "minimum": 0.1},
+        "max_run_seconds": {"type": "number", "minimum": 1},
+        "max_output_mib": {"type": "integer", "minimum": 1, "maximum": 256},
+        "address_space_mib": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}

@@ -6,6 +6,23 @@
 
 2.8.1 基线时的原始分语言更新日志可在 [`ts/v2.8.1` tag](https://github.com/3aKHP/prts-mcp/tree/ts/v2.8.1) 查看（[Python](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/python/CHANGELOG.md) · [TypeScript](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/ts/CHANGELOG.md)），1.7.1 与 1.7.2 的维护记录来自已发布的 [`python/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/python/v1.7.2/python/CHANGELOG.md) 与 [`ts/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/ts/v1.7.2/ts/CHANGELOG.md) 标签。
 
+## [3.1.1] - 2026-10-20
+
+### 新增
+
+- **贡献者评测工具**：支持本地、SSH 与容器 A/B 或 A/B/C 对照实验，提供版本化 benchmark 契约、私有环境初始化、尝试记录保留、归档校验与可分享的指标报告，附带函数、描述覆盖率和 HTTP MCP 冒烟适配器。
+
+### 变更
+
+- **同步摘要**：降低无 SHA 扩展 CPU 上 Release 下载和 SQLite 同步的 SHA-256 计算成本。
+- **SQLite 校验**：新增 `PRTS_VALIDATION_MODE=normal|strict`，默认 `normal`。新同步数据库始终完整验收；通常模式重启后重新比对整文件摘要，并复用匹配的结构验收记录；严格模式重新检查完整性与外键。记录缺失或失效时执行完整验收。两种模式均保留落盘读回摘要和发布保护，并移除解压流重复摘要及未使用的图片下载摘要。
+- **SQLite 查询**：跨域搜索与长剧情扫描分别限制并发，并通过绑定数据库代际的有界缓存复用剧情元数据。
+- **SQLite 剧情搜索**：按需建立有内存上限的块预筛选索引，并在同一数据代际内复用，减少带必需字面量的搜索反复读取全文。首次相关查询承担所访问块的索引构建成本。没有可用字面量的正则继续流式扫描，保持原有精确匹配规则。
+
+### 修复
+
+- **SQLite 密录字典**：自定义数据库路径被原子替换时，角色字典与读取中的数据库代际保持一致。
+
 ## [3.1.0] - 2026-10-18
 
 - **实验性 SQLite 数据后端（3.1）**：设置 `PRTS_DATA_BACKEND=sqlite` 启用，或通过 `PRTS_DATA_DB` 选择预编译离线 DB。默认仍为 JSON，保留旧路径、数据卷和同步开关；只运行所选后端的游戏数据同步与缓存，安装包备用数据继续为 JSON。计划在 3.2 翻转普通默认值，3.x 持续支持 JSON。

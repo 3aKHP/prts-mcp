@@ -1,29 +1,48 @@
 //! Change tokens for activation pointer files. Unix uses stat inode/times;
 //! Windows uses the file ID so an atomic same-size replacement is observable.
 
-use std::path::Path;
+use std::{fs::File, path::Path};
 
 pub(crate) fn path_token(path: &Path) -> Option<String> {
     #[cfg(unix)]
     {
-        use std::os::unix::fs::MetadataExt;
         let meta = std::fs::metadata(path).ok()?;
-        Some(format!(
-            "{}|{}|{}|{}",
-            meta.ino(),
-            meta.len(),
-            meta.mtime(),
-            meta.ctime()
-        ))
+        Some(unix_token(&meta))
     }
     #[cfg(windows)]
     {
-        windows_token(path)
+        file_token(&File::open(path).ok()?)
+    }
+}
+
+#[cfg(unix)]
+fn unix_token(meta: &std::fs::Metadata) -> String {
+    use std::os::unix::fs::MetadataExt;
+    format!(
+        "{}|{}|{}|{}|{}|{}|{}",
+        meta.dev(),
+        meta.ino(),
+        meta.len(),
+        meta.mtime(),
+        meta.mtime_nsec(),
+        meta.ctime(),
+        meta.ctime_nsec()
+    )
+}
+
+pub(crate) fn file_token(file: &File) -> Option<String> {
+    #[cfg(unix)]
+    {
+        Some(unix_token(&file.metadata().ok()?))
+    }
+    #[cfg(windows)]
+    {
+        windows_token(file)
     }
 }
 
 #[cfg(windows)]
-fn windows_token(path: &Path) -> Option<String> {
+fn windows_token(file: &File) -> Option<String> {
     use std::os::windows::io::AsRawHandle;
     // BY_HANDLE_FILE_INFORMATION from the Windows SDK. All fields are DWORDs
     // (FILETIME is two DWORDs); the kernel fills the initialized output buffer.
@@ -51,7 +70,6 @@ fn windows_token(path: &Path) -> Option<String> {
             information: *mut FileInformation,
         ) -> i32;
     }
-    let file = std::fs::File::open(path).ok()?;
     let mut information = FileInformation::default();
     // SAFETY: the File owns a live Windows handle for the duration of this
     // call. The repr(C) buffer matches the SDK structure and is writable;

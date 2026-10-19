@@ -1001,7 +1001,7 @@ dependencies = [
 
 [[package]]
 name = "prts-mcp"
-version = "3.1.0"
+version = "3.1.1"
 dependencies = [
  "async-trait",
  "axum",
@@ -1010,6 +1010,7 @@ dependencies = [
  "flate2",
  "memchr",
  "reqwest",
+ "ring",
  "rmcp",
  "rusqlite",
  "serde",

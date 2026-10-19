@@ -2,7 +2,7 @@
 
 [English](CONTRIBUTING.md)
 
-感谢你参与 PRTS-MCP 的开发与维护。本指南适用于仓库根目录下的原生 Rust 工程（`develop` 分支，当前目标版本 `3.0.1-dev.0`）；2.8.x 与 1.7.x 的 Python/TypeScript 维护工作分别在 `lts/2.8` 与 `lts/1.7` 分支上进行。
+感谢你参与 PRTS-MCP 的开发与维护。本指南适用于仓库根目录下的原生 Rust 工程（`develop` 分支，当前目标版本 `3.1.1-dev.0`）；2.8.x 与 1.7.x 的 Python/TypeScript 维护工作分别在 `lts/2.8` 与 `lts/1.7` 分支上进行。
 
 开始前建议先阅读以下文档（全仓文档索引见 [`docs/README.md`](docs/README.md)）：
 
@@ -27,6 +27,7 @@
 请先按 [`docs/dev/ENVIRONMENT.md`](docs/dev/ENVIRONMENT.md) 配置本地开发环境并运行 `./scripts/check-runtime.sh`，再根据 [`docs/dev/WORKFLOW.md`](docs/dev/WORKFLOW.md) 中的验证矩阵选择检查范围：
 
 - **文档改动**：核对技术事实、命令示例与本地相对链接。
+- **对照实验**：按[对照实验指南](docs/dev/COMPARATIVE-EVALUATION.md)初始化自己的本地、SSH 或容器环境。Benchmark 定义与公开 SOP 可复用，私有拓扑与操作规范留在本地。
 - **代码改动**：运行 `cargo fmt --all -- --check`、`cargo clippy --locked --all-targets -- -D warnings`、`cargo test --locked`；涉及工具契约、数据同步或传输层时，请运行完整验证 `./scripts/check-runtime.sh --full`。
 - **行为对齐契约**：Rust 版的工具名、参数与输出行为严格对齐 TS/v2.8.1 基线。经批准的实现差异封闭枚举在 `contracts/baseline.json` 中，请勿未经讨论自行扩大差异范围。
 - **依赖与许可声明**：调整 Rust 依赖时，请同步检查 `Cargo.toml`、`Cargo.lock`、最低 Rust 版本（`rust-version`）及随包第三方许可声明。

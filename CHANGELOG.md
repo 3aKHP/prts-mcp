@@ -6,6 +6,23 @@ This file records user-visible changes across PRTS-MCP implementations: Python a
 
 The original per-implementation changelogs at the 2.8.1 baseline remain available on the [`ts/v2.8.1` tag](https://github.com/3aKHP/prts-mcp/tree/ts/v2.8.1) ([Python](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/python/CHANGELOG.md) · [TypeScript](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/ts/CHANGELOG.md)), and the 1.7.1/1.7.2 maintenance records come from the published [`python/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/python/v1.7.2/python/CHANGELOG.md) and [`ts/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/ts/v1.7.2/ts/CHANGELOG.md) tags.
 
+## [3.1.1] - 2026-10-20
+
+### Added
+
+- **Contributor evaluation tools**: reusable local, SSH and container A/B or A/B/C experiments with versioned benchmark contracts, private environment setup, retained attempts, verified archives and shareable metric reports. Includes function, description coverage and HTTP MCP smoke adapters.
+
+### Changed
+
+- **Sync checksums**: reduce SHA-256 costs for release downloads and SQLite synchronization on CPUs without SHA extensions.
+- **SQLite validation**: add `PRTS_VALIDATION_MODE=normal|strict` (default `normal`). New synchronized databases receive full validation. Normal mode rehashes managed databases on restart and reuses a matching structural-validation record; strict mode repeats integrity and foreign-key checks. Missing or stale records trigger full validation. Both modes retain read-back checksums and publication protections. Remove duplicate decoded-body hashing and unused image-download checksums.
+- **SQLite queries**: isolate cross-domain searches from long story scans and reuse story metadata in a bounded cache owned by each database generation.
+- **SQLite story searches**: build bounded block filters on demand and reuse them within each data generation to reduce reads for patterns with a mandatory literal. Initial searches pay the construction cost for the blocks they visit. Patterns without a usable literal retain streaming scans and exact regular-expression matching.
+
+### Fixed
+
+- **SQLite memoir dictionaries**: keep character dictionaries with their pinned database generation when a custom database path is atomically replaced.
+
 ## [3.1.0] - 2026-10-18
 
 - **Experimental SQLite data backend (3.1)**: opt in with `PRTS_DATA_BACKEND=sqlite`, or select a precompiled offline file with `PRTS_DATA_DB`. JSON remains the default, including legacy paths, volumes and sync switches. Only the selected backend runs game-data sync and caches; installed fallback data remains JSON. A default switch is planned for 3.2, with JSON support retained throughout 3.x.

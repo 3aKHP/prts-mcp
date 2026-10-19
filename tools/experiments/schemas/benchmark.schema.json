@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "benchmark-v1", "type": "object", "additionalProperties": false,
+  "required": ["version", "id", "revision", "unit", "cases", "metrics", "files", "equivalence"],
+  "properties": {
+    "version": {"enum": [1]},
+    "id": {"$ref": "#/$defs/id"},
+    "revision": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$"},
+    "unit": {"enum": ["process", "task-run", "function-batch"]},
+    "equivalence": {"enum": ["none", "output-sha256"]},
+    "parameters": {"type": "object"},
+    "requires": {"type": "array", "items": {"enum": ["process-groups", "linux-proc", "network-isolation", "address-space-limit"]}},
+    "files": {"type": "array", "items": {"$ref": "#/$defs/file"}},
+    "cases": {
+      "type": "array", "minItems": 1, "maxItems": 10000,
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["id", "input"],
+        "properties": {"id": {"$ref": "#/$defs/id"}, "input": {}, "expected": {}}
+      }
+    },
+    "metrics": {
+      "type": "object", "minProperties": 1, "propertyNames": {"$ref": "#/$defs/id"},
+      "additionalProperties": {
+        "type": "object", "additionalProperties": false,
+        "required": ["unit", "direction", "role", "aggregate"],
+        "properties": {
+          "unit": {"type": "string", "minLength": 1, "maxLength": 40, "pattern": "^[A-Za-z0-9%_/.-]+$"},
+          "direction": {"enum": ["higher", "lower", "observe"]},
+          "role": {"enum": ["primary", "secondary", "guardrail"]},
+          "aggregate": {"enum": ["mean", "median"]},
+          "minimum": {"type": "number"}, "maximum": {"type": "number"}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"},
+    "file": {
+      "type": "object", "additionalProperties": false, "required": ["source", "target"],
+      "properties": {
+        "source": {"type": "string", "minLength": 1},
+        "target": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "executable": {"type": "boolean"}
+      }
+    }
+  }
+}

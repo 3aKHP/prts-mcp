@@ -1,6 +1,8 @@
 //! Both backends expose the same tools and ignore the other backend's files.
 #[path = "support/sqlite.rs"]
 mod sqlite_fixture;
+#[path = "support/story_filters.rs"]
+mod story_filters;
 
 use std::{path::Path, process::Command};
 
@@ -133,6 +135,7 @@ fn invalid_backend_exits_before_starting_the_protocol_or_sync() {
 #[tokio::test]
 async fn invalid_database_is_rejected_and_previous_generation_is_selected() {
     use prts_mcp_rust::storage::{database::ActiveDatabase, sqlite::GameDb};
+    use sha2::{Digest, Sha256};
     use std::io::{Seek, SeekFrom, Write};
 
     let root = std::env::temp_dir().join(format!("prts-schema-{}", uuid::Uuid::new_v4()));
@@ -142,13 +145,14 @@ async fn invalid_database_is_rejected_and_previous_generation_is_selected() {
     sqlite_fixture::compile(&root);
 
     let database_dir = root.join("database");
-    let healthy = database_dir.join("zh_CN.sqlite");
     let expected = calls(&root, "sqlite").await;
+    let healthy = database_dir.join("previous-fixture.sqlite");
+    std::fs::rename(database_dir.join("zh_CN.sqlite"), &healthy).unwrap();
     let previous = ActiveDatabase {
-        file_name: "zh_CN.sqlite".into(),
+        file_name: "previous-fixture.sqlite".into(),
         source_version: "fixture".into(),
         revision: 1,
-        sha256: "a".repeat(64),
+        sha256: format!("{:x}", Sha256::digest(std::fs::read(&healthy).unwrap())),
     };
     std::fs::write(database_dir.join("previous"), previous.encode().unwrap()).unwrap();
     for (index, (corruption, sql)) in [

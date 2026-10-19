@@ -9,9 +9,9 @@
 use std::path::Path;
 use std::time::Duration;
 
+use crate::storage::digest::Sha256;
 use async_trait::async_trait;
 use serde_json::Value;
-use sha2::{Digest, Sha256};
 
 pub const GITHUB_UA: &str = "PRTS-MCP-Bot/0.1 (Arknights fan-creation helper)";
 
@@ -65,6 +65,18 @@ pub trait Transport: Send + Sync {
         dest: &Path,
         timeout_ms: u64,
     ) -> Result<DownloadStats, TransportError>;
+
+    /// Stream a file when the caller has no expected container digest.
+    async fn download_file(
+        &self,
+        url: &str,
+        dest: &Path,
+        timeout_ms: u64,
+    ) -> Result<u64, TransportError> {
+        self.download(url, dest, timeout_ms)
+            .await
+            .map(|stats| stats.bytes)
+    }
 
     /// Database downloads stop before writing bytes beyond the manifest.
     /// Fakes may use this fallback; the network implementation enforces the
@@ -174,6 +186,58 @@ impl ReqwestTransport {
             Err(last_error)
         }
     }
+    async fn stream_file(
+        &self,
+        url: &str,
+        dest: &Path,
+        timeout_ms: u64,
+        limit: u64,
+        mut hasher: Option<Sha256>,
+    ) -> Result<(u64, Option<String>), TransportError> {
+        let mut response = self.consume(url, timeout_ms).await?;
+        if response
+            .content_length()
+            .is_some_and(|length| length > limit)
+        {
+            return Err(TransportError::Network(
+                "download exceeds declared length".into(),
+            ));
+        }
+        if let Some(parent) = dest.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| TransportError::Network(e.to_string()))?;
+        }
+        use tokio::io::AsyncWriteExt as _;
+        let mut file = tokio::io::BufWriter::new(
+            tokio::fs::File::create(dest)
+                .await
+                .map_err(|e| TransportError::Network(e.to_string()))?,
+        );
+        let mut bytes: u64 = 0;
+        loop {
+            let chunk = response
+                .chunk()
+                .await
+                .map_err(|e| TransportError::Network(e.to_string()))?;
+            let Some(chunk) = chunk else { break };
+            bytes = bytes
+                .checked_add(chunk.len() as u64)
+                .filter(|bytes| *bytes <= limit)
+                .ok_or_else(|| {
+                    TransportError::Network("download exceeds declared length".into())
+                })?;
+            file.write_all(&chunk)
+                .await
+                .map_err(|e| TransportError::Network(e.to_string()))?;
+            if let Some(hasher) = &mut hasher {
+                hasher.update(&chunk);
+            }
+        }
+        file.flush()
+            .await
+            .map_err(|e| TransportError::Network(e.to_string()))?;
+        drop(file);
+        Ok((bytes, hasher.map(Sha256::finish)))
+    }
 }
 
 #[async_trait]
@@ -203,51 +267,24 @@ impl Transport for ReqwestTransport {
         timeout_ms: u64,
         limit: u64,
     ) -> Result<DownloadStats, TransportError> {
-        let mut response = self.consume(url, timeout_ms).await?;
-        if response
-            .content_length()
-            .is_some_and(|length| length > limit)
-        {
-            return Err(TransportError::Network(
-                "download exceeds declared length".into(),
-            ));
-        }
-        if let Some(parent) = dest.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| TransportError::Network(e.to_string()))?;
-        }
-        use tokio::io::AsyncWriteExt as _;
-        let mut file = tokio::io::BufWriter::new(
-            tokio::fs::File::create(dest)
-                .await
-                .map_err(|e| TransportError::Network(e.to_string()))?,
-        );
-        let mut hasher = Sha256::new();
-        let mut bytes: u64 = 0;
-        loop {
-            let chunk = response
-                .chunk()
-                .await
-                .map_err(|e| TransportError::Network(e.to_string()))?;
-            let Some(chunk) = chunk else { break };
-            bytes = bytes
-                .checked_add(chunk.len() as u64)
-                .filter(|bytes| *bytes <= limit)
-                .ok_or_else(|| {
-                    TransportError::Network("download exceeds declared length".into())
-                })?;
-            file.write_all(&chunk)
-                .await
-                .map_err(|e| TransportError::Network(e.to_string()))?;
-            hasher.update(&chunk);
-        }
-        file.flush()
-            .await
-            .map_err(|e| TransportError::Network(e.to_string()))?;
-        drop(file);
+        let (bytes, sha256) = self
+            .stream_file(url, dest, timeout_ms, limit, Some(Sha256::new()))
+            .await?;
         Ok(DownloadStats {
             bytes,
-            sha256: format!("{:x}", hasher.finalize()),
+            sha256: sha256.expect("requested SHA-256"),
         })
+    }
+
+    async fn download_file(
+        &self,
+        url: &str,
+        dest: &Path,
+        timeout_ms: u64,
+    ) -> Result<u64, TransportError> {
+        self.stream_file(url, dest, timeout_ms, u64::MAX, None)
+            .await
+            .map(|(bytes, _)| bytes)
     }
 
     fn mirrors(&self) -> Vec<String> {

@@ -2,7 +2,7 @@
 
 [简体中文](CONTRIBUTING.zh-CN.md)
 
-Thank you for your interest in contributing to PRTS-MCP. This guide covers the root Rust project (`3.0.1-dev.0` on `develop`). Legacy Python and TypeScript maintenance takes place on the `lts/2.8` and `lts/1.7` branches.
+Thank you for your interest in contributing to PRTS-MCP. This guide covers the root Rust project (`3.1.1-dev.0` on `develop`). Legacy Python and TypeScript maintenance takes place on the `lts/2.8` and `lts/1.7` branches.
 
 Before getting started, please review the relevant guides (full index in [`docs/README.md`](docs/README.md)):
 
@@ -27,6 +27,7 @@ Never push directly to `main`, `develop`, `lts/2.8`, or `lts/1.7`. Create a shor
 Set up your environment following [`docs/dev/ENVIRONMENT.md`](docs/dev/ENVIRONMENT.md), run `./scripts/check-runtime.sh` to verify your toolchain, and select the appropriate verification tier from [`docs/dev/WORKFLOW.md`](docs/dev/WORKFLOW.md):
 
 - **Documentation changes**: verify technical accuracy, runnable examples, and relative links.
+- **Comparative experiments**: follow [the evaluation guide](docs/dev/COMPARATIVE-EVALUATION.md) to initialize your own local, SSH or container environment. Benchmark definitions and the public SOP are reusable; private topology and operating rules stay local.
 - **Code changes**: run `cargo fmt --all -- --check`, `cargo clippy --locked --all-targets -- -D warnings`, `cargo test --locked`, and `./scripts/check-runtime.sh --full` for runtime- or contract-sensitive changes.
 - **Behavioral parity**: Rust tool names, parameters, and output semantics align with the frozen TS/v2.8.1 baseline. Approved deviations are strictly enumerated in `contracts/baseline.json`; do not introduce new behavioral differences without discussion.
 - **Dependencies and licenses**: when updating Rust dependencies, review `Cargo.toml`, `Cargo.lock`, MSRV (`rust-version`), and third-party license notices together.

@@ -1,0 +1,4 @@
+{
+  "lookup": {"description": "Get one operator by name; search first if unknown.", "inputSchema": {"type": "object", "properties": {"name": {"type": "string", "description": "Complete operator name, e.g. 阿米娅."}}, "required": ["name"]}},
+  "search": {"description": "Find names and IDs for a later lookup.", "inputSchema": {"type": "object", "properties": {"query": {"type": "string", "description": "Search term in its original language."}, "scope": {"type": "string", "description": "Category: operators or items."}}, "required": ["query", "scope"]}}
+}

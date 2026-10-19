@@ -6,6 +6,7 @@ pub mod memoir;
 mod packed_lines;
 pub mod reader;
 pub mod search;
+mod sqlite_blocks;
 mod sqlite_search;
 pub mod summary;
 
