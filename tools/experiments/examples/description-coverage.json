@@ -1,0 +1,23 @@
+{
+  "version": 1, "id": "description-comparison",
+  "hypothesis": "Documenting parameters increases coverage; a concise variant can retain coverage with fewer characters.",
+  "benchmark": "../benchmarks/description-coverage.json", "environment": "local.json",
+  "variants": [
+    {"id": "A", "revision": "sparse-v1", "command": ["{python}", "{bundle}/adapter.py"],
+      "parameters": {"definitions": "{bundle}/definitions/A.json"},
+      "files": [{"source": "definitions/sparse.json", "target": "definitions/A.json"}]},
+    {"id": "B", "revision": "detailed-v1", "command": ["{python}", "{bundle}/adapter.py"],
+      "parameters": {"definitions": "{bundle}/definitions/B.json"},
+      "files": [{"source": "definitions/detailed.json", "target": "definitions/B.json"}]},
+    {"id": "C", "revision": "concise-v1", "command": ["{python}", "{bundle}/adapter.py"],
+      "parameters": {"definitions": "{bundle}/definitions/C.json"},
+      "files": [{"source": "definitions/concise.json", "target": "definitions/C.json"}]}
+  ],
+  "design": {"rounds": 6, "seed": 1729, "trial_seconds": 10, "cooldown_seconds": 0, "max_attempts": 2},
+  "checks": [
+    {"variant": "B", "baseline": "A", "case": "aggregate", "metric": "parameter_coverage", "operator": "delta_gte", "value": 0.5},
+    {"variant": "C", "baseline": "B", "case": "aggregate", "metric": "parameter_coverage", "operator": "delta_gte", "value": 0},
+    {"variant": "C", "case": "aggregate", "metric": "required_declared", "operator": "gte", "value": 1},
+    {"variant": "C", "baseline": "B", "case": "aggregate", "metric": "description_characters", "operator": "ratio_lte", "value": 1}
+  ]
+}

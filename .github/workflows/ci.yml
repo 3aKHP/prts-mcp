@@ -97,6 +97,8 @@ jobs:
         with:
           path: .runtime/data
           key: frozen-oracle-data-${{ hashFiles('contracts/validation-assets.json') }}
+      - name: Comparative evaluation contracts and evidence lifecycle
+        run: python3 -m unittest discover -s tools/experiments/tests -p 'test_*.py'
       - name: Native tests, frozen differential suite and lifecycle
         run: ./scripts/check-runtime.sh --full
       - name: Verify candidate publication and channel guards

@@ -53,6 +53,7 @@ English readers: the root [README](../README.md#english) and [Security Policy](.
   - [dev/VERSIONING.md](dev/VERSIONING.md)：版本号语义与向后兼容性承诺。
   - [dev/LTS.md](dev/LTS.md)：`lts/1.7` 与 `lts/2.8` 两条长期支持分支的维护规则。
   - [dev/E2E.md](dev/E2E.md)：全量 E2E 真机测试流程。
+  - [dev/COMPARATIVE-EVALUATION.md](dev/COMPARATIVE-EVALUATION.md)：通用 A/B、A/B/C 对照实验、私有环境配置、量化指标与证据保存。
 - **平台构建、分发与发版恢复**
   - [dev/NATIVE-PLATFORMS.md](dev/NATIVE-PLATFORMS.md)：五平台预编译原生归档包的 ABI 基线、构建与验证说明。
   - [dev/NPM-DISTRIBUTION.md](dev/NPM-DISTRIBUTION.md)：Rust 版 npm 9 包架构、Node 启动桥与打包验证。

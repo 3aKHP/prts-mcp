@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "plan-v1", "type": "object", "additionalProperties": false,
+  "required": ["version", "id", "hypothesis", "benchmark", "variants", "design", "checks"],
+  "properties": {
+    "version": {"enum": [1]}, "id": {"$ref": "#/$defs/id"},
+    "hypothesis": {"type": "string", "minLength": 1},
+    "benchmark": {"type": "string", "minLength": 1},
+    "environment": {"type": "string", "minLength": 1},
+    "parent": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "files": {"type": "array", "items": {"$ref": "#/$defs/file"}},
+    "variants": {
+      "type": "array", "minItems": 2, "maxItems": 5,
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["id", "command", "parameters", "files"],
+        "properties": {
+          "id": {"$ref": "#/$defs/id"},
+          "revision": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$"},
+          "command": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+          "parameters": {"type": "object"},
+          "files": {"type": "array", "items": {"$ref": "#/$defs/file"}}
+        }
+      }
+    },
+    "design": {
+      "type": "object", "additionalProperties": false,
+      "required": ["rounds", "seed", "trial_seconds", "cooldown_seconds", "max_attempts"],
+      "properties": {
+        "rounds": {"type": "integer", "minimum": 1, "maximum": 10000},
+        "seed": {"type": "integer", "minimum": 0, "maximum": 2147483647},
+        "trial_seconds": {"type": "number", "minimum": 0.1},
+        "cooldown_seconds": {"type": "number", "minimum": 0, "maximum": 3600},
+        "max_attempts": {"type": "integer", "minimum": 1, "maximum": 10},
+        "orders": {"type": "array", "minItems": 1, "items": {"type": "array", "items": {"$ref": "#/$defs/id"}}}
+      }
+    },
+    "checks": {
+      "type": "array", "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["variant", "case", "metric", "operator", "value"],
+        "properties": {
+          "variant": {"$ref": "#/$defs/id"}, "baseline": {"$ref": "#/$defs/id"},
+          "case": {"$ref": "#/$defs/id"}, "metric": {"$ref": "#/$defs/id"},
+          "operator": {"enum": ["gte", "lte", "delta_gte", "delta_lte", "ratio_gte", "ratio_lte"]},
+          "value": {"type": "number"}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"},
+    "file": {
+      "type": "object", "additionalProperties": false, "required": ["source", "target"],
+      "properties": {
+        "source": {"type": "string", "minLength": 1}, "target": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "executable": {"type": "boolean"}
+      }
+    }
+  }
+}

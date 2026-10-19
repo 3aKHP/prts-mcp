@@ -1,0 +1,8 @@
+{
+  "version": 1, "id": "my-container-lab", "driver": "container", "ready": false,
+  "operations": "../templates/OPERATIONS.example.md",
+  "work_root": "/lab/experiments", "python": "python3", "env_from": [],
+  "container": {"image": "python:3.12-alpine", "memory_mib": 256, "cpus": 1, "pids": 64, "network": "none"},
+  "limits": {"min_free_mib": 128, "max_bundle_mib": 128,
+    "max_trial_seconds": 30, "max_run_seconds": 300, "max_output_mib": 8, "address_space_mib": 0}
+}

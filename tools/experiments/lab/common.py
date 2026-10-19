@@ -1,0 +1,135 @@
+"""Small, dependency-free evidence and path primitives (Python 3.6+)."""
+import hashlib
+import json
+import math
+import os
+import re
+import tempfile
+from pathlib import Path
+
+
+class LabError(Exception):
+    pass
+
+
+def encoded(value):
+    return json.dumps(value, ensure_ascii=False, sort_keys=True,
+                      separators=(",", ":"), allow_nan=False).encode("utf-8")
+
+
+def digest(value):
+    return hashlib.sha256(encoded(value)).hexdigest()
+
+
+def file_hash(path):
+    result = hashlib.sha256()
+    with Path(path).open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            result.update(block)
+    return result.hexdigest()
+
+
+def read_json(path):
+    def pairs(items):
+        result = {}
+        for key, value in items:
+            if key in result:
+                raise LabError("Duplicate JSON key: " + key)
+            result[key] = value
+        return result
+
+    def invalid(value):
+        raise LabError("Non-finite JSON number: " + value)
+
+    def number(value):
+        result = float(value)
+        if not math.isfinite(result):
+            invalid(value)
+        return result
+
+    return json.loads(Path(path).read_text(encoding="utf-8"),
+                      object_pairs_hook=pairs, parse_constant=invalid, parse_float=number)
+
+
+def write_json(path, value, exclusive=False):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    data = encoded(value) + b"\n"
+    if exclusive:
+        with path.open("xb") as stream:
+            stream.write(data)
+            stream.flush()
+            os.fsync(stream.fileno())
+        return
+    descriptor, temporary = tempfile.mkstemp(prefix=".lab-", dir=str(path.parent))
+    try:
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(data)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, str(path))
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+
+def relative_name(value):
+    if not isinstance(value, str) or not value or "\\" in value:
+        raise LabError("Expected a portable relative file name")
+    parts = value.split("/")
+    if any(part in ("", ".", "..") for part in parts) or value.startswith("/"):
+        raise LabError("File name escapes its bundle")
+    if any(":" in part or "\x00" in part for part in parts):
+        raise LabError("Unsupported file name")
+    return value
+
+
+def identifier(value):
+    if not isinstance(value, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}", value):
+        raise LabError("Expected a public-safe identifier (letters, digits, _ or -)")
+    return value
+
+
+def resolve(base, value):
+    path = Path(value).expanduser()
+    return (Path(base) / path).resolve() if not path.is_absolute() else path.resolve()
+
+
+def inventory(root):
+    root = Path(root)
+    result = {}
+    for path in sorted(root.rglob("*")):
+        if path.is_symlink():
+            raise LabError("Evidence contains a symlink: " + str(path))
+        if path.is_file():
+            result[path.relative_to(root).as_posix()] = {
+                "sha256": file_hash(path), "size": path.stat().st_size}
+    return result
+
+
+class RunLock:
+    """An OS lock survives coordinator crashes without stale lock-file policy."""
+    def __init__(self, path):
+        self.path = Path(path)
+        self.stream = None
+
+    def __enter__(self):
+        self.stream = self.path.open("a+b")
+        try:
+            if os.name == "nt":
+                import msvcrt
+                self.stream.seek(0)
+                self.stream.write(b"0")
+                self.stream.flush()
+                self.stream.seek(0)
+                msvcrt.locking(self.stream.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(self.stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            self.stream.close()
+            raise LabError("Another operation owns this experiment")
+        return self
+
+    def __exit__(self, *_):
+        self.stream.close()

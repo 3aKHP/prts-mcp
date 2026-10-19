@@ -17,6 +17,7 @@
 | **C 编译器** | Linux / macOS 使用系统 `cc`（GCC 或 Clang）；Windows 使用 Visual Studio C++ SDK 与 `clang-cl`。用于编译内嵌的 QuickJS 正则组件（`native/regexp.c`）与进程内存统计组件（`native/process_memory.c`）。 |
 | **Node.js 与 npm** | `Node.js >= 22`、`npm >= 10`。用于运行契约对照脚本（`tools/`）、数据准备脚本及 npm 打包测试。 |
 | **Bun** | 固定使用 `1.3.14`，仅在运行全量差分测试时用于启动冻结的 TS/v2.8.1 对照基准（Oracle），不用于生产运行时。 |
+| **Python（对照实验工具）** | 可选的 Python `3.6+`，仅标准库。运行[对照实验](COMPARATIVE-EVALUATION.md)及其测试时需要；不是 Rust 服务构建或运行依赖。SSH/容器执行端也需提供解释器。 |
 | **Shell 与基础工具** | Linux / WSL / macOS 使用 `bash`、`git`、`tar`、`curl`、`openssl`；原生 Windows 使用 `PowerShell 7+`（`pwsh`）。 |
 
 > 预编译原生归档包与 Docker 镜像已静态链接所需 C 组件，终端用户无需安装上述编译工具链。五大目标平台的 ABI 基线详见 [`NATIVE-PLATFORMS.md`](NATIVE-PLATFORMS.md)。

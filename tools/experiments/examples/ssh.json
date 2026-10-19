@@ -1,0 +1,8 @@
+{
+  "version": 1, "id": "my-remote-lab", "driver": "ssh", "ready": false,
+  "operations": "../templates/OPERATIONS.example.md",
+  "work_root": "/tmp/my-comparative-lab", "python": "python3", "env_from": [],
+  "ssh": {"alias": "my-lab", "connect_timeout_seconds": 10},
+  "limits": {"min_free_mib": 512, "max_bundle_mib": 512,
+    "max_trial_seconds": 120, "max_run_seconds": 1200, "max_output_mib": 8, "address_space_mib": 0}
+}
