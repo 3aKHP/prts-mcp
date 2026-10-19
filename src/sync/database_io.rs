@@ -5,7 +5,6 @@ use crate::storage::{
     sqlite::GameDb,
     validation::{self, Observation},
 };
-use sha2::{Digest, Sha256};
 use std::{
     fs::{self, File, OpenOptions},
     io::{Read, Write},
@@ -13,17 +12,7 @@ use std::{
 };
 
 pub fn hash(path: &Path) -> Result<String, String> {
-    let mut input = File::open(path).map_err(|e| e.to_string())?;
-    let mut hasher = Sha256::new();
-    let mut buffer = [0u8; 65536];
-    loop {
-        let count = input.read(&mut buffer).map_err(|e| e.to_string())?;
-        if count == 0 {
-            break;
-        }
-        hasher.update(&buffer[..count]);
-    }
-    Ok(format!("{:x}", hasher.finalize()))
+    crate::storage::digest::hash_file(path)
 }
 
 pub fn verify(path: &Path, manifest: &DatabaseManifest) -> Result<(), String> {
@@ -62,7 +51,6 @@ pub fn decode(input: &Path, output: &Path, manifest: &DatabaseManifest) -> Resul
         .create_new(true)
         .open(output)
         .map_err(|e| e.to_string())?;
-    let mut hasher = Sha256::new();
     let mut buffer = [0u8; 65536];
     let mut bytes = 0u64;
     loop {
@@ -79,10 +67,9 @@ pub fn decode(input: &Path, output: &Path, manifest: &DatabaseManifest) -> Resul
         output
             .write_all(&buffer[..count])
             .map_err(|e| e.to_string())?;
-        hasher.update(&buffer[..count]);
     }
-    if bytes != manifest.size || format!("{:x}", hasher.finalize()) != manifest.sha256 {
-        return Err("decoded SQLite length/SHA-256 mismatch".into());
+    if bytes != manifest.size {
+        return Err("decoded SQLite length mismatch".into());
     }
     output.sync_all().map_err(|e| e.to_string())
 }

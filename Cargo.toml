@@ -36,6 +36,7 @@ reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"
 # Archive + hashing (sync layer, P2+).
 zip = { version = "6", default-features = false, features = ["deflate"] }
 sha2 = "0.10"
+ring = "0.17"
 
 # Sync layer (P2): async trait objects for the injectable transport, and
 # mtime/utimes for the cross-process lock lease protocol (TS uses
