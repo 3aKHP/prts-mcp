@@ -1,9 +1,12 @@
 //! Bounded decoding, immutable generation publication and lease-aware cleanup.
 use super::database_manifest::DatabaseManifest;
-use crate::storage::{
-    database::{lease_path, ActiveDatabase},
-    sqlite::GameDb,
-    validation::{self, Observation},
+use crate::{
+    config::ValidationMode,
+    storage::{
+        admission::{self, Expected},
+        database::{lease_path, ActiveDatabase},
+        validation,
+    },
 };
 use std::{
     fs::{self, File, OpenOptions},
@@ -15,32 +18,20 @@ pub fn hash(path: &Path) -> Result<String, String> {
     crate::storage::digest::hash_file(path)
 }
 
-pub fn verify(path: &Path, manifest: &DatabaseManifest) -> Result<(), String> {
-    let descriptor = serde_json::to_string(manifest).map_err(|e| e.to_string())?;
-    if validation::contains(path, Some(&descriptor)) {
-        return Ok(());
-    }
-    let observed = Observation::begin(path)?;
-    if fs::metadata(path).map_err(|e| e.to_string())?.len() != manifest.size
-        || hash(path)? != manifest.sha256
-    {
-        return Err("SQLite file size/SHA-256 mismatch".into());
-    }
-    let db = GameDb::for_verification(path)?;
-    db.verify()?;
-    for (key, wanted) in [
-        ("source_version", manifest.source_version.clone()),
-        (
-            "publication_revision",
-            manifest.publication_revision.to_string(),
-        ),
-        ("compiler_version", manifest.compiler_version.clone()),
-    ] {
-        if db.metadata(key)?.as_deref() != Some(&wanted) {
-            return Err(format!("SQLite metadata mismatch: {key}"));
-        }
-    }
-    validation::remember(observed, descriptor)
+pub fn verify(
+    path: &Path,
+    manifest: &DatabaseManifest,
+    mode: ValidationMode,
+    fresh: bool,
+) -> Result<(), String> {
+    let expected = Expected {
+        sha256: manifest.sha256.clone(),
+        size: manifest.size,
+        source_version: manifest.source_version.clone(),
+        revision: manifest.publication_revision,
+        compiler_version: Some(manifest.compiler_version.clone()),
+    };
+    admission::admit(path, Some(&expected), mode, fresh).map(|_| ())
 }
 
 pub fn decode(input: &Path, output: &Path, manifest: &DatabaseManifest) -> Result<(), String> {
@@ -85,6 +76,7 @@ pub fn publish(
     root: &Path,
     path: &Path,
     manifest: &DatabaseManifest,
+    mode: ValidationMode,
 ) -> Result<ActiveDatabase, String> {
     let file_name = format!(
         "{}-{}.sqlite",
@@ -102,7 +94,7 @@ pub fn publish(
     fs::rename(path, &destination).map_err(|e| e.to_string())?;
     // The unique final path is not a runtime candidate until activation. Check
     // it here so the receipt remains valid across first runtime admission.
-    if let Err(error) = verify(&destination, manifest) {
+    if let Err(error) = verify(&destination, manifest, mode, true) {
         drop(lease);
         let _ = fs::remove_file(&destination);
         let _ = fs::remove_file(lease_path(&destination));
@@ -164,6 +156,10 @@ pub fn clean_staging(root: &Path) {
         if [".stage-", ".active-"]
             .iter()
             .any(|prefix| name.strip_prefix(prefix).is_some_and(uuid_suffix))
+            || name
+                .strip_prefix(".verified-")
+                .and_then(|name| name.strip_suffix(".tmp"))
+                .is_some_and(uuid_suffix)
         {
             if entry.file_type().is_ok_and(|t| t.is_dir()) {
                 let _ = fs::remove_dir_all(path);
@@ -188,6 +184,15 @@ pub fn prune(root: &Path, current: &ActiveDatabase) {
         let name = entry.file_name();
         let name = name.to_string_lossy();
         if name == current.file_name || previous.is_some_and(|p| name == p.file_name) {
+            continue;
+        }
+        if let Some(database) = name
+            .strip_suffix(".verified.json")
+            .filter(|name| owned_database(name))
+        {
+            if !root.join(database).exists() {
+                let _ = fs::remove_file(&path);
+            }
             continue;
         }
         if let Some(database) = name
@@ -225,6 +230,7 @@ pub fn prune(root: &Path, current: &ActiveDatabase) {
             // generation cannot consume disk until another validation runs.
             validation::forget(&path);
             let _ = fs::remove_file(lease_path(&path));
+            let _ = fs::remove_file(admission::stamp_path(&path));
         }
     }
 }
@@ -250,7 +256,7 @@ fn owned_database(value: &str) -> bool {
         && uuid_suffix(uuid)
 }
 
-pub fn cached(root: &Path, manifest: &DatabaseManifest) -> Option<PathBuf> {
+pub fn cached(root: &Path, manifest: &DatabaseManifest, mode: ValidationMode) -> Option<PathBuf> {
     let prefix = format!("{}-", manifest.sha256);
     let mut files: Vec<_> = fs::read_dir(root)
         .ok()?
@@ -265,5 +271,5 @@ pub fn cached(root: &Path, manifest: &DatabaseManifest) -> Option<PathBuf> {
     files.sort();
     files
         .into_iter()
-        .find(|path| verify(path, manifest).is_ok())
+        .find(|path| verify(path, manifest, mode, true).is_ok())
 }

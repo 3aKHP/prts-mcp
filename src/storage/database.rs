@@ -1,5 +1,9 @@
 //! SQLite generation pointers and read-only source selection.
-use super::sqlite::GameDb;
+use super::{
+    admission::{self, Expected},
+    sqlite::GameDb,
+};
+use crate::config::ValidationMode;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -80,32 +84,71 @@ pub fn active(root: &Path) -> Result<Option<ActiveDatabase>, String> {
     }
 }
 
-pub fn candidates(custom: Option<&Path>, root: &Path, bundle: Option<&Path>) -> Vec<PathBuf> {
+/// Preserve the authority of managed pointers when selecting an offline DB.
+pub struct DatabaseCandidate {
+    pub path: PathBuf,
+    pub pointer: Option<ActiveDatabase>,
+}
+
+pub fn candidates(
+    custom: Option<&Path>,
+    root: &Path,
+    bundle: Option<&Path>,
+) -> Vec<DatabaseCandidate> {
     if let Some(path) = custom {
-        return vec![path.to_owned()];
+        return vec![DatabaseCandidate {
+            path: path.to_owned(),
+            pointer: None,
+        }];
     }
     let mut paths = Vec::new();
-    if let Ok(Some(pointer)) = active(root) {
-        paths.push(pointer.path(root));
+    for pointer in [
+        active(root).ok().flatten(),
+        std::fs::read_to_string(root.join("previous"))
+            .ok()
+            .and_then(|text| ActiveDatabase::parse(&text).ok()),
+    ]
+    .into_iter()
+    .flatten()
+    {
+        paths.push(DatabaseCandidate {
+            path: pointer.path(root),
+            pointer: Some(pointer),
+        });
     }
-    if let Ok(text) = std::fs::read_to_string(root.join("previous")) {
-        if let Ok(pointer) = ActiveDatabase::parse(&text) {
-            paths.push(pointer.path(root));
-        }
-    }
-    paths.push(root.join("zh_CN.sqlite"));
+    paths.push(DatabaseCandidate {
+        path: root.join("zh_CN.sqlite"),
+        pointer: None,
+    });
     if let Some(bundle) = bundle {
-        paths.push(bundle.join("zh_CN.sqlite"));
+        paths.push(DatabaseCandidate {
+            path: bundle.join("zh_CN.sqlite"),
+            pointer: None,
+        });
     }
     paths
 }
 
-pub fn open_ready(path: &Path) -> Result<Arc<GameDb>, String> {
-    let db = GameDb::open(path)?;
-    if !db.derived_ready() {
-        return Err("SQLite query data is incomplete".into());
-    }
-    Ok(db)
+pub fn open_ready(
+    candidate: &DatabaseCandidate,
+    mode: ValidationMode,
+) -> Result<Arc<GameDb>, String> {
+    let expected = candidate
+        .pointer
+        .as_ref()
+        .map(|pointer| -> Result<Expected, String> {
+            Ok(Expected {
+                sha256: pointer.sha256.clone(),
+                size: std::fs::metadata(&candidate.path)
+                    .map_err(|e| e.to_string())?
+                    .len(),
+                source_version: pointer.source_version.clone(),
+                revision: pointer.revision,
+                compiler_version: None,
+            })
+        })
+        .transpose()?;
+    admission::admit(&candidate.path, expected.as_ref(), mode, false)
 }
 
 #[cfg(test)]

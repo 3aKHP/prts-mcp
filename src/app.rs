@@ -55,6 +55,13 @@ impl DataView {
         self.database.clone()
     }
 
+    pub fn story_store(&self) -> Option<crate::storage::ZipStore> {
+        Some(match &self.database {
+            Some(db) => crate::storage::ZipStore::from_database(Arc::clone(db)),
+            None => crate::storage::ZipStore::new(self.story_zip.as_ref()?),
+        })
+    }
+
     pub fn excel_store(&self) -> Option<crate::storage::DirectoryStore> {
         let root = self.excel_root.clone()?;
         Some(match &self.database {
@@ -79,7 +86,8 @@ fn resolve_database_view(config: &RuntimeConfig) -> DataView {
         &config.database_dir,
         config.bundle_root.as_deref(),
     );
-    for path in paths {
+    for candidate in paths {
+        let path = &candidate.path;
         if !path.is_file() {
             if config.custom_database.is_some() {
                 crate::log_warn(&format!(
@@ -89,9 +97,9 @@ fn resolve_database_view(config: &RuntimeConfig) -> DataView {
             }
             continue;
         }
-        match crate::storage::database::open_ready(&path).and_then(|db| {
-            DataView::from_database(db, config.excel_path.clone(), config.levels_path.clone())
-        }) {
+        match crate::storage::database::open_ready(&candidate, config.validation_mode).and_then(
+            |db| DataView::from_database(db, config.excel_path.clone(), config.levels_path.clone()),
+        ) {
             Ok(view) => {
                 if config.custom_database.is_none()
                     && view.excel_root.is_none()
@@ -133,7 +141,7 @@ fn database_signature(config: &RuntimeConfig) -> String {
         &config.database_dir,
         config.bundle_root.as_deref(),
     ) {
-        tokens.push(path_token(&path));
+        tokens.push(path_token(&path.path));
     }
     tokens.join(";")
 }
@@ -374,6 +382,8 @@ mod tests {
             ("contract", "prts-mcp-sqlite/v1"),
             ("index_version", "1"),
             ("language", "zh_CN"),
+            ("source_version", "fixture"),
+            ("publication_revision", "1"),
             ("sources_complete", "1"),
             ("derived_complete", "1"),
             ("excel_available", "1"),
@@ -400,7 +410,7 @@ mod tests {
                 file_name: file.into(),
                 source_version: "fixture".into(),
                 revision: 1,
-                sha256: "a".repeat(64),
+                sha256: crate::storage::digest::hash_file(&config.database_dir.join(file)).unwrap(),
             }
             .encode()
             .unwrap()

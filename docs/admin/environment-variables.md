@@ -19,6 +19,7 @@
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
 | `PRTS_DATA_BACKEND` | `json`（3.1） | 启动时选择 `json` 或实验性的 `sqlite`；去除首尾空白，空值视为未设置，其他值启动失败。只启用所选后端的读取、同步与缓存。计划在 3.2 翻转普通默认值；JSON 后端继续受支持。 |
+| `PRTS_VALIDATION_MODE` | `normal` | 启动时选择 `normal` 或 `strict`；去除首尾空白，空值视为未设置，非法值启动失败。通常模式对已验收的受管理 SQLite 文件重新比对整文件 SHA，并复用有效的结构验收记录；严格模式每个新进程重新检查结构和外键。新同步产物始终完整验收。自定义 DB 在通常模式执行快速检查，严格模式执行完整结构和外键检查。路径、鉴权、资源限制、锁和原子发布始终启用。 |
 | `PRTS_DATA_DIR` | 数据根下的 `database/` | SQLite 的可写同步目录；设置 `GAMEDATA_PATH` 时默认为其下的 `database/`。单独设置不会选择 SQLite，也不会关闭同步。Docker 默认路径为 `/data/database`。空值忽略。 |
 | `PRTS_DATA_DB` | 未设置 | 单个只读预编译 DB；后端未设置时选择 SQLite，并关闭游戏数据同步。与显式 `PRTS_DATA_BACKEND=json` 冲突。缺失或无效时报告缺数据，不读取原始 JSON。空值忽略。 |
 | `GAMEDATA_PATH` | 未设置 | JSON 后端的自定义游戏数据目录路径。**只要该环境变量存在（哪怕赋值为空字符串 `GAMEDATA_PATH=`），即会禁用游戏表与关卡战斗数据的后台自动同步。** 若指向含 `zh_CN/gamedata/levels/enemydata/enemy_database.json` 的完整 `ArknightsGameData` 根目录，关卡数据直接从该目录读取；否则使用相邻的 `gamedata-levels` 目录。 |

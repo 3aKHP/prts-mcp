@@ -49,9 +49,27 @@ impl DataBackend {
     }
 }
 
+/// Startup validation policy for read-only datasets.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ValidationMode {
+    #[default]
+    Normal,
+    Strict,
+}
+impl ValidationMode {
+    fn parse(value: Option<&str>) -> Result<Self, String> {
+        match value.map(str::trim).unwrap_or("") {
+            "" | "normal" => Ok(Self::Normal),
+            "strict" => Ok(Self::Strict),
+            _ => Err("PRTS_VALIDATION_MODE must be normal or strict".into()),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct RuntimeConfig {
     pub data_backend: DataBackend,
+    pub validation_mode: ValidationMode,
     /// Writable generation directory, used only by the SQLite backend.
     pub database_dir: PathBuf,
     /// Explicit read-only SQLite file; disables game-data auto-sync.
@@ -330,6 +348,7 @@ impl RuntimeConfig {
             DataBackend::Json,
         )?;
         Ok(Self {
+            validation_mode: ValidationMode::parse(lookup("PRTS_VALIDATION_MODE").as_deref())?,
             data_backend,
             database_dir,
             custom_database,
@@ -758,5 +777,31 @@ mod tests {
             ("PRTS_AUTO_SYNC_INTERVAL_SECONDS", "nonsense"),
         ]);
         assert_eq!(c.auto_sync_interval_ms, 3_600_000);
+    }
+}
+
+#[cfg(test)]
+mod validation_mode_tests {
+    use super::*;
+    #[test]
+    fn startup_validation_mode_is_explicit_and_shared_by_lookup() {
+        for (raw, expected) in [
+            (None, ValidationMode::Normal),
+            (Some(""), ValidationMode::Normal),
+            (Some(" normal "), ValidationMode::Normal),
+            (Some(" strict "), ValidationMode::Strict),
+        ] {
+            assert_eq!(ValidationMode::parse(raw).unwrap(), expected);
+            let config = RuntimeConfig::try_from_lookup(|key| match key {
+                "PRTS_VALIDATION_MODE" => raw.map(str::to_owned),
+                "GAMEDATA_PATH" => Some("/tmp/validation-mode-config".into()),
+                _ => None,
+            })
+            .unwrap();
+            assert_eq!(config.validation_mode, expected);
+        }
+        for raw in ["STRICT", "off", "0", "true", "normla"] {
+            assert!(ValidationMode::parse(Some(raw)).is_err());
+        }
     }
 }

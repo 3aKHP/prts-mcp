@@ -9,6 +9,8 @@
 
 3.1 增加实验性 SQLite 后端，默认仍使用下文的 JSON/ZIP 路径与同步规则。设置 `PRTS_DATA_BACKEND=sqlite` 后只同步 AKDP 的 `zh_CN.sqlite.gz`，使用独立的 `database/` 目录；也可用 `PRTS_DATA_DB` 指定只读离线 DB。3.1 发行包仍只内置 JSON 备用数据，SQLite 首次使用需要联网或预置 DB。切回 `PRTS_DATA_BACKEND=json` 并重启即可继续使用保留的旧卷；两套游戏数据不会同时同步。变量优先级见[环境变量参考](environment-variables.md)。
 
+SQLite 的 `PRTS_VALIDATION_MODE` 默认值为 `normal`。新同步产物在激活前校验整文件摘要、结构和外键。通常模式在进程重启后重新比对摘要，再复用匹配的结构验收记录；`strict` 会重新执行完整结构和外键检查。受管理 DB 旁的 `.verified.json` 是可重建缓存，缺失或失效时补做检查，无须重新下载健康 DB；无法写入记录也不影响已验收数据的使用。自定义只读 DB 不自动写入该记录，通常模式保留快速检查。
+
 计划在 3.2 调整普通默认值，3.x 继续支持显式 JSON 后端及已有自定义 JSON 路径。SQLite 容器持久化 `/data/database`（整卷挂载 `/data` 无须新增挂载）；旧分卷配置在选择 JSON 时保持不变。DB 原子切换、当前/上一代及更新暂存需要额外磁盘空间，切换后不自动删除另一后端的数据。
 
 ## 1. 数据集组成与目录结构

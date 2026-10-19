@@ -36,6 +36,17 @@ pub fn build_character_appearances(
     scope: Option<&str>,
     max_events: i64,
 ) -> Result<Value, String> {
+    let store = ZipStore::new(zip_path);
+    build_character_appearances_from_store(&store, name, scope, max_events)
+}
+
+pub(crate) fn build_character_appearances_from_store(
+    store: &ZipStore,
+    name: &str,
+    scope: Option<&str>,
+    max_events: i64,
+) -> Result<Value, String> {
+    let zip_path = store.zip_path();
     if name.is_empty() {
         return Err("name 不能为空。".to_string());
     }
@@ -45,14 +56,12 @@ pub fn build_character_appearances(
     if max_events > 200 {
         return Err("max_events 必须 <= 200。".to_string());
     }
-    if crate::storage::sqlite::is_database(zip_path) {
-        let db = crate::storage::sqlite::GameDb::open(zip_path)?;
+    if let Some(db) = store.database_handle()? {
         if db.derived_ready() {
             return super::sqlite_search::appearances(&db, name, scope, max_events);
         }
     }
-    let store = ZipStore::new(zip_path);
-    let index = story_search_index(zip_path, &store)?;
+    let index = story_search_index(zip_path, store)?;
     if let Some(scope) = scope {
         if !index.event_ids.contains(scope) {
             return Err(format!(
@@ -143,14 +152,21 @@ pub fn render_character_appearances(data: &Value) -> String {
 
 /// `buildSpeakersInEventFromStore`: Err is the thrown message.
 pub fn build_speakers_in_event(zip_path: &Path, event_id: &str) -> Result<Value, String> {
-    if crate::storage::sqlite::is_database(zip_path) {
-        let db = crate::storage::sqlite::GameDb::open(zip_path)?;
+    let store = ZipStore::new(zip_path);
+    build_speakers_in_event_from_store(&store, event_id)
+}
+
+pub(crate) fn build_speakers_in_event_from_store(
+    store: &ZipStore,
+    event_id: &str,
+) -> Result<Value, String> {
+    let zip_path = store.zip_path();
+    if let Some(db) = store.database_handle()? {
         if db.derived_ready() {
             return super::sqlite_search::speakers(&db, event_id);
         }
     }
-    let store = ZipStore::new(zip_path);
-    let index = story_search_index(zip_path, &store)?;
+    let index = story_search_index(zip_path, store)?;
     if !index.event_ids.contains(event_id) {
         return Err(format!(
             "未找到匹配的活动：{}。",
