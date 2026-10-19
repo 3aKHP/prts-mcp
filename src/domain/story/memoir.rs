@@ -17,7 +17,23 @@ struct SharedCharDict {
 
 static CHARDICT_CACHE: OnceLock<Mutex<Option<SharedCharDict>>> = OnceLock::new();
 
+fn read_char_dict(store: &ZipStore) -> Map<String, Value> {
+    if !store.exists(CHARDICT).unwrap_or(false) {
+        return Map::new();
+    }
+    store
+        .read_json(CHARDICT)
+        .ok()
+        .and_then(|raw| raw.as_object().cloned())
+        .unwrap_or_default()
+}
+
 pub fn load_char_dict(zip_path: &Path, store: &ZipStore) -> Arc<Map<String, Value>> {
+    if store.uses_database() {
+        return store
+            .cached_object(CHARDICT, || Ok(read_char_dict(store)))
+            .unwrap_or_default();
+    }
     let descriptor = super::search::zip_descriptor(zip_path);
     if let Some(descriptor) = &descriptor {
         let guard = CHARDICT_CACHE
@@ -30,16 +46,7 @@ pub fn load_char_dict(zip_path: &Path, store: &ZipStore) -> Arc<Map<String, Valu
             }
         }
     }
-    let data = if !store.exists(CHARDICT).unwrap_or(false) {
-        Map::new()
-    } else {
-        store
-            .read_json(CHARDICT)
-            .ok()
-            .and_then(|raw| raw.as_object().cloned())
-            .unwrap_or_default()
-    };
-    let data = Arc::new(data);
+    let data = Arc::new(read_char_dict(store));
     if let Some(descriptor) = descriptor {
         let mut guard = CHARDICT_CACHE
             .get_or_init(|| Mutex::new(None))
@@ -172,4 +179,76 @@ pub fn render_operator_memoirs(data: &Value) -> String {
         ));
     }
     lines.join("\n")
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+    use std::io::Write;
+
+    fn database(path: &Path, code: &str) {
+        let db = rusqlite::Connection::open(path).unwrap();
+        db.execute_batch(include_str!("../../../contracts/sqlite-schema-v1.sql"))
+            .unwrap();
+        for (key, value) in [
+            ("sources_complete", "1"),
+            ("derived_complete", "1"),
+            ("contract", crate::storage::sqlite::CONTRACT),
+            ("index_version", "1"),
+            ("language", "zh_CN"),
+        ] {
+            db.execute("INSERT INTO meta VALUES(?1,?2)", [key, value])
+                .unwrap();
+        }
+        for (path, value) in [
+            (
+                CHARDICT,
+                json!({code:{"name":"测试干员","id":format!("char_{code}")}}),
+            ),
+            (
+                STORY_REVIEW_TABLE,
+                json!({format!("story_{code}_set_1"):{"infoUnlockDatas":[{"storyTxt":code}]}}),
+            ),
+        ] {
+            let bytes = serde_json::to_vec(&value).unwrap();
+            let mut hash = crate::storage::digest::Sha256::new();
+            hash.update(&bytes);
+            let hash = hash.finish();
+            let mut body =
+                flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::default());
+            body.write_all(&bytes).unwrap();
+            db.execute(
+                "INSERT INTO source_blobs VALUES(?1,?2,?3)",
+                rusqlite::params![hash, bytes.len() as i64, body.finish().unwrap()],
+            )
+            .unwrap();
+            db.execute("INSERT INTO sources VALUES('story',?1,?2)", [path, &hash])
+                .unwrap();
+        }
+    }
+
+    #[test]
+    fn sqlite_memoirs_follow_the_pinned_generation_after_path_replacement() {
+        let root = std::env::temp_dir().join(format!("prts-memoir-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir(&root).unwrap();
+        let path = root.join("data.sqlite");
+        database(&path, "old");
+        let old = ZipStore::from_database(crate::storage::sqlite::GameDb::open(&path).unwrap());
+        let replacement = root.join("replacement.sqlite");
+        database(&replacement, "new");
+        std::fs::rename(replacement, &path).unwrap();
+
+        // The old reader first loads its dictionary after the path has changed.
+        let memoir = build_operator_memoirs_from_store(&old, "测试干员").unwrap();
+        assert_eq!(memoir["internal_code"], "old");
+        let new = ZipStore::from_database(crate::storage::sqlite::GameDb::open(&path).unwrap());
+        let memoir = build_operator_memoirs_from_store(&new, "测试干员").unwrap();
+        assert_eq!(memoir["internal_code"], "new");
+        assert_eq!(memoir["operator_id"], "char_new");
+        assert_eq!(memoir["chapters"][0]["story_key"], "new");
+        let memoir = build_operator_memoirs_from_store(&old, "测试干员").unwrap();
+        assert_eq!(memoir["internal_code"], "old");
+        drop((old, new));
+        std::fs::remove_dir_all(root).unwrap();
+    }
 }
