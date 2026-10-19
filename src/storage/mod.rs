@@ -15,3 +15,5 @@ pub use generation::{activated_pair, activated_root, excel_path_of, gamedata_pai
 pub use store::{
     write_zip_entries, DirectoryStore, FallbackStore, JsonStore, StoreError, ZipStore,
 };
+
+pub(crate) mod digest;
