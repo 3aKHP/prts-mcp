@@ -22,6 +22,7 @@ PRTS-MCP 的 3.x 开发线是位于仓库根目录的原生 Rust 工程，业务
 | 五平台原生归档、npm 分发、Docker 分发与候选版发布 | [`NATIVE-PLATFORMS.md`](docs/dev/NATIVE-PLATFORMS.md) · [`NPM-DISTRIBUTION.md`](docs/dev/NPM-DISTRIBUTION.md) · [`DOCKER-DISTRIBUTION.md`](docs/dev/DOCKER-DISTRIBUTION.md) · [`RELEASE-CANDIDATES.md`](docs/dev/RELEASE-CANDIDATES.md) |
 | CD 发布故障排查与重跑恢复 | [`docs/dev/RELEASE-CD-RECOVERY.md`](docs/dev/RELEASE-CD-RECOVERY.md) |
 | 全量 E2E 真机测试流程 | [`docs/dev/E2E.md`](docs/dev/E2E.md) |
+| 量化对照实验与贡献者私有环境配置 | [`docs/dev/COMPARATIVE-EVALUATION.md`](docs/dev/COMPARATIVE-EVALUATION.md) |
 | 客户端接入与工具使用工作流 | [`docs/user/quick-start.md`](docs/user/quick-start.md) · [`docs/user/tools-guide.md`](docs/user/tools-guide.md) |
 | 服务端部署、数据同步、环境变量与监控排障 | [`docs/admin/deployment.md`](docs/admin/deployment.md) · [`docs/admin/data-and-sync.md`](docs/admin/data-and-sync.md) · [`docs/admin/environment-variables.md`](docs/admin/environment-variables.md) · [`docs/admin/diagnostics-and-troubleshooting.md`](docs/admin/diagnostics-and-troubleshooting.md) |
 | 历史架构演进与技术复盘档案（1.0–3.0） | [`docs/archive/README.md`](docs/archive/README.md) |

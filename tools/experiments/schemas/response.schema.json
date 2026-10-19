@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "response-v1", "type": "object", "additionalProperties": false,
+  "required": ["version", "cases"],
+  "properties": {
+    "version": {"enum": [1]},
+    "cases": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["id", "metrics"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"},
+          "metrics": {"type": "object", "minProperties": 1, "additionalProperties": {"type": "number"}},
+          "output": {}, "details": {}
+        }
+      }
+    }
+  }
+}

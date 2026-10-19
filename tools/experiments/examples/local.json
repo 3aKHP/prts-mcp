@@ -1,0 +1,8 @@
+{
+  "version": 1, "id": "local-lab", "driver": "local", "ready": true,
+  "operations": "../templates/LOCAL-OPERATIONS.md",
+  "work_root": "../../../dev/experiments/work",
+  "python": "python3", "env_from": [],
+  "limits": {"min_free_mib": 128, "max_bundle_mib": 512,
+    "max_trial_seconds": 30, "max_run_seconds": 300, "max_output_mib": 8, "address_space_mib": 0}
+}

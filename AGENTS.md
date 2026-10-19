@@ -45,6 +45,8 @@ Run `./scripts/check-runtime.sh` for a fast toolchain and metadata check. For fu
 
 See [`docs/dev/ENVIRONMENT.md`](docs/dev/ENVIRONMENT.md) for single-target test commands and platform-specific notes, and [`docs/dev/E2E.md`](docs/dev/E2E.md) for full real-client E2E procedures.
 
+For quantitative code or benchmark comparisons, use [`docs/dev/COMPARATIVE-EVALUATION.md`](docs/dev/COMPARATIVE-EVALUATION.md). Select the contributor's own private environment profile and operations document; the public workflow does not assume maintainer infrastructure.
+
 ## 5. Code Review
 
 Standard and higher-tier PRs require **dual-track review**: open the PR first to trigger KHPilot Bot Review, and run an independent clean-context, read-only review in parallel (see [`docs/dev/WORKFLOW.md`](docs/dev/WORKFLOW.md) and [`CLAUDE.md`](CLAUDE.md)).

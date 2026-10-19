@@ -1,0 +1,4 @@
+{
+  "lookup": {"description": "Look up an operator.", "inputSchema": {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]}},
+  "search": {"description": "Search game records.", "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}, "scope": {"type": "string"}}, "required": ["query", "scope"]}}
+}

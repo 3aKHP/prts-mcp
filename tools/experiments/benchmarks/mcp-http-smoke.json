@@ -1,0 +1,13 @@
+{
+  "version": 1, "id": "mcp-http-smoke", "revision": "1",
+  "unit": "process", "equivalence": "output-sha256", "requires": ["process-groups"],
+  "parameters": {"warm_calls": 5, "startup_seconds": 10, "protocol": "2025-06-18"},
+  "files": [{"source": "adapters/mcp_http.py", "target": "adapter.py"}],
+  "cases": [{"id": "items", "input": {"name": "list_items", "arguments": {}}}],
+  "metrics": {
+    "startup_ms": {"unit": "ms", "direction": "lower", "role": "secondary", "aggregate": "median", "minimum": 0},
+    "first_ms": {"unit": "ms", "direction": "lower", "role": "primary", "aggregate": "median", "minimum": 0},
+    "warm_ms": {"unit": "ms", "direction": "lower", "role": "primary", "aggregate": "median", "minimum": 0},
+    "response_bytes": {"unit": "bytes", "direction": "observe", "role": "guardrail", "aggregate": "median", "minimum": 0}
+  }
+}

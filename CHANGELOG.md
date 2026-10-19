@@ -8,6 +8,10 @@ The original per-implementation changelogs at the 2.8.1 baseline remain availabl
 
 ## [Unreleased]
 
+### Added
+
+- **Contributor evaluation tools**: reusable local, SSH and container A/B or A/B/C experiments with versioned benchmark contracts, private environment setup, retained attempts, verified archives and shareable metric reports. Includes function, description coverage and HTTP MCP smoke adapters.
+
 ### Changed
 
 - **SQLite validation**: avoid overlapping quick/full checks during sync. On Unix, reuse full verification within the same process while the database file identity and manifest remain unchanged; restart or file changes require fresh verification.

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Comparative evaluation"
+  short_description: "Run reproducible code and benchmark comparisons"
+  default_prompt: "Use $comparative-evaluation to define and run a reproducible comparison with quantitative evidence."

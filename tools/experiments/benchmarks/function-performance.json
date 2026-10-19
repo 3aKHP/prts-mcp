@@ -1,0 +1,8 @@
+{
+  "version": 1, "id": "function-performance-demo", "revision": "1",
+  "unit": "function-batch", "equivalence": "output-sha256",
+  "parameters": {"iterations": 5, "batches": 5, "warmup": 2},
+  "files": [{"source": "adapters/function_sort.py", "target": "adapter.py"}],
+  "cases": [{"id": "small", "input": {"size": 128}}, {"id": "medium", "input": {"size": 256}}],
+  "metrics": {"batch_ms": {"unit": "ms", "direction": "lower", "role": "primary", "aggregate": "median", "minimum": 0}}
+}
