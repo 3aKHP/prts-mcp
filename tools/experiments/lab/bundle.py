@@ -78,7 +78,8 @@ def archive_directory(root, output):
     files = inventory(root)
     # The lock file is an implementation detail, not scientific evidence.
     files.pop(".lock", None)
-    with output.open("xb") as raw:
+    descriptor = os.open(str(output), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(descriptor, "wb") as raw:
         with tarfile.open(fileobj=raw, mode="w|gz") as archive:
             for name in sorted(files):
                 archive.add(str(root / name), arcname=name, recursive=False)

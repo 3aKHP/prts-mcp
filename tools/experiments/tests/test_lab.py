@@ -143,7 +143,13 @@ class LabTests(unittest.TestCase):
         self.assertNotIn(str(self.root), report)
         with self.assertRaises(OSError):
             runner.cleanup(run)
-        evidence.archive(run, self.root / 'backup.tar.gz')
+        previous = os.umask(0o022)
+        try:
+            evidence.archive(run, self.root / 'backup.tar.gz')
+        finally:
+            os.umask(previous)
+        if os.name != 'nt':
+            self.assertEqual((self.root / 'backup.tar.gz').stat().st_mode & 0o077, 0)
         self.assertTrue(runner.cleanup(run)['work_removed'])
         self.assertEqual(before, inventory(run / 'evidence/raw'))
         self.assertTrue(runner.cleanup(run)['work_removed'])
