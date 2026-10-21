@@ -9,8 +9,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 ### Security
 
 - Node runtime security floor for the eMudhra/emSign CA compromise
-  (RUSTSEC-2026-0383 / CVE-2026-111943): all outbound wiki/sync/image
-  requests use the Node runtime TLS root store, so `engines.node` now
+  (RUSTSEC-2026-0383 / CVE-2026-111943): all outbound wiki and
+  data-sync requests use the Node runtime TLS root store, so `engines.node` now
   requires a maintained-major patch floor: `>=22.23.4 <23 || >=24.22.1 <25
   || >=26.12.1` (these releases ship the upstream blocklist for the
   compromised eMudhra intermediate keys; majors 23/25 are outside the
@@ -18,7 +18,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
   `node-version-file`. The `engines` declaration does not upgrade an
   already-running host runtime - deployments must upgrade Node themselves;
   Docker builds on the floating `node:24-alpine` base resolve to >=24.22.1
-  when rebuilt.
+  when rebuilt with a fresh base image (clean builder or `docker build
+  --pull`).
 
 ## [1.7.2] - 2026-09-26
 
