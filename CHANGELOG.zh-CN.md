@@ -6,6 +6,12 @@
 
 2.8.1 基线时的原始分语言更新日志可在 [`ts/v2.8.1` tag](https://github.com/3aKHP/prts-mcp/tree/ts/v2.8.1) 查看（[Python](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/python/CHANGELOG.md) · [TypeScript](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/ts/CHANGELOG.md)），1.7.1 与 1.7.2 的维护记录来自已发布的 [`python/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/python/v1.7.2/python/CHANGELOG.md) 与 [`ts/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/ts/v1.7.2/ts/CHANGELOG.md) 标签。
 
+## [3.1.2] - 2026-10-22
+
+### 安全
+
+- **针对 eMudhra/emSign CA 密钥泄露事件更新原生 TLS 信任库**（[RUSTSEC-2026-0383](https://rustsec.org/advisories/RUSTSEC-2026-0383.html) / CVE-2026-111943）：内嵌根证书快照由 `webpki-roots` 1.0.9 升至 1.0.10（移除 `emSign ECC Root CA - G3`，其下属 8 个中间证书私钥可从公开数据恢复），路径校验器由 `rustls-webpki` 0.103.15 升至 0.103.16（无论使用何种根库，均拒绝包含受影响中间证书的任何路径）。若不更新，网络位置攻击者可对 <= 3.1.1 的原生版本冒充 `prts.wiki` 或 GitHub Release 端点，静默投毒 wiki 工具输出与数据同步，并可窃取已配置的 GitHub token。证书链到被除名 CA 的自定义镜像此后将按预期连接失败。新增回归测试同时钉住根库状态与中间证书路径拒绝行为。
+
 ## [3.1.1] - 2026-10-20
 
 ### 新增

@@ -1,9 +1,9 @@
 {
   "schema_version": "prts-rust-plan/dependency-licenses/v2",
-  "recorded_at": "2026-10-18",
+  "recorded_at": "2026-10-22",
   "toolchain": "1.96.1 (rust-toolchain.toml)",
   "lockfile": "Cargo.lock (committed)",
-  "lock_package_count": 228,
+  "lock_package_count": 229,
   "source": "cargo metadata --format-version 1 (full transitive closure)",
   "license_summary": {
     "0BSD OR MIT OR Apache-2.0": 1,
@@ -21,7 +21,7 @@
     "MIT OR Apache-2.0 OR LGPL-2.1-or-later": 1,
     "Apache-2.0 AND ISC": 1,
     "Apache-2.0": 4,
-    "ISC": 2,
+    "ISC": 3,
     "Apache-2.0 OR BSL-1.0": 1,
     "BSD-3-Clause": 1,
     "Zlib OR Apache-2.0 OR MIT": 1,
@@ -38,7 +38,7 @@
     },
     {
       "name": "webpki-roots",
-      "version": "1.0.9",
+      "version": "1.0.10",
       "license": "CDLA-Permissive-2.0",
       "disposition": "Permissive data license (Mozilla root store); redistribution allowed with notice. Bundled via reqwest rustls-tls."
     }
@@ -801,6 +801,12 @@
       "repository": "https://github.com/rustls/rustls"
     },
     {
+      "name": "rustls-pemfile",
+      "version": "2.2.0",
+      "license": "ISC",
+      "repository": "https://github.com/rustls/pemfile"
+    },
+    {
       "name": "rustls-pki-types",
       "version": "1.15.1",
       "license": "MIT OR Apache-2.0",
@@ -808,7 +814,7 @@
     },
     {
       "name": "rustls-webpki",
-      "version": "0.103.15",
+      "version": "0.103.16",
       "license": "ISC",
       "repository": "https://github.com/rustls/webpki"
     },
@@ -1228,7 +1234,7 @@
     },
     {
       "name": "webpki-roots",
-      "version": "1.0.9",
+      "version": "1.0.10",
       "license": "CDLA-Permissive-2.0",
       "repository": "https://github.com/rustls/webpki-roots"
     },
