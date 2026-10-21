@@ -29,8 +29,8 @@ Two release lines ship in parallel:
 
 | Line | Version | Tools | Status |
 |------|---------|-------|--------|
-| **2.8** (`main`) | `2.8.1` | 24 | Operator deep stats — level-specific panels, per-level skill effects, and per-tier talent effects via `get_operator_basic_info` actions — plus roguelike story discovery, reading, search, and character tracking. |
-| **2.8 LTS** (`lts/2.8`) | `2.8.1` baseline | 24 | Python/TypeScript maintenance only, EOL 2027-07-02. Rust migration is separate. |
+| **2.8** (`lts/2.8`) | `2.8.2` | 24 | eMudhra/emSign CA security maintenance: certifi and Node trust floors, Bun-path disclosure (prefer the Node entrypoints). Earlier: operator deep stats and roguelike story tools. |
+| **2.8 LTS** (`lts/2.8`) | `2.8.2` latest | 24 | Python/TypeScript maintenance only, EOL 2027-07-02. Rust migration is separate. For the TS runtime prefer the Node entrypoints until a fixed stable Bun ships (see the security note in `ts/README.md`). |
 | **1.7 LTS** (`lts/1.7`) | `1.7.0` | 32 | Stable maintenance line. 1.7.x accepts only compatibility, security, data-sync, and critical bug fixes. |
 
 The 2.8 LTS line consumes `arknights-data-pipeline` Releases directly. The 1.7 line reads its existing compatibility repositories, whose releases are AKDP projections; their addresses and interface remain unchanged until EOL. See [LTS policy](docs/dev/LTS.md).
@@ -160,8 +160,8 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow and [`doc
 
 | 版本线 | 版本 | 工具数 | 状态 |
 |--------|------|--------|------|
-| **2.8**（`main`） | `2.8.1` | 24 | 干员深度数值——`get_operator_basic_info` 统一入口的面板插值、技能逐等级、天赋逐档；新增肉鸽剧情发现、读取、搜索与角色追踪。 |
-| **2.8 LTS**（`lts/2.8`） | `2.8.1` 基线 | 24 | Python/TypeScript 仅做维护，EOL 2027-07-02；Rust 迁移另行实施。 |
+| **2.8**（`lts/2.8`） | `2.8.2` | 24 | eMudhra/emSign CA 安全维护：certifi 与 Node 信任下限、Bun 路径披露（推荐 Node 入口）。此前：干员深度数值与肉鸽剧情工具。 |
+| **2.8 LTS**（`lts/2.8`） | `2.8.2` 最新维护版 | 24 | Python/TypeScript 仅做维护，EOL 2027-07-02；Rust 迁移另行实施。TS 运行时在 Bun 修复版稳定发布前推荐 Node 入口（见 `ts/README.md` 安全提示）。 |
 | **1.7 LTS**（`lts/1.7`） | `1.7.0` | 32 | 稳定维护线。1.7.x 仅接受兼容性、安全性、数据同步和关键缺陷修复。 |
 
 本维护分支使用 `prts-mcp-ts@2`（首次 LTS 发布后也可用 `@lts-2.8`）、Python `prts-mcp>=2.8,<2.9` 和精确 Docker 版本（首次 LTS 镜像发布后也可用 `:2`）。不指定版本的 npm 安装和 Docker latest 跟随活跃稳定产品，在 3.0 发布时切到 Rust。两条 LTS 的维护范围见 [LTS 政策](docs/dev/LTS.md)。
