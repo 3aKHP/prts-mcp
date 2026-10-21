@@ -8,11 +8,11 @@
 
 
 > **安全提示（eMudhra/emSign CA 事件，2026-10）**：Bun `1.3.14` 的内嵌根库仍信任被除名的
-> `emSign ECC Root CA - G3`，且尚无包含修复的 Bun 稳定版发布（上游修复已合入主线）。在
+> `emSign ECC Root CA - G3`，且尚无包含修复的 Bun 稳定版发布。在
 > Bun 发布修复版之前，**推荐使用 Node 入口**（`prts-mcp-ts` npm bin、`ts/Dockerfile.node`
 > 或 `npm run start:node`）并确保 Node ≥ 22.23.4 / 24.22.1 / 26.12.1（见 package.json
 > engines）。Bun 入口在不可信网络下存在 TLS 中间人风险；Bun 修复版发布后升级宿主 Bun
-> 即恢复安全（详见仓库 GHSA 公告）。
+> 即恢复安全（背景见 GHSA-gg59-28x8-c9x8——该公告覆盖原生 3.x 线的内嵌根库问题；本线风险来自 Bun 自身内嵌根库，机制不同。）
 
 TypeScript 实现正式支持 Bun 与 Node.js 双运行时。自 2.2.0 起 **Bun 是默认生产运行时**：默认 `ts/Dockerfile`、CI 主验证链与推荐 Docker 部署均在 Bun 下运行（最低验证版本 Bun `1.3.14`）。Node.js 保留为受支持的 legacy/可选运行时，通过 `prts-mcp-ts` npm bin、`npx prts-mcp-ts@2` 与 `ts/Dockerfile.node` 构建路径提供。npm 发布路径仍走 npm CLI （`npm publish --provenance`，与运行时无关）。
 

@@ -4,7 +4,7 @@
 # Dockerfile.node keeps the Node.js image available for environments that
 # cannot run Bun. The npm publishing path still uses Node tooling
 # regardless of which runtime ships in the default image.
-FROM node:24-alpine AS builder
+FROM node:24.22.1-alpine AS builder
 
 WORKDIR /build
 
@@ -18,7 +18,7 @@ COPY ts/src/ src/
 RUN npx tsc
 
 # ---------------------------------------------------------------------------
-FROM node:24-alpine AS runtime
+FROM node:24.22.1-alpine AS runtime
 
 WORKDIR /app
 
