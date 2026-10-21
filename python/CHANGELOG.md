@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.7.3] - 2026-10-22
+
+### Security
+
+- TLS trust floor for the eMudhra/emSign CA compromise (RUSTSEC-2026-0383 /
+  CVE-2026-111943): `certifi>=2026.10.19` is now an explicit dependency
+  floor. Wiki and data-sync requests go through `httpx`, which verifies TLS
+  against the certifi bundle; the floor guarantees fresh installs and
+  dependency upgrades no longer resolve the pre-2026.10.19 bundle that
+  still trusts `emSign ECC Root CA - G3` - the root above eight eMudhra
+  intermediate CAs whose private keys are publicly recoverable. Existing
+  deployments must upgrade explicitly (`pip install -U 'certifi>=2026.10.19'`
+  or reinstall this package); a floor does not retroactively replace an
+  already-installed certifi.
+
 ## [1.7.2] - 2026-09-26
 
 ### Fixed

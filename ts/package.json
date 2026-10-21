@@ -1,6 +1,6 @@
 {
   "name": "prts-mcp-ts",
-  "version": "1.7.2",
+  "version": "1.7.3",
   "description": "MCP Server for Arknights PRTS Wiki & game data (TypeScript / Streamable HTTP)",
   "type": "module",
   "main": "dist/server.js",
@@ -12,7 +12,7 @@
     "data/"
   ],
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22.23.4 <23 || >=24.22.1 <25 || >=26.12.1"
   },
   "scripts": {
     "build": "tsc",
@@ -45,7 +45,7 @@
     "streamable-http"
   ],
   "volta": {
-    "node": "24.14.0"
+    "node": "24.22.1"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
