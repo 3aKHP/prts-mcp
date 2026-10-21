@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project follows the versioning convention documented in [`docs/dev/VERSIONING.md`](https://github.com/3aKHP/prts-mcp/blob/main/docs/dev/VERSIONING.md).
 
+## [2.8.2] - 2026-10-22
+
+### Security
+
+- Node runtime security floor for the eMudhra/emSign CA compromise
+  (RUSTSEC-2026-0383 / CVE-2026-111943): `engines.node` now requires
+  `>=22.23.4 <23 || >=24.22.1 <25 || >=26.12.1` (maintained-major patch
+  floors that ship the upstream blocklist for the compromised eMudhra
+  intermediate keys; majors 23/25 are outside the supported floor).
+  Volta pins Node 24.22.1 and CI follows via `node-version-file`;
+  `ts/Dockerfile.node` pins `node:24.22.1-alpine` so the recommended
+  image cannot silently run a pre-fix Node. The `engines` declaration
+  does not upgrade an already-running host runtime - deployments must
+  upgrade Node themselves. Outbound wiki/sync/image requests cover both
+  the global `fetch` and the undici `EnvHttpProxyAgent` proxy path.
+- Bun runtime advisory: Bun `1.3.14` (the pinned default entrypoint
+  runtime) still trusts the revoked emSign root in its embedded store
+  and no fixed stable Bun release exists yet. Until one is available,
+  prefer the Node entrypoints (`prts-mcp-ts` npm bin, `ts/Dockerfile.node`,
+  `npm run start:node`) - see the security note in `ts/README.md`.
+  Upgrading the host Bun once a fixed stable release ships restores the
+  Bun entrypoints; repo pins will be updated by a maintenance commit at
+  that point, no release required.
+
 ## [2.8.1] - 2026-10-11
 
 ### Added
