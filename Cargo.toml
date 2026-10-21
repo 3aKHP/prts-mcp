@@ -72,6 +72,13 @@ default = []
 # dev-dependency so the selection evidence stays reproducible.
 rmcp = { version = "3.5.1", default-features = false, features = ["server", "transport-io", "transport-streamable-http-server", "transport-streamable-http-server-session", "macros", "schemars"] }
 
+# eMudhra distrust regression tests (RUSTSEC-2026-0383): pin the embedded
+# root-store state and the SPKI path-rejection behavior.
+webpki-roots = "1"
+rustls = { version = "0.23", default-features = false, features = ["ring", "logging", "std", "tls12"] }
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "logging", "tls12"] }
+rustls-pemfile = "2"
+
 [profile.dev]
 debug = "line-tables-only"
 incremental = true

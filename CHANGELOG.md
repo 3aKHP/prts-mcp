@@ -8,6 +8,12 @@ The original per-implementation changelogs at the 2.8.1 baseline remain availabl
 
 ## [Unreleased]
 
+## [3.1.2] - 2026-10-22
+
+### Security
+
+- **Native TLS trust store updated for the eMudhra/emSign CA compromise** ([RUSTSEC-2026-0383](https://rustsec.org/advisories/RUSTSEC-2026-0383.html) / CVE-2026-111943): the embedded root snapshot moves from `webpki-roots` 1.0.9 to 1.0.10 (removes `emSign ECC Root CA - G3`, whose eight subordinate intermediate keys are publicly recoverable from certificate data), and the path validator from `rustls-webpki` 0.103.15 to 0.103.16 (rejects any path containing the affected intermediates, regardless of root store). Without this update, an on-path attacker could impersonate `prts.wiki` or the GitHub release endpoints against native releases <= 3.1.1, silently poisoning wiki tool output and data sync, and could capture a configured GitHub token. Custom mirrors whose certificates chain to the distrusted CA now fail to connect as expected. Added regression tests pinning both the root-store state and the intermediate path-rejection behavior.
+
 ## [3.1.1] - 2026-10-20
 
 ### Added
