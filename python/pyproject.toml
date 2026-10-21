@@ -40,6 +40,7 @@ classifiers = [
 ]
 dependencies = [
     "mcp[cli]==2.0.0",
+    "certifi>=2026.10.19",
     "httpx",
     "pydantic",
     # HTTP transport (PRTS_TRANSPORT=http). These are also transitively

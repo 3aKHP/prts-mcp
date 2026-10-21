@@ -6,6 +6,14 @@
 
 提供 24 个 MCP 工具（2.x）：PRTS 词条检索与页面结构、干员档案/语音/基础信息/战斗技能/面板数值、剧情活动与台词、角色出场追踪、全文搜索（含基建/战斗技能跨干员反查）、敌人图鉴、关卡查询、关卡敌人融合、物品/材料查询，以及干员立绘。完整清单见仓库根目录 [`README.md`](../README.md)。
 
+
+> **安全提示（eMudhra/emSign CA 事件，2026-10）**：Bun `1.3.14` 的内嵌根库仍信任被除名的
+> `emSign ECC Root CA - G3`，且尚无包含修复的 Bun 稳定版发布（上游修复已合入主线）。在
+> Bun 发布修复版之前，**推荐使用 Node 入口**（`prts-mcp-ts` npm bin、`ts/Dockerfile.node`
+> 或 `npm run start:node`）并确保 Node ≥ 22.23.4 / 24.22.1 / 26.12.1（见 package.json
+> engines）。Bun 入口在不可信网络下存在 TLS 中间人风险；Bun 修复版发布后升级宿主 Bun
+> 即恢复安全（详见仓库 GHSA 公告）。
+
 TypeScript 实现正式支持 Bun 与 Node.js 双运行时。自 2.2.0 起 **Bun 是默认生产运行时**：默认 `ts/Dockerfile`、CI 主验证链与推荐 Docker 部署均在 Bun 下运行（最低验证版本 Bun `1.3.14`）。Node.js 保留为受支持的 legacy/可选运行时，通过 `prts-mcp-ts` npm bin、`npx prts-mcp-ts@2` 与 `ts/Dockerfile.node` 构建路径提供。npm 发布路径仍走 npm CLI （`npm publish --provenance`，与运行时无关）。
 
 > **2.0 变更**：工具面由 1.x 的 32 个合并为 23 个（详见 [1.x → 2.0 迁移指南](../docs/migration-1.x-to-2.0.md)）；新增可选的 output channel（查询字符串 `?output_channel=` / 请求头 `x-prts-output-channel` / `PRTS_OUTPUT_CHANNEL` 环境变量，默认 `content`，与 1.x 行为一致）。
