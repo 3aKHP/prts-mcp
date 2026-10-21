@@ -7,6 +7,9 @@
 //!
 //! 材料全部为公开数据（CT/CCADB/披露站可得）。junk 叶子的签名来自一把与链上
 //! 任何公钥都不匹配的废弃密钥——该链在任何客户端下都不可能通过验证，零攻击能力。
+//! junk 叶子生成方式（可第三方复核）：新生成 P-384 废钥对，issuer DN 复制真实
+//! EM-DV-TLS-CA-G3B 的 subject，用该废钥签名（cryptography 库不校验 issuer 证书
+//! 与签名钥的匹配）——签名公钥即叶证书自身 SPKI，与链上任何证书公钥均不同。
 //!
 //! 参考：https://rustsec.org/advisories/RUSTSEC-2026-0383.html
 //! （事件背景：eMudhra 8 个中间证书私钥可从公开数据恢复，2026-10-17 披露。）
@@ -86,6 +89,8 @@ fn t2_lock_pins_fixed_trust_stack() {
             if line.starts_with("name = ") {
                 pending = line == format!("name = \"{name}\"");
             } else if pending && line.starts_with("version = ") {
+                // 假设三段纯数字版本号；两目标包历史上从未发过 -rc 预发布版，
+                // 遇到时会在此 unwrap 失败变红，属可接受的绊线行为。
                 let v: Vec<u32> = line
                     .trim_matches(|c: char| c == '"' || !c.is_ascii_digit() || c == '.')
                     .split('.')
