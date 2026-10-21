@@ -1,13 +1,13 @@
 # PRTS-MCP 路线图
 
-_最近更新：2026-10-13_ · [English](ROADMAP.md)
+_最近更新：2026-10-22_ · [English](ROADMAP.md)
 
 PRTS-MCP 已越过 1.x 时代。1.7.0 是最后一个 1.x 功能版本和 1.7 LTS 基线。本文档记录**接下来要做什么**——已发布的内容请查看 Python 和 TypeScript 各自的 CHANGELOG。
 
 ## 当前发布
 
-- Python：`2.8.1` _（最新稳定版）_
-- TypeScript：`2.8.1` _（最新稳定版）_
+- Python：`2.8.2` _（最新稳定版）_
+- TypeScript：`2.8.2` _（最新稳定版）_
 - `1.7.0` LTS 仍为维护线——仅兼容性、安全性、数据同步和关键缺陷修复。
 - `2.8.1` 是 `lts/2.8` 基线，保留 Python 和 TypeScript。两条 LTS 均于 2027-07-02 EOL，见 [LTS 政策](docs/dev/LTS.md)。
 - 2.x 线为 24 个公共 MCP 工具（CI 强制检查）；1.7 LTS 线冻结 32 个公共 MCP 工具。
