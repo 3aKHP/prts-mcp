@@ -43,6 +43,7 @@ The table below summarizes all published 1.x and 2.x releases (including 1.7 LTS
 
 | Version | Date | Highlights |
 |------|------|------|
+| 2.8.2 | 2026-10-21 | LTS: distrust compromised eMudhra CA roots (backport of the 3.1.2 security response) |
 | 2.8.1 | 2026-10-11 | Supplementary roguelike story catalog: discovery, reading, search, and character tracking for six events; backward compatibility with older data packs |
 | 2.8.0 | 2026-10-10 | Detailed operator stats: interpolated attributes, per-level skill effects, per-tier talent effects, and the `skills` search scope; sync compatibility with hyphenated `versionId` values |
 | 2.7.4 | 2026-09-15 | Consistent idle HTTP session eviction across both implementations: Python support for `SESSION_IDLE_TIMEOUT_MS`; TS rescheduling based on remaining timeout and strict decimal parsing |
@@ -64,6 +65,7 @@ The table below summarizes all published 1.x and 2.x releases (including 1.7 LTS
 | 2.0.2 | 2026-07-07 | TS HTTP MCP smoke harness; candidate Bun runtime path; fixes to `search_prts` redirect resolution and technical-page filtering |
 | 2.0.1 | 2026-07-03 | Fixed output-channel wrapping in `list_story_events` when story data is missing; unified TS text-result helper; additional MCP example configuration |
 | 2.0.0 | 2026-07-03 | Tool consolidation from 32 to 23 tools and connection-level output channel (`structuredContent`) |
+| 1.7.3 | 2026-10-21 | LTS: distrust compromised eMudhra CA roots (backport of the 3.1.2 security response) |
 | 1.7.2 | 2026-09-26 | LTS: shared sync metadata compatibility and atomic writes; mirror normalization; fixes to pagination, Unicode ordering/regex, story decisions, and enemy databases; dependency security updates |
 | 1.7.1 | 2026-07-10 | LTS: PRTS search redirects and technical-page filtering; Docker offline fallback data; security updates to TS production dependencies |
 | 1.7.0 | 2026-07-02 | 1.7 LTS baseline: story character tracking and module separation (32 tools) |
