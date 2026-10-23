@@ -23,8 +23,10 @@
 | `docs/admin/environment-variables.md` | 服务端管理员与高级用户 | 全部运行时环境变量、默认值、解析规则与路径推导逻辑 |
 | `docs/admin/diagnostics-and-troubleshooting.md` | 服务端部署与运维管理员 | `/health` 探活、`/debug/*` 诊断与指标结构、日志脱敏收集与全场景排障矩阵 |
 | `docs/migration-*.md` | 跨版本升级用户 | 特定大/小版本升级时的渠道切换、配置变更、数据卷兼容与回滚指南 |
+| `docs/glossary.md` | 全部读者 | 项目术语与缩写的一句话定义及权威文档跳转 |
 | `docs/dev/` | 代码贡献者与发版维护者 | 架构分层与代码规范（`STYLE`）、开发环境（`ENVIRONMENT`）、工作流（`WORKFLOW`）、版本约定（`VERSIONING`）、LTS 政策（`LTS`）、E2E 流程（`E2E`）、各渠道打包规范及 CD 恢复手册（`RELEASE-CD-RECOVERY`） |
-| `docs/archive/` | 技术读者与维护者 | 经脱敏精编的各阶段核心架构决策记录（ADR）、基准测试与技术复盘档案 |
+| `docs/dev/adr/` | 代码贡献者与发版维护者 | 自 3.1 起的架构决策记录（ADR）：逐条编号、带状态、决策当时记录 |
+| `docs/archive/` | 技术读者与维护者 | 经脱敏精编的各版本里程碑架构决策档案、基准测试与技术复盘 |
 | `STATUS.md` / `STATUS.zh-CN.md` | 用户与协作者 | 各分支当前状态、3.0 迁移阶段概览与历史版本发布亮点表 |
 | `ROADMAP.md` / `ROADMAP.zh-CN.md` | 用户与协作者 | 当前版本开发阶段、后续积压方向（Post-3.0 Backlog）与已交付里程碑设计记录 |
 | `CHANGELOG.md` / `CHANGELOG.zh-CN.md` | 所有用户 | 按版本记录用户可感知的功能新增、变更、修复与升级提示 |

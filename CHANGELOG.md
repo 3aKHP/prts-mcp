@@ -8,6 +8,10 @@ The original per-implementation changelogs at the 2.8.1 baseline remain availabl
 
 ## [Unreleased]
 
+### Added
+
+- **Project glossary and ADR directory**: new [`docs/glossary.md`](docs/glossary.md) unifies project terms and abbreviations with links to the authoritative documents; new [`docs/dev/adr/`](docs/dev/adr/) records architecture decisions individually with status and writing discipline (ADR-0001 through ADR-0016, including backfilled records for pre-3.1 decisions still in force).
+
 ## [3.1.2] - 2026-10-22
 
 ### Security

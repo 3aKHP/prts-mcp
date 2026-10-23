@@ -27,6 +27,8 @@ PRTS-MCP 的 3.x 开发线是位于仓库根目录的原生 Rust 工程，业务
 | 服务端部署、数据同步、环境变量与监控排障 | [`docs/admin/deployment.md`](docs/admin/deployment.md) · [`docs/admin/data-and-sync.md`](docs/admin/data-and-sync.md) · [`docs/admin/environment-variables.md`](docs/admin/environment-variables.md) · [`docs/admin/diagnostics-and-troubleshooting.md`](docs/admin/diagnostics-and-troubleshooting.md) |
 | 历史架构演进与技术复盘档案（1.0–3.0） | [`docs/archive/README.md`](docs/archive/README.md) |
 | 2.x → 3.0 升级迁移、项目状态、路线图与全仓文档目录 | [`docs/migration-2.x-to-3.0.md`](docs/migration-2.x-to-3.0.md) · [`STATUS.zh-CN.md`](STATUS.zh-CN.md) · [`ROADMAP.zh-CN.md`](ROADMAP.zh-CN.md) · [`docs/README.md`](docs/README.md) |
+| 项目术语与缩写的统一解释 | [`docs/glossary.md`](docs/glossary.md) |
+| 架构决策记录（ADR）：逐条决策与撰写规范 | [`docs/dev/adr/README.md`](docs/dev/adr/README.md) |
 
 > **内部过程文档位置**：阶段计划、验收报告与历史归档均存放在被 `.gitignore` 忽略的本地 `./dev/docs/` 目录下，不进入 Git 跟踪树，公开文档中也不要添加指向 `./dev/` 的链接。
 
