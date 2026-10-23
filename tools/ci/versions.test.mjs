@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
-import { canonicalFor, checkAll, checkCargo, checkOccurrences, loadDeclarations } from './versions.mjs';
+import { canonicalFor, checkAll, checkCargo, checkOccurrences, detectBranch, loadDeclarations } from './versions.mjs';
 
 function fixture(files) {
   const root = mkdtempSync(join(tmpdir(), 'versions-test-'));
@@ -68,8 +68,20 @@ test('Cargo.toml cross-check follows the branch', () => {
   assert.deepEqual(checkCargo(withDoc(DOC, cargo), DOC, 'main'), { skipped: false, problems: [] });
   const dev = checkCargo(withDoc(DOC, cargo), DOC, 'develop');
   assert.equal(dev.problems.length, 1);
-  assert.match(dev.problems[0], /branch develop: expected 3\.1\.3-dev\.0, found 3\.1\.2/);
+  assert.match(dev.problems[0], /Cargo\.toml:3 branch develop: expected 3\.1\.3-dev\.0, found 3\.1\.2/);
   assert.deepEqual(checkCargo(withDoc(DOC, cargo), DOC, 'docs/topic'), { skipped: true, problems: [] });
+});
+
+test('missing registered file is a friendly failure', () => {
+  const root = withDoc(DOC, {});
+  const { problems } = checkOccurrences(root, loadDeclarations(root));
+  assert.equal(problems.length, 2);
+  assert.match(problems[0], /DOC\.md: registered file is missing/);
+});
+
+test('detectBranch prefers CI environment over the local branch', () => {
+  assert.equal(detectBranch({ GITHUB_BASE_REF: 'develop', GITHUB_REF_NAME: 'merge' }), 'develop');
+  assert.equal(detectBranch({ GITHUB_REF_NAME: 'main' }), 'main');
 });
 
 test('checkAll combines occurrence and Cargo problems', () => {

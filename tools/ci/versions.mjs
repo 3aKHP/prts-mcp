@@ -32,7 +32,13 @@ export function checkOccurrences(root, doc) {
       assert.ok(file && pattern, `versions.json: malformed occurrence under ${family}`);
       const re = new RegExp(pattern, 'g');
       assert.ok(re.source.includes('('), `versions.json: pattern without capture group under ${family}`);
-      const text = readFileSync(join(root, file), 'utf8');
+      let text;
+      try {
+        text = readFileSync(join(root, file), 'utf8');
+      } catch {
+        problems.push(`${file}: registered file is missing (${family}); restore the file or remove the entry from versions.json`);
+        continue;
+      }
       const matches = [...text.matchAll(re)];
       if (matches.length === 0) {
         problems.push(`${file}: anchor no longer matches (${family}, expected ${expected}); update the text or the pattern in versions.json`);
@@ -61,18 +67,18 @@ export function checkCargo(root, doc, branch) {
   const expected = cargoExpected(doc, branch);
   if (expected === null) return { skipped: true, problems: [] };
   const toml = readFileSync(join(root, 'Cargo.toml'), 'utf8');
-  const match = toml.match(/^version\s*=\s*"([^"]+)"\s*$/m);
+  const match = toml.match(/\[package\][\s\S]*?^version\s*=\s*"([^"]+)"[ \t]*$/m);
   assert.ok(match, 'Cargo.toml: package version not found');
   if (match[1] === expected) return { skipped: false, problems: [] };
-  const line = toml.slice(0, match.index).split('\n').length;
+  const line = toml.slice(0, match.index).split('\n').length + (match[0].match(/\n/g) || []).length;
   return { skipped: false, problems: [`Cargo.toml:${line} branch ${branch}: expected ${expected}, found ${match[1]}`] };
 }
 
-export function detectBranch(env) {
+export function detectBranch(env, cwd = REPO_ROOT) {
   if (env.GITHUB_BASE_REF) return env.GITHUB_BASE_REF;
   if (env.GITHUB_REF_NAME) return env.GITHUB_REF_NAME;
   try {
-    return execFileSync('git', ['branch', '--show-current'], { encoding: 'utf8' }).trim();
+    return execFileSync('git', ['branch', '--show-current'], { encoding: 'utf8', cwd }).trim();
   } catch {
     return '';
   }
