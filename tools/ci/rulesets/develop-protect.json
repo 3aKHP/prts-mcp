@@ -1,0 +1,59 @@
+{
+  "id": 25681944,
+  "name": "develop-protect",
+  "target": "branch",
+  "source_type": "Repository",
+  "source": "3aKHP/prts-mcp",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "exclude": [],
+      "include": [
+        "refs/heads/develop"
+      ]
+    }
+  },
+  "rules": [
+    {
+      "type": "deletion"
+    },
+    {
+      "type": "non_fast_forward"
+    },
+    {
+      "type": "required_status_checks",
+      "parameters": {
+        "strict_required_status_checks_policy": false,
+        "do_not_enforce_on_create": false,
+        "required_status_checks": [
+          {
+            "context": "CI gate"
+          }
+        ]
+      }
+    }
+  ],
+  "node_id": "RRS_lACqUmVwb3NpdG9yec5H0rDezgGH4Bg",
+  "created_at": "2026-10-23T06:44:22.711+08:00",
+  "updated_at": "2026-10-23T06:51:13.566+08:00",
+  "bypass_actors": [
+    {
+      "actor_id": 2,
+      "actor_type": "RepositoryRole",
+      "bypass_mode": "always"
+    },
+    {
+      "actor_id": 5,
+      "actor_type": "RepositoryRole",
+      "bypass_mode": "always"
+    }
+  ],
+  "_links": {
+    "self": {
+      "href": "https://api.github.com/repos/3aKHP/prts-mcp/rulesets/25681944"
+    },
+    "html": {
+      "href": "https://github.com/3aKHP/prts-mcp/rules/25681944"
+    }
+  }
+}
