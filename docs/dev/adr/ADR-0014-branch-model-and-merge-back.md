@@ -26,7 +26,7 @@
 
 ## 决定
 
-- **四线模型**（[AGENTS.md](../../../AGENTS.md) §1、[CLAUDE.md](../../../CLAUDE.md) §4）：`main` 承载最新正式版（tag 推进 `latest`）；`develop` 为 3.x 集成线（不含 `python/`、`ts/`）；`lts/2.8` 与 `lts/1.7` 为双实现维护线（参数见 ADR-0010）。长期分支一律不直推，全部经 PR。
+- **四线模型**（[AGENTS.md](../../../AGENTS.md) §1、[CLAUDE.md](../../../CLAUDE.md) §4）：`main` 承载最新正式版（tag 推进 `latest`）；`develop` 为 3.x 集成线（不含 `python/`、`ts/`）；`lts/2.8` 与 `lts/1.7` 为双实现维护线（参数见 ADR-0010）。长期分支一律不直推，全部经 PR——此为常规纪律；2026-10-23 落地 GitHub Rulesets 分支保护时，维护者为 `develop` 保留了机制层面的直推豁免（`develop-protect` 不设 PR 要求，Admin 绕过名单为 always，见 ADR-0008 的落地记录与 [WORKFLOW.md](../WORKFLOW.md)），`main` 与 `lts/*` 仍强制 PR。
 - **发布回灌闭环**：`release/vX.Y.Z` 从 develop 拉出 → PR 合入 main → tag 打在 main 的 merge commit 上 → 核验公开渠道 → 同一分支追加 Reopen 提交（版本号推进下一目标 `-dev.0` + 双语 CHANGELOG 重开空 Unreleased）→ PR 回灌 develop，**不 squash**。版本推进规则见 [VERSIONING.md](../VERSIONING.md)（默认下一 Patch；hotfix 占用则顺延；新 Minor 主题须在 ROADMAP 登记）。
 - **Hot-Fix 衔接**：fix 分支直合 main 打补丁 tag，再以 backport PR 移植 develop 并顺延版本（实战：3.1.2 的 PR #277 → #278）。
 - **过渡期 review-only 预发布分支**：从已审查的 develop 快照拉 `release/v3.x.y-alpha.N` 等分支，经独立审查与完整 CI 后直接在该分支提交上打 tag 触发发布（npm `@next`、GHCR `:next`、GitHub Prerelease 且 `make_latest=false`）；候选 PR 保持打开供评审、不合入 main、也不改 develop 的 `-dev.0`。“review-only”一语来自 PR 实践（候选 PR 自述 “candidate review record, not an integration merge request”），本文将其正式化。

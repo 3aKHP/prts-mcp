@@ -38,7 +38,7 @@
 **EOL 参数**：
 
 - 两线统一 EOL **2027-07-02**，即 1.7.0 基线（2026-07-02）起 12 个月；2.8 线政策明文 “The 2.8 line does not receive a new 12-month term when Rust 3.0 is released”。
-- 1.7 线的窗口是设立 52 天后才书面化的维护者裁决（commit `582a911` 自述 “No EOL policy existed anywhere in the repo. Record the maintainer decision: 12 months from the 1.7.0 baseline”，经 PR #184 合入 `lts/1.7`、PR #185 同步开发线）。
+- 1.7 线的窗口是设立 51 天后才书面化的维护者裁决（commit `582a911` 自述 “No EOL policy existed anywhere in the repo. Record the maintainer decision: 12 months from the 1.7.0 baseline”，经 PR #184 合入 `lts/1.7`、PR #185 同步开发线）。
 - EOL 后：不再发版；分支、`python/v*`/`ts/v*` tag 与已发布产物只读保留；1.7 的两个投影 fork 在 EOL 前不得 archive，EOL 后停止投影（见 [ADR-0002](ADR-0002-lts-akdp-projection.md)）。
 
 **发布通道隔离**（`lts/2.8` 于建立之日生效，commits `87234e4`、`9c84e3e`）：

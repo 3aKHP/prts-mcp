@@ -24,7 +24,7 @@
 - **定时（scheduled）全量矩阵**：否决。同上，仅范围裁决记录。
 - **原生矩阵保留 `workflow_dispatch` 手动入口、tag/CD 继续全量**：采纳，作为兜底通道。
 - **元数据编辑完全不触发任何 CI 事件**：否决（隐含）。事后推断：完全不触发会让必需检查在新 check suite 下悬空——这正是 commit `b929e63` 修复的问题；ci.yml 并发组注释为当时记录：“Metadata-only edits and explicit reruns must not cancel the current PR run”。
-- **门禁信任事件负载快照**：否决。层级选择与最终门禁两处都以只读 token 实时核对 PR 的 HEAD/base/层级，代码注释记录理由：“Reruns retain their original event”。
+- **门禁信任事件负载快照**：否决。层级选择与最终门禁两处都以只读 token 实时核对 PR 的 HEAD/base/层级，代码注释记录理由：“Reruns retain their original event”（该注释仅存在于 PR #261 的中间提交 `bc90eac`，未进入合入树；机制本身现役于 `policy.mjs` 的 `verifyCurrentPr`）。
 - **门禁结构：`CI gate` 立即注册并挂起等待 + 与 HEAD/身份串绑定的 `CI result` + 仅全量层发出 `Full CI gate`**：采纳。
 
 评审闭环：独立 clean-context 评审在 commit `bc90eac` 时发现两个实质问题（加 `ci:full` 后旧普通 run 被重跑、无关元数据编辑触发不必要的取消与重建），已在最终 HEAD 修复；KHPilot 在 PR 对话中的意见无 Blocking/Should-fix 级条目（当时未形成正式 review）。
