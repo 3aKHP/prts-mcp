@@ -11,6 +11,7 @@ The original per-implementation changelogs at the 2.8.1 baseline remain availabl
 ### Added
 
 - **Project glossary and ADR directory**: new [`docs/glossary.md`](docs/glossary.md) unifies project terms and abbreviations with links to the authoritative documents; new [`docs/dev/adr/`](docs/dev/adr/) records architecture decisions individually with status and writing discipline (ADR-0001 through ADR-0016, including backfilled records for pre-3.1 decisions still in force).
+- **Version consistency guard**: a new root [`versions.json`](versions.json) declares the single source for the stable, develop and LTS patch versions and the LTS EOL date; `tools/ci/versions.mjs` verifies every registered documentation occurrence against it and cross-checks `Cargo.toml` against the target branch (runs in CI and in the fast path of `scripts/check-runtime.sh`), reporting file and line on drift. All registered copies were audited and aligned, including a stale `lts/2.8` row in `STATUS`.
 
 ## [3.1.2] - 2026-10-22
 
