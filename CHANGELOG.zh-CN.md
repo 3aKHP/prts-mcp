@@ -8,6 +8,10 @@
 
 ## [未发布]
 
+### 新增
+
+- **版本一致性门禁**：新增仓库根 [`versions.json`](versions.json)，统一声明稳定版、开发版、两条 LTS 最新补丁与 LTS EOL 日期；`tools/ci/versions.mjs` 校验所有登记的文档副本与之一致，并按目标分支交叉校验 `Cargo.toml`（纳入 CI 与 `scripts/check-runtime.sh` 快速段），漂移时逐处报出文件与行号。全部登记副本已核对对齐，包括 STATUS 中一处滞后的 `lts/2.8` 行。
+
 ## [Unreleased]
 
 ## [3.1.2] - 2026-10-22

@@ -12,6 +12,8 @@ cargo --version
 rustc --version
 cc --version | head -n 1
 cargo metadata --locked --no-deps --format-version 1 >/dev/null
+command -v node >/dev/null
+node tools/ci/versions.mjs
 if [[ "${1:-}" == --full ]]; then
   command -v node >/dev/null
   command -v npm >/dev/null

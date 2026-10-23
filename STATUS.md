@@ -6,10 +6,10 @@
 
 | Line / Branch | Current State |
 | --- | --- |
-| Public stable (`main`) | [`3.1.1`](https://github.com/3aKHP/prts-mcp/releases/tag/v3.1.1) (native Rust), published on npm (`latest`), GitHub Releases, and GHCR (`:latest`, `:3`). |
-| Active development (`develop`) | `3.1.2-dev.0` (native Rust Cargo project at the repository root). |
-| `lts/2.8` | Python and TypeScript 2.8.x maintenance branch (`2.8.1` baseline, 24 tools). |
-| `lts/1.7` | Python and TypeScript 1.7.x maintenance branch (latest patch `1.7.2`, `1.7.0` feature baseline, 32 tools). |
+| Public stable (`main`) | [`3.1.2`](https://github.com/3aKHP/prts-mcp/releases/tag/v3.1.2) (native Rust), published on npm (`latest`), GitHub Releases, and GHCR (`:latest`, `:3`). |
+| Active development (`develop`) | `3.1.3-dev.0` (native Rust Cargo project at the repository root). |
+| `lts/2.8` | Python and TypeScript 2.8.x maintenance branch (latest patch `2.8.2`, `2.8.1` feature baseline, 24 tools). |
+| `lts/1.7` | Python and TypeScript 1.7.x maintenance branch (latest patch `1.7.3`, `1.7.0` feature baseline, 32 tools). |
 | LTS End of Life | Both `lts/2.8` and `lts/1.7` are supported through **2027-07-02**. |
 
 ## 3.x Architecture and Repository Layout
