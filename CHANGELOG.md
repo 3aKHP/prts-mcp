@@ -8,6 +8,10 @@ The original per-implementation changelogs at the 2.8.1 baseline remain availabl
 
 ## [Unreleased]
 
+### Added
+
+- **Version consistency guard**: a new root [`versions.json`](versions.json) declares the single source for the stable, develop and LTS patch versions and the LTS EOL date; `tools/ci/versions.mjs` verifies every registered documentation occurrence against it and cross-checks `Cargo.toml` against the target branch (runs in CI and in the fast path of `scripts/check-runtime.sh`), reporting file and line on drift. All registered copies were audited and aligned, including a stale `lts/2.8` row in `STATUS`.
+
 ## [3.1.2] - 2026-10-22
 
 ### Security
