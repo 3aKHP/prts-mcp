@@ -6,10 +6,10 @@
 
 | 分支 / 版本线 | 当前状态 |
 | --- | --- |
-| 公开稳定版（`main`） | [`3.1.1`](https://github.com/3aKHP/prts-mcp/releases/tag/v3.1.1)（原生 Rust），已发布至 npm（`latest`）、GitHub Releases 与 GHCR（`:latest`、`:3`）。 |
-| 主开发分支（`develop`） | `3.1.2-dev.0`（根目录原生 Rust Cargo 工程）。 |
-| `lts/2.8` | Python 与 TypeScript 2.8.x 长期维护线（基于 `2.8.1`，24 个工具）。 |
-| `lts/1.7` | Python 与 TypeScript 1.7.x 长期维护线（最新补丁版本 `1.7.2`，功能基线 `1.7.0`，32 个工具）。 |
+| 公开稳定版（`main`） | [`3.1.2`](https://github.com/3aKHP/prts-mcp/releases/tag/v3.1.2)（原生 Rust），已发布至 npm（`latest`）、GitHub Releases 与 GHCR（`:latest`、`:3`）。 |
+| 主开发分支（`develop`） | `3.1.3-dev.0`（根目录原生 Rust Cargo 工程）。 |
+| `lts/2.8` | Python 与 TypeScript 2.8.x 长期维护线（最新补丁版本 `2.8.2`，功能基线 `2.8.1`，24 个工具）。 |
+| `lts/1.7` | Python 与 TypeScript 1.7.x 长期维护线（最新补丁版本 `1.7.3`，功能基线 `1.7.0`，32 个工具）。 |
 | LTS 维护截止日（EOL） | `lts/2.8` 与 `lts/1.7` 均维护至 **2027-07-02**。 |
 
 ## 3.x 架构与仓库结构
@@ -43,6 +43,7 @@ SQLite 为实验性可选后端，通过 `PRTS_DATA_BACKEND=sqlite` 或 `PRTS_DA
 
 | 版本 | 日期 | 亮点 |
 |------|------|------|
+| 2.8.2 | 2026-10-22 | LTS：除名已被泄露的 eMudhra CA 根证书（3.1.2 安全响应的回移） |
 | 2.8.1 | 2026-10-11 | 肉鸽剧情补充目录：六个事件的发现、读取、搜索与角色追踪；旧数据包兼容 |
 | 2.8.0 | 2026-10-10 | 干员深度数值（面板插值 / 技能逐等级 / 天赋逐档 + `skills` 搜索范围）；连字符 `versionId` 同步兼容 |
 | 2.7.4 | 2026-09-15 | HTTP 会话空闲淘汰双实现一致（Python 支持 `SESSION_IDLE_TIMEOUT_MS`；TS 剩余预算重排 + 严格十进制解析） |
@@ -64,6 +65,7 @@ SQLite 为实验性可选后端，通过 `PRTS_DATA_BACKEND=sqlite` 或 `PRTS_DA
 | 2.0.2 | 2026-07-07 | TS HTTP MCP 冒烟测试程序；Bun 候选运行路径；`search_prts` 重定向解析与技术页面过滤修复 |
 | 2.0.1 | 2026-07-03 | 修复 `list_story_events` 缺失剧情数据时的输出通道包装；统一 TS 文本结果辅助函数；补充 MCP 示例配置 |
 | 2.0.0 | 2026-07-03 | 工具面收敛（32 → 23）与连接级结构化输出通道（`structuredContent`） |
+| 1.7.3 | 2026-10-22 | LTS：除名已被泄露的 eMudhra CA 根证书（3.1.2 安全响应的回移） |
 | 1.7.2 | 2026-09-26 | LTS：共享同步元数据兼容与原子写入；镜像归一化；分页、Unicode 排序/正则、剧情决策与敌人数据库修复；依赖安全更新 |
 | 1.7.1 | 2026-07-10 | LTS：PRTS 搜索重定向与技术页过滤；Docker 离线备用数据；TS 生产依赖安全更新 |
 | 1.7.0 | 2026-07-02 | 1.7 LTS 基线：剧情角色追踪 + 模块拆分（32 工具） |

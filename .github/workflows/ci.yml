@@ -38,6 +38,9 @@ jobs:
       - name: Test CI selection and gate policy
         if: steps.policy.outputs.run == 'true'
         run: node --test tools/ci/*.test.mjs
+      - name: Version consistency with versions.json
+        if: steps.policy.outputs.run == 'true'
+        run: node tools/ci/versions.mjs
       - uses: actions/setup-go@v6
         if: steps.policy.outputs.run == 'true'
         with:

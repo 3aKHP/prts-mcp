@@ -35,7 +35,7 @@ rustup component add rustfmt clippy
 cargo build --locked
 ```
 
-- `./scripts/check-runtime.sh` 为只读快速环境审计：检查 `cargo`、`rustc`、`cc` 与锁定的 Cargo 元数据，不会修改锁文件或下载外部数据集。
+- `./scripts/check-runtime.sh` 为只读快速环境审计：检查 `cargo`、`rustc`、`cc`、锁定的 Cargo 元数据，并以 Node 校验 `versions.json` 声明与各登记文档副本一致；不会修改锁文件或下载外部数据集。
 - 如需构建最小化的 TS/v2.8.1 对照基准与测试夹具（供差分测试使用），可执行：
   ```bash
   node tools/prepare-validation.mjs --minimal
