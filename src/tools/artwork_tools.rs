@@ -75,7 +75,7 @@ pub fn operator_artwork<'a>(app: &'a AppHandle, arguments: &'a Value) -> Dispatc
             // One activation snapshot per call: the generation resolved once.
             let view = app.snapshot();
             let gen_dir = crate::sync::images_meta::active_generation(&config.images_path);
-            if action == "list" {
+            let outcome = if action == "list" {
                 list_artworks_local(&view, &operator_name, gen_dir.as_deref())
             } else {
                 let artwork_id = artwork_id.unwrap_or_default();
@@ -86,6 +86,16 @@ pub fn operator_artwork<'a>(app: &'a AppHandle, arguments: &'a Value) -> Dispatc
                     variant.as_deref(),
                     gen_dir.as_deref(),
                 )
+            };
+            // Artwork resolves its own generation independently of DataState.
+            // Discard any result from a directory bound after process startup.
+            if let Err(error) =
+                crate::sync::source_guard::verify(&config.images_path, &config.data_source)
+            {
+                crate::log_warn(&error);
+                ArtworkOutcome::Message("本地立绘数据源与配置不一致，请使用独立数据目录。".into())
+            } else {
+                outcome
             }
         } else if action == "list" {
             mediawiki::list_artworks_mediawiki(client::shared_transport(), &operator_name).await

@@ -41,6 +41,7 @@ SQLite 模式不读取或同步原始游戏 JSON/ZIP；旧路径仍参与默认�
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
+| `PRTS_DATA_SOURCE_REPO` | `3aKHP/arknights-data-pipeline` | 数据与图片自动同步的 GitHub 源仓库，格式为 `owner/repo`。去除首尾空白，空值按默认源处理；非法格式启动失败。仓库身份不区分大小写。自定义源使用独立数据目录，已有显式同步目录须为空或已绑定同一源；详见[自定义数据源](data-and-sync.md#自定义-github-数据源)。 |
 | `GITHUB_TOKEN` | 空 | GitHub Personal Access Token，用于提升 GitHub API 请求限额，避免高频检查 Release 时触发匿名限流。 |
 | `GITHUB_MIRRORS` | 空 | 逗号分隔的 GitHub 下载镜像前缀列表（例如 `https://ghproxy.net`）。直连原地址失败后会按顺序尝试 `<mirror>/<original_url>`（首尾空白与末尾斜杠会自动归一化）。 |
 | `PRTS_AUTO_SYNC_INTERVAL_SECONDS` | `3600` | 后台轮询检查 GitHub Release 更新的间隔秒数。有效范围为 `60..604800`（1 分钟至 7 天）；设为 `0` 时仅在服务启动时执行一次同步检查，关闭后续周期轮询；超出范围或非法值回退为默认值 `3600`。 |
