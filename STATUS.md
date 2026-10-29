@@ -6,10 +6,10 @@
 
 | Line / Branch | Current State |
 | --- | --- |
-| Public stable (`main`) | [`3.1.1`](https://github.com/3aKHP/prts-mcp/releases/tag/v3.1.1) (native Rust), published on npm (`latest`), GitHub Releases, and GHCR (`:latest`, `:3`). |
-| Active development (`develop`) | `3.1.2-dev.0` (native Rust Cargo project at the repository root). |
-| `lts/2.8` | Python and TypeScript 2.8.x maintenance branch (`2.8.1` baseline, 24 tools). |
-| `lts/1.7` | Python and TypeScript 1.7.x maintenance branch (latest patch `1.7.2`, `1.7.0` feature baseline, 32 tools). |
+| Public stable (`main`) | [`3.1.3`](https://github.com/3aKHP/prts-mcp/releases/tag/v3.1.3) (native Rust), published on npm (`latest`), GitHub Releases, and GHCR (`:latest`, `:3`). |
+| Active development (`develop`) | `3.1.3-dev.0` (native Rust Cargo project at the repository root). |
+| `lts/2.8` | Python and TypeScript 2.8.x maintenance branch (latest patch `2.8.2`, `2.8.1` feature baseline, 24 tools). |
+| `lts/1.7` | Python and TypeScript 1.7.x maintenance branch (latest patch `1.7.3`, `1.7.0` feature baseline, 32 tools). |
 | LTS End of Life | Both `lts/2.8` and `lts/1.7` are supported through **2027-07-02**. |
 
 ## 3.x Architecture and Repository Layout
@@ -21,6 +21,10 @@
   - `prts-mcp-ts`, `prts-mcp-ts-bun` (HTTP), and `prts-mcp-ts-stdio` (stdio) preserve fixed 2.x transport modes on top of the Rust binary.
   - `prts-mcp-ghcr` (Docker image entrypoint) preserves default `stdio`; set `PRTS_TRANSPORT=http` for HTTP mode.
 - **Repository Structure**: The root directory holds `Cargo.toml`, `src/`, `native/`, `vendor/`, `tests/`, `contracts/`, `tools/`, `packaging/`, and `Dockerfile`. Legacy Python and TypeScript implementations are maintained on `lts/2.8` and `lts/1.7` (see [LTS Policy](docs/dev/LTS.md)). Code and third-party content licensing are documented in [LICENSE](LICENSE) and [NOTICE](NOTICE).
+
+## 3.1.3 Custom GitHub Data Source
+
+`PRTS_DATA_SOURCE_REPO=owner/repo` selects a compatible repository for data and local artwork synchronization. Custom sources use isolated directories; default-source deployments retain their existing paths and volumes. See [data and sync](docs/admin/data-and-sync.md#自定义-github-数据源).
 
 ## 3.1 SQLite Backend
 
@@ -43,6 +47,7 @@ The table below summarizes all published 1.x and 2.x releases (including 1.7 LTS
 
 | Version | Date | Highlights |
 |------|------|------|
+| 2.8.2 | 2026-10-22 | LTS: distrust compromised eMudhra CA roots (backport of the 3.1.2 security response) |
 | 2.8.1 | 2026-10-11 | Supplementary roguelike story catalog: discovery, reading, search, and character tracking for six events; backward compatibility with older data packs |
 | 2.8.0 | 2026-10-10 | Detailed operator stats: interpolated attributes, per-level skill effects, per-tier talent effects, and the `skills` search scope; sync compatibility with hyphenated `versionId` values |
 | 2.7.4 | 2026-09-15 | Consistent idle HTTP session eviction across both implementations: Python support for `SESSION_IDLE_TIMEOUT_MS`; TS rescheduling based on remaining timeout and strict decimal parsing |
@@ -64,6 +69,7 @@ The table below summarizes all published 1.x and 2.x releases (including 1.7 LTS
 | 2.0.2 | 2026-07-07 | TS HTTP MCP smoke harness; candidate Bun runtime path; fixes to `search_prts` redirect resolution and technical-page filtering |
 | 2.0.1 | 2026-07-03 | Fixed output-channel wrapping in `list_story_events` when story data is missing; unified TS text-result helper; additional MCP example configuration |
 | 2.0.0 | 2026-07-03 | Tool consolidation from 32 to 23 tools and connection-level output channel (`structuredContent`) |
+| 1.7.3 | 2026-10-22 | LTS: distrust compromised eMudhra CA roots (backport of the 3.1.2 security response) |
 | 1.7.2 | 2026-09-26 | LTS: shared sync metadata compatibility and atomic writes; mirror normalization; fixes to pagination, Unicode ordering/regex, story decisions, and enemy databases; dependency security updates |
 | 1.7.1 | 2026-07-10 | LTS: PRTS search redirects and technical-page filtering; Docker offline fallback data; security updates to TS production dependencies |
 | 1.7.0 | 2026-07-02 | 1.7 LTS baseline: story character tracking and module separation (32 tools) |

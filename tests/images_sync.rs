@@ -657,3 +657,93 @@ async fn offline_fallback_and_no_data() {
     let _ = std::fs::remove_dir_all(&dir);
     let _ = std::fs::remove_dir_all(&fresh);
 }
+
+struct CustomSourceTransport {
+    inner: FakeTransport,
+    requests: Mutex<Vec<String>>,
+}
+#[async_trait]
+impl Transport for CustomSourceTransport {
+    async fn fetch_json(&self, url: &str, timeout: u64) -> Result<Value, TransportError> {
+        assert!(url.contains("/team/assets/"), "unexpected source: {url}");
+        self.requests.lock().unwrap().push(url.into());
+        let default_url = url.replace("/team/assets/", "/3aKHP/arknights-data-pipeline/");
+        let mut value = self.inner.fetch_json(&default_url, timeout).await?;
+        // Force the production pagination path: initial discovery sees only
+        // the newest delta, subsequent pages cover the baseline.
+        if url.contains("api.github.com") && !url.contains("&page=") {
+            let latest = value
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|r| r["tag_name"] == "images-26-03-01-00-00-00_d2")
+                .unwrap()
+                .clone();
+            value = json!([latest]);
+        }
+        Ok(serde_json::from_str(
+            &value
+                .to_string()
+                .replace("/3aKHP/arknights-data-pipeline/", "/team/assets/"),
+        )
+        .unwrap())
+    }
+    async fn download(
+        &self,
+        url: &str,
+        dest: &Path,
+        timeout: u64,
+    ) -> Result<DownloadStats, TransportError> {
+        assert!(url.contains("/team/assets/"), "unexpected source: {url}");
+        self.requests.lock().unwrap().push(url.into());
+        self.inner
+            .download(
+                &url.replace("/team/assets/", "/3aKHP/arknights-data-pipeline/"),
+                dest,
+                timeout,
+            )
+            .await
+    }
+    fn mirrors(&self) -> Vec<String> {
+        vec![]
+    }
+    fn github_headers(&self) -> Vec<(String, String)> {
+        vec![]
+    }
+}
+#[tokio::test]
+async fn custom_source_covers_pagination_baseline_download_and_restart() {
+    use prts_mcp_rust::{config::DataSource, sync::images_sync::sync_images_with_source};
+    let (world, _) = build_world();
+    let transport = CustomSourceTransport {
+        inner: FakeTransport { world },
+        requests: Mutex::new(vec![]),
+    };
+    let dir = temp_images_dir("custom-source");
+    let source = DataSource::parse(Some("team/assets")).unwrap();
+    let result = sync_images_with_source(&dir, &transport, opts(false), &source).await;
+    assert_eq!(result.status.as_str(), "updated", "{:?}", result.error);
+    let requests = transport.requests.lock().unwrap().clone();
+    assert!(requests.iter().any(|url| url.contains("&page=1")));
+    assert!(requests
+        .iter()
+        .any(|url| url.contains("/images-baseline-") && url.ends_with("chararts-large.zip")));
+    assert_eq!(
+        sync_images_with_source(&dir, &transport, opts(false), &source)
+            .await
+            .status
+            .as_str(),
+        "up_to_date"
+    );
+    let generation = active_generation(&dir).unwrap();
+    let other = DataSource::parse(Some("team/other")).unwrap();
+    assert_eq!(
+        sync_images_with_source(&dir, &transport, opts(false), &other)
+            .await
+            .status
+            .as_str(),
+        "no_data"
+    );
+    assert_eq!(active_generation(&dir).unwrap(), generation);
+    let _ = std::fs::remove_dir_all(dir);
+}

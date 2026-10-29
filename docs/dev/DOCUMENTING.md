@@ -23,8 +23,10 @@
 | `docs/admin/environment-variables.md` | 服务端管理员与高级用户 | 全部运行时环境变量、默认值、解析规则与路径推导逻辑 |
 | `docs/admin/diagnostics-and-troubleshooting.md` | 服务端部署与运维管理员 | `/health` 探活、`/debug/*` 诊断与指标结构、日志脱敏收集与全场景排障矩阵 |
 | `docs/migration-*.md` | 跨版本升级用户 | 特定大/小版本升级时的渠道切换、配置变更、数据卷兼容与回滚指南 |
+| `docs/glossary.md` | 全部读者 | 项目术语与缩写的一句话定义及权威文档跳转 |
 | `docs/dev/` | 代码贡献者与发版维护者 | 架构分层与代码规范（`STYLE`）、开发环境（`ENVIRONMENT`）、工作流（`WORKFLOW`）、版本约定（`VERSIONING`）、LTS 政策（`LTS`）、E2E 流程（`E2E`）、各渠道打包规范及 CD 恢复手册（`RELEASE-CD-RECOVERY`） |
-| `docs/archive/` | 技术读者与维护者 | 经脱敏精编的各阶段核心架构决策记录（ADR）、基准测试与技术复盘档案 |
+| `docs/dev/adr/` | 代码贡献者与发版维护者 | 自 3.1 起的架构决策记录（ADR）：逐条编号、带状态、决策当时记录 |
+| `docs/archive/` | 技术读者与维护者 | 经脱敏精编的各版本里程碑架构决策档案、基准测试与技术复盘 |
 | `STATUS.md` / `STATUS.zh-CN.md` | 用户与协作者 | 各分支当前状态、3.0 迁移阶段概览与历史版本发布亮点表 |
 | `ROADMAP.md` / `ROADMAP.zh-CN.md` | 用户与协作者 | 当前版本开发阶段、后续积压方向（Post-3.0 Backlog）与已交付里程碑设计记录 |
 | `CHANGELOG.md` / `CHANGELOG.zh-CN.md` | 所有用户 | 按版本记录用户可感知的功能新增、变更、修复与升级提示 |
@@ -98,7 +100,7 @@
 | **数据路径与空值陷阱** | 服务不自动加载 `.env`。JSON 后端的 `GAMEDATA_PATH` **只要变量存在（哪怕赋值为空字符串）**即禁用游戏表与关卡自动同步；`STORYJSON_PATH` 设为非空值时禁用剧情自动同步。`PRTS_AUTO_SYNC_INTERVAL_SECONDS=0` 仅关闭周期轮询，仍保留启动时的首次同步检查。 |
 | **内置备用数据与优先级** | 正式发行的原生归档包、npm 包与 Docker 镜像均内置只读备用数据（游戏表、关卡、剧情）。当用户数据目录已有完整数据时，**用户数据优先**，且后台同步仅写入可写的用户目录；源码构建不含内置备用数据。 |
 | **立绘数据源模式** | `IMAGES_ENABLED=false` 会隐藏 `operator_artwork`（工具数 24 → 23）。`LOCAL_IMAGE=false`（默认）从 MediaWiki 按需拉取并缓存图片（仍消耗网络流量）；`LOCAL_IMAGE=true` 后台同步 GB 量级的 AKDP 本地 PNG 包，`ORIGINAL_IMAGE=true` 额外同步未缩放原图分片。 |
-| **版本与发布渠道** | 当前公开稳定版为 `3.1.1`（npm `latest`，GHCR `:latest` 与 `:3`）；3.x 预发布版本使用 npm `@next` 与 GHCR `:next`，2.8.x 维护版使用 npm `lts-2.8` 与 GHCR `:2`。`lts/2.8` 与 `lts/1.7` 均维护至 `2027-07-02`。 |
+| **版本与发布渠道** | 当前公开稳定版为 `3.1.3`（npm `latest`，GHCR `:latest` 与 `:3`）；3.x 预发布版本使用 npm `@next` 与 GHCR `:next`，2.8.x 维护版使用 npm `lts-2.8` 与 GHCR `:2`。`lts/2.8` 与 `lts/1.7` 均维护至 `2027-07-02`。 |
 
 ---
 

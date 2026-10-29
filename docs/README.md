@@ -5,6 +5,7 @@
 - 了解项目功能与完整工具列表，请参阅根目录 [README（中文）](../README.md#中文) / [README (English)](../README.md#english)。
 - 查看当前版本线状态与近期发布记录，请参阅 [STATUS.zh-CN.md](../STATUS.zh-CN.md) / [STATUS.md](../STATUS.md)。
 - 参与代码或文档贡献，请先阅读 [CONTRIBUTING.zh-CN.md](../CONTRIBUTING.zh-CN.md) / [CONTRIBUTING.md](../CONTRIBUTING.md)。
+- 查阅项目特有术语与缩写的统一解释，请参阅 [术语表](glossary.md)。
 
 English readers: the root [README](../README.md#english) and [Security Policy](../SECURITY.md#english) are bilingual, and [STATUS](../STATUS.md), [CONTRIBUTING](../CONTRIBUTING.md), [ROADMAP](../ROADMAP.md), and [CHANGELOG](../CHANGELOG.md) provide full English editions alongside their Chinese counterparts.
 
@@ -48,6 +49,8 @@ English readers: the root [README](../README.md#english) and [Security Policy](.
 - **架构、编码与协作规范**
   - [dev/ENVIRONMENT.md](dev/ENVIRONMENT.md)：跨平台开发环境搭建与本地验证命令（Linux/WSL、Windows、macOS）。
   - [dev/STYLE.md](dev/STYLE.md)：Rust 架构分层、代码规范、CHANGELOG 编写规则与已知工程陷阱。
+  - [dev/adr/](dev/adr/)：架构决策记录（ADR）——自 3.1 起逐条记录影响契约、公开行为、数据语义、分发与安全姿态的决策，附编号、状态与撰写规范。
+  - [ADR-0017](dev/adr/ADR-0017-custom-github-data-source.md)：自定义 GitHub 数据源、信任边界与缓存目录归属。
   - [dev/DOCUMENTING.md](dev/DOCUMENTING.md)：公开文档写作、角色划分与审查规范。
   - [dev/WORKFLOW.md](dev/WORKFLOW.md)：变更分级、双轨 Code Review、普通与全量 CI 策略及最小验证矩阵。
   - [dev/VERSIONING.md](dev/VERSIONING.md)：版本号语义与向后兼容性承诺。
@@ -65,7 +68,7 @@ English readers: the root [README](../README.md#english) and [Security Policy](.
 
 ## 5. 工程演进与架构档案库（`docs/archive/`）
 
-收录从 1.0 到 3.0 演进过程中的核心架构决策记录（ADR）、基准测试报告与深度技术复盘（导览见 [archive/README.md](archive/README.md)）：
+收录从 1.0 到 3.0 演进过程中按版本里程碑精编的架构决策档案、基准测试报告与深度技术复盘（导览见 [archive/README.md](archive/README.md)）；自 3.1 起的逐条架构决策记录（ADR）见 [dev/adr/](dev/adr/)：
 
 - [archive/1.0-architecture-and-hardening.md](archive/1.0-architecture-and-hardening.md)：1.0 四层存储抽象定型与 1.5 运行时非功能性加固。
 - [archive/2.0-tool-consolidation-and-output-channel.md](archive/2.0-tool-consolidation-and-output-channel.md)：2.0 工具面收敛（32 → 23）与正交双输出通道设计。

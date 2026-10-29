@@ -27,8 +27,10 @@ use super::transport::Transport;
 use super::types::SyncError;
 use super::types::{SyncResult, SyncStatus};
 
-pub const IMAGES_REPO_OWNER: &str = "3aKHP";
-pub const IMAGES_REPO: &str = "arknights-data-pipeline";
+pub use crate::config::data_source::{
+    DEFAULT_OWNER as IMAGES_REPO_OWNER, DEFAULT_REPO as IMAGES_REPO,
+};
+use crate::config::DataSource;
 
 const DELTA_PREFIX: &str = "images-";
 const BASELINE_PREFIX: &str = "images-baseline-";
@@ -91,12 +93,6 @@ pub fn enumerate_delta_chain(
     }
     chain.sort_by(|a, b| a.0.cmp(&b.0));
     Some(chain)
-}
-
-fn release_download_url(tag: &str, asset_name: &str) -> String {
-    format!(
-        "https://github.com/{IMAGES_REPO_OWNER}/{IMAGES_REPO}/releases/download/{tag}/{asset_name}"
-    )
 }
 
 fn shard_variant_names(shard_keys: &[String]) -> BTreeSet<String> {
@@ -177,6 +173,18 @@ pub async fn sync_images(
     transport: &dyn Transport,
     opts: ImagesSyncOpts,
 ) -> SyncResult {
+    sync_images_with_source(image_dir, transport, opts, &DataSource::default()).await
+}
+
+pub async fn sync_images_with_source(
+    image_dir: &Path,
+    transport: &dyn Transport,
+    opts: ImagesSyncOpts,
+    source: &DataSource,
+) -> SyncResult {
+    if let Err(error) = super::source_guard::ensure(image_dir, source) {
+        return SyncResult::new(SyncStatus::NoData, None, Some(error));
+    }
     if let Err(err) = tokio::fs::create_dir_all(image_dir).await {
         return offline_or_no_data(image_dir, &err.to_string());
     }
@@ -184,7 +192,10 @@ pub async fn sync_images(
     let lock_dir = image_dir.to_path_buf();
     let locked =
         with_archive_activation_lock(&lock_dir, IMAGES_LOCK, LockTiming::default(), || async {
-            sync_images_locked(image_dir, transport, &shard_keys, opts.force_check).await
+            if let Err(error) = super::source_guard::ensure(image_dir, source) {
+                return SyncResult::new(SyncStatus::NoData, None, Some(error));
+            }
+            sync_images_locked(image_dir, transport, &shard_keys, opts.force_check, source).await
         })
         .await;
     match locked {
@@ -198,8 +209,9 @@ async fn sync_images_locked(
     transport: &dyn Transport,
     shard_keys: &[String],
     _force_check: bool,
+    source: &DataSource,
 ) -> SyncResult {
-    let Some(mut releases) = list_releases(transport, IMAGES_REPO_OWNER, IMAGES_REPO, 10_000).await
+    let Some(mut releases) = list_releases(transport, source.owner(), source.repo(), 10_000).await
     else {
         return offline_or_no_data(image_dir, "Network unavailable");
     };
@@ -341,13 +353,8 @@ async fn sync_images_locked(
         let tag = r.get("tag_name").and_then(|t| t.as_str()).unwrap_or("");
         images_tag_version(tag).is_some_and(|v| v.as_str() <= apply_after.as_str())
     }) {
-        match list_releases_paginated(
-            transport,
-            IMAGES_REPO_OWNER,
-            IMAGES_REPO,
-            covers_chain_start,
-        )
-        .await
+        match list_releases_paginated(transport, source.owner(), source.repo(), covers_chain_start)
+            .await
         {
             Some(paged) => releases = paged,
             None => {
@@ -409,7 +416,7 @@ async fn sync_images_locked(
                 let shard_zip = staging.join(format!(".{shard_key}.zip"));
                 transport
                     .download_file(
-                        &release_download_url(&baseline_tag, shard_file),
+                        &source.download_url(&baseline_tag, shard_file),
                         &shard_zip,
                         30_000,
                     )

@@ -4,8 +4,8 @@
 
 | Branch | Purpose |
 | --- | --- |
-| `main` | Latest public stable release (native Rust `3.1.1`). |
-| `develop` | Active 3.x Rust integration branch (`3.1.2-dev.0`). Root Cargo project; no `python/` or `ts/` directories. |
+| `main` | Latest public stable release (native Rust `3.1.3`). |
+| `develop` | Active 3.x Rust integration branch (`3.1.3-dev.0`). Root Cargo project; no `python/` or `ts/` directories. |
 | `lts/2.8` | Python/TypeScript 2.8.x long-term maintenance branch (EOL `2027-07-02`). |
 | `lts/1.7` | Python/TypeScript 1.7.x long-term maintenance branch (EOL `2027-07-02`). |
 
@@ -20,6 +20,8 @@ Before making non-trivial changes, consult the authoritative guides:
 - [`docs/dev/WORKFLOW.md`](docs/dev/WORKFLOW.md) and [`docs/dev/VERSIONING.md`](docs/dev/VERSIONING.md) — PR grading, dual-track code review, minimum verification matrix, and SemVer compatibility promises.
 - [`docs/dev/LTS.md`](docs/dev/LTS.md) — maintenance scope and release rules for `lts/2.8` and `lts/1.7`.
 - [`STATUS.md`](STATUS.md) and [`ROADMAP.md`](ROADMAP.md) — current release state, 3.0 migration milestones, and post-3.0 backlog.
+- [`docs/glossary.md`](docs/glossary.md) — project terminology and abbreviations (single entry point for definitions).
+- [`docs/dev/adr/`](docs/dev/adr/) — architecture decision records (numbered, status-tracked) since 3.1; consult before revisiting settled decisions.
 
 **Documentation task assignment**: GPT-family models should focus on fact-based review and small, evidence-backed corrections that preserve the existing writing style. Assign new-document drafting, substantial rewrites, large-scale translation, and prose refinement to a human maintainer or a maintainer-designated non-GPT model. This applies to both primary agents and subagents. Follow [`docs/dev/DOCUMENTING.md`](docs/dev/DOCUMENTING.md); explicit task-specific authorization takes precedence.
 

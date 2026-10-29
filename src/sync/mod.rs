@@ -12,6 +12,7 @@ pub mod pair;
 pub mod primitives;
 pub mod release;
 pub mod scheduler;
+pub mod source_guard;
 pub mod transport;
 pub mod types;
 pub mod validation;

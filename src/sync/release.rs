@@ -476,6 +476,29 @@ pub async fn sync_release(
     spec: &ReleaseSpec,
     force_check: bool,
 ) -> SyncResult {
+    sync_release_guarded(transport, spec, force_check, None).await
+}
+
+/// Runtime entry for the plain story ZIP, with source checks under its lock.
+pub async fn sync_release_with_source(
+    transport: &dyn Transport,
+    spec: &ReleaseSpec,
+    force_check: bool,
+    source: &crate::config::DataSource,
+) -> SyncResult {
+    let root = spec.local_zip.parent().unwrap_or_else(|| Path::new("."));
+    if let Err(error) = super::source_guard::ensure(root, source) {
+        return SyncResult::new(SyncStatus::NoData, None, Some(error));
+    }
+    sync_release_guarded(transport, spec, force_check, Some(source)).await
+}
+
+async fn sync_release_guarded(
+    transport: &dyn Transport,
+    spec: &ReleaseSpec,
+    force_check: bool,
+    source: Option<&crate::config::DataSource>,
+) -> SyncResult {
     let result = async {
         if let Some(dir) = spec.local_zip.parent() {
             std::fs::create_dir_all(dir)?;
@@ -484,7 +507,15 @@ pub async fn sync_release(
             spec.local_zip.parent().unwrap_or_else(|| Path::new(".")),
             ".release.lock",
             LockTiming::default(),
-            || async { sync_release_locked(transport, spec, force_check).await },
+            || async {
+                if let Some(source) = source {
+                    let root = spec.local_zip.parent().unwrap_or_else(|| Path::new("."));
+                    if let Err(error) = super::source_guard::ensure(root, source) {
+                        return Ok(SyncResult::new(SyncStatus::NoData, None, Some(error)));
+                    }
+                }
+                sync_release_locked(transport, spec, force_check).await
+            },
         )
         .await
         .and_then(|inner| inner)

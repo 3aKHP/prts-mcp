@@ -65,7 +65,7 @@
 - **预发布后缀**：Git tag、`Cargo.toml` 与 `package.json` 统一使用连字符形式：`-alpha.N`、`-beta.N`、`-rc.N`（例如 `3.0.0-alpha.3`）。
   - *注：在 `lts/1.7` 与 `lts/2.8` 旧线中，`python/pyproject.toml` 遵循 PEP 440 格式（如 `2.6.0a1`），旧线 CD 会自动将 tag 中的 `-alpha.` 归一化为 `a` 后比对。*
 - **3.x 单一版本源**：在 3.x Rust 工程中，`Cargo.toml` 是唯一版本源，`Cargo.lock`、9 个 npm 包、Docker 镜像与 MCP `serverInfo.version` 必须严格一致。3.x 发布使用裸版本 tag（`v3.x.y` 或 `v3.x.y-alpha.N`）；旧线继续使用成对前缀 tag（`python/v2.8.x` + `ts/v2.8.x`）。
-- **开发分支版本后缀**：`develop` 分支上的版本号始终设为**下一计划发布的目标版本 + `-dev.0`**（当前为 `3.1.2-dev.0`；旧线 Python 对应 `.dev0`）。
+- **开发分支版本后缀**：`develop` 分支上的版本号始终设为**下一计划发布的目标版本 + `-dev.0`**（当前为 `3.1.3-dev.0`；旧线 Python 对应 `.dev0`）。
 - **Patch 是日常累积更新的常规载体**：非紧急的缺陷修复、性能优化和小型兼容增补一律合入 `develop` 累积，随常规 Patch 版本发布；只有命中 [`WORKFLOW.md`](WORKFLOW.md) 阻断性回归标准的紧急修复才走直通 `main` 的 Hot-Fix 流程。
 
 ### 发布回灌后的 `develop` 版本号推进规则
@@ -79,6 +79,14 @@
 | `develop` 处于 `3.0.1-dev.0`，期间 `main` 紧急发布了 `3.0.1` Hot-Fix | 顺延推进为 `3.0.2-dev.0` |
 
 > **3.0 过渡期特别说明**：在 3.0.0 正式发布（M5）前，`main` 仍停留在 `2.8.1`。若期间 2.x 发生 Hot-Fix，修复合并至 `main` 与 `lts/2.8` 后，适用部分在 `develop` 的 Rust 代码中单独移植实现，绝不将 2.x 分支直接 merge 进 `develop`。
+
+### 版本号唯一声明与漂移防护
+
+上文“3.x 单一版本源”约束的是发布产物口径；文档与协作指令中的版本号副本由仓库根的 [`versions.json`](../../versions.json) 统一声明，覆盖 `Cargo.toml` 无法覆盖的线：`stable`（`main` 公开稳定版）、`develop`（开发线当前版本）、`lts`（两条旧线的最新补丁）、`ltsEol`（旧线 EOL 日期）。
+
+- `occurrences` 以锚定正则登记每一处必须同步的文档位置。`node tools/ci/versions.mjs` 校验所有登记处与声明一致（锚点失配或数值不符均失败，逐处报出文件与行号），并交叉校验 `Cargo.toml` 与目标分支（`main` → `stable`、`develop` → `develop`，其余分支跳过）。该检查在普通 CI 与 `scripts/check-runtime.sh` 快速段中运行；`--list` 按版本线打印登记文件，即发版时的改动清单。
+- 发版或推进版本线时，在同一 PR 中更新：`Cargo.toml`（如涉及）、`versions.json` 声明值、`occurrences` 登记的所有文档。登记点的周边措辞改动导致锚点失配时，同步更新对应正则。
+- 历史记录（`CHANGELOG*`、`docs/archive/`、`docs/dev/adr/`）合法引用旧版本号，不属于登记范围。
 
 ---
 

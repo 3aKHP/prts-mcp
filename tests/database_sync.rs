@@ -596,3 +596,40 @@ fn invalid_outer_revision_is_not_treated_as_a_missing_legacy_revision() {
         .shift_remove("publicationRevision");
     assert!(DatabaseManifest::from_release(&fake.manifest, VERSION, 1).is_ok());
 }
+
+#[tokio::test]
+async fn custom_source_discovers_and_activates_without_cross_source_reuse() {
+    use prts_mcp_rust::config::{DataSource, ValidationMode};
+    let (temp, fake) = artifact();
+    let root = temp.0.join("custom-source");
+    let source = DataSource::parse(Some("team/assets")).unwrap();
+    let default_config = prts_mcp_rust::config::RuntimeConfig::from_lookup(|key| match key {
+        "PRTS_DATA_BACKEND" => Some("sqlite".into()),
+        "PRTS_DATA_DIR" => Some(root.to_string_lossy().into_owned()),
+        _ => None,
+    });
+    let default_app = prts_mcp_rust::app::App::try_with_config(default_config).unwrap();
+    assert!(default_app.data.snapshot().database.is_none());
+    sync::sync_with_source(&fake, &root, ValidationMode::Normal, &source)
+        .await
+        .unwrap();
+    assert!(database::active(&root).unwrap().is_some());
+    assert!(default_app.data.snapshot().database.is_none());
+    assert!(default_app.data.snapshot().database.is_none());
+    assert!(fake
+        .requested
+        .lock()
+        .unwrap()
+        .iter()
+        .any(|url| url == "https://api.github.com/repos/team/assets/releases?per_page=100"));
+    let before = std::fs::read(root.join("active")).unwrap();
+    let count = fake.requested.lock().unwrap().len();
+    let other = DataSource::parse(Some("team/other")).unwrap();
+    assert!(
+        sync::sync_with_source(&fake, &root, ValidationMode::Normal, &other)
+            .await
+            .is_err()
+    );
+    assert_eq!(fake.requested.lock().unwrap().len(), count);
+    assert_eq!(std::fs::read(root.join("active")).unwrap(), before);
+}

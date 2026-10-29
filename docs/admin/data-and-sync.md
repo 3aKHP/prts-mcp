@@ -49,6 +49,16 @@ PRTS-MCP 运行依赖两类外部数据源：
 
 自动同步将游戏表与关卡数据解压至各自的 `.releases/<generation>/` 目录，活动目录由 `archives/extract_meta.json` 与根 `.gamedata_pair.json` 记录。旧版数据卷或手动挂载的数据也可能直接存放在 `gamedata/zh_CN/`、`gamedata-levels/zh_CN/` 下。
 
+### 自定义 GitHub 数据源
+
+设置 `PRTS_DATA_SOURCE_REPO=owner/repo` 可让游戏表、关卡、剧情、SQLite 和本地图片同步使用指定仓库。源仓库须提供相应的兼容 Release、manifest 与图片 index；所选后端及各数据集的同步开关继续生效。变量未设置、为空或显式填写默认仓库时，目录和同步行为保持原样。
+
+自定义源的默认目录为原数据根下的 `sources/<owner>/<repo>/`，仓库名转为小写。例如 Linux 的 `team/assets` 源位于 `$XDG_DATA_HOME/prts-mcp/sources/team/assets/`，Docker 中位于 `/data/sources/team/assets/`。该目录内仍使用 `gamedata/`、`gamedata-levels/`、`storyjson/`、`database/` 和 `images/` 布局。切回默认源会重新使用原数据目录，不删除自定义源的缓存。为保证跨平台目录身份一致，Windows 设备名（如 `con`、`com1.zip`）及以点结尾的组件，在所有平台均编码为 `~` 加小写 ASCII 十六进制。
+
+显式路径变量仍优先于默认路径。参与自动同步的自定义源目录首次使用必须为空；程序会写入来源标记，后续启动只允许同一源使用。目录内已有未标记数据、来源不匹配或标记损坏时，启动失败并提示另选目录，不自动迁移或覆盖旧数据。若空目录在进程启动后被另一个源绑定，原进程会拒绝后续同步和数据读取。不要通过删除来源标记复用旧卷。`GAMEDATA_PATH`、非空 `STORYJSON_PATH` 和 `PRTS_DATA_DB` 所指定的本地只读输入仍按原规则关闭相应同步，不要求绑定来源。
+
+自定义源是部署者显式选择的信任来源。当前校验仍使用 TLS 和产物 SHA-256，来源标记只防止本地缓存混用，不认证发布者。`GITHUB_TOKEN` 与 `GITHUB_MIRRORS` 保持原有语义，镜像仍只在直连失败后尝试。网络失败时沿用该源目录内的缓存；内置备用数据机制仍有效，首次同步前可能读取发行包内置的默认源 JSON 快照，不会自动读取另一个源目录的缓存。
+
 ---
 
 ## 2. 内置只读备用数据 vs. 用户数据优先级
