@@ -163,6 +163,27 @@ mod tests {
     use super::*;
 
     #[test]
+    fn configured_source_identity_survives_archive_specs() {
+        for raw in [
+            "3AKHP/ARKNIGHTS-DATA-PIPELINE",
+            "Team/Assets",
+            "con/com1.zip",
+            "a/repo.",
+        ] {
+            let source = DataSource::parse(Some(raw)).unwrap();
+            for spec in [
+                excel_archive_spec_with_source(std::path::Path::new("excel"), &source),
+                levels_archive_spec_with_source(std::path::Path::new("levels"), &source),
+            ] {
+                assert_eq!(
+                    DataSource::parse(Some(&format!("{}/{}", spec.owner, spec.repo))).unwrap(),
+                    source
+                );
+            }
+        }
+    }
+
+    #[test]
     fn declarations_match_the_p0_extraction() {
         let excel = gamedata_excel();
         assert_eq!(excel.dataset_id, "gamedata.excel");

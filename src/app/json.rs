@@ -33,11 +33,18 @@ fn resolve_view_with_legacy_story(config: &RuntimeConfig, legacy_story: &Path) -
     let levels_root = crate::config::levels_complete(&levels_active).then_some(levels_active);
 
     let story_zip = story_archive(&config.storyjson_zip).or_else(|| {
-        config
-            .data_source
-            .is_default()
-            .then(|| story_archive(legacy_story))
-            .flatten()
+        if !config.data_source.is_default() {
+            return None;
+        }
+        let archive = story_archive(legacy_story)?;
+        // The legacy Docker cache may be outside the configured root. Its
+        // own marker must be checked after resolving the file as well.
+        crate::sync::source_guard::verify(
+            legacy_story.parent().unwrap_or(Path::new(".")),
+            &config.data_source,
+        )
+        .ok()?;
+        Some(archive)
     });
 
     // Bundled read-only fallback (TS loadConfig's BUNDLED_*_PATH half):
@@ -140,6 +147,20 @@ mod tests {
         );
         config.bundle_root = None;
         assert!(resolve_view_with_legacy_story(&config, &legacy_story)
+            .story_zip
+            .is_none());
+        let foreign_legacy = root.join("foreign/storyjson/zh_CN.zip");
+        crate::sync::source_guard::ensure(foreign_legacy.parent().unwrap(), &config.data_source)
+            .unwrap();
+        write(&foreign_legacy, "PK-foreign");
+        config.data_source = Default::default();
+        config.bundle_root = Some(root.join("bundle"));
+        assert_eq!(
+            resolve_view_with_legacy_story(&config, &foreign_legacy).story_zip,
+            Some(root.join("bundle/storyjson/zh_CN.zip"))
+        );
+        config.bundle_root = None;
+        assert!(resolve_view_with_legacy_story(&config, &foreign_legacy)
             .story_zip
             .is_none());
         let _ = std::fs::remove_dir_all(root);

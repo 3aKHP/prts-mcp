@@ -180,9 +180,12 @@ mod tests {
     fn default_source_does_not_create_files() {
         let dir = Temp::new();
         ensure(dir.path(), &DataSource::default()).unwrap();
+        verify(dir.path(), &DataSource::default()).unwrap();
         assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 0);
         ensure(&dir.path().join("absent"), &DataSource::default()).unwrap();
         assert!(!dir.path().join("absent").exists());
+        fs::write(dir.path().join("legacy.zip"), b"legacy").unwrap();
+        verify(dir.path(), &DataSource::default()).unwrap();
     }
     #[test]
     fn concurrent_binding_has_one_owner() {
