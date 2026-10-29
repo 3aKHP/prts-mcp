@@ -1,6 +1,10 @@
 # PRTS-MCP 路线图
 
-当前公开稳定版为 `3.1.2`，服务端已统一为单一的原生 Rust 实现，并完整保留 TS/v2.8.1 的产品与工具契约；主开发分支 `develop` 继续推进（`3.1.3-dev.0`）。[English](ROADMAP.md)。
+当前公开稳定版为 `3.1.3`，服务端已统一为单一的原生 Rust 实现，并完整保留 TS/v2.8.1 的产品与工具契约；主开发分支 `develop` 继续推进（`3.1.3-dev.0`）。[English](ROADMAP.md)。
+
+## 3.1.3 — 自定义 GitHub 数据源
+
+已交付 `PRTS_DATA_SOURCE_REPO`，以独立目录消费兼容的 GitHub 数据与图片 Release。对象存储源和发布签名继续作为独立工作推进，见 [ADR-0017](docs/dev/adr/ADR-0017-custom-github-data-source.md)。
 
 ## 3.1 — 可选 SQLite 数据后端
 

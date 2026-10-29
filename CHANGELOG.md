@@ -6,13 +6,13 @@ This file records user-visible changes across PRTS-MCP implementations: Python a
 
 The original per-implementation changelogs at the 2.8.1 baseline remain available on the [`ts/v2.8.1` tag](https://github.com/3aKHP/prts-mcp/tree/ts/v2.8.1) ([Python](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/python/CHANGELOG.md) · [TypeScript](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/ts/CHANGELOG.md)), and the 1.7.1/1.7.2 maintenance records come from the published [`python/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/python/v1.7.2/python/CHANGELOG.md) and [`ts/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/ts/v1.7.2/ts/CHANGELOG.md) tags.
 
-## [Unreleased]
+## [3.1.3] - 2026-10-29
 
 ### Added
 
 - **Custom GitHub data source**: `PRTS_DATA_SOURCE_REPO=owner/repo` selects a compatible repository for data and local artwork synchronization. Custom sources use separate directories; explicit sync directories must be empty on first use or already bound to that source. The default source and existing volumes keep their behavior. See [data and sync](docs/admin/data-and-sync.md#自定义-github-数据源).
 
-- **Project glossary and ADR directory**: new [`docs/glossary.md`](docs/glossary.md) unifies project terms and abbreviations with links to the authoritative documents; new [`docs/dev/adr/`](docs/dev/adr/) records architecture decisions individually with status and writing discipline (ADR-0001 through ADR-0016, including backfilled records for pre-3.1 decisions still in force).
+- **Project glossary and ADR directory**: new [`docs/glossary.md`](docs/glossary.md) unifies project terms and abbreviations with links to the authoritative documents; new [`docs/dev/adr/`](docs/dev/adr/) records architecture decisions individually with status and writing discipline (ADR-0001 through ADR-0017, including backfilled records for pre-3.1 decisions still in force).
 - **Version consistency guard**: a new root [`versions.json`](versions.json) declares the single source for the stable, develop and LTS patch versions and the LTS EOL date; `tools/ci/versions.mjs` verifies every registered documentation occurrence against it and cross-checks `Cargo.toml` against the target branch (runs in CI and in the fast path of `scripts/check-runtime.sh`), reporting file and line on drift. All registered copies were audited and aligned, including a stale `lts/2.8` row in `STATUS`.
 
 ## [3.1.2] - 2026-10-22
