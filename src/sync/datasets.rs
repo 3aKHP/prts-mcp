@@ -4,6 +4,7 @@
 //! the data manifest; required files, asset names and manifest verification
 //! flags are read from it at compile time.
 
+use crate::config::DataSource;
 use std::sync::OnceLock;
 
 use super::types::{ReleaseArchiveSpec, ReleaseSpec, ZipValidator};
@@ -96,10 +97,17 @@ pub fn story_zh_cn() -> DatasetSpec {
 
 /// `archiveSpecForDataset(GAMEDATA_EXCEL, gamedata/archives/zh_CN-excel.zip, gamedata)`.
 pub fn excel_archive_spec(gamedata_root: &std::path::Path) -> ReleaseArchiveSpec {
+    excel_archive_spec_with_source(gamedata_root, &DataSource::default())
+}
+
+pub fn excel_archive_spec_with_source(
+    gamedata_root: &std::path::Path,
+    source: &DataSource,
+) -> ReleaseArchiveSpec {
     let dataset = gamedata_excel();
     ReleaseArchiveSpec {
-        owner: dataset.owner,
-        repo: dataset.repo,
+        owner: source.owner().into(),
+        repo: source.repo().into(),
         asset_name: dataset.asset_name.clone(),
         local_zip: gamedata_root.join("archives").join(&dataset.asset_name),
         local_root: gamedata_root.to_path_buf(),
@@ -110,10 +118,17 @@ pub fn excel_archive_spec(gamedata_root: &std::path::Path) -> ReleaseArchiveSpec
 
 /// `archiveSpecForDataset(GAMEDATA_LEVELS, levels/archives/zh_CN-levels.zip, levels)`.
 pub fn levels_archive_spec(levels_root: &std::path::Path) -> ReleaseArchiveSpec {
+    levels_archive_spec_with_source(levels_root, &DataSource::default())
+}
+
+pub fn levels_archive_spec_with_source(
+    levels_root: &std::path::Path,
+    source: &DataSource,
+) -> ReleaseArchiveSpec {
     let dataset = gamedata_levels();
     ReleaseArchiveSpec {
-        owner: dataset.owner,
-        repo: dataset.repo,
+        owner: source.owner().into(),
+        repo: source.repo().into(),
         asset_name: dataset.asset_name.clone(),
         local_zip: levels_root.join("archives").join(&dataset.asset_name),
         local_root: levels_root.to_path_buf(),
@@ -125,10 +140,17 @@ pub fn levels_archive_spec(levels_root: &std::path::Path) -> ReleaseArchiveSpec 
 /// `releaseSpecForDataset(STORY_ZH_CN, storyjson_zip)` — the story pack swap
 /// is a plain release download (atomic zip replacement, no extraction).
 pub fn story_release_spec(storyjson_zip: &std::path::Path) -> ReleaseSpec {
+    story_release_spec_with_source(storyjson_zip, &DataSource::default())
+}
+
+pub fn story_release_spec_with_source(
+    storyjson_zip: &std::path::Path,
+    source: &DataSource,
+) -> ReleaseSpec {
     let dataset = story_zh_cn();
     ReleaseSpec {
-        owner: dataset.owner,
-        repo: dataset.repo,
+        owner: source.owner().into(),
+        repo: source.repo().into(),
         asset_name: dataset.asset_name,
         local_zip: storyjson_zip.to_path_buf(),
         verify_manifest: dataset.verify_manifest,

@@ -226,19 +226,27 @@ pub struct App {
 impl App {
     pub fn from_env() -> Self {
         crate::launcher::watch_parent();
-        Self::with_config(RuntimeConfig::from_env_with_bundle())
+        Self::try_with_config(RuntimeConfig::from_env_with_bundle()).unwrap_or_else(|error| {
+            crate::log_err(&error);
+            std::process::exit(2);
+        })
     }
 
     pub fn with_config(config: RuntimeConfig) -> Self {
+        Self::try_with_config(config).expect("valid data source directories")
+    }
+
+    pub fn try_with_config(config: RuntimeConfig) -> Result<Self, String> {
+        crate::sync::source_guard::prepare(&config)?;
         let config = Arc::new(config);
         let data = Arc::new(DataState::new(Arc::clone(&config)));
         let handle = AppHandle::from_parts(Arc::clone(&data), &config);
-        Self {
+        Ok(Self {
             handle,
             tools: Arc::new(registry_for(config.images_enabled)),
             config,
             data,
-        }
+        })
     }
 
     /// Background sync tasks (startup cycle + retries + periodic loop).

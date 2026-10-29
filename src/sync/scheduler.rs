@@ -12,7 +12,7 @@ use std::time::Duration;
 
 use super::datasets;
 use super::pair::sync_release_archive_pair;
-use super::release::sync_release;
+use super::release::sync_release_with_source;
 use super::transport::Transport;
 use super::types::{SyncResult, SyncStatus};
 use crate::config::RuntimeConfig;
@@ -31,8 +31,13 @@ fn sha_prefix(result: &SyncResult) -> String {
         .unwrap_or_else(|| "unknown".to_string())
 }
 
-fn log_sync_result(label: &str, result: &SyncResult, noun: &str) {
-    let repo = "arknights-data-pipeline";
+fn log_sync_result(
+    label: &str,
+    result: &SyncResult,
+    noun: &str,
+    source: &crate::config::DataSource,
+) {
+    let repo = source.log_label();
     let sha = sha_prefix(result);
     match result.status {
         SyncStatus::Updated => log_info(&format!(
@@ -136,8 +141,12 @@ impl SingleFlight {
 }
 
 async fn run_gamedata_sync(cfg: &RuntimeConfig, transport: &dyn Transport, force: bool) -> bool {
-    let excel = datasets::excel_archive_spec(&cfg.gamedata_path);
-    let levels = datasets::levels_archive_spec(&cfg.levels_path);
+    if let Err(error) = super::source_guard::prepare(cfg) {
+        log_err(&error);
+        return true;
+    }
+    let excel = datasets::excel_archive_spec_with_source(&cfg.gamedata_path, &cfg.data_source);
+    let levels = datasets::levels_archive_spec_with_source(&cfg.levels_path, &cfg.data_source);
     let (excel_result, levels_result) =
         match sync_release_archive_pair(transport, &excel, &levels, force).await {
             Ok(pair) => pair,
@@ -146,8 +155,8 @@ async fn run_gamedata_sync(cfg: &RuntimeConfig, transport: &dyn Transport, force
                 return true;
             }
         };
-    log_sync_result("data", &excel_result, "Data");
-    log_sync_result("level data", &levels_result, "Level data");
+    log_sync_result("data", &excel_result, "Data", &cfg.data_source);
+    log_sync_result("level data", &levels_result, "Level data", &cfg.data_source);
     // Cache clearing (TS) corresponds here to the DataView signature swap:
     // an activation rewrites the pointer files, and the next tool call takes
     // a fresh snapshot — no in-place caches to flush in P2.
@@ -155,9 +164,13 @@ async fn run_gamedata_sync(cfg: &RuntimeConfig, transport: &dyn Transport, force
 }
 
 async fn run_story_sync(cfg: &RuntimeConfig, transport: &dyn Transport, force: bool) -> bool {
-    let spec = datasets::story_release_spec(&cfg.storyjson_zip);
-    let result = sync_release(transport, &spec, force).await;
-    log_sync_result("storyjson", &result, "Storyjson");
+    if let Err(error) = super::source_guard::prepare(cfg) {
+        log_err(&error);
+        return true;
+    }
+    let spec = datasets::story_release_spec_with_source(&cfg.storyjson_zip, &cfg.data_source);
+    let result = sync_release_with_source(transport, &spec, force, &cfg.data_source).await;
+    log_sync_result("storyjson", &result, "Storyjson", &cfg.data_source);
     should_retry(result.status)
 }
 
@@ -233,15 +246,17 @@ async fn run_cycle(
 /// One images cycle: full baseline/delta chain, ORIGINAL_IMAGE picks the
 /// shard set; offline/no_data arm the dense retry chain like the others.
 async fn run_images_sync(cfg: &RuntimeConfig, transport: &dyn Transport, force: bool) -> bool {
-    let result = super::images_sync::sync_images(
+    let result = super::images_sync::sync_images_with_source(
         &cfg.images_path,
         transport,
         super::images_sync::ImagesSyncOpts {
             include_original: cfg.original_image,
             force_check: force,
         },
+        &cfg.data_source,
     )
     .await;
+    let repo = cfg.data_source.log_label();
     let sha = result
         .commit_sha
         .as_deref()
@@ -251,17 +266,15 @@ async fn run_images_sync(cfg: &RuntimeConfig, transport: &dyn Transport, force: 
     match result.status {
         SyncStatus::Updated => {
             log_info(&format!(
-                "Images updated from GitHub Release (arknights-data-pipeline @ {sha})."
+                "Images updated from GitHub Release ({repo} @ {sha})."
             ));
         }
         SyncStatus::UpToDate => {
-            log_info(&format!(
-                "Images are up to date (arknights-data-pipeline @ {sha})."
-            ));
+            log_info(&format!("Images are up to date ({repo} @ {sha})."));
         }
         SyncStatus::OfflineFallback => {
             log_warn(&format!(
-                "Network unavailable; using cached images (arknights-data-pipeline @ {sha}). Error: {}",
+                "Network unavailable; using cached images ({repo} @ {sha}). Error: {}",
                 result.error.unwrap_or_default()
             ));
         }

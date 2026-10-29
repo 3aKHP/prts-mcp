@@ -7,6 +7,9 @@
 
 use std::path::{Path, PathBuf};
 
+pub mod data_source;
+pub use data_source::DataSource;
+
 use crate::sync::scheduler::resolve_auto_sync_interval_ms;
 use crate::sync::transport::parse_mirrors;
 use crate::tools::output::OutputChannel;
@@ -68,6 +71,7 @@ impl ValidationMode {
 
 #[derive(Debug, Clone)]
 pub struct RuntimeConfig {
+    pub data_source: DataSource,
     pub data_backend: DataBackend,
     pub validation_mode: ValidationMode,
     /// Writable generation directory, used only by the SQLite backend.
@@ -295,12 +299,22 @@ impl RuntimeConfig {
     }
 
     pub fn try_from_lookup(lookup: impl Fn(&str) -> Option<String>) -> Result<Self, String> {
+        let data_source = DataSource::parse(lookup("PRTS_DATA_SOURCE_REPO").as_deref())?;
         let is_custom_gamedata = lookup("GAMEDATA_PATH").is_some();
         let gamedata_path = lookup("GAMEDATA_PATH")
             .map(PathBuf::from)
-            .unwrap_or_else(default_gamedata_path);
+            .unwrap_or_else(|| {
+                let default = default_gamedata_path();
+                data_source
+                    .data_root(default.parent().expect("default data root"))
+                    .join("gamedata")
+            });
         let excel_path = excel_path_of(&gamedata_path);
-        let levels_path = resolve_levels_path(&gamedata_path, is_custom_gamedata);
+        let levels_path = if !data_source.is_default() && !is_custom_gamedata {
+            levels_path_of(&gamedata_path)
+        } else {
+            resolve_levels_path(&gamedata_path, is_custom_gamedata)
+        };
 
         let default_storyjson_zip = gamedata_path
             .parent()
@@ -348,6 +362,7 @@ impl RuntimeConfig {
             DataBackend::Json,
         )?;
         Ok(Self {
+            data_source,
             validation_mode: ValidationMode::parse(lookup("PRTS_VALIDATION_MODE").as_deref())?,
             data_backend,
             database_dir,

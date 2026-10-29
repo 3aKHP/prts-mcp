@@ -319,13 +319,26 @@ pub async fn sync_release_archive(
     spec: &ReleaseArchiveSpec,
     force_check: bool,
 ) -> SyncResult {
+    let source =
+        match crate::config::DataSource::parse(Some(&format!("{}/{}", spec.owner, spec.repo))) {
+            Ok(source) => source,
+            Err(error) => return SyncResult::new(SyncStatus::NoData, None, Some(error)),
+        };
+    if let Err(error) = super::source_guard::ensure(&spec.local_root, &source) {
+        return SyncResult::new(SyncStatus::NoData, None, Some(error));
+    }
     let result = async {
         std::fs::create_dir_all(spec.archives_dir())?;
         with_archive_activation_lock(
             &spec.archives_dir(),
             ".activation.lock",
             LockTiming::default(),
-            || async { sync_release_archive_locked(transport, spec, force_check).await },
+            || async {
+                if let Err(error) = super::source_guard::ensure(&spec.local_root, &source) {
+                    return Ok(SyncResult::new(SyncStatus::NoData, None, Some(error)));
+                }
+                sync_release_archive_locked(transport, spec, force_check).await
+            },
         )
         .await
         .and_then(|inner| inner)

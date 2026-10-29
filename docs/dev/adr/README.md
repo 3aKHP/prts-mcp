@@ -89,3 +89,4 @@
 | [ADR-0014](ADR-0014-branch-model-and-merge-back.md) | 长期分支模型与回灌规则 | Accepted（补录） | 多点（2026-07-02 起） |
 | [ADR-0015](ADR-0015-dual-track-review.md) | 双轨评审的引入 | Accepted（补录） | 2026-07-10 |
 | [ADR-0016](ADR-0016-self-hosted-object-storage-data-source.md) | 自建对象存储数据源（R2+COS）的选型与实施搁置 | Deferred（补录） | 2026-09-16 |
+| [ADR-0017](ADR-0017-custom-github-data-source.md) | 自定义 GitHub 数据源与目录归属 | Accepted | 2026-10-29 |

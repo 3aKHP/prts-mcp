@@ -3,7 +3,7 @@ use super::{
     database_io as io, database_manifest::DatabaseManifest, discovery, transport::Transport,
 };
 use crate::{
-    config::{RuntimeConfig, ValidationMode},
+    config::{DataSource, RuntimeConfig, ValidationMode},
     storage::database,
 };
 use std::{fs::OpenOptions, path::Path, sync::Arc, time::Duration};
@@ -18,6 +18,16 @@ pub async fn sync_with_mode(
     root: &Path,
     mode: ValidationMode,
 ) -> Result<bool, String> {
+    sync_with_source(transport, root, mode, &DataSource::default()).await
+}
+
+pub async fn sync_with_source(
+    transport: &dyn Transport,
+    root: &Path,
+    mode: ValidationMode,
+    source: &DataSource,
+) -> Result<bool, String> {
+    super::source_guard::ensure(root, source)?;
     std::fs::create_dir_all(root).map_err(|e| e.to_string())?;
     let lock = OpenOptions::new()
         .read(true)
@@ -29,8 +39,9 @@ pub async fn sync_with_mode(
     lock.try_lock()
         .map_err(|e| format!("SQLite sync locked: {e}"))?;
     let lock = Arc::new(lock);
+    super::source_guard::ensure(root, source)?;
     io::clean_staging(root);
-    let releases = discovery::list_releases(transport, "3aKHP", "arknights-data-pipeline", 30_000)
+    let releases = discovery::list_releases(transport, source.owner(), source.repo(), 30_000)
         .await
         .ok_or("SQLite release discovery failed")?;
     let release = discovery::latest_data_release(&releases)
@@ -165,10 +176,11 @@ pub fn start(config: Arc<RuntimeConfig>, transport: Arc<dyn Transport>) {
                 if delay > 0 {
                     tokio::time::sleep(Duration::from_millis(delay)).await;
                 }
-                match sync_with_mode(
+                match sync_with_source(
                     transport.as_ref(),
                     &config.database_dir,
                     config.validation_mode,
+                    &config.data_source,
                 )
                 .await
                 {
