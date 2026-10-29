@@ -5,7 +5,7 @@
 | Branch | Purpose |
 | --- | --- |
 | `main` | Latest public stable release (native Rust `3.1.3`). |
-| `develop` | Active 3.x Rust integration branch (`3.1.3-dev.0`). Root Cargo project; no `python/` or `ts/` directories. |
+| `develop` | Active 3.x Rust integration branch (`3.1.4-dev.0`). Root Cargo project; no `python/` or `ts/` directories. |
 | `lts/2.8` | Python/TypeScript 2.8.x long-term maintenance branch (EOL `2027-07-02`). |
 | `lts/1.7` | Python/TypeScript 1.7.x long-term maintenance branch (EOL `2027-07-02`). |
 
