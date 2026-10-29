@@ -380,6 +380,15 @@ pub async fn sync_release_archive_pair(
         ".gamedata-pair.lock",
         LockTiming::default(),
         || async {
+            for spec in [excel_spec, levels_spec] {
+                let source = crate::config::DataSource::parse(Some(&format!(
+                    "{}/{}",
+                    spec.owner, spec.repo
+                )))
+                .map_err(SyncError::Message)?;
+                super::source_guard::ensure(&spec.local_root, &source)
+                    .map_err(SyncError::Message)?;
+            }
             initialize_gamedata_pair(excel_spec, levels_spec)?;
             if let Some(current) = load_gamedata_pair(excel_spec, levels_spec)? {
                 touch(&current.excel_root);

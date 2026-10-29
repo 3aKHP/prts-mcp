@@ -15,6 +15,10 @@ fn story_archive(path: &Path) -> Option<PathBuf> {
 /// fallback, completeness gates. The bundled-data fallback joins in P7 with
 /// the package layout.
 pub(super) fn resolve_view(config: &RuntimeConfig) -> DataView {
+    resolve_view_with_legacy_story(config, Path::new("/data/storyjson/zh_CN.zip"))
+}
+
+fn resolve_view_with_legacy_story(config: &RuntimeConfig, legacy_story: &Path) -> DataView {
     let pair = activated_pair(&config.gamedata_path, &config.levels_path);
     let excel_active = pair
         .clone()
@@ -28,8 +32,13 @@ pub(super) fn resolve_view(config: &RuntimeConfig) -> DataView {
         .unwrap_or_else(|| activated_root(&config.levels_path));
     let levels_root = crate::config::levels_complete(&levels_active).then_some(levels_active);
 
-    let story_zip = story_archive(&config.storyjson_zip)
-        .or_else(|| story_archive(Path::new("/data/storyjson/zh_CN.zip")));
+    let story_zip = story_archive(&config.storyjson_zip).or_else(|| {
+        config
+            .data_source
+            .is_default()
+            .then(|| story_archive(legacy_story))
+            .flatten()
+    });
 
     // Bundled read-only fallback (TS loadConfig's BUNDLED_*_PATH half):
     // only when the sync target is incomplete; resolution mirrors the sync
@@ -109,6 +118,31 @@ mod tests {
             "STORYJSON_PATH" => Some(root.join("nope.zip").to_string_lossy().into_owned()),
             _ => None,
         })
+    }
+
+    #[test]
+    fn custom_source_skips_default_writable_story_cache_but_keeps_bundle_fallback() {
+        let root = temp_root("custom-story-fallback");
+        let legacy_story = root.join("default/storyjson/zh_CN.zip");
+        let bundled_story = root.join("bundle/storyjson/zh_CN.zip");
+        write(&legacy_story, "PK-default");
+        write(&bundled_story, "PK-bundle");
+        let mut config = config_for(&root);
+        config.bundle_root = Some(root.join("bundle"));
+        assert_eq!(
+            resolve_view_with_legacy_story(&config, &legacy_story).story_zip,
+            Some(legacy_story.clone())
+        );
+        config.data_source = crate::config::DataSource::parse(Some("team/assets")).unwrap();
+        assert_eq!(
+            resolve_view_with_legacy_story(&config, &legacy_story).story_zip,
+            Some(bundled_story)
+        );
+        config.bundle_root = None;
+        assert!(resolve_view_with_legacy_story(&config, &legacy_story)
+            .story_zip
+            .is_none());
+        let _ = std::fs::remove_dir_all(root);
     }
 
     #[test]

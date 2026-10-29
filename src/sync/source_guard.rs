@@ -74,7 +74,7 @@ pub fn ensure(root: &Path, source: &DataSource) -> Result<(), String> {
     })
 }
 
-pub fn sync_roots(config: &RuntimeConfig) -> Vec<PathBuf> {
+fn data_roots(config: &RuntimeConfig) -> Vec<PathBuf> {
     let mut roots = Vec::new();
     match config.data_backend {
         DataBackend::Json => {
@@ -96,12 +96,40 @@ pub fn sync_roots(config: &RuntimeConfig) -> Vec<PathBuf> {
         }
         DataBackend::Sqlite => (),
     }
+    roots.sort();
+    roots.dedup();
+    roots
+}
+
+pub fn sync_roots(config: &RuntimeConfig) -> Vec<PathBuf> {
+    let mut roots = data_roots(config);
     if config.images_enabled && config.local_image {
         roots.push(config.images_path.clone());
     }
     roots.sort();
     roots.dedup();
     roots
+}
+
+/// Read-only check: readers must never claim or initialize a directory.
+/// A marker is written before any custom-source data, and never replaced.
+pub fn verify(root: &Path, source: &DataSource) -> Result<(), String> {
+    match check_marker(root, source) {
+        Ok(true) => Ok(()),
+        Ok(false) if source.is_default() => Ok(()),
+        Ok(false) => Err(format!(
+            "{}: custom data source marker missing",
+            root.display()
+        )),
+        Err(error) => Err(format!("{}: {error}", root.display())),
+    }
+}
+
+pub fn verify_data(config: &RuntimeConfig) -> Result<(), String> {
+    for root in data_roots(config) {
+        verify(&root, &config.data_source)?;
+    }
+    Ok(())
 }
 
 /// Run before initializing readers, and again before scheduled writes.

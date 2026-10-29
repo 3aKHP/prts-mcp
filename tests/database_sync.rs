@@ -603,10 +603,19 @@ async fn custom_source_discovers_and_activates_without_cross_source_reuse() {
     let (temp, fake) = artifact();
     let root = temp.0.join("custom-source");
     let source = DataSource::parse(Some("team/assets")).unwrap();
+    let default_config = prts_mcp_rust::config::RuntimeConfig::from_lookup(|key| match key {
+        "PRTS_DATA_BACKEND" => Some("sqlite".into()),
+        "PRTS_DATA_DIR" => Some(root.to_string_lossy().into_owned()),
+        _ => None,
+    });
+    let default_app = prts_mcp_rust::app::App::try_with_config(default_config).unwrap();
+    assert!(default_app.data.snapshot().database.is_none());
     sync::sync_with_source(&fake, &root, ValidationMode::Normal, &source)
         .await
         .unwrap();
     assert!(database::active(&root).unwrap().is_some());
+    assert!(default_app.data.snapshot().database.is_none());
+    assert!(default_app.data.snapshot().database.is_none());
     assert!(fake
         .requested
         .lock()

@@ -123,6 +123,10 @@ async fn json_pair_and_story_are_isolated_even_with_identical_version_ids() {
     let mut paths = Vec::new();
     for slug in ["team/source-a", "team/source-b"] {
         let config = Arc::new(config(&temp.0.join("runtime"), slug));
+        let mut default_config = (*config).clone();
+        default_config.data_source = Default::default();
+        let default_app = prts_mcp_rust::app::App::try_with_config(default_config).unwrap();
+        assert!(default_app.data.snapshot().excel_root.is_none());
         source_guard::prepare(&config).unwrap();
         let fixture = Arc::new(fixture(&temp.0.join("fixtures"), slug));
         run_startup_sync(config.clone(), fixture.clone(), true).await;
@@ -133,6 +137,12 @@ async fn json_pair_and_story_are_isolated_even_with_identical_version_ids() {
             .join(".gamedata_pair.json")
             .exists());
         assert!(config.storyjson_zip.exists());
+        for _ in 0..2 {
+            let view = default_app.data.snapshot();
+            assert!(view.excel_root.is_none());
+            assert!(view.levels_root.is_none());
+            assert!(view.story_zip.is_none());
+        }
         let requests = fixture.requests.lock().unwrap().clone();
         for name in ["zh_CN-excel.zip", "zh_CN-levels.zip", "zh_CN.zip"] {
             assert!(requests.iter().any(|url| url.ends_with(name)), "{name}");
@@ -223,4 +233,49 @@ fn startup_rejects_conflicting_explicit_image_directory_before_readers() {
         std::fs::read(cfg.images_path.join("old.png")).unwrap(),
         b"old"
     );
+}
+
+#[tokio::test]
+async fn running_default_artwork_reader_rejects_later_custom_binding() {
+    use prts_mcp_rust::{app::App, config::DataSource, tools::DispatchResult};
+    let temp = Temp::new();
+    let image = temp.0.join("images");
+    let default_config = RuntimeConfig::from_lookup(|key| match key {
+        "GAMEDATA_PATH" => Some(temp.0.join("manual-data").display().to_string()),
+        "STORYJSON_PATH" => Some(temp.0.join("manual-story.zip").display().to_string()),
+        "PRTS_IMAGE_DIR" => Some(image.display().to_string()),
+        "LOCAL_IMAGE" => Some("true".into()),
+        _ => None,
+    });
+    let default_app = App::try_with_config(default_config.clone()).unwrap();
+    let mut custom_config = default_config;
+    custom_config.data_source = DataSource::parse(Some("team/assets")).unwrap();
+    let custom_app = App::try_with_config(custom_config).unwrap();
+    let generation = image.join(".generations/custom");
+    std::fs::create_dir_all(&generation).unwrap();
+    std::fs::write(generation.join("index.json"), r#"{"schemaVersion":"akdp-images/v1","artworks":{"char_1001_amiya2":{"large":{"file":"custom.png","w":1,"h":1,"bytes":1,"sha256":"custom"}}}}"#).unwrap();
+    std::fs::write(
+        image.join(".images_meta.json"),
+        r#"{"generation_root":".generations/custom"}"#,
+    )
+    .unwrap();
+    let tool = default_app
+        .tools
+        .iter()
+        .find(|tool| tool.name == "operator_artwork")
+        .unwrap();
+    let args = json!({"operator_name":"阿米娅(近卫)","action":"list"});
+    let DispatchResult::Outcome(custom) = (tool.dispatch)(&custom_app.handle, &args).await else {
+        panic!("tool outcome")
+    };
+    assert!(custom.structured.is_some());
+    for _ in 0..2 {
+        let DispatchResult::Outcome(default) = (tool.dispatch)(&default_app.handle, &args).await
+        else {
+            panic!("tool outcome")
+        };
+        assert!(default.structured.is_none());
+        assert!(default.image.is_none());
+        assert!(default.markdown.contains("数据源与配置不一致"));
+    }
 }

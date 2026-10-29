@@ -36,6 +36,16 @@ pub struct DataView {
 }
 
 impl DataView {
+    fn unavailable() -> Self {
+        Self {
+            excel_root: None,
+            levels_root: None,
+            story_zip: None,
+            datasets: Arc::new(crate::domain::datasets::Datasets::new()),
+            database: None,
+        }
+    }
+
     pub fn from_database(
         db: Arc<crate::storage::sqlite::GameDb>,
         excel: PathBuf,
@@ -180,6 +190,24 @@ impl DataState {
 
     /// One consistent generation snapshot for a complete tool call.
     pub fn snapshot(&self) -> Arc<DataView> {
+        if let Err(error) = crate::sync::source_guard::verify_data(&self.config) {
+            crate::log_warn(&error);
+            self.invalidate();
+            return Arc::new(DataView::unavailable());
+        }
+        let view = self.snapshot_resolved();
+        // A default reader may have started before a custom process bound
+        // an empty shared directory. Recheck after resolving/caching files:
+        // custom writers publish their immutable marker before those files.
+        if let Err(error) = crate::sync::source_guard::verify_data(&self.config) {
+            crate::log_warn(&error);
+            self.invalidate();
+            return Arc::new(DataView::unavailable());
+        }
+        view
+    }
+
+    fn snapshot_resolved(&self) -> Arc<DataView> {
         let signature = activation_signature(&self.config);
         if let Some((cached_signature, view)) = self.cache.read().expect("DataState lock").as_ref()
         {
