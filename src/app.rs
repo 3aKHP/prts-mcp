@@ -175,8 +175,13 @@ fn resolve_view(config: &RuntimeConfig) -> DataView {
         DataBackend::Sqlite => {
             let view = resolve_database_view(config);
             if view.database.is_none() && config.allow_json_fallback {
-                crate::log_warn("Default SQLite preference: serving JSON fallback because no validated DB is ready; background SQLite sync remains enabled");
-                json::resolve_view(config)
+                let fallback = json::resolve_view(config);
+                if fallback.effective_backend() == "json" {
+                    crate::log_warn("Default SQLite preference: serving JSON fallback because no validated DB is ready; background SQLite sync remains enabled");
+                } else {
+                    crate::log_warn("Default SQLite preference: neither a validated DB nor JSON fallback is available; awaiting background SQLite sync");
+                }
+                fallback
             } else {
                 view
             }
