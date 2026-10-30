@@ -49,6 +49,10 @@ PRTS-MCP 运行依赖两类外部数据源：
 
 自动同步将游戏表与关卡数据解压至各自的 `.releases/<generation>/` 目录，活动目录由 `archives/extract_meta.json` 与根 `.gamedata_pair.json` 记录。旧版数据卷或手动挂载的数据也可能直接存放在 `gamedata/zh_CN/`、`gamedata-levels/zh_CN/` 下。
 
+3.2 的本地图片同步同时识别 v1 与 v2：v2 使用 `images2-*` 和 `images2-baseline-*`，按数据版本发现更新；同版本优先 v2。已经激活 v2 的目录在网络失败或 v2 发布暂时不可见时保留现有代际，不自动降回 v1。同 baseline 更新只读取活动版本之后的必要 delta；跨 baseline 按文件 SHA-256 复用已有图片，并跳过内容已满足的物理分片。下载、分片及成员校验全部成功后才切换代际，失败继续读取原代际。原图选择仍由 `ORIGINAL_IMAGE` 控制。
+
+3.2 图片写入器在原有目录租约之外持有 `.images-writer.lock` 内核锁。正常运行期间保留该锁文件；进程退出或被终止后，内核会释放锁，后续 3.2 写入器可立即回收带有其标记的旧目录租约。未带标记的旧版本写入器仍使用原租约规则。不要手工删除正在使用的锁文件。
+
 ### 自定义 GitHub 数据源
 
 设置 `PRTS_DATA_SOURCE_REPO=owner/repo` 可让游戏表、关卡、剧情、SQLite 和本地图片同步使用指定仓库。源仓库须提供相应的兼容 Release、manifest 与图片 index；所选后端及各数据集的同步开关继续生效。变量未设置、为空或显式填写默认仓库时，目录和同步行为保持原样。

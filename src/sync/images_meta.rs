@@ -130,12 +130,18 @@ fn parse_variant(raw: Option<&Value>) -> Option<VariantMeta> {
     })
 }
 
-/// `parseIndex`: an unfamiliar schemaVersion is rejected (None).
+/// Read v1 or validated v2 artwork metadata; unfamiliar schemas are rejected.
 pub fn parse_index(data: &Value) -> Option<ImagesIndex> {
-    if !data.is_object() {
-        return None;
+    match data.get("schemaVersion")?.as_str()? {
+        SCHEMA_VERSION => parse_contents(data),
+        super::images_v2::SCHEMA => super::images_v2::parse(data).ok().map(|(_, view)| view),
+        _ => None,
     }
-    if data.get("schemaVersion").and_then(|v| v.as_str()) != Some(SCHEMA_VERSION) {
+}
+
+/// Shared artwork projection; protocol-specific validation stays in each parser.
+pub(super) fn parse_contents(data: &Value) -> Option<ImagesIndex> {
+    if !data.is_object() {
         return None;
     }
     let mut artworks = BTreeMap::new();
