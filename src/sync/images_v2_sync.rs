@@ -106,13 +106,16 @@ pub(super) async fn run_selected(
         if same_source && prior.current_version > index.current_version {
             return Err("refusing image version downgrade".into());
         }
-        let has_groups = keys.iter().all(|key| {
-            meta["shardsSynced"].as_array().is_some_and(|groups| {
-                groups
-                    .iter()
-                    .any(|group| group.as_str() == Some(key.as_str()))
-            })
-        });
+        let has_groups = meta["shardsSynced"]
+            .as_array()
+            .is_some_and(|groups| groups.len() == keys.len())
+            && keys.iter().all(|key| {
+                meta["shardsSynced"].as_array().is_some_and(|groups| {
+                    groups
+                        .iter()
+                        .any(|group| group.as_str() == Some(key.as_str()))
+                })
+            });
         let complete = has_groups
             && view.artworks.values().all(|entry| {
                 entry

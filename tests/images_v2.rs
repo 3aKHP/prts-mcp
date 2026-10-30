@@ -186,7 +186,7 @@ async fn corrupt_part_preserves_previous_generation_and_v2_never_downgrades_to_v
 }
 
 #[tokio::test]
-async fn deletion_empty_delta_and_original_selection_are_consistent() {
+async fn deletion_and_empty_delta_are_consistent() {
     let root = Temp::new();
     let mut world = World::new();
     let baseline = world.add("26-01-01", None, b"keep");
@@ -234,4 +234,100 @@ fn typed_parser_rejects_bad_parts_paths_and_variants() {
     let mut invalid = valid.clone();
     invalid["artworks"]["a"]["original"] = json!({"file": "bad"});
     assert!(prts_mcp_rust::sync::images_v2::parse(&invalid).is_err());
+}
+
+#[tokio::test]
+async fn original_toggle_fetches_only_missing_group_and_removes_disabled_files() {
+    let root = Temp::new();
+    let mut world = World::new();
+    let mut index = world.add("26-01-01", None, b"large");
+    let bytes = b"original";
+    let archive = zip("o.png", bytes);
+    index["artworks"]["a"]["original"] =
+        json!({"file":"o.png","w":2,"h":2,"bytes":bytes.len(),"sha256":hash(bytes)});
+    index["baselineParts"].as_array_mut().unwrap().push(json!({"file":"original.zip","bytes":archive.len(),"sha256":hash(&archive),"group":"chararts-original","members":{"o.png":{"bytes":bytes.len(),"sha256":hash(bytes),"group":"chararts-original"}}}));
+    world.files.insert(
+        "images2-26-01-01/index.json".into(),
+        serde_json::to_vec(&index).unwrap(),
+    );
+    world
+        .files
+        .insert("images2-baseline-26-01-01/original.zip".into(), archive);
+    sync_images(&root.0, &world, opts()).await;
+    assert!(!active_generation(&root.0).unwrap().join("o.png").exists());
+    assert!(!world
+        .downloads
+        .lock()
+        .unwrap()
+        .iter()
+        .any(|name| name.ends_with("original.zip")));
+    world.downloads.lock().unwrap().clear();
+    let result = sync_images(
+        &root.0,
+        &world,
+        ImagesSyncOpts {
+            include_original: true,
+            force_check: true,
+        },
+    )
+    .await;
+    assert_eq!(result.status, SyncStatus::Updated, "{:?}", result.error);
+    assert_eq!(
+        *world.downloads.lock().unwrap(),
+        vec![
+            "images2-26-01-01/index.json",
+            "images2-baseline-26-01-01/original.zip"
+        ]
+    );
+    assert!(active_generation(&root.0).unwrap().join("o.png").is_file());
+    world.downloads.lock().unwrap().clear();
+    assert_eq!(
+        sync_images(&root.0, &world, opts()).await.status,
+        SyncStatus::Updated
+    );
+    assert!(!active_generation(&root.0).unwrap().join("o.png").exists());
+    assert_eq!(
+        *world.downloads.lock().unwrap(),
+        vec!["images2-26-01-01/index.json"]
+    );
+}
+
+#[tokio::test]
+async fn verified_part_cache_is_reused_after_failed_activation() {
+    let root = Temp::new();
+    let mut world = World::new();
+    let mut index = world.add("26-01-01", None, b"first");
+    let data = b"second";
+    let archive = zip("b.png", data);
+    index["artworks"]["b"] = json!({"shard":"chararts","large":{"file":"b.png","w":1,"h":1,"bytes":data.len(),"sha256":hash(data)}});
+    index["baselineParts"].as_array_mut().unwrap().push(json!({"file":"second.zip","bytes":archive.len(),"sha256":hash(&archive),"group":"chararts-large","members":{"b.png":{"bytes":data.len(),"sha256":hash(data),"group":"chararts-large"}}}));
+    world.files.insert(
+        "images2-26-01-01/index.json".into(),
+        serde_json::to_vec(&index).unwrap(),
+    );
+    world.files.insert(
+        "images2-baseline-26-01-01/second.zip".into(),
+        b"bad".to_vec(),
+    );
+    assert_eq!(
+        sync_images(&root.0, &world, opts()).await.status,
+        SyncStatus::NoData
+    );
+    assert!(active_generation(&root.0).is_none());
+    world
+        .files
+        .insert("images2-baseline-26-01-01/second.zip".into(), archive);
+    world.downloads.lock().unwrap().clear();
+    assert_eq!(
+        sync_images(&root.0, &world, opts()).await.status,
+        SyncStatus::Updated
+    );
+    assert_eq!(
+        *world.downloads.lock().unwrap(),
+        vec![
+            "images2-26-01-01/index.json",
+            "images2-baseline-26-01-01/second.zip"
+        ]
+    );
+    assert!(!root.0.join(".v2-cache").exists());
 }
