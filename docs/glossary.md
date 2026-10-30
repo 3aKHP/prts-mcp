@@ -19,7 +19,7 @@
 - **内置备用数据与用户数据**：正式发行的原生归档包、npm 包与 Docker 镜像均内置只读备用数据，开箱即可查询；当可写的用户数据目录中存在完整且校验通过的数据时，服务端始终优先读取用户数据，后台同步也只写入用户目录；从源码编译的安装不含备用数据。详见 [数据同步与存储管理](admin/data-and-sync.md)。
 - **代际（Generation）与成对激活（Paired Activation）**：每次同步下载的数据落盘为一个不可变的代际目录；`gamedata` 与 `gamedata-levels` 两个包必须双双通过下载、校验与解压后，才一起切换 `.gamedata_pair.json` 中的激活指针，任一步失败都继续读取上一代，避免混代数据对外可见。运维语义见 [数据同步与存储管理](admin/data-and-sync.md)，设计脉络见 [2.4 常驻后台同步与成对激活](archive/2.4-background-sync-and-paired-activation.md)。
 - **立绘资产（operator_artwork / LOCAL_IMAGE / ORIGINAL_IMAGE）**：干员立绘由 `operator_artwork` 工具提供；`IMAGES_ENABLED=false` 时该工具不注册（工具总数由 24 减为 23）。默认 `LOCAL_IMAGE=false` 从 PRTS MediaWiki 按需拉取并缓存图片；`LOCAL_IMAGE=true` 时后台同步 AKDP 的 GB 量级本地 PNG 包，`ORIGINAL_IMAGE=true` 额外同步未缩放原图分片。详见 [数据同步与存储管理](admin/data-and-sync.md)。
-- **JSON / SQLite 双数据后端**：服务端支持两种数据后端——默认的 JSON 后端直接读取上述数据目录，实验性的 SQLite 后端通过 `PRTS_DATA_BACKEND=sqlite` 启用，数据来自 AKDP 的 `zh_CN.sqlite.gz` 并使用独立的 `database/` 目录；两种后端不同时同步，工具契约与既有 JSON 数据卷保持兼容。详见 [STATUS.zh-CN.md](../STATUS.zh-CN.md) 与 [数据同步与存储管理](admin/data-and-sync.md)。
+- **JSON / SQLite 双数据后端**：服务端支持两种数据后端——JSON 后端直接读取上述数据目录，SQLite 后端在 3.2 成为普通默认值（3.1 为可选后端），数据来自 AKDP 的 `zh_CN.sqlite.gz` 并使用独立的 `database/` 目录；默认 SQLite 策略在 DB 就绪前可使用 JSON 备用，两种后端不同时同步，工具契约与既有 JSON 数据卷保持兼容。详见 [STATUS.zh-CN.md](../STATUS.zh-CN.md) 与 [数据同步与存储管理](admin/data-and-sync.md)。
 
 ## 分发与发布
 

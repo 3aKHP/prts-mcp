@@ -28,7 +28,7 @@
 
 ## 3.1 SQLite 后端
 
-SQLite 为实验性可选后端，通过 `PRTS_DATA_BACKEND=sqlite` 或 `PRTS_DATA_DB` 启用；默认仍为 JSON。工具契约与既有 JSON 数据卷保持兼容。
+稳定版 3.1 默认 JSON，SQLite 为可选后端。3.2 开发线默认 SQLite；未显式选择后端且无自定义 JSON 输入时，DB 就绪前使用 JSON 备用，显式 SQLite 保持严格模式。工具契约与既有 JSON 数据卷保持兼容。
 
 ## 3.0 迁移阶段进展
 

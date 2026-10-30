@@ -61,6 +61,19 @@ impl DataView {
         })
     }
 
+    pub fn effective_backend(&self) -> &'static str {
+        if self.database.is_some() {
+            "sqlite"
+        } else if self.excel_root.is_some()
+            || self.levels_root.is_some()
+            || self.story_zip.is_some()
+        {
+            "json"
+        } else {
+            "unavailable"
+        }
+    }
+
     pub fn database(&self) -> Option<Arc<crate::storage::sqlite::GameDb>> {
         self.database.clone()
     }
@@ -159,13 +172,31 @@ fn database_signature(config: &RuntimeConfig) -> String {
 fn resolve_view(config: &RuntimeConfig) -> DataView {
     match config.data_backend {
         DataBackend::Json => json::resolve_view(config),
-        DataBackend::Sqlite => resolve_database_view(config),
+        DataBackend::Sqlite => {
+            let view = resolve_database_view(config);
+            if view.database.is_none() && config.allow_json_fallback {
+                let fallback = json::resolve_view(config);
+                if fallback.effective_backend() == "json" {
+                    crate::log_warn("Default SQLite preference: serving JSON fallback because no validated DB is ready; background SQLite sync remains enabled");
+                } else {
+                    crate::log_warn("Default SQLite preference: neither a validated DB nor JSON fallback is available; awaiting background SQLite sync");
+                }
+                fallback
+            } else {
+                view
+            }
+        }
     }
 }
 
 fn activation_signature(config: &RuntimeConfig) -> String {
     match config.data_backend {
         DataBackend::Json => json::activation_signature(config),
+        DataBackend::Sqlite if config.allow_json_fallback => format!(
+            "{};{}",
+            database_signature(config),
+            json::activation_signature(config)
+        ),
         DataBackend::Sqlite => database_signature(config),
     }
 }
@@ -204,6 +235,13 @@ impl DataState {
             self.invalidate();
             return Arc::new(DataView::unavailable());
         }
+        if self.config.allow_json_fallback && view.database.is_none() {
+            if let Err(error) = json::verify_fallback(&self.config, &view) {
+                crate::log_warn(&error);
+                self.invalidate();
+                return Arc::new(DataView::unavailable());
+            }
+        }
         view
     }
 
@@ -222,6 +260,12 @@ impl DataState {
             }
         }
         let view = Arc::new(resolve_view(&self.config));
+        crate::log_info(&format!(
+            "Data backend preference={:?}, effective={}, JSON fallback permitted={}",
+            self.config.data_backend,
+            view.effective_backend(),
+            self.config.allow_json_fallback
+        ));
         *guard = Some((signature, Arc::clone(&view)));
         Arc::clone(&view)
     }
@@ -477,6 +521,81 @@ mod tests {
             .path
             .ends_with("second.sqlite"));
         drop((first, second, state));
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn default_fallback_switches_to_database_and_retains_inflight_json() {
+        use crate::storage::database::ActiveDatabase;
+        let root = temp_root("default-fallback");
+        let mut config = config_for(&root);
+        config.allow_json_fallback = true;
+        for name in [
+            "character_table.json",
+            "handbook_info_table.json",
+            "charword_table.json",
+            "story_review_table.json",
+        ] {
+            write(&config.excel_path.join(name), "{}");
+        }
+        let config = Arc::new(config);
+        let state = DataState::new(Arc::clone(&config));
+        let fallback = state.snapshot();
+        assert!(fallback.database.is_none());
+        assert!(fallback.excel_root.is_some());
+        assert!(Arc::ptr_eq(&fallback, &state.snapshot()));
+        let path = config.database_dir.join("ready.sqlite");
+        database(&path);
+        let pointer = ActiveDatabase {
+            file_name: "ready.sqlite".into(),
+            source_version: "fixture".into(),
+            revision: 1,
+            sha256: crate::storage::digest::hash_file(&path).unwrap(),
+        }
+        .encode()
+        .unwrap();
+        write(&config.database_dir.join("active"), &pointer);
+        let ready = state.snapshot();
+        assert!(ready.database.is_some());
+        assert!(fallback.database.is_none());
+        assert!(fallback
+            .excel_root
+            .as_ref()
+            .unwrap()
+            .join("character_table.json")
+            .is_file());
+        let mut explicit = (*config).clone();
+        explicit.allow_json_fallback = false;
+        std::fs::remove_file(config.database_dir.join("active")).unwrap();
+        assert!(DataState::new(Arc::new(explicit))
+            .snapshot()
+            .excel_root
+            .is_none());
+        drop((state, ready, fallback));
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn cached_fallback_cannot_read_a_root_claimed_by_another_source() {
+        let root = temp_root("fallback-source");
+        let mut config = config_for(&root);
+        config.allow_json_fallback = true;
+        for name in [
+            "character_table.json",
+            "handbook_info_table.json",
+            "charword_table.json",
+            "story_review_table.json",
+        ] {
+            write(&config.excel_path.join(name), "{}");
+        }
+        let state = DataState::new(Arc::new(config.clone()));
+        assert!(state.snapshot().excel_root.is_some());
+        write(
+            &config.gamedata_path.join(".prts-data-source.json"),
+            r#"{"schemaVersion":1,"repo":"other/source"}"#,
+        );
+        assert!(state.snapshot().excel_root.is_none());
+        drop(state);
         std::fs::remove_dir_all(root).unwrap();
     }
 

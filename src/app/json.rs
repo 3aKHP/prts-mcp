@@ -25,14 +25,26 @@ fn resolve_view_with_legacy_story(config: &RuntimeConfig, legacy_story: &Path) -
         .map(|(excel, _)| excel)
         .unwrap_or_else(|| activated_root(&config.gamedata_path));
     let excel_root = excel_path_of(&excel_active);
-    let excel_root = crate::config::files_complete(&excel_root).then_some(excel_root);
+    let excel_root =
+        (crate::sync::source_guard::verify(&config.gamedata_path, &config.data_source).is_ok()
+            && crate::config::files_complete(&excel_root))
+        .then_some(excel_root);
 
     let levels_active = pair
         .map(|(_, levels)| levels)
         .unwrap_or_else(|| activated_root(&config.levels_path));
-    let levels_root = crate::config::levels_complete(&levels_active).then_some(levels_active);
+    let levels_root = (crate::sync::source_guard::verify(&config.levels_path, &config.data_source)
+        .is_ok()
+        && crate::config::levels_complete(&levels_active))
+    .then_some(levels_active);
 
-    let story_zip = story_archive(&config.storyjson_zip).or_else(|| {
+    let story_zip = crate::sync::source_guard::verify(
+        config.storyjson_zip.parent().unwrap_or(Path::new(".")),
+        &config.data_source,
+    )
+    .ok()
+    .and_then(|_| story_archive(&config.storyjson_zip))
+    .or_else(|| {
         if !config.data_source.is_default() {
             return None;
         }
@@ -99,6 +111,30 @@ pub(super) fn activation_signature(config: &RuntimeConfig) -> String {
         path_token(&config.gamedata_path.join("archives/extract_meta.json")),
         path_token(&config.levels_path.join("archives/extract_meta.json")),
     )
+}
+
+/// Recheck ownership of every local fallback input, including cached legacy story.
+pub(super) fn verify_fallback(config: &RuntimeConfig, view: &DataView) -> Result<(), String> {
+    let bundled = |path: &Path| {
+        config.bundle_root.as_ref().is_some_and(|root| {
+            path.starts_with(root) || root.canonicalize().is_ok_and(|root| path.starts_with(root))
+        })
+    };
+    for (path, root) in [
+        (view.excel_root.as_deref(), config.gamedata_path.as_path()),
+        (view.levels_root.as_deref(), config.levels_path.as_path()),
+    ] {
+        if path.is_some_and(|path| !bundled(path)) {
+            crate::sync::source_guard::verify(root, &config.data_source)?;
+        }
+    }
+    if let Some(path) = view.story_zip.as_deref().filter(|path| !bundled(path)) {
+        crate::sync::source_guard::verify(
+            path.parent().unwrap_or(Path::new(".")),
+            &config.data_source,
+        )?;
+    }
+    Ok(())
 }
 
 #[cfg(test)]
