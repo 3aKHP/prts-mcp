@@ -1,6 +1,6 @@
 # PRTS-MCP Roadmap
 
-The current public stable release is `3.1.3`, a single native Rust implementation that preserves the frozen TS/v2.8.1 tool contract. Active development continues on `develop` (`3.1.4-dev.0`). [简体中文](ROADMAP.zh-CN.md).
+The current public stable release is `3.1.3`, a single native Rust implementation that preserves the frozen TS/v2.8.1 tool contract. Active development continues on `develop` (`3.2.0-dev.0`). [简体中文](ROADMAP.zh-CN.md).
 
 ## 3.1.3 — Custom GitHub Data Source
 
