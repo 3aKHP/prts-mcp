@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { findProof, inspectResult, resultIdentity } from './wait-for-result.mjs';
+import { findProof, inspectResult, pollProof, resultIdentity } from './wait-for-result.mjs';
 
 const event = { number: 42, pull_request: { base: { ref: 'develop' } } };
 const identity = resultIdentity('pull_request', event, '');
@@ -92,4 +92,20 @@ test('metadata refuses wrong base/tier, failed latest runs and stale attempts wi
   const wrongHead = path => path.includes('/workflows/') ? { workflow_runs: [{ ...run(99), head_sha: 'old' }] }
     : assert.fail('An old HEAD must not be queried');
   assert.equal(await findProof(metadata, wrongHead), null);
+});
+
+test('proof polling retries GitHub server errors but rejects auth and validation failures', async () => {
+  let calls = 0;
+  const api = () => {
+    if (calls++ === 0) throw Object.assign(new Error('gh failed'), { stderr: 'gh: Server Error (HTTP 502)' });
+    return jobsPage([result()]);
+  };
+  assert.equal(await pollProof(context, api), null);
+  assert.deepEqual(await pollProof(context, api), { runId: 100, attempt: 2 });
+  assert.equal(calls, 2);
+  for (const status of [401, 403, 404, 429]) {
+    await assert.rejects(pollProof(context, () => { throw Object.assign(new Error('gh failed'), { stderr: `gh: HTTP ${status}` }); }));
+  }
+  await assert.rejects(pollProof(context, () => jobsPage([result('full', 'failure')])));
+  await assert.rejects(pollProof(context, () => jobsPage([result()], 100, 1)), /Wrong validation attempt/);
 });
