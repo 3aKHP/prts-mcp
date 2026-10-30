@@ -2,7 +2,7 @@
 
 [简体中文](CONTRIBUTING.zh-CN.md)
 
-Thank you for your interest in contributing to PRTS-MCP. This guide covers the root Rust project (`3.1.3-dev.0` on `develop`). Legacy Python and TypeScript maintenance takes place on the `lts/2.8` and `lts/1.7` branches.
+Thank you for your interest in contributing to PRTS-MCP. This guide covers the root Rust project (`3.1.4-dev.0` on `develop`). Legacy Python and TypeScript maintenance takes place on the `lts/2.8` and `lts/1.7` branches.
 
 Before getting started, please review the relevant guides (full index in [`docs/README.md`](docs/README.md)):
 

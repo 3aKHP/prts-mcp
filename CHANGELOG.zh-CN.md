@@ -8,11 +8,13 @@
 
 ## [未发布]
 
+## [3.1.3] - 2026-10-29
+
 ### 新增
 
 - **自定义 GitHub 数据源**：通过 `PRTS_DATA_SOURCE_REPO=owner/repo` 为数据与本地立绘同步选择兼容仓库。自定义源使用独立目录；显式同步目录首次使用须为空，或已绑定同一源。默认源及既有数据卷行为不变。详见[数据同步说明](docs/admin/data-and-sync.md#自定义-github-数据源)。
 
-- **术语表与架构决策记录目录**：新增 [`docs/glossary.md`](docs/glossary.md)，统一解释项目术语与缩写并指向各权威文档；新增 [`docs/dev/adr/`](docs/dev/adr/) 架构决策记录目录（ADR-0001 至 ADR-0016，含对 3.1 前仍然生效决策的补录），附状态机与撰写规范。
+- **术语表与架构决策记录目录**：新增 [`docs/glossary.md`](docs/glossary.md)，统一解释项目术语与缩写并指向各权威文档；新增 [`docs/dev/adr/`](docs/dev/adr/) 架构决策记录目录（ADR-0001 至 ADR-0017，含对 3.1 前仍然生效决策的补录），附状态机与撰写规范。
 - **版本一致性门禁**：新增仓库根 [`versions.json`](versions.json)，统一声明稳定版、开发版、两条 LTS 最新补丁与 LTS EOL 日期；`tools/ci/versions.mjs` 校验所有登记的文档副本与之一致，并按目标分支交叉校验 `Cargo.toml`（纳入 CI 与 `scripts/check-runtime.sh` 快速段），漂移时逐处报出文件与行号。全部登记副本已核对对齐，包括 STATUS 中一处滞后的 `lts/2.8` 行。
 
 ## [3.1.2] - 2026-10-22

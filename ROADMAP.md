@@ -1,6 +1,10 @@
 # PRTS-MCP Roadmap
 
-The current public stable release is `3.1.2`, a single native Rust implementation that preserves the frozen TS/v2.8.1 tool contract. Active development continues on `develop` (`3.1.3-dev.0`). [简体中文](ROADMAP.zh-CN.md).
+The current public stable release is `3.1.3`, a single native Rust implementation that preserves the frozen TS/v2.8.1 tool contract. Active development continues on `develop` (`3.1.4-dev.0`). [简体中文](ROADMAP.zh-CN.md).
+
+## 3.1.3 — Custom GitHub Data Source
+
+Delivered `PRTS_DATA_SOURCE_REPO` with per-source directories for compatible GitHub data and image releases. Object-storage sources and publication signatures remain separate work; see [ADR-0017](docs/dev/adr/ADR-0017-custom-github-data-source.md).
 
 ## 3.1 — Optional SQLite Data Backend
 
