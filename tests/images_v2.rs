@@ -295,6 +295,12 @@ async fn original_toggle_fetches_only_missing_group_and_removes_disabled_files()
 #[tokio::test]
 async fn verified_part_cache_is_reused_after_failed_activation() {
     let root = Temp::new();
+    std::fs::create_dir(root.0.join(".v2-cache")).unwrap();
+    std::fs::write(
+        root.0.join(".v2-cache/obsolete.tmp"),
+        b"old interrupted version",
+    )
+    .unwrap();
     let mut world = World::new();
     let mut index = world.add("26-01-01", None, b"first");
     let data = b"second";
@@ -314,6 +320,7 @@ async fn verified_part_cache_is_reused_after_failed_activation() {
         SyncStatus::NoData
     );
     assert!(active_generation(&root.0).is_none());
+    assert!(!root.0.join(".v2-cache/obsolete.tmp").exists());
     world
         .files
         .insert("images2-baseline-26-01-01/second.zip".into(), archive);

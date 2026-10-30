@@ -198,6 +198,29 @@ pub(super) async fn run_selected(
         for (version, parts) in deltas.into_iter().rev() {
             work.push((format!("images2-{version}"), parts));
         }
+        // Keep only archives needed by this candidate; failed obsolete versions must not accumulate.
+        let wanted: BTreeSet<&str> = work
+            .iter()
+            .flat_map(|(_, parts)| parts.iter())
+            .filter(|part| {
+                keys.contains(&part.group)
+                    && part
+                        .members
+                        .keys()
+                        .any(|name| expected.contains_key(name) && !preserved.contains(name))
+            })
+            .map(|part| part.sha256.as_str())
+            .collect();
+        for entry in std::fs::read_dir(&cache).map_err(|e| e.to_string())? {
+            let entry = entry.map_err(|e| e.to_string())?;
+            let name = entry.file_name();
+            let name = name.to_string_lossy();
+            if entry.file_type().map_err(|e| e.to_string())?.is_file()
+                && !wanted.contains(name.strip_suffix(".tmp").unwrap_or(&name))
+            {
+                std::fs::remove_file(entry.path()).map_err(|e| e.to_string())?;
+            }
+        }
         for (tag, parts) in work {
             for part in parts {
                 if !keys.contains(&part.group) {
