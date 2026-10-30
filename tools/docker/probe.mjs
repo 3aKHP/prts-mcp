@@ -103,19 +103,50 @@ try {
  checks.push({case:'legacy four separate mounts read extract_meta without root pair pointer'});
  console.log(`DOCKER_STAGE: ${id} real in-container sync and offline recovery`);
  const synced=volume(join(temp,'synced'));
- const active=await http(`${prefix}-sync`,synced,{networkName:network,env:{GITHUB_MIRRORS:`http://${mirror}:8080/`,HTTPS_PROXY:'http://127.0.0.1:9',https_proxy:'http://127.0.0.1:9'}});
+ const active=await http(`${prefix}-sync`,synced,{networkName:network,env:{PRTS_DATA_BACKEND:'json',GITHUB_MIRRORS:`http://${mirror}:8080/`,HTTPS_PROXY:'http://127.0.0.1:9',https_proxy:'http://127.0.0.1:9'}});
  let ready=false;for(let i=0;i<240;i++){if(existsSync(join(synced,'.gamedata_pair.json'))&&existsSync(join(synced,'storyjson/zh_CN.zip'))){ready=true;break;}await delay(500);}
  assert(ready,docker(['logs',`${prefix}-sync`],{maxBuffer:1<<22}));
  assert.match(JSON.stringify(await active.call('get_operator_basic_info',{name:'阿米娅'})),/阿米娅/);await stop(`${prefix}-sync`);
- const syncedBefore=payloadHashes(synced),recovered=await http(`${prefix}-recovery`,synced);
+ const syncedBefore=payloadHashes(synced),recovered=await http(`${prefix}-recovery`,synced,{env:{PRTS_DATA_BACKEND:'json'}});
  assert.match(JSON.stringify(await recovered.call('list_stages')),/关卡列表/);await stop(`${prefix}-recovery`);assert.deepEqual(payloadHashes(synced),syncedBefore);
  checks.push({case:'non-root real sync into whole /data then offline restart without destructive resync'});
  const separateVol=volume(join(temp,'separate-sync'));
- const separateActive=await http(`${prefix}-separate-sync`,separateVol,{separate:true,networkName:network,env:{GITHUB_MIRRORS:`http://${mirror}:8080/`,HTTPS_PROXY:'http://127.0.0.1:9',https_proxy:'http://127.0.0.1:9'}});
+ const separateActive=await http(`${prefix}-separate-sync`,separateVol,{separate:true,networkName:network,env:{PRTS_DATA_BACKEND:'json',GITHUB_MIRRORS:`http://${mirror}:8080/`,HTTPS_PROXY:'http://127.0.0.1:9',https_proxy:'http://127.0.0.1:9'}});
  ready=false;for(let i=0;i<240;i++){if(existsSync(join(separateVol,'gamedata/archives/extract_meta.json'))&&existsSync(join(separateVol,'gamedata-levels/archives/extract_meta.json'))&&existsSync(join(separateVol,'storyjson/zh_CN.zip'))){ready=true;break;}await delay(500);}
  assert(ready,docker(['logs',`${prefix}-separate-sync`],{maxBuffer:1<<22}));await stop(`${prefix}-separate-sync`);
- const separateRecovered=await http(`${prefix}-separate-recovery`,separateVol,{separate:true});assert.match(JSON.stringify(await separateRecovered.call('list_stages')),/关卡列表/);await stop(`${prefix}-separate-recovery`);
+ const separateRecovered=await http(`${prefix}-separate-recovery`,separateVol,{separate:true,env:{PRTS_DATA_BACKEND:'json'}});assert.match(JSON.stringify(await separateRecovered.call('list_stages')),/关卡列表/);await stop(`${prefix}-separate-recovery`);
  checks.push({case:'real sync and recreation with four legacy subdirectory mounts'});
+ console.log(`DOCKER_STAGE: ${id} default SQLite sync and offline recovery`);
+ const sqliteFixture=join(temp,'sqlite-mirror');mkdirSync(sqliteFixture);
+ const sqliteDir=join(root,'.runtime/sqlite-fixtures/minimal-images-v1');
+ const descriptor=readJson(join(sqliteDir,'zh_CN.sqlite.meta.json'));
+ const sqliteTag=`data-${descriptor.sourceVersion}`;
+ const sqliteBase=`https://github.com/${pin.repo}/releases/download/${sqliteTag}`;
+ const sqliteManifest={contractVersion:'prts-mcp-data/v1',publicationRevision:descriptor.publicationRevision,
+   source:{versionId:descriptor.sourceVersion},sqlite:descriptor,
+   assets:{[descriptor.asset]:{size:descriptor.compressedSize,sha256:descriptor.compressedSha256}}};
+ cpSync(join(sqliteDir,descriptor.asset),join(sqliteFixture,descriptor.asset));
+ json(join(sqliteFixture,'manifest.json'),sqliteManifest);
+ writeFileSync(join(sqliteFixture,'assets.txt'),`${sqliteBase}/manifest.json manifest.json\n${sqliteBase}/${descriptor.asset} ${descriptor.asset}\n`);
+ json(join(sqliteFixture,'releases.json'),[{tag_name:sqliteTag,assets:['manifest.json',descriptor.asset].map(name=>({name,browser_download_url:`${sqliteBase}/${name}`}))}]);
+ const sqliteMirror=`${mirror}-sqlite`;
+ containers.add(sqliteMirror);docker(['run','-d','--name',sqliteMirror,'--network',network,...ownedUser,'--read-only',
+   '-v',`${sqliteFixture}:/fixture:ro`,'-v',`${join(root,'tools/docker/mirror.mjs')}:/mirror.mjs:ro`,mirrorImage,'node','/mirror.mjs','/fixture']);
+ const sqliteVol=volume(join(temp,'sqlite-sync'));
+ const debugEnv={PRTS_METRICS_ENABLED:'true',PRTS_DEBUG_TOKEN:'sqlite-probe-token'};
+ const sqliteApp=await http(`${prefix}-sqlite`,sqliteVol,{env:{...debugEnv,GITHUB_MIRRORS:`http://${sqliteMirror}:8080/`}});
+ ready=false;for(let i=0;i<240;i++){if(existsSync(join(sqliteVol,'database/active'))){ready=true;break;}await delay(500);}
+ assert(ready,docker(['logs',`${prefix}-sqlite`],{maxBuffer:1<<22}));
+ const backend=await (await fetch(sqliteApp.origin+'/debug/metrics',{headers:{Authorization:'Bearer sqlite-probe-token'}})).json();
+ assert.equal(backend.data_backend.preference,'sqlite');assert.equal(backend.data_backend.effective,'sqlite');assert.equal(backend.data_backend.fallback,false);
+ assert.match(JSON.stringify(await sqliteApp.call('get_operator_basic_info',{name:'阿米娅'})),/阿米娅/);
+ assert(!existsSync(join(sqliteVol,'.gamedata_pair.json')),'default backend must not run JSON synchronization');
+ await stop(`${prefix}-sqlite`);
+ const sqliteBefore=payloadHashes(sqliteVol);
+ const sqliteRecovery=await http(`${prefix}-sqlite-offline`,sqliteVol,{env:debugEnv});
+ assert.match(JSON.stringify(await sqliteRecovery.call('get_operator_basic_info',{name:'阿米娅'})),/阿米娅/);
+ await stop(`${prefix}-sqlite-offline`);assert.deepEqual(payloadHashes(sqliteVol),sqliteBefore);
+ checks.push({case:'unconfigured backend synchronizes SQLite, reports effective SQLite, and restarts offline with the validated DB'});
  const rollback=spawn('bun',[join(root,'.reference/ts-v2.8.1/ts/dist/server-stdio.js')],{cwd:temp,env:{...tsEnv,GAMEDATA_PATH:join(synced,'gamedata'),STORYJSON_PATH:join(synced,'storyjson/zh_CN.zip')},stdio:['pipe','pipe','pipe']});
  checks.push({case:'fixed old TS reads container-written data (scoped read-back, not M4 release rollback)',...await stdio(rollback,'2.8.1')});
  json(join(out,'docker-evidence.json'),{platform:id,native:true,arch,version,commit:receipt.commit,imageId:receipt.imageId,archiveSha256:sha(archive),checks,publicPublication:false,
