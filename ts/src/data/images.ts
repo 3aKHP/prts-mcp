@@ -79,8 +79,8 @@ function parseVariant(raw: unknown): VariantMeta | null {
 /**
  * Parse a raw index.json value. Returns null on schema mismatch.
  *
- * The schema is frozen at ``akdp-images/v1``; an unfamiliar schemaVersion is
- * rejected so a future incompatible index does not silently misparse.
+ * V1 and validated V2 metadata share the artwork projection. Unfamiliar
+ * schema versions are rejected.
  */
 export function parseIndex(data: unknown): ImagesIndex | null {
   if (typeof data !== "object" || data === null) return null;

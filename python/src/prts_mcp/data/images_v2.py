@@ -1,6 +1,7 @@
 """Pure v2 index validation shared by the legacy reader and synchronizer."""
 from __future__ import annotations
 import re
+from typing import Any, Mapping
 
 SCHEMA = "akdp-images/v2"
 
@@ -17,7 +18,8 @@ def positive(value):
     return isinstance(value, int) and not isinstance(value, bool) and value > 0
 
 
-def validate(data):
+def validate(data: Mapping[str, Any]) -> bool:
+    """Validate the v2 descriptor before projecting its artwork metadata."""
     try:
         if data["schemaVersion"] != SCHEMA or not flat(data["currentVersion"]) or not flat(data["baselineVersion"]):
             return False

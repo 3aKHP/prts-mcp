@@ -5,6 +5,7 @@ import json
 import shutil
 from pathlib import Path
 from uuid import uuid4
+from typing import Callable
 from zipfile import ZipFile
 
 from prts_mcp.data.images_v2 import validate
@@ -13,7 +14,7 @@ from prts_mcp.sync.release_activation import safe_extract_zip
 from prts_mcp.sync.transport import stream_cascading
 
 
-def _hash(path):
+def _hash(path: Path) -> str:
     h = hashlib.sha256()
     with path.open("rb") as stream:
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
@@ -21,7 +22,8 @@ def _hash(path):
     return h.hexdigest()
 
 
-def sync_v2(root: Path, tag: str, keys, base: str, read_small):
+def sync_v2(root: Path, tag: str, keys: tuple[str, ...], base: str, read_small: Callable[[str], bytes | None]) -> tuple[str, bool]:
+    """Rebuild and activate a verified chain; return its version and change flag."""
     def read(version_tag):
         blob = read_small(f"{base}/{version_tag}/index.json")
         if blob is None:
