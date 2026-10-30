@@ -24,12 +24,15 @@ test('normal gate waits only for its own run and attempt and rejects cross-run p
   const requests = [];
   const api = path => { requests.push(path); return jobsPage([result()]); };
   assert.deepEqual(await findProof(context, api), { runId: 100, attempt: 2 });
-  assert.deepEqual(requests, ['repos/example/repo/actions/runs/100/attempts/2/jobs?per_page=100']);
+  assert.deepEqual(requests, ['repos/example/repo/actions/runs/100/jobs?filter=latest&per_page=100']);
   assert.equal(await findProof(context, () => jobsPage([])), null);
   for (const field of ['run_id', 'run_attempt', 'head_sha']) {
     const page = jobsPage([result()]);
     page.jobs[0][field] = 'old';
     await assert.rejects(findProof(context, () => page));
+  }
+  for (const attempt of [1, 3]) {
+    await assert.rejects(findProof(context, () => jobsPage([result()], 100, attempt)), /Wrong validation attempt/);
   }
   await assert.rejects(findProof(context, () => ({ ...jobsPage([result()]), total_count: 101 })));
 });

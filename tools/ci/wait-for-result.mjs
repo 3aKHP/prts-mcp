@@ -38,7 +38,7 @@ export function inspectResult(jobs, identity, tier, metadata) {
 export async function findProof(context, api, ignored = new Set()) {
   const { repository, runId, attempt, head, identity, tier, metadata } = context;
   const jobsFor = async (id, runAttempt) => {
-    const page = await api(`repos/${repository}/actions/runs/${id}/attempts/${runAttempt}/jobs?per_page=100`);
+    const page = await api(`repos/${repository}/actions/runs/${id}/jobs?filter=latest&per_page=100`);
     assert.equal(page.total_count, page.jobs.length, 'Incomplete CI jobs response');
     for (const job of page.jobs) {
       assert.equal(job.run_id, id, 'Wrong validation run');
