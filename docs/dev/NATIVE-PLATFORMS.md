@@ -20,7 +20,7 @@ Prebuilt executables statically link the vendored QuickJS regular-expression eng
 | `linux-x64` | `x86_64-unknown-linux-gnu` (`x86-64` / SSE2) | Pinned `manylinux_2_28` container (`glibc >= 2.28`) | Native Ubuntu CI, WSL2, and minimal AlmaLinux 8 container (`glibc 2.28`) |
 | `linux-arm64` | `aarch64-unknown-linux-gnu` (ARMv8-A) | Pinned `manylinux_2_28` container (`glibc >= 2.28`) | Native `ubuntu-24.04-arm` CI and minimal AlmaLinux 8 ARM64 container |
 | `windows-x64` | `x86_64-pc-windows-msvc` (`x86-64`) | Static CRT (`+crt-static`), Windows 10 / Server 2016 baseline | Native `windows-2022` CI and local Windows desktop stdio smoke |
-| `darwin-arm64` | `aarch64-apple-darwin` (Apple M1 baseline) | `MACOSX_DEPLOYMENT_TARGET=14.0` | Native `macos-14` (Apple Silicon) CI |
+| `darwin-arm64` | `aarch64-apple-darwin` (Apple M1 baseline) | `MACOSX_DEPLOYMENT_TARGET=14.0` | Native `macos-15` (Apple Silicon) CI |
 | `darwin-x64` | `x86_64-apple-darwin` (`x86-64` / SSE2) | `MACOSX_DEPLOYMENT_TARGET=14.0` | Native `macos-15-intel` CI |
 
 ### ABI Audit Rules

@@ -338,3 +338,32 @@ async fn verified_part_cache_is_reused_after_failed_activation() {
     );
     assert!(!root.0.join(".v2-cache").exists());
 }
+
+#[tokio::test]
+async fn old_v1_generations_migrate_by_verified_bytes_without_mutating_old_files() {
+    for (version, old_bytes, expect_part) in [
+        ("25-10-01", b"current".as_slice(), false),
+        ("26-01-01", b"stale".as_slice(), true),
+    ] {
+        let root = Temp::new();
+        let mut world = World::new();
+        world.add("26-04-01", None, b"current");
+        let old = root.0.join(".releases/legacy");
+        std::fs::create_dir_all(&old).unwrap();
+        std::fs::write(old.join("a.png"), old_bytes).unwrap();
+        std::fs::write(old.join("index.json"), serde_json::to_vec(&json!({"schemaVersion":"akdp-images/v1","baselineVersion":version,"currentVersion":version,"shards":{},"artworks":{"a":{"shard":"chararts","large":{"file":"a.png","w":1,"h":1,"bytes":old_bytes.len(),"sha256":hash(old_bytes)}}}})).unwrap()).unwrap();
+        std::fs::write(root.0.join(".images_meta.json"), serde_json::to_vec(&json!({"schemaVersion":"akdp-images/v1","baselineVersion":version,"currentVersion":version,"generation_root":".releases/legacy","shardsSynced":[]})).unwrap()).unwrap();
+        let result = sync_images(&root.0, &world, opts()).await;
+        assert_eq!(result.status, SyncStatus::Updated, "{:?}", result.error);
+        let requests = world.downloads.lock().unwrap();
+        assert_eq!(
+            requests.iter().any(|url| url.ends_with(".zip")),
+            expect_part
+        );
+        assert_eq!(
+            std::fs::read(active_generation(&root.0).unwrap().join("a.png")).unwrap(),
+            b"current"
+        );
+        assert_eq!(std::fs::read(old.join("a.png")).unwrap(), old_bytes);
+    }
+}

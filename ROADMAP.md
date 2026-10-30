@@ -2,13 +2,17 @@
 
 The current public stable release is `3.1.3`, a single native Rust implementation that preserves the frozen TS/v2.8.1 tool contract. Active development continues on `develop` (`3.2.0-dev.0`). [简体中文](ROADMAP.zh-CN.md).
 
+## 3.2 — SQLite Default and v2 Artwork
+
+The development line now defaults to SQLite with explicit JSON fallback and automatic switching when a DB is ready. Artwork synchronization supports v1 and v2 multipart releases, incremental updates and verified reuse across baselines. AKDP production remains v1; the planned 2027 Spring Festival cutover is conditional on signing, supported-client releases and activation acceptance. Software publication follows the separate Release workflow. LTS/2.8 compatibility is prepared independently.
+
 ## 3.1.3 — Custom GitHub Data Source
 
 Delivered `PRTS_DATA_SOURCE_REPO` with per-source directories for compatible GitHub data and image releases. Object-storage sources and publication signatures remain separate work; see [ADR-0017](docs/dev/adr/ADR-0017-custom-github-data-source.md).
 
 ## 3.1 — Optional SQLite Data Backend
 
-JSON/ZIP remains the default, preserving existing paths, volumes and sync switches. Version 3.1 provides opt-in SQLite with complete source retention, bounded story scans and independent atomic sync. Observe production use before the planned 3.2 default switch; JSON remains supported throughout 3.x.
+JSON/ZIP remains the default, preserving existing paths, volumes and sync switches. Version 3.1 provides opt-in SQLite with complete source retention, bounded story scans and independent atomic sync. The 3.2 development line has switched the ordinary default; JSON remains supported throughout 3.x.
 
 ## 3.0 Rust Migration
 

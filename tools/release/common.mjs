@@ -42,7 +42,7 @@ export function verifyNpmEvidence(receipt, evidence, id) {
 }
 export function verifyDockerEvidence(image, evidence, archiveSha256, id) {
   assert.equal(evidence.commit,image.commit);assert.equal(evidence.version,image.version);assert.equal(evidence.platform,id);
-  assert.equal(evidence.native,true);assert.equal(evidence.checks.length,10);assert.equal(evidence.imageId,image.imageId);
+  assert.equal(evidence.native,true);assert.equal(evidence.checks.length,11);assert.equal(evidence.imageId,image.imageId);
   assert.equal(evidence.arch,targets[id].arch==='x64'?'amd64':'arm64');assert.equal(image.arch,evidence.arch);
   assert.equal(evidence.archiveSha256,archiveSha256,'Docker runtime evidence must bind the actual loaded archive');
 }
