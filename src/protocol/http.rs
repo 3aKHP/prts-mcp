@@ -203,8 +203,9 @@ async fn debug_metrics(State(shared): State<Arc<Shared>>, headers: HeaderMap) ->
     let config = shared.app.config();
     snapshot["data_backend"] = json!({
         "preference": if config.data_backend == crate::config::DataBackend::Sqlite { "sqlite" } else { "json" },
-        "effective": if view.database.is_some() { "sqlite" } else if config.allow_json_fallback || config.data_backend == crate::config::DataBackend::Json { "json" } else { "unavailable" },
-        "fallback": config.allow_json_fallback && view.database.is_none(),
+        "effective": view.effective_backend(),
+        "fallback": config.allow_json_fallback && view.effective_backend() == "json",
+        "fallback_reason": (config.allow_json_fallback && view.database.is_none()).then_some("no_validated_database"),
     });
     json_response(StatusCode::OK, snapshot)
 }

@@ -61,6 +61,19 @@ impl DataView {
         })
     }
 
+    pub fn effective_backend(&self) -> &'static str {
+        if self.database.is_some() {
+            "sqlite"
+        } else if self.excel_root.is_some()
+            || self.levels_root.is_some()
+            || self.story_zip.is_some()
+        {
+            "json"
+        } else {
+            "unavailable"
+        }
+    }
+
     pub fn database(&self) -> Option<Arc<crate::storage::sqlite::GameDb>> {
         self.database.clone()
     }
@@ -217,6 +230,13 @@ impl DataState {
             self.invalidate();
             return Arc::new(DataView::unavailable());
         }
+        if self.config.allow_json_fallback && view.database.is_none() {
+            if let Err(error) = json::verify_fallback(&self.config, &view) {
+                crate::log_warn(&error);
+                self.invalidate();
+                return Arc::new(DataView::unavailable());
+            }
+        }
         view
     }
 
@@ -238,15 +258,7 @@ impl DataState {
         crate::log_info(&format!(
             "Data backend preference={:?}, effective={}, JSON fallback permitted={}",
             self.config.data_backend,
-            if view.database.is_some() {
-                "sqlite"
-            } else if self.config.data_backend == DataBackend::Json
-                || self.config.allow_json_fallback
-            {
-                "json"
-            } else {
-                "sqlite-unavailable"
-            },
+            view.effective_backend(),
             self.config.allow_json_fallback
         ));
         *guard = Some((signature, Arc::clone(&view)));
@@ -555,6 +567,30 @@ mod tests {
             .excel_root
             .is_none());
         drop((state, ready, fallback));
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn cached_fallback_cannot_read_a_root_claimed_by_another_source() {
+        let root = temp_root("fallback-source");
+        let mut config = config_for(&root);
+        config.allow_json_fallback = true;
+        for name in [
+            "character_table.json",
+            "handbook_info_table.json",
+            "charword_table.json",
+            "story_review_table.json",
+        ] {
+            write(&config.excel_path.join(name), "{}");
+        }
+        let state = DataState::new(Arc::new(config.clone()));
+        assert!(state.snapshot().excel_root.is_some());
+        write(
+            &config.gamedata_path.join(".prts-data-source.json"),
+            r#"{"schemaVersion":1,"repo":"other/source"}"#,
+        );
+        assert!(state.snapshot().excel_root.is_none());
+        drop(state);
         std::fs::remove_dir_all(root).unwrap();
     }
 

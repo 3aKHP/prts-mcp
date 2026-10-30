@@ -28,7 +28,7 @@
 
 ## 3.1 SQLite Backend
 
-SQLite is experimental and opt-in with `PRTS_DATA_BACKEND=sqlite` or `PRTS_DATA_DB`; JSON remains the default. Tool contracts and existing JSON data volumes are preserved.
+The stable 3.1 release uses JSON by default with opt-in SQLite. The 3.2 development line defaults to SQLite; without explicit backend or custom JSON inputs, JSON fallback serves requests until a validated DB is ready. Explicit SQLite remains strict. Tool contracts and existing JSON data volumes are preserved.
 
 ## 3.0 Migration Progress
 
