@@ -8,6 +8,11 @@ The original per-implementation changelogs at the 2.8.1 baseline remain availabl
 
 ## [Unreleased]
 
+### Added
+
+- Local artwork synchronization supports v2 multipart baselines and deltas alongside v1. Same-baseline updates fetch only required newer deltas; baseline changes reuse verified PNGs and skip satisfied parts. Activation stays atomic, and terminated 3.2 image writers recover without waiting for the old lease expiry.
+
+
 ### Changed
 
 - SQLite is now the default game-data backend. With no explicit backend or custom JSON paths, startup uses JSON fallback until a validated DB is available, then switches new requests automatically. Explicit SQLite remains strict; existing JSON volumes are retained.
