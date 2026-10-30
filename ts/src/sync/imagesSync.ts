@@ -1,3 +1,4 @@
+import { syncV2 } from "./imagesV2.js";
 /**
  * AKDP image asset sync for LOCAL_IMAGE=true mode.
  * Mirrors python/src/prts_mcp/sync/images_sync.py.
@@ -221,9 +222,20 @@ async function syncImagesLocked(
     return offlineOrNoData(imageDir, "Network unavailable");
   }
 
-  const deltaRelease = latestReleaseByPrefix(releases, DELTA_PREFIX, {
-    excludePrefix: BASELINE_PREFIX,
-  });
+  const latest = (prefix: string, excluded: string) => releases!.filter(r => !r.draft && !r.prerelease && typeof r.tag_name === "string" && r.tag_name.startsWith(prefix) && !r.tag_name.startsWith(excluded))
+    .sort((a,b) => String(b.tag_name) < String(a.tag_name) ? -1 : String(b.tag_name) > String(a.tag_name) ? 1 : 0)[0] ?? null;
+  const v2 = latest("images2-", "images2-baseline-");
+  const v1 = latest(DELTA_PREFIX, BASELINE_PREFIX);
+  const activeV2 = (await loadMeta(imageDir))?.schemaVersion === "akdp-images/v2";
+  if (v2 && (activeV2 || !v1 || String(v2.tag_name).slice(8) >= String(v1.tag_name).slice(7))) {
+    try {
+      const result = await syncV2(imageDir, String(v2.tag_name), shardKeys,
+        `https://github.com/${IMAGES_REPO_OWNER}/${IMAGES_REPO}/releases/download`, downloadSmall);
+      return { spec, status: result.changed ? "updated" : "up_to_date", commitSha: result.version, error: null };
+    } catch (err) { return offlineOrNoData(imageDir, err instanceof Error ? err.message : String(err)); }
+  }
+  if (activeV2) return offlineOrNoData(imageDir, "No v2 release available; retaining active v2 generation");
+  const deltaRelease = v1;
   if (deltaRelease === null) {
     return offlineOrNoData(imageDir, "No images delta release found");
   }

@@ -1,6 +1,6 @@
 """Image artwork index schema, data loading and label construction.
 
-Consumes the AKDP ``akdp-images/v1`` index.json (frozen schema in
+Consumes AKDP ``akdp-images/v1`` and ``akdp-images/v2`` indexes (contract in
 ``arknights-data-pipeline/docs/image-index-schema.md``). Semantic labels
 are joined from ``skin_table.json`` at the consumer side; the index itself
 carries no display names, keeping the schema stable across game versions.
@@ -85,10 +85,13 @@ def _parse_variant(raw: Any) -> VariantMeta | None:
 def parse_index(data: Mapping[str, Any]) -> ImagesIndex | None:
     """Parse a raw index.json mapping. Returns None on schema mismatch.
 
-    The schema is frozen at ``akdp-images/v1``; an unfamiliar schemaVersion
-    is rejected so a future incompatible index does not silently misparse.
+    V1 and validated V2 metadata share the artwork projection. Unfamiliar
+    schema versions are rejected.
     """
-    if data.get("schemaVersion") != SCHEMA_VERSION:
+    from prts_mcp.data.images_v2 import SCHEMA as V2, validate
+    if data.get("schemaVersion") == V2 and not validate(data):
+        return None
+    if data.get("schemaVersion") not in (SCHEMA_VERSION, V2):
         _logger.warning(
             "images index schemaVersion mismatch: expected %r, got %r",
             SCHEMA_VERSION,
@@ -122,7 +125,7 @@ def parse_index(data: Mapping[str, Any]) -> ImagesIndex | None:
         else {}
     )
     return ImagesIndex(
-        schema_version=SCHEMA_VERSION,
+        schema_version=data["schemaVersion"],
         baseline_version=str(data.get("baselineVersion", "")),
         current_version=str(data.get("currentVersion", "")),
         shards=shards,

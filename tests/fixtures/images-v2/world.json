@@ -1,0 +1,659 @@
+{
+  "indexes": {
+    "images2-26-01-01": {
+      "currentVersion": "26-01-01",
+      "artworks": {
+        "a": {
+          "shard": "chararts",
+          "kind": "base",
+          "original": {
+            "file": "a.original.png",
+            "w": 1,
+            "h": 1,
+            "bytes": 69,
+            "sha256": "b1ff9c8ea3a780bad09b346c423d2d0e46815926879b18e841d928376a946640"
+          },
+          "large": {
+            "file": "a.large.png",
+            "w": 1,
+            "h": 1,
+            "bytes": 69,
+            "sha256": "b1ff9c8ea3a780bad09b346c423d2d0e46815926879b18e841d928376a946640"
+          },
+          "preview": {
+            "file": "a.preview.png",
+            "w": 1,
+            "h": 1,
+            "bytes": 69,
+            "sha256": "b1ff9c8ea3a780bad09b346c423d2d0e46815926879b18e841d928376a946640"
+          }
+        },
+        "b": {
+          "shard": "chararts",
+          "kind": "base",
+          "original": {
+            "file": "b.original.png",
+            "w": 1,
+            "h": 1,
+            "bytes": 69,
+            "sha256": "c9b27a65dd17d8157b51d36d36b54305ec13cea89152ba0e24b5465eb3cbb0c7"
+          },
+          "large": {
+            "file": "b.large.png",
+            "w": 1,
+            "h": 1,
+            "bytes": 69,
+            "sha256": "c9b27a65dd17d8157b51d36d36b54305ec13cea89152ba0e24b5465eb3cbb0c7"
+          },
+          "preview": {
+            "file": "b.preview.png",
+            "w": 1,
+            "h": 1,
+            "bytes": 69,
+            "sha256": "c9b27a65dd17d8157b51d36d36b54305ec13cea89152ba0e24b5465eb3cbb0c7"
+          }
+        }
+      },
+      "schemaVersion": "akdp-images/v2",
+      "baselineVersion": "26-01-01",
+      "baselineParts": [
+        {
+          "file": "images2-baseline-26-01-01-chararts-large-00000.zip",
+          "bytes": 204,
+          "sha256": "94fc3fa5d400d834364608376d738344d998f3211fbf0ec41acc9d2a74568e63",
+          "group": "chararts-large",
+          "members": {
+            "a.large.png": {
+              "bytes": 69,
+              "sha256": "b1ff9c8ea3a780bad09b346c423d2d0e46815926879b18e841d928376a946640",
+              "group": "chararts-large"
+            }
+          }
+        },
+        {
+          "file": "images2-baseline-26-01-01-chararts-large-00001.zip",
+          "bytes": 203,
+          "sha256": "0f55de4fe30740b17d15d462f1af2ae4474e0fb345380f869c9aad26aa5b4395",
+          "group": "chararts-large",
+          "members": {
+            "b.large.png": {
+              "bytes": 69,
+              "sha256": "c9b27a65dd17d8157b51d36d36b54305ec13cea89152ba0e24b5465eb3cbb0c7",
+              "group": "chararts-large"
+            }
+          }
+        },
+        {
+          "file": "images2-baseline-26-01-01-chararts-original-00000.zip",
+          "bytes": 210,
+          "sha256": "ace8d9c1099765c13efd22a0f26ce9a3f3f8bc4d5ce2f90516f8b1db957af4ee",
+          "group": "chararts-original",
+          "members": {
+            "a.original.png": {
+              "bytes": 69,
+              "sha256": "b1ff9c8ea3a780bad09b346c423d2d0e46815926879b18e841d928376a946640",
+              "group": "chararts-original"
+            }
+          }
+        },
+        {
+          "file": "images2-baseline-26-01-01-chararts-original-00001.zip",
+          "bytes": 209,
+          "sha256": "b83fb35667e616304d2672284a687eb67077c16eea00a71d81b3727fa667c1e5",
+          "group": "chararts-original",
+          "members": {
+            "b.original.png": {
+              "bytes": 69,
+              "sha256": "c9b27a65dd17d8157b51d36d36b54305ec13cea89152ba0e24b5465eb3cbb0c7",
+              "group": "chararts-original"
+            }
+          }
+        },
+        {
+          "file": "images2-baseline-26-01-01-chararts-preview-00000.zip",
+          "bytes": 208,
+          "sha256": "5e38444b3d820d778338b648fc441cd67361e8be5fe3d52299d41b06ee4bca9b",
+          "group": "chararts-preview",
+          "members": {
+            "a.preview.png": {
+              "bytes": 69,
+              "sha256": "b1ff9c8ea3a780bad09b346c423d2d0e46815926879b18e841d928376a946640",
+              "group": "chararts-preview"
+            }
+          }
+        },
+        {
+          "file": "images2-baseline-26-01-01-chararts-preview-00001.zip",
+          "bytes": 207,
+          "sha256": "90911722414c60c0cb07ea95995d872cd323030e1668d4e17d4c6522fb16bb8f",
+          "group": "chararts-preview",
+          "members": {
+            "b.preview.png": {
+              "bytes": 69,
+              "sha256": "c9b27a65dd17d8157b51d36d36b54305ec13cea89152ba0e24b5465eb3cbb0c7",
+              "group": "chararts-preview"
+            }
+          }
+        }
+      ],
+      "deltaParts": [],
+      "previousVersion": null
+    },
+    "images2-26-02-01": {
+      "currentVersion": "26-02-01",
+      "artworks": {
+        "a": {
+          "shard": "chararts",
+          "kind": "base",
+          "original": {
+            "file": "a.original.png",
+            "w": 1,
+            "h": 1,
+            "bytes": 69,
+            "sha256": "fce481932ea5d07a91c7991c09fdadb4bf78f9b4cc8f927188384231f9d12679"
+          },
+          "large": {
+            "file": "a.large.png",
+            "w": 1,
+            "h": 1,
+            "bytes": 69,
+            "sha256": "fce481932ea5d07a91c7991c09fdadb4bf78f9b4cc8f927188384231f9d12679"
+          },
+          "preview": {
+            "file": "a.preview.png",
+            "w": 1,
+            "h": 1,
+            "bytes": 69,
+            "sha256": "fce481932ea5d07a91c7991c09fdadb4bf78f9b4cc8f927188384231f9d12679"
+          }
+        },
+        "c": {
+          "shard": "chararts",
+          "kind": "base",
+          "original": {
+            "file": "c.original.png",
+            "w": 1,
+            "h": 1,
+            "bytes": 69,
+            "sha256": "c9b27a65dd17d8157b51d36d36b54305ec13cea89152ba0e24b5465eb3cbb0c7"
+          },
+          "large": {
+            "file": "c.large.png",
+            "w": 1,
+            "h": 1,
+            "bytes": 69,
+            "sha256": "c9b27a65dd17d8157b51d36d36b54305ec13cea89152ba0e24b5465eb3cbb0c7"
+          },
+          "preview": {
+            "file": "c.preview.png",
+            "w": 1,
+            "h": 1,
+            "bytes": 69,
+            "sha256": "c9b27a65dd17d8157b51d36d36b54305ec13cea89152ba0e24b5465eb3cbb0c7"
+          }
+        }
+      },
+      "schemaVersion": "akdp-images/v2",
+      "baselineVersion": "26-01-01",
+      "baselineParts": [
+        {
+          "file": "images2-baseline-26-01-01-chararts-large-00000.zip",
+          "bytes": 204,
+          "sha256": "94fc3fa5d400d834364608376d738344d998f3211fbf0ec41acc9d2a74568e63",
+          "group": "chararts-large",
+          "members": {
+            "a.large.png": {
+              "bytes": 69,
+              "sha256": "b1ff9c8ea3a780bad09b346c423d2d0e46815926879b18e841d928376a946640",
+              "group": "chararts-large"
+            }
+          }
+        },
+        {
+          "file": "images2-baseline-26-01-01-chararts-large-00001.zip",
+          "bytes": 203,
+          "sha256": "0f55de4fe30740b17d15d462f1af2ae4474e0fb345380f869c9aad26aa5b4395",
+          "group": "chararts-large",
+          "members": {
+            "b.large.png": {
+              "bytes": 69,
+              "sha256": "c9b27a65dd17d8157b51d36d36b54305ec13cea89152ba0e24b5465eb3cbb0c7",
+              "group": "chararts-large"
+            }
+          }
+        },
+        {
+          "file": "images2-baseline-26-01-01-chararts-original-00000.zip",
+          "bytes": 210,
+          "sha256": "ace8d9c1099765c13efd22a0f26ce9a3f3f8bc4d5ce2f90516f8b1db957af4ee",
+          "group": "chararts-original",
+          "members": {
+            "a.original.png": {
+              "bytes": 69,
+              "sha256": "b1ff9c8ea3a780bad09b346c423d2d0e46815926879b18e841d928376a946640",
+              "group": "chararts-original"
+            }
+          }
+        },
+        {
+          "file": "images2-baseline-26-01-01-chararts-original-00001.zip",
+          "bytes": 209,
+          "sha256": "b83fb35667e616304d2672284a687eb67077c16eea00a71d81b3727fa667c1e5",
+          "group": "chararts-original",
+          "members": {
+            "b.original.png": {
+              "bytes": 69,
+              "sha256": "c9b27a65dd17d8157b51d36d36b54305ec13cea89152ba0e24b5465eb3cbb0c7",
+              "group": "chararts-original"
+            }
+          }
+        },
+        {
+          "file": "images2-baseline-26-01-01-chararts-preview-00000.zip",
+          "bytes": 208,
+          "sha256": "5e38444b3d820d778338b648fc441cd67361e8be5fe3d52299d41b06ee4bca9b",
+          "group": "chararts-preview",
+          "members": {
+            "a.preview.png": {
+              "bytes": 69,
+              "sha256": "b1ff9c8ea3a780bad09b346c423d2d0e46815926879b18e841d928376a946640",
+              "group": "chararts-preview"
+            }
+          }
+        },
+        {
+          "file": "images2-baseline-26-01-01-chararts-preview-00001.zip",
+          "bytes": 207,
+          "sha256": "90911722414c60c0cb07ea95995d872cd323030e1668d4e17d4c6522fb16bb8f",
+          "group": "chararts-preview",
+          "members": {
+            "b.preview.png": {
+              "bytes": 69,
+              "sha256": "c9b27a65dd17d8157b51d36d36b54305ec13cea89152ba0e24b5465eb3cbb0c7",
+              "group": "chararts-preview"
+            }
+          }
+        }
+      ],
+      "deltaParts": [
+        {
+          "file": "images2-delta-26-02-01-chararts-large-00000.zip",
+          "bytes": 204,
+          "sha256": "2e92eec2331aa3924aa2a4c8f3d09dfc18b34d1148f816e543afc4df51dd435d",
+          "group": "chararts-large",
+          "members": {
+            "a.large.png": {
+              "bytes": 69,
+              "sha256": "fce481932ea5d07a91c7991c09fdadb4bf78f9b4cc8f927188384231f9d12679",
+              "group": "chararts-large"
+            }
+          }
+        },
+        {
+          "file": "images2-delta-26-02-01-chararts-large-00001.zip",
+          "bytes": 203,
+          "sha256": "a98b9fb401e7e78452812547759fe3f0754cee2481c5f0ea58bf0e55f0c59c49",
+          "group": "chararts-large",
+          "members": {
+            "c.large.png": {
+              "bytes": 69,
+              "sha256": "c9b27a65dd17d8157b51d36d36b54305ec13cea89152ba0e24b5465eb3cbb0c7",
+              "group": "chararts-large"
+            }
+          }
+        },
+        {
+          "file": "images2-delta-26-02-01-chararts-original-00000.zip",
+          "bytes": 210,
+          "sha256": "69357fbae060852eb66b92abb2068e4330857ebcdcc8cbe6ba8f520839094779",
+          "group": "chararts-original",
+          "members": {
+            "a.original.png": {
+              "bytes": 69,
+              "sha256": "fce481932ea5d07a91c7991c09fdadb4bf78f9b4cc8f927188384231f9d12679",
+              "group": "chararts-original"
+            }
+          }
+        },
+        {
+          "file": "images2-delta-26-02-01-chararts-original-00001.zip",
+          "bytes": 209,
+          "sha256": "2939941aa233bddb83b4d73450dc06cd32ddf1874020a38db5499039ce915667",
+          "group": "chararts-original",
+          "members": {
+            "c.original.png": {
+              "bytes": 69,
+              "sha256": "c9b27a65dd17d8157b51d36d36b54305ec13cea89152ba0e24b5465eb3cbb0c7",
+              "group": "chararts-original"
+            }
+          }
+        },
+        {
+          "file": "images2-delta-26-02-01-chararts-preview-00000.zip",
+          "bytes": 208,
+          "sha256": "549f16477b47524e13de9fbfb60f930de932642ff6a8434b4e458223de362340",
+          "group": "chararts-preview",
+          "members": {
+            "a.preview.png": {
+              "bytes": 69,
+              "sha256": "fce481932ea5d07a91c7991c09fdadb4bf78f9b4cc8f927188384231f9d12679",
+              "group": "chararts-preview"
+            }
+          }
+        },
+        {
+          "file": "images2-delta-26-02-01-chararts-preview-00001.zip",
+          "bytes": 207,
+          "sha256": "00f4f95dc0c6a9c94030305c2fd669d512380e6a88a59b4e07e17fde73b8e2af",
+          "group": "chararts-preview",
+          "members": {
+            "c.preview.png": {
+              "bytes": 69,
+              "sha256": "c9b27a65dd17d8157b51d36d36b54305ec13cea89152ba0e24b5465eb3cbb0c7",
+              "group": "chararts-preview"
+            }
+          }
+        }
+      ],
+      "previousVersion": "26-01-01"
+    },
+    "images2-26-04-01": {
+      "currentVersion": "26-04-01",
+      "artworks": {
+        "a": {
+          "shard": "chararts",
+          "kind": "base",
+          "original": {
+            "file": "a.original.png",
+            "w": 1,
+            "h": 1,
+            "bytes": 69,
+            "sha256": "fce481932ea5d07a91c7991c09fdadb4bf78f9b4cc8f927188384231f9d12679"
+          },
+          "large": {
+            "file": "a.large.png",
+            "w": 1,
+            "h": 1,
+            "bytes": 69,
+            "sha256": "fce481932ea5d07a91c7991c09fdadb4bf78f9b4cc8f927188384231f9d12679"
+          },
+          "preview": {
+            "file": "a.preview.png",
+            "w": 1,
+            "h": 1,
+            "bytes": 69,
+            "sha256": "fce481932ea5d07a91c7991c09fdadb4bf78f9b4cc8f927188384231f9d12679"
+          }
+        },
+        "c": {
+          "shard": "chararts",
+          "kind": "base",
+          "original": {
+            "file": "c.original.png",
+            "w": 1,
+            "h": 1,
+            "bytes": 69,
+            "sha256": "c9b27a65dd17d8157b51d36d36b54305ec13cea89152ba0e24b5465eb3cbb0c7"
+          },
+          "large": {
+            "file": "c.large.png",
+            "w": 1,
+            "h": 1,
+            "bytes": 69,
+            "sha256": "c9b27a65dd17d8157b51d36d36b54305ec13cea89152ba0e24b5465eb3cbb0c7"
+          },
+          "preview": {
+            "file": "c.preview.png",
+            "w": 1,
+            "h": 1,
+            "bytes": 69,
+            "sha256": "c9b27a65dd17d8157b51d36d36b54305ec13cea89152ba0e24b5465eb3cbb0c7"
+          }
+        }
+      },
+      "schemaVersion": "akdp-images/v2",
+      "baselineVersion": "26-04-01",
+      "baselineParts": [
+        {
+          "file": "images2-baseline-26-04-01-chararts-large-00000.zip",
+          "bytes": 204,
+          "sha256": "2e92eec2331aa3924aa2a4c8f3d09dfc18b34d1148f816e543afc4df51dd435d",
+          "group": "chararts-large",
+          "members": {
+            "a.large.png": {
+              "bytes": 69,
+              "sha256": "fce481932ea5d07a91c7991c09fdadb4bf78f9b4cc8f927188384231f9d12679",
+              "group": "chararts-large"
+            }
+          }
+        },
+        {
+          "file": "images2-baseline-26-04-01-chararts-large-00001.zip",
+          "bytes": 203,
+          "sha256": "a98b9fb401e7e78452812547759fe3f0754cee2481c5f0ea58bf0e55f0c59c49",
+          "group": "chararts-large",
+          "members": {
+            "c.large.png": {
+              "bytes": 69,
+              "sha256": "c9b27a65dd17d8157b51d36d36b54305ec13cea89152ba0e24b5465eb3cbb0c7",
+              "group": "chararts-large"
+            }
+          }
+        },
+        {
+          "file": "images2-baseline-26-04-01-chararts-original-00000.zip",
+          "bytes": 210,
+          "sha256": "69357fbae060852eb66b92abb2068e4330857ebcdcc8cbe6ba8f520839094779",
+          "group": "chararts-original",
+          "members": {
+            "a.original.png": {
+              "bytes": 69,
+              "sha256": "fce481932ea5d07a91c7991c09fdadb4bf78f9b4cc8f927188384231f9d12679",
+              "group": "chararts-original"
+            }
+          }
+        },
+        {
+          "file": "images2-baseline-26-04-01-chararts-original-00001.zip",
+          "bytes": 209,
+          "sha256": "2939941aa233bddb83b4d73450dc06cd32ddf1874020a38db5499039ce915667",
+          "group": "chararts-original",
+          "members": {
+            "c.original.png": {
+              "bytes": 69,
+              "sha256": "c9b27a65dd17d8157b51d36d36b54305ec13cea89152ba0e24b5465eb3cbb0c7",
+              "group": "chararts-original"
+            }
+          }
+        },
+        {
+          "file": "images2-baseline-26-04-01-chararts-preview-00000.zip",
+          "bytes": 208,
+          "sha256": "549f16477b47524e13de9fbfb60f930de932642ff6a8434b4e458223de362340",
+          "group": "chararts-preview",
+          "members": {
+            "a.preview.png": {
+              "bytes": 69,
+              "sha256": "fce481932ea5d07a91c7991c09fdadb4bf78f9b4cc8f927188384231f9d12679",
+              "group": "chararts-preview"
+            }
+          }
+        },
+        {
+          "file": "images2-baseline-26-04-01-chararts-preview-00001.zip",
+          "bytes": 207,
+          "sha256": "00f4f95dc0c6a9c94030305c2fd669d512380e6a88a59b4e07e17fde73b8e2af",
+          "group": "chararts-preview",
+          "members": {
+            "c.preview.png": {
+              "bytes": 69,
+              "sha256": "c9b27a65dd17d8157b51d36d36b54305ec13cea89152ba0e24b5465eb3cbb0c7",
+              "group": "chararts-preview"
+            }
+          }
+        }
+      ],
+      "deltaParts": [],
+      "previousVersion": null
+    },
+    "images2-26-04-02": {
+      "currentVersion": "26-04-02",
+      "artworks": {
+        "a": {
+          "shard": "chararts",
+          "kind": "base",
+          "original": {
+            "file": "a.original.png",
+            "w": 1,
+            "h": 1,
+            "bytes": 69,
+            "sha256": "fce481932ea5d07a91c7991c09fdadb4bf78f9b4cc8f927188384231f9d12679"
+          },
+          "large": {
+            "file": "a.large.png",
+            "w": 1,
+            "h": 1,
+            "bytes": 69,
+            "sha256": "fce481932ea5d07a91c7991c09fdadb4bf78f9b4cc8f927188384231f9d12679"
+          },
+          "preview": {
+            "file": "a.preview.png",
+            "w": 1,
+            "h": 1,
+            "bytes": 69,
+            "sha256": "fce481932ea5d07a91c7991c09fdadb4bf78f9b4cc8f927188384231f9d12679"
+          }
+        },
+        "c": {
+          "shard": "chararts",
+          "kind": "base",
+          "original": {
+            "file": "c.original.png",
+            "w": 1,
+            "h": 1,
+            "bytes": 69,
+            "sha256": "c9b27a65dd17d8157b51d36d36b54305ec13cea89152ba0e24b5465eb3cbb0c7"
+          },
+          "large": {
+            "file": "c.large.png",
+            "w": 1,
+            "h": 1,
+            "bytes": 69,
+            "sha256": "c9b27a65dd17d8157b51d36d36b54305ec13cea89152ba0e24b5465eb3cbb0c7"
+          },
+          "preview": {
+            "file": "c.preview.png",
+            "w": 1,
+            "h": 1,
+            "bytes": 69,
+            "sha256": "c9b27a65dd17d8157b51d36d36b54305ec13cea89152ba0e24b5465eb3cbb0c7"
+          }
+        }
+      },
+      "schemaVersion": "akdp-images/v2",
+      "baselineVersion": "26-04-01",
+      "baselineParts": [
+        {
+          "file": "images2-baseline-26-04-01-chararts-large-00000.zip",
+          "bytes": 204,
+          "sha256": "2e92eec2331aa3924aa2a4c8f3d09dfc18b34d1148f816e543afc4df51dd435d",
+          "group": "chararts-large",
+          "members": {
+            "a.large.png": {
+              "bytes": 69,
+              "sha256": "fce481932ea5d07a91c7991c09fdadb4bf78f9b4cc8f927188384231f9d12679",
+              "group": "chararts-large"
+            }
+          }
+        },
+        {
+          "file": "images2-baseline-26-04-01-chararts-large-00001.zip",
+          "bytes": 203,
+          "sha256": "a98b9fb401e7e78452812547759fe3f0754cee2481c5f0ea58bf0e55f0c59c49",
+          "group": "chararts-large",
+          "members": {
+            "c.large.png": {
+              "bytes": 69,
+              "sha256": "c9b27a65dd17d8157b51d36d36b54305ec13cea89152ba0e24b5465eb3cbb0c7",
+              "group": "chararts-large"
+            }
+          }
+        },
+        {
+          "file": "images2-baseline-26-04-01-chararts-original-00000.zip",
+          "bytes": 210,
+          "sha256": "69357fbae060852eb66b92abb2068e4330857ebcdcc8cbe6ba8f520839094779",
+          "group": "chararts-original",
+          "members": {
+            "a.original.png": {
+              "bytes": 69,
+              "sha256": "fce481932ea5d07a91c7991c09fdadb4bf78f9b4cc8f927188384231f9d12679",
+              "group": "chararts-original"
+            }
+          }
+        },
+        {
+          "file": "images2-baseline-26-04-01-chararts-original-00001.zip",
+          "bytes": 209,
+          "sha256": "2939941aa233bddb83b4d73450dc06cd32ddf1874020a38db5499039ce915667",
+          "group": "chararts-original",
+          "members": {
+            "c.original.png": {
+              "bytes": 69,
+              "sha256": "c9b27a65dd17d8157b51d36d36b54305ec13cea89152ba0e24b5465eb3cbb0c7",
+              "group": "chararts-original"
+            }
+          }
+        },
+        {
+          "file": "images2-baseline-26-04-01-chararts-preview-00000.zip",
+          "bytes": 208,
+          "sha256": "549f16477b47524e13de9fbfb60f930de932642ff6a8434b4e458223de362340",
+          "group": "chararts-preview",
+          "members": {
+            "a.preview.png": {
+              "bytes": 69,
+              "sha256": "fce481932ea5d07a91c7991c09fdadb4bf78f9b4cc8f927188384231f9d12679",
+              "group": "chararts-preview"
+            }
+          }
+        },
+        {
+          "file": "images2-baseline-26-04-01-chararts-preview-00001.zip",
+          "bytes": 207,
+          "sha256": "00f4f95dc0c6a9c94030305c2fd669d512380e6a88a59b4e07e17fde73b8e2af",
+          "group": "chararts-preview",
+          "members": {
+            "c.preview.png": {
+              "bytes": 69,
+              "sha256": "c9b27a65dd17d8157b51d36d36b54305ec13cea89152ba0e24b5465eb3cbb0c7",
+              "group": "chararts-preview"
+            }
+          }
+        }
+      ],
+      "deltaParts": [],
+      "previousVersion": "26-04-01"
+    }
+  },
+  "assets": {
+    "images2-baseline-26-01-01/images2-baseline-26-01-01-chararts-preview-00000.zip": "UEsDBC0AAAAIAAAAIQBRD9oC//////////8NABQAYS5wcmV2aWV3LnBuZwEAEABFAAAAAAAAAEAAAAAAAAAA6wzwc+flkuJiYGDg9fRwCQLSjCDMwQQkJ5QH3wNSPJ4ujiEVc5J/nD/AwMDMyMhw8t+k90BxBk9XP5d1TglNAFBLAQItAy0AAAAIAAAAIQBRD9oCQAAAAEUAAAANAAAAAAAAAAAAAACkgQAAAABhLnByZXZpZXcucG5nUEsFBgAAAAABAAEAOwAAAH8AAAAAAA==",
+    "images2-baseline-26-01-01/images2-baseline-26-01-01-chararts-large-00000.zip": "UEsDBC0AAAAIAAAAIQBRD9oC//////////8LABQAYS5sYXJnZS5wbmcBABAARQAAAAAAAABAAAAAAAAAAOsM8HPn5ZLiYmBg4PX0cAkC0owgzMEEJCeUB98DUjyeLo4hFXOSf5w/wMDAzMjIcPLfpPdAcQZPVz+XdU4JTQBQSwECLQMtAAAACAAAACEAUQ/aAkAAAABFAAAACwAAAAAAAAAAAAAApIEAAAAAYS5sYXJnZS5wbmdQSwUGAAAAAAEAAQA5AAAAfQAAAAAA",
+    "images2-baseline-26-01-01/images2-baseline-26-01-01-chararts-original-00000.zip": "UEsDBC0AAAAIAAAAIQBRD9oC//////////8OABQAYS5vcmlnaW5hbC5wbmcBABAARQAAAAAAAABAAAAAAAAAAOsM8HPn5ZLiYmBg4PX0cAkC0owgzMEEJCeUB98DUjyeLo4hFXOSf5w/wMDAzMjIcPLfpPdAcQZPVz+XdU4JTQBQSwECLQMtAAAACAAAACEAUQ/aAkAAAABFAAAADgAAAAAAAAAAAAAApIEAAAAAYS5vcmlnaW5hbC5wbmdQSwUGAAAAAAEAAQA8AAAAgAAAAAAA",
+    "images2-baseline-26-01-01/images2-baseline-26-01-01-chararts-preview-00001.zip": "UEsDBC0AAAAIAAAAIQDr/bvt//////////8NABQAYi5wcmV2aWV3LnBuZwEAEABFAAAAAAAAAD8AAAAAAAAA6wzwc+flkuJiYGDg9fRwCQLSjCDMwQQkJ5QH3wNSPJ4ujiEVc5ITMhKAMiwMjQXfji8FijN4uvq5rHNKaAIAUEsBAi0DLQAAAAgAAAAhAOv9u+0/AAAARQAAAA0AAAAAAAAAAAAAAKSBAAAAAGIucHJldmlldy5wbmdQSwUGAAAAAAEAAQA7AAAAfgAAAAAA",
+    "images2-baseline-26-01-01/images2-baseline-26-01-01-chararts-large-00001.zip": "UEsDBC0AAAAIAAAAIQDr/bvt//////////8LABQAYi5sYXJnZS5wbmcBABAARQAAAAAAAAA/AAAAAAAAAOsM8HPn5ZLiYmBg4PX0cAkC0owgzMEEJCeUB98DUjyeLo4hFXOSEzISgDIsDI0F344vBYozeLr6uaxzSmgCAFBLAQItAy0AAAAIAAAAIQDr/bvtPwAAAEUAAAALAAAAAAAAAAAAAACkgQAAAABiLmxhcmdlLnBuZ1BLBQYAAAAAAQABADkAAAB8AAAAAAA=",
+    "images2-baseline-26-01-01/images2-baseline-26-01-01-chararts-original-00001.zip": "UEsDBC0AAAAIAAAAIQDr/bvt//////////8OABQAYi5vcmlnaW5hbC5wbmcBABAARQAAAAAAAAA/AAAAAAAAAOsM8HPn5ZLiYmBg4PX0cAkC0owgzMEEJCeUB98DUjyeLo4hFXOSEzISgDIsDI0F344vBYozeLr6uaxzSmgCAFBLAQItAy0AAAAIAAAAIQDr/bvtPwAAAEUAAAAOAAAAAAAAAAAAAACkgQAAAABiLm9yaWdpbmFsLnBuZ1BLBQYAAAAAAQABADwAAAB/AAAAAAA=",
+    "images2-26-02-01/images2-delta-26-02-01-chararts-preview-00001.zip": "UEsDBC0AAAAIAAAAIQDr/bvt//////////8NABQAYy5wcmV2aWV3LnBuZwEAEABFAAAAAAAAAD8AAAAAAAAA6wzwc+flkuJiYGDg9fRwCQLSjCDMwQQkJ5QH3wNSPJ4ujiEVc5ITMhKAMiwMjQXfji8FijN4uvq5rHNKaAIAUEsBAi0DLQAAAAgAAAAhAOv9u+0/AAAARQAAAA0AAAAAAAAAAAAAAKSBAAAAAGMucHJldmlldy5wbmdQSwUGAAAAAAEAAQA7AAAAfgAAAAAA",
+    "images2-26-02-01/images2-delta-26-02-01-chararts-original-00000.zip": "UEsDBC0AAAAIAAAAIQBX0y8x//////////8OABQAYS5vcmlnaW5hbC5wbmcBABAARQAAAAAAAABAAAAAAAAAAOsM8HPn5ZLiYmBg4PX0cAkC0owgzMEEJCeUB98DUjyeLo4hFXOSExJ+8DMwMjMycHQeegMUZ/B09XNZ55TQBABQSwECLQMtAAAACAAAACEAV9MvMUAAAABFAAAADgAAAAAAAAAAAAAApIEAAAAAYS5vcmlnaW5hbC5wbmdQSwUGAAAAAAEAAQA8AAAAgAAAAAAA",
+    "images2-26-02-01/images2-delta-26-02-01-chararts-large-00000.zip": "UEsDBC0AAAAIAAAAIQBX0y8x//////////8LABQAYS5sYXJnZS5wbmcBABAARQAAAAAAAABAAAAAAAAAAOsM8HPn5ZLiYmBg4PX0cAkC0owgzMEEJCeUB98DUjyeLo4hFXOSExJ+8DMwMjMycHQeegMUZ/B09XNZ55TQBABQSwECLQMtAAAACAAAACEAV9MvMUAAAABFAAAACwAAAAAAAAAAAAAApIEAAAAAYS5sYXJnZS5wbmdQSwUGAAAAAAEAAQA5AAAAfQAAAAAA",
+    "images2-26-02-01/images2-delta-26-02-01-chararts-preview-00000.zip": "UEsDBC0AAAAIAAAAIQBX0y8x//////////8NABQAYS5wcmV2aWV3LnBuZwEAEABFAAAAAAAAAEAAAAAAAAAA6wzwc+flkuJiYGDg9fRwCQLSjCDMwQQkJ5QH3wNSPJ4ujiEVc5ITEn7wMzAyMzJwdB56AxRn8HT1c1nnlNAEAFBLAQItAy0AAAAIAAAAIQBX0y8xQAAAAEUAAAANAAAAAAAAAAAAAACkgQAAAABhLnByZXZpZXcucG5nUEsFBgAAAAABAAEAOwAAAH8AAAAAAA==",
+    "images2-26-02-01/images2-delta-26-02-01-chararts-original-00001.zip": "UEsDBC0AAAAIAAAAIQDr/bvt//////////8OABQAYy5vcmlnaW5hbC5wbmcBABAARQAAAAAAAAA/AAAAAAAAAOsM8HPn5ZLiYmBg4PX0cAkC0owgzMEEJCeUB98DUjyeLo4hFXOSEzISgDIsDI0F344vBYozeLr6uaxzSmgCAFBLAQItAy0AAAAIAAAAIQDr/bvtPwAAAEUAAAAOAAAAAAAAAAAAAACkgQAAAABjLm9yaWdpbmFsLnBuZ1BLBQYAAAAAAQABADwAAAB/AAAAAAA=",
+    "images2-26-02-01/images2-delta-26-02-01-chararts-large-00001.zip": "UEsDBC0AAAAIAAAAIQDr/bvt//////////8LABQAYy5sYXJnZS5wbmcBABAARQAAAAAAAAA/AAAAAAAAAOsM8HPn5ZLiYmBg4PX0cAkC0owgzMEEJCeUB98DUjyeLo4hFXOSEzISgDIsDI0F344vBYozeLr6uaxzSmgCAFBLAQItAy0AAAAIAAAAIQDr/bvtPwAAAEUAAAALAAAAAAAAAAAAAACkgQAAAABjLmxhcmdlLnBuZ1BLBQYAAAAAAQABADkAAAB8AAAAAAA=",
+    "images2-baseline-26-04-01/images2-baseline-26-04-01-chararts-original-00000.zip": "UEsDBC0AAAAIAAAAIQBX0y8x//////////8OABQAYS5vcmlnaW5hbC5wbmcBABAARQAAAAAAAABAAAAAAAAAAOsM8HPn5ZLiYmBg4PX0cAkC0owgzMEEJCeUB98DUjyeLo4hFXOSExJ+8DMwMjMycHQeegMUZ/B09XNZ55TQBABQSwECLQMtAAAACAAAACEAV9MvMUAAAABFAAAADgAAAAAAAAAAAAAApIEAAAAAYS5vcmlnaW5hbC5wbmdQSwUGAAAAAAEAAQA8AAAAgAAAAAAA",
+    "images2-baseline-26-04-01/images2-baseline-26-04-01-chararts-large-00000.zip": "UEsDBC0AAAAIAAAAIQBX0y8x//////////8LABQAYS5sYXJnZS5wbmcBABAARQAAAAAAAABAAAAAAAAAAOsM8HPn5ZLiYmBg4PX0cAkC0owgzMEEJCeUB98DUjyeLo4hFXOSExJ+8DMwMjMycHQeegMUZ/B09XNZ55TQBABQSwECLQMtAAAACAAAACEAV9MvMUAAAABFAAAACwAAAAAAAAAAAAAApIEAAAAAYS5sYXJnZS5wbmdQSwUGAAAAAAEAAQA5AAAAfQAAAAAA",
+    "images2-baseline-26-04-01/images2-baseline-26-04-01-chararts-preview-00000.zip": "UEsDBC0AAAAIAAAAIQBX0y8x//////////8NABQAYS5wcmV2aWV3LnBuZwEAEABFAAAAAAAAAEAAAAAAAAAA6wzwc+flkuJiYGDg9fRwCQLSjCDMwQQkJ5QH3wNSPJ4ujiEVc5ITEn7wMzAyMzJwdB56AxRn8HT1c1nnlNAEAFBLAQItAy0AAAAIAAAAIQBX0y8xQAAAAEUAAAANAAAAAAAAAAAAAACkgQAAAABhLnByZXZpZXcucG5nUEsFBgAAAAABAAEAOwAAAH8AAAAAAA==",
+    "images2-baseline-26-04-01/images2-baseline-26-04-01-chararts-large-00001.zip": "UEsDBC0AAAAIAAAAIQDr/bvt//////////8LABQAYy5sYXJnZS5wbmcBABAARQAAAAAAAAA/AAAAAAAAAOsM8HPn5ZLiYmBg4PX0cAkC0owgzMEEJCeUB98DUjyeLo4hFXOSEzISgDIsDI0F344vBYozeLr6uaxzSmgCAFBLAQItAy0AAAAIAAAAIQDr/bvtPwAAAEUAAAALAAAAAAAAAAAAAACkgQAAAABjLmxhcmdlLnBuZ1BLBQYAAAAAAQABADkAAAB8AAAAAAA=",
+    "images2-baseline-26-04-01/images2-baseline-26-04-01-chararts-original-00001.zip": "UEsDBC0AAAAIAAAAIQDr/bvt//////////8OABQAYy5vcmlnaW5hbC5wbmcBABAARQAAAAAAAAA/AAAAAAAAAOsM8HPn5ZLiYmBg4PX0cAkC0owgzMEEJCeUB98DUjyeLo4hFXOSEzISgDIsDI0F344vBYozeLr6uaxzSmgCAFBLAQItAy0AAAAIAAAAIQDr/bvtPwAAAEUAAAAOAAAAAAAAAAAAAACkgQAAAABjLm9yaWdpbmFsLnBuZ1BLBQYAAAAAAQABADwAAAB/AAAAAAA=",
+    "images2-baseline-26-04-01/images2-baseline-26-04-01-chararts-preview-00001.zip": "UEsDBC0AAAAIAAAAIQDr/bvt//////////8NABQAYy5wcmV2aWV3LnBuZwEAEABFAAAAAAAAAD8AAAAAAAAA6wzwc+flkuJiYGDg9fRwCQLSjCDMwQQkJ5QH3wNSPJ4ujiEVc5ITMhKAMiwMjQXfji8FijN4uvq5rHNKaAIAUEsBAi0DLQAAAAgAAAAhAOv9u+0/AAAARQAAAA0AAAAAAAAAAAAAAKSBAAAAAGMucHJldmlldy5wbmdQSwUGAAAAAAEAAQA7AAAAfgAAAAAA"
+  }
+}
