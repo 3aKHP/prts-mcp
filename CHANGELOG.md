@@ -8,6 +8,10 @@ The original per-implementation changelogs at the 2.8.1 baseline remain availabl
 
 ## [Unreleased]
 
+### Planned migration
+
+- The 3.2 development cycle prepares SQLite as the default backend and v2 local-artwork synchronization. Production images continue to use the existing v1 baseline and ordinary deltas. The incompatible v2 switch and re-baseline are planned for the 2027 Spring Festival window, subject to signing and supported-client readiness. At activation, v1 image updates will stop and existing packages will remain available. Local-image deployments will need a compatible 3.x or LTS/2.8 release; the exact minimum versions and activation date will be announced before the switch. Wiki image mode is unaffected.
+
 ## [3.1.3] - 2026-10-29
 
 ### Added
