@@ -113,6 +113,30 @@ pub(super) fn activation_signature(config: &RuntimeConfig) -> String {
     )
 }
 
+/// Recheck ownership of every local fallback input, including cached legacy story.
+pub(super) fn verify_fallback(config: &RuntimeConfig, view: &DataView) -> Result<(), String> {
+    let bundled = |path: &Path| {
+        config.bundle_root.as_ref().is_some_and(|root| {
+            path.starts_with(root) || root.canonicalize().is_ok_and(|root| path.starts_with(root))
+        })
+    };
+    for (path, root) in [
+        (view.excel_root.as_deref(), config.gamedata_path.as_path()),
+        (view.levels_root.as_deref(), config.levels_path.as_path()),
+    ] {
+        if path.is_some_and(|path| !bundled(path)) {
+            crate::sync::source_guard::verify(root, &config.data_source)?;
+        }
+    }
+    if let Some(path) = view.story_zip.as_deref().filter(|path| !bundled(path)) {
+        crate::sync::source_guard::verify(
+            path.parent().unwrap_or(Path::new(".")),
+            &config.data_source,
+        )?;
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -256,28 +280,4 @@ mod tests {
         assert_eq!(state.snapshot().story_zip.as_deref(), Some(zip.as_path()));
         let _ = std::fs::remove_dir_all(&root);
     }
-}
-
-/// Recheck ownership of every local fallback input, including cached legacy story.
-pub(super) fn verify_fallback(config: &RuntimeConfig, view: &DataView) -> Result<(), String> {
-    let bundled = |path: &Path| {
-        config.bundle_root.as_ref().is_some_and(|root| {
-            path.starts_with(root) || root.canonicalize().is_ok_and(|root| path.starts_with(root))
-        })
-    };
-    for (path, root) in [
-        (view.excel_root.as_deref(), config.gamedata_path.as_path()),
-        (view.levels_root.as_deref(), config.levels_path.as_path()),
-    ] {
-        if path.is_some_and(|path| !bundled(path)) {
-            crate::sync::source_guard::verify(root, &config.data_source)?;
-        }
-    }
-    if let Some(path) = view.story_zip.as_deref().filter(|path| !bundled(path)) {
-        crate::sync::source_guard::verify(
-            path.parent().unwrap_or(Path::new(".")),
-            &config.data_source,
-        )?;
-    }
-    Ok(())
 }
