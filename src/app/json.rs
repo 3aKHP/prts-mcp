@@ -25,14 +25,26 @@ fn resolve_view_with_legacy_story(config: &RuntimeConfig, legacy_story: &Path) -
         .map(|(excel, _)| excel)
         .unwrap_or_else(|| activated_root(&config.gamedata_path));
     let excel_root = excel_path_of(&excel_active);
-    let excel_root = crate::config::files_complete(&excel_root).then_some(excel_root);
+    let excel_root =
+        (crate::sync::source_guard::verify(&config.gamedata_path, &config.data_source).is_ok()
+            && crate::config::files_complete(&excel_root))
+        .then_some(excel_root);
 
     let levels_active = pair
         .map(|(_, levels)| levels)
         .unwrap_or_else(|| activated_root(&config.levels_path));
-    let levels_root = crate::config::levels_complete(&levels_active).then_some(levels_active);
+    let levels_root = (crate::sync::source_guard::verify(&config.levels_path, &config.data_source)
+        .is_ok()
+        && crate::config::levels_complete(&levels_active))
+    .then_some(levels_active);
 
-    let story_zip = story_archive(&config.storyjson_zip).or_else(|| {
+    let story_zip = crate::sync::source_guard::verify(
+        config.storyjson_zip.parent().unwrap_or(Path::new(".")),
+        &config.data_source,
+    )
+    .ok()
+    .and_then(|_| story_archive(&config.storyjson_zip))
+    .or_else(|| {
         if !config.data_source.is_default() {
             return None;
         }

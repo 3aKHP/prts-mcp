@@ -198,7 +198,14 @@ async fn debug_metrics(State(shared): State<Arc<Shared>>, headers: HeaderMap) ->
     }
     let observations = shared.sessions.observations().await;
     let idle_timeout = shared.sessions.idle_timeout_ms();
-    let snapshot = metrics.snapshot(crate::SERVER_VERSION, idle_timeout, &observations);
+    let mut snapshot = metrics.snapshot(crate::SERVER_VERSION, idle_timeout, &observations);
+    let view = shared.app.snapshot();
+    let config = shared.app.config();
+    snapshot["data_backend"] = json!({
+        "preference": if config.data_backend == crate::config::DataBackend::Sqlite { "sqlite" } else { "json" },
+        "effective": if view.database.is_some() { "sqlite" } else if config.allow_json_fallback || config.data_backend == crate::config::DataBackend::Json { "json" } else { "unavailable" },
+        "fallback": config.allow_json_fallback && view.database.is_none(),
+    });
     json_response(StatusCode::OK, snapshot)
 }
 
