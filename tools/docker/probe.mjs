@@ -144,6 +144,8 @@ try {
  await stop(`${prefix}-sqlite`);
  const sqliteBefore=payloadHashes(sqliteVol);
  const sqliteRecovery=await http(`${prefix}-sqlite-offline`,sqliteVol,{env:debugEnv});
+ const recoveredBackend=await (await fetch(sqliteRecovery.origin+'/debug/metrics',{headers:{Authorization:'Bearer sqlite-probe-token'}})).json();
+ assert.equal(recoveredBackend.data_backend.effective,'sqlite');assert.equal(recoveredBackend.data_backend.fallback,false);
  assert.match(JSON.stringify(await sqliteRecovery.call('get_operator_basic_info',{name:'阿米娅'})),/阿米娅/);
  await stop(`${prefix}-sqlite-offline`);assert.deepEqual(payloadHashes(sqliteVol),sqliteBefore);
  checks.push({case:'unconfigured backend synchronizes SQLite, reports effective SQLite, and restarts offline with the validated DB'});
