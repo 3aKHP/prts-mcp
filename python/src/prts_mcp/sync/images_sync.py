@@ -243,11 +243,22 @@ def _sync_images_locked(
     if releases is None:
         return _offline_or_no_data(image_dir, error="Network unavailable")
 
-    delta_release = latest_release_by_prefix(
-        releases,
-        _DELTA_PREFIX,
-        exclude_prefix=_BASELINE_PREFIX,
-    )
+    candidates = [r for r in releases if not r.get("draft") and not r.get("prerelease")]
+    v2 = max((r for r in candidates if str(r.get("tag_name", "")).startswith("images2-") and not str(r.get("tag_name", "")).startswith("images2-baseline-")), key=lambda r: r["tag_name"], default=None)
+    v1 = max((r for r in candidates if str(r.get("tag_name", "")).startswith(_DELTA_PREFIX) and not str(r.get("tag_name", "")).startswith(_BASELINE_PREFIX)), key=lambda r: r["tag_name"], default=None)
+    active_v2 = (load_meta(image_dir) or {}).get("schemaVersion") == "akdp-images/v2"
+    if v2 and (active_v2 or not v1 or v2["tag_name"][8:] >= v1["tag_name"][7:]):
+        try:
+            from prts_mcp.sync.images_v2 import sync_v2
+            version, changed = sync_v2(image_dir, v2["tag_name"], shard_keys,
+                f"https://github.com/{IMAGES_REPO_OWNER}/{IMAGES_REPO}/releases/download", _download_small)
+            return SyncResult(spec, "updated" if changed else "up_to_date", version, None)
+        except Exception as exc:
+            return _offline_or_no_data(image_dir, error=str(exc))
+    if active_v2:
+        return _offline_or_no_data(image_dir, error="No v2 release available; retaining active v2 generation")
+
+    delta_release = v1
     if delta_release is None:
         return _offline_or_no_data(image_dir, error="No images delta release found")
 

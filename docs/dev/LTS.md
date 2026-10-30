@@ -7,6 +7,8 @@ PRTS-MCP maintains two legacy lines while the product migrates to Rust: `lts/1.7
 | `lts/1.7` | 1.7.0 | 32 | 2027-07-02 |
 | `lts/2.8` | 2.8.1 (`e0ba36096cdd46640166b0a5db02902fa9a6a24c`) | 24 | 2027-07-02 |
 
+The next 2.8 maintenance patch prepares the Python and TypeScript readers for AKDP v2 multipart image releases. It retains v1 consumption and rebuilds selected baseline/delta chains using the existing legacy storage path. Production v2 activation and patch publication are separate milestones; unpatched older clients do not gain v2 support automatically.
+
 ## Scope
 
 Allowed in either LTS line:

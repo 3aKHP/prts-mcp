@@ -1,3 +1,4 @@
+import { parseV2, V2_SCHEMA } from "./imagesV2.js";
 /**
  * Image artwork index schema, data loading and label construction.
  * Mirrors python/src/prts_mcp/data/images.py.
@@ -84,7 +85,8 @@ function parseVariant(raw: unknown): VariantMeta | null {
 export function parseIndex(data: unknown): ImagesIndex | null {
   if (typeof data !== "object" || data === null) return null;
   const root = data as Record<string, unknown>;
-  if (root["schemaVersion"] !== SCHEMA_VERSION) return null;
+  if (root["schemaVersion"] === V2_SCHEMA && !parseV2(data)) return null;
+  if (![SCHEMA_VERSION, V2_SCHEMA].includes(String(root["schemaVersion"]))) return null;
 
   const artworks: Record<string, ArtworkEntry> = {};
   const rawArtworks = root["artworks"];
@@ -118,7 +120,7 @@ export function parseIndex(data: unknown): ImagesIndex | null {
   }
 
   return {
-    schemaVersion: SCHEMA_VERSION,
+    schemaVersion: String(root["schemaVersion"]),
     baselineVersion:
       typeof root["baselineVersion"] === "string" ? root["baselineVersion"] : "",
     currentVersion:

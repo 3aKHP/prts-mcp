@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project follows the versioning convention documented in [`docs/dev/VERSIONING.md`](https://github.com/3aKHP/prts-mcp/blob/main/docs/dev/VERSIONING.md).
 
+## [Unreleased]
+
+### Fixed
+
+- Prepare AKDP v2 image compatibility: read multipart baselines and deltas while retaining v1 support. Select releases by data version, prefer v2 on ties, validate archives and PNGs before activation, and retain the active generation on failure. Existing local-image volumes and both original-image selections remain supported. Production protocol activation and the maintenance release are separate steps; LTS EOL remains 2027-07-02.
+
 ## [2.8.2] - 2026-10-22
 
 ### Security

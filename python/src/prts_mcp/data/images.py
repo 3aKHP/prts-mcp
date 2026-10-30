@@ -88,7 +88,10 @@ def parse_index(data: Mapping[str, Any]) -> ImagesIndex | None:
     The schema is frozen at ``akdp-images/v1``; an unfamiliar schemaVersion
     is rejected so a future incompatible index does not silently misparse.
     """
-    if data.get("schemaVersion") != SCHEMA_VERSION:
+    from prts_mcp.data.images_v2 import SCHEMA as V2, validate
+    if data.get("schemaVersion") == V2 and not validate(data):
+        return None
+    if data.get("schemaVersion") not in (SCHEMA_VERSION, V2):
         _logger.warning(
             "images index schemaVersion mismatch: expected %r, got %r",
             SCHEMA_VERSION,
@@ -122,7 +125,7 @@ def parse_index(data: Mapping[str, Any]) -> ImagesIndex | None:
         else {}
     )
     return ImagesIndex(
-        schema_version=SCHEMA_VERSION,
+        schema_version=data["schemaVersion"],
         baseline_version=str(data.get("baselineVersion", "")),
         current_version=str(data.get("currentVersion", "")),
         shards=shards,
