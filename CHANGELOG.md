@@ -6,6 +6,8 @@ This file records user-visible changes across PRTS-MCP implementations: Python a
 
 The original per-implementation changelogs at the 2.8.1 baseline remain available on the [`ts/v2.8.1` tag](https://github.com/3aKHP/prts-mcp/tree/ts/v2.8.1) ([Python](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/python/CHANGELOG.md) · [TypeScript](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/ts/CHANGELOG.md)), and the 1.7.1/1.7.2 maintenance records come from the published [`python/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/python/v1.7.2/python/CHANGELOG.md) and [`ts/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/ts/v1.7.2/ts/CHANGELOG.md) tags.
 
+## [Unreleased]
+
 ## [3.2.0] - 2026-10-31
 
 **Upgrade notes**: SQLite is now the default game-data backend. Deployments that set none of `PRTS_DATA_BACKEND`, `PRTS_DATA_DB` or custom JSON paths download an additional ~130 MiB `zh_CN.sqlite.gz` and gain a `database/` directory under the data root. One DB generation is ~320 MiB and grows with the data; after the first update the previous generation is kept as well (~630 MiB), and an update needs extra space for the download and decompression, peaking at ~1.1 GiB; JSON fallback keeps serving until the DB is ready. Docker deployments that mount the whole `/data` volume need no change. Deployments that keep the 2.x split-volume mounts, or run `--read-only` with `--tmpfs /data`, should add a volume for `/data/database` or set `PRTS_DATA_BACKEND=json` to keep the previous behaviour. See the [deployment guide](https://github.com/3aKHP/prts-mcp/blob/main/docs/admin/deployment.md) and [data and sync](https://github.com/3aKHP/prts-mcp/blob/main/docs/admin/data-and-sync.md).

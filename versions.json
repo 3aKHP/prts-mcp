@@ -1,7 +1,7 @@
 {
   "$doc": "版本号唯一声明。发版时的更新次序见 docs/dev/VERSIONING.md；tools/ci/versions.mjs 校验 occurrences 登记的每一处与本文件一致（锚点无匹配或捕获值不符均失败）。",
   "stable": "3.2.0",
-  "develop": "3.2.0-dev.0",
+  "develop": "3.2.1-dev.0",
   "lts": {
     "1.7": "1.7.3",
     "2.8": "2.8.2"
