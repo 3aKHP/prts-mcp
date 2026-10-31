@@ -433,3 +433,82 @@ async fn unrecoverable_reused_file_falls_back_to_baseline_parts() {
     assert_eq!(std::fs::read(generation.join("a.png")).unwrap(), b"changed");
     assert_eq!(std::fs::read(generation.join("b.png")).unwrap(), data);
 }
+
+#[tokio::test]
+async fn delta_member_that_misses_the_target_digest_keeps_previous_generation() {
+    let root = Temp::new();
+    let mut world = World::new();
+    let base = world.add("26-01-01", None, b"first");
+    sync_images(&root.0, &world, opts()).await;
+    let before = active_generation(&root.0).unwrap();
+    let mut next = world.add("26-01-02", Some(&base), b"second");
+    next["artworks"]["a"]["large"]["sha256"] = json!(hash(b"other"));
+    world.files.insert(
+        "images2-26-01-02/index.json".into(),
+        serde_json::to_vec(&next).unwrap(),
+    );
+    let result = sync_images(&root.0, &world, opts()).await;
+    assert_eq!(result.status, SyncStatus::OfflineFallback);
+    assert!(result
+        .error
+        .as_deref()
+        .is_some_and(|error| error.contains("target mismatch: a.png")));
+    assert_eq!(active_generation(&root.0).unwrap(), before);
+    assert_eq!(std::fs::read(before.join("a.png")).unwrap(), b"first");
+}
+
+#[tokio::test]
+async fn mid_chain_fallback_resumes_walk_without_duplicating_deltas() {
+    let root = Temp::new();
+    let mut world = World::new();
+    let mut base = world.add("26-01-01", None, b"first");
+    let data = b"stable";
+    let archive = zip("b.png", data);
+    let artwork = json!({"shard":"chararts","large":{"file":"b.png","w":1,"h":1,"bytes":data.len(),"sha256":hash(data)}});
+    base["artworks"]["b"] = artwork.clone();
+    base["baselineParts"].as_array_mut().unwrap().push(json!({"file":"b.zip","bytes":archive.len(),"sha256":hash(&archive),"group":"chararts-large","members":{"b.png":{"bytes":data.len(),"sha256":hash(data),"group":"chararts-large"}}}));
+    world.files.insert(
+        "images2-26-01-01/index.json".into(),
+        serde_json::to_vec(&base).unwrap(),
+    );
+    world
+        .files
+        .insert("images2-baseline-26-01-01/b.zip".into(), archive);
+    let mut middle = world.add("26-01-02", Some(&base), b"second");
+    middle["artworks"]["b"] = artwork.clone();
+    world.files.insert(
+        "images2-26-01-02/index.json".into(),
+        serde_json::to_vec(&middle).unwrap(),
+    );
+    let result = sync_images(&root.0, &world, opts()).await;
+    assert_eq!(result.status, SyncStatus::Updated, "{:?}", result.error);
+    std::fs::write(
+        active_generation(&root.0).unwrap().join("b.png"),
+        b"corrupt",
+    )
+    .unwrap();
+    let mut latest = world.add("26-01-03", Some(&middle), b"third");
+    latest["artworks"]["b"] = artwork;
+    world.files.insert(
+        "images2-26-01-03/index.json".into(),
+        serde_json::to_vec(&latest).unwrap(),
+    );
+    world.downloads.lock().unwrap().clear();
+    let result = sync_images(&root.0, &world, opts()).await;
+    assert_eq!(result.status, SyncStatus::Updated, "{:?}", result.error);
+    assert_eq!(
+        *world.downloads.lock().unwrap(),
+        vec![
+            "images2-26-01-03/index.json",
+            "images2-26-01-02/index.json",
+            "images2-26-01-01/index.json",
+            "images2-baseline-26-01-01/26-01-01.zip",
+            "images2-baseline-26-01-01/b.zip",
+            "images2-26-01-02/26-01-02.zip",
+            "images2-26-01-03/26-01-03.zip"
+        ]
+    );
+    let generation = active_generation(&root.0).unwrap();
+    assert_eq!(std::fs::read(generation.join("a.png")).unwrap(), b"third");
+    assert_eq!(std::fs::read(generation.join("b.png")).unwrap(), data);
+}
