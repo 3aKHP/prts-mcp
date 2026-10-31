@@ -41,7 +41,7 @@ jobs:
       - name: Version consistency with versions.json
         if: steps.policy.outputs.run == 'true'
         run: node tools/ci/versions.mjs
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         if: steps.policy.outputs.run == 'true'
         with:
           go-version: '1.25.x'
@@ -114,7 +114,7 @@ jobs:
           cargo package --locked
       - name: Retain scoped validation evidence
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: rust-validation-evidence
           path: artifacts/

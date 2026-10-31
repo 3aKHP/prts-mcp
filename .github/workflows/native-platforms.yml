@@ -95,7 +95,7 @@ jobs:
         run: node tools/docker/probe.mjs ${{ matrix.platform }}
       - name: Retain loadable Docker image and native lifecycle evidence
         if: always() && runner.os == 'Linux'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: docker-${{ matrix.platform }}
           path: |
@@ -107,7 +107,7 @@ jobs:
           retention-days: 14
       - name: Retain npm tarballs and installation evidence (no publication)
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: npm-${{ matrix.platform }}
           path: |
@@ -120,7 +120,7 @@ jobs:
           retention-days: 14
       - name: Retain installable archive and evidence (no publication)
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: native-${{ matrix.platform }}
           path: |
@@ -142,7 +142,7 @@ jobs:
           node tools/release/probe-native.mjs ${{ matrix.platform }}
       - name: Retain native candidate and data acceptance (no publication)
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: candidate-${{ matrix.platform }}
           path: |
@@ -171,7 +171,7 @@ jobs:
           path: artifacts/incoming
       - name: Verify all native candidates, npm packages and Docker images
         run: node tools/release/collect.mjs artifacts/incoming
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: rust-release-candidate
           path: artifacts/release/

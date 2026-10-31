@@ -57,7 +57,7 @@ jobs:
             node tools/npm/install-benchmark.mjs artifacts/npm-diagnostics
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: npm-diagnostics-${{ matrix.runner }}
