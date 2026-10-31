@@ -30,8 +30,40 @@ jobs:
   native:
     needs: version
     uses: ./.github/workflows/native-platforms.yml
+  cargo-source:
+    needs: version
+    uses: ./.github/workflows/cargo-source.yml
+  publish-crates:
+    needs: [native, cargo-source]
+    if: github.ref_type == 'tag' && vars.RUST_CRATES_PUBLISH_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    environment: rust-release
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Install the candidate Cargo toolchain
+        run: rustup show
+      - uses: actions/download-artifact@v8
+        with:
+          name: cargo-source-candidate
+          path: artifacts/cargo
+      - uses: rust-lang/crates-io-auth-action@v1
+        id: auth
+      - name: Publish and verify the exact source candidate
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+          RUST_CRATES_PUBLISH_ENABLED: 'true'
+          RUST_STABLE_RELEASE_ENABLED: ${{ vars.RUST_STABLE_RELEASE_ENABLED }}
+        run: node tools/cargo/publish.mjs
   publish-npm:
-    needs: native
+    needs: [native, cargo-source]
     if: github.ref_type == 'tag' && vars.RUST_NPM_PUBLISH_ENABLED == 'true'
     runs-on: ubuntu-24.04
     environment: rust-release
@@ -61,10 +93,12 @@ jobs:
           node tools/release/check-version.mjs --release
           node tools/release/publish-npm.mjs
   publish-non-npm:
-    needs: [native, publish-npm]
+    needs: [native, cargo-source, publish-npm, publish-crates]
     if: >-
       always() && github.ref_type == 'tag' && vars.RUST_NON_NPM_PUBLISH_ENABLED == 'true' &&
       needs.native.result == 'success' &&
+      needs.cargo-source.result == 'success' &&
+      (needs.publish-crates.result == 'success' || needs.publish-crates.result == 'skipped') &&
       (needs.publish-npm.result == 'success' || needs.publish-npm.result == 'skipped')
     runs-on: ubuntu-24.04
     environment: rust-release

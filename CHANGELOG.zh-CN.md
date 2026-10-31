@@ -8,6 +8,10 @@
 
 ## [Unreleased]
 
+### 新增
+
+- 补齐 crates.io 源码发行准备：源码包仅包含五个公开二进制入口，验证从工作树外的 Cargo 归档安装，并增加带发布条件与注册表摘要核对的发布流程。首次注册与 Trusted Publishing 启用仍需在发版时完成。源码安装需要 Rust 1.89 或更新版本及 C 编译器，不含备用游戏数据。
+
 ## [3.2.0] - 2026-10-31
 
 **升级注意事项**：游戏数据默认后端改为 SQLite。未设置 `PRTS_DATA_BACKEND`、`PRTS_DATA_DB` 与自定义 JSON 路径的部署会额外下载约 130 MiB 的 `zh_CN.sqlite.gz`，并在数据根目录下新增 `database/`：单代 DB 约 320 MiB 且随数据版本增长，首次更新后同时保留上一代（约 630 MiB），更新期间另需下载与解压暂存，峰值约 1.1 GiB；DB 就绪前继续使用 JSON 备用数据。整卷挂载 `/data` 的 Docker 部署无须调整。沿用 2.x 分卷挂载或 `--read-only` 加 `--tmpfs /data` 的部署，需要为 `/data/database` 增加卷，或设置 `PRTS_DATA_BACKEND=json` 保持原行为。详见[部署指南](https://github.com/3aKHP/prts-mcp/blob/main/docs/admin/deployment.md)与[数据同步说明](https://github.com/3aKHP/prts-mcp/blob/main/docs/admin/data-and-sync.md)。

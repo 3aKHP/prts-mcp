@@ -137,7 +137,7 @@ New pipeline releases include a `manifest.json` (`prts-mcp-data/v1` contract) wi
 
 `GITHUB_MIRRORS` accepts comma-separated fallback URL prefixes for GitHub release downloads (surrounding whitespace and trailing slashes are normalized automatically). Standard proxy environment variables (`HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY`, `NO_PROXY`) are also respected; using a proxy or mirror never bypasses manifest or ZIP verification.
 
-Public Rust native archives, Docker images, and npm packages ship with a verified read-only fallback snapshot of game, level, and story data so offline queries work immediately even before the first sync completes. Once complete user data is present in the writable data directory or volume, user data takes precedence. Source builds rely on runtime auto-sync or explicit data paths (`GAMEDATA_PATH`, `STORYJSON_PATH`); crates.io publication is planned after 3.0.0 stable, and there is no Rust package on PyPI.
+Public Rust native archives, Docker images, and npm packages ship with a verified read-only fallback snapshot of game, level, and story data so offline queries work immediately even before the first sync completes. Once complete user data is present in the writable data directory or volume, user data takes precedence. Source builds rely on runtime auto-sync or explicit data paths (`GAMEDATA_PATH`, `STORYJSON_PATH`); crates.io publication is being prepared for 3.2.x, and there is no Rust package on PyPI.
 
 ### Protocol Compatibility & Migration Guides
 
@@ -283,7 +283,7 @@ docker run -d --name prts-mcp -p 127.0.0.1:3000:3000 -e PRTS_TRANSPORT=http -v p
 
 `GITHUB_MIRRORS` 支持配置逗号分隔的 GitHub 下载备用前缀（自动去除首尾空白与末尾斜杠）。HTTP 客户端同时支持标准代理环境变量（`HTTP_PROXY`、`HTTPS_PROXY`、`ALL_PROXY`、`NO_PROXY`）；使用镜像或代理不会跳过 manifest 与 ZIP 完整性校验。
 
-公开发布的 Rust 原生归档包、Docker 镜像与 npm 包均内置经过校验的只读备用数据（含游戏表、关卡与剧情），首次同步完成前或离线环境下可直接查询。一旦可写用户数据目录或数据卷中存在完整的用户数据，服务优先读取用户数据，且后台同步只写入用户目录，不会修改安装包内的备用数据。从源码构建或使用 Cargo 源码包时依赖启动同步或显式配置的数据路径；crates.io 计划在 3.0 正式版发布后上架，Rust 版不再通过 PyPI 发布。
+公开发布的 Rust 原生归档包、Docker 镜像与 npm 包均内置经过校验的只读备用数据（含游戏表、关卡与剧情），首次同步完成前或离线环境下可直接查询。一旦可写用户数据目录或数据卷中存在完整的用户数据，服务优先读取用户数据，且后台同步只写入用户目录，不会修改安装包内的备用数据。从源码构建或使用 Cargo 源码包时依赖启动同步或显式配置的数据路径；crates.io 正在为 3.2.x 准备发行，Rust 版尚未通过 PyPI 发布。
 
 ### 协议兼容性与版本迁移
 
