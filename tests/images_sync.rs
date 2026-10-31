@@ -223,6 +223,19 @@ fn build_world() -> (std::sync::Arc<World>, Value /*index*/) {
 
 #[async_trait]
 impl Transport for FakeTransport {
+    async fn download_file_limited(
+        &self,
+        url: &str,
+        dest: &Path,
+        timeout_ms: u64,
+        limit: u64,
+    ) -> Result<u64, TransportError> {
+        let _ = (url, dest, timeout_ms, limit);
+        Err(TransportError::Network(
+            "bounded transfer unsupported by fixture".into(),
+        ))
+    }
+
     async fn fetch_json(&self, url: &str, _timeout_ms: u64) -> Result<Value, TransportError> {
         if self.world.fail_all {
             return Err(TransportError::Network("offline".into()));
@@ -664,6 +677,19 @@ struct CustomSourceTransport {
 }
 #[async_trait]
 impl Transport for CustomSourceTransport {
+    async fn download_file_limited(
+        &self,
+        url: &str,
+        dest: &Path,
+        timeout_ms: u64,
+        limit: u64,
+    ) -> Result<u64, TransportError> {
+        let _ = (url, dest, timeout_ms, limit);
+        Err(TransportError::Network(
+            "bounded transfer unsupported by fixture".into(),
+        ))
+    }
+
     async fn fetch_json(&self, url: &str, timeout: u64) -> Result<Value, TransportError> {
         assert!(url.contains("/team/assets/"), "unexpected source: {url}");
         self.requests.lock().unwrap().push(url.into());

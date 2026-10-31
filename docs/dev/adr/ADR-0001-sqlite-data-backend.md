@@ -1,6 +1,6 @@
 # ADR-0001：3.1 引入实验性 SQLite 数据后端
 
-- 状态：Accepted
+- 状态：Accepted（3.2 阶段的落地语义见 [ADR-0018](ADR-0018-sqlite-default-with-json-fallback.md)）
 - 决策日期：2026-10-18
 - 关联：[Issue #263](https://github.com/3aKHP/prts-mcp/issues/263)、[CHANGELOG 3.1.0](../../../CHANGELOG.zh-CN.md)、[contracts/sqlite-schema-v1.sql](../../../contracts/sqlite-schema-v1.sql)
 
@@ -31,8 +31,8 @@
 落地语义：
 
 - `PRTS_DATA_BACKEND=json|sqlite` 在启动时固定，非法值拒绝启动；`PRTS_DATA_DB` 指向预编译离线 DB 时等同选择 SQLite；与显式 JSON 冲突时报错。
-- 3.2 默认偏好 SQLite，只运行 SQLite 同步；无有效 DB 时明确使用只读 JSON 备用，DB 验收完成后新请求自动切换，进行中请求保留原快照。显式 SQLite 不回落 JSON，显式 JSON 不打开 DB。默认备用不启动 JSON 同步。
-- 发行包只内置同快照下较小的一种备用数据，目前为 JSON；显式离线 SQLite 需管理员预置 DB，在线模式仅下载 DB 的 gzip 制品。
+- 两个后端互斥：每个进程只读取、同步、缓存所选后端；SQLite 缺失时不静默回落 JSON，JSON 模式不打开 DB。
+- 发行包内置备用数据保持 JSON；离线使用 SQLite 需管理员预置 DB，在线模式仅下载 DB 的 gzip 制品。
 - 不自动转换旧数据卷，不删除另一后端的数据。
 - 上游 AKDP 契约从三个 ZIP 扩展为三个 ZIP 加 `zh_CN.sqlite.gz` 制品；DB schema 以 [contracts/sqlite-schema-v1.sql](../../../contracts/sqlite-schema-v1.sql) 为版本化契约。
 
@@ -56,6 +56,6 @@
 
 - 其他平台（Windows / macOS / ARM）与正式 npm 包、Docker 渠道的实机验收在决策时尚未完成。
 - AKDP 公开侧发布 DB 制品，需先交付已审查的数据编译器并固定编译器版本。
-- 3.2 默认值与备用切换规则见环境变量及数据同步说明；正式候选仍须核对单份备用数据的发行体积。
+- 3.2 默认值翻转须按版本政策履行醒目提醒与迁移说明，备用数据打包策略待生产试运行结果决定。
 
 公开记录：[CHANGELOG 3.1.0](../../../CHANGELOG.zh-CN.md)、[STATUS.zh-CN.md](../../../STATUS.zh-CN.md)、[ROADMAP.zh-CN.md](../../../ROADMAP.zh-CN.md)、[数据同步与存储管理](../../admin/data-and-sync.md)、[环境变量参考](../../admin/environment-variables.md)。

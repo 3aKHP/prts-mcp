@@ -16,6 +16,14 @@ where
     F: FnOnce() -> Fut,
     Fut: Future<Output = T>,
 {
+    with_images_lease(root, |_| run()).await
+}
+
+pub(super) async fn with_images_lease<T, F, Fut>(root: &Path, run: F) -> Result<T, SyncError>
+where
+    F: FnOnce(std::sync::Arc<std::fs::File>) -> Fut,
+    Fut: Future<Output = T>,
+{
     let lease = std::fs::OpenOptions::new()
         .read(true)
         .write(true)
@@ -32,6 +40,7 @@ where
             Err(error) => return Err(SyncError::Message(format!("image writer lease: {error}"))),
         }
     }
+    let lease = std::sync::Arc::new(lease);
     let lock = root.join(".images.lock");
     let marker = lock.join("kernel-owner");
     if lock.symlink_metadata().is_ok_and(|meta| meta.is_dir()) && marker.is_file() {
@@ -43,7 +52,7 @@ where
             if let Err(error) = std::fs::write(marker, b"prts-mcp-images-kernel-lease/v1") {
                 return Err(SyncError::from(error));
             }
-            Ok(run().await)
+            Ok(run(std::sync::Arc::clone(&lease)).await)
         })
         .await??;
     drop(lease);
