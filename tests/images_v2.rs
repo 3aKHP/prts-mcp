@@ -458,7 +458,7 @@ async fn delta_member_that_misses_the_target_digest_keeps_previous_generation() 
 }
 
 #[tokio::test]
-async fn mid_chain_fallback_resumes_walk_without_duplicating_deltas() {
+async fn mid_chain_fallback_resumes_walk_without_refetching() {
     let root = Temp::new();
     let mut world = World::new();
     let mut base = world.add("26-01-01", None, b"first");
