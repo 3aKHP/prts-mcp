@@ -114,7 +114,7 @@ Standard PR 及以上级别的改动采用**“远端 KHPilot Bot + 本地独立
 3. 若修复同样适用于 3.x Rust，另行基于 `develop` 创建 Rust 修复 PR。
 
 ### 路径 C：生产紧急修复 Hot-Fix（目标：`main`）
-仅用于修复 `main` 上已发布稳定版的阻断性生产回归：从 `main` 创建 `fix/vX.Y.Z-<topic>` → 最小修复与回归测试 → 更新 CHANGELOG → PR 合并至 `main` 并打补丁 tag → 同步/移植至 `lts/2.8` 与 `develop`（版本号衔接遵循 [`VERSIONING.md`](docs/dev/VERSIONING.md)）。
+仅用于修复 `main` 上已发布稳定版的阻断性生产回归或需立即发布的安全漏洞：从 `main` 创建 `fix/vX.Y.Z-<topic>` → 最小修复与回归测试 → 更新 CHANGELOG → PR 合并至 `main` 并打补丁 tag → 同步/移植至 `lts/2.8` 与 `develop`（版本号衔接遵循 [`VERSIONING.md`](docs/dev/VERSIONING.md)）。
 
 ### 路径 D：正式版发布（`release/vX.Y.Z` → `main` + 回灌 `develop`）
 1. 从 `develop` 创建 `release/vX.Y.Z` 分支，将 `Cargo.toml` 与 `Cargo.lock` 去掉 `-dev.0` 设为正式版本号，将中英文 `CHANGELOG` 的 `Unreleased` 改为带日期的正式版本段，并更新 `README.md`、`STATUS.*`、`ROADMAP.*`。
