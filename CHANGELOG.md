@@ -6,7 +6,7 @@ This file records user-visible changes across PRTS-MCP implementations: Python a
 
 The original per-implementation changelogs at the 2.8.1 baseline remain available on the [`ts/v2.8.1` tag](https://github.com/3aKHP/prts-mcp/tree/ts/v2.8.1) ([Python](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/python/CHANGELOG.md) · [TypeScript](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/ts/CHANGELOG.md)), and the 1.7.1/1.7.2 maintenance records come from the published [`python/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/python/v1.7.2/python/CHANGELOG.md) and [`ts/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/ts/v1.7.2/ts/CHANGELOG.md) tags.
 
-## [Unreleased]
+## [3.2.0] - 2026-10-31
 
 ### Added
 
@@ -21,7 +21,7 @@ The original per-implementation changelogs at the 2.8.1 baseline remain availabl
 
 ### Planned migration
 
-- The 3.2 development cycle prepares SQLite as the default backend and v2 local-artwork synchronization. Production images continue to use the existing v1 baseline and ordinary deltas. The incompatible v2 switch and re-baseline are planned for the 2027 Spring Festival window, subject to signing and supported-client readiness. At activation, v1 image updates will stop and existing packages will remain available. Local-image deployments will need a compatible 3.x or LTS/2.8 release; the exact minimum versions and activation date will be announced before the switch. Wiki image mode is unaffected.
+- 3.2 can consume v2 local artwork; production images continue to use the existing v1 baseline and ordinary deltas. The incompatible v2 switch and re-baseline are planned for the 2027 Spring Festival window, subject to signing and supported-client readiness. At activation, v1 image updates will stop and existing packages will remain available. Local-image deployments will need a compatible 3.x or LTS/2.8 release; the exact minimum versions and activation date will be announced before the switch. Wiki image mode is unaffected.
 
 ## [3.1.3] - 2026-10-29
 

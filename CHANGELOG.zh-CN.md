@@ -6,7 +6,7 @@
 
 2.8.1 基线时的原始分语言更新日志可在 [`ts/v2.8.1` tag](https://github.com/3aKHP/prts-mcp/tree/ts/v2.8.1) 查看（[Python](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/python/CHANGELOG.md) · [TypeScript](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/ts/CHANGELOG.md)），1.7.1 与 1.7.2 的维护记录来自已发布的 [`python/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/python/v1.7.2/python/CHANGELOG.md) 与 [`ts/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/ts/v1.7.2/ts/CHANGELOG.md) 标签。
 
-## [未发布]
+## [3.2.0] - 2026-10-31
 
 ### 新增
 
@@ -21,7 +21,7 @@
 
 ### 迁移预告
 
-- 3.2 开发周期将准备 SQLite 默认后端和 v2 本地图片同步能力。生产图片继续使用现有 v1 baseline 与普通 delta。不兼容的 v2 切换和 re-baseline 计划在 2027 春节窗口进行，以签名和受支持客户端就绪为前提。切换时停止 v1 图片更新，保留已有数据包。本地图片部署需升级至兼容的 3.x 或 LTS/2.8 版本；具体最低版本和激活日期将在切换前公告。Wiki 图片模式不受影响。
+- 3.2 已具备 v2 本地图片同步能力，生产图片继续使用现有 v1 baseline 与普通 delta。不兼容的 v2 切换和 re-baseline 计划在 2027 春节窗口进行，以签名和受支持客户端就绪为前提。切换时停止 v1 图片更新，保留已有数据包。本地图片部署需升级至兼容的 3.x 或 LTS/2.8 版本；具体最低版本和激活日期将在切换前公告。Wiki 图片模式不受影响。
 
 ## [3.1.3] - 2026-10-29
 
