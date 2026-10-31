@@ -10,6 +10,7 @@ pub mod images_lock;
 pub mod images_meta;
 pub mod images_sync;
 pub mod images_v2;
+mod images_v2_io;
 pub mod images_v2_sync;
 pub mod pair;
 pub mod primitives;

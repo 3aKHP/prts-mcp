@@ -65,6 +65,22 @@ impl World {
 }
 #[async_trait]
 impl Transport for World {
+    async fn download_file_limited(
+        &self,
+        url: &str,
+        dest: &Path,
+        timeout_ms: u64,
+        limit: u64,
+    ) -> Result<u64, TransportError> {
+        let key = url.split("/download/").nth(1).unwrap();
+        if self.files.get(key).is_some_and(|b| b.len() as u64 > limit) {
+            return Err(TransportError::Network(
+                "download exceeds declared length".into(),
+            ));
+        }
+        self.download(url, dest, timeout_ms).await.map(|s| s.bytes)
+    }
+
     async fn fetch_json(&self, _: &str, _: u64) -> Result<Value, TransportError> {
         Ok(json!(self.releases))
     }
@@ -511,4 +527,110 @@ async fn mid_chain_fallback_resumes_walk_without_refetching() {
     let generation = active_generation(&root.0).unwrap();
     assert_eq!(std::fs::read(generation.join("a.png")).unwrap(), b"third");
     assert_eq!(std::fs::read(generation.join("b.png")).unwrap(), data);
+}
+
+#[tokio::test]
+async fn uppercase_digests_sync_and_reuse_across_baselines() {
+    let root = Temp::new();
+    let mut world = World::new();
+    for version in ["26-01-01", "26-02-01"] {
+        let mut index = world.add(version, None, b"same");
+        for pointer in [
+            "/baselineParts/0/sha256",
+            "/baselineParts/0/members/a.png/sha256",
+            "/artworks/a/large/sha256",
+        ] {
+            let v = index.pointer_mut(pointer).unwrap();
+            *v = json!(v.as_str().unwrap().to_ascii_uppercase());
+        }
+        world.files.insert(
+            format!("images2-{version}/index.json"),
+            serde_json::to_vec(&index).unwrap(),
+        );
+        world.downloads.lock().unwrap().clear();
+        let result = sync_images(&root.0, &world, opts()).await;
+        assert_eq!(result.status, SyncStatus::Updated, "{:?}", result.error);
+        if version == "26-02-01" {
+            assert_eq!(world.downloads.lock().unwrap().len(), 1);
+        }
+    }
+}
+
+#[tokio::test]
+async fn oversized_member_is_rejected_before_digest_comparison() {
+    let root = Temp::new();
+    let mut world = World::new();
+    let previous = world.add("26-01-01", None, b"old");
+    sync_images(&root.0, &world, opts()).await;
+    let active = active_generation(&root.0).unwrap();
+    let mut index = world.add("26-01-02", Some(&previous), &vec![0; 200_000]);
+    index["deltaParts"][0]["members"]["a.png"]["bytes"] = json!(1);
+    world.files.insert(
+        "images2-26-01-02/index.json".into(),
+        serde_json::to_vec(&index).unwrap(),
+    );
+    let result = sync_images(&root.0, &world, opts()).await;
+    assert!(result
+        .error
+        .unwrap()
+        .contains("member exceeds declared length"));
+    assert_eq!(active_generation(&root.0).unwrap(), active);
+    assert_eq!(
+        std::fs::read_dir(root.0.join(".releases")).unwrap().count(),
+        1
+    );
+}
+
+#[tokio::test]
+async fn publication_failure_does_not_accumulate_candidates() {
+    let root = Temp::new();
+    let mut world = World::new();
+    world.add("26-01-01", None, b"image");
+    // A directory at the metadata destination makes atomic replacement fail on every platform.
+    std::fs::create_dir(root.0.join(".images_meta.json")).unwrap();
+    for _ in 0..3 {
+        assert_eq!(
+            sync_images(&root.0, &world, opts()).await.status,
+            SyncStatus::NoData
+        );
+        assert_eq!(
+            std::fs::read_dir(root.0.join(".releases")).unwrap().count(),
+            0
+        );
+    }
+    assert_eq!(
+        world
+            .downloads
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|p| p.ends_with(".zip"))
+            .count(),
+        1
+    );
+}
+
+#[tokio::test]
+async fn unchanged_generation_recovers_expired_orphans_only() {
+    let root = Temp::new();
+    let mut world = World::new();
+    world.add("26-01-01", None, b"image");
+    sync_images(&root.0, &world, opts()).await;
+    let active = active_generation(&root.0).unwrap();
+    let rel = root.0.join(".releases");
+    for name in ["v2-orphan", "v2-recent", ".v2-abandoned.tmp", "unrelated"] {
+        std::fs::create_dir(rel.join(name)).unwrap();
+    }
+    for path in [active.clone(), rel.join("v2-orphan"), rel.join("unrelated")] {
+        filetime::set_file_mtime(path, filetime::FileTime::from_unix_time(0, 0)).unwrap();
+    }
+    assert_eq!(
+        sync_images(&root.0, &world, opts()).await.status,
+        SyncStatus::UpToDate
+    );
+    assert!(active.exists());
+    assert!(rel.join("v2-recent").exists());
+    assert!(rel.join("unrelated").exists());
+    assert!(!rel.join("v2-orphan").exists());
+    assert!(!rel.join(".v2-abandoned.tmp").exists());
 }
