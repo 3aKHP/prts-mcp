@@ -62,8 +62,38 @@ pub(super) async fn run_selected(
 ) -> Result<super::types::SyncResult, String> {
     super::source_guard::ensure(root, source)?;
     cleanup_staging(&root.join(".releases"))?;
-    let (value, index, target) = read_index(t, source, latest, root).await?;
     let keys = super::images_sync::needed_shard_keys(original);
+    let active = images_meta::active_generation(root);
+    let active_meta = images_meta::load_meta(root);
+    let same_source = active_meta
+        .as_ref()
+        .is_some_and(|meta| meta["sourceRepo"].as_str() == Some(source.slug().as_str()));
+    let same_groups = active_meta.as_ref().is_some_and(|meta| {
+        meta["shardsSynced"].as_array().is_some_and(|groups| {
+            groups.len() == keys.len()
+                && keys.iter().all(|key| {
+                    groups
+                        .iter()
+                        .any(|group| group.as_str() == Some(key.as_str()))
+                })
+        })
+    });
+    // Like v1: an activated generation is immutable, so an unchanged tag skips the index.
+    if active.is_some()
+        && same_source
+        && same_groups
+        && active_meta.as_ref().is_some_and(|meta| {
+            meta["schemaVersion"] == super::images_v2::SCHEMA
+                && meta["currentVersion"].as_str() == latest.strip_prefix("images2-")
+        })
+    {
+        return Ok(super::types::SyncResult::new(
+            super::types::SyncStatus::UpToDate,
+            latest.strip_prefix("images2-").map(str::to_owned),
+            None,
+        ));
+    }
+    let (value, index, target) = read_index(t, source, latest, root).await?;
     let mut expected = BTreeMap::new();
     for entry in target.artworks.values() {
         for (tier, v) in &entry.variants {
@@ -72,8 +102,6 @@ pub(super) async fn run_selected(
             }
         }
     }
-    let active = images_meta::active_generation(root);
-    let active_meta = images_meta::load_meta(root);
     let prior_index = active
         .as_ref()
         .and_then(|path| std::fs::read(path.join("index.json")).ok())

@@ -367,3 +367,19 @@ async fn old_v1_generations_migrate_by_verified_bytes_without_mutating_old_files
         assert_eq!(std::fs::read(old.join("a.png")).unwrap(), old_bytes);
     }
 }
+
+#[tokio::test]
+async fn unchanged_tag_skips_index_and_generation_reads() {
+    let root = Temp::new();
+    let mut world = World::new();
+    world.add("26-01-01", None, b"first");
+    sync_images(&root.0, &world, opts()).await;
+    // A missing file proves the idle check reads neither the index nor the generation.
+    std::fs::remove_file(active_generation(&root.0).unwrap().join("a.png")).unwrap();
+    world.downloads.lock().unwrap().clear();
+    assert_eq!(
+        sync_images(&root.0, &world, opts()).await.status,
+        SyncStatus::UpToDate
+    );
+    assert!(world.downloads.lock().unwrap().is_empty());
+}
