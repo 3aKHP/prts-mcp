@@ -2,43 +2,13 @@
 use super::{images_meta, transport::Transport};
 use crate::config::DataSource;
 use serde_json::{json, Value};
-use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
+use std::sync::{Arc, Mutex};
 
 use super::images_meta::ImagesIndex;
 use super::images_v2::{flat, Manifest as Index, Part};
-/// Stream a regular file once, optionally copying it; a failed copy is removed.
-fn checked(path: &Path, bytes: u64, sha: &str, copy: Option<&Path>) -> bool {
-    use std::io::{Read, Write};
-    if !std::fs::symlink_metadata(path).is_ok_and(|meta| meta.is_file() && meta.len() == bytes) {
-        return false;
-    }
-    let matched = (|| {
-        let mut f = std::fs::File::open(path)?;
-        let mut out = copy.map(std::fs::File::create).transpose()?;
-        let mut h = Sha256::new();
-        let mut total = 0;
-        let mut buf = [0u8; 65536];
-        loop {
-            let n = f.read(&mut buf)?;
-            if n == 0 {
-                break;
-            }
-            total += n as u64;
-            h.update(&buf[..n]);
-            if let Some(out) = &mut out {
-                out.write_all(&buf[..n])?;
-            }
-        }
-        std::io::Result::Ok(total == bytes && format!("{:x}", h.finalize()) == sha)
-    })()
-    .unwrap_or(false);
-    if let Some(copy) = copy.filter(|_| !matched) {
-        let _ = std::fs::remove_file(copy);
-    }
-    matched
-}
+use super::images_v2_io::{blocking, checked, cleanup_old, cleanup_staging, extract, Candidate};
 /// Mirror cascading lives in the transport; failed rounds retry on the sync schedule.
 async fn fetch(t: &dyn Transport, url: &str, path: &Path) -> Result<(), String> {
     t.download_file(url, path, 900_000)
@@ -114,9 +84,16 @@ pub(super) async fn run_selected(
     source: &DataSource,
     original: bool,
     latest: &str,
+    lease: Arc<std::fs::File>,
 ) -> Result<super::types::SyncResult, String> {
     super::source_guard::ensure(root, source)?;
-    cleanup_staging(&root.join(".releases"))?;
+    let cleanup_root = root.to_owned();
+    blocking(&lease, move || {
+        cleanup_staging(&cleanup_root.join(".releases"))?;
+        cleanup_old(&cleanup_root);
+        Ok(())
+    })
+    .await?;
     let keys = super::images_sync::needed_shard_keys(original);
     let active = images_meta::active_generation(root);
     let active_meta = images_meta::load_meta(root);
@@ -157,6 +134,7 @@ pub(super) async fn run_selected(
             }
         }
     }
+    let expected = Arc::new(expected);
     let prior = active
         .as_ref()
         .and_then(|path| std::fs::read(path.join("index.json")).ok())
@@ -188,15 +166,32 @@ pub(super) async fn run_selected(
     let name = format!("v2-{}", super::primitives::random_suffix());
     let stage = rel.join(format!(".{name}.tmp"));
     std::fs::create_dir(&stage).map_err(|e| e.to_string())?;
+    let candidate = Arc::new(Mutex::new(Candidate(
+        Some(stage.clone()),
+        Arc::clone(&lease),
+    )));
     let result = async {
-        let mut preserved = BTreeSet::new();
-        if let Some(prior) = &active {
-            for (name, (bytes, hash)) in &expected {
-                if checked(&prior.join(name), *bytes, hash, Some(&stage.join(name))) {
-                    preserved.insert(name.clone());
+        let reuse_active = active.clone();
+        let reuse_expected = expected.clone();
+        let reuse_stage = stage.clone();
+        let reuse_candidate = Arc::clone(&candidate);
+        let preserved = blocking(&lease, move || {
+            let _candidate = reuse_candidate;
+            let active = reuse_active;
+            let expected = reuse_expected;
+            let stage = reuse_stage;
+            let mut preserved = BTreeSet::new();
+            if let Some(prior) = &active {
+                for (name, (bytes, hash)) in expected.iter() {
+                    if checked(&prior.join(name), *bytes, hash, Some(&stage.join(name))) {
+                        preserved.insert(name.clone());
+                    }
                 }
             }
-        }
+            Ok(preserved)
+        })
+        .await?;
+        let preserved = Arc::new(preserved);
         // Deltas since the active version suffice only if every other target was reused.
         let produced: BTreeSet<&String> = chain
             .deltas
@@ -262,137 +257,109 @@ pub(super) async fn run_selected(
                     continue;
                 }
                 let archive = cache.join(&part.sha256);
-                if !checked(&archive, part.bytes, &part.sha256, None) {
+                let check_archive = archive.clone();
+                let check_part = part.clone();
+                if !blocking(&lease, move || {
+                    Ok(checked(
+                        &check_archive,
+                        check_part.bytes,
+                        &check_part.sha256,
+                        None,
+                    ))
+                })
+                .await?
+                {
                     let tmp = cache.join(format!("{}.tmp", part.sha256));
-                    fetch(t, &source.download_url(&tag, &part.file), &tmp).await?;
-                    if !checked(&tmp, part.bytes, &part.sha256, None) {
-                        return Err("ZIP digest mismatch".into());
+                    if let Err(error) = t
+                        .download_file_limited(
+                            &source.download_url(&tag, &part.file),
+                            &tmp,
+                            900_000,
+                            part.bytes,
+                        )
+                        .await
+                    {
+                        let _ = tokio::fs::remove_file(&tmp).await;
+                        return Err(error.to_string());
                     }
-                    std::fs::rename(tmp, &archive).map_err(|e| e.to_string())?;
-                }
-                let mut zip =
-                    zip::ZipArchive::new(std::fs::File::open(&archive).map_err(|e| e.to_string())?)
-                        .map_err(|e| e.to_string())?;
-                let mut seen = BTreeSet::new();
-                for i in 0..zip.len() {
-                    use std::io::Read;
-                    let mut entry = zip.by_index(i).map_err(|e| e.to_string())?;
-                    let name = entry.name().to_owned();
-                    let member = part.members.get(&name).ok_or("unexpected ZIP member")?;
-                    if !seen.insert(name.clone()) {
-                        return Err("duplicate ZIP member".into());
-                    }
-                    let mut hash = Sha256::new();
-                    let mut count = 0;
-                    let mut buf = [0u8; 65536];
-                    let mut out = if preserved.contains(&name) || !expected.contains_key(&name) {
-                        None
-                    } else {
-                        Some(std::fs::File::create(stage.join(&name)).map_err(|e| e.to_string())?)
-                    };
-                    loop {
-                        let n = entry.read(&mut buf).map_err(|e| e.to_string())?;
-                        if n == 0 {
-                            break;
+                    let check_part = part.clone();
+                    let check_archive = archive.clone();
+                    blocking(&lease, move || {
+                        if !checked(&tmp, check_part.bytes, &check_part.sha256, None) {
+                            let _ = std::fs::remove_file(&tmp);
+                            return Err("ZIP digest mismatch".into());
                         }
-                        hash.update(&buf[..n]);
-                        count += n as u64;
-                        if let Some(f) = &mut out {
-                            use std::io::Write;
-                            f.write_all(&buf[..n]).map_err(|e| e.to_string())?;
-                        }
-                    }
-                    if count != member.bytes || format!("{:x}", hash.finalize()) != member.sha256 {
-                        return Err("member digest mismatch".into());
-                    }
-                    if out.is_some() {
-                        written.insert(name, (member.bytes, member.sha256.clone()));
-                    }
+                        std::fs::rename(tmp, check_archive).map_err(|e| e.to_string())
+                    })
+                    .await?;
                 }
-                if seen.len() != part.members.len() {
-                    return Err("missing ZIP member".into());
-                }
+                let extract_stage = stage.clone();
+                let extract_expected = expected.clone();
+                let extract_preserved = preserved.clone();
+                let extract_candidate = Arc::clone(&candidate);
+                let extracted = blocking(&lease, move || {
+                    let _candidate = extract_candidate;
+                    let stage = extract_stage;
+                    let expected = extract_expected;
+                    let preserved = extract_preserved;
+                    extract(&archive, &part, &stage, &expected, &preserved)
+                })
+                .await?;
+                written.extend(extracted);
             }
         }
-        for (name, target) in &expected {
+        for (name, target) in expected.iter() {
             if !preserved.contains(name) && written.get(name) != Some(target) {
                 return Err(format!("target mismatch: {name}"));
             }
         }
-        std::fs::write(
-            stage.join("index.json"),
-            serde_json::to_vec(&value).unwrap(),
-        )
-        .map_err(|e| e.to_string())?;
-        let mut meta =
-            images_meta::generation_meta(&index.baseline_version, &index.current_version, &keys);
-        meta["schemaVersion"] = json!(super::images_v2::SCHEMA);
-        meta["sourceRepo"] = json!(source.slug());
-        images_meta::save_meta(&stage, &meta).map_err(|e| e.to_string())?;
-        std::fs::rename(&stage, rel.join(&name)).map_err(|e| e.to_string())?;
-        let mut meta = meta;
-        meta["generation_root"] = json!(format!(".releases/{name}"));
-        images_meta::save_meta(root, &meta).map_err(|e| e.to_string())?;
-        // Keep failed-transfer cache for resume, release it only after activation.
-        if let Err(error) = std::fs::remove_dir_all(&cache) {
-            eprintln!("Images v2 cache cleanup: {error}");
-        }
-        super::primitives::prune_old_trees(
-            &rel,
-            &std::collections::HashSet::from([rel.join(&name)]),
-            images_meta::RETENTION_MS as u128,
-            true,
-        );
-        Ok(super::types::SyncResult::new(
-            super::types::SyncStatus::Updated,
-            Some(index.current_version.clone()),
-            None,
-        ))
+        let root = root.to_owned();
+        let source = source.clone();
+        let candidate = Arc::clone(&candidate);
+        blocking(&lease, move || {
+            std::fs::write(
+                stage.join("index.json"),
+                serde_json::to_vec(&value).unwrap(),
+            )
+            .map_err(|e| e.to_string())?;
+            let mut meta = images_meta::generation_meta(
+                &index.baseline_version,
+                &index.current_version,
+                &keys,
+            );
+            meta["schemaVersion"] = json!(super::images_v2::SCHEMA);
+            meta["sourceRepo"] = json!(source.slug());
+            images_meta::save_meta(&stage, &meta).map_err(|e| e.to_string())?;
+            std::fs::rename(&stage, rel.join(&name)).map_err(|e| e.to_string())?;
+            candidate.lock().unwrap().0 = Some(rel.join(&name));
+            let mut meta = meta;
+            meta["generation_root"] = json!(format!(".releases/{name}"));
+            images_meta::save_meta(&root, &meta).map_err(|e| e.to_string())?;
+            candidate.lock().unwrap().0 = None;
+            // Keep failed-transfer cache for resume, release it only after activation.
+            if let Err(error) = std::fs::remove_dir_all(&cache) {
+                eprintln!("Images v2 cache cleanup: {error}");
+            }
+            super::primitives::prune_old_trees(
+                &rel,
+                &std::collections::HashSet::from([rel.join(&name)]),
+                images_meta::RETENTION_MS as u128,
+                true,
+            );
+            Ok(super::types::SyncResult::new(
+                super::types::SyncStatus::Updated,
+                Some(index.current_version.clone()),
+                None,
+            ))
+        })
+        .await
     }
     .await;
-    if stage.exists() {
-        let _ = std::fs::remove_dir_all(stage);
-    }
+    blocking(&lease, move || {
+        candidate.lock().unwrap().cleanup();
+        drop(candidate);
+        Ok(())
+    })
+    .await?;
     result
-}
-
-fn cleanup_staging(root: &Path) -> Result<(), String> {
-    if !root.exists() {
-        return Ok(());
-    }
-    for item in std::fs::read_dir(root).map_err(|e| e.to_string())? {
-        let item = item.map_err(|e| e.to_string())?;
-        let name = item.file_name();
-        let name = name.to_string_lossy();
-        if name.starts_with(".v2-") && name.ends_with(".tmp") {
-            if !item.file_type().map_err(|e| e.to_string())?.is_dir() {
-                crate::log_warn(&format!(
-                    "Images v2 staging cleanup: skipping non-directory {}",
-                    item.path().display()
-                ));
-                continue;
-            }
-            std::fs::remove_dir_all(item.path()).map_err(|e| e.to_string())?;
-        }
-    }
-    Ok(())
-}
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn abandoned_staging_cleanup_is_owned_and_repeatable() {
-        let root = std::env::temp_dir().join(format!(
-            "sharding-cleanup-{}",
-            crate::sync::primitives::random_suffix()
-        ));
-        for name in [".v2-abandoned.tmp", "v2-active", ".other.tmp"] {
-            std::fs::create_dir_all(root.join(name)).unwrap();
-        }
-        super::cleanup_staging(&root).unwrap();
-        super::cleanup_staging(&root).unwrap();
-        assert!(!root.join(".v2-abandoned.tmp").exists());
-        assert!(root.join("v2-active").exists());
-        assert!(root.join(".other.tmp").exists());
-        std::fs::remove_dir_all(root).unwrap();
-    }
 }

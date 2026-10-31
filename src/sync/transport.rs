@@ -78,6 +78,15 @@ pub trait Transport: Send + Sync {
             .map(|stats| stats.bytes)
     }
 
+    /// Stream without hashing, rejecting excess bytes before writing them.
+    async fn download_file_limited(
+        &self,
+        url: &str,
+        dest: &Path,
+        timeout_ms: u64,
+        limit: u64,
+    ) -> Result<u64, TransportError>;
+
     /// Database downloads stop before writing bytes beyond the manifest.
     /// Fakes may use this fallback; the network implementation enforces the
     /// limit before each write.
@@ -283,6 +292,18 @@ impl Transport for ReqwestTransport {
         timeout_ms: u64,
     ) -> Result<u64, TransportError> {
         self.stream_file(url, dest, timeout_ms, u64::MAX, None)
+            .await
+            .map(|(bytes, _)| bytes)
+    }
+
+    async fn download_file_limited(
+        &self,
+        url: &str,
+        dest: &Path,
+        timeout_ms: u64,
+        limit: u64,
+    ) -> Result<u64, TransportError> {
+        self.stream_file(url, dest, timeout_ms, limit, None)
             .await
             .map(|(bytes, _)| bytes)
     }

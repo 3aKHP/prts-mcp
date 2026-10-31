@@ -20,6 +20,10 @@ The original per-implementation changelogs at the 2.8.1 baseline remain availabl
 
 - SQLite is now the default game-data backend. With none of `PRTS_DATA_BACKEND`, `PRTS_DATA_DB` or custom JSON paths set, startup uses JSON fallback until a validated DB is available, then switches new requests automatically. Explicit SQLite, or a configured `PRTS_DATA_DB`, stays strict and never falls back to JSON. `PRTS_DATA_BACKEND=json` keeps using existing JSON volumes; switching backends does not delete the other backend's data.
 
+### Fixed
+
+- V2 image synchronization enforces declared download and extraction sizes, removes unpublished candidates after publication failures, and isolates large file work from async workers. Digest parsing accepts hexadecimal case consistently and avoids cloning the complete index.
+
 ### Deprecated
 
 - AKDP plans to move to an incompatible v2 artwork release and re-baseline in the 2027 Spring Festival window, provided publication signing and supported clients are ready. After the switch, v1 artwork updates stop and published packages remain available. 3.2.0 can already read v2 artwork releases, but the minimum client version for the switch depends on signature verification landing and will be announced beforehand. Wiki image mode is unaffected.

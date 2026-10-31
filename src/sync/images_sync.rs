@@ -187,11 +187,19 @@ pub async fn sync_images_with_source(
     }
     let shard_keys = needed_shard_keys(opts.include_original);
     let lock_dir = image_dir.to_path_buf();
-    let locked = super::images_lock::with_images_lock(&lock_dir, || async {
+    let locked = super::images_lock::with_images_lease(&lock_dir, |lease| async {
         if let Err(error) = super::source_guard::ensure(image_dir, source) {
             return SyncResult::new(SyncStatus::NoData, None, Some(error));
         }
-        sync_images_locked(image_dir, transport, &shard_keys, opts.force_check, source).await
+        sync_images_locked(
+            image_dir,
+            transport,
+            &shard_keys,
+            opts.force_check,
+            source,
+            lease,
+        )
+        .await
     })
     .await;
     match locked {
@@ -222,6 +230,7 @@ async fn sync_images_locked(
     shard_keys: &[String],
     _force_check: bool,
     source: &DataSource,
+    lease: std::sync::Arc<std::fs::File>,
 ) -> SyncResult {
     let Some(mut releases) = list_releases(transport, source.owner(), source.repo(), 10_000).await
     else {
@@ -246,6 +255,7 @@ async fn sync_images_locked(
                 source,
                 shard_keys.iter().any(|key| key.ends_with("-original")),
                 tag,
+                lease,
             )
             .await
             {

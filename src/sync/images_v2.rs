@@ -42,7 +42,7 @@ fn digest(value: &str) -> bool {
 }
 
 pub fn parse(value: &Value) -> Result<(Manifest, ImagesIndex), String> {
-    let index: Manifest = serde_json::from_value(value.clone()).map_err(|e| e.to_string())?;
+    let mut index = Manifest::deserialize(value).map_err(|e| e.to_string())?;
     if index.schema_version != SCHEMA {
         return Err("unsupported image schema".into());
     }
@@ -65,7 +65,7 @@ pub fn parse(value: &Value) -> Result<(Manifest, ImagesIndex), String> {
             return Err("invalid predecessor order".into());
         }
     }
-    for parts in [&index.baseline_parts, &index.delta_parts] {
+    for parts in [&mut index.baseline_parts, &mut index.delta_parts] {
         if parts.len() > 997 {
             return Err("too many release parts".into());
         }
@@ -73,7 +73,7 @@ pub fn parse(value: &Value) -> Result<(Manifest, ImagesIndex), String> {
         let mut members = BTreeSet::new();
         for part in parts {
             flat(&part.file)?;
-            if !files.insert(&part.file)
+            if !files.insert(part.file.clone())
                 || part.bytes == 0
                 || part.bytes >= 2 * 1024u64.pow(3)
                 || !digest(&part.sha256)
@@ -81,9 +81,11 @@ pub fn parse(value: &Value) -> Result<(Manifest, ImagesIndex), String> {
             {
                 return Err("invalid or duplicate physical part".into());
             }
-            for (name, member) in &part.members {
+            part.sha256.make_ascii_lowercase();
+            for (name, member) in &mut part.members {
                 flat(name)?;
-                if !members.insert(name)
+                member.sha256.make_ascii_lowercase();
+                if !members.insert(name.clone())
                     || !digest(&member.sha256)
                     || member.bytes == 0
                     || member.group != part.group
@@ -93,7 +95,7 @@ pub fn parse(value: &Value) -> Result<(Manifest, ImagesIndex), String> {
             }
         }
     }
-    let view = parse_contents(value).ok_or("missing artwork projection")?;
+    let mut view = parse_contents(value).ok_or("missing artwork projection")?;
     let raw = value
         .get("artworks")
         .and_then(Value::as_object)
@@ -102,15 +104,16 @@ pub fn parse(value: &Value) -> Result<(Manifest, ImagesIndex), String> {
         return Err("invalid artwork entries".into());
     }
     let mut names = BTreeSet::new();
-    for entry in view.artworks.values() {
+    for entry in view.artworks.values_mut() {
         for tier in super::images_meta::VARIANT_ORDER {
             if raw[&entry.skin_id].get(tier).is_some() && !entry.variants.contains_key(tier) {
                 return Err("invalid declared artwork variant".into());
             }
         }
-        for (tier, variant) in &entry.variants {
+        for (tier, variant) in &mut entry.variants {
             flat(&variant.file)?;
-            if !names.insert(&variant.file)
+            variant.sha256.make_ascii_lowercase();
+            if !names.insert(variant.file.clone())
                 || !digest(&variant.sha256)
                 || !variant.bytes.is_finite()
                 || variant.bytes <= 0.0

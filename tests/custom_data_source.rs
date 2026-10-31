@@ -37,6 +37,19 @@ struct Fixture {
 }
 #[async_trait]
 impl Transport for Fixture {
+    async fn download_file_limited(
+        &self,
+        url: &str,
+        dest: &Path,
+        timeout_ms: u64,
+        limit: u64,
+    ) -> Result<u64, TransportError> {
+        let _ = (url, dest, timeout_ms, limit);
+        Err(TransportError::Network(
+            "bounded transfer unsupported by fixture".into(),
+        ))
+    }
+
     async fn fetch_json(&self, url: &str, _: u64) -> Result<Value, TransportError> {
         self.requests.lock().unwrap().push(url.into());
         if self.offline {
