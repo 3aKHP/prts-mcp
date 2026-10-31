@@ -6,11 +6,11 @@
 
 2.8.1 基线时的原始分语言更新日志可在 [`ts/v2.8.1` tag](https://github.com/3aKHP/prts-mcp/tree/ts/v2.8.1) 查看（[Python](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/python/CHANGELOG.md) · [TypeScript](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/ts/CHANGELOG.md)），1.7.1 与 1.7.2 的维护记录来自已发布的 [`python/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/python/v1.7.2/python/CHANGELOG.md) 与 [`ts/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/ts/v1.7.2/ts/CHANGELOG.md) 标签。
 
-## [Unreleased]
+## [3.2.1] - 2026-11-01
 
 ### 新增
 
-- 补齐 crates.io 源码发行准备：源码包仅包含五个公开二进制入口，验证从工作树外的 Cargo 归档安装，并增加带发布条件与注册表摘要核对的发布流程。首次注册与 Trusted Publishing 启用仍需在发版时完成。源码安装需要 Rust 1.89 或更新版本及 C 编译器，不含备用游戏数据。
+- 新增 crates.io 源码发行渠道：源码包仅包含五个公开二进制入口，验证从工作树外的 Cargo 归档安装，并提供带发布条件与注册表摘要核对的发布流程。首次注册使用维护者 Token，配置 Trusted Publisher 后启用后续 OIDC 发布。源码安装需要 Rust 1.89 或更新版本及 C 编译器，不含备用游戏数据。
 
 ## [3.2.0] - 2026-10-31
 

@@ -6,11 +6,11 @@ This file records user-visible changes across PRTS-MCP implementations: Python a
 
 The original per-implementation changelogs at the 2.8.1 baseline remain available on the [`ts/v2.8.1` tag](https://github.com/3aKHP/prts-mcp/tree/ts/v2.8.1) ([Python](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/python/CHANGELOG.md) · [TypeScript](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/ts/CHANGELOG.md)), and the 1.7.1/1.7.2 maintenance records come from the published [`python/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/python/v1.7.2/python/CHANGELOG.md) and [`ts/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/ts/v1.7.2/ts/CHANGELOG.md) tags.
 
-## [Unreleased]
+## [3.2.1] - 2026-11-01
 
 ### Added
 
-- Prepare the crates.io source distribution: ship only the five public binaries, verify installation from the detached Cargo archive, and add guarded publication with registry checksum verification. Initial registration and Trusted Publishing activation remain release steps. Source installation requires Rust 1.89 or newer and a C compiler; it does not include fallback game data.
+- Add the crates.io source distribution: ship only the five public binaries, verify installation from the detached Cargo archive, and provide guarded publication with registry checksum verification. First registration uses a maintainer token; subsequent OIDC publishing is enabled after configuring a Trusted Publisher. Source installation requires Rust 1.89 or newer and a C compiler; it does not include fallback game data.
 
 ## [3.2.0] - 2026-10-31
 

@@ -32,7 +32,7 @@ PRTS-MCP maintains two legacy long-term support (LTS) lines alongside the 3.x Ru
 
 | Branch | Purpose |
 |--------|---------|
-| `main` | Latest public stable release line (native Rust `3.2.0`). |
+| `main` | Latest public stable release line (native Rust `3.2.1`). |
 | `develop` | Active 3.x Rust integration branch (`3.2.1-dev.0`). Does not contain `python/` or `ts/` directories. |
 | `lts/2.8` | Long-term 2.8.x Python/TypeScript maintenance branch, forked from the `2.8.1` release commit. |
 | `lts/1.7` | Long-term 1.7.x Python/TypeScript maintenance branch, forked from the `1.7.0` release commit. |

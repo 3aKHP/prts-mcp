@@ -91,4 +91,4 @@
 | [ADR-0016](ADR-0016-self-hosted-object-storage-data-source.md) | 自建对象存储数据源（R2+COS）的选型与实施搁置 | Deferred（补录） | 2026-09-16 |
 | [ADR-0017](ADR-0017-custom-github-data-source.md) | 自定义 GitHub 数据源与目录归属 | Accepted | 2026-10-29 |
 | [ADR-0018](ADR-0018-sqlite-default-with-json-fallback.md) | 3.2 默认 SQLite 后端与 JSON 自动备用 | Accepted | 2026-10-31 |
-| [ADR-0019](ADR-0019-cargo-source-distribution.md) | Cargo 源码发行与首次发布引导 | Proposed | 2026-11-01 |
+| [ADR-0019](ADR-0019-cargo-source-distribution.md) | Cargo 源码发行与首次发布引导 | Accepted | 2026-11-01 |

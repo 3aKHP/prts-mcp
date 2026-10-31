@@ -25,12 +25,12 @@ Starting with 3.x, PRTS-MCP is unified into a single native Rust implementation 
 
 | Line | Version | Tools | Status |
 |------|---------|-------|--------|
-| Public stable (`main`) | 3.2.0 | 24 | Native Rust stable release on npm (`latest`), GitHub Releases, and GHCR (`:latest`, `:3`). |
+| Public stable (`main`) | 3.2.1 | 24 | Native Rust stable release on npm (`latest`), crates.io, GitHub Releases, and GHCR (`:latest`, `:3`). |
 | Rust (`develop`) | 3.2.1-dev.0 | 24 | Active 3.x development line. |
 | `lts/2.8` | 2.8.x | 24 | Python/TypeScript long-term maintenance; EOL 2027-07-02. |
 | `lts/1.7` | 1.7.x | 32 | Python/TypeScript long-term maintenance; EOL 2027-07-02. |
 
-On npm, install `prts-mcp` (or pin `3.2.0`). If you want to keep existing 2.x command names (`prts-mcp-ts`, `prts-mcp-ts-bun`, `prts-mcp-ts-stdio`), install `prts-mcp-ts`; from 3.0.0 it is also backed by the Rust binary. To stay on 2.8.x, pin `prts-mcp-ts@lts-2.8` or `ghcr.io/3akhp/prts-mcp:2`. See the [roadmap](ROADMAP.md), [2.x → 3.0 migration guide](docs/migration-2.x-to-3.0.md), and [2.8.1 documentation](https://github.com/3aKHP/prts-mcp/tree/ts/v2.8.1).
+On npm, install `prts-mcp` (or pin `3.2.1`). If you want to keep existing 2.x command names (`prts-mcp-ts`, `prts-mcp-ts-bun`, `prts-mcp-ts-stdio`), install `prts-mcp-ts`; from 3.0.0 it is also backed by the Rust binary. To stay on 2.8.x, pin `prts-mcp-ts@lts-2.8` or `ghcr.io/3akhp/prts-mcp:2`. See the [roadmap](ROADMAP.md), [2.x → 3.0 migration guide](docs/migration-2.x-to-3.0.md), and [2.8.1 documentation](https://github.com/3aKHP/prts-mcp/tree/ts/v2.8.1).
 
 Prebuilt binaries are provided for **Linux x64/ARM64** (`glibc >= 2.28`), **Windows x64**, and **macOS ARM64/x64** (macOS 14.0+). Linux musl/Alpine and other CPU architectures are not supported by the prebuilt native archives. Docker images are published for Linux x64 and ARM64. See [NATIVE-PLATFORMS.md](docs/dev/NATIVE-PLATFORMS.md) for platform ABI baselines and verification details.
 
@@ -40,21 +40,21 @@ Prebuilt binaries are provided for **Linux x64/ARM64** (`glibc >= 2.28`), **Wind
 
 ```bash
 # Install globally and start Streamable HTTP (default on port 3000):
-npm install -g prts-mcp@3.2.0
+npm install -g prts-mcp@3.2.1
 prts-mcp
 
 # Or run in stdio mode for local MCP clients:
 PRTS_TRANSPORT=stdio prts-mcp
 
 # Or keep legacy 2.x command names via the compatibility package:
-npm install -g prts-mcp-ts@3.2.0
+npm install -g prts-mcp-ts@3.2.1
 prts-mcp-ts-stdio
 ```
 
 For a one-off trial without global installation:
 
-- **HTTP mode**: `npx -y prts-mcp@3.2.0`
-- **stdio mode**: `npx -y --package=prts-mcp-ts@3.2.0 prts-mcp-ts-stdio`
+- **HTTP mode**: `npx -y prts-mcp@3.2.1`
+- **stdio mode**: `npx -y --package=prts-mcp-ts@3.2.1 prts-mcp-ts-stdio`
 
 Default transport behavior by entry point:
 
@@ -66,12 +66,14 @@ Default transport behavior by entry point:
 
 ```bash
 # Run as an HTTP service with persistent data:
-docker run -d --name prts-mcp -p 127.0.0.1:3000:3000 -e PRTS_TRANSPORT=http -v prts-data:/data ghcr.io/3akhp/prts-mcp:3.2.0
+docker run -d --name prts-mcp -p 127.0.0.1:3000:3000 -e PRTS_TRANSPORT=http -v prts-data:/data ghcr.io/3akhp/prts-mcp:3.2.1
 ```
 
 #### 3. Prebuilt Native Archives & Source Builds
 
-Download the archive for your OS and CPU from the [3.2.0 GitHub Release](https://github.com/3aKHP/prts-mcp/releases/tag/v3.2.0), verify its SHA-256 checksum, extract it while keeping the `bin/` and `data/` directory structure intact, and run `bin/prts-mcp` (`bin\prts-mcp.exe` on Windows). To build from source, run `cargo build --locked --release --bins`.
+Download the archive for your OS and CPU from the [3.2.1 GitHub Release](https://github.com/3aKHP/prts-mcp/releases/tag/v3.2.1), verify its SHA-256 checksum, extract it while keeping the `bin/` and `data/` directory structure intact, and run `bin/prts-mcp` (`bin\prts-mcp.exe` on Windows). To build from source, run `cargo build --locked --release --bins`.
+
+For crates.io installation, run `cargo install prts-mcp --version 3.2.1 --locked --bin prts-mcp`. This requires Rust >=1.89 and a C compiler (MSVC build tools on Windows). The installed command defaults to HTTP; set `PRTS_TRANSPORT=stdio` for MCP clients. Source installs contain no fallback game data and need startup synchronization or existing local data. Internal Rust library APIs are not a supported SDK.
 
 For MCP client configuration snippets (`Claude Desktop`, `Claude Code`, `Roo Code`, `Codex`), see the [Agent & MCP Beginner Guide](docs/user/mcp-and-agent-basics.md), [Client Quick Start Guide](docs/user/quick-start.md), and [Tools & Workflow Guide](docs/user/tools-guide.md). For server deployment, Docker volume mounting, and troubleshooting, see the [Server Deployment Guide](docs/admin/deployment.md).
 
@@ -137,7 +139,7 @@ New pipeline releases include a `manifest.json` (`prts-mcp-data/v1` contract) wi
 
 `GITHUB_MIRRORS` accepts comma-separated fallback URL prefixes for GitHub release downloads (surrounding whitespace and trailing slashes are normalized automatically). Standard proxy environment variables (`HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY`, `NO_PROXY`) are also respected; using a proxy or mirror never bypasses manifest or ZIP verification.
 
-Public Rust native archives, Docker images, and npm packages ship with a verified read-only fallback snapshot of game, level, and story data so offline queries work immediately even before the first sync completes. Once complete user data is present in the writable data directory or volume, user data takes precedence. Source builds rely on runtime auto-sync or explicit data paths (`GAMEDATA_PATH`, `STORYJSON_PATH`); crates.io publication is being prepared for 3.2.x, and there is no Rust package on PyPI.
+Public Rust native archives, Docker images, and npm packages ship with a verified read-only fallback snapshot of game, level, and story data so offline queries work immediately even before the first sync completes. Once complete user data is present in the writable data directory or volume, user data takes precedence. Source builds rely on runtime auto-sync or explicit data paths (`GAMEDATA_PATH`, `STORYJSON_PATH`); crates.io provides source installation, and there is no Rust package on PyPI.
 
 ### Protocol Compatibility & Migration Guides
 
@@ -171,12 +173,12 @@ Public Rust native archives, Docker images, and npm packages ship with a verifie
 
 | 版本线 | 版本 | 工具数 | 状态 |
 |--------|------|--------|------|
-| 公开稳定版（`main`） | 3.2.0 | 24 | 原生 Rust 正式版，已发布至 npm（`latest`）、GitHub Releases 与 GHCR（`:latest`、`:3`）。 |
+| 公开稳定版（`main`） | 3.2.1 | 24 | 原生 Rust 正式版，已发布至 npm（`latest`）、crates.io、GitHub Releases 与 GHCR（`:latest`、`:3`）。 |
 | Rust 开发线（`develop`） | 3.2.1-dev.0 | 24 | 3.x 主开发线。 |
 | `lts/2.8` | 2.8.x | 24 | Python/TypeScript 长期维护线，维护至 2027-07-02（EOL）。 |
 | `lts/1.7` | 1.7.x | 32 | Python/TypeScript 长期维护线，维护至 2027-07-02（EOL）。 |
 
-通过 npm 安装时，请安装 `prts-mcp`（或指定精确版本 `3.2.0`）。若希望保留 2.x 的旧命令名（`prts-mcp-ts`、`prts-mcp-ts-bun`、`prts-mcp-ts-stdio`），可安装兼容包 `prts-mcp-ts`，它自 3.0.0 起同样运行 Rust 二进制。如需继续使用 2.8.x，请固定 `prts-mcp-ts@lts-2.8` 或 `ghcr.io/3akhp/prts-mcp:2`。详见[路线图](ROADMAP.zh-CN.md)、[2.x → 3.0 迁移指南](docs/migration-2.x-to-3.0.md)与 [2.8.1 旧版文档](https://github.com/3aKHP/prts-mcp/tree/ts/v2.8.1)。
+通过 npm 安装时，请安装 `prts-mcp`（或指定精确版本 `3.2.1`）。若希望保留 2.x 的旧命令名（`prts-mcp-ts`、`prts-mcp-ts-bun`、`prts-mcp-ts-stdio`），可安装兼容包 `prts-mcp-ts`，它自 3.0.0 起同样运行 Rust 二进制。如需继续使用 2.8.x，请固定 `prts-mcp-ts@lts-2.8` 或 `ghcr.io/3akhp/prts-mcp:2`。详见[路线图](ROADMAP.zh-CN.md)、[2.x → 3.0 迁移指南](docs/migration-2.x-to-3.0.md)与 [2.8.1 旧版文档](https://github.com/3aKHP/prts-mcp/tree/ts/v2.8.1)。
 
 预编译二进制支持 **Linux x64/ARM64**（`glibc >= 2.28`）、**Windows x64** 与 **macOS ARM64/x64**（macOS 14.0+）；暂不支持 Linux musl/Alpine 及其他 CPU 架构。Docker 镜像支持 Linux x64 与 ARM64。各平台的 ABI 基线与验证详情见[原生平台说明](docs/dev/NATIVE-PLATFORMS.md)。
 
@@ -186,21 +188,21 @@ Public Rust native archives, Docker images, and npm packages ship with a verifie
 
 ```bash
 # 全局安装并启动 Streamable HTTP 服务（默认监听 3000 端口）：
-npm install -g prts-mcp@3.2.0
+npm install -g prts-mcp@3.2.1
 prts-mcp
 
 # 本地客户端以 stdio 子进程方式接入：
 PRTS_TRANSPORT=stdio prts-mcp
 
 # 若需保留 2.x 旧命令配置，可安装兼容入口包：
-npm install -g prts-mcp-ts@3.2.0
+npm install -g prts-mcp-ts@3.2.1
 prts-mcp-ts-stdio
 ```
 
 免安装临时试用可直接通过 `npx` 启动：
 
-- **HTTP 模式**：`npx -y prts-mcp@3.2.0`
-- **stdio 模式**：`npx -y --package=prts-mcp-ts@3.2.0 prts-mcp-ts-stdio`
+- **HTTP 模式**：`npx -y prts-mcp@3.2.1`
+- **stdio 模式**：`npx -y --package=prts-mcp-ts@3.2.1 prts-mcp-ts-stdio`
 
 各入口的默认传输方式如下：
 
@@ -212,12 +214,14 @@ prts-mcp-ts-stdio
 
 ```bash
 # 以 HTTP 模式后台运行镜像，并挂载数据卷：
-docker run -d --name prts-mcp -p 127.0.0.1:3000:3000 -e PRTS_TRANSPORT=http -v prts-data:/data ghcr.io/3akhp/prts-mcp:3.2.0
+docker run -d --name prts-mcp -p 127.0.0.1:3000:3000 -e PRTS_TRANSPORT=http -v prts-data:/data ghcr.io/3akhp/prts-mcp:3.2.1
 ```
 
 #### 3. 预编译原生归档包与源码构建
 
-从 [3.2.0 Release](https://github.com/3aKHP/prts-mcp/releases/tag/v3.2.0) 下载对应系统与架构的归档包，校验 SHA-256 后解压（请完整保留解压目录内的 `bin/` 与 `data/` 相对结构），直接运行 `bin/prts-mcp`（Windows 为 `bin\prts-mcp.exe`）。从源码编译请执行 `cargo build --locked --release --bins`。
+从 [3.2.1 Release](https://github.com/3aKHP/prts-mcp/releases/tag/v3.2.1) 下载对应系统与架构的归档包，校验 SHA-256 后解压（请完整保留解压目录内的 `bin/` 与 `data/` 相对结构），直接运行 `bin/prts-mcp`（Windows 为 `bin\prts-mcp.exe`）。从源码编译请执行 `cargo build --locked --release --bins`。
+
+通过 crates.io 安装请执行 `cargo install prts-mcp --version 3.2.1 --locked --bin prts-mcp`，需要 Rust >=1.89 与 C 编译器（Windows 需要 MSVC 构建工具）。安装后的命令默认 HTTP，MCP 客户端可设置 `PRTS_TRANSPORT=stdio`。源码安装不含备用游戏数据，需要启动同步或已有本地数据；内部 Rust 库 API 不作为受支持的 SDK。
 
 各大 MCP 客户端的零基础入门、配置片段与工具串联工作流请参阅[Agent 与 MCP 零基础入门指南](docs/user/mcp-and-agent-basics.md)、[客户端接入与快速上手指南](docs/user/quick-start.md)和[工具使用与同人创作工作流指南](docs/user/tools-guide.md)；服务器常驻部署、Docker 卷挂载与故障排查请参阅[服务端部署与容器运维指南](docs/admin/deployment.md)。
 
@@ -283,7 +287,7 @@ docker run -d --name prts-mcp -p 127.0.0.1:3000:3000 -e PRTS_TRANSPORT=http -v p
 
 `GITHUB_MIRRORS` 支持配置逗号分隔的 GitHub 下载备用前缀（自动去除首尾空白与末尾斜杠）。HTTP 客户端同时支持标准代理环境变量（`HTTP_PROXY`、`HTTPS_PROXY`、`ALL_PROXY`、`NO_PROXY`）；使用镜像或代理不会跳过 manifest 与 ZIP 完整性校验。
 
-公开发布的 Rust 原生归档包、Docker 镜像与 npm 包均内置经过校验的只读备用数据（含游戏表、关卡与剧情），首次同步完成前或离线环境下可直接查询。一旦可写用户数据目录或数据卷中存在完整的用户数据，服务优先读取用户数据，且后台同步只写入用户目录，不会修改安装包内的备用数据。从源码构建或使用 Cargo 源码包时依赖启动同步或显式配置的数据路径；crates.io 正在为 3.2.x 准备发行，Rust 版尚未通过 PyPI 发布。
+公开发布的 Rust 原生归档包、Docker 镜像与 npm 包均内置经过校验的只读备用数据（含游戏表、关卡与剧情），首次同步完成前或离线环境下可直接查询。一旦可写用户数据目录或数据卷中存在完整的用户数据，服务优先读取用户数据，且后台同步只写入用户目录，不会修改安装包内的备用数据。从源码构建或使用 Cargo 源码包时依赖启动同步或显式配置的数据路径；crates.io 提供源码安装，Rust 版尚未通过 PyPI 发布。
 
 ### 协议兼容性与版本迁移
 

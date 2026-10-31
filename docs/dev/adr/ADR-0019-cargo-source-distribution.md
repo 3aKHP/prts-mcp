@@ -1,6 +1,6 @@
 # ADR-0019：Cargo 源码发行与首次发布引导
 
-- 状态：Proposed
+- 状态：Accepted
 - 决策日期：2026-11-01
 - 关联：[PR #317](https://github.com/3aKHP/prts-mcp/pull/317)、[Issue #314](https://github.com/3aKHP/prts-mcp/issues/314)、[候选发行流程](../RELEASE-CANDIDATES.md#5-cargo-源码发行)、[ADR-0011](ADR-0011-npm-oidc-trusted-publishing.md)
 

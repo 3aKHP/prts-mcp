@@ -101,7 +101,7 @@
 | **内置备用数据与优先级** | 正式发行的原生归档包、npm 包与 Docker 镜像均内置只读备用数据（游戏表、关卡、剧情）。当用户数据目录已有完整数据时，**用户数据优先**，且后台同步仅写入可写的用户目录；源码构建不含内置备用数据。 |
 | **游戏数据后端** | 3.2 起默认 SQLite（同步 `zh_CN.sqlite.gz`，写入 `database/`）。未设置 `PRTS_DATA_BACKEND`、`PRTS_DATA_DB` 且无自定义 JSON 路径时，DB 就绪前自动使用 JSON 备用；显式 SQLite 或 `PRTS_DATA_DB` 不回落 JSON；`PRTS_DATA_BACKEND=json` 保持 JSON 后端。 |
 | **立绘数据源模式** | `IMAGES_ENABLED=false` 会隐藏 `operator_artwork`（工具数 24 → 23）。`LOCAL_IMAGE=false`（默认）从 MediaWiki 按需拉取并缓存图片（仍消耗网络流量）；`LOCAL_IMAGE=true` 后台同步 GB 量级的 AKDP 本地 PNG 包，`ORIGINAL_IMAGE=true` 额外同步未缩放原图分片。 |
-| **版本与发布渠道** | 当前公开稳定版为 `3.2.0`（npm `latest`，GHCR `:latest` 与 `:3`）；3.x 预发布版本使用 npm `@next` 与 GHCR `:next`，2.8.x 维护版使用 npm `lts-2.8` 与 GHCR `:2`。`lts/2.8` 与 `lts/1.7` 均维护至 `2027-07-02`。 |
+| **版本与发布渠道** | 当前公开稳定版为 `3.2.1`（npm `latest`，GHCR `:latest` 与 `:3`）；3.x 预发布版本使用 npm `@next` 与 GHCR `:next`，2.8.x 维护版使用 npm `lts-2.8` 与 GHCR `:2`。`lts/2.8` 与 `lts/1.7` 均维护至 `2027-07-02`。 |
 
 ---
 
