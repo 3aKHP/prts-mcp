@@ -11,6 +11,7 @@
 ### 新增
 
 - 本地图片同步支持 v2 多分片 baseline 与 delta，并继续兼容 v1。同 baseline 更新只获取必要的新 delta；跨 baseline 复用校验通过的 PNG，跳过内容已满足的分片。完整校验后原子激活，3.2 图片写入器被终止后无须等待旧租约过期即可恢复。
+- **工具输出信任边界说明**：[`docs/user/tools-guide.md`](docs/user/tools-guide.md#4-工具输出的信任边界面向-mcp-客户端集成者) 与 [`SECURITY.md`](SECURITY.md) 新增说明，介绍工具输出的来源、TLS 与 SHA-256 校验能证明和不能证明什么，以及 MCP 客户端如何把工具输出当作不可信数据处理。
 
 
 ### 变更
