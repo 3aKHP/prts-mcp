@@ -52,7 +52,7 @@ English readers: the root [README](../README.md#english) and [Security Policy](.
   - [dev/adr/](dev/adr/)：架构决策记录（ADR）——自 3.1 起逐条记录影响契约、公开行为、数据语义、分发与安全姿态的决策，附编号、状态与撰写规范。
   - [ADR-0017](dev/adr/ADR-0017-custom-github-data-source.md)：自定义 GitHub 数据源、信任边界与缓存目录归属。
   - [dev/DOCUMENTING.md](dev/DOCUMENTING.md)：公开文档写作、角色划分与审查规范。
-  - [dev/WORKFLOW.md](dev/WORKFLOW.md)：变更分级、双轨 Code Review、普通与全量 CI 策略及最小验证矩阵。
+  - [dev/WORKFLOW.md](dev/WORKFLOW.md)：变更分级、双轨 Code Review、普通与全量 CI 策略、最小验证矩阵及安全依赖更新分流。
   - [dev/VERSIONING.md](dev/VERSIONING.md)：版本号语义与向后兼容性承诺。
   - [dev/LTS.md](dev/LTS.md)：`lts/1.7` 与 `lts/2.8` 两条长期支持分支的维护规则。
   - [dev/E2E.md](dev/E2E.md)：全量 E2E 真机测试流程。

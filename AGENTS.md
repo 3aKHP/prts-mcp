@@ -52,3 +52,5 @@ For quantitative code or benchmark comparisons, use [`docs/dev/COMPARATIVE-EVALU
 ## 5. Code Review
 
 Standard and higher-tier PRs require **dual-track review**: open the PR first to trigger KHPilot Bot Review, and run an independent clean-context, read-only review in parallel (see [`docs/dev/WORKFLOW.md`](docs/dev/WORKFLOW.md) and [`CLAUDE.md`](CLAUDE.md)).
+
+KHPilot is advisory, never a merge prerequisite. Missing, interrupted, incomplete, or `action_required` Bot results do not delay work or require a waiver. Required CI and independent review still apply; verified substantive findings must be resolved regardless of their source.
