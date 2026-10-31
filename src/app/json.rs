@@ -146,6 +146,41 @@ mod tests {
     }
 
     #[test]
+    fn default_fallback_serves_bundle_when_sync_root_belongs_to_another_source() {
+        let root = temp_root("bundle-foreign-root");
+        let mut config = config_for(&root);
+        config.is_custom_gamedata = false;
+        config.data_backend = crate::config::DataBackend::Sqlite;
+        config.allow_json_fallback = true;
+        config.bundle_root = Some(root.join("bundle"));
+        let bundled = excel_path_of(&root.join("bundle/gamedata"));
+        for name in [
+            "character_table.json",
+            "handbook_info_table.json",
+            "charword_table.json",
+            "story_review_table.json",
+        ] {
+            write(&config.excel_path.join(name), "{}");
+            write(&bundled.join(name), "{}");
+        }
+        crate::sync::source_guard::ensure(
+            &root.join("foreign"),
+            &crate::config::DataSource::parse(Some("team/assets")).unwrap(),
+        )
+        .unwrap();
+        std::fs::copy(
+            root.join("foreign/.prts-data-source.json"),
+            config.gamedata_path.join(".prts-data-source.json"),
+        )
+        .unwrap();
+        let state = DataState::new(Arc::new(config));
+        assert_eq!(state.snapshot().excel_root, Some(bundled.clone()));
+        assert_eq!(state.snapshot().excel_root, Some(bundled));
+        drop(state);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn custom_source_accepts_explicit_readonly_json_without_sync_markers() {
         let root = temp_root("custom-readonly");
         let mut config = config_for(&root);
