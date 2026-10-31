@@ -24,7 +24,7 @@
 
 ## 3.2 SQLite Default and v2 Artwork
 
-Game data uses the SQLite backend by default. Without an explicit backend or custom JSON inputs, JSON fallback serves requests until a validated DB is ready, after which new requests switch automatically. Explicit SQLite remains strict, and `PRTS_DATA_BACKEND=json` keeps using existing JSON volumes. Local artwork synchronization supports both v1 and v2 multipart releases; AKDP production artwork is still v1. See [data and sync](docs/admin/data-and-sync.md).
+Game data uses the SQLite backend by default. With none of `PRTS_DATA_BACKEND`, `PRTS_DATA_DB` or custom JSON paths set, JSON fallback serves requests until a validated DB is ready, after which new requests switch automatically. Explicit SQLite or a configured `PRTS_DATA_DB` stays strict, and `PRTS_DATA_BACKEND=json` keeps using existing JSON volumes. Local artwork synchronization supports both v1 and v2 multipart releases; AKDP production artwork is still v1. See [data and sync](docs/admin/data-and-sync.md).
 
 ## 3.1.3 Custom GitHub Data Source
 

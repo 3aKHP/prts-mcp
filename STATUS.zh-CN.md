@@ -24,7 +24,7 @@
 
 ## 3.2 默认 SQLite 与 v2 图片
 
-游戏数据默认使用 SQLite 后端。未显式选择后端且无自定义 JSON 输入时，DB 就绪前使用 JSON 备用，之后新请求自动切换；显式 SQLite 保持严格模式，设 `PRTS_DATA_BACKEND=json` 可继续使用既有 JSON 卷。本地图片同步同时支持 v1 与 v2 多分片发布；AKDP 生产图片目前仍为 v1。详见[数据同步说明](docs/admin/data-and-sync.md)。
+游戏数据默认使用 SQLite 后端。未设置 `PRTS_DATA_BACKEND`、`PRTS_DATA_DB` 且无自定义 JSON 路径时，DB 就绪前使用 JSON 备用，之后新请求自动切换；显式 SQLite 或设置 `PRTS_DATA_DB` 时保持严格模式，设 `PRTS_DATA_BACKEND=json` 可继续使用既有 JSON 卷。本地图片同步同时支持 v1 与 v2 多分片发布；AKDP 生产图片目前仍为 v1。详见[数据同步说明](docs/admin/data-and-sync.md)。
 
 ## 3.1.3 自定义 GitHub 数据源
 

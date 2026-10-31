@@ -38,6 +38,9 @@ PRTS-MCP 运行依赖两类外部数据源：
 ├── gamedata-levels/             ← 关卡战斗与刷怪数据（来自 zh_CN-levels.zip）
 │   ├── archives/
 │   └── .releases/<generation>/zh_CN/gamedata/levels/ ← 各关卡波次 JSON，敌人数据库位于 enemydata/enemy_database.json
+├── database/                    ← 默认 SQLite 后端的 DB 代际（来自 zh_CN.sqlite.gz），可通过 PRTS_DATA_DIR 单独指定路径
+│   ├── active / previous        ← 当前与上一代 DB 指针
+│   └── <sha256>-<随机后缀>.sqlite 及其 .verified.json 验收记录
 ├── storyjson/                   ← 剧情对话与梗概数据
 │   ├── zh_CN.zip                ← 服务端直接从该 ZIP 按需流式读取剧情与索引，无需全量解压
 │   └── release_meta.json
@@ -140,7 +143,7 @@ docker run -d --name prts-mcp -p 127.0.0.1:3000:3000 -e PRTS_TRANSPORT=http -v /
 
 1. **完整备份要求**：
    - 备份 `/data`（或本地数据根目录）前，请先停止服务容器或进程，确保没有正在进行的后台解压任务。
-   - **必须连同隐藏文件一起备份**：包括根目录下的 `.gamedata_pair.json`、各子目录下的 `archives/extract_meta.json`、`release_meta.json` 与完整的 `.releases/` 目录，以及 `images/` 下的 `.images_meta.json` 和 `.releases/<generation>/index.json`。只拷贝散落的 JSON 或 PNG 而丢弃元数据文件会导致服务端无法识别已激活代际而重新全量下载。
+   - **必须连同隐藏文件一起备份**：包括根目录下的 `.gamedata_pair.json`、各子目录下的 `archives/extract_meta.json`、`release_meta.json` 与完整的 `.releases/` 目录，`database/` 下的 `active`、`previous` 指针与对应 `.sqlite` 文件，以及 `images/` 下的 `.images_meta.json` 和 `.releases/<generation>/index.json`。只拷贝散落的 JSON 或 PNG 而丢弃元数据文件会导致服务端无法识别已激活代际而重新全量下载。
 2. **从分卷迁移到单卷 `/data`**：
    - 若希望将 2.x 遗留的 `prts-mcp-data`、`prts-mcp-levels`、`prts-mcp-storyjson` 三个命名卷合并为单个 `prts-data` 卷，只需在停机状态下将三个旧卷的内容分别复制到新卷的 `/data/gamedata`、`/data/gamedata-levels`、`/data/storyjson` 子目录下，启动后服务会自动根据各子目录的 `extract_meta.json` 重建根 `.gamedata_pair.json`。
 3. **损坏数据目录恢复**：

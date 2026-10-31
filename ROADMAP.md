@@ -4,7 +4,7 @@ The current public stable release is `3.2.0`, a single native Rust implementatio
 
 ## 3.2 — SQLite Default and v2 Artwork
 
-Delivered SQLite as the default backend, with explicit JSON fallback and automatic switching when a DB is ready. Artwork synchronization supports v1 and v2 multipart releases, incremental updates and verified reuse across baselines. AKDP production remains v1; the planned 2027 Spring Festival cutover is conditional on signing, supported-client releases and activation acceptance. LTS/2.8 compatibility is prepared independently.
+Delivered SQLite as the default backend. JSON fallback is used automatically until a DB is ready, then requests switch over. Artwork synchronization supports v1 and v2 multipart releases, incremental updates and verified reuse across baselines. AKDP production remains v1; the planned 2027 Spring Festival cutover is conditional on signing, supported-client releases and activation acceptance. LTS/2.8 compatibility is prepared independently.
 
 ## 3.1.3 — Custom GitHub Data Source
 
