@@ -61,6 +61,7 @@ gh run rerun "$release_run_id" --failed
 - **npm（`publish-npm.mjs`）**：按依赖顺序逐包检查。若某包在 registry 上已存在且 `dist.integrity` 与 `rust-release-candidate` 中的 tarball 完全一致，脚本会自动跳过重复上传，仅核对并修复缺失的 dist-tag（如 `next`）。
 - **GHCR（`publish-docker.mjs`）**：若远端已存在同版本镜像且 Image ID 一致，复用该镜像；多架构 manifest 按两个原生架构的 digest 核对并补齐。若已有镜像或版本 manifest 不一致则立即报错中止，防止覆盖。
 - **GitHub Release（`publish-github.mjs`）**：核验快照中 `github/` 的 7 项公开附件，并逐项比对已上传资产的 SHA-256，仅补传缺失的附件，且绝不使用 `--clobber` 覆盖哈希不匹配的同名文件。
+- **crates.io（`tools/cargo/publish.mjs`）**：复用原始 `cargo-source-candidate`，按同一提交与 Cargo 版本重现源码归档，摘要一致后才允许上传。已有同版索引摘要一致时跳过上传，摘要冲突或 yanked 时中止。上传后传播超时可重跑该发布任务，不重新验证或构建原生候选；首次人工发布和 OIDC 配置见[Cargo 源码发行](RELEASE-CANDIDATES.md#5-cargo-源码发行)。
 
 ---
 

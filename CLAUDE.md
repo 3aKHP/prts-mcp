@@ -5,7 +5,7 @@ branch: "develop"
 
 # CLAUDE.md — AI 协作者说明
 
-PRTS-MCP 的 3.x 开发线是位于仓库根目录的原生 Rust 工程，业务行为与工具契约严格对齐冻结的 TS/v2.8.1 基线。当前公开稳定版为原生 Rust `3.2.0`；2.8.x 与 1.7.x 的 Python/TypeScript 实现分别在 `lts/2.8` 与 `lts/1.7` 分支维护，两线 EOL 均为 **2027-07-02**。
+PRTS-MCP 的 3.x 开发线是位于仓库根目录的原生 Rust 工程，业务行为与工具契约严格对齐冻结的 TS/v2.8.1 基线。当前公开稳定版为原生 Rust `3.2.1`；2.8.x 与 1.7.x 的 Python/TypeScript 实现分别在 `lts/2.8` 与 `lts/1.7` 分支维护，两线 EOL 均为 **2027-07-02**。
 
 ## 1. 必读文档导航
 
@@ -71,8 +71,8 @@ PRTS-MCP 的 3.x 开发线是位于仓库根目录的原生 Rust 工程，业务
 
 | 分支 | 定位 | 版本与发布规则 |
 | --- | --- | --- |
-| `main` | 公开稳定版分支（当前为 `3.2.0`） | 承载最新正式版；自 M5 发布 `3.0.0` 起为 Rust 主线，正式版 tag 推进 `latest` 标签。 |
-| `develop` | 3.x Rust 开发集成分支（当前为 `3.2.0-dev.0`） | 根目录 Cargo 工程，不包含 `python/` 或 `ts/` 目录；日常功能与修复在此集成。 |
+| `main` | 公开稳定版分支（当前为 `3.2.1`） | 承载最新正式版；自 M5 发布 `3.0.0` 起为 Rust 主线，正式版 tag 推进 `latest` 标签。 |
+| `develop` | 3.x Rust 开发集成分支（当前为 `3.2.1-dev.0`） | 根目录 Cargo 工程，不包含 `python/` 或 `ts/` 目录；日常功能与修复在此集成。 |
 | `lts/2.8` | 2.8.x Python/TypeScript 长期维护线 | 使用 `python/v2.8.x` + `ts/v2.8.x` 成对 tag，发布至 npm `lts-2.8` 与 Docker `:2`，不更新 `latest`；EOL 为 `2027-07-02`。 |
 | `lts/1.7` | 1.7.x Python/TypeScript 长期维护线 | 使用 `python/v1.7.x` + `ts/v1.7.x` 成对 tag；EOL 为 `2027-07-02`。 |
 

@@ -6,8 +6,8 @@
 
 | Line / Branch | Current State |
 | --- | --- |
-| Public stable (`main`) | [`3.2.0`](https://github.com/3aKHP/prts-mcp/releases/tag/v3.2.0) (native Rust), published on npm (`latest`), GitHub Releases, and GHCR (`:latest`, `:3`). |
-| Active development (`develop`) | `3.2.0-dev.0` (native Rust Cargo project at the repository root). |
+| Public stable (`main`) | [`3.2.1`](https://github.com/3aKHP/prts-mcp/releases/tag/v3.2.1) (native Rust), published on npm (`latest`), crates.io, GitHub Releases, and GHCR (`:latest`, `:3`). |
+| Active development (`develop`) | `3.2.1-dev.0` (native Rust Cargo project at the repository root). |
 | `lts/2.8` | Python and TypeScript 2.8.x maintenance branch (latest patch `2.8.2`, `2.8.1` feature baseline, 24 tools). |
 | `lts/1.7` | Python and TypeScript 1.7.x maintenance branch (latest patch `1.7.3`, `1.7.0` feature baseline, 32 tools). |
 | LTS End of Life | Both `lts/2.8` and `lts/1.7` are supported through **2027-07-02**. |
@@ -21,6 +21,10 @@
   - `prts-mcp-ts`, `prts-mcp-ts-bun` (HTTP), and `prts-mcp-ts-stdio` (stdio) preserve fixed 2.x transport modes on top of the Rust binary.
   - `prts-mcp-ghcr` (Docker image entrypoint) preserves default `stdio`; set `PRTS_TRANSPORT=http` for HTTP mode.
 - **Repository Structure**: The root directory holds `Cargo.toml`, `src/`, `native/`, `vendor/`, `tests/`, `contracts/`, `tools/`, `packaging/`, and `Dockerfile`. Legacy Python and TypeScript implementations are maintained on `lts/2.8` and `lts/1.7` (see [LTS Policy](docs/dev/LTS.md)). Code and third-party content licensing are documented in [LICENSE](LICENSE) and [NOTICE](NOTICE).
+
+## 3.2.1 Cargo Source Distribution
+
+The crates.io channel installs the native server from source with Rust >=1.89 and a C compiler. The source archive contains five public binaries and excludes the internal test harness. It carries no fallback game data. See [release candidates](docs/dev/RELEASE-CANDIDATES.md#5-cargo-源码发行) for installation verification, first registration and OIDC setup.
 
 ## 3.2 SQLite Default and v2 Artwork
 

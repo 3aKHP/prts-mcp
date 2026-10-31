@@ -1,0 +1,39 @@
+name: Cargo source candidate
+on:
+  workflow_call:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Install pinned Rust toolchain
+        run: rustup show
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: rust-${{ runner.os }}-${{ hashFiles('Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', 'build.rs', 'native/**', 'vendor/**') }}
+          restore-keys: rust-${{ runner.os }}-
+      - name: Verify archive installation and all public entry profiles
+        run: |
+          node --test tools/cargo/*.test.mjs
+          node tools/cargo/verify.mjs
+      - uses: actions/upload-artifact@v6
+        with:
+          name: cargo-source-candidate
+          path: |
+            artifacts/cargo/*.crate
+            artifacts/cargo/SOURCE.json
+          if-no-files-found: error
+          retention-days: 14
