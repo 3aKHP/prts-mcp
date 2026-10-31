@@ -1,6 +1,6 @@
 # ADR-0001：3.1 引入实验性 SQLite 数据后端
 
-- 状态：Accepted
+- 状态：Accepted（3.2 阶段的落地语义见 [ADR-0018](ADR-0018-sqlite-default-with-json-fallback.md)）
 - 决策日期：2026-10-18
 - 关联：[Issue #263](https://github.com/3aKHP/prts-mcp/issues/263)、[CHANGELOG 3.1.0](../../../CHANGELOG.zh-CN.md)、[contracts/sqlite-schema-v1.sql](../../../contracts/sqlite-schema-v1.sql)
 
