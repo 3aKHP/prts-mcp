@@ -7,26 +7,37 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 use super::images_meta::ImagesIndex;
-use super::images_v2::{flat, Manifest as Index};
-fn checked(path: &Path, bytes: u64, sha: &str) -> bool {
-    use std::io::Read;
-    let Ok(mut f) = std::fs::File::open(path) else {
+use super::images_v2::{flat, Manifest as Index, Part};
+/// Stream a regular file once, optionally copying it; a failed copy is removed.
+fn checked(path: &Path, bytes: u64, sha: &str, copy: Option<&Path>) -> bool {
+    use std::io::{Read, Write};
+    if !std::fs::symlink_metadata(path).is_ok_and(|meta| meta.is_file()) {
         return false;
-    };
-    let mut h = Sha256::new();
-    let mut total = 0;
-    let mut buf = [0u8; 65536];
-    loop {
-        match f.read(&mut buf) {
-            Ok(0) => break,
-            Ok(n) => {
-                total += n as u64;
-                h.update(&buf[..n]);
-            }
-            Err(_) => return false,
-        }
     }
-    total == bytes && format!("{:x}", h.finalize()) == sha
+    let matched = (|| {
+        let mut f = std::fs::File::open(path)?;
+        let mut out = copy.map(std::fs::File::create).transpose()?;
+        let mut h = Sha256::new();
+        let mut total = 0;
+        let mut buf = [0u8; 65536];
+        loop {
+            let n = f.read(&mut buf)?;
+            if n == 0 {
+                break;
+            }
+            total += n as u64;
+            h.update(&buf[..n]);
+            if let Some(out) = &mut out {
+                out.write_all(&buf[..n])?;
+            }
+        }
+        std::io::Result::Ok(total == bytes && format!("{:x}", h.finalize()) == sha)
+    })()
+    .unwrap_or(false);
+    if let Some(copy) = copy.filter(|_| !matched) {
+        let _ = std::fs::remove_file(copy);
+    }
+    matched
 }
 /// Mirror cascading and per-candidate timeouts live in the transport.
 async fn fetch(t: &dyn Transport, url: &str, path: &Path) -> Result<(), String> {
@@ -51,6 +62,50 @@ async fn read_index(
         return Err("v2 index identity mismatch".into());
     }
     Ok((value, index, view))
+}
+/// Delta parts collected from the target version back towards the baseline.
+struct Chain {
+    deltas: Vec<(String, Vec<Part>)>,
+    previous: Option<String>,
+    newer: String,
+}
+impl Chain {
+    fn new(index: &Index) -> Self {
+        Self {
+            deltas: vec![(index.current_version.clone(), index.delta_parts.clone())],
+            previous: index.previous_version.clone(),
+            newer: index.current_version.clone(),
+        }
+    }
+    /// Walk to the baseline, or stop before fetching `stop`; a stopped walk can resume.
+    async fn walk(
+        &mut self,
+        t: &dyn Transport,
+        source: &DataSource,
+        root: &Path,
+        index: &Index,
+        stop: Option<&str>,
+    ) -> Result<(), String> {
+        while self.newer != index.baseline_version {
+            let version = self.previous.clone().ok_or("broken predecessor chain")?;
+            if version >= self.newer || version < index.baseline_version {
+                return Err("invalid predecessor order".into());
+            }
+            if stop == Some(version.as_str()) {
+                return Ok(());
+            }
+            let (_, prior, _) = read_index(t, source, &format!("images2-{version}"), root).await?;
+            if prior.baseline_version != index.baseline_version
+                || prior.baseline_parts != index.baseline_parts
+            {
+                return Err("baseline drift".into());
+            }
+            self.deltas.push((version.clone(), prior.delta_parts));
+            self.previous = prior.previous_version;
+            self.newer = version;
+        }
+        Ok(())
+    }
 }
 /// Caller holds the shared v1/v2 image activation lock.
 pub(super) async fn run_selected(
@@ -102,74 +157,31 @@ pub(super) async fn run_selected(
             }
         }
     }
-    let prior_index = active
+    let prior = active
         .as_ref()
         .and_then(|path| std::fs::read(path.join("index.json")).ok())
         .and_then(|bytes| serde_json::from_slice::<Value>(&bytes).ok())
-        .and_then(|value| super::images_v2::parse(&value).ok());
-    let mut incremental_from = None;
-    if let (Some(path), Some((prior, view)), Some(meta)) = (&active, &prior_index, &active_meta) {
-        let same_source = meta["sourceRepo"].as_str() == Some(source.slug().as_str());
-        if same_source && prior.current_version > index.current_version {
-            return Err("refusing image version downgrade".into());
-        }
-        let has_groups = meta["shardsSynced"]
-            .as_array()
-            .is_some_and(|groups| groups.len() == keys.len())
-            && keys.iter().all(|key| {
-                meta["shardsSynced"].as_array().is_some_and(|groups| {
-                    groups
-                        .iter()
-                        .any(|group| group.as_str() == Some(key.as_str()))
-                })
-            });
-        let complete = has_groups
-            && view.artworks.values().all(|entry| {
-                entry
-                    .variants
-                    .iter()
-                    .filter(|(tier, _)| original || tier.as_str() != "original")
-                    .all(|(_, v)| checked(&path.join(&v.file), v.bytes as u64, &v.sha256))
-            });
-        if same_source
-            && complete
-            && prior.baseline_version == index.baseline_version
-            && prior.baseline_parts == index.baseline_parts
-        {
-            if prior.current_version == index.current_version {
-                if view != &target {
-                    return Err("same-version image index changed".into());
-                }
-                return Ok(super::types::SyncResult::new(
-                    super::types::SyncStatus::UpToDate,
-                    Some(index.current_version.clone()),
-                    None,
-                ));
-            }
-            incremental_from = Some(prior.current_version.clone());
-        }
+        .and_then(|value| super::images_v2::parse(&value).ok())
+        .map(|(prior, _)| prior);
+    if same_source
+        && prior
+            .as_ref()
+            .is_some_and(|prior| prior.current_version > index.current_version)
+    {
+        return Err("refusing image version downgrade".into());
     }
-    let mut deltas = vec![(index.current_version.clone(), index.delta_parts.clone())];
-    let mut previous = index.previous_version.clone();
-    let mut newer = index.current_version.clone();
-    while newer != index.baseline_version && incremental_from.as_deref() != Some(newer.as_str()) {
-        let version = previous.take().ok_or("broken predecessor chain")?;
-        if version >= newer || version < index.baseline_version {
-            return Err("invalid predecessor order".into());
-        }
-        if incremental_from.as_deref() == Some(version.as_str()) {
-            newer = version;
-            break;
-        }
-        let (_, prior, _) = read_index(t, source, &format!("images2-{version}"), root).await?;
-        if prior.baseline_version != index.baseline_version
-            || prior.baseline_parts != index.baseline_parts
-        {
-            return Err("baseline drift".into());
-        }
-        deltas.push((version.clone(), prior.delta_parts));
-        previous = prior.previous_version;
-        newer = version;
+    let incremental_from = prior
+        .filter(|prior| {
+            same_source
+                && same_groups
+                && prior.baseline_version == index.baseline_version
+                && prior.baseline_parts == index.baseline_parts
+                && prior.current_version < index.current_version
+        })
+        .map(|prior| prior.current_version);
+    let mut chain = Chain::new(&index);
+    if let Some(stop) = incremental_from.as_deref() {
+        chain.walk(t, source, root, &index, Some(stop)).await?;
     }
     let rel = root.join(".releases");
     std::fs::create_dir_all(&rel).map_err(|e| e.to_string())?;
@@ -177,32 +189,39 @@ pub(super) async fn run_selected(
     let stage = rel.join(format!(".{name}.tmp"));
     std::fs::create_dir(&stage).map_err(|e| e.to_string())?;
     let result = async {
-        let prior = images_meta::active_generation(root);
         let mut preserved = BTreeSet::new();
-        {
-            if let Some(prior) = prior {
-                let base = std::fs::canonicalize(&prior).map_err(|e| e.to_string())?;
-                for (name, (bytes, hash)) in &expected {
-                    let path = prior.join(name);
-                    if let Ok(real) = path.canonicalize() {
-                        if real.starts_with(&base) && checked(&real, *bytes, hash) {
-                            std::fs::copy(&real, stage.join(name)).map_err(|e| e.to_string())?;
-                            preserved.insert(name.clone());
-                        }
-                    }
+        if let Some(prior) = &active {
+            for (name, (bytes, hash)) in &expected {
+                if checked(&prior.join(name), *bytes, hash, Some(&stage.join(name))) {
+                    preserved.insert(name.clone());
                 }
             }
+        }
+        // Deltas since the active version suffice only if every other target was reused.
+        let produced: BTreeSet<&String> = chain
+            .deltas
+            .iter()
+            .flat_map(|(_, parts)| parts)
+            .filter(|part| keys.contains(&part.group))
+            .flat_map(|part| part.members.keys())
+            .collect();
+        let incremental = incremental_from.is_some()
+            && expected
+                .keys()
+                .all(|name| preserved.contains(name) || produced.contains(name));
+        if !incremental {
+            chain.walk(t, source, root, &index, None).await?;
         }
         let cache = root.join(".v2-cache");
         std::fs::create_dir_all(&cache).map_err(|e| e.to_string())?;
         let mut work = Vec::new();
-        if incremental_from.as_deref() != Some(newer.as_str()) {
+        if !incremental {
             work.push((
                 format!("images2-baseline-{}", index.baseline_version),
                 index.baseline_parts.clone(),
             ));
         }
-        for (version, parts) in deltas.into_iter().rev() {
+        for (version, parts) in chain.deltas.into_iter().rev() {
             work.push((format!("images2-{version}"), parts));
         }
         // Keep only archives needed by this candidate; failed obsolete versions must not accumulate.
@@ -228,6 +247,8 @@ pub(super) async fn run_selected(
                 std::fs::remove_file(entry.path()).map_err(|e| e.to_string())?;
             }
         }
+        // Last verified member written per target name; later deltas overwrite earlier parts.
+        let mut written = BTreeMap::new();
         for (tag, parts) in work {
             for part in parts {
                 if !keys.contains(&part.group) {
@@ -241,10 +262,10 @@ pub(super) async fn run_selected(
                     continue;
                 }
                 let archive = cache.join(&part.sha256);
-                if !checked(&archive, part.bytes, &part.sha256) {
+                if !checked(&archive, part.bytes, &part.sha256, None) {
                     let tmp = cache.join(format!("{}.tmp", part.sha256));
                     fetch(t, &source.download_url(&tag, &part.file), &tmp).await?;
-                    if !checked(&tmp, part.bytes, &part.sha256) {
+                    if !checked(&tmp, part.bytes, &part.sha256, None) {
                         return Err("ZIP digest mismatch".into());
                     }
                     std::fs::rename(tmp, &archive).map_err(|e| e.to_string())?;
@@ -284,14 +305,17 @@ pub(super) async fn run_selected(
                     if count != member.bytes || format!("{:x}", hash.finalize()) != member.sha256 {
                         return Err("member digest mismatch".into());
                     }
+                    if out.is_some() {
+                        written.insert(name, (member.bytes, member.sha256.clone()));
+                    }
                 }
                 if seen.len() != part.members.len() {
                     return Err("missing ZIP member".into());
                 }
             }
         }
-        for (name, (bytes, hash)) in &expected {
-            if !checked(&stage.join(name), *bytes, hash) {
+        for (name, target) in &expected {
+            if !preserved.contains(name) && written.get(name) != Some(target) {
                 return Err(format!("target mismatch: {name}"));
             }
         }

@@ -383,3 +383,53 @@ async fn unchanged_tag_skips_index_and_generation_reads() {
     );
     assert!(world.downloads.lock().unwrap().is_empty());
 }
+
+#[tokio::test]
+async fn unrecoverable_reused_file_falls_back_to_baseline_parts() {
+    let root = Temp::new();
+    let mut world = World::new();
+    let mut base = world.add("26-01-01", None, b"first");
+    let data = b"second";
+    let archive = zip("b.png", data);
+    let artwork = json!({"shard":"chararts","large":{"file":"b.png","w":1,"h":1,"bytes":data.len(),"sha256":hash(data)}});
+    base["artworks"]["b"] = artwork.clone();
+    base["baselineParts"].as_array_mut().unwrap().push(json!({"file":"second.zip","bytes":archive.len(),"sha256":hash(&archive),"group":"chararts-large","members":{"b.png":{"bytes":data.len(),"sha256":hash(data),"group":"chararts-large"}}}));
+    world.files.insert(
+        "images2-26-01-01/index.json".into(),
+        serde_json::to_vec(&base).unwrap(),
+    );
+    world
+        .files
+        .insert("images2-baseline-26-01-01/second.zip".into(), archive);
+    assert_eq!(
+        sync_images(&root.0, &world, opts()).await.status,
+        SyncStatus::Updated
+    );
+    std::fs::write(
+        active_generation(&root.0).unwrap().join("b.png"),
+        b"corrupt",
+    )
+    .unwrap();
+    let mut next = world.add("26-01-02", Some(&base), b"changed");
+    next["artworks"]["b"] = artwork;
+    world.files.insert(
+        "images2-26-01-02/index.json".into(),
+        serde_json::to_vec(&next).unwrap(),
+    );
+    world.downloads.lock().unwrap().clear();
+    let result = sync_images(&root.0, &world, opts()).await;
+    assert_eq!(result.status, SyncStatus::Updated, "{:?}", result.error);
+    assert_eq!(
+        *world.downloads.lock().unwrap(),
+        vec![
+            "images2-26-01-02/index.json",
+            "images2-26-01-01/index.json",
+            "images2-baseline-26-01-01/26-01-01.zip",
+            "images2-baseline-26-01-01/second.zip",
+            "images2-26-01-02/26-01-02.zip"
+        ]
+    );
+    let generation = active_generation(&root.0).unwrap();
+    assert_eq!(std::fs::read(generation.join("a.png")).unwrap(), b"changed");
+    assert_eq!(std::fs::read(generation.join("b.png")).unwrap(), data);
+}
