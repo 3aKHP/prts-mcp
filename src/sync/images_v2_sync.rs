@@ -11,7 +11,7 @@ use super::images_v2::{flat, Manifest as Index, Part};
 /// Stream a regular file once, optionally copying it; a failed copy is removed.
 fn checked(path: &Path, bytes: u64, sha: &str, copy: Option<&Path>) -> bool {
     use std::io::{Read, Write};
-    if !std::fs::symlink_metadata(path).is_ok_and(|meta| meta.is_file()) {
+    if !std::fs::symlink_metadata(path).is_ok_and(|meta| meta.is_file() && meta.len() == bytes) {
         return false;
     }
     let matched = (|| {
@@ -39,7 +39,7 @@ fn checked(path: &Path, bytes: u64, sha: &str, copy: Option<&Path>) -> bool {
     }
     matched
 }
-/// Mirror cascading and per-candidate timeouts live in the transport.
+/// Mirror cascading lives in the transport; failed rounds retry on the sync schedule.
 async fn fetch(t: &dyn Transport, url: &str, path: &Path) -> Result<(), String> {
     t.download_file(url, path, 900_000)
         .await
