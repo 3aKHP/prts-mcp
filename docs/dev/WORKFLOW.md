@@ -29,10 +29,10 @@
 
 | 等级 | 适用范围 | 评审要求 | 合并条件 |
 |---|---|---|---|
-| **Quick PR** | 小/中型、低风险、未触及高风险域 | KHPilot Bot Review 一轮 | Bot 无 Blocking 项后，由维护者人工合并 |
+| **Quick PR** | 小/中型、低风险、未触及高风险域 | 维护者审查；Bot 反馈可用时参考 | 必需 CI 通过、已核实实质问题闭环后，由维护者人工合并 |
 | **Standard PR** | 中型改动，或触及任一高风险域 | 本地独立 CR + Bot Review **并行**（“双轨 CR”） | 全部 Blocking / Should-fix 项闭环后，由维护者人工合并 |
 | **Huge PR** | 大型、跨模块、架构级高风险改动 | 事前专题计划 + 拆分为多个 Standard PR + 整体多透镜审查（强烈建议全量 E2E，非硬门禁） | 多透镜审查结论全部闭环后，由维护者人工合并 |
-| **Hot-Fix** | `main` 或已发布稳定版 tag 的阻断性回归 | 非平凡变更至少完成独立 CR | PR 合并至 `main` 并打补丁 tag 后，按需同步/移植至维护线与 `develop` |
+| **Hot-Fix** | 已发布稳定版的阻断性回归或需立即发布的安全修复 | 非平凡变更至少完成独立 CR | PR 合并至 `main` 并打补丁 tag 后，按需同步/移植至维护线与 `develop` |
 | **Release** | 公开发布（含 Patch / Minor / 预发布版本） | 至少按 Standard PR 执行；命中 Huge 条件时按 Huge 执行 | 完成版本/CHANGELOG/产物校验与评审后合并发布 |
 
 评审意见统一按四级分类处置：
@@ -60,10 +60,10 @@
 ## 3. 各等级执行细则
 
 ### Quick PR
-适用于不触及高风险域的低风险改动或纯文档修正。流程：创建短分支 → 实现并完成本地验证 → 打开 PR → 等待 KHPilot Bot Review 一轮并处理反馈 → 无 Blocking 项后交由维护者人工合并。
+适用于不触及高风险域的低风险改动或纯文档修正。流程：创建短分支 → 实现并完成本地验证 → 打开 PR → 维护者审查并处理已收到且核实的反馈 → 必需 CI 通过、实质问题闭环后交由维护者人工合并。
 
 ### Standard PR（双轨 CR）
-适用于中型改动或触及高风险域的变更。流程：创建短分支 → 实现并完成本地验证 → **先打开 PR**（触发远端 KHPilot Bot）→ **立即并行启动本地独立 CR** → 汇总两轨结论并按四级分类闭环 → 维护者人工合并。
+适用于中型改动或触及高风险域的变更。流程：创建短分支 → 实现并完成本地验证 → **先打开 PR**（触发远端 KHPilot Bot）→ **立即并行启动本地独立 CR** → 汇总独立评审与已收到的 Bot 意见，按四级分类闭环 → 维护者人工合并。
 
 **本地独立 CR（Tier 1）要求**：
 - 由未参与当前实现会话的干净上下文 Reviewer（通常为只读 SubAgent）执行，不直接修改代码；
@@ -77,7 +77,7 @@
 3. 对整体变更开展多透镜审查（按数据同步、工具契约对齐、传输与会话、立绘双源、打包与配置五个维度逐一核查）。
 
 ### Hot-Fix
-仅用于修复 `main` 或已发布稳定版上的**阻断性生产回归**（如服务无法启动、工具全面报错、数据卷损坏或凭据泄露）；非阻断的日常修复一律走 `develop`。流程：从 `main` 创建 `fix/vX.Y.Z-<topic>` → 最小化修复与回归测试 → 更新 CHANGELOG → 打开 PR 至 `main` 并完成审查 → 合并打 tag → 将适用修复同步至维护线与 `develop`（版本号衔接规则见 [`VERSIONING.md`](VERSIONING.md)）。
+仅用于修复 `main` 或已发布稳定版上的**阻断性生产回归**（如服务无法启动、工具全面报错、数据卷损坏或凭据泄露），或维护者判断**需立即发布的安全漏洞**；非紧急的日常修复一律走 `develop`。流程：从 `main` 创建 `fix/vX.Y.Z-<topic>` → 最小化修复与回归测试 → 更新 CHANGELOG → 打开 PR 至 `main` 并完成审查 → 合并打 tag → 将适用修复同步至维护线与 `develop`（版本号衔接规则见 [`VERSIONING.md`](VERSIONING.md)）。
 
 ### Release 与 3.0 过渡期预发布
 - **正式版发布（Release）**：按 `CLAUDE.md` 路径 D 执行，至少完成 Standard PR 级别的双轨审查与发布产物核对，合并至 `main` 打 tag 后原分支回灌 `develop`。
@@ -87,20 +87,18 @@
 
 ## 4. KHPilot Bot Review 协同机制
 
-KHPilot 是仓库配置的自动代码评审 GitHub App，具有以下运行特征：
+KHPilot 是仓库配置的自动代码评审 GitHub App，仅作为辅助审查来源。**Bot 结果不是任何级别 PR 的合并前置条件**：缺失、超时、中断、覆盖不完整或 `action_required` 均不要求等待或额外豁免。分支保护和 CI 汇总不得依赖 Bot 的存在或成功状态；必需 CI 与独立评审要求保持不变。已收到且经核实的实质 finding 仍须按严重程度闭环。
+
+其运行特征如下：
 
 1. **仅在 PR 打开时自动触发一次**：后续向同一 PR 推送新提交时，Bot **不会自动复审**。为避免主 Agent 与 Bot 陷入无限复审循环，**仅当修复了重大问题且维护者合并决策确需 Bot 复核时**，才在 PR 评论中通过 `@khpilot`（或 `@khpilot[bot]`）手动请求复审。
 2. **评审耗时**：视 Diff 规模通常需要 **3–5 分钟至近 1 小时**。
-3. **在途中断**：若 Bot 正在评审时向 PR 推送了新提交（HEAD 移动），该次在途评审会立即中断。因此推荐**先开 PR 触发 Bot，同时在本地跑独立 CR**，待两轨都完成后再统一推送修复提交。
+3. **在途中断**：若 Bot 正在评审时向 PR 推送了新提交（HEAD 移动），该次在途评审会立即中断。因此推荐**先开 PR 触发 Bot，同时在本地跑独立 CR**，本地独立评审与修复完成后即可推送，不为保住在途 Bot 评审而延后。
 
-等待 Bot 评审到达时，可使用以下后台轮询脚本（每 3 分钟检查一次，上限 60 分钟）：
+需要查看已收到的 Bot 反馈时，可按需查询一次；不轮询等待其作为合并许可：
 
 ```bash
 pr=123  # 替换为实际 PR 编号
-for i in $(seq 1 20); do
-  gh pr view "$pr" --json reviews --jq '[.reviews[].author.login] | any(startswith("khpilot"))' 2>/dev/null | grep -q true && break
-  sleep 180
-done
 gh pr view "$pr" --json reviews --jq '[.reviews[] | select(.author.login | startswith("khpilot"))] | last | {state, submittedAt}'
 ```
 
@@ -123,3 +121,11 @@ gh pr view "$pr" --json reviews --jq '[.reviews[] | select(.author.login | start
 
 - **Issue 关联语法**：PR 完整解决某个 Issue 时，在描述中单独成行写 `Closes #<issue>`；若仅部分关联或提供前置铺垫，写 `Refs #<issue>`。
 - **合并权限与历史**：所有 PR 一律由人类维护者合并（保留 merge commit 历史，不 squash）。
+
+### 依赖安全更新
+
+- **仅自动提出漏洞修复 PR**：Cargo、GitHub Actions 和 Docker 的普通版本更新均设 `open-pull-requests-limit: 0`；漏洞告警与安全更新 PR 在仓库设置中单独开启，不启用自动合并。该配置需进入默认分支 `main` 才生效；普通更新限额不限制安全更新 PR。新版本本身不构成升级理由，必要的非安全更新由维护者单独安排。
+- **按修复紧迫程度分流**：Dependabot 安全更新自动面向默认分支。普通安全修复由维护者把 PR 的 base 改为 `develop`，重新核对差异、冲突及锁文件并跑该目标分支要求的 CI，随补丁发布；需立即发布的修复保留 `main`，走 Hot-Fix 并回灌 `develop`。改 base 不改变后续安全 PR 的自动创建目标，也不保证 Bot 会按新目标继续维护；出现重建或冲突时由维护者接管。
+- **报告与验收边界**：只合入 `develop` 不代表默认分支的漏洞已解决，须在修复进入 `main` 后核对告警。安全 PR 同样须核对 MSRV、API、许可证和平台兼容性；漏洞告警不替代镜像操作系统漏洞与 EOL 检查。
+
+GitHub 的[安全更新配置说明](https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/secure-your-dependencies/configure-security-updates)与[目标分支规则](https://docs.github.com/en/code-security/tutorials/secure-your-dependencies/customizing-dependabot-prs)说明了普通更新限额和安全更新的区别；手动修改目标分支使用 [PR base 修改功能](https://docs.github.com/en/pull-requests/how-tos/create-pull-requests/changing-the-base-branch-of-a-pull-request)。
