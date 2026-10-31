@@ -6,6 +6,7 @@ use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
+use super::images_meta::ImagesIndex;
 use super::images_v2::{flat, Manifest as Index};
 fn checked(path: &Path, bytes: u64, sha: &str) -> bool {
     use std::io::Read;
@@ -49,21 +50,17 @@ async fn read_index(
     source: &DataSource,
     tag: &str,
     root: &Path,
-) -> Result<(Value, Index), String> {
+) -> Result<(Value, Index, ImagesIndex), String> {
     flat(tag)?;
     let tmp = root.join(".index.tmp");
     fetch(t, &source.download_url(tag, "index.json"), &tmp).await?;
     let value: Value = serde_json::from_slice(&std::fs::read(&tmp).map_err(|e| e.to_string())?)
         .map_err(|e| e.to_string())?;
-    let (index, _) = super::images_v2::parse(&value)?;
-    if index.schema_version != "akdp-images/v2"
-        || tag != format!("images2-{}", index.current_version)
-    {
+    let (index, view) = super::images_v2::parse(&value)?;
+    if tag != format!("images2-{}", index.current_version) {
         return Err("v2 index identity mismatch".into());
     }
-    flat(&index.current_version)?;
-    flat(&index.baseline_version)?;
-    Ok((value, index))
+    Ok((value, index, view))
 }
 /// Caller holds the shared v1/v2 image activation lock.
 pub(super) async fn run_selected(
@@ -75,21 +72,13 @@ pub(super) async fn run_selected(
 ) -> Result<super::types::SyncResult, String> {
     super::source_guard::ensure(root, source)?;
     cleanup_staging(&root.join(".releases"))?;
-    let (value, index) = read_index(t, source, latest, root).await?;
+    let (value, index, target) = read_index(t, source, latest, root).await?;
     let keys = super::images_sync::needed_shard_keys(original);
-    let (_, target) = super::images_v2::parse(&value)?;
     let mut expected = BTreeMap::new();
     for entry in target.artworks.values() {
         for (tier, v) in &entry.variants {
-            if !original && tier == "original" {
-                continue;
-            }
-            flat(&v.file)?;
-            if expected
-                .insert(v.file.clone(), (v.bytes as u64, v.sha256.clone()))
-                .is_some()
-            {
-                return Err("duplicate target filename".into());
+            if original || tier != "original" {
+                expected.insert(v.file.clone(), (v.bytes as u64, v.sha256.clone()));
             }
         }
     }
@@ -154,7 +143,7 @@ pub(super) async fn run_selected(
             newer = version;
             break;
         }
-        let (_, prior) = read_index(t, source, &format!("images2-{version}"), root).await?;
+        let (_, prior, _) = read_index(t, source, &format!("images2-{version}"), root).await?;
         if prior.baseline_version != index.baseline_version
             || prior.baseline_parts != index.baseline_parts
         {
@@ -225,13 +214,6 @@ pub(super) async fn run_selected(
             for part in parts {
                 if !keys.contains(&part.group) {
                     continue;
-                }
-                flat(&part.file)?;
-                if part.sha256.len() != 64 || !part.sha256.bytes().all(|b| b.is_ascii_hexdigit()) {
-                    return Err("bad part digest".into());
-                }
-                for name in part.members.keys() {
-                    flat(name)?;
                 }
                 if part
                     .members
