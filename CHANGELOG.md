@@ -11,6 +11,7 @@ The original per-implementation changelogs at the 2.8.1 baseline remain availabl
 ### Added
 
 - Local artwork synchronization supports v2 multipart baselines and deltas alongside v1. Same-baseline updates fetch only required newer deltas; baseline changes reuse verified PNGs and skip satisfied parts. Activation stays atomic, and terminated 3.2 image writers recover without waiting for the old lease expiry.
+- **Tool output trust boundary**: [`docs/user/tools-guide.md`](docs/user/tools-guide.md#4-工具输出的信任边界面向-mcp-客户端集成者) and [`SECURITY.md`](SECURITY.md) now describe where tool output comes from, what TLS and SHA-256 checks do and do not prove, and how MCP clients should handle tool output as untrusted data.
 
 
 ### Changed
