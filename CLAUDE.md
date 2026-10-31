@@ -84,6 +84,8 @@ PRTS-MCP 的 3.x 开发线是位于仓库根目录的原生 Rust 工程，业务
 
 Standard PR 及以上级别的改动采用**“远端 KHPilot Bot + 本地独立 Reviewer 并行”**的双轨 CR 机制（分级标准见 [`docs/dev/WORKFLOW.md`](docs/dev/WORKFLOW.md)）：
 
+**KHPilot 仅提供辅助审查，不是合并前置条件**：缺失、超时、中断、覆盖不完整或单独的 `action_required` 状态均不阻塞开发、推送或合并，也不需要维护者另行豁免。不为等待 Bot 延后已完成的修复。CI 与本地独立评审要求保持不变；Bot 提出的实质问题经核实后按其严重程度处理，不能因 Bot 本身非门禁而忽略。
+
 1. **先开 PR 触发 Bot，再启动本地独立 CR**：
    - KHPilot 仅在 PR 打开时自动评审一次，且在途评审若遇到 PR HEAD 更新会立即中断。因此请先推送分支并打开 PR，随后立即在本地启动 clean-context 的只读独立 Reviewer（SubAgent）并行审查。
 2. **本地独立 Reviewer 要求**：
