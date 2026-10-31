@@ -17,7 +17,7 @@
 | 根目录 `README.md` | 所有访客与用户 | 项目定位、版本线概览、快速开始、24 个工具速查表与文档导航 |
 | `docs/user/mcp-and-agent-basics.md` | 零基础新用户与创作者 | Agent 与 MCP 基础概念扫盲、运行模式对比、客户端选型建议与基本交互操作流程 |
 | `docs/user/quick-start.md` | MCP 客户端用户 | 各大 MCP 客户端接入配置、本地一键启动、输出通道与客户端常见问题 |
-| `docs/user/tools-guide.md` | 同人创作者与工具使用者 | 24 个工具的场景化串联工作流、参数示例速查表与检索技巧 |
+| `docs/user/tools-guide.md` | 同人创作者与工具使用者、MCP 客户端集成者 | 24 个工具的场景化串联工作流、参数示例速查表、检索技巧与工具输出信任边界 |
 | `docs/admin/deployment.md` | 服务端部署与运维管理员 | 独立 HTTP 服务部署、Docker 容器卷与权限加固、`systemd` 托管、生产升级与回滚 |
 | `docs/admin/data-and-sync.md` | 服务端部署与运维管理员 | 数据目录与代际结构、内置备用数据优先级、镜像/代理、离线挂载与全量立绘存储规划 |
 | `docs/admin/environment-variables.md` | 服务端管理员与高级用户 | 全部运行时环境变量、默认值、解析规则与路径推导逻辑 |
@@ -99,8 +99,9 @@
 | **运行环境依赖** | 预编译原生归档包与 Docker 镜像无需安装任何语言运行时或编译器；npm 包需要 `Node >= 22`、`npm >= 10` 作为启动桥（无需 Bun）；从源码编译需要 Rust 工具链与 C 编译器。 |
 | **数据路径与空值陷阱** | 服务不自动加载 `.env`。JSON 后端的 `GAMEDATA_PATH` **只要变量存在（哪怕赋值为空字符串）**即禁用游戏表与关卡自动同步；`STORYJSON_PATH` 设为非空值时禁用剧情自动同步。`PRTS_AUTO_SYNC_INTERVAL_SECONDS=0` 仅关闭周期轮询，仍保留启动时的首次同步检查。 |
 | **内置备用数据与优先级** | 正式发行的原生归档包、npm 包与 Docker 镜像均内置只读备用数据（游戏表、关卡、剧情）。当用户数据目录已有完整数据时，**用户数据优先**，且后台同步仅写入可写的用户目录；源码构建不含内置备用数据。 |
+| **游戏数据后端** | 3.2 起默认 SQLite（同步 `zh_CN.sqlite.gz`，写入 `database/`）。未设置 `PRTS_DATA_BACKEND`、`PRTS_DATA_DB` 且无自定义 JSON 路径时，DB 就绪前自动使用 JSON 备用；显式 SQLite 或 `PRTS_DATA_DB` 不回落 JSON；`PRTS_DATA_BACKEND=json` 保持 JSON 后端。 |
 | **立绘数据源模式** | `IMAGES_ENABLED=false` 会隐藏 `operator_artwork`（工具数 24 → 23）。`LOCAL_IMAGE=false`（默认）从 MediaWiki 按需拉取并缓存图片（仍消耗网络流量）；`LOCAL_IMAGE=true` 后台同步 GB 量级的 AKDP 本地 PNG 包，`ORIGINAL_IMAGE=true` 额外同步未缩放原图分片。 |
-| **版本与发布渠道** | 当前公开稳定版为 `3.1.3`（npm `latest`，GHCR `:latest` 与 `:3`）；3.x 预发布版本使用 npm `@next` 与 GHCR `:next`，2.8.x 维护版使用 npm `lts-2.8` 与 GHCR `:2`。`lts/2.8` 与 `lts/1.7` 均维护至 `2027-07-02`。 |
+| **版本与发布渠道** | 当前公开稳定版为 `3.2.0`（npm `latest`，GHCR `:latest` 与 `:3`）；3.x 预发布版本使用 npm `@next` 与 GHCR `:next`，2.8.x 维护版使用 npm `lts-2.8` 与 GHCR `:2`。`lts/2.8` 与 `lts/1.7` 均维护至 `2027-07-02`。 |
 
 ---
 

@@ -21,7 +21,7 @@ jobs:
           - platform: windows-x64
             runner: windows-2022
           - platform: darwin-arm64
-            runner: macos-14
+            runner: macos-15
           - platform: darwin-x64
             runner: macos-15-intel
     runs-on: ${{ matrix.runner }}

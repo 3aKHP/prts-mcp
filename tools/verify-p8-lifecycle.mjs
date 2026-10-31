@@ -61,6 +61,8 @@ function startRustHttp(vol, mirrors) {
     env: {
       PATH: process.env.PATH, HOME: process.env.HOME,
       XDG_DATA_HOME: vol,
+      // This lifecycle suite checks the JSON archive/pair volume contract.
+      PRTS_DATA_BACKEND: "json",
       GITHUB_MIRRORS: mirrors,
       HTTPS_PROXY: "http://127.0.0.1:9",
       IMAGES_ENABLED: "false",

@@ -6,8 +6,8 @@
 
 | Line / Branch | Current State |
 | --- | --- |
-| Public stable (`main`) | [`3.1.3`](https://github.com/3aKHP/prts-mcp/releases/tag/v3.1.3) (native Rust), published on npm (`latest`), GitHub Releases, and GHCR (`:latest`, `:3`). |
-| Active development (`develop`) | `3.1.3-dev.0` (native Rust Cargo project at the repository root). |
+| Public stable (`main`) | [`3.2.0`](https://github.com/3aKHP/prts-mcp/releases/tag/v3.2.0) (native Rust), published on npm (`latest`), GitHub Releases, and GHCR (`:latest`, `:3`). |
+| Active development (`develop`) | `3.2.0-dev.0` (native Rust Cargo project at the repository root). |
 | `lts/2.8` | Python and TypeScript 2.8.x maintenance branch (latest patch `2.8.2`, `2.8.1` feature baseline, 24 tools). |
 | `lts/1.7` | Python and TypeScript 1.7.x maintenance branch (latest patch `1.7.3`, `1.7.0` feature baseline, 32 tools). |
 | LTS End of Life | Both `lts/2.8` and `lts/1.7` are supported through **2027-07-02**. |
@@ -22,13 +22,17 @@
   - `prts-mcp-ghcr` (Docker image entrypoint) preserves default `stdio`; set `PRTS_TRANSPORT=http` for HTTP mode.
 - **Repository Structure**: The root directory holds `Cargo.toml`, `src/`, `native/`, `vendor/`, `tests/`, `contracts/`, `tools/`, `packaging/`, and `Dockerfile`. Legacy Python and TypeScript implementations are maintained on `lts/2.8` and `lts/1.7` (see [LTS Policy](docs/dev/LTS.md)). Code and third-party content licensing are documented in [LICENSE](LICENSE) and [NOTICE](NOTICE).
 
+## 3.2 SQLite Default and v2 Artwork
+
+Game data uses the SQLite backend by default. With none of `PRTS_DATA_BACKEND`, `PRTS_DATA_DB` or custom JSON paths set, JSON fallback serves requests until a validated DB is ready, after which new requests switch automatically. Explicit SQLite or a configured `PRTS_DATA_DB` stays strict, and `PRTS_DATA_BACKEND=json` keeps using existing JSON volumes. Local artwork synchronization supports both v1 and v2 multipart releases; AKDP production artwork is still v1. See [data and sync](docs/admin/data-and-sync.md).
+
 ## 3.1.3 Custom GitHub Data Source
 
 `PRTS_DATA_SOURCE_REPO=owner/repo` selects a compatible repository for data and local artwork synchronization. Custom sources use isolated directories; default-source deployments retain their existing paths and volumes. See [data and sync](docs/admin/data-and-sync.md#自定义-github-数据源).
 
 ## 3.1 SQLite Backend
 
-SQLite is experimental and opt-in with `PRTS_DATA_BACKEND=sqlite` or `PRTS_DATA_DB`; JSON remains the default. Tool contracts and existing JSON data volumes are preserved.
+Version 3.1 uses JSON by default with opt-in SQLite through `PRTS_DATA_BACKEND=sqlite` or `PRTS_DATA_DB`. Tool contracts and existing JSON data volumes are preserved.
 
 ## 3.0 Migration Progress
 

@@ -7,11 +7,11 @@
 
 ---
 
-3.1 增加实验性 SQLite 后端，默认仍使用下文的 JSON/ZIP 路径与同步规则。设置 `PRTS_DATA_BACKEND=sqlite` 后只同步 AKDP 的 `zh_CN.sqlite.gz`，使用独立的 `database/` 目录；也可用 `PRTS_DATA_DB` 指定只读离线 DB。3.1 发行包仍只内置 JSON 备用数据，SQLite 首次使用需要联网或预置 DB。切回 `PRTS_DATA_BACKEND=json` 并重启即可继续使用保留的旧卷；两套游戏数据不会同时同步。变量优先级见[环境变量参考](environment-variables.md)。
+3.2 默认使用 SQLite 后端，只同步 AKDP 的 `zh_CN.sqlite.gz`，使用独立的 `database/` 目录；也可用 `PRTS_DATA_DB` 指定只读离线 DB。未显式选择后端且没有有效 DB 时，立即使用 JSON 备用，后台 DB 就绪后新请求自动切换，进行中的请求继续读取原快照。显式 `PRTS_DATA_BACKEND=sqlite` 不回落 JSON。发行包保留较小的 JSON 备用数据。切回 `PRTS_DATA_BACKEND=json` 并重启即可使用旧卷；两套游戏数据不会同时同步。变量优先级见[环境变量参考](environment-variables.md)。
 
 SQLite 的 `PRTS_VALIDATION_MODE` 默认值为 `normal`。新同步产物在激活前校验整文件摘要、结构和外键。通常模式在进程重启后重新比对摘要，再复用匹配的结构验收记录；`strict` 会重新执行完整结构和外键检查。受管理 DB 旁的 `.verified.json` 是可重建缓存，缺失或失效时补做检查，无须重新下载健康 DB；无法写入记录也不影响已验收数据的使用。自定义只读 DB 不自动写入该记录，通常模式保留快速检查。
 
-计划在 3.2 调整普通默认值，3.x 继续支持显式 JSON 后端及已有自定义 JSON 路径。SQLite 容器持久化 `/data/database`（整卷挂载 `/data` 无须新增挂载）；旧分卷配置在选择 JSON 时保持不变。DB 原子切换、当前/上一代及更新暂存需要额外磁盘空间，切换后不自动删除另一后端的数据。
+3.x 继续支持显式 JSON 后端及已有自定义 JSON 路径。SQLite 容器持久化 `/data/database`（整卷挂载 `/data` 无须新增挂载）；旧分卷配置在选择 JSON 时保持不变。DB 原子切换、当前/上一代及更新暂存需要额外磁盘空间，切换后不自动删除另一后端的数据。
 
 ## 1. 数据集组成与目录结构
 
@@ -38,6 +38,9 @@ PRTS-MCP 运行依赖两类外部数据源：
 ├── gamedata-levels/             ← 关卡战斗与刷怪数据（来自 zh_CN-levels.zip）
 │   ├── archives/
 │   └── .releases/<generation>/zh_CN/gamedata/levels/ ← 各关卡波次 JSON，敌人数据库位于 enemydata/enemy_database.json
+├── database/                    ← 默认 SQLite 后端的 DB 代际（来自 zh_CN.sqlite.gz），可通过 PRTS_DATA_DIR 单独指定路径
+│   ├── active / previous        ← 当前与上一代 DB 指针
+│   └── <sha256>-<随机后缀>.sqlite 及其 .lease 租约与 .verified.json 验收记录
 ├── storyjson/                   ← 剧情对话与梗概数据
 │   ├── zh_CN.zip                ← 服务端直接从该 ZIP 按需流式读取剧情与索引，无需全量解压
 │   └── release_meta.json
@@ -48,6 +51,10 @@ PRTS-MCP 运行依赖两类外部数据源：
 ```
 
 自动同步将游戏表与关卡数据解压至各自的 `.releases/<generation>/` 目录，活动目录由 `archives/extract_meta.json` 与根 `.gamedata_pair.json` 记录。旧版数据卷或手动挂载的数据也可能直接存放在 `gamedata/zh_CN/`、`gamedata-levels/zh_CN/` 下。
+
+3.2 的本地图片同步同时识别 v1 与 v2：v2 使用 `images2-*` 和 `images2-baseline-*`，按数据版本发现更新；同版本优先 v2。已经激活 v2 的目录在网络失败或 v2 发布暂时不可见时保留现有代际，不自动降回 v1。同 baseline 更新只读取活动版本之后的必要 delta；跨 baseline 按文件 SHA-256 复用已有图片，并跳过内容已满足的物理分片。下载、分片及成员校验全部成功后才切换代际，失败继续读取原代际。原图选择仍由 `ORIGINAL_IMAGE` 控制。
+
+3.2 图片写入器在原有目录租约之外持有 `.images-writer.lock` 内核锁。正常运行期间保留该锁文件；进程退出或被终止后，内核会释放锁，后续 3.2 写入器可立即回收带有其标记的旧目录租约。未带标记的旧版本写入器仍使用原租约规则。不要手工删除正在使用的锁文件。
 
 ### 自定义 GitHub 数据源
 
@@ -136,7 +143,7 @@ docker run -d --name prts-mcp -p 127.0.0.1:3000:3000 -e PRTS_TRANSPORT=http -v /
 
 1. **完整备份要求**：
    - 备份 `/data`（或本地数据根目录）前，请先停止服务容器或进程，确保没有正在进行的后台解压任务。
-   - **必须连同隐藏文件一起备份**：包括根目录下的 `.gamedata_pair.json`、各子目录下的 `archives/extract_meta.json`、`release_meta.json` 与完整的 `.releases/` 目录，以及 `images/` 下的 `.images_meta.json` 和 `.releases/<generation>/index.json`。只拷贝散落的 JSON 或 PNG 而丢弃元数据文件会导致服务端无法识别已激活代际而重新全量下载。
+   - **必须连同隐藏文件一起备份**：包括根目录下的 `.gamedata_pair.json`、各子目录下的 `archives/extract_meta.json`、`release_meta.json` 与完整的 `.releases/` 目录，`database/` 下的 `active`、`previous` 指针与对应 `.sqlite` 文件及其 `.sqlite.lease`，以及 `images/` 下的 `.images_meta.json` 和 `.releases/<generation>/index.json`。只拷贝散落的 JSON 或 PNG 而丢弃元数据文件会导致服务端无法识别已激活代际而重新全量下载。
 2. **从分卷迁移到单卷 `/data`**：
    - 若希望将 2.x 遗留的 `prts-mcp-data`、`prts-mcp-levels`、`prts-mcp-storyjson` 三个命名卷合并为单个 `prts-data` 卷，只需在停机状态下将三个旧卷的内容分别复制到新卷的 `/data/gamedata`、`/data/gamedata-levels`、`/data/storyjson` 子目录下，启动后服务会自动根据各子目录的 `extract_meta.json` 重建根 `.gamedata_pair.json`。
 3. **损坏数据目录恢复**：

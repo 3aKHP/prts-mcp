@@ -38,7 +38,7 @@ export function inspectResult(jobs, identity, tier, metadata) {
 export async function findProof(context, api, ignored = new Set()) {
   const { repository, runId, attempt, head, identity, tier, metadata } = context;
   const jobsFor = async (id, runAttempt) => {
-    const page = await api(`repos/${repository}/actions/runs/${id}/attempts/${runAttempt}/jobs?per_page=100`);
+    const page = await api(`repos/${repository}/actions/runs/${id}/jobs?filter=latest&per_page=100`);
     assert.equal(page.total_count, page.jobs.length, 'Incomplete CI jobs response');
     for (const job of page.jobs) {
       assert.equal(job.run_id, id, 'Wrong validation run');
@@ -71,6 +71,16 @@ export async function findProof(context, api, ignored = new Set()) {
   return null;
 }
 
+export async function pollProof(context, api, ignored) {
+  try {
+    return await findProof(context, api, ignored);
+  } catch (error) {
+    if (!/\(HTTP 5\d\d\)/.test(String(error.stderr ?? ''))) throw error;
+    console.warn('GitHub API unavailable; retrying within the existing validation deadline');
+    return null;
+  }
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const eventName = process.env.GITHUB_EVENT_NAME;
   const event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
@@ -85,7 +95,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const ignored = new Set();
   verifyLivePr(eventName, event);
   while (true) {
-    const proof = await findProof(context, githubApi, ignored);
+    const proof = await pollProof(context, githubApi, ignored);
     if (proof) {
       verifyLivePr(eventName, event);
       appendFileSync(process.env.GITHUB_STEP_SUMMARY,

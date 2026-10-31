@@ -6,6 +6,28 @@
 
 2.8.1 基线时的原始分语言更新日志可在 [`ts/v2.8.1` tag](https://github.com/3aKHP/prts-mcp/tree/ts/v2.8.1) 查看（[Python](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/python/CHANGELOG.md) · [TypeScript](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/ts/CHANGELOG.md)），1.7.1 与 1.7.2 的维护记录来自已发布的 [`python/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/python/v1.7.2/python/CHANGELOG.md) 与 [`ts/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/ts/v1.7.2/ts/CHANGELOG.md) 标签。
 
+## [3.2.0] - 2026-10-31
+
+**升级注意事项**：游戏数据默认后端改为 SQLite。未设置 `PRTS_DATA_BACKEND`、`PRTS_DATA_DB` 与自定义 JSON 路径的部署会额外下载约 130 MiB 的 `zh_CN.sqlite.gz`，并在数据根目录下新增 `database/`：单代 DB 约 320 MiB 且随数据版本增长，首次更新后同时保留上一代（约 630 MiB），更新期间另需下载与解压暂存，峰值约 1.1 GiB；DB 就绪前继续使用 JSON 备用数据。整卷挂载 `/data` 的 Docker 部署无须调整。沿用 2.x 分卷挂载或 `--read-only` 加 `--tmpfs /data` 的部署，需要为 `/data/database` 增加卷，或设置 `PRTS_DATA_BACKEND=json` 保持原行为。详见[部署指南](https://github.com/3aKHP/prts-mcp/blob/main/docs/admin/deployment.md)与[数据同步说明](https://github.com/3aKHP/prts-mcp/blob/main/docs/admin/data-and-sync.md)。
+
+### 新增
+
+- 本地图片同步支持 v2 多分片 baseline 与 delta，并继续兼容 v1。同 baseline 更新只获取必要的新 delta；跨 baseline 复用校验通过的 PNG，跳过内容已满足的分片。完整校验后原子激活，3.2 图片写入器被终止后无须等待旧租约过期即可恢复。
+- **工具输出信任边界说明**：[`docs/user/tools-guide.md`](https://github.com/3aKHP/prts-mcp/blob/main/docs/user/tools-guide.md#4-工具输出的信任边界面向-mcp-客户端集成者) 与 [`SECURITY.md`](https://github.com/3aKHP/prts-mcp/blob/main/SECURITY.md) 新增说明，介绍工具输出的来源、TLS 与 SHA-256 校验能证明和不能证明什么，以及 MCP 客户端如何把工具输出当作不可信数据处理。
+- `/debug/metrics` 新增 `data_backend` 字段，报告偏好后端、实际服务的后端以及是否正在使用 JSON 备用。
+
+### 变更
+
+- 游戏数据默认后端切为 SQLite。未设置 `PRTS_DATA_BACKEND`、`PRTS_DATA_DB` 且无自定义 JSON 路径时，启动先使用 JSON 备用，DB 验收完成后自动切换新请求。显式 SQLite 或设置 `PRTS_DATA_DB` 时保持严格模式，不回落 JSON。设置 `PRTS_DATA_BACKEND=json` 可继续使用既有 JSON 卷，切换后端不会删除另一后端的数据。
+
+### 修复
+
+- v2 图片同步在下载和解压写入前执行声明大小上限，发布失败后回收未发布候选，并将大文件处理移出异步工作线程。摘要解析统一处理十六进制大小写，避免克隆完整索引。
+
+### 弃用
+
+- AKDP 计划在 2027 春节窗口切换到不兼容的 v2 图片发布并重建 baseline，前提是发布签名与受支持客户端就绪。切换后停止 v1 图片更新，已发布的数据包保留。3.2.0 已能读取 v2 图片发布，但切换所需的最低客户端版本取决于签名校验的落地，将在切换前公告。Wiki 图片模式不受影响。
+
 ## [3.1.3] - 2026-10-29
 
 ### 新增

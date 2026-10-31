@@ -460,6 +460,19 @@ mod tests {
     struct DownTransport;
     #[async_trait::async_trait]
     impl Transport for DownTransport {
+        async fn download_file_limited(
+            &self,
+            url: &str,
+            dest: &Path,
+            timeout_ms: u64,
+            limit: u64,
+        ) -> Result<u64, crate::sync::transport::TransportError> {
+            let _ = (url, dest, timeout_ms, limit);
+            Err(crate::sync::transport::TransportError::Network(
+                "bounded transfer unsupported by fixture".into(),
+            ))
+        }
+
         async fn fetch_json(
             &self,
             _url: &str,
@@ -814,6 +827,19 @@ mod tests {
         struct SlowTransport;
         #[async_trait::async_trait]
         impl Transport for SlowTransport {
+            async fn download_file_limited(
+                &self,
+                url: &str,
+                dest: &Path,
+                timeout_ms: u64,
+                limit: u64,
+            ) -> Result<u64, crate::sync::transport::TransportError> {
+                let _ = (url, dest, timeout_ms, limit);
+                Err(crate::sync::transport::TransportError::Network(
+                    "bounded transfer unsupported by fixture".into(),
+                ))
+            }
+
             async fn fetch_json(
                 &self,
                 _url: &str,

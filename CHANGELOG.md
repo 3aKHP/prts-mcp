@@ -6,6 +6,28 @@ This file records user-visible changes across PRTS-MCP implementations: Python a
 
 The original per-implementation changelogs at the 2.8.1 baseline remain available on the [`ts/v2.8.1` tag](https://github.com/3aKHP/prts-mcp/tree/ts/v2.8.1) ([Python](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/python/CHANGELOG.md) · [TypeScript](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/ts/CHANGELOG.md)), and the 1.7.1/1.7.2 maintenance records come from the published [`python/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/python/v1.7.2/python/CHANGELOG.md) and [`ts/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/ts/v1.7.2/ts/CHANGELOG.md) tags.
 
+## [3.2.0] - 2026-10-31
+
+**Upgrade notes**: SQLite is now the default game-data backend. Deployments that set none of `PRTS_DATA_BACKEND`, `PRTS_DATA_DB` or custom JSON paths download an additional ~130 MiB `zh_CN.sqlite.gz` and gain a `database/` directory under the data root. One DB generation is ~320 MiB and grows with the data; after the first update the previous generation is kept as well (~630 MiB), and an update needs extra space for the download and decompression, peaking at ~1.1 GiB; JSON fallback keeps serving until the DB is ready. Docker deployments that mount the whole `/data` volume need no change. Deployments that keep the 2.x split-volume mounts, or run `--read-only` with `--tmpfs /data`, should add a volume for `/data/database` or set `PRTS_DATA_BACKEND=json` to keep the previous behaviour. See the [deployment guide](https://github.com/3aKHP/prts-mcp/blob/main/docs/admin/deployment.md) and [data and sync](https://github.com/3aKHP/prts-mcp/blob/main/docs/admin/data-and-sync.md).
+
+### Added
+
+- Local artwork synchronization supports v2 multipart baselines and deltas alongside v1. Same-baseline updates fetch only required newer deltas; baseline changes reuse verified PNGs and skip satisfied parts. Activation stays atomic, and terminated 3.2 image writers recover without waiting for the old lease expiry.
+- **Tool output trust boundary**: [`docs/user/tools-guide.md`](https://github.com/3aKHP/prts-mcp/blob/main/docs/user/tools-guide.md#4-工具输出的信任边界面向-mcp-客户端集成者) and [`SECURITY.md`](https://github.com/3aKHP/prts-mcp/blob/main/SECURITY.md) now describe where tool output comes from, what TLS and SHA-256 checks do and do not prove, and how MCP clients should handle tool output as untrusted data.
+- `/debug/metrics` adds a `data_backend` field reporting the preferred backend, the backend actually serving requests, and whether JSON fallback is active.
+
+### Changed
+
+- SQLite is now the default game-data backend. With none of `PRTS_DATA_BACKEND`, `PRTS_DATA_DB` or custom JSON paths set, startup uses JSON fallback until a validated DB is available, then switches new requests automatically. Explicit SQLite, or a configured `PRTS_DATA_DB`, stays strict and never falls back to JSON. `PRTS_DATA_BACKEND=json` keeps using existing JSON volumes; switching backends does not delete the other backend's data.
+
+### Fixed
+
+- V2 image synchronization enforces declared download and extraction sizes, removes unpublished candidates after publication failures, and isolates large file work from async workers. Digest parsing accepts hexadecimal case consistently and avoids cloning the complete index.
+
+### Deprecated
+
+- AKDP plans to move to an incompatible v2 artwork release and re-baseline in the 2027 Spring Festival window, provided publication signing and supported clients are ready. After the switch, v1 artwork updates stop and published packages remain available. 3.2.0 can already read v2 artwork releases, but the minimum client version for the switch depends on signature verification landing and will be announced beforehand. Wiki image mode is unaffected.
+
 ## [3.1.3] - 2026-10-29
 
 ### Added

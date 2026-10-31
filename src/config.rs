@@ -23,7 +23,7 @@ const REQUIRED_OPERATOR_FILES: [&str; 4] = [
     "story_review_table.json",
 ];
 
-/// Startup-only game-data backend. JSON remains the 3.1 default.
+/// Preferred game-data backend; ordinary 3.2 startup prefers SQLite.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DataBackend {
     Json,
@@ -73,6 +73,8 @@ impl ValidationMode {
 pub struct RuntimeConfig {
     pub data_source: DataSource,
     pub data_backend: DataBackend,
+    /// Default preference may serve JSON until a validated database is ready.
+    pub allow_json_fallback: bool,
     pub validation_mode: ValidationMode,
     /// Writable generation directory, used only by the SQLite backend.
     pub database_dir: PathBuf,
@@ -355,16 +357,24 @@ impl RuntimeConfig {
         let custom_database = lookup("PRTS_DATA_DB")
             .filter(|s| !s.trim().is_empty())
             .map(PathBuf::from);
+        let explicit_backend = lookup("PRTS_DATA_BACKEND");
+        let allow_json_fallback = explicit_backend
+            .as_deref()
+            .is_none_or(|v| v.trim().is_empty())
+            && custom_database.is_none()
+            && !is_custom_gamedata
+            && story_sync_enabled;
         let data_backend = DataBackend::resolve(
-            lookup("PRTS_DATA_BACKEND").as_deref(),
+            explicit_backend.as_deref(),
             custom_database.is_some(),
             is_custom_gamedata || !story_sync_enabled,
-            DataBackend::Json,
+            DataBackend::Sqlite,
         )?;
         Ok(Self {
             data_source,
             validation_mode: ValidationMode::parse(lookup("PRTS_VALIDATION_MODE").as_deref())?,
             data_backend,
+            allow_json_fallback,
             database_dir,
             custom_database,
             gamedata_path,
@@ -544,11 +554,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn backend_selection_is_explicit_and_json_remains_the_default() {
-        assert_eq!(cfg(&[]).data_backend, DataBackend::Json);
+    fn backend_selection_preserves_explicit_choices_and_defaults_to_sqlite() {
+        assert_eq!(cfg(&[]).data_backend, DataBackend::Sqlite);
         assert_eq!(
             cfg(&[("PRTS_DATA_BACKEND", "")]).data_backend,
-            DataBackend::Json
+            DataBackend::Sqlite
         );
         assert_eq!(
             cfg(&[("PRTS_DATA_BACKEND", "sqlite")]).data_backend,
@@ -560,7 +570,7 @@ mod tests {
         );
         assert_eq!(
             cfg(&[("PRTS_DATA_DIR", "/data/database")]).data_backend,
-            DataBackend::Json
+            DataBackend::Sqlite
         );
         for value in ["auto", "db", "SQLITE"] {
             assert!(RuntimeConfig::try_from_lookup(|key| {
@@ -574,6 +584,21 @@ mod tests {
             _ => None,
         })
         .is_err());
+    }
+
+    #[test]
+    fn fallback_is_only_for_an_unconfigured_backend() {
+        assert!(cfg(&[]).allow_json_fallback);
+        assert!(cfg(&[("PRTS_DATA_BACKEND", " ")]).allow_json_fallback);
+        for pairs in [
+            vec![("PRTS_DATA_BACKEND", "sqlite")],
+            vec![("PRTS_DATA_BACKEND", "json")],
+            vec![("PRTS_DATA_DB", "/offline.sqlite")],
+            vec![("GAMEDATA_PATH", "")],
+            vec![("STORYJSON_PATH", "/custom.zip")],
+        ] {
+            assert!(!cfg(&pairs).allow_json_fallback);
+        }
     }
 
     #[test]

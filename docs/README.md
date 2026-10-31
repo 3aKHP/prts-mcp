@@ -17,7 +17,7 @@ English readers: the root [README](../README.md#english) and [Security Policy](.
 
 - [user/mcp-and-agent-basics.md](user/mcp-and-agent-basics.md)：Agent 与 MCP 零基础入门指南（用方舟考据实例讲清大模型、MCP 与客户端的关系、`stdio` 与 `HTTP` 模式怎么选、客户端推荐与首次使用的基本操作）。
 - [user/quick-start.md](user/quick-start.md)：客户端接入与快速上手指南（本地 `stdio` 一键启动、连接 HTTP 端点、各大客户端配置片段、输出通道与常见接入问题）。
-- [user/tools-guide.md](user/tools-guide.md)：工具使用与同人创作工作流指南（五大场景化工具串联工作流、24 个工具的 JSON 调用参数速查表与使用技巧）。
+- [user/tools-guide.md](user/tools-guide.md)：工具使用与同人创作工作流指南（五大场景化工具串联工作流、24 个工具的 JSON 调用参数速查表、使用技巧，以及面向客户端集成者的工具输出信任边界）。
 
 ---
 

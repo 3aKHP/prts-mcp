@@ -53,6 +53,16 @@ Reports in either English or Chinese are welcome. To help us triage and reproduc
 - Vulnerabilities affecting only unsupported versions (`< 1.7`).
 - Automated scanner output that does not demonstrate a concrete impact on PRTS-MCP.
 
+### Trust Boundary of Tool Output
+
+Most PRTS-MCP tool results relay content from upstream sources: PRTS Wiki articles, game tables, story text, and artwork metadata. The server formats this content but does not detect or remove instruction-like text in it. MCP client integrators should treat every tool result as untrusted data, even when the text reads like an instruction.
+
+- TLS certificates for PRTS Wiki and GitHub are validated against the embedded `webpki-roots` store. When `NODE_EXTRA_CA_CERTS` is set, the Wiki client also trusts the roots in that file.
+- Synced packages are checked against their manifest SHA-256 digests, which detects corrupted or incomplete transfers. The manifest and the packages come from the same release, and both pass through a `GITHUB_MIRRORS` mirror when the direct download fails. The digest check therefore does not prove who published the content: configured mirrors and custom data source repositories are trusted by the deployer.
+- Content that passes every check can still carry malicious text if an upstream site or data source repository is compromised.
+
+On the client side, render tool output apart from system instructions, keep a human confirmation step before sensitive actions, do not splice tool output into system prompts, shell commands, or credential-bearing requests, and limit which other MCP servers and permissions are available in the same session. See [section 4 of the Tools & Workflow Guide](docs/user/tools-guide.md#4-工具输出的信任边界面向-mcp-客户端集成者) (Chinese) for the per-tool source table.
+
 ### Coordinated Disclosure
 
 We aim to acknowledge valid security reports within **7 days** and will coordinate a remediation and release timeline based on severity and affected version lines. Fixes are published as patch releases on the latest stable line and, where applicable, on supported LTS lines.
@@ -113,6 +123,16 @@ PRTS-MCP 为最新稳定版本线以及 `1.7`、`2.8` 两条 LTS 长期支持线
 - 本仓库之外的第三方 MCP 客户端配置失误。
 - 仅影响已停止支持版本（`< 1.7`）的问题。
 - 未能说明对 PRTS-MCP 实际触发路径与影响的自动化扫描报告。
+
+### 工具输出的信任边界
+
+PRTS-MCP 的工具输出大多直接转述上游数据源的内容，包括 PRTS Wiki 词条、游戏表格、剧情台词与立绘信息。服务端只做格式整理，不识别也不过滤其中可能出现的指令性文本。MCP 客户端集成者应把每一次工具返回都当作不可信数据处理，即使其中的文字看起来像一条指令。
+
+- 连接 PRTS Wiki 与 GitHub 时，服务端使用内嵌的 `webpki-roots` 根证书库校验 TLS 证书。设置 `NODE_EXTRA_CA_CERTS` 后，Wiki 客户端还会信任该文件中的根证书。
+- 同步的数据包按 manifest 校验 SHA-256，可以发现传输损坏和不完整的下载。manifest 与数据包来自同一个 Release，直连失败后改走 `GITHUB_MIRRORS` 镜像时两者都经由镜像获取。因此 SHA-256 校验不能证明内容由谁发布，所配置的镜像与自定义数据源仓库都属于部署者自行信任的范围。
+- 即使通过了上述全部校验，上游站点或数据源仓库本身被篡改时，内容仍可能包含恶意文本。
+
+客户端侧应把工具输出与系统指令分开呈现，在敏感操作前保留人工确认，不要把工具输出拼进系统提示、shell 命令或携带凭据的请求，并限制同一会话中可用的其他 MCP 服务器与权限。各工具的数据来源见[工具使用与同人创作工作流指南第 4 节](docs/user/tools-guide.md#4-工具输出的信任边界面向-mcp-客户端集成者)。
 
 ### 协调披露
 

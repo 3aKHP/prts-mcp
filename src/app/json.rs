@@ -25,27 +25,45 @@ fn resolve_view_with_legacy_story(config: &RuntimeConfig, legacy_story: &Path) -
         .map(|(excel, _)| excel)
         .unwrap_or_else(|| activated_root(&config.gamedata_path));
     let excel_root = excel_path_of(&excel_active);
-    let excel_root = crate::config::files_complete(&excel_root).then_some(excel_root);
+    // Check ownership after the files: custom writers publish their marker first.
+    let excel_root = (crate::config::files_complete(&excel_root)
+        && (config.is_custom_gamedata
+            || crate::sync::source_guard::verify(&config.gamedata_path, &config.data_source)
+                .is_ok()))
+    .then_some(excel_root);
 
     let levels_active = pair
         .map(|(_, levels)| levels)
         .unwrap_or_else(|| activated_root(&config.levels_path));
-    let levels_root = crate::config::levels_complete(&levels_active).then_some(levels_active);
+    let levels_root = (crate::config::levels_complete(&levels_active)
+        && (config.is_custom_gamedata
+            || crate::sync::source_guard::verify(&config.levels_path, &config.data_source)
+                .is_ok()))
+    .then_some(levels_active);
 
-    let story_zip = story_archive(&config.storyjson_zip).or_else(|| {
-        if !config.data_source.is_default() {
-            return None;
-        }
-        let archive = story_archive(legacy_story)?;
-        // The legacy Docker cache may be outside the configured root. Its
-        // own marker must be checked after resolving the file as well.
-        crate::sync::source_guard::verify(
-            legacy_story.parent().unwrap_or(Path::new(".")),
-            &config.data_source,
-        )
-        .ok()?;
-        Some(archive)
-    });
+    let story_zip = story_archive(&config.storyjson_zip)
+        .filter(|_| {
+            !config.story_sync_enabled
+                || crate::sync::source_guard::verify(
+                    config.storyjson_zip.parent().unwrap_or(Path::new(".")),
+                    &config.data_source,
+                )
+                .is_ok()
+        })
+        .or_else(|| {
+            if !config.data_source.is_default() {
+                return None;
+            }
+            let archive = story_archive(legacy_story)?;
+            // The legacy Docker cache may be outside the configured root. Its
+            // own marker must be checked after resolving the file as well.
+            crate::sync::source_guard::verify(
+                legacy_story.parent().unwrap_or(Path::new(".")),
+                &config.data_source,
+            )
+            .ok()?;
+            Some(archive)
+        });
 
     // Bundled read-only fallback (TS loadConfig's BUNDLED_*_PATH half):
     // only when the sync target is incomplete; resolution mirrors the sync
@@ -125,6 +143,62 @@ mod tests {
             "STORYJSON_PATH" => Some(root.join("nope.zip").to_string_lossy().into_owned()),
             _ => None,
         })
+    }
+
+    #[test]
+    fn default_fallback_serves_bundle_when_sync_root_belongs_to_another_source() {
+        let root = temp_root("bundle-foreign-root");
+        let mut config = config_for(&root);
+        config.is_custom_gamedata = false;
+        config.data_backend = crate::config::DataBackend::Sqlite;
+        config.allow_json_fallback = true;
+        config.bundle_root = Some(root.join("bundle"));
+        let bundled = excel_path_of(&root.join("bundle/gamedata"));
+        for name in [
+            "character_table.json",
+            "handbook_info_table.json",
+            "charword_table.json",
+            "story_review_table.json",
+        ] {
+            write(&config.excel_path.join(name), "{}");
+            write(&bundled.join(name), "{}");
+        }
+        crate::sync::source_guard::ensure(
+            &root.join("foreign"),
+            &crate::config::DataSource::parse(Some("team/assets")).unwrap(),
+        )
+        .unwrap();
+        std::fs::copy(
+            root.join("foreign/.prts-data-source.json"),
+            config.gamedata_path.join(".prts-data-source.json"),
+        )
+        .unwrap();
+        let state = DataState::new(Arc::new(config));
+        assert_eq!(state.snapshot().excel_root, Some(bundled.clone()));
+        assert_eq!(state.snapshot().excel_root, Some(bundled));
+        drop(state);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn custom_source_accepts_explicit_readonly_json_without_sync_markers() {
+        let root = temp_root("custom-readonly");
+        let mut config = config_for(&root);
+        config.data_source = crate::config::DataSource::parse(Some("team/assets")).unwrap();
+        for name in [
+            "character_table.json",
+            "handbook_info_table.json",
+            "charword_table.json",
+            "story_review_table.json",
+        ] {
+            write(&config.excel_path.join(name), "{}");
+        }
+        write(&config.storyjson_zip, "PK-manual");
+        let view = resolve_view(&config);
+        assert!(view.excel_root.is_some());
+        assert_eq!(view.story_zip, Some(config.storyjson_zip.clone()));
+        assert!(!config.gamedata_path.join(".prts-data-source.json").exists());
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]

@@ -303,6 +303,8 @@ fn spawn_binary(args: &[&str], env: &[(String, String)]) -> Child {
     Command::new(bin)
         .args(args)
         .env_clear()
+        // This fixture serves JSON ZIPs and exercises the JSON retry contract.
+        .env("PRTS_DATA_BACKEND", "json")
         .env("PATH", std::env::var("PATH").unwrap_or_default())
         .env("HOME", std::env::var("HOME").unwrap_or_default())
         .envs(env.iter().cloned())

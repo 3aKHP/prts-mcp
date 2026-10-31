@@ -6,8 +6,8 @@
 
 | 分支 / 版本线 | 当前状态 |
 | --- | --- |
-| 公开稳定版（`main`） | [`3.1.3`](https://github.com/3aKHP/prts-mcp/releases/tag/v3.1.3)（原生 Rust），已发布至 npm（`latest`）、GitHub Releases 与 GHCR（`:latest`、`:3`）。 |
-| 主开发分支（`develop`） | `3.1.3-dev.0`（根目录原生 Rust Cargo 工程）。 |
+| 公开稳定版（`main`） | [`3.2.0`](https://github.com/3aKHP/prts-mcp/releases/tag/v3.2.0)（原生 Rust），已发布至 npm（`latest`）、GitHub Releases 与 GHCR（`:latest`、`:3`）。 |
+| 主开发分支（`develop`） | `3.2.0-dev.0`（根目录原生 Rust Cargo 工程）。 |
 | `lts/2.8` | Python 与 TypeScript 2.8.x 长期维护线（最新补丁版本 `2.8.2`，功能基线 `2.8.1`，24 个工具）。 |
 | `lts/1.7` | Python 与 TypeScript 1.7.x 长期维护线（最新补丁版本 `1.7.3`，功能基线 `1.7.0`，32 个工具）。 |
 | LTS 维护截止日（EOL） | `lts/2.8` 与 `lts/1.7` 均维护至 **2027-07-02**。 |
@@ -22,13 +22,17 @@
   - `prts-mcp-ghcr`（Docker 镜像默认入口）：保留默认 `stdio`；设置 `PRTS_TRANSPORT=http` 切换为 HTTP。
 - **仓库目录结构**：根目录包含 `Cargo.toml`、`src/`、`native/`、`vendor/`、`tests/`、`contracts/`、`tools/`、`packaging/` 与 `Dockerfile`。旧 Python 与 TypeScript 实现在 `lts/2.8` 与 `lts/1.7` 分支独立维护（见 [LTS 维护政策](docs/dev/LTS.md)）。源码许可证与第三方内容版权声明分别见 [LICENSE](LICENSE) 与 [NOTICE](NOTICE)。
 
+## 3.2 默认 SQLite 与 v2 图片
+
+游戏数据默认使用 SQLite 后端。未设置 `PRTS_DATA_BACKEND`、`PRTS_DATA_DB` 且无自定义 JSON 路径时，DB 就绪前使用 JSON 备用，之后新请求自动切换；显式 SQLite 或设置 `PRTS_DATA_DB` 时保持严格模式，设 `PRTS_DATA_BACKEND=json` 可继续使用既有 JSON 卷。本地图片同步同时支持 v1 与 v2 多分片发布；AKDP 生产图片目前仍为 v1。详见[数据同步说明](docs/admin/data-and-sync.md)。
+
 ## 3.1.3 自定义 GitHub 数据源
 
 `PRTS_DATA_SOURCE_REPO=owner/repo` 为数据与本地立绘同步选择兼容仓库。自定义源使用独立目录；默认源部署保留既有路径与数据卷。详见[数据同步说明](docs/admin/data-and-sync.md#自定义-github-数据源)。
 
 ## 3.1 SQLite 后端
 
-SQLite 为实验性可选后端，通过 `PRTS_DATA_BACKEND=sqlite` 或 `PRTS_DATA_DB` 启用；默认仍为 JSON。工具契约与既有 JSON 数据卷保持兼容。
+3.1 默认 JSON，SQLite 为可选后端，通过 `PRTS_DATA_BACKEND=sqlite` 或 `PRTS_DATA_DB` 启用。工具契约与既有 JSON 数据卷保持兼容。
 
 ## 3.0 迁移阶段进展
 

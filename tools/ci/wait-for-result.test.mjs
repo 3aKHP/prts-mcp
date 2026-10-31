@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { findProof, inspectResult, resultIdentity } from './wait-for-result.mjs';
+import { findProof, inspectResult, pollProof, resultIdentity } from './wait-for-result.mjs';
 
 const event = { number: 42, pull_request: { base: { ref: 'develop' } } };
 const identity = resultIdentity('pull_request', event, '');
@@ -24,12 +24,15 @@ test('normal gate waits only for its own run and attempt and rejects cross-run p
   const requests = [];
   const api = path => { requests.push(path); return jobsPage([result()]); };
   assert.deepEqual(await findProof(context, api), { runId: 100, attempt: 2 });
-  assert.deepEqual(requests, ['repos/example/repo/actions/runs/100/attempts/2/jobs?per_page=100']);
+  assert.deepEqual(requests, ['repos/example/repo/actions/runs/100/jobs?filter=latest&per_page=100']);
   assert.equal(await findProof(context, () => jobsPage([])), null);
   for (const field of ['run_id', 'run_attempt', 'head_sha']) {
     const page = jobsPage([result()]);
     page.jobs[0][field] = 'old';
     await assert.rejects(findProof(context, () => page));
+  }
+  for (const attempt of [1, 3]) {
+    await assert.rejects(findProof(context, () => jobsPage([result()], 100, attempt)), /Wrong validation attempt/);
   }
   await assert.rejects(findProof(context, () => ({ ...jobsPage([result()]), total_count: 101 })));
 });
@@ -89,4 +92,20 @@ test('metadata refuses wrong base/tier, failed latest runs and stale attempts wi
   const wrongHead = path => path.includes('/workflows/') ? { workflow_runs: [{ ...run(99), head_sha: 'old' }] }
     : assert.fail('An old HEAD must not be queried');
   assert.equal(await findProof(metadata, wrongHead), null);
+});
+
+test('proof polling retries GitHub server errors but rejects auth and validation failures', async () => {
+  let calls = 0;
+  const api = () => {
+    if (calls++ === 0) throw Object.assign(new Error('gh failed'), { stderr: 'gh: Server Error (HTTP 502)' });
+    return jobsPage([result()]);
+  };
+  assert.equal(await pollProof(context, api), null);
+  assert.deepEqual(await pollProof(context, api), { runId: 100, attempt: 2 });
+  assert.equal(calls, 2);
+  for (const status of [401, 403, 404, 429]) {
+    await assert.rejects(pollProof(context, () => { throw Object.assign(new Error('gh failed'), { stderr: `gh: HTTP ${status}` }); }));
+  }
+  await assert.rejects(pollProof(context, () => jobsPage([result('full', 'failure')])));
+  await assert.rejects(pollProof(context, () => jobsPage([result()], 100, 1)), /Wrong validation attempt/);
 });

@@ -30,7 +30,7 @@ test('same-version npm evidence from different tarballs or CPUs is rejected',()=
 });
 test('self-consistent replacement Docker archive cannot reuse another archive runtime proof',()=>{
   const image={commit:'source',version:'3.0.0-alpha.1',imageId:'image',arch:'amd64'};
-  const evidence={...image,platform:'linux-x64',native:true,checks:Array(10).fill({}),archiveSha256:'actually-loaded'};
+  const evidence={...image,platform:'linux-x64',native:true,checks:Array(11).fill({}),archiveSha256:'actually-loaded'};
   verifyDockerEvidence(image,evidence,'actually-loaded','linux-x64');
   assert.throws(()=>verifyDockerEvidence(image,evidence,'replacement-with-its-own-sidecar','linux-x64'));
   assert.throws(()=>verifyDockerEvidence(image,{...evidence,commit:'old-source'},'actually-loaded','linux-x64'));

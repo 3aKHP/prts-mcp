@@ -37,6 +37,19 @@ struct Fixture {
 }
 #[async_trait]
 impl Transport for Fixture {
+    async fn download_file_limited(
+        &self,
+        url: &str,
+        dest: &Path,
+        timeout_ms: u64,
+        limit: u64,
+    ) -> Result<u64, TransportError> {
+        let _ = (url, dest, timeout_ms, limit);
+        Err(TransportError::Network(
+            "bounded transfer unsupported by fixture".into(),
+        ))
+    }
+
     async fn fetch_json(&self, url: &str, _: u64) -> Result<Value, TransportError> {
         self.requests.lock().unwrap().push(url.into());
         if self.offline {
@@ -85,6 +98,7 @@ impl Transport for Fixture {
 fn config(root: &Path, slug: &str) -> RuntimeConfig {
     let mut config = RuntimeConfig::from_lookup(|key| match key {
         "PRTS_DATA_SOURCE_REPO" => Some(slug.into()),
+        "PRTS_DATA_BACKEND" => Some("json".into()),
         _ => None,
     });
     let root = config.data_source.data_root(root);
@@ -92,6 +106,7 @@ fn config(root: &Path, slug: &str) -> RuntimeConfig {
     config.excel_path = config.gamedata_path.join("zh_CN/gamedata/excel");
     config.levels_path = root.join("gamedata-levels");
     config.storyjson_zip = root.join("storyjson/zh_CN.zip");
+    config.database_dir = root.join("database");
     config
 }
 fn fixture(root: &Path, slug: &str) -> Fixture {

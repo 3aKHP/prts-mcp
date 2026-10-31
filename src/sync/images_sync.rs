@@ -14,10 +14,8 @@ use std::path::{Path, PathBuf};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 
-use super::activation::{safe_extract_zip, with_archive_activation_lock, LockTiming};
-use super::discovery::{
-    asset_url, latest_release_by_prefix, list_releases, list_releases_paginated,
-};
+use super::activation::safe_extract_zip;
+use super::discovery::{asset_url, list_releases, list_releases_paginated};
 use super::images_meta::{
     active_generation, generation_meta, load_meta, parse_index, save_meta, version_hash,
     ImagesIndex, IMAGES_META,
@@ -43,7 +41,6 @@ pub const DEFAULT_SHARD_KEYS: [&str; 4] = [
     "skinpack-preview",
 ];
 pub const ORIGINAL_SHARD_KEYS: [&str; 2] = ["chararts-original", "skinpack-original"];
-const IMAGES_LOCK: &str = ".images.lock";
 
 pub fn needed_shard_keys(include_original: bool) -> Vec<String> {
     if include_original {
@@ -190,18 +187,41 @@ pub async fn sync_images_with_source(
     }
     let shard_keys = needed_shard_keys(opts.include_original);
     let lock_dir = image_dir.to_path_buf();
-    let locked =
-        with_archive_activation_lock(&lock_dir, IMAGES_LOCK, LockTiming::default(), || async {
-            if let Err(error) = super::source_guard::ensure(image_dir, source) {
-                return SyncResult::new(SyncStatus::NoData, None, Some(error));
-            }
-            sync_images_locked(image_dir, transport, &shard_keys, opts.force_check, source).await
-        })
-        .await;
+    let locked = super::images_lock::with_images_lease(&lock_dir, |lease| async {
+        if let Err(error) = super::source_guard::ensure(image_dir, source) {
+            return SyncResult::new(SyncStatus::NoData, None, Some(error));
+        }
+        sync_images_locked(
+            image_dir,
+            transport,
+            &shard_keys,
+            opts.force_check,
+            source,
+            lease,
+        )
+        .await
+    })
+    .await;
     match locked {
         Ok(result) => result,
         Err(err) => offline_or_no_data(image_dir, &err.to_string()),
     }
+}
+
+fn latest_images_release(releases: &[Value], prefix: &str, exclude: Option<&str>) -> Option<Value> {
+    releases
+        .iter()
+        .filter(|release| {
+            release["draft"].as_bool() != Some(true)
+                && release["prerelease"].as_bool() != Some(true)
+        })
+        .filter(|release| {
+            release["tag_name"].as_str().is_some_and(|tag| {
+                tag.starts_with(prefix) && exclude.is_none_or(|excluded| !tag.starts_with(excluded))
+            })
+        })
+        .max_by_key(|release| release["tag_name"].as_str().unwrap_or_default())
+        .cloned()
 }
 
 async fn sync_images_locked(
@@ -210,14 +230,48 @@ async fn sync_images_locked(
     shard_keys: &[String],
     _force_check: bool,
     source: &DataSource,
+    lease: std::sync::Arc<std::fs::File>,
 ) -> SyncResult {
     let Some(mut releases) = list_releases(transport, source.owner(), source.repo(), 10_000).await
     else {
         return offline_or_no_data(image_dir, "Network unavailable");
     };
 
-    let Some(delta_release) =
-        latest_release_by_prefix(&releases, DELTA_PREFIX, Some(BASELINE_PREFIX))
+    let v2 = latest_images_release(&releases, "images2-", Some("images2-baseline-"));
+    let v1 = latest_images_release(&releases, DELTA_PREFIX, Some(BASELINE_PREFIX));
+    let active_v2 =
+        load_meta(image_dir).is_some_and(|meta| meta["schemaVersion"] == super::images_v2::SCHEMA);
+    if let Some(release) = v2 {
+        let tag = release["tag_name"].as_str().unwrap_or_default();
+        let version = tag.strip_prefix("images2-").unwrap_or_default();
+        let v1_version = v1
+            .as_ref()
+            .and_then(|release| release["tag_name"].as_str())
+            .and_then(|tag| tag.strip_prefix(DELTA_PREFIX));
+        if active_v2 || v1_version.is_none_or(|v1| version >= v1) {
+            return match super::images_v2_sync::run_selected(
+                image_dir,
+                transport,
+                source,
+                shard_keys.iter().any(|key| key.ends_with("-original")),
+                tag,
+                lease,
+            )
+            .await
+            {
+                Ok(result) => result,
+                Err(error) => offline_or_no_data(image_dir, &error),
+            };
+        }
+    }
+    if active_v2 {
+        return offline_or_no_data(
+            image_dir,
+            "No v2 release available; keeping active v2 generation",
+        );
+    }
+
+    let Some(delta_release) = latest_images_release(&releases, DELTA_PREFIX, Some(BASELINE_PREFIX))
     else {
         return offline_or_no_data(image_dir, "No images delta release found");
     };
@@ -583,13 +637,13 @@ mod tests {
             release("images-26-10-09-04-51-28_c", "2026-10-09T05:00:00Z"),
             release("data-26-10-09-00-00-00", "2026-10-09T06:00:00Z"),
         ];
-        let latest = latest_release_by_prefix(&releases, "images-", Some("images-baseline-"))
-            .expect("found");
+        let latest =
+            latest_images_release(&releases, "images-", Some("images-baseline-")).expect("found");
         assert_eq!(
             latest.get("tag_name").and_then(|t| t.as_str()),
             Some("images-26-10-09-04-51-28_c")
         );
-        assert!(latest_release_by_prefix(&releases, "nope-", None).is_none());
+        assert!(latest_images_release(&releases, "nope-", None).is_none());
     }
 
     #[test]

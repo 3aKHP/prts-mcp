@@ -133,6 +133,19 @@ struct PeerTransport {
 
 #[async_trait]
 impl Transport for PeerTransport {
+    async fn download_file_limited(
+        &self,
+        url: &str,
+        dest: &Path,
+        timeout_ms: u64,
+        limit: u64,
+    ) -> Result<u64, TransportError> {
+        let _ = (url, dest, timeout_ms, limit);
+        Err(TransportError::Network(
+            "bounded transfer unsupported by fixture".into(),
+        ))
+    }
+
     async fn fetch_json(&self, url: &str, _timeout_ms: u64) -> Result<Value, TransportError> {
         if url.contains("api.github.com") {
             let assets: Vec<Value> = self
@@ -543,6 +556,19 @@ mod images_interop {
 
     #[async_trait]
     impl Transport for MirrorOnlyTransport {
+        async fn download_file_limited(
+            &self,
+            url: &str,
+            dest: &Path,
+            timeout_ms: u64,
+            limit: u64,
+        ) -> Result<u64, TransportError> {
+            let _ = (url, dest, timeout_ms, limit);
+            Err(TransportError::Network(
+                "bounded transfer unsupported by fixture".into(),
+            ))
+        }
+
         async fn fetch_json(&self, url: &str, _t: u64) -> Result<Value, TransportError> {
             if url.starts_with("https://api.github.com/") {
                 return Ok(self.releases.clone());

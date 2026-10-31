@@ -18,9 +18,9 @@
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
-| `PRTS_DATA_BACKEND` | `json`（3.1） | 启动时选择 `json` 或实验性的 `sqlite`；去除首尾空白，空值视为未设置，其他值启动失败。只启用所选后端的读取、同步与缓存。计划在 3.2 翻转普通默认值；JSON 后端继续受支持。 |
+| `PRTS_DATA_BACKEND` | `sqlite`（3.2） | 选择 `json` 或 `sqlite`；去除首尾空白，空值视为未设置，其他值启动失败。未显式选择且无自定义 JSON 路径时，没有有效 DB 就使用 JSON 备用；后台 DB 就绪后新请求自动切换。显式 SQLite 不回落。只同步所选后端。 |
 | `PRTS_VALIDATION_MODE` | `normal` | 启动时选择 `normal` 或 `strict`；去除首尾空白，空值视为未设置，非法值启动失败。通常模式对已验收的受管理 SQLite 文件重新比对整文件 SHA，并复用有效的结构验收记录；严格模式每个新进程重新检查结构和外键。新同步产物始终完整验收。自定义 DB 在通常模式执行快速检查，严格模式执行完整结构和外键检查。路径、鉴权、资源限制、锁和原子发布始终启用。 |
-| `PRTS_DATA_DIR` | 数据根下的 `database/` | SQLite 的可写同步目录；设置 `GAMEDATA_PATH` 时默认为其下的 `database/`。单独设置不会选择 SQLite，也不会关闭同步。Docker 默认路径为 `/data/database`。空值忽略。 |
+| `PRTS_DATA_DIR` | 数据根下的 `database/` | SQLite 的可写同步目录；设置 `GAMEDATA_PATH` 时默认为其下的 `database/`。单独设置不改变后端选择，也不会关闭同步。Docker 默认路径为 `/data/database`。空值忽略。 |
 | `PRTS_DATA_DB` | 未设置 | 单个只读预编译 DB；后端未设置时选择 SQLite，并关闭游戏数据同步。与显式 `PRTS_DATA_BACKEND=json` 冲突。缺失或无效时报告缺数据，不读取原始 JSON。空值忽略。 |
 | `GAMEDATA_PATH` | 未设置 | JSON 后端的自定义游戏数据目录路径。**只要该环境变量存在（哪怕赋值为空字符串 `GAMEDATA_PATH=`），即会禁用游戏表与关卡战斗数据的后台自动同步。** 若指向含 `zh_CN/gamedata/levels/enemydata/enemy_database.json` 的完整 `ArknightsGameData` 根目录，关卡数据直接从该目录读取；否则使用相邻的 `gamedata-levels` 目录。 |
 | `STORYJSON_PATH` | 未设置 | JSON 后端的自定义本地剧情数据压缩包（`zh_CN.zip`）路径。**设为非空值时会禁用剧情后台自动同步**；切勿将其设为空字符串占位。 |
@@ -29,7 +29,7 @@
 | `PRTS_MCP_ROOT` | 容器内预设为 `/app` | 用于标识官方 Docker 容器环境，将默认可写数据根目录切换至 `/data`（如 `/data/gamedata`）。**非容器环境下请勿设置此变量。** |
 | `PRTS_IMAGE_DIR` | Docker 下为 `/data/images`；本地为数据根下的 `images/` | `LOCAL_IMAGE=true` 时，AKDP 本地立绘资产的同步存储目录。 |
 
-SQLite 模式不读取或同步原始游戏 JSON/ZIP；旧路径仍参与默认目录与图片路径推导，但旧变量的同步开关仅用于 JSON 后端。3.1 官方发行包继续内置原 JSON 备用数据，离线使用 SQLite 须预置 DB。未设置后端时，自定义 JSON 路径继续选择 JSON；显式 `PRTS_DATA_DB` 优先选择 SQLite。图片行为不变。
+显式 SQLite 模式不读取或同步原始游戏 JSON/ZIP；默认 SQLite 策略允许在 DB 缺失时读取 JSON 备用，但只同步 SQLite。发行包内置较小的 JSON 备用数据，显式离线 SQLite 须预置 DB。未设置后端时，自定义 JSON 路径继续选择 JSON；显式 `PRTS_DATA_DB` 优先选择 SQLite。切换时已有请求保留原数据快照。图片行为不变。
 
 > **路径推导与空值注意事项**：
 > 1. 当设置了 `GAMEDATA_PATH` 但未显式设置 `STORYJSON_PATH` 或 `PRTS_IMAGE_DIR` 时，默认剧情与立绘路径会从 `GAMEDATA_PATH` 的父目录相邻推导。因此，使用自定义 `GAMEDATA_PATH` 时，建议将 `STORYJSON_PATH` 与 `PRTS_IMAGE_DIR` 也显式配齐。

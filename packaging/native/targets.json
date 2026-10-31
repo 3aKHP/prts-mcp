@@ -20,7 +20,7 @@
   },
   "darwin-arm64": {
     "target": "aarch64-apple-darwin",
-    "os": "darwin", "arch": "arm64", "runner": "macos-14",
+    "os": "darwin", "arch": "arm64", "runner": "macos-15",
     "cpu": "apple-m1", "deploymentTarget": "14.0"
   },
   "darwin-x64": {

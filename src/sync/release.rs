@@ -586,6 +586,19 @@ mod tests {
 
     #[async_trait]
     impl Transport for FakeTransport {
+        async fn download_file_limited(
+            &self,
+            url: &str,
+            dest: &Path,
+            timeout_ms: u64,
+            limit: u64,
+        ) -> Result<u64, TransportError> {
+            let _ = (url, dest, timeout_ms, limit);
+            Err(TransportError::Network(
+                "bounded transfer unsupported by fixture".into(),
+            ))
+        }
+
         async fn fetch_json(&self, url: &str, _timeout_ms: u64) -> Result<Value, TransportError> {
             let step = self
                 .steps
@@ -1079,6 +1092,19 @@ mod tests {
         }
         #[async_trait]
         impl Transport for SlowTransport {
+            async fn download_file_limited(
+                &self,
+                url: &str,
+                dest: &Path,
+                timeout_ms: u64,
+                limit: u64,
+            ) -> Result<u64, TransportError> {
+                let _ = (url, dest, timeout_ms, limit);
+                Err(TransportError::Network(
+                    "bounded transfer unsupported by fixture".into(),
+                ))
+            }
+
             async fn fetch_json(&self, _url: &str, _t: u64) -> Result<Value, TransportError> {
                 let active = self
                     .active
