@@ -3,11 +3,14 @@ name = "prts-mcp"
 version = "3.2.1-dev.0"
 edition = "2021"
 rust-version = "1.89"
-publish = false
+publish = ["crates-io"]
 description = "Arknights fan-creation MCP server with native Rust runtime"
 repository = "https://github.com/3aKHP/prts-mcp"
+homepage = "https://github.com/3aKHP/prts-mcp"
+keywords = ["mcp", "arknights", "prts", "game-data"]
+categories = ["command-line-utilities"]
 readme = "README.md"
-include = ["/Cargo.toml", "/Cargo.lock", "/build.rs", "/rust-toolchain.toml", "/src/**", "/native/**", "/vendor/**", "/contracts/data-declarations.json", "/contracts/sqlite-schema-v1.sql", "/examples/data_compiler.rs", "/examples/data_compiler/**", "/LICENSE", "/NOTICE", "/README.md", "/CHANGELOG.md"]
+include = ["/Cargo.toml", "/Cargo.lock", "/build.rs", "/rust-toolchain.toml", "/src/**", "!/src/bin/prts-mcp-rust.rs", "/native/**", "/vendor/**", "/contracts/data-declarations.json", "/contracts/sqlite-schema-v1.sql", "/examples/data_compiler.rs", "/examples/data_compiler/**", "/LICENSE", "/NOTICE", "/README.md", "/CHANGELOG.md"]
 license = "MIT"
 
 [lib]
