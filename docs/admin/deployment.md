@@ -74,7 +74,7 @@ docker run -d --name prts-mcp --restart unless-stopped -p 127.0.0.1:3000:3000 -v
      docker run -d --name prts-mcp -p 127.0.0.1:3000:3000 -e PRTS_TRANSPORT=http -v prts-mcp-data:/data/gamedata -v prts-mcp-levels:/data/gamedata-levels -v prts-mcp-storyjson:/data/storyjson ghcr.io/3akhp/prts-mcp:3.0.0
      ```
    - 在分卷挂载下，容器重建后会根据各子卷内的 `archives/extract_meta.json` 自动恢复激活状态。
-   - 3.2 起默认使用 SQLite 后端，DB 写入 `/data/database`。沿用上面的分卷命令时，该目录不在任何卷中，每次重建容器都要重新下载约 106 MiB 的 DB，下载完成前服务使用 JSON 备用数据。二选一处理：
+   - 3.2 起默认使用 SQLite 后端，DB 写入 `/data/database`。沿用上面的分卷命令时，该目录不在任何卷中，每次重建容器都要重新下载约 130 MiB 的 DB，下载完成前服务使用 JSON 备用数据。二选一处理：
      - 增加一个卷：`-v prts-mcp-database:/data/database`；
      - 或设置 `-e PRTS_DATA_BACKEND=json`，继续使用原有三个子卷中的 JSON 数据。
 3. **挂载宿主机目录（Bind Mount）**：
@@ -94,7 +94,7 @@ chown -R 10001:10001 /srv/prts-data
 docker run -d --name prts-mcp --user 10001:10001 --read-only --tmpfs /tmp:rw,nosuid,nodev,mode=1777 -p 127.0.0.1:3000:3000 -e PRTS_TRANSPORT=http -v /srv/prts-data:/data ghcr.io/3akhp/prts-mcp:3.0.0
 ```
 
-> **注意**：若在 `--read-only` 模式下使用 4 个独立子目录分卷挂载（而非整卷挂载 `/data`），还需额外添加 `--tmpfs /data:rw,nosuid,nodev,mode=1777`，以便父目录 `/data` 能够写入跨进程同步锁与 `.gamedata_pair.json`。这种情况下默认 SQLite 后端会把 DB（约 289 MiB）写进 tmpfs，占用内存且重启即丢失，请同时为 `/data/database` 挂载一个卷，或设置 `PRTS_DATA_BACKEND=json`。
+> **注意**：若在 `--read-only` 模式下使用 4 个独立子目录分卷挂载（而非整卷挂载 `/data`），还需额外添加 `--tmpfs /data:rw,nosuid,nodev,mode=1777`，以便父目录 `/data` 能够写入跨进程同步锁与 `.gamedata_pair.json`。这种情况下默认 SQLite 后端会把 DB 写进 tmpfs：单代约 320 MiB，更新后保留两代，更新期间峰值约 1.1 GiB，全部占用内存且重启即丢失，请同时为 `/data/database` 挂载一个卷，或设置 `PRTS_DATA_BACKEND=json`。
 
 ---
 

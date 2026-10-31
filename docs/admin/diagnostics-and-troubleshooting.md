@@ -54,7 +54,7 @@ curl -fsS -H "Authorization: Bearer $PRTS_DEBUG_TOKEN" http://127.0.0.1:3000/deb
   - `schema_version`: 固定为 `"prts-mcp.rust.metrics/v1"`；`server` 包含服务版本 `version` 与运行时长 `uptime_ms`；
   - `process`: 包含 `runtime: "rust"`、`rss_bytes`（当前常驻内存 RSS / Working Set）与 `rss_high_water_bytes`（指标采样中观察到的最高 RSS），不再输出 V8/Python 堆字段；
   - `sessions`: 包含当前活跃的 HTTP Legacy 会话数、累计创建/关闭/超时驱逐计数、配置的 `idle_timeout_ms`、最长会话存续时间 `oldest_age_ms` 与最长空闲时间 `max_idle_age_ms`；
-  - `data_backend`: `preference` 为配置偏好的后端（`sqlite` 或 `json`），`effective` 为当前实际服务的后端（`sqlite`、`json` 或 `unavailable`），`fallback` 为 `true` 时表示默认 SQLite 偏好下正在使用 JSON 备用，此时 `fallback_reason` 为 `no_validated_database`，否则为 `null`；
+  - `data_backend`: `preference` 为配置偏好的后端（`sqlite` 或 `json`），`effective` 为当前实际服务的后端（`sqlite`、`json` 或 `unavailable`），`fallback` 为 `true` 时表示默认 SQLite 偏好下正在使用 JSON 备用；`fallback_reason` 在默认偏好下尚无已验收 DB 时为 `no_validated_database`（即使 JSON 备用也不可用），其余情况为 `null`；
   - `requests` / `tool_calls`: 分别提供 HTTP 请求的聚合计数、错误数与耗时，以及工具调用的聚合计数与 `by_name` 分组耗时统计；不记录用户的具体查询词、响应内容或会话 ID。
 
 ---
