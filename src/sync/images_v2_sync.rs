@@ -28,22 +28,12 @@ fn checked(path: &Path, bytes: u64, sha: &str) -> bool {
     }
     total == bytes && format!("{:x}", h.finalize()) == sha
 }
+/// Mirror cascading and per-candidate timeouts live in the transport.
 async fn fetch(t: &dyn Transport, url: &str, path: &Path) -> Result<(), String> {
-    for attempt in 0..3 {
-        match t.download_file(url, path, 900_000).await {
-            Ok(_) => return Ok(()),
-            Err(e) if attempt == 2 => return Err(e.to_string()),
-            Err(_) => {
-                tokio::time::sleep(std::time::Duration::from_secs(if attempt == 0 {
-                    5
-                } else {
-                    20
-                }))
-                .await
-            }
-        }
-    }
-    unreachable!()
+    t.download_file(url, path, 900_000)
+        .await
+        .map(|_| ())
+        .map_err(|e| e.to_string())
 }
 async fn read_index(
     t: &dyn Transport,
@@ -323,9 +313,12 @@ fn cleanup_staging(root: &Path) -> Result<(), String> {
         let name = item.file_name();
         let name = name.to_string_lossy();
         if name.starts_with(".v2-") && name.ends_with(".tmp") {
-            let kind = item.file_type().map_err(|e| e.to_string())?;
-            if !kind.is_dir() {
-                return Err("unexpected staging entry type".into());
+            if !item.file_type().map_err(|e| e.to_string())?.is_dir() {
+                crate::log_warn(&format!(
+                    "Images v2 staging cleanup: skipping non-directory {}",
+                    item.path().display()
+                ));
+                continue;
             }
             std::fs::remove_dir_all(item.path()).map_err(|e| e.to_string())?;
         }
