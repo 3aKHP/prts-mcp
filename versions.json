@@ -9,6 +9,13 @@
   "ltsEol": "2027-07-02",
   "occurrences": {
     "stable": [
+      {"file": "docs/admin/deployment.md", "pattern": "当前公开稳定版为 `([0-9]+\\.[0-9]+\\.[0-9]+)`"},
+      {"file": "docs/admin/deployment.md", "pattern": "具体版本号（如 `([0-9]+\\.[0-9]+\\.[0-9]+)`"},
+      {"file": "docs/admin/deployment.md", "pattern": "ghcr\\.io/3akhp/prts-mcp:([0-9]+\\.[0-9]+\\.[0-9]+)"},
+      {"file": "docs/admin/deployment.md", "pattern": "\\[([0-9]+\\.[0-9]+\\.[0-9]+) Release\\]"},
+      {"file": "docs/admin/deployment.md", "pattern": "releases/tag/v([0-9]+\\.[0-9]+\\.[0-9]+)"},
+      {"file": "docs/admin/deployment.md", "pattern": "prts-mcp-([0-9]+\\.[0-9]+\\.[0-9]+)-linux-x64"},
+      {"file": "docs/admin/deployment.md", "pattern": "npm install -g prts-mcp(?:-ts)?@([0-9]+\\.[0-9]+\\.[0-9]+)"},
       { "file": "AGENTS.md", "pattern": "\\| `main` \\| Latest public stable release \\(native Rust `([0-9]+\\.[0-9]+\\.[0-9]+)`\\)" },
       { "file": "CLAUDE.md", "pattern": "当前公开稳定版为原生 Rust `([0-9]+\\.[0-9]+\\.[0-9]+)`" },
       { "file": "CLAUDE.md", "pattern": "公开稳定版分支（当前为 `([0-9]+\\.[0-9]+\\.[0-9]+)`）" },
