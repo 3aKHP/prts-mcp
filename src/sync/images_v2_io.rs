@@ -9,13 +9,36 @@ use std::{
     sync::Arc,
 };
 
-pub(super) struct Candidate(pub(super) Option<std::path::PathBuf>);
+/// Owns an unpublished directory and keeps its writer lease through cancellation cleanup.
+pub(super) struct Candidate(
+    pub(super) Option<std::path::PathBuf>,
+    pub(super) Arc<std::fs::File>,
+);
+impl Candidate {
+    pub(super) fn cleanup(&mut self) {
+        if let Some(path) = self.0.take() {
+            remove_candidate(path);
+        }
+    }
+}
+fn remove_candidate(path: std::path::PathBuf) {
+    if let Err(e) = std::fs::remove_dir_all(path) {
+        crate::log_warn(&format!("Image candidate cleanup: {e}"));
+    }
+}
 impl Drop for Candidate {
     fn drop(&mut self) {
-        if let Some(path) = &self.0 {
-            if let Err(e) = std::fs::remove_dir_all(path) {
-                crate::log_warn(&format!("Image candidate cleanup: {e}"));
-            }
+        let Some(path) = self.0.take() else { return };
+        let lease = Arc::clone(&self.1);
+        // Cancellation can drop the last owner while awaiting the network.
+        // The cleanup owns the lease so another writer cannot race its removal.
+        if let Ok(runtime) = tokio::runtime::Handle::try_current() {
+            runtime.spawn_blocking(move || {
+                let _lease = lease;
+                remove_candidate(path);
+            });
+        } else {
+            remove_candidate(path);
         }
     }
 }
@@ -240,6 +263,71 @@ mod tests {
         std::fs::remove_dir_all(root).unwrap();
     }
 
+    #[test]
+    fn cancellation_between_workers_queues_cleanup_and_retains_lease() {
+        use super::*;
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .max_blocking_threads(1)
+            .build()
+            .unwrap();
+        runtime.block_on(async {
+            let root =
+                std::env::temp_dir().join(format!("cancel-between-{}", uuid::Uuid::new_v4()));
+            std::fs::create_dir(&root).unwrap();
+            let stage = root.join("stage");
+            std::fs::create_dir(&stage).unwrap();
+            std::fs::write(stage.join("reused.png"), b"reused").unwrap();
+            let lock_path = root.join("lease");
+            let lease = Arc::new(std::fs::File::create(&lock_path).unwrap());
+            lease.try_lock().unwrap();
+            // Hold the only blocking slot so queued cleanup cannot finish before assertions.
+            let (occupied_tx, occupied_rx) = tokio::sync::oneshot::channel();
+            let (release_tx, release_rx) = std::sync::mpsc::channel();
+            let blocker = tokio::task::spawn_blocking(move || {
+                occupied_tx.send(()).unwrap();
+                release_rx.recv().unwrap();
+            });
+            occupied_rx.await.unwrap();
+            let candidate = Candidate(Some(stage.clone()), lease);
+            let (waiting_tx, waiting_rx) = tokio::sync::oneshot::channel();
+            let task = tokio::spawn(async move {
+                let _candidate = candidate;
+                waiting_tx.send(()).unwrap();
+                // Same ownership boundary as a pending network transfer after file reuse.
+                std::future::pending::<()>().await;
+            });
+            waiting_rx.await.unwrap();
+            task.abort();
+            assert!(task.await.unwrap_err().is_cancelled());
+            assert!(stage.join("reused.png").exists());
+            let contender = std::fs::File::options()
+                .read(true)
+                .write(true)
+                .open(&lock_path)
+                .unwrap();
+            assert!(matches!(
+                contender.try_lock(),
+                Err(std::fs::TryLockError::WouldBlock)
+            ));
+            release_tx.send(()).unwrap();
+            blocker.await.unwrap();
+            tokio::time::timeout(std::time::Duration::from_secs(5), async {
+                loop {
+                    if contender.try_lock().is_ok() {
+                        break;
+                    }
+                    tokio::task::yield_now().await;
+                }
+            })
+            .await
+            .unwrap();
+            assert!(!stage.exists());
+            drop(contender);
+            std::fs::remove_dir_all(root).unwrap();
+        });
+    }
+
     #[tokio::test(flavor = "current_thread")]
     async fn cancelled_waiter_keeps_worker_lease_and_candidate_alive() {
         use super::*;
@@ -251,7 +339,10 @@ mod tests {
         let lock = std::fs::File::create(&lock_path).unwrap();
         lock.try_lock().unwrap();
         let lease = Arc::new(lock);
-        let candidate = Arc::new(Mutex::new(Candidate(Some(stage.clone()))));
+        let candidate = Arc::new(Mutex::new(Candidate(
+            Some(stage.clone()),
+            Arc::clone(&lease),
+        )));
         let (started_tx, started_rx) = tokio::sync::oneshot::channel();
         let (release_tx, release_rx) = std::sync::mpsc::channel();
         let (done_tx, done_rx) = tokio::sync::oneshot::channel();

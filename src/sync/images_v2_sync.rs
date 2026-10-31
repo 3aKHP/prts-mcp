@@ -166,7 +166,10 @@ pub(super) async fn run_selected(
     let name = format!("v2-{}", super::primitives::random_suffix());
     let stage = rel.join(format!(".{name}.tmp"));
     std::fs::create_dir(&stage).map_err(|e| e.to_string())?;
-    let candidate = Arc::new(Mutex::new(Candidate(Some(stage.clone()))));
+    let candidate = Arc::new(Mutex::new(Candidate(
+        Some(stage.clone()),
+        Arc::clone(&lease),
+    )));
     let result = async {
         let reuse_active = active.clone();
         let reuse_expected = expected.clone();
@@ -353,6 +356,7 @@ pub(super) async fn run_selected(
     }
     .await;
     blocking(&lease, move || {
+        candidate.lock().unwrap().cleanup();
         drop(candidate);
         Ok(())
     })
