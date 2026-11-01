@@ -22,7 +22,7 @@ export function requiresFull(eventName, event) {
 
 export function verifyGate(full, needs) {
   assert.ok(['true', 'false'].includes(full), 'Missing or invalid verification tier');
-  for (const job of ['workflow-lint', 'msrv', 'rust-validation']) {
+  for (const job of ['workflow-lint', 'msrv', 'rust-validation', 'pypi-python']) {
     assert.equal(needs[job]?.result, 'success', `${job} must succeed`);
   }
   assert.equal(needs.native?.result, full === 'true' ? 'success' : 'skipped',

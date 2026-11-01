@@ -11,7 +11,7 @@ const pr = (base = 'develop', labels = []) => ({
   pull_request: { base: { ref: base }, head: { sha: 'current-head' }, labels: labels.map(name => ({ name })) },
 });
 const checks = full => Object.fromEntries([
-  ['workflow-lint', 'success'], ['msrv', 'success'], ['rust-validation', 'success'],
+  ['workflow-lint', 'success'], ['msrv', 'success'], ['rust-validation', 'success'], ['pypi-python', 'success'],
   ['native', full ? 'success' : 'skipped'],
 ].map(([job, result]) => [job, { result }]));
 
@@ -61,7 +61,7 @@ test('live PR metadata rejects obsolete HEAD, retargeting and both tier changes'
 test('both tiers fail closed for every failed, cancelled, skipped or absent required job', () => {
   for (const full of [false, true]) {
     verifyGate(String(full), checks(full));
-    const required = ['workflow-lint', 'msrv', 'rust-validation', ...(full ? ['native'] : [])];
+    const required = ['workflow-lint', 'msrv', 'rust-validation', 'pypi-python', ...(full ? ['native'] : [])];
     for (const job of required) {
       for (const result of ['failure', 'cancelled', 'skipped', 'neutral', '', undefined]) {
         assert.throws(() => verifyGate(String(full), { ...checks(full), [job]: { result } }), `${full}/${job}/${result}`);

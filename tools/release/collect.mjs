@@ -3,6 +3,7 @@ import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 import { root, version, targets, packageNames, verifyVersion, verifyBundle, verifyNpmEvidence, verifyDockerEvidence, zipMemberPattern, readJson, json, sha, run } from './common.mjs';
+import { verifyPypi } from '../pypi/evidence.mjs';
 import { prepareGithubAssets } from './github-assets.mjs';
 verifyVersion();
 const input = resolve(process.argv[2] ?? join(root,'artifacts/incoming'));
@@ -33,6 +34,16 @@ for(const [id,target]of Object.entries(targets)){
   retain(archive,candidate.filename,'native-candidate');retain(archive+'.sha256',candidate.filename+'.sha256','checksum');
   retain(join(dir,'candidate.json'),`${id}-candidate.json`,'evidence');retain(join(dir,'candidate-evidence.json'),`${id}-candidate-evidence.json`,'evidence');
   platforms.push({platform:id,sha256:candidate.sha256,checks:evidence.checks});
+  const nativeSums = zipEntries ? run('unzip',['-p',archive,zipMemberPattern(zipEntries,'SHA256SUMS')])
+    : run('tar',['-xOzf',archive,'./SHA256SUMS']);
+  const binary = `bin/prts-mcp-ghcr${target.os === 'win32' ? '.exe' : ''}`;
+  const nativeHash = nativeSums.trim().split('\n').find(line => line.slice(66) === binary)?.slice(0,64);
+  assert.match(nativeHash ?? '', /^[0-9a-f]{64}$/);
+  const pypiDir = join(input,`pypi-${id}`);
+  const wheel = verifyPypi(pypiDir,id,version,commit,nativeHash);
+  retain(join(pypiDir,'wheels',wheel.filename),wheel.filename,'pypi');
+  retain(join(pypiDir,'package.json'),`${id}-pypi-package.json`,'evidence');
+  retain(join(pypiDir,'pypi-evidence.json'),`${id}-pypi-evidence.json`,'evidence');
   // upload-artifact preserves npm/{id} and native/{id} beneath their common artifacts/ root.
   const npmDir=join(input,`npm-${id}`,'npm',id), npm=readJson(join(npmDir,'packages.json')), npmEvidence=readJson(join(npmDir,'npm-evidence.json'));
   assert.equal(npm.version,version);assert.equal(npm.platform,id);assert.equal(npm.nativeBuild.commit,commit);assert.equal(npm.nativeBuild.dirty,false);

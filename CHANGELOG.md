@@ -8,6 +8,10 @@ The original per-implementation changelogs at the 2.8.1 baseline remain availabl
 
 ## [Unreleased]
 
+### Added
+
+- Prepare the native PyPI distribution: five platform wheels reuse audited Rust executables, preserve stdio command and Python module entry points, require Python >=3.11, and exclude fallback game data. Candidate wheels are built and verified; no native PyPI version has been published.
+
 ## [3.2.1] - 2026-11-01
 
 ### Added

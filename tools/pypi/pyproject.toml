@@ -1,0 +1,8 @@
+[project]
+name = "prts-pypi-tools"
+version = "0.0.0"
+requires-python = ">=3.11"
+dependencies = ["hatchling==1.33.0", "pip==26.2.2", "pipx==1.18.11"]
+
+[tool.uv]
+package = false

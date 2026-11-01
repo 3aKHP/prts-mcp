@@ -95,7 +95,7 @@ MCP 工具的 `description` 与参数 Schema 是 LLM 选择工具的核心依据
 - 所有代码必须通过 `cargo fmt --all -- --check` 与 `cargo clippy --locked --all-targets -- -D warnings`。
 - 按数据域实际消费的字段定义反序列化结构体，无需为上游 JSON 中未使用的庞大冗余字段建立无意义的类型定义。
 - 公开函数与关键模块边界使用 `///` 或 `//!` 编写注释，聚焦设计意图与非显而易见的约束，不写复述代码字面意思的废话注释。
-- 生产代码保持纯 Rust + 静态链接 C 组件（`native/`、`vendor/quickjs-regexp/`），严禁在生产运行时引入 Node.js / Bun / Python 虚拟机或脚本回退路径。
+- 生产代码保持纯 Rust + 静态链接 C 组件（`native/`、`vendor/quickjs-regexp/`），业务逻辑不引入 Node.js / Bun / Python 虚拟机或脚本回退路径。npm 与 PyPI 分发层可使用仅负责定位原生程序、透传参数和管理进程生命周期的启动桥；PyPI 桥不得包含业务逻辑或数据同步。
 
 ### 缓存与代际失效
 
