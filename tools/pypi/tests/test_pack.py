@@ -3,6 +3,8 @@ from pathlib import Path
 import shutil
 import sys
 import tempfile
+import subprocess
+import venv
 import unittest
 from unittest.mock import patch
 
@@ -33,7 +35,10 @@ class PackTests(unittest.TestCase):
                 for path in (native / "bin").iterdir():
                     path.unlink()
                 executable = native / "bin" / ("prts-mcp-ghcr.exe" if platform == "windows-x64" else "prts-mcp-ghcr")
-                executable.write_bytes(b"synthetic native fixture")
+                if platform == 'linux-x64' and sys.platform == 'linux':
+                    executable.write_text(f'#!{sys.executable}\nimport sys\nprint(sys.argv[1:])\n')
+                else:
+                    executable.write_bytes(b"synthetic native fixture")
                 write(native / "BUILD.json", dict(version="3.2.2-dev.0", commit="abc", platform=platform, target=targets[platform]["target"], dirty=False))
                 write(native / "ABI.json", dict(platform=targets[platform]["target"]))
                 (native / "SHA256SUMS").write_text("".join(f"{sha(p)}  {p.relative_to(native).as_posix()}\n" for p in sorted(native.rglob("*")) if p.is_file() and p.name != "SHA256SUMS"))
@@ -41,6 +46,14 @@ class PackTests(unittest.TestCase):
                     receipt = pack.pack(platform, native, directory / platform)
                 wheel = directory / platform / "wheels" / receipt["filename"]
                 inspect_wheel(wheel, receipt)
+                if platform == 'linux-x64' and sys.platform == 'linux':
+                    environment = directory / 'installed'
+                    venv.EnvBuilder(with_pip=True).create(environment)
+                    interpreter = environment / 'bin/python'
+                    subprocess.run([str(interpreter), '-m', 'pip', 'install', '--no-index', '--no-deps', str(wheel)], check=True, capture_output=True)
+                    for command in [[str(environment / 'bin/prts-mcp')], [str(interpreter), '-m', 'prts_mcp.server']]:
+                        result = subprocess.run(command + ['--version', '中文 空格'], capture_output=True, text=True, check=True)
+                        self.assertEqual(result.stdout.strip(), "['--version', '中文 空格']")
                 bad = dict(receipt, sha256="0" * 64)
                 with self.assertRaisesRegex(ValueError, "identity/checksum"):
                     inspect_wheel(wheel, bad)
