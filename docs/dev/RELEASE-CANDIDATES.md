@@ -108,3 +108,7 @@ Cargo 发布会重新生成源码归档，这是源码渠道对“发布阶段�
 五平台 CI 在原生 ABI 审计后使用 `uv run --locked --project tools/pypi python tools/pypi/pack.py <platform>` 打包，并用 `uv run --locked --project tools/pypi node tools/pypi/probe.mjs <platform>` 实际安装、启动和退出验证。工具依赖由 `tools/pypi/uv.lock` 固定。候选目录为 `artifacts/pypi/<platform>/`，包含 Wheel、来源与摘要清单、实际安装证据；候选汇总核对五个平台以及对应原生程序的 SHA-256。
 
 Wheel 需要 Python >=3.11，保留默认 stdio 的 `prts-mcp` 与 `python -m prts_mcp.server`，不包含备用数据或 Python 业务依赖。数据由首次同步或 `GAMEDATA_PATH` / `STORYJSON_PATH` 提供。源码安装使用 Cargo。正式上架等待最小 CLI 后的统一发布，当前 PyPI 仍为 2.8.x；不要把本地开发 Wheel 当作公开版本。决策见 [ADR-0020](adr/ADR-0020-pypi-native-wheels.md)。
+
+`RUST_PYPI_PUBLISH_ENABLED` 默认关闭，只有显式设为 `true` 才允许正式 tag 的 push 事件执行 PyPI 上传。Publisher 使用 `release-rust.yml` 与 `rust-release` environment；发布 job 下载候选快照，核对完整性与正式版本条件后，通过 PyPA action 使用 OIDC 和 attestations 上传，无须 API Token。手动运行不执行此渠道上传。
+
+上传前按文件名与 SHA-256 查询目标版本，冲突或 yanked 文件中止；同摘要文件跳过，只补传缺失的 Wheel。上传后有界等待 PyPI JSON 可见并核对版本、Python 要求、依赖和五个文件的摘要。启用此渠道后，GitHub/GHCR 的发行完成等待该 job 成功；关闭时允许跳过。首次真实上传仍待最小 CLI 就绪后的正式发版，不以 Publisher 配置完成冒充真实上传验收。
