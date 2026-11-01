@@ -4,6 +4,7 @@ import shutil
 import sys
 import tempfile
 import subprocess
+import platform as host_platform
 import venv
 import unittest
 from unittest.mock import patch
@@ -21,6 +22,10 @@ class PackTests(unittest.TestCase):
             python_version("3.2.2-invalid.0")
 
     def test_all_platform_wheels_and_checksums(self):
+        machine = host_platform.machine().lower()
+        host_id = {'x86_64': 'linux-x64', 'amd64': 'linux-x64', 'aarch64': 'linux-arm64', 'arm64': 'linux-arm64'}.get(machine)
+        libc, libc_version = host_platform.libc_ver()
+        can_install = sys.platform == 'linux' and libc == 'glibc' and tuple(map(int, libc_version.split('.')[:2])) >= (2, 28)
         targets = json.loads((ROOT / "packaging/native/targets.json").read_text())
         with tempfile.TemporaryDirectory() as temp:
             directory = Path(temp)
@@ -35,7 +40,7 @@ class PackTests(unittest.TestCase):
                 for path in (native / "bin").iterdir():
                     path.unlink()
                 executable = native / "bin" / ("prts-mcp-ghcr.exe" if platform == "windows-x64" else "prts-mcp-ghcr")
-                if platform == 'linux-x64' and sys.platform == 'linux':
+                if can_install and platform == host_id:
                     executable.write_text(f'#!{sys.executable}\nimport sys\nprint(sys.argv[1:])\n')
                 else:
                     executable.write_bytes(b"synthetic native fixture")
@@ -46,7 +51,7 @@ class PackTests(unittest.TestCase):
                     receipt = pack.pack(platform, native, directory / platform)
                 wheel = directory / platform / "wheels" / receipt["filename"]
                 inspect_wheel(wheel, receipt)
-                if platform == 'linux-x64' and sys.platform == 'linux':
+                if can_install and platform == host_id:
                     environment = directory / 'installed'
                     venv.EnvBuilder(with_pip=True).create(environment)
                     interpreter = environment / 'bin/python'
