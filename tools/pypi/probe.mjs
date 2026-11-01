@@ -18,7 +18,7 @@ const temp = mkdtempSync(join(tmpdir(), 'prts-pypi 空格-'));
 const env = {...process.env};
 for (const key of Object.keys(env)) if (/^(PRTS_|GAMEDATA_PATH|STORYJSON_PATH|GITHUB_TOKEN|GITHUB_MIRRORS|PYTHONPATH|PIP_|UV_|PIPX_)/i.test(key)) delete env[key];
 const fixture = join(root, 'tests/fixtures/native-smoke');
-Object.assign(env, {IMAGES_ENABLED: 'false', LOCAL_IMAGE: 'false',
+Object.assign(env, {PYTHONUTF8:'1', PYTHONIOENCODING:'utf-8', IMAGES_ENABLED: 'false', LOCAL_IMAGE: 'false',
   GAMEDATA_PATH: fixture, STORYJSON_PATH: join(fixture, 'storyjson/zh_CN.zip'),
   XDG_DATA_HOME: join(temp, 'user'), LOCALAPPDATA: join(temp, 'user'),
   GITHUB_MIRRORS: 'http://127.0.0.1:9', PIP_NO_INDEX: '1', PIP_DISABLE_PIP_VERSION_CHECK: '1',
