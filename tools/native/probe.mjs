@@ -3,7 +3,7 @@
 // bridge; all server behavior still executes in the native Rust child.
 import assert from 'node:assert/strict';
 import { cpSync, mkdtempSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve, relative, isAbsolute } from 'node:path';
 import { tmpdir, release as osRelease } from 'node:os';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
@@ -11,21 +11,30 @@ import { createServer } from 'node:net';
 import { root, out, bins, suffix, version, config, run, sha, json, psLiteral } from './common.mjs';
 
 const temp = mkdtempSync(join(tmpdir(), 'prts-native 空格-'));
-const installed = join(temp, 'installed');
-mkdirSync(installed);
-const artifact = JSON.parse(readFileSync(join(out, 'artifact.json')));
+const cargoIndex = process.argv.indexOf('--cargo-root');
+const cargoRoot = cargoIndex < 0 ? null : process.argv[cargoIndex + 1];
+if (cargoIndex >= 0 && !cargoRoot) throw new Error('--cargo-root needs a detached Cargo installation');
+const installed = cargoRoot ? resolve(cargoRoot) : join(temp, 'installed');
+if (cargoRoot) {
+  const rel = relative(root, installed);
+  assert(rel.startsWith('..') || isAbsolute(rel), 'Cargo installation must be outside the checkout');
+} else mkdirSync(installed);
+const artifact = cargoRoot ? null : JSON.parse(readFileSync(join(out, 'artifact.json')));
 const baseline = process.argv.includes('--baseline');
 const npmIndex = process.argv.indexOf('--npm-root');
 const npmRoot = npmIndex < 0 ? null : process.argv[npmIndex + 1];
 if (npmIndex >= 0 && !npmRoot) throw new Error('--npm-root needs an installed global npm root');
+assert(!cargoRoot || !npmRoot && !baseline, 'Cargo probe cannot combine npm or baseline modes');
 if (baseline && config.os !== 'linux') throw new Error('--baseline requires a Linux native runtime image');
 if (baseline) run('docker', ['pull', config.runtimeImage], { stdio: 'inherit' });
-assert.equal(sha(artifact.archive), artifact.sha256);
-if (config.os === 'win32') {
+if (artifact) assert.equal(sha(artifact.archive), artifact.sha256);
+if (cargoRoot) {
+  // cargo install already materialized the executables outside the checkout.
+} else if (config.os === 'win32') {
   run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
     `Expand-Archive -LiteralPath ${psLiteral(artifact.archive)} -DestinationPath ${psLiteral(installed)}`]);
 } else run('tar', ['-xf', artifact.archive, '-C', installed]);
-for (const line of readFileSync(join(installed, 'SHA256SUMS'), 'utf8').trim().split('\n')) {
+for (const line of cargoRoot ? [] : readFileSync(join(installed, 'SHA256SUMS'), 'utf8').trim().split('\n')) {
   const [, hash, path] = line.match(/^([a-f\d]{64})  (.+)$/);
   assert.equal(sha(join(installed, path)), hash, `Extracted hash: ${path}`);
 }
@@ -198,10 +207,11 @@ try {
   await http('prts-mcp-ts', { PRTS_TRANSPORT: 'stdio' });
   await http('prts-mcp-ts-bun', { PRTS_TRANSPORT: 'stdio' });
   if (!npmRoot) await http('prts-mcp-ghcr', { PRTS_TRANSPORT: ' HTTP ' });
-  json(join(out, npmRoot ? 'npm-runtime-evidence.json' : baseline ? 'runtime-baseline-evidence.json' : 'runtime-evidence.json'), { platform: config.target, native: true, os: osRelease(),
+  json(join(out, cargoRoot ? 'cargo-runtime-evidence.json' : npmRoot ? 'npm-runtime-evidence.json' : baseline ? 'runtime-baseline-evidence.json' : 'runtime-evidence.json'), { platform: config.target, native: true, os: osRelease(),
     runtimeImage: baseline ? config.runtimeImage : null,
-    arch: process.arch, archiveSha256: artifact.sha256, extractedOutsideCheckout: true,
-    pathEmpty: true, checks, scope: npmRoot ? 'installed npm entries; Node bridge invoked by absolute path with empty PATH; public publishing, Docker and M4 E2E are later phases'
+    arch: process.arch, archiveSha256: artifact?.sha256 ?? null, sourceInstallation: !!cargoRoot, extractedOutsideCheckout: true,
+    pathEmpty: true, checks, scope: cargoRoot ? 'default cargo install from detached source archive; offline fixtures, all public profiles, protocol versions and process exits'
+      : npmRoot ? 'installed npm entries; Node bridge invoked by absolute path with empty PATH; public publishing, Docker and M4 E2E are later phases'
       : 'native units/regex plus detached archive MCP/profile checks; npm, Docker distribution and M4 E2E are later phases' });
   console.log(`Detached native runtime passed: ${checks.length} profiles/checks (${config.target})`);
 } finally {

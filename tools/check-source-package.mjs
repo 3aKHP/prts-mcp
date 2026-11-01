@@ -5,7 +5,7 @@ import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
-const names = execFileSync("cargo", ["package", "--list", "--locked"], { cwd: root, encoding: "utf8" }).trim().split("\n");
+const names = execFileSync("cargo", ["package", "--list", "--locked", ...(process.argv.includes("--allow-dirty") ? ["--allow-dirty"] : [])], { cwd: root, encoding: "utf8" }).trim().split("\n");
 const topLevel = new Set([
   "Cargo.toml", "Cargo.toml.orig", "Cargo.lock", "build.rs", "rust-toolchain.toml",
   "LICENSE", "NOTICE", "README.md", "CHANGELOG.md", ".cargo_vcs_info.json",
@@ -19,6 +19,7 @@ const includedFiles = new Set([...compilerFiles, ...contractFiles]);
 const allowed = (name) => topLevel.has(name) || /^(src|native|vendor)\//.test(name) || includedFiles.has(name);
 const extra = names.filter((name) => !allowed(name));
 if (extra.length) throw new Error(`Unexpected source package paths: ${extra.join(", ")}`);
+if (names.includes("src/bin/prts-mcp-rust.rs")) throw new Error("Internal harness must not be published");
 for (const required of ["Cargo.lock", "build.rs", "src/bin/prts-mcp.rs", "native/regexp.c", "vendor/quickjs-regexp/libregexp.c",
   "vendor/quickjs-regexp/libunicode.c", "vendor/quickjs-regexp/NOTICES.txt", ...includedFiles, "LICENSE", "NOTICE"]) {
   if (!names.includes(required)) throw new Error(`Required source file missing: ${required}`);

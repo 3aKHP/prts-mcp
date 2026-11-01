@@ -76,7 +76,7 @@ cargo build --locked --release --bins
 cargo package --locked
 ```
 
-> `cargo package --locked` 用于验证 Cargo 源码归档包在脱离工作树后的可构建性以及 `native/`、`vendor/`、许可证文件的完整性（当前 `Cargo.toml` 设 `publish = false`，防止在 3.0 正式发布前误发至 `crates.io`）。
+> `cargo package --locked` 验证源码归档包的可构建性。`node tools/cargo/verify.mjs` 进一步在工作树外执行默认 `cargo install`，核对五个公开入口，并复用原生 MCP 协议与进程退出探测。源码包不含内部测试入口 `prts-mcp-rust`，不含备用游戏数据，也不承诺稳定 Rust 库 API。开发中可加 `--allow-dirty`，但该回执不可用于发布。普通 CI 在 Linux x64 执行这项独立安装验证。
 
 ### 原生 Windows（PowerShell 7）
 

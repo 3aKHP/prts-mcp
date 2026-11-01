@@ -1,6 +1,6 @@
 # PRTS-MCP Roadmap
 
-The current public stable release is `3.2.0`, a single native Rust implementation that preserves the frozen TS/v2.8.1 tool contract. Active development continues on `develop` (`3.2.0-dev.0`). [简体中文](ROADMAP.zh-CN.md).
+The current public stable release is `3.2.1`, a single native Rust implementation that preserves the frozen TS/v2.8.1 tool contract. Active development continues on `develop` (`3.2.1-dev.0`). [简体中文](ROADMAP.zh-CN.md).
 
 ## 3.2 — SQLite Default and v2 Artwork
 
@@ -32,7 +32,7 @@ JSON/ZIP remains the default, preserving existing paths, volumes and sync switch
 
 Version 3.0 focuses strictly on the Rust runtime migration and distribution parity. New features and architectural additions are deferred until after 3.0.0 stable and will be prioritized one theme at a time:
 
-- **crates.io publication**: Cargo source packaging is already verified in CI; publishing `prts-mcp` to crates.io will be executed as a standalone channel task after M5.
+- **crates.io publication (3.2.1)**: Source installation and guarded publication are implemented. First registration uses a maintainer token; subsequent OIDC requires Trusted Publisher setup. See [release candidates](docs/dev/RELEASE-CANDIDATES.md#5-cargo-源码发行).
 - **Management CLI**: Dedicated CLI flags and administrative subcommands (`--version`, `--help`, cache/sync inspection).
 - **New tools and data domains**: Recruitment tag reverse-lookup, operator module (模组) data, skill upgrade material costs, and attack-range visualizations.
 - **Data resilience & AKDP integration**: Backup object-storage mirrors and further pipeline/image optimizations.

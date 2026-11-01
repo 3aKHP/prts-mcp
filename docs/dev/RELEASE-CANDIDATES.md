@@ -49,7 +49,7 @@ node tools/release/probe-native.mjs linux-x64
 
 公开附件由汇总阶段使用 `zip` 预先生成。npm tarball 仅经 npm 分发，Docker 镜像经 GHCR 分发；二者仍保留在内部快照中供发布与重试使用。
 
-汇总生成的 `rust-release-candidate` 工件作为后续所有发布任务的唯一输入源；后续发布任务只读取并复核该工件，绝不重新编译或重新打包。
+汇总生成的 `rust-release-candidate` 工件是原生归档、npm 与 Docker 发布任务的唯一输入源；这些任务只读取并复核该工件，绝不重新编译或重新打包。Cargo 源码候选单独生成，见第 5 节。
 
 ---
 
@@ -71,6 +71,7 @@ node tools/release/probe-native.mjs linux-x64
 | --- | --- |
 | `RUST_NPM_PUBLISH_ENABLED` | 设为 `true` 时执行 `publish-npm` 任务（通过 GitHub OIDC Trusted Publishing 发布 9 个 npm 包）。 |
 | `RUST_NON_NPM_PUBLISH_ENABLED` | 设为 `true` 时执行 `publish-non-npm` 任务（推送 GHCR 双架构镜像并创建 GitHub Release）。 |
+| `RUST_CRATES_PUBLISH_ENABLED` | 首次注册并配置 Trusted Publisher 后设为 `true`，启用 crates.io OIDC 发布。未设置时跳过该发布任务，源码安装验证仍执行。 |
 | `RUST_STABLE_RELEASE_ENABLED` | 稳定版总闸门；M5 前保持关闭以防预发布期误推进稳定版标签，自 3.0.0 起开启。 |
 
 ---
@@ -89,3 +90,15 @@ node tools/release/probe-native.mjs linux-x64
    - 发行说明直接取自中英文 `CHANGELOG` 中与发布版本精确对应的段落，并附平台下载表、精确版本的安装命令和迁移指南链接；发布分支须先将 `Unreleased` 更新为对应版本及日期。
 
 如果在发布过程中遇到网络抖动、registry 传播延迟或单个渠道任务失败，请勿重新打 tag 或全量重跑构建，应直接按照 [`RELEASE-CD-RECOVERY.md`](RELEASE-CD-RECOVERY.md) 在原始 workflow run 上重跑失败的发布任务（`Re-run failed jobs`）。
+
+## 5. Cargo 源码发行
+
+[`cargo-source.yml`](../../.github/workflows/cargo-source.yml) 在 Linux x64 从同一提交生成 `cargo-source-candidate`，包含 `.crate` 与 `SOURCE.json`。`node tools/cargo/verify.mjs` 在仓库外解包并实际安装所有默认二进制，核对仅包含五个公开入口，再验证 stdio、HTTP、协议版本、离线夹具查询与进程退出。源码包包含原生 C 源码、契约和许可证，不包含备用数据。用户安装命令为 `cargo install prts-mcp --locked --bin prts-mcp`，需 Rust >=1.89 与 C 编译器；首次注册完成前该命令尚不可用。
+
+首次发布使用维护者已有的 Cargo 登录凭据。在正式 tag 的干净 checkout 完成源码验证后，以该 tag 设置 `GITHUB_REF`，并设置 `RUST_STABLE_RELEASE_ENABLED=true`、`RUST_CRATES_PUBLISH_ENABLED=true`，运行 `node tools/cargo/publish.mjs`。开发版本拒绝发布；预发布继续遵守第 3 节的分支规则。本机确需绕过显式代理时，两个 Cargo 脚本均可设置 `PRTS_CARGO_DIRECT=true`，不改变全局代理配置。
+
+首次发布成功后，在 crates.io 为 `3aKHP/prts-mcp` 的 `release-rust.yml`、`rust-release` 环境配置 Trusted Publisher，再启用仓库变量 `RUST_CRATES_PUBLISH_ENABLED`。后续 job 使用短期 OIDC 凭据。首次 Token 发布不能作为 OIDC 已验收的证据。
+
+Cargo 发布会重新生成源码归档，这是源码渠道对“发布阶段不重新打包”的限定例外。发布脚本要求相同提交、相同 Cargo 版本和干净工作树，重新打包摘要必须与已安装候选一致，再由 Cargo 上传；上传后只读取注册表索引，核对实际 SHA-256。已有相同版本且摘要一致时跳过上传；冲突或 yanked 版本拒绝继续。npm、Docker 和原生归档的快照规则保持原样。
+
+源码候选通过后才允许 npm 发布；启用 crates.io 自动发布时，GitHub Release 和 GHCR 还会等待该渠道成功。首次人工引导期间，该渠道开关保持关闭，维护者需单独确认 Cargo 发布回执，才能宣告所有计划渠道完成。
