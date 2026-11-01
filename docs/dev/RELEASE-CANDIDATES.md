@@ -93,7 +93,7 @@ node tools/release/probe-native.mjs linux-x64
 
 ## 5. Cargo 源码发行
 
-[`cargo-source.yml`](../../.github/workflows/cargo-source.yml) 在 Linux x64 从同一提交生成 `cargo-source-candidate`，包含 `.crate` 与 `SOURCE.json`。`node tools/cargo/verify.mjs` 在仓库外解包并实际安装所有默认二进制，核对仅包含五个公开入口，再验证 stdio、HTTP、协议版本、离线夹具查询与进程退出。源码包包含原生 C 源码、契约和许可证，不包含备用数据。用户安装命令为 `cargo install prts-mcp --locked --bin prts-mcp`，需 Rust >=1.89 与 C 编译器；首次注册完成前该命令尚不可用。
+[`cargo-source.yml`](../../.github/workflows/cargo-source.yml) 在 Linux x64 从同一提交生成 `cargo-source-candidate`，包含 `.crate` 与 `SOURCE.json`。`node tools/cargo/verify.mjs` 在仓库外解包并实际安装所有默认二进制，核对仅包含五个公开入口，再验证 stdio、HTTP、协议版本、离线夹具查询与进程退出。源码包包含原生 C 源码、契约和许可证，不包含备用数据。用户安装命令为 `cargo install prts-mcp --locked --bin prts-mcp`，需 Rust >=1.89 与 C 编译器。首个 crates.io 版本为 `3.2.1`。
 
 首次发布使用维护者已有的 Cargo 登录凭据。在正式 tag 的干净 checkout 完成源码验证后，以该 tag 设置 `GITHUB_REF`，并设置 `RUST_STABLE_RELEASE_ENABLED=true`、`RUST_CRATES_PUBLISH_ENABLED=true`，运行 `node tools/cargo/publish.mjs`。开发版本拒绝发布；预发布继续遵守第 3 节的分支规则。本机确需绕过显式代理时，两个 Cargo 脚本均可设置 `PRTS_CARGO_DIRECT=true`，不改变全局代理配置。
 

@@ -8,9 +8,11 @@ The original per-implementation changelogs at the 2.8.1 baseline remain availabl
 
 ## [Unreleased]
 
+## [3.2.1] - 2026-11-01
+
 ### Added
 
-- Prepare the crates.io source distribution: ship only the five public binaries, verify installation from the detached Cargo archive, and add guarded publication with registry checksum verification. Initial registration and Trusted Publishing activation remain release steps. Source installation requires Rust 1.89 or newer and a C compiler; it does not include fallback game data.
+- Add the crates.io source distribution: ship only the five public binaries, verify installation from the detached Cargo archive, and provide guarded publication with registry checksum verification. First registration uses a maintainer token; subsequent OIDC publishing is enabled after configuring a Trusted Publisher. Source installation requires Rust 1.89 or newer and a C compiler; it does not include fallback game data.
 
 ## [3.2.0] - 2026-10-31
 
