@@ -92,3 +92,4 @@
 | [ADR-0017](ADR-0017-custom-github-data-source.md) | 自定义 GitHub 数据源与目录归属 | Accepted | 2026-10-29 |
 | [ADR-0018](ADR-0018-sqlite-default-with-json-fallback.md) | 3.2 默认 SQLite 后端与 JSON 自动备用 | Accepted | 2026-10-31 |
 | [ADR-0019](ADR-0019-cargo-source-distribution.md) | Cargo 源码发行与首次发布引导 | Accepted | 2026-11-01 |
+| [ADR-0020](ADR-0020-pypi-native-wheels.md) | PyPI 原生 Wheel 与兼容启动桥 | Accepted | 2026-11-02 |

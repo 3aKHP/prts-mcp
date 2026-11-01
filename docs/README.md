@@ -100,3 +100,4 @@ English readers: the root [README](../README.md#english) and [Security Policy](.
 - 源代码许可证：[LICENSE](../LICENSE)
 - 本地游戏数据目录说明：[data/README.md](../data/README.md)
 - 随仓原生组件与测试夹具说明：[vendor/quickjs-regexp/README.md](../vendor/quickjs-regexp/README.md)、[tests/fixtures/native-smoke/README.md](../tests/fixtures/native-smoke/README.md)
+- [ADR-0020：PyPI 原生 Wheel 与兼容启动桥](dev/adr/ADR-0020-pypi-native-wheels.md)

@@ -102,3 +102,9 @@ node tools/release/probe-native.mjs linux-x64
 Cargo 发布会重新生成源码归档，这是源码渠道对“发布阶段不重新打包”的限定例外。发布脚本要求相同提交、相同 Cargo 版本和干净工作树，重新打包摘要必须与已安装候选一致，再由 Cargo 上传；上传后只读取注册表索引，核对实际 SHA-256。已有相同版本且摘要一致时跳过上传；冲突或 yanked 版本拒绝继续。npm、Docker 和原生归档的快照规则保持原样。
 
 源码候选通过后才允许 npm 发布；启用 crates.io 自动发布时，GitHub Release 和 GHCR 还会等待该渠道成功。首次人工引导期间，该渠道开关保持关闭，维护者需单独确认 Cargo 发布回执，才能宣告所有计划渠道完成。
+
+## 6. PyPI 原生候选（尚未公开发布）
+
+五平台 CI 在原生 ABI 审计后使用 `uv run --locked --project tools/pypi python tools/pypi/pack.py <platform>` 打包，并用 `uv run --locked --project tools/pypi node tools/pypi/probe.mjs <platform>` 实际安装、启动和退出验证。工具依赖由 `tools/pypi/uv.lock` 固定。候选目录为 `artifacts/pypi/<platform>/`，包含 Wheel、来源与摘要清单、实际安装证据；候选汇总核对五个平台以及对应原生程序的 SHA-256。
+
+Wheel 需要 Python >=3.11，保留默认 stdio 的 `prts-mcp` 与 `python -m prts_mcp.server`，不包含备用数据或 Python 业务依赖。数据由首次同步或 `GAMEDATA_PATH` / `STORYJSON_PATH` 提供。源码安装使用 Cargo。正式上架等待最小 CLI 后的统一发布，当前 PyPI 仍为 2.8.x；不要把本地开发 Wheel 当作公开版本。决策见 [ADR-0020](adr/ADR-0020-pypi-native-wheels.md)。
