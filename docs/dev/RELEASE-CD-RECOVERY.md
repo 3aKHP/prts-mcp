@@ -77,3 +77,7 @@ gh run rerun "$release_run_id" --failed
 | **构建或 `collect.mjs` 汇总阶段失败** | 某平台编译/探测未通过，或构建产物缺失。 | 此时尚未进入外部发布阶段。修复代码或 CI 问题后，在新提交上重新准备发布。 |
 
 > **哈希算法核对提示**：比对校验值时请注意区分算法——仓库 `SHA256SUMS` 与 `.sha256` 文件使用 **SHA-256**（十六进制），npm `dist.integrity` 使用 **SHA-512 SRI**（`sha512-...` Base64），而 `dist.shasum` 为 **SHA-1**，三者不可直接跨算法字面比较。
+
+## PyPI 原生 Wheel 恢复
+
+PyPI 发布默认关闭。启用后若只上传了部分平台或 JSON 索引可见性超时，保留原运行的 `rust-release-candidate`，重跑失败发布任务。发布脚本会核对已上传文件的摘要，仅补传缺失的同一候选文件；冲突或 yanked 文件拒绝继续。不要删除已发布文件、改 tag、重建 Wheel 或用 `skip-existing` 掩盖内容冲突。首次真实发布前，本路径通过本地模拟注册表状态测试，公开上传尚未验收。
