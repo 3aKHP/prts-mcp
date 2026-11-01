@@ -46,3 +46,21 @@ class PublicationTests(unittest.TestCase):
         with patch.dict(os.environ, {'RUST_PYPI_PUBLISH_ENABLED': 'false'}):
             with self.assertRaisesRegex(ValueError, 'disabled'):
                 candidate()
+
+    def test_downstream_completion_requires_success_when_pypi_enabled(self):
+        import re
+        from common import ROOT
+        workflow = (ROOT / '.github/workflows/release-rust.yml').read_text()
+        expression = workflow.split('  publish-non-npm:', 1)[1].split('if: >-', 1)[1].split('runs-on:', 1)[0].strip()
+        for enabled in ['true', 'false', '']:
+            for result in ['success', 'skipped', 'failure', 'cancelled']:
+                values = {'github.ref_type': 'tag', 'vars.RUST_NON_NPM_PUBLISH_ENABLED': 'true',
+                          'vars.RUST_PYPI_PUBLISH_ENABLED': enabled, 'needs.publish-pypi.result': result,
+                          'needs.native.result': 'success', 'needs.cargo-source.result': 'success',
+                          'needs.publish-crates.result': 'success', 'needs.publish-npm.result': 'success'}
+                converted = expression.replace('always()', 'True')
+                converted = re.sub(r'(?:github|vars|needs)\.[\w.-]+', lambda m: repr(values[m[0]]), converted)
+                converted = converted.replace('&&', ' and ').replace('||', ' or ')
+                actual = eval(' '.join(converted.split()), {'__builtins__': {}}, {})
+                expected = result == 'success' or (enabled != 'true' and result == 'skipped')
+                self.assertEqual(actual, expected, (enabled, result))

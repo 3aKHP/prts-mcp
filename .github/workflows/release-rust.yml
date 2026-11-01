@@ -145,7 +145,8 @@ jobs:
       needs.cargo-source.result == 'success' &&
       (needs.publish-crates.result == 'success' || needs.publish-crates.result == 'skipped') &&
       (needs.publish-npm.result == 'success' || needs.publish-npm.result == 'skipped') &&
-      (needs.publish-pypi.result == 'success' || needs.publish-pypi.result == 'skipped')
+      (needs.publish-pypi.result == 'success' ||
+      (vars.RUST_PYPI_PUBLISH_ENABLED != 'true' && needs.publish-pypi.result == 'skipped'))
     runs-on: ubuntu-24.04
     environment: rust-release
     permissions:
