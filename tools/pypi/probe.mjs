@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, chmodSync, statSync, readdirSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { createServer } from 'node:net';
 import { once } from 'node:events';
 import { stdio } from '../npm/mcp.mjs';
+import { syncProbe, emptyOfflineProbe } from './sync-probe.mjs';
 
 const root = resolve(import.meta.dirname, '../..'), id = process.argv[2];
 const target = JSON.parse(readFileSync(join(root, 'packaging/native/targets.json')))[id];
@@ -55,7 +56,7 @@ async function httpExit(command) {
   } finally { if(child.exitCode===null && child.signalCode===null) child.kill(); }
 }
 try {
-  execFileSync('python', [join(root,'tools/pypi/inspect.py'),wheel,join(out,'package.json')], {env,stdio:'inherit'});
+  execFileSync('python', [join(root,'tools/pypi/check_wheel.py'),wheel,join(out,'package.json')], {env,stdio:'inherit'});
   run('python',['-m','venv',join(temp,'venv')]);
   const python=pythonIn(join(temp,'venv')), command=commandIn(join(temp,'venv'));
   run(python,['-m','pip','install','--no-deps',wheel]);
@@ -67,11 +68,23 @@ try {
   run('python',['-m','pipx','install','--python',python,'--pip-args=--no-deps',wheel]);
   await stdio(launch(commandIn(join(temp,'pipx/venvs/prts-mcp'))),receipt.productVersion);checks.push('pipx');
   await httpExit(command);checks.push('http-parent-exit');
+  await syncProbe({root,temp,command,launch,version:receipt.productVersion});checks.push('first-sync-offline-cache');
+  await emptyOfflineProbe({temp,command,launch});checks.push('empty-offline');
   const legacy = execFileSync('python',[join(root,'tools/pypi/legacy.py')],{cwd:root,encoding:'utf8'}).trim();
   run(python,['-m','pip','install','--no-deps','--force-reinstall',legacy]);
   run(python,['-m','pip','install','--no-deps','--upgrade',wheel]);
   await stdio(launch(command),receipt.productVersion);checks.push('legacy-upgrade');
   const lib = run(python,['-c','import prts_mcp; print(prts_mcp.__path__[0])']).trim();
+  if(process.platform!=='win32') {
+    const modes=[];
+    const restrict=path=>{
+      const mode=statSync(path).mode; modes.push([path,mode]);
+      if(statSync(path).isDirectory()) for(const name of readdirSync(path))restrict(join(path,name));
+      chmodSync(path,mode & ~0o222);
+    };
+    try {restrict(lib);await stdio(launch(command),receipt.productVersion);checks.push('readonly-install');}
+    finally {for(const [path,mode] of modes)chmodSync(path,mode);}
+  }
   const native = join(lib,'_native',process.platform==='win32'?'prts-mcp-ghcr.exe':'prts-mcp-ghcr');
   assert(existsSync(native));
   run(python,['-c','from pathlib import Path; import sys; Path(sys.argv[1]).rename(sys.argv[1]+".missing")',native]);
