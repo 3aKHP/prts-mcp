@@ -64,3 +64,22 @@ class PublicationTests(unittest.TestCase):
                 actual = eval(' '.join(converted.split()), {'__builtins__': {}}, {})
                 expected = result == 'success' or (enabled != 'true' and result == 'skipped')
                 self.assertEqual(actual, expected, (enabled, result))
+
+    def test_pypa_generated_action_is_ignored_but_source_changes_are_not(self):
+        import subprocess
+        from common import ROOT
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            subprocess.run(['git', 'init', '--quiet', str(root)], check=True)
+            (root / '.gitignore').write_text((ROOT / '.gitignore').read_text())
+            subprocess.run(['git', '-C', str(root), 'add', '.gitignore'], check=True)
+            subprocess.run(['git', '-C', str(root), '-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '--quiet', '-m', 'fixture'], check=True)
+            generated = root / '.github/.tmp/.generated-actions/run-pypi-publish-in-docker-container/action.yml'
+            generated.parent.mkdir(parents=True)
+            generated.write_text('generated action')
+            status = lambda: subprocess.check_output(['git', '-C', str(root), 'status', '--porcelain', '--untracked-files=normal'], text=True)
+            self.assertEqual(status(), '')
+            (root / '.github/unrelated.yml').write_text('unexpected source')
+            self.assertIn('.github/', status())
+            (root / '.gitignore').write_text('modified source')
+            self.assertIn(' M .gitignore', status())
