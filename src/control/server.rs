@@ -24,6 +24,7 @@ pub struct State {
     pub transport: &'static str,
     pub configuration: Value,
     pub data: Arc<DataState>,
+    pub reload: Option<super::reload::Configuration>,
     pub jobs: Option<Arc<crate::sync::jobs::Coordinator>>,
     started: Instant,
 }
@@ -42,6 +43,7 @@ impl State {
             configuration,
             data,
             jobs: None,
+            reload: None,
             started: Instant::now(),
         }
     }
@@ -75,19 +77,38 @@ impl State {
         }
         if matches!(
             request.command,
-            Command::DataSync { .. } | Command::JobCancel { .. }
+            Command::DataSync { .. } | Command::JobCancel { .. } | Command::ConfigReload { .. }
         ) && request.expected_startup_id.as_deref() != Some(&self.startup_id)
         {
             return Response::failure("startup_id_required", "写操作必须提供握手取得的 startup_id");
         }
         let value = match request.command {
             Command::Hello => {
-                json!({"schema_version":1,"instance":self.instance,"startup_id":self.startup_id,"pid":std::process::id(),"server_version":crate::SERVER_VERSION,"capabilities":["status","config_show","data_status","data_sync","jobs_list","job_show","job_cancel"]})
+                json!({"schema_version":1,"instance":self.instance,"startup_id":self.startup_id,"pid":std::process::id(),"server_version":crate::SERVER_VERSION,"capabilities":["status","config_show","data_status","data_sync","jobs_list","job_show","job_cancel","config_diff","config_reload"]})
             }
             Command::Status => {
                 json!({"schema_version":1,"instance":self.instance,"startup_id":self.startup_id,"pid":std::process::id(),"server_version":crate::SERVER_VERSION,"transport":self.transport,"ready":self.ready.load(Ordering::Acquire),"uptime_ms":self.started.elapsed().as_millis() as u64,"effective_backend":self.data.snapshot().effective_backend()})
             }
-            Command::ConfigShow => self.configuration.clone(),
+            Command::ConfigShow => self
+                .reload
+                .as_ref()
+                .map(|r| r.show())
+                .unwrap_or_else(|| self.configuration.clone()),
+            Command::ConfigDiff | Command::ConfigReload { .. } => {
+                let expected = match request.command {
+                    Command::ConfigReload { expected_revision } => Some(expected_revision),
+                    _ => None,
+                };
+                return match self
+                    .reload
+                    .as_ref()
+                    .ok_or_else(|| "配置重载不可用".to_owned())
+                    .and_then(|r| r.evaluate(expected))
+                {
+                    Ok(value) => Response::success(value),
+                    Err(error) => Response::failure("configuration", &error),
+                };
+            }
             Command::DataSync {
                 target,
                 wait_timeout,

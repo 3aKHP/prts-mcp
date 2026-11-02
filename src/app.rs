@@ -283,6 +283,7 @@ pub enum HttpProfile {
 }
 
 pub struct App {
+    pub(crate) startup_context: Option<crate::cli::settings::Context>,
     pub(crate) startup_report: Option<serde_json::Value>,
     pub config: Arc<RuntimeConfig>,
     pub data: Arc<DataState>,
@@ -310,6 +311,7 @@ impl App {
         let handle = AppHandle::from_parts(Arc::clone(&data), &config);
         Ok(Self {
             startup_report: None,
+            startup_context: None,
             handle,
             tools: Arc::new(registry_for(config.images_enabled)),
             config,
@@ -347,6 +349,23 @@ impl App {
         let name = std::env::var("PRTS_INSTANCE_NAME").unwrap_or_else(|_| "main".into());
         let mut state =
             crate::control::server::State::new(name, transport, report, self.data.clone());
+        let context = self.startup_context.clone().unwrap_or_else(|| {
+            let mut context =
+                crate::cli::settings::Context::capture(None, false, Default::default());
+            context.set_profile(if transport == "stdio" {
+                "prts-mcp-ts-stdio"
+            } else {
+                "prts-mcp-ts"
+            });
+            context
+        });
+        state.reload = Some(crate::control::reload::Configuration::new(
+            context,
+            state.configuration.clone(),
+            transport,
+            self.config.clone(),
+            jobs.clone(),
+        ));
         state.jobs = Some(jobs);
         crate::control::server::start(Arc::new(state)).await
     }

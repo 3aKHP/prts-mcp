@@ -90,6 +90,11 @@ enum RuntimeCommand {
 #[derive(Subcommand)]
 enum RuntimeConfigCommand {
     Show,
+    Diff,
+    Reload {
+        #[arg(long)]
+        expected_revision: u64,
+    },
 }
 #[derive(Subcommand)]
 enum RuntimeDataCommand {
@@ -214,7 +219,15 @@ fn execute(cli: &Cli) -> Result<(Option<Value>, i32), error::Failure> {
         let target = crate::control::instances::load(&path, instance)?;
         let request = match command {
             RuntimeCommand::Status => crate::control::wire::Command::Status,
-            RuntimeCommand::Config { .. } => crate::control::wire::Command::ConfigShow,
+            RuntimeCommand::Config { command } => match command {
+                RuntimeConfigCommand::Show => crate::control::wire::Command::ConfigShow,
+                RuntimeConfigCommand::Diff => crate::control::wire::Command::ConfigDiff,
+                RuntimeConfigCommand::Reload { expected_revision } => {
+                    crate::control::wire::Command::ConfigReload {
+                        expected_revision: *expected_revision,
+                    }
+                }
+            },
             RuntimeCommand::Data {
                 command: RuntimeDataCommand::Status,
             } => crate::control::wire::Command::DataStatus,
@@ -301,6 +314,7 @@ fn execute(cli: &Cli) -> Result<(Option<Value>, i32), error::Failure> {
         Command::Serve { .. } => {
             let mut app = crate::app::App::try_with_config(loaded.config)?;
             app.startup_report = Some(loaded.report);
+            app.startup_context = Some(loaded.context);
             let code = if loaded.transport.trim().eq_ignore_ascii_case("stdio") {
                 app.run_stdio()
             } else {

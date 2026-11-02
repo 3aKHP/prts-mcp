@@ -69,7 +69,7 @@ impl ValidationMode {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct RuntimeConfig {
     pub data_source: DataSource,
     pub data_backend: DataBackend,

@@ -87,3 +87,12 @@
 ## 附录：开发与测试专用变量
 
 仓库 `tools/` 下的基准测试、契约采集与发行打包脚本所使用的内部环境变量不属于用户运行时配置，详见 [`ENVIRONMENT.md`](../dev/ENVIRONMENT.md) 与 [`NPM-DISTRIBUTION.md`](../dev/NPM-DISTRIBUTION.md)。
+
+## 本机管理端点
+
+| 变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `PRTS_CONTROL_ENDPOINT` | 未设置，管理关闭 | Unix 使用私有目录中的绝对 socket 路径；Windows 使用 `\\.\pipe\prts-mcp-<名称>` 本机管道。 |
+| `PRTS_INSTANCE_NAME` | `main` | 与 CLI 实例映射一致的名称，限 1–64 个 ASCII 字母、数字、横线或下划线。 |
+
+端点独立于 MCP 传输和诊断 Token，stdio 与 HTTP 均可启用。配置方式及权限见 [CLI 指南](cli.md)。

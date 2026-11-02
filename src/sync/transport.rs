@@ -124,13 +124,17 @@ impl ReqwestTransport {
     /// Proxy behavior comes from the ambient HTTP(S)_PROXY env (reqwest
     /// default) — the same sources Bun/undici honor in the oracle.
     pub fn new(mirrors: Vec<String>, token: Option<String>) -> Self {
-        Self {
-            client: reqwest::Client::builder()
-                .build()
-                .expect("reqwest client builds"),
+        Self::try_new(mirrors, token).expect("reqwest client builds")
+    }
+    pub fn try_new(mirrors: Vec<String>, token: Option<String>) -> Result<Self, String> {
+        let client = reqwest::Client::builder()
+            .build()
+            .map_err(|_| "无法构建同步 HTTP 客户端")?;
+        Ok(Self {
+            client,
             mirrors,
             token,
-        }
+        })
     }
 
     /// Candidates: `[url, mirror1/url, mirror2/url, …]`.

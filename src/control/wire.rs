@@ -22,6 +22,8 @@ pub enum Command {
     Hello,
     Status,
     ConfigShow,
+    ConfigDiff,
+    ConfigReload { expected_revision: u64 },
     DataStatus,
     DataSync { target: String, wait_timeout: u64 },
     JobsList,

@@ -103,6 +103,37 @@ fn stdio_instance_has_separate_management_and_preserves_protocol_output() {
     assert!(out.status.success(), "{out:?}");
     let report: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
     assert_eq!(report["schema_version"], 1);
+    fs::write(&config, "schema_version=1\n[runtime]\nPRTS_TRANSPORT='stdio'\nHOST='fixture-host'\nPRTS_AUTO_SYNC_INTERVAL_SECONDS=120\n").unwrap();
+    let out = query(&["config", "diff"]);
+    assert!(out.status.success(), "{out:?}");
+    let diff: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(diff["restart_required"], false);
+    assert_eq!(diff["revision"], 1);
+    let out = query(&["config", "reload", "--expected-revision", "1"]);
+    assert!(out.status.success(), "{out:?}");
+    assert_eq!(
+        serde_json::from_slice::<serde_json::Value>(&out.stdout).unwrap()["revision"],
+        2
+    );
+    assert!(!query(&["config", "reload", "--expected-revision", "1"])
+        .status
+        .success());
+    fs::write(&config, "schema_version=1\n[runtime]\nPRTS_TRANSPORT='stdio'\nHOST='changed-host'\nPRTS_AUTO_SYNC_INTERVAL_SECONDS=240\n").unwrap();
+    assert!(!query(&["config", "reload", "--expected-revision", "2"])
+        .status
+        .success());
+    let out = query(&["config", "show"]);
+    let current: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(current["revision"], 2);
+    assert_eq!(
+        current["fields"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|v| v["key"] == "PRTS_AUTO_SYNC_INTERVAL_SECONDS")
+            .unwrap()["value"],
+        120
+    );
     let mut child = fixture.child.take().unwrap();
     let mut input = child.stdin.take().unwrap();
     writeln!(input,r#"{{"jsonrpc":"2.0","id":1,"method":"initialize","params":{{"protocolVersion":"2025-03-26","capabilities":{{}},"clientInfo":{{"name":"control-test","version":"1"}}}}}}"#).unwrap();
