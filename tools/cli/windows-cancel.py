@@ -60,9 +60,11 @@ if __name__ == "__main__":
         result = subprocess.run(
             [sys.executable, __file__, "--console", *sys.argv[1:]],
             creationflags=subprocess.CREATE_NEW_CONSOLE, timeout=35,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf-8",
         )
         root = Path(sys.argv[3])
         if result.returncode:
+            print(result.stdout, result.stderr, file=sys.stderr)
             for name in ("stdout", "stderr"):
                 path = root / name
                 if path.exists():

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir, release as osRelease } from 'node:os';
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 import { createServer } from 'node:net';
 import { once } from 'node:events';
 import { createRequire } from 'node:module';
@@ -147,9 +147,10 @@ try {
   managementProbe({command:process.execPath,args:[join(project,'node_modules/prts-mcp/bin/prtsctl.cjs')],env,cwd:temp,version,label:'npm-local'});
   checks.push({case:'management-cli',npx:true,globalShim:true,project:true,shells:shellChecks});
   if(process.platform==='win32') {
-    const cancellation=await capture('python',[join(root,'tools/cli/windows-cancel.py'),process.execPath,
-      join(globalRoot,'prts-mcp/bin/prtsctl.cjs'),join(temp,'console-cancel')],{cwd:temp,env});
-    assert.equal(cancellation.code,0,cancellation.stderr);assert.match(cancellation.stdout,/WINDOWS_CLI_CANCEL_PASS/);
+    const cancellation=execFileSync('python',[join(root,'tools/cli/windows-cancel.py'),process.execPath,
+      join(globalRoot,'prts-mcp/bin/prtsctl.cjs'),join(temp,'console-cancel')],
+      {cwd:temp,env,encoding:'utf8',timeout:45000,stdio:['ignore','pipe','pipe']});
+    assert.match(cancellation,/WINDOWS_CLI_CANCEL_PASS/);
     checks.push({case:'management-cli-console-cancel',exit:130,cancelled:true});
   }
   console.log(`NPM_STAGE: ${id} lifecycle and error diagnostics`);
