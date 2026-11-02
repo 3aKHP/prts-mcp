@@ -101,6 +101,14 @@ fn doctor_network_is_opt_in_bounded_and_does_not_initialize_data() {
     let proxy = format!("http://{}", listener.local_addr().unwrap());
     let command = || {
         let mut c = f.command(env!("CARGO_BIN_EXE_prtsctl"));
+        // Windows socket providers need the OS installation directory even
+        // when business configuration and proxy state are isolated.
+        #[cfg(windows)]
+        for key in ["SystemRoot", "WINDIR"] {
+            if let Some(value) = std::env::var_os(key) {
+                c.env(key, value);
+            }
+        }
         c.env("HTTPS_PROXY", &proxy)
             .env("HTTP_PROXY", &proxy)
             .args(["doctor", "-o", "json"]);
@@ -128,7 +136,11 @@ fn doctor_network_is_opt_in_bounded_and_does_not_initialize_data() {
     let start = Instant::now();
     let online = bounded(command().arg("--network").spawn().unwrap());
     stopped.store(true, Ordering::Relaxed);
-    assert!(server.join().unwrap() >= 2);
+    let connections = server.join().unwrap();
+    assert!(
+        connections >= 2,
+        "only {connections} proxy connections: {online:?}"
+    );
     assert!(start.elapsed() >= Duration::from_secs(4));
     assert_eq!(online.status.code(), Some(1), "{online:?}");
     let report: serde_json::Value = serde_json::from_slice(&online.stdout).unwrap();
