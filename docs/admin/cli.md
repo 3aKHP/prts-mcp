@@ -1,6 +1,6 @@
 # 管理 CLI（`prtsctl`）使用指南
 
-本文面向服务端管理员与高级用户，介绍 `prtsctl` 管理命令行的配置管理、本地环境诊断、数据完整性校验、一次性数据同步及脚本集成方法。
+本文面向服务端管理员与高级用户，介绍 `prtsctl` 管理命令行的配置管理、本地环境诊断、数据完整性校验、一次性数据同步、systemd 服务管理、在线任务与配置重载，以及脚本集成方法。
 
 - 容器、裸机与 `systemd` 常驻部署方案见[服务端部署与容器运维指南](deployment.md)。
 - 数据目录结构、离线包挂载与立绘存储规划见[数据同步、离线包与立绘存储管理](data-and-sync.md)。
@@ -79,6 +79,11 @@ prtsctl serve
 | `data verify` | 按当前生效的数据后端与立绘配置，对本地 SQLite、JSON/剧情 ZIP 或立绘分片执行完整校验 |
 | `data sync [--target game\|images\|all] [--wait-timeout <seconds>]` | 执行一次性同步并退出，不启动周期性后台轮询 |
 | `serve [--transport http\|stdio] [--host <address>] [--port <number>]` | 在当前进程中显式启动 MCP 服务器 |
+| `service status/start/stop/restart/enable/disable` | 通过 systemd 管理显式 unit 或实例映射中的服务；支持系统级与用户级服务 |
+| `service template` | 输出单元模板，由管理员安装 |
+| `runtime status`、`runtime data status` | 通过本机管理端点查询运行中实例与实际数据视图 |
+| `runtime config show/diff/reload` | 查看运行时配置、比较候选文件，并按 revision 原子重载允许字段 |
+| `runtime data sync`、`runtime jobs list/show/cancel` | 提交、查询或取消在线同步任务 |
 | `completion <bash\|zsh\|powershell>` | 向标准输出打印对应 Shell 的命令补全脚本，供用户按需加载 |
 
 ### 2.2 全局选项与参数解析规则

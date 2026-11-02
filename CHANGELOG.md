@@ -8,13 +8,13 @@ The original per-implementation changelogs at the 2.8.1 baseline remain availabl
 
 ## [Unreleased]
 
-- Added runtime configuration diff/reload for sync interval, GitHub token and mirrors. Reload preserves startup overrides, validates the entire candidate and rejects restart-required changes atomically using a configuration revision.
-
-- Added online sync jobs with shared background/manual ownership, explicit cancellation and a bounded process-local history. Server shutdown drains active publishers.
-
-- Added `prtsctl service` commands for systemd status, start, stop, restart, enable and disable, plus unit template output. Existing units work independently of the installation channel.
-
 ### Added
+
+- Add runtime configuration diff/reload for sync interval, GitHub token and mirrors. Reload preserves startup overrides, validates the entire candidate and rejects restart-required changes atomically using a configuration revision.
+
+- Add online sync jobs with shared background/manual ownership, explicit cancellation and a bounded process-local history. Server shutdown drains active publishers.
+
+- Add `prtsctl service` commands for systemd status, start, stop, restart, enable and disable, plus unit template output. Existing units work independently of the installation channel.
 
 - Add opt-in local runtime status, configuration and data queries through Unix sockets and Windows named pipes. Snapshot queries allow 30 seconds for cold SQLite validation; handshake and other methods retain 5-second limits.
 
