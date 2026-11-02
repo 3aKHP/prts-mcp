@@ -55,7 +55,13 @@ function run(profile) {
   });
   const forwarders = new Map();
   for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
-    const forward = () => { if (child.exitCode === null && child.signalCode === null) child.kill(signal); };
+    const forward = () => {
+      // Windows broadcasts console Ctrl+C to both processes. Node's kill()
+      // would terminate the child abruptly instead of letting sync finish its
+      // publication/cleanup section. Retain the parent until native exit.
+      if (process.platform === "win32" && profile === "prtsctl" && signal === "SIGINT") return;
+      if (child.exitCode === null && child.signalCode === null) child.kill(signal);
+    };
     forwarders.set(signal, forward);
     process.on(signal, forward);
   }

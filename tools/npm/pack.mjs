@@ -17,7 +17,7 @@ assert.equal(build.version, version);
 assert.equal(build.dirty, false, 'Only clean, audited native payloads may become npm platform packages');
 const abi = readJson(join(nativeDir, 'ABI.json'));
 assert.equal(abi.platform, target.target);
-assert.equal(abi.binaries.length, 5);
+assert.equal(abi.binaries.length, 6);
 const nativeFiles = verifyInventory(nativeDir);
 verifyNotices(nativeDir);
 const out = join(root, 'artifacts/npm', id);

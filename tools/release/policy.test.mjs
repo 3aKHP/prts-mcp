@@ -28,6 +28,9 @@ test('same-version npm evidence from different tarballs or CPUs is rejected',()=
   assert.throws(()=>verifyNpmEvidence(receipt,{...evidence,packages:[{name:'prts-mcp',sha256:'previous'}]},'linux-x64'));
   assert.throws(()=>verifyNpmEvidence(receipt,{...evidence,arch:'arm64'},'linux-x64'));
   assert.throws(()=>verifyNpmEvidence(receipt,{...evidence,checks:Array(20).fill({})},'linux-x64'));
+  const windows={...evidence,platform:'windows-x64'};
+  assert.throws(()=>verifyNpmEvidence(receipt,windows,'windows-x64'));
+  verifyNpmEvidence(receipt,{...windows,checks:[...windows.checks,{case:'management-cli-console-cancel',exit:130,cancelled:true}]},'windows-x64');
 });
 test('self-consistent replacement Docker archive cannot reuse another archive runtime proof',()=>{
   const image={commit:'source',version:'3.0.0-alpha.1',imageId:'image',arch:'amd64'};

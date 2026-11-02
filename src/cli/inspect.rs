@@ -114,18 +114,34 @@ pub fn data(cfg: &RuntimeConfig, full: bool) -> (Value, i32) {
             } else {
                 crate::storage::sqlite::GameDb::for_inspection(&candidate.path).and_then(|db| {
                     if db.derived_ready() {
-                        Ok(())
+                        Ok(db)
                     } else {
                         Err("派生查询数据未就绪".into())
                     }
                 })
             };
+            let result = result.and_then(|db| {
+                if cfg.custom_database.is_some() {
+                    return Ok(true);
+                }
+                // Match server admission: a managed, structurally valid empty
+                // database does not suppress the JSON fallback.
+                let view = crate::app::DataView::from_database(
+                    db,
+                    cfg.excel_path.clone(),
+                    cfg.levels_path.clone(),
+                )?;
+                Ok(view.excel_root.is_some()
+                    || view.levels_root.is_some()
+                    || view.story_zip.is_some())
+            });
             let ok = result.is_ok();
-            database_available |= ok;
+            let usable = result.as_ref().is_ok_and(|usable| *usable);
+            database_available |= usable;
             if let Err(error) = &result {
                 checks.push(check("database", "error", error, Some(&candidate.path)));
             }
-            database_reports.push(json!({"path":super::report::path_value(Some(&candidate.path)),"status":if ok{if full{"verified"}else{"present_unverified"}}else{"invalid"},"verified":ok&&full}));
+            database_reports.push(json!({"path":super::report::path_value(Some(&candidate.path)),"status":if ok{if full{"verified"}else{"present_unverified"}}else{"invalid"},"verified":ok&&full,"usable":usable}));
         }
     }
     // Reuse only the JSON path resolver, never SQLite admission (which may write a stamp).

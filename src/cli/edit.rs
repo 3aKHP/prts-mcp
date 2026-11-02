@@ -85,7 +85,9 @@ pub fn apply(path: Option<&Path>, change: Change<'_>, dry_run: bool) -> Result<V
         }
         _ => settings::document(&path, true)?,
     };
-    settings::values(&doc, &path)?;
+    if doc.get("runtime").is_some_and(|item| !item.is_table()) {
+        return Err("runtime 必须为表".into());
+    }
     let key = match change {
         Change::Set(k, _) | Change::Unset(k) => Some(k.strip_prefix("runtime.").unwrap_or(k)),
         _ => None,

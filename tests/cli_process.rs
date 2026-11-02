@@ -86,6 +86,63 @@ fn serve_and_legacy_explicit_file_keep_stdio_protocol_clean() {
         }
     }
 }
+#[test]
+fn doctor_network_is_opt_in_bounded_and_does_not_initialize_data() {
+    use std::{
+        net::TcpListener,
+        sync::{
+            atomic::{AtomicBool, Ordering},
+            Arc,
+        },
+    };
+    let f = Fixture::new();
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    listener.set_nonblocking(true).unwrap();
+    let proxy = format!("http://{}", listener.local_addr().unwrap());
+    let command = || {
+        let mut c = f.command(env!("CARGO_BIN_EXE_prtsctl"));
+        c.env("HTTPS_PROXY", &proxy)
+            .env("HTTP_PROXY", &proxy)
+            .args(["doctor", "-o", "json"]);
+        c
+    };
+    let offline = bounded(command().spawn().unwrap());
+    assert!(offline.status.success(), "{offline:?}");
+    assert_eq!(
+        listener.accept().unwrap_err().kind(),
+        std::io::ErrorKind::WouldBlock
+    );
+    // Accept both CONNECT requests but never answer: no public host is reached.
+    let stopped = Arc::new(AtomicBool::new(false));
+    let stop = stopped.clone();
+    let server = std::thread::spawn(move || {
+        let mut connections = Vec::new();
+        while !stop.load(Ordering::Relaxed) {
+            if let Ok((stream, _)) = listener.accept() {
+                connections.push(stream);
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        connections.len()
+    });
+    let start = Instant::now();
+    let online = bounded(command().arg("--network").spawn().unwrap());
+    stopped.store(true, Ordering::Relaxed);
+    assert!(server.join().unwrap() >= 2);
+    assert!(start.elapsed() >= Duration::from_secs(4));
+    assert_eq!(online.status.code(), Some(1), "{online:?}");
+    let report: serde_json::Value = serde_json::from_slice(&online.stdout).unwrap();
+    for name in ["source_network", "wiki_network"] {
+        let check = report["checks"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|v| v["name"] == name)
+            .unwrap();
+        assert_eq!(check["status"], "error");
+    }
+    assert_eq!(fs::read_dir(&f.0).unwrap().count(), 0);
+}
 #[cfg(unix)]
 #[test]
 fn sigterm_while_waiting_returns_cancelled_json_and_preserves_old_data() {

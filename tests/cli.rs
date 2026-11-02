@@ -35,6 +35,41 @@ fn help_ignores_bad_configuration_and_never_initializes_data() {
     assert!(!f.0.join("data").exists());
 }
 #[test]
+fn edits_can_repair_a_bad_field_but_reject_other_invalid_content() {
+    let f = Fixture::new();
+    let path = f.0.join("repair.toml");
+    for args in [
+        vec!["config", "set", "PORT", "3000"],
+        vec!["config", "unset", "PORT"],
+    ] {
+        fs::write(&path, "schema_version=1\n[runtime]\nPORT='oops'\n").unwrap();
+        let out = f
+            .command()
+            .arg("--config")
+            .arg(&path)
+            .args(args)
+            .output()
+            .unwrap();
+        assert!(out.status.success(), "{out:?}");
+        assert!(!fs::read_to_string(&path).unwrap().contains("oops"));
+    }
+    for invalid in [
+        "schema_version=1\n[runtime]\nPORT='oops'\nLOCAL_IMAGE='invalid'\n",
+        "schema_version=1\nruntime='invalid'\n",
+    ] {
+        fs::write(&path, invalid).unwrap();
+        let out = f
+            .command()
+            .arg("--config")
+            .arg(&path)
+            .args(["config", "set", "PORT", "3000"])
+            .output()
+            .unwrap();
+        assert_eq!(out.status.code(), Some(2), "{out:?}");
+        assert_eq!(fs::read_to_string(&path).unwrap(), invalid);
+    }
+}
+#[test]
 fn explicit_missing_config_fails_even_with_equals_syntax() {
     let f = Fixture::new();
     let o = f
@@ -307,6 +342,14 @@ fn native_config_filename_does_not_panic_during_json_reporting() {
         .args(["config", "init", "-o", "json"])
         .output()
         .unwrap();
+    // APFS rejects filenames containing invalid UTF-8 at the filesystem layer.
+    // That is an operation error, not a lossy replacement or a CLI panic.
+    #[cfg(target_os = "macos")]
+    if !out.status.success() {
+        assert_eq!(out.status.code(), Some(1), "{out:?}");
+        assert!(!path.exists());
+        return;
+    }
     assert!(out.status.success(), "{out:?}");
     assert!(path.is_file());
     let out = f

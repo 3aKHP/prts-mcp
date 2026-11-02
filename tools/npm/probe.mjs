@@ -146,6 +146,12 @@ try {
   checks.push({case:'npm ci with fresh cache and unchanged lockfile; shared runtime/data deduplicated',...await stdio(launch(localCompat),version)});
   managementProbe({command:process.execPath,args:[join(project,'node_modules/prts-mcp/bin/prtsctl.cjs')],env,cwd:temp,version,label:'npm-local'});
   checks.push({case:'management-cli',npx:true,globalShim:true,project:true,shells:shellChecks});
+  if(process.platform==='win32') {
+    const cancellation=await capture('python',[join(root,'tools/cli/windows-cancel.py'),process.execPath,
+      join(globalRoot,'prts-mcp/bin/prtsctl.cjs'),join(temp,'console-cancel')],{cwd:temp,env});
+    assert.equal(cancellation.code,0,cancellation.stderr);assert.match(cancellation.stdout,/WINDOWS_CLI_CANCEL_PASS/);
+    checks.push({case:'management-cli-console-cancel',exit:130,cancelled:true});
+  }
   console.log(`NPM_STAGE: ${id} lifecycle and error diagnostics`);
   for(const signal of process.platform==='win32'?['SIGTERM']:['SIGTERM','SIGINT','SIGHUP']) await timed(`lifecycle-${signal}`,()=>signalCheck(main,signal));
   const occupied=createServer();occupied.listen(0,'127.0.0.1');await once(occupied,'listening');

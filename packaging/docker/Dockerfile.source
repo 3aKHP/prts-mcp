@@ -11,12 +11,13 @@ COPY contracts/data-declarations.json contracts/data-declarations.json
 COPY src/ src/
 COPY native/ native/
 COPY vendor/ vendor/
-RUN cargo build --locked --release --bin prts-mcp-ghcr
+RUN cargo build --locked --release --bin prts-mcp-ghcr --bin prtsctl
 
 FROM ubuntu:24.04
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=builder /build/target/release/prts-mcp-ghcr /app/bin/prts-mcp-ghcr
+COPY --from=builder /build/target/release/prtsctl /app/bin/prtsctl
 COPY LICENSE NOTICE /app/
 COPY vendor/quickjs-regexp/NOTICES.txt /app/THIRD-PARTY-NOTICES.txt
 ENV PRTS_MCP_ROOT=/app

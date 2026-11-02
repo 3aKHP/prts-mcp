@@ -4,7 +4,9 @@ use super::{
 };
 use std::{fs, path::Path};
 
-pub(crate) fn database(candidate: &DatabaseCandidate) -> Result<(), String> {
+pub(crate) fn database(
+    candidate: &DatabaseCandidate,
+) -> Result<std::sync::Arc<super::sqlite::GameDb>, String> {
     let before = path_token(&candidate.path).ok_or("数据库不可读")?;
     let sidecars: Vec<_> = ["-wal", "-journal"]
         .iter()
@@ -34,7 +36,7 @@ pub(crate) fn database(candidate: &DatabaseCandidate) -> Result<(), String> {
     {
         return Err("校验期间数据库发生变化，请重试".into());
     }
-    Ok(())
+    Ok(db)
 }
 
 pub(crate) fn json_tree(root: &Path, required: &[String]) -> Result<usize, String> {

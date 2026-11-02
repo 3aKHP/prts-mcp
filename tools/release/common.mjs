@@ -39,6 +39,7 @@ export function verifyNpmEvidence(receipt, evidence, id) {
   assert.equal(evidence.version,receipt.version);assert.equal(evidence.platform,id);assert.equal(evidence.native,true);
   assert.equal(evidence.arch,targets[id].arch);assert(evidence.checks.length>=15);
   assert(evidence.checks.some(check=>check.case==='management-cli'&&check.npx&&check.globalShim&&check.project));
+  if(evidence.platform==='windows-x64')assert(evidence.checks.some(check=>check.case==='management-cli-console-cancel'&&check.exit===130&&check.cancelled));
   assert.deepEqual(evidence.packages,receipt.packages,'npm runtime evidence must describe the actual tarballs');
 }
 export function verifyDockerEvidence(image, evidence, archiveSha256, id) {

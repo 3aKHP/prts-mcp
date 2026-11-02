@@ -35,6 +35,7 @@ impl Fixture {
             ("language", "zh_CN"),
             ("source_version", "fixture"),
             ("publication_revision", "1"),
+            ("excel_available", "1"),
         ] {
             db.execute("INSERT INTO meta VALUES(?1,?2)", [key, value])
                 .unwrap();
@@ -100,6 +101,53 @@ fn sqlite_inspection_never_writes_admission_stamps_or_sidecars() {
         assert_eq!(json(&o)["available_backend"], "sqlite");
         assert_eq!(snapshot(&f.0), before);
     }
+}
+#[test]
+fn empty_managed_database_does_not_hide_json_fallback_verification() {
+    let f = Fixture::new();
+    let path = f.db();
+    let db = rusqlite::Connection::open(&path).unwrap();
+    db.execute("DELETE FROM meta WHERE key='excel_available'", [])
+        .unwrap();
+    drop(db);
+    let root = path.parent().unwrap();
+    fs::rename(&path, root.join("zh_CN.sqlite")).unwrap();
+    let managed = || {
+        let mut c = f.command();
+        c.env("PRTS_DATA_DIR", root)
+            .args(["data", "verify", "-o", "json"]);
+        c
+    };
+    let out = managed().output().unwrap();
+    assert_eq!(out.status.code(), Some(1), "{out:?}");
+    assert_eq!(json(&out)["available_backend"], "unavailable");
+    assert_eq!(json(&out)["database_candidates"][0]["verified"], true);
+    assert_eq!(json(&out)["database_candidates"][0]["usable"], false);
+    // Explicit read-only databases retain the server's custom-data semantics.
+    let out = managed()
+        .env("PRTS_DATA_DB", root.join("zh_CN.sqlite"))
+        .output()
+        .unwrap();
+    assert!(out.status.success(), "{out:?}");
+    assert_eq!(json(&out)["available_backend"], "sqlite");
+    let bundle = f.0.join("bundle");
+    fs::create_dir_all(bundle.join("storyjson")).unwrap();
+    fs::write(bundle.join("storyjson/zh_CN.zip"), b"corrupt zip").unwrap();
+    let before = snapshot(&f.0);
+    let out = managed()
+        .arg("--bundle-root")
+        .arg(&bundle)
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(1), "{out:?}");
+    let report = json(&out);
+    assert_eq!(report["available_backend"], "json");
+    assert!(report["checks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|c| c["name"] == "story" && c["status"] == "error"));
+    assert_eq!(snapshot(&f.0), before);
 }
 #[test]
 fn managed_database_digest_and_metadata_are_checked() {
