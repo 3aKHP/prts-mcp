@@ -324,7 +324,7 @@ pub async fn sync_release_archive(
             Ok(source) => source,
             Err(error) => return SyncResult::new(SyncStatus::NoData, None, Some(error)),
         };
-    if let Err(error) = super::source_guard::ensure(&spec.local_root, &source) {
+    if let Err(error) = super::source_guard::ensure_async(&spec.local_root, &source).await {
         return SyncResult::new(SyncStatus::NoData, None, Some(error));
     }
     let result = async {
@@ -334,7 +334,9 @@ pub async fn sync_release_archive(
             ".activation.lock",
             LockTiming::default(),
             || async {
-                if let Err(error) = super::source_guard::ensure(&spec.local_root, &source) {
+                if let Err(error) =
+                    super::source_guard::ensure_async(&spec.local_root, &source).await
+                {
                     return Ok(SyncResult::new(SyncStatus::NoData, None, Some(error)));
                 }
                 sync_release_archive_locked(transport, spec, force_check).await
@@ -386,7 +388,8 @@ pub async fn sync_release_archive_pair(
                     spec.owner, spec.repo
                 )))
                 .map_err(SyncError::Message)?;
-                super::source_guard::ensure(&spec.local_root, &source)
+                super::source_guard::ensure_async(&spec.local_root, &source)
+                    .await
                     .map_err(SyncError::Message)?;
             }
             initialize_gamedata_pair(excel_spec, levels_spec)?;
