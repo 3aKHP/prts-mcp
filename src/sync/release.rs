@@ -487,7 +487,7 @@ pub async fn sync_release_with_source(
     source: &crate::config::DataSource,
 ) -> SyncResult {
     let root = spec.local_zip.parent().unwrap_or_else(|| Path::new("."));
-    if let Err(error) = super::source_guard::ensure(root, source) {
+    if let Err(error) = super::source_guard::ensure_async(root, source).await {
         return SyncResult::new(SyncStatus::NoData, None, Some(error));
     }
     sync_release_guarded(transport, spec, force_check, Some(source)).await
@@ -510,7 +510,7 @@ async fn sync_release_guarded(
             || async {
                 if let Some(source) = source {
                     let root = spec.local_zip.parent().unwrap_or_else(|| Path::new("."));
-                    if let Err(error) = super::source_guard::ensure(root, source) {
+                    if let Err(error) = super::source_guard::ensure_async(root, source).await {
                         return Ok(SyncResult::new(SyncStatus::NoData, None, Some(error)));
                     }
                 }

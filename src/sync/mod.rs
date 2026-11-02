@@ -1,6 +1,8 @@
 //! Release discovery/transfer/validation/activation and image sync.
 
 pub mod activation;
+pub mod control;
+mod controlled_transport;
 pub mod database;
 pub mod database_io;
 pub mod database_manifest;
@@ -12,6 +14,7 @@ pub mod images_sync;
 pub mod images_v2;
 mod images_v2_io;
 pub mod images_v2_sync;
+pub mod once;
 pub mod pair;
 pub mod primitives;
 pub mod release;

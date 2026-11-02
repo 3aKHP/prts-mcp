@@ -86,7 +86,7 @@ pub(super) async fn run_selected(
     latest: &str,
     lease: Arc<std::fs::File>,
 ) -> Result<super::types::SyncResult, String> {
-    super::source_guard::ensure(root, source)?;
+    super::source_guard::ensure_async(root, source).await?;
     let cleanup_root = root.to_owned();
     blocking(&lease, move || {
         cleanup_staging(&cleanup_root.join(".releases"))?;
