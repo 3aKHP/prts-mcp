@@ -104,7 +104,7 @@ MCP 工具的 `description` 与参数 Schema 是 LLM 选择工具的核心依据
 
 ### `unsafe` 与原生 C 边界
 
-- 仓库中的 `unsafe` 仅限两处边界：正则引擎绑定（`text/regex_compat.rs` + `native/regexp.c`）与进程内存统计（`diagnostics/` + `native/process_memory.c`）。
+- 仓库中的 `unsafe` 限于已审查的原生边界：正则引擎绑定（`text/regex_compat.rs` + `native/regexp.c`）、进程内存统计（`diagnostics/` + `native/process_memory.c`）以及本机管理管道的 Windows 安全描述符封装（`control/windows.rs`）。
 - 每一处 `unsafe` 块必须注释说明指针有效性、缓冲区长度、生命周期与释放责任；严禁将裸指针泄露到高层业务模块。
 
 ### 标准流与进程生命周期

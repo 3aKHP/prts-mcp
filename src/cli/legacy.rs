@@ -86,13 +86,14 @@ pub fn dispatch(profile: &str) {
         _ => false,
     };
     crate::launcher::watch_parent();
-    let app = match crate::app::App::try_with_config(loaded.config) {
+    let mut app = match crate::app::App::try_with_config(loaded.config) {
         Ok(app) => app,
         Err(error) => {
             eprintln!("{profile}: {error}");
             std::process::exit(2)
         }
     };
+    app.startup_report = Some(loaded.report);
     if stdio {
         std::process::exit(app.run_stdio())
     }

@@ -236,3 +236,19 @@ prtsctl config show -o json | jq '.fields[] | select(.source == "environment")'
 | `2` | 命令行参数语法错误，或配置文件/环境变量校验无效 |
 | `3` | `data sync` 等待跨进程同步锁超时（超过 `--wait-timeout` 预算） |
 | `130` / `143` | 一次性同步（`data sync`）在受支持平台上被 `Ctrl+C`（`SIGINT`）或 `SIGTERM` 信号取消 |
+
+## 本机在线查询
+
+服务器显式设置 `PRTS_CONTROL_ENDPOINT` 后提供独立的本机管理通道，`PRTS_INSTANCE_NAME` 默认 `main`。Unix 使用绝对 socket 路径，父目录须属于服务用户且权限为 `0700`；Windows 使用 `\\.\pipe\prts-mcp-<name>` 命名管道。管理通道不占用 MCP 标准流，不沿用诊断 Token 的权限。
+
+CLI 默认读取用户配置目录中的 `instances.toml`，也可用 `--instances-file` 指定。实例映射不包含业务凭据：
+
+```toml
+schema_version = 1
+[instances.main]
+endpoint = "/run/prts-mcp-main/control.sock"
+unit = "prts-mcp.service"
+user = false
+```
+
+`prtsctl runtime status --instance main -o json` 查询实际运行状态；`runtime config show` 查看服务器配置快照；`runtime data status` 查看服务器当前数据视图。查询不自动启动实例。此阶段的在线接口只提供查询，服务生命周期和在线写操作由后续增量提供。

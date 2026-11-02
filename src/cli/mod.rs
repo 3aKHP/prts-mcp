@@ -4,7 +4,7 @@ mod edit;
 mod error;
 mod inspect;
 pub mod legacy;
-mod report;
+pub(crate) mod report;
 mod schema;
 pub mod settings;
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
@@ -32,6 +32,15 @@ struct Cli {
 }
 #[derive(Subcommand)]
 enum Command {
+    /// 查询正在运行的本机实例
+    Runtime {
+        #[arg(long, default_value = "main", global = true)]
+        instance: String,
+        #[arg(long, global = true)]
+        instances_file: Option<PathBuf>,
+        #[command(subcommand)]
+        command: RuntimeCommand,
+    },
     /// 在当前进程运行 MCP 服务器
     Serve {
         #[arg(long,value_parser=["http","stdio"])]
@@ -58,6 +67,26 @@ enum Command {
     },
     /// 生成 Shell 补全脚本
     Completion { shell: clap_complete::Shell },
+}
+#[derive(Subcommand)]
+enum RuntimeCommand {
+    Status,
+    Config {
+        #[command(subcommand)]
+        command: RuntimeConfigCommand,
+    },
+    Data {
+        #[command(subcommand)]
+        command: RuntimeDataCommand,
+    },
+}
+#[derive(Subcommand)]
+enum RuntimeConfigCommand {
+    Show,
+}
+#[derive(Subcommand)]
+enum RuntimeDataCommand {
+    Status,
 }
 #[derive(Subcommand)]
 enum ConfigCommand {
@@ -151,6 +180,27 @@ fn render(value: &Value, output: Output, sources: bool) -> i32 {
 }
 fn execute(cli: &Cli) -> Result<(Option<Value>, i32), error::Failure> {
     let command = cli.command.as_ref().expect("command selected");
+    if let Command::Runtime {
+        instance,
+        instances_file,
+        command,
+    } = command
+    {
+        let path = instances_file.clone().map(Ok).unwrap_or_else(|| {
+            settings::default_path().map(|p| p.with_file_name("instances.toml"))
+        })?;
+        let target = crate::control::instances::load(&path, instance)?;
+        let request = match command {
+            RuntimeCommand::Status => crate::control::wire::Command::Status,
+            RuntimeCommand::Config { .. } => crate::control::wire::Command::ConfigShow,
+            RuntimeCommand::Data { .. } => crate::control::wire::Command::DataStatus,
+        };
+        let runtime = tokio::runtime::Runtime::new().map_err(error::Failure::operation)?;
+        let value = runtime
+            .block_on(crate::control::client::request(&target, request))
+            .map_err(error::Failure::operation)?;
+        return Ok((Some(value), 0));
+    }
     if let Command::Config { command } = command {
         match command {
             ConfigCommand::Init { force, dry_run } => {
@@ -206,7 +256,8 @@ fn execute(cli: &Cli) -> Result<(Option<Value>, i32), error::Failure> {
     }
     match command {
         Command::Serve { .. } => {
-            let app = crate::app::App::try_with_config(loaded.config)?;
+            let mut app = crate::app::App::try_with_config(loaded.config)?;
+            app.startup_report = Some(loaded.report);
             let code = if loaded.transport.trim().eq_ignore_ascii_case("stdio") {
                 app.run_stdio()
             } else {
