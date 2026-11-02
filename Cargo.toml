@@ -70,6 +70,9 @@ cc = "1"
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Authorization"] }
 
+[target.'cfg(target_os = "linux")'.dependencies]
+zbus = { version = "4.4", default-features = false, features = ["tokio"] }
+
 [features]
 default = []
 
