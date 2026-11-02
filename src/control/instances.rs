@@ -18,6 +18,16 @@ pub fn valid_name(name: &str) -> bool {
             .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
 }
 
+pub fn valid_unit(unit: &str) -> bool {
+    unit.len() <= 255
+        && unit.len() > ".service".len()
+        && unit.ends_with(".service")
+        && !unit.starts_with('-')
+        && unit
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b"_-.@:\\".contains(&b))
+}
+
 pub fn valid_endpoint(path: &Path) -> bool {
     #[cfg(windows)]
     {
@@ -82,12 +92,7 @@ pub fn parse(text: &str, name: &str) -> Result<Instance, String> {
             .get("unit")
             .map(|v| {
                 v.as_str()
-                    .filter(|s| {
-                        s.ends_with(".service")
-                            && !s.starts_with('-')
-                            && !s.contains('/')
-                            && !s.chars().any(char::is_whitespace)
-                    })
+                    .filter(|s| valid_unit(s))
                     .map(str::to_owned)
                     .ok_or("unit 必须为 service 单元名称")
             })

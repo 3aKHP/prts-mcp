@@ -28,7 +28,7 @@ pub fn render(
     if !super::instances::valid_name(name) {
         return Err("无效实例名称".into());
     }
-    let executable = quoted(executable)?;
+    let executable = quoted(executable)?.replace("$$", "$");
     let config = quoted(config)?;
     // Environment= interprets specifiers but does not expand dollar variables.
     let data = quoted(data_home)?.replace("$$", "$");
@@ -72,7 +72,7 @@ mod tests {
                 Some("prts-mcp"),
             )
             .unwrap();
-            assert!(unit.contains("\"/opt/space dir/$$binary%%\""));
+            assert!(unit.contains("\"/opt/space dir/$binary%%\""));
             assert!(unit.contains("RuntimeDirectoryMode=0700"));
             assert!(!unit.contains("/bin/sh"));
             assert!(render(
