@@ -18,6 +18,21 @@ pub fn valid_name(name: &str) -> bool {
             .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
 }
 
+pub fn valid_endpoint(path: &Path) -> bool {
+    #[cfg(windows)]
+    {
+        path.to_str().is_some_and(|s| {
+            s.starts_with(r"\\.\pipe\prts-mcp-")
+                && !s[r"\\.\pipe\prts-mcp-".len()..].is_empty()
+                && !s[r"\\.\pipe\prts-mcp-".len()..].contains(['\\', '/', '\0'])
+        })
+    }
+    #[cfg(unix)]
+    {
+        path.is_absolute()
+    }
+}
+
 pub fn load(path: &Path, name: &str) -> Result<Instance, String> {
     let text = std::fs::read_to_string(path).map_err(|_| "无法读取实例映射文件")?;
     parse(&text, name)
@@ -60,8 +75,8 @@ pub fn parse(text: &str, name: &str) -> Result<Instance, String> {
             .and_then(|v| v.as_str())
             .filter(|s| !s.is_empty())
             .ok_or("实例须配置 endpoint")?;
-        if !Path::new(endpoint).is_absolute() {
-            return Err("控制端点须使用绝对路径".into());
+        if !valid_endpoint(Path::new(endpoint)) {
+            return Err("控制端点须为本机绝对 socket 路径或 prts-mcp 命名管道".into());
         }
         let unit = table
             .get("unit")
@@ -98,8 +113,24 @@ pub fn parse(text: &str, name: &str) -> Result<Instance, String> {
 mod tests {
     use super::*;
     fn input() -> String {
+        #[cfg(unix)]
         let endpoint = std::env::temp_dir().join("prts-main.sock");
+        #[cfg(windows)]
+        let endpoint = PathBuf::from(r"\\.\pipe\prts-mcp-main");
         format!("schema_version=1\n[instances.main]\nendpoint='{}'\nunit='prts-mcp.service'\nuser=true\n", endpoint.display())
+    }
+    #[cfg(windows)]
+    #[test]
+    fn windows_endpoints_are_local_named_pipes_only() {
+        for path in [
+            r"\\server\pipe\prts-mcp-main",
+            r"C:\data\file",
+            r"\\.\pipe\other",
+            r"\\.\pipe\prts-mcp-a\b",
+        ] {
+            assert!(!valid_endpoint(Path::new(path)));
+        }
+        assert!(valid_endpoint(Path::new(r"\\.\pipe\prts-mcp-main")));
     }
     #[test]
     fn resolves_only_explicit_mapping() {

@@ -80,6 +80,8 @@ fn stdio_instance_has_separate_management_and_preserves_protocol_output() {
         if out.status.success() {
             let report: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
             assert_eq!(report["transport"], "stdio");
+            assert_eq!(report["schema_version"], 1);
+            assert_eq!(report["ready"], true);
             assert_eq!(report["instance"], "main");
             break;
         }
@@ -97,6 +99,10 @@ fn stdio_instance_has_separate_management_and_preserves_protocol_output() {
         .unwrap();
     assert_eq!(host["value"], "fixture-host");
     assert_eq!(host["source"], "file");
+    let out = query(&["data", "status"]);
+    assert!(out.status.success(), "{out:?}");
+    let report: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(report["schema_version"], 1);
     let mut child = fixture.child.take().unwrap();
     let mut input = child.stdin.take().unwrap();
     writeln!(input,r#"{{"jsonrpc":"2.0","id":1,"method":"initialize","params":{{"protocolVersion":"2025-03-26","capabilities":{{}},"clientInfo":{{"name":"control-test","version":"1"}}}}}}"#).unwrap();

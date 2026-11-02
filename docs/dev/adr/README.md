@@ -94,3 +94,4 @@
 | [ADR-0019](ADR-0019-cargo-source-distribution.md) | Cargo 源码发行与首次发布引导 | Accepted | 2026-11-01 |
 | [ADR-0020](ADR-0020-pypi-native-wheels.md) | PyPI 原生 Wheel 与兼容启动桥 | Accepted | 2026-11-02 |
 | [ADR-0021](ADR-0021-management-cli.md) | 兼容增量的管理 CLI 与配置文件 | Accepted | 2026-11-02 |
+| [ADR-0022](ADR-0022-local-runtime-management.md) | 本机运行实例管理与 systemd 托管 | Accepted | 2026-11-03 |

@@ -49,6 +49,9 @@ async fn exchange(
 }
 
 pub async fn request(instance: &Instance, command: Command) -> Result<Value, String> {
+    if !super::instances::valid_endpoint(&instance.endpoint) {
+        return Err("无效的本机管理端点".into());
+    }
     tokio::time::timeout(Duration::from_secs(5), async {
         let hello = exchange(instance, Command::Hello, None).await?;
         if hello["instance"] != instance.name {

@@ -59,15 +59,15 @@ impl State {
         }
         let value = match request.command {
             Command::Hello => {
-                json!({"instance":self.instance,"startup_id":self.startup_id,"pid":std::process::id(),"server_version":crate::SERVER_VERSION,"capabilities":["status","config_show","data_status"]})
+                json!({"schema_version":1,"instance":self.instance,"startup_id":self.startup_id,"pid":std::process::id(),"server_version":crate::SERVER_VERSION,"capabilities":["status","config_show","data_status"]})
             }
             Command::Status => {
-                json!({"instance":self.instance,"startup_id":self.startup_id,"pid":std::process::id(),"server_version":crate::SERVER_VERSION,"transport":self.transport,"ready":self.ready.load(Ordering::Acquire),"uptime_ms":self.started.elapsed().as_millis() as u64,"effective_backend":self.data.snapshot().effective_backend()})
+                json!({"schema_version":1,"instance":self.instance,"startup_id":self.startup_id,"pid":std::process::id(),"server_version":crate::SERVER_VERSION,"transport":self.transport,"ready":self.ready.load(Ordering::Acquire),"uptime_ms":self.started.elapsed().as_millis() as u64,"effective_backend":self.data.snapshot().effective_backend()})
             }
             Command::ConfigShow => self.configuration.clone(),
             Command::DataStatus => {
                 let view = self.data.snapshot();
-                json!({"scope":"runtime","effective_backend":view.effective_backend(),"database":view.database.as_ref().map(|db|db.path.to_string_lossy().into_owned()),"excel":view.excel_root.as_ref().map(|p|p.to_string_lossy().into_owned()),"levels":view.levels_root.as_ref().map(|p|p.to_string_lossy().into_owned()),"story":view.story_zip.as_ref().map(|p|p.to_string_lossy().into_owned())})
+                json!({"schema_version":1,"scope":"runtime","effective_backend":view.effective_backend(),"database":view.database.as_ref().map(|db|db.path.to_string_lossy().into_owned()),"excel":view.excel_root.as_ref().map(|p|p.to_string_lossy().into_owned()),"levels":view.levels_root.as_ref().map(|p|p.to_string_lossy().into_owned()),"story":view.story_zip.as_ref().map(|p|p.to_string_lossy().into_owned())})
             }
         };
         Response::success(value)
@@ -77,9 +77,16 @@ impl State {
 async fn connection<S: AsyncRead + AsyncWrite + Unpin>(
     mut stream: S,
     state: Arc<State>,
+    permit: tokio::sync::OwnedSemaphorePermit,
 ) -> io::Result<()> {
     let request = wire::receive(&mut stream).await?;
-    wire::send(&mut stream, &state.respond(request)).await
+    let response = tokio::task::spawn_blocking(move || {
+        let _permit = permit;
+        state.respond(request)
+    })
+    .await
+    .map_err(io::Error::other)?;
+    wire::send(&mut stream, &response).await
 }
 
 /// Disabled by default; callers keep this task owned by the server runtime.
@@ -122,8 +129,7 @@ pub async fn start(state: Arc<State>) -> io::Result<Option<Server>> {
                             let Ok(permit)=permits.clone().try_acquire_owned() else {continue};
                             let state=state.clone();
                             connections.spawn(async move {
-                                let _permit=permit;
-                                let _=tokio::time::timeout(Duration::from_secs(5),connection(stream,state)).await;
+                                let _=tokio::time::timeout(Duration::from_secs(5),connection(stream,state,permit)).await;
                             });
                         }
                         Err(error) if error.kind()==io::ErrorKind::PermissionDenied=>continue,
