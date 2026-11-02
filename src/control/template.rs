@@ -57,7 +57,7 @@ pub fn render(
     Ok(format!("[Unit]\nDescription=PRTS MCP ({name})\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nType=simple\n{account}RuntimeDirectory=prts-mcp-{name}\nRuntimeDirectoryMode=0700\nEnvironment=XDG_DATA_HOME={data}\nEnvironment=PRTS_INSTANCE_NAME={name}\nEnvironment=PRTS_CONTROL_ENDPOINT={endpoint}\nExecStart={executable} --config {config}\nRestart=on-failure\nRestartSec=5\nTimeoutStopSec=30\nKillMode=control-group\n\n[Install]\nWantedBy={target}\n"))
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests {
     use super::*;
     #[test]
