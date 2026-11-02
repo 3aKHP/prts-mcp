@@ -6,6 +6,7 @@ mod inspect;
 pub mod legacy;
 pub(crate) mod report;
 mod schema;
+mod service;
 pub mod settings;
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 use serde_json::{json, Value};
@@ -32,6 +33,8 @@ struct Cli {
 }
 #[derive(Subcommand)]
 enum Command {
+    /// 管理 systemd 服务（Linux）或生成单元模板
+    Service(service::Args),
     /// 查询正在运行的本机实例
     Runtime {
         #[arg(long, default_value = "main", global = true)]
@@ -180,6 +183,9 @@ fn render(value: &Value, output: Output, sources: bool) -> i32 {
 }
 fn execute(cli: &Cli) -> Result<(Option<Value>, i32), error::Failure> {
     let command = cli.command.as_ref().expect("command selected");
+    if let Command::Service(args) = command {
+        return service::execute(args, cli.config.as_deref()).map(|value| (Some(value), 0));
+    }
     if let Command::Runtime {
         instance,
         instances_file,

@@ -8,6 +8,8 @@ The original per-implementation changelogs at the 2.8.1 baseline remain availabl
 
 ## [Unreleased]
 
+- Added `prtsctl service` commands for systemd status, start, stop, restart, enable and disable, plus unit template output. Existing units work independently of the installation channel.
+
 ### Added
 
 - Add opt-in local runtime status, configuration and data queries through Unix sockets and Windows named pipes.

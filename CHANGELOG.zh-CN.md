@@ -8,6 +8,8 @@
 
 ## [Unreleased]
 
+- 新增 `prtsctl service`，支持 systemd 状态查询、启动、停止、重启、启用、禁用和单元模板输出。现有 unit 的管理不依赖安装渠道。
+
 ### 新增
 
 - 新增显式启用的本机在线状态、配置和数据查询，通过 Unix socket 与 Windows named pipe 连接运行中实例。

@@ -112,6 +112,9 @@ fn explanation(c: &RuntimeConfig, key: &str) -> &'static str {
 }
 
 pub fn text(value: &Value, sources: bool) -> String {
+    if let Some(template) = value.get("template").and_then(Value::as_str) {
+        return template.to_owned();
+    }
     if let Some(fields) = value.get("fields").and_then(Value::as_array) {
         let mut out = String::new();
         for field in fields {

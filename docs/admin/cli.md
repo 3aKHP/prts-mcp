@@ -251,4 +251,26 @@ unit = "prts-mcp.service"
 user = false
 ```
 
-`prtsctl runtime status --instance main -o json` 查询实际运行状态；`runtime config show` 查看服务器配置快照；`runtime data status` 查看服务器当前数据视图。查询不自动启动实例。此阶段的在线接口只提供查询，服务生命周期和在线写操作由后续增量提供。
+`prtsctl runtime status --instance main -o json` 查询实际运行状态；`runtime config show` 查看服务器配置快照；`runtime data status` 查看服务器当前数据视图。查询不自动启动实例。在线写操作由后续增量提供。服务生命周期管理见下一节。
+
+## systemd 服务管理
+
+Linux 上可直接指定现有单元，或使用实例映射中的 `unit` 和 `user`：
+
+```bash
+prtsctl service --unit prts-mcp.service status -o json
+prtsctl service --unit prts-mcp.service restart
+prtsctl service --user --unit prts-mcp.service stop
+```
+
+命令包括 `status`、`start`、`stop`、`restart`、`enable` 和 `disable`。`enable` / `disable` 只修改开机启动设置。权限由 systemd 和 Polkit 决定；需要管理员权限时使用部署环境的提权方式。`--timeout` 默认 30 秒，超时后 systemd 操作可能继续，使用 `status` 查询结果。
+
+生成单元模板时指定原生 `prts-mcp` 的绝对路径、配置文件和数据目录：
+
+```bash
+prtsctl service template --executable /opt/prts/bin/prts-mcp \
+  --config /etc/prts-mcp/config.toml --data-home /var/lib/prts-mcp \
+  --account prts-mcp > prts-mcp.service
+```
+
+用户服务使用 `--user`，省略 `--account`。模板写入标准输出，安装及 `daemon-reload` 由管理员完成。服务启停适用于 Cargo、原生归档及 npm/Bun 部署；在线查询需要服务器启用本地管理端点。Windows 和 macOS 可使用 `runtime` 命令，本轮不提供 SCM 或 launchd 生命周期管理。
