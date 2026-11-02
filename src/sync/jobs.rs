@@ -16,87 +16,6 @@ pub struct Snapshot {
     pub revision: u64,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::sync::transport::ReqwestTransport;
-    fn coordinator() -> Arc<Coordinator> {
-        Coordinator::new(
-            Arc::new(RuntimeConfig::from_lookup(|_| None)),
-            Arc::new(ReqwestTransport::new(vec![], None)),
-        )
-    }
-    #[tokio::test]
-    async fn reservations_history_snapshots_and_shutdown() {
-        let owner = coordinator();
-        let running = owner.begin("game", "background", 1, 0).unwrap();
-        assert!(owner.begin("game", "manual", 7, 0).is_err());
-        let images = owner.begin("images", "manual", 8, 0).unwrap();
-        let old = owner.snapshot();
-        assert_eq!(
-            owner
-                .replace(1, old.config.clone(), old.transport.clone())
-                .unwrap(),
-            2
-        );
-        assert!(owner
-            .replace(1, old.config.clone(), old.transport.clone())
-            .is_err());
-        assert_eq!(running.snapshot.revision, 1);
-        drop(images); // even a panicking worker releases its reservation
-        assert_eq!(
-            owner
-                .begin("images", "manual", 8, 0)
-                .unwrap()
-                .snapshot
-                .revision,
-            2
-        );
-        for _ in 0..105 {
-            owner
-                .begin("images", "manual", 8, 0)
-                .unwrap()
-                .finish("succeeded", json!({}));
-        }
-        assert_eq!(owner.list()["jobs"].as_array().unwrap().len(), 101);
-        assert_eq!(owner.show(&running.id).unwrap()["status"], "running");
-        owner.stop();
-        assert!(running.control.cancelled());
-        assert!(owner.begin("images", "manual", 8, 0).is_err());
-        running.finish("cancelled", json!({}));
-        tokio::time::timeout(Duration::from_secs(1), owner.drain())
-            .await
-            .unwrap();
-        assert_eq!(owner.list()["jobs"].as_array().unwrap().len(), 100);
-    }
-    #[tokio::test]
-    async fn manual_cancel_unwinds_wait_without_releasing_another_owners_lock() {
-        let root = std::env::temp_dir().join(format!("prts-job-test-{}", uuid::Uuid::new_v4()));
-        std::fs::create_dir(&root).unwrap();
-        let lock = std::fs::File::create(root.join("sync.lock")).unwrap();
-        lock.lock().unwrap();
-        let cfg = RuntimeConfig::from_lookup(|k| match k {
-            "PRTS_DATA_DIR" => Some(root.to_string_lossy().into_owned()),
-            "PRTS_DATA_BACKEND" => Some("sqlite".into()),
-            _ => None,
-        });
-        let owner = Coordinator::new(Arc::new(cfg), Arc::new(ReqwestTransport::new(vec![], None)));
-        let job = owner.submit("game", 30).unwrap();
-        let id = job["id"].as_str().unwrap();
-        tokio::time::sleep(Duration::from_millis(30)).await;
-        assert_eq!(owner.cancel(id).unwrap()["status"], "cancelling");
-        tokio::time::timeout(Duration::from_secs(2), owner.drain())
-            .await
-            .unwrap();
-        assert_eq!(owner.show(id).unwrap()["status"], "cancelled");
-        assert!(std::fs::File::open(root.join("sync.lock"))
-            .unwrap()
-            .try_lock()
-            .is_err());
-        drop(lock);
-        std::fs::remove_dir_all(root).unwrap();
-    }
-}
 struct Job {
     value: Value,
     mask: u8,
@@ -327,5 +246,87 @@ impl Coordinator {
             }
             notified.await;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sync::transport::ReqwestTransport;
+    fn coordinator() -> Arc<Coordinator> {
+        Coordinator::new(
+            Arc::new(RuntimeConfig::from_lookup(|_| None)),
+            Arc::new(ReqwestTransport::new(vec![], None)),
+        )
+    }
+    #[tokio::test]
+    async fn reservations_history_snapshots_and_shutdown() {
+        let owner = coordinator();
+        let running = owner.begin("game", "background", 1, 0).unwrap();
+        assert!(owner.begin("game", "manual", 7, 0).is_err());
+        let images = owner.begin("images", "manual", 8, 0).unwrap();
+        let old = owner.snapshot();
+        assert_eq!(
+            owner
+                .replace(1, old.config.clone(), old.transport.clone())
+                .unwrap(),
+            2
+        );
+        assert!(owner
+            .replace(1, old.config.clone(), old.transport.clone())
+            .is_err());
+        assert_eq!(running.snapshot.revision, 1);
+        drop(images); // even a panicking worker releases its reservation
+        assert_eq!(
+            owner
+                .begin("images", "manual", 8, 0)
+                .unwrap()
+                .snapshot
+                .revision,
+            2
+        );
+        for _ in 0..105 {
+            owner
+                .begin("images", "manual", 8, 0)
+                .unwrap()
+                .finish("succeeded", json!({}));
+        }
+        assert_eq!(owner.list()["jobs"].as_array().unwrap().len(), 101);
+        assert_eq!(owner.show(&running.id).unwrap()["status"], "running");
+        owner.stop();
+        assert!(running.control.cancelled());
+        assert!(owner.begin("images", "manual", 8, 0).is_err());
+        running.finish("cancelled", json!({}));
+        tokio::time::timeout(Duration::from_secs(1), owner.drain())
+            .await
+            .unwrap();
+        assert_eq!(owner.list()["jobs"].as_array().unwrap().len(), 100);
+    }
+    #[tokio::test]
+    async fn manual_cancel_unwinds_wait_without_releasing_another_owners_lock() {
+        let root = std::env::temp_dir().join(format!("prts-job-test-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir(&root).unwrap();
+        let lock = std::fs::File::create(root.join("sync.lock")).unwrap();
+        lock.lock().unwrap();
+        let cfg = RuntimeConfig::from_lookup(|k| match k {
+            "PRTS_DATA_DIR" => Some(root.to_string_lossy().into_owned()),
+            "PRTS_DATA_BACKEND" => Some("sqlite".into()),
+            _ => None,
+        });
+        let owner = Coordinator::new(Arc::new(cfg), Arc::new(ReqwestTransport::new(vec![], None)));
+        let job = owner.submit("game", 30).unwrap();
+        let id = job["id"].as_str().unwrap();
+        tokio::time::sleep(Duration::from_millis(30)).await;
+        assert_eq!(owner.cancel(id).unwrap()["status"], "cancelling");
+        tokio::time::timeout(Duration::from_secs(2), owner.drain())
+            .await
+            .unwrap();
+        assert_eq!(owner.show(id).unwrap()["status"], "cancelled");
+        assert!(std::fs::File::open(root.join("sync.lock"))
+            .unwrap()
+            .try_lock()
+            .is_err());
+        drop(lock);
+        std::fs::remove_dir_all(root).unwrap();
     }
 }
