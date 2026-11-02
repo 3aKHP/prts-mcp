@@ -45,7 +45,7 @@ prtsctl serve
 | 发行渠道 | `prtsctl` 获取与调用方式 |
 | --- | --- |
 | **预编译原生归档包** | 解压后位于 `bin/prtsctl`（Windows 下为 `bin\prtsctl.exe`），无运行时依赖。 |
-| **npm 包（`prts-mcp`）** | 全局或本地安装主包后可直接运行 `prtsctl`；免安装调用可执行 `npx --yes --package prts-mcp prtsctl --help`（需目标发布渠道已包含 `3.2.2+`，预发布阶段可指定 `prts-mcp@next`）。 |
+| **npm 包（`prts-mcp`）** | 全局安装主包后可直接运行 `prtsctl`；项目本地安装后使用 `npx prtsctl` 或 `node_modules/.bin/prtsctl`。临时调用可执行 `npx --yes --package prts-mcp prtsctl --help`（需目标发布渠道已包含 `3.2.2+`，预发布阶段可指定 `prts-mcp@next`）。 |
 | **PyPI Wheel（`prts-mcp`）** | 安装后直接提供 `prtsctl` 命令入口。 |
 | **Cargo 源码安装** | 默认 `cargo install prts-mcp --locked` 会一并安装 `prtsctl`；若仅需安装管理 CLI，可执行 `cargo install prts-mcp --locked --bin prtsctl`。 |
 | **Docker 容器镜像** | 通过覆盖入口点调用：`docker run --rm --entrypoint /app/bin/prtsctl <image> --help`。检查或操作生产数据时，请挂载相同的数据卷（如 `-v prts-data:/data`）并传入一致的环境变量。 |
@@ -83,7 +83,7 @@ prtsctl serve
 
 ### 2.2 全局选项与参数解析规则
 
-- **共享选项**：`--config <path>` 适用于包括 `serve` 在内的所有读取业务配置的子命令；`--output text|json`（简写为 `-o`）适用于各管理检查、配置与同步子命令（`serve` 与 `completion` 不接受 `--output`）。这两个全局选项均可放在子命令之前或之后。
+- **共享选项**：`--config <path>` 适用于包括 `serve` 在内的所有读取业务配置的子命令；`--output text|json`（简写为 `-o`）适用于各管理检查、配置与同步子命令（`serve` 不接受 `--output`，`completion` 忽略该选项并直接输出补全脚本）。这两个全局选项均可放在子命令之前或之后。
 - **参数语法**：所有选项与子命令名称均区分大小写，不支持长选项自动前缀缩写；带值选项同时支持 `--name value` 和 `--name=value` 两种写法，使用 `--` 可显式终止选项解析。
 - **零副作用保证**：`--help`、`--version` 与 `completion` 不读取任何业务配置；所有只读检查命令（`config show/validate`、`doctor`、`data status/verify`）均不会启动 MCP 服务、不会触发网络下载，也不会自动创建或初始化数据目录。
 
