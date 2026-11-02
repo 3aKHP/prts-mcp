@@ -61,7 +61,7 @@ pub struct Listener {
 }
 impl Listener {
     pub fn bind(path: &Path) -> io::Result<Self> {
-        if !path.to_string_lossy().starts_with(r"\\.\pipe\prts-mcp-") {
+        if !super::instances::valid_endpoint(path) {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
                 "expected local prts-mcp named pipe",
