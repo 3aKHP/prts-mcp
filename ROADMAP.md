@@ -32,7 +32,7 @@ JSON/ZIP remains the default, preserving existing paths, volumes and sync switch
 
 Version 3.0 focuses strictly on the Rust runtime migration and distribution parity. New features and architectural additions are deferred until after 3.0.0 stable and will be prioritized one theme at a time:
 
-- **Native PyPI distribution**: Candidate wheel packaging and installation verification are implemented; publication remains deferred until the minimum CLI is ready. Wheels require Python >=3.11 and exclude fallback game data.
+- **Native PyPI distribution**: Candidate wheel packaging, installation verification and the minimum CLI are implemented. First publication awaits a formal release and channel enablement. Wheels require Python >=3.11 and exclude fallback game data.
 - **crates.io publication (3.2.1)**: Source installation and guarded publication are implemented. First registration uses a maintainer token; subsequent OIDC requires Trusted Publisher setup. See [release candidates](docs/dev/RELEASE-CANDIDATES.md#5-cargo-源码发行).
 - **Management CLI (3.2.2 development)**: `prtsctl` covers configuration, diagnostics and one-shot data operations with text/JSON output. Existing server entries remain compatible. See the [CLI guide](docs/admin/cli.md). The same iteration adds systemd lifecycle control, local runtime queries, sync jobs and allowlisted configuration reload; a separate daemon remains deferred.
 - **New tools and data domains**: Recruitment tag reverse-lookup, operator module (模组) data, skill upgrade material costs, and attack-range visualizations.
