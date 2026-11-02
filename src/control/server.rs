@@ -193,6 +193,44 @@ pub async fn start(state: Arc<State>) -> io::Result<Option<Server>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn instance_protocol_and_startup_identity_gate_mutations() {
+        let config = Arc::new(crate::config::RuntimeConfig::from_lookup(|_| None));
+        let state = State::new(
+            "main".into(),
+            "stdio",
+            json!({}),
+            Arc::new(DataState::new(config)),
+        );
+        let request = |version, instance: &str, startup: Option<&str>| Request {
+            protocol_version: version,
+            command: Command::JobCancel {
+                id: "unsubmitted-job".into(),
+            },
+            instance: instance.into(),
+            expected_startup_id: startup.map(str::to_owned),
+        };
+        for (request, kind) in [
+            (
+                request(2, "main", Some(&state.startup_id)),
+                "protocol_version",
+            ),
+            (
+                request(1, "other", Some(&state.startup_id)),
+                "instance_mismatch",
+            ),
+            (
+                request(1, "main", Some("previous-startup")),
+                "instance_restarted",
+            ),
+            (request(1, "main", None), "startup_id_required"),
+        ] {
+            match state.respond(request).outcome {
+                super::super::wire::Outcome::Failure { error } => assert_eq!(error.kind, kind),
+                _ => panic!("identity mismatch must be rejected before mutation"),
+            }
+        }
+    }
     #[tokio::test]
     async fn slow_response_reader_keeps_connection_permit() {
         let config = Arc::new(crate::config::RuntimeConfig::from_lookup(|_| None));
