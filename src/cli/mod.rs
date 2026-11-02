@@ -74,6 +74,10 @@ enum Command {
 #[derive(Subcommand)]
 enum RuntimeCommand {
     Status,
+    Jobs {
+        #[command(subcommand)]
+        command: JobsCommand,
+    },
     Config {
         #[command(subcommand)]
         command: RuntimeConfigCommand,
@@ -90,6 +94,18 @@ enum RuntimeConfigCommand {
 #[derive(Subcommand)]
 enum RuntimeDataCommand {
     Status,
+    Sync {
+        #[arg(long, default_value="game", value_parser=["game","images","all"])]
+        target: String,
+        #[arg(long,default_value_t=30,value_parser=clap::value_parser!(u64).range(0..=86400))]
+        wait_timeout: u64,
+    },
+}
+#[derive(Subcommand)]
+enum JobsCommand {
+    List,
+    Show { id: String },
+    Cancel { id: String },
 }
 #[derive(Subcommand)]
 enum ConfigCommand {
@@ -199,7 +215,28 @@ fn execute(cli: &Cli) -> Result<(Option<Value>, i32), error::Failure> {
         let request = match command {
             RuntimeCommand::Status => crate::control::wire::Command::Status,
             RuntimeCommand::Config { .. } => crate::control::wire::Command::ConfigShow,
-            RuntimeCommand::Data { .. } => crate::control::wire::Command::DataStatus,
+            RuntimeCommand::Data {
+                command: RuntimeDataCommand::Status,
+            } => crate::control::wire::Command::DataStatus,
+            RuntimeCommand::Data {
+                command:
+                    RuntimeDataCommand::Sync {
+                        target,
+                        wait_timeout,
+                    },
+            } => crate::control::wire::Command::DataSync {
+                target: target.clone(),
+                wait_timeout: *wait_timeout,
+            },
+            RuntimeCommand::Jobs { command } => match command {
+                JobsCommand::List => crate::control::wire::Command::JobsList,
+                JobsCommand::Show { id } => {
+                    crate::control::wire::Command::JobShow { id: id.clone() }
+                }
+                JobsCommand::Cancel { id } => {
+                    crate::control::wire::Command::JobCancel { id: id.clone() }
+                }
+            },
         };
         let runtime = tokio::runtime::Runtime::new().map_err(error::Failure::operation)?;
         let value = runtime

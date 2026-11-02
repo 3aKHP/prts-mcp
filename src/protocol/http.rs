@@ -155,6 +155,7 @@ pub async fn run_http(
     bind_port: u16,
     startup_log_line: String,
     ready: Option<Arc<std::sync::atomic::AtomicBool>>,
+    shutdown: impl std::future::Future<Output = ()> + Send + 'static,
 ) -> std::io::Result<()> {
     let app = Router::new()
         .route("/mcp", any(mcp_endpoint))
@@ -167,7 +168,9 @@ pub async fn run_http(
         ready.store(true, std::sync::atomic::Ordering::Release);
     }
     crate::log_info(&startup_log_line);
-    axum::serve(listener, app).await
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown)
+        .await
 }
 
 async fn health() -> Response {

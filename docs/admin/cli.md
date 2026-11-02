@@ -251,7 +251,7 @@ unit = "prts-mcp.service"
 user = false
 ```
 
-`prtsctl runtime status --instance main -o json` 查询实际运行状态；`runtime config show` 查看服务器配置快照；`runtime data status` 查看服务器当前数据视图。查询不自动启动实例。此阶段的在线接口只提供查询，服务生命周期和在线写操作由后续增量提供。
+`prtsctl runtime status --instance main -o json` 查询实际运行状态；`runtime config show` 查看服务器配置快照；`runtime data status` 查看服务器当前数据视图。查询不自动启动实例。在线同步任务见下文；配置热重载由后续增量提供。
 
 ## systemd 服务管理
 
@@ -274,3 +274,16 @@ prtsctl service template --executable /opt/prts/bin/prts-mcp \
 ```
 
 用户服务使用 `--user`，省略 `--account`。模板写入标准输出，安装及 `daemon-reload` 由管理员完成。服务启停适用于 Cargo、原生归档及 npm/Bun 部署；在线查询需要服务器启用本地管理端点。Windows 和 macOS 可使用 `runtime` 命令，本轮不提供 SCM 或 launchd 生命周期管理。
+
+## 在线同步任务
+
+```bash
+prtsctl runtime data sync --target game -o json
+prtsctl runtime jobs list -o json
+prtsctl runtime jobs show <任务ID> -o json
+prtsctl runtime jobs cancel <任务ID> -o json
+```
+
+`runtime data sync` 返回任务 ID，服务器继续执行同步。CLI 断开不会取消任务；`jobs cancel` 请求取消网络传输和锁等待，正在提交的数据会先完成收尾。后台同步与手动同步共享目标占用，冲突请求返回正在占用目标的任务 ID。`--wait-timeout` 只控制跨进程锁等待，默认 30 秒。
+
+任务历史最多保留 100 个已结束任务，活动任务另计。重启清空历史，旧任务 ID 失效。`status` 可为 `running`、`cancelling`、`succeeded`、`failed` 或 `cancelled`。失败详情位于 `result`，命令自身成功仅表示请求成功，判断同步结果应检查任务状态。
