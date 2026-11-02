@@ -19,6 +19,9 @@ impl Drop for Fixture {
 #[test]
 fn cli_disconnect_keeps_job_and_explicit_cancel_unwinds_it() {
     let id = uuid::Uuid::new_v4();
+    #[cfg(unix)]
+    let root = PathBuf::from("/tmp").join(format!("prts-runtime-job-{id}"));
+    #[cfg(windows)]
     let root = std::env::temp_dir().join(format!("prts-runtime-job-{id}"));
     fs::create_dir(&root).unwrap();
     let database = root.join("database");

@@ -23,6 +23,10 @@ impl Drop for Fixture {
 #[test]
 fn stdio_instance_has_separate_management_and_preserves_protocol_output() {
     let id = uuid::Uuid::new_v4();
+    // Darwin's per-user temp prefix can exceed sockaddr_un's small limit.
+    #[cfg(unix)]
+    let root = PathBuf::from("/tmp").join(format!("prts-control-test-{id}"));
+    #[cfg(windows)]
     let root = std::env::temp_dir().join(format!("prts-control-test-{id}"));
     fs::create_dir(&root).unwrap();
     #[cfg(unix)]
