@@ -100,7 +100,12 @@ impl Listener {
 
     pub async fn accept(&self) -> io::Result<UnixStream> {
         let (stream, _) = self.inner.accept().await?;
-        let peer = stream.peer_cred()?.uid();
+        // Darwin may discard peer credentials when a client closes before
+        // accept. Reject that connection without stopping the listener.
+        let peer = stream
+            .peer_cred()
+            .map_err(|_| denied("cannot authenticate control client"))?
+            .uid();
         if peer != self.uid && peer != 0 {
             return Err(denied("control client identity not authorized"));
         }
