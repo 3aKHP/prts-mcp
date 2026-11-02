@@ -240,19 +240,21 @@ fn home_local_share(lookup: &impl Fn(&str) -> Option<String>) -> PathBuf {
         .unwrap_or_else(|| PathBuf::from(".local").join("share"))
 }
 
-fn default_gamedata_path(lookup: &impl Fn(&str) -> Option<String>) -> PathBuf {
+fn default_gamedata_path(
+    lookup: &impl Fn(&str) -> Option<String>,
+    _home: Option<&Path>,
+) -> PathBuf {
     if lookup("PRTS_MCP_ROOT").as_deref() == Some("/app") {
         return PathBuf::from("/data/gamedata");
     }
     #[cfg(windows)]
     {
-        // The TS baseline uses LOCALAPPDATA ?? homedir()/AppData/Local.
-        // environment_value captures the Windows profile API fallback before
-        // this injected parser runs; tests can supply their own profile root.
-        let home = lookup("USERPROFILE")
-            .map(PathBuf::from)
-            .unwrap_or_else(|| PathBuf::from("."));
-        return windows_default_gamedata(lookup("LOCALAPPDATA").as_deref(), &home);
+        // Keep the process profile path lossless (Windows paths may contain
+        // unpaired UTF-16 surrogates); injected tests provide their own PathBuf.
+        return windows_default_gamedata(
+            lookup("LOCALAPPDATA").as_deref(),
+            _home.unwrap_or(Path::new(".")),
+        );
     }
     #[cfg(not(windows))]
     {
@@ -293,7 +295,11 @@ fn excel_path_of(root: &Path) -> PathBuf {
 
 impl RuntimeConfig {
     pub fn from_env() -> Self {
-        Self::try_from_lookup(environment_value).unwrap_or_else(|error| {
+        Self::try_from_lookup_with_home(
+            |name| std::env::var(name).ok(),
+            std::env::home_dir().as_deref(),
+        )
+        .unwrap_or_else(|error| {
             crate::log_err(&error);
             std::process::exit(2);
         })
@@ -306,12 +312,22 @@ impl RuntimeConfig {
     }
 
     pub fn try_from_lookup(lookup: impl Fn(&str) -> Option<String>) -> Result<Self, String> {
+        let home = lookup("USERPROFILE").map(PathBuf::from);
+        Self::try_from_lookup_with_home(lookup, home.as_deref())
+    }
+
+    /// The native home path is separate from environment strings so Windows
+    /// profile paths survive even when they cannot be represented as UTF-8.
+    pub(crate) fn try_from_lookup_with_home(
+        lookup: impl Fn(&str) -> Option<String>,
+        home: Option<&Path>,
+    ) -> Result<Self, String> {
         let data_source = DataSource::parse(lookup("PRTS_DATA_SOURCE_REPO").as_deref())?;
         let is_custom_gamedata = lookup("GAMEDATA_PATH").is_some();
         let gamedata_path = lookup("GAMEDATA_PATH")
             .map(PathBuf::from)
             .unwrap_or_else(|| {
-                let default = default_gamedata_path(&lookup);
+                let default = default_gamedata_path(&lookup, home);
                 data_source
                     .data_root(default.parent().expect("default data root"))
                     .join("gamedata")
@@ -851,19 +867,23 @@ mod validation_mode_tests {
     }
 }
 
-/// Capture startup environment values, preserving the Windows home-directory fallback.
-pub(crate) fn environment_value(name: &str) -> Option<String> {
-    let value = std::env::var(name).ok();
-    #[cfg(windows)]
-    if name == "USERPROFILE" && value.as_deref().is_none_or(str::is_empty) {
-        return std::env::home_dir().map(|p| p.to_string_lossy().into_owned());
-    }
-    value
-}
-
 #[cfg(test)]
 mod injected_path_tests {
     use super::*;
+
+    #[cfg(windows)]
+    #[test]
+    fn native_home_retains_unpaired_utf16() {
+        use std::os::windows::ffi::OsStringExt;
+        let home = PathBuf::from(std::ffi::OsString::from_wide(&[
+            67, 58, 92, 117, 115, 101, 114, 115, 92, 0xd800,
+        ]));
+        let cfg = RuntimeConfig::try_from_lookup_with_home(|_| None, Some(&home)).unwrap();
+        assert_eq!(
+            cfg.gamedata_path,
+            home.join("AppData/Local/prts-mcp/gamedata")
+        );
+    }
 
     #[test]
     fn default_paths_use_the_injected_environment() {
