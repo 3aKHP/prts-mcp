@@ -121,7 +121,8 @@ mod tests {
     use super::*;
     #[tokio::test]
     async fn concurrent_stale_recovery_has_one_owner() {
-        let root = std::env::temp_dir().join(format!("prts-control-race-{}", uuid::Uuid::new_v4()));
+        let root =
+            PathBuf::from("/tmp").join(format!("prts-control-race-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir(&root).unwrap();
         std::fs::set_permissions(&root, std::fs::Permissions::from_mode(0o700)).unwrap();
         let path = root.join("control.sock");
@@ -137,7 +138,7 @@ mod tests {
     }
     #[tokio::test]
     async fn owns_socket_lifetime_and_refuses_replacement() {
-        let root = std::env::temp_dir().join(format!("prts-control-{}", uuid::Uuid::new_v4()));
+        let root = PathBuf::from("/tmp").join(format!("prts-control-{}", uuid::Uuid::new_v4()));
         let path = root.join("control.sock");
         let listener = Listener::bind(&path).await.unwrap();
         let client = UnixStream::connect(&path).await.unwrap();
