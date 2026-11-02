@@ -256,7 +256,7 @@ unit = "prts-mcp.service"
 user = false
 ```
 
-`prtsctl runtime status --instance main -o json` 查询实际运行状态；`runtime config show` 查看服务器配置快照；`runtime data status` 查看服务器当前数据视图。查询不自动启动实例。在线同步任务与配置热重载见下文。
+`prtsctl runtime status --instance main -o json` 查询实际运行状态；`runtime config show` 查看服务器配置快照；`runtime data status` 查看服务器当前数据视图。查询不自动启动实例。在线同步任务与配置热重载见下文。 `status` 和 `data status` 的响应预算为 30 秒，以容纳首次 SQLite 校验；握手、请求读取及其他命令仍限制为 5 秒。
 
 ## systemd 服务管理
 
