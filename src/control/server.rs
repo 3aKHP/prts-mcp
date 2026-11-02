@@ -9,7 +9,7 @@ use std::{
         atomic::{AtomicBool, Ordering},
         Arc,
     },
-    time::{Duration, Instant},
+    time::Instant,
 };
 use tokio::{
     io::{AsyncRead, AsyncWrite},
@@ -130,11 +130,21 @@ async fn connection<S: AsyncRead + AsyncWrite + Unpin>(
     state: Arc<State>,
     permit: tokio::sync::OwnedSemaphorePermit,
 ) -> io::Result<()> {
-    let request = wire::receive(&mut stream).await?;
-    let (response, _permit) = tokio::task::spawn_blocking(move || (state.respond(request), permit))
-        .await
-        .map_err(io::Error::other)?;
-    wire::send(&mut stream, &response).await
+    let request: Request =
+        tokio::time::timeout(wire::HANDSHAKE_TIMEOUT, wire::receive(&mut stream))
+            .await
+            .map_err(|_| {
+                io::Error::new(io::ErrorKind::TimedOut, "management request read timed out")
+            })??;
+    tokio::time::timeout(request.command.response_timeout(), async move {
+        let (response, _permit) =
+            tokio::task::spawn_blocking(move || (state.respond(request), permit))
+                .await
+                .map_err(io::Error::other)?;
+        wire::send(&mut stream, &response).await
+    })
+    .await
+    .map_err(|_| io::Error::new(io::ErrorKind::TimedOut, "management response timed out"))?
 }
 
 /// Disabled by default; callers keep this task owned by the server runtime.
@@ -177,7 +187,7 @@ pub async fn start(state: Arc<State>) -> io::Result<Option<Server>> {
                             let Ok(permit)=permits.clone().try_acquire_owned() else {continue};
                             let state=state.clone();
                             connections.spawn(async move {
-                                let _=tokio::time::timeout(Duration::from_secs(5),connection(stream,state,permit)).await;
+                                let _=connection(stream,state,permit).await;
                             });
                         }
                         Err(error) if error.kind()==io::ErrorKind::PermissionDenied=>continue,
@@ -193,6 +203,106 @@ pub async fn start(state: Arc<State>) -> io::Result<Option<Server>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[tokio::test(start_paused = true)]
+    async fn incomplete_request_still_times_out_after_five_seconds() {
+        use tokio::io::AsyncWriteExt;
+        let cfg = Arc::new(crate::config::RuntimeConfig::from_lookup(|_| None));
+        let state = Arc::new(State::new(
+            "main".into(),
+            "stdio",
+            json!({}),
+            Arc::new(DataState::new(cfg)),
+        ));
+        let permits = Arc::new(Semaphore::new(1));
+        let (mut client, server) = tokio::io::duplex(128);
+        client.write_u32(100).await.unwrap();
+        let started = tokio::time::Instant::now();
+        let result = connection(
+            server,
+            state,
+            permits.clone().acquire_owned().await.unwrap(),
+        )
+        .await;
+        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::TimedOut);
+        assert_eq!(started.elapsed(), wire::HANDSHAKE_TIMEOUT);
+        assert!(permits.try_acquire_owned().is_ok());
+    }
+    #[test]
+    fn real_snapshot_request_survives_six_seconds_of_blocking_pool_contention() {
+        // Occupy the sole blocking worker only after Hello, reproducing a
+        // snapshot waiting for cold SQLite admission without a production hook.
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .max_blocking_threads(1)
+            .build()
+            .unwrap();
+        runtime.block_on(async {
+            let id = uuid::Uuid::new_v4();
+            #[cfg(unix)]
+            let root = PathBuf::from("/tmp").join(format!("prts-cold-{id}"));
+            #[cfg(windows)]
+            let root = std::env::temp_dir().join(format!("prts-cold-{id}"));
+            std::fs::create_dir(&root).unwrap();
+            #[cfg(unix)]
+            let endpoint = root.join("run/control.sock");
+            #[cfg(windows)]
+            let endpoint = PathBuf::from(format!(r"\\.\pipe\prts-mcp-cold-{id}"));
+            #[cfg(unix)]
+            let listener = crate::control::unix::Listener::bind(&endpoint)
+                .await
+                .unwrap();
+            #[cfg(windows)]
+            let mut listener = crate::control::windows::Listener::bind(&endpoint).unwrap();
+            let cfg = Arc::new(crate::config::RuntimeConfig::from_lookup(|key| {
+                matches!(key, "XDG_DATA_HOME" | "LOCALAPPDATA")
+                    .then(|| root.join("data").to_string_lossy().into_owned())
+            }));
+            let state = Arc::new(State::new(
+                "main".into(),
+                "stdio",
+                json!({}),
+                Arc::new(DataState::new(cfg)),
+            ));
+            let target = crate::control::instances::Instance {
+                name: "main".into(),
+                endpoint,
+                unit: None,
+                user: false,
+            };
+            let task = tokio::spawn(async move {
+                let permits = Arc::new(Semaphore::new(1));
+                connection(
+                    listener.accept().await.unwrap(),
+                    state.clone(),
+                    permits.clone().acquire_owned().await.unwrap(),
+                )
+                .await
+                .unwrap();
+                let (ready, waiting) = tokio::sync::oneshot::channel();
+                let blocker = tokio::task::spawn_blocking(move || {
+                    ready.send(()).unwrap();
+                    std::thread::sleep(std::time::Duration::from_secs(6));
+                });
+                waiting.await.unwrap();
+                connection(
+                    listener.accept().await.unwrap(),
+                    state,
+                    permits.acquire_owned().await.unwrap(),
+                )
+                .await
+                .unwrap();
+                blocker.await.unwrap();
+            });
+            let started = Instant::now();
+            let result = crate::control::client::request(&target, Command::Status)
+                .await
+                .unwrap();
+            assert_eq!(result["instance"], "main");
+            assert!(started.elapsed() >= std::time::Duration::from_secs(6));
+            task.await.unwrap();
+            std::fs::remove_dir_all(root).unwrap();
+        });
+    }
     #[test]
     fn instance_protocol_and_startup_identity_gate_mutations() {
         let config = Arc::new(crate::config::RuntimeConfig::from_lookup(|_| None));

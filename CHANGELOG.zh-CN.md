@@ -16,7 +16,7 @@
 
 ### 新增
 
-- 新增显式启用的本机在线状态、配置和数据查询，通过 Unix socket 与 Windows named pipe 连接运行中实例。
+- 新增显式启用的本机在线状态、配置和数据查询，通过 Unix socket 与 Windows named pipe 连接运行中实例。 快照查询允许首次 SQLite 校验耗时最多 30 秒；握手与其他命令保留 5 秒限制。
 
 - 新增 `prtsctl`，提供 TOML 配置、前台启动、本地诊断、数据检查与校验、一次性同步，并支持稳定 JSON 输出和 Shell 补全。原服务器入口保持默认行为，新增帮助、版本和显式配置文件支持。详见[管理手册](docs/admin/cli.md)。
 
