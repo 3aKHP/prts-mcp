@@ -99,7 +99,22 @@ impl Listener {
     }
 
     pub async fn accept(&self) -> io::Result<UnixStream> {
-        let (stream, _) = self.inner.accept().await?;
+        let (stream, _) = loop {
+            match self.inner.accept().await {
+                Ok(accepted) => break accepted,
+                Err(error)
+                    if matches!(
+                        error.kind(),
+                        io::ErrorKind::ConnectionAborted
+                            | io::ErrorKind::ConnectionReset
+                            | io::ErrorKind::Interrupted
+                    ) =>
+                {
+                    continue
+                }
+                Err(error) => return Err(error),
+            }
+        };
         // Darwin may discard peer credentials when a client closes before
         // accept. Reject that connection without stopping the listener.
         let peer = stream
