@@ -10,7 +10,7 @@ The original per-implementation changelogs at the 2.8.1 baseline remain availabl
 
 ### Added
 
-- Add `prtsctl` for TOML configuration, foreground serving, local diagnostics, data inspection/verification and one-shot sync, with stable JSON output and shell completion. Existing server entries retain their default behavior and gain help, version and explicit configuration-file support. See the [management guide](docs/admin/cli.en.md).
+- Add `prtsctl` for TOML configuration, foreground serving, local diagnostics, data inspection/verification and one-shot sync, with stable JSON output and shell completion. Existing server entries retain their default behavior and gain help, version and explicit configuration-file support. See the [management guide](docs/admin/cli.md).
 
 - Prepare the native PyPI distribution: five platform wheels reuse audited Rust executables, preserve stdio command and Python module entry points, require Python >=3.11, and exclude fallback game data. Candidate wheels are built and verified; no native PyPI version has been published.
 

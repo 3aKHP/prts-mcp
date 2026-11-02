@@ -151,7 +151,7 @@ Public Rust native archives, Docker images, and npm packages ship with a verifie
 
 ### Development
 
-- [Management CLI](docs/admin/cli.en.md) — `prtsctl` configuration, diagnostics and data management in the developing 3.2.2 release.
+- [Management CLI](docs/admin/cli.md) — `prtsctl` configuration, diagnostics and data management in the developing 3.2.2 release.
 - [Documentation Index](docs/README.md) — overview of user, administrator, developer, and migration guides.
 - [Project Status](STATUS.md) · [Changelog](CHANGELOG.md) · [Roadmap](ROADMAP.md) · [Security Policy](SECURITY.md#english)
 - [Contributing Guide](CONTRIBUTING.md) and [Development Environment Setup](docs/dev/ENVIRONMENT.md) — instructions for building and testing on Linux/WSL, Windows, and macOS.
