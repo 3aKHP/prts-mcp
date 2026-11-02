@@ -60,6 +60,9 @@ thiserror = "2"
 memchr = "2"
 rusqlite = { version = "0.40.2", features = ["bundled"] }
 flate2 = "1"
+clap = { version = "4", features = ["derive"] }
+clap_complete = "4"
+toml_edit = "0.22"
 
 [build-dependencies]
 cc = "1"

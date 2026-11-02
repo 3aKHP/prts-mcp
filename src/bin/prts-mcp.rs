@@ -1,6 +1,7 @@
 //! Product entry: HTTP by default; PRTS_TRANSPORT=stdio selects stdio.
 
 fn main() {
+    prts_mcp_rust::cli::legacy::dispatch("prts-mcp");
     let transport = std::env::var("PRTS_TRANSPORT")
         .map(|value| value.trim().to_lowercase())
         .unwrap_or_default();

@@ -6,7 +6,7 @@ const os = require("node:os");
 const { spawn } = require("node:child_process");
 const meta = require("./package.json");
 const targets = require("./platforms.json");
-const profiles = new Set(["prts-mcp", "prts-mcp-ts", "prts-mcp-ts-bun", "prts-mcp-ts-stdio"]);
+const profiles = new Set(["prtsctl", "prts-mcp", "prts-mcp-ts", "prts-mcp-ts-bun", "prts-mcp-ts-stdio"]);
 
 function resolve(profile) {
   if (!profiles.has(profile)) throw new Error("不支持的 PRTS-MCP 启动入口。");
@@ -55,7 +55,13 @@ function run(profile) {
   });
   const forwarders = new Map();
   for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
-    const forward = () => { if (child.exitCode === null && child.signalCode === null) child.kill(signal); };
+    const forward = () => {
+      // Windows broadcasts console Ctrl+C to both processes. Node's kill()
+      // would terminate the child abruptly instead of letting sync finish its
+      // publication/cleanup section. Retain the parent until native exit.
+      if (process.platform === "win32" && profile === "prtsctl" && signal === "SIGINT") return;
+      if (child.exitCode === null && child.signalCode === null) child.kill(signal);
+    };
     forwarders.set(signal, forward);
     process.on(signal, forward);
   }

@@ -58,6 +58,13 @@ jobs:
           # Keep fallback restores within this generation to avoid carrying both layouts.
           key: native-v2-${{ matrix.platform }}-${{ hashFiles('Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', 'build.rs', 'native/**', 'vendor/**', 'packaging/native/targets.json', 'tools/native/build.mjs', 'tools/native/common.mjs', 'tools/native/linux-build.sh') }}
           restore-keys: native-v2-${{ matrix.platform }}-
+      - name: Install Unix shell verification dependencies
+        if: runner.os == 'Linux'
+        run: |
+          if ! command -v zsh >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y zsh
+          fi
       - name: Native build, minimum Rust check and native corpus
         run: node tools/native/build.mjs ${{ matrix.platform }}
       - name: Package binaries, notices and audited ABI

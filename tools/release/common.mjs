@@ -37,12 +37,14 @@ export function verifyBundle(bundle, product = version) {
 }
 export function verifyNpmEvidence(receipt, evidence, id) {
   assert.equal(evidence.version,receipt.version);assert.equal(evidence.platform,id);assert.equal(evidence.native,true);
-  assert.equal(evidence.arch,targets[id].arch);assert(evidence.checks.length>=14);
+  assert.equal(evidence.arch,targets[id].arch);assert(evidence.checks.length>=15);
+  assert(evidence.checks.some(check=>check.case==='management-cli'&&check.npx&&check.globalShim&&check.project));
+  if(evidence.platform==='windows-x64')assert(evidence.checks.some(check=>check.case==='management-cli-console-cancel'&&check.exit===130&&check.cancelled));
   assert.deepEqual(evidence.packages,receipt.packages,'npm runtime evidence must describe the actual tarballs');
 }
 export function verifyDockerEvidence(image, evidence, archiveSha256, id) {
   assert.equal(evidence.commit,image.commit);assert.equal(evidence.version,image.version);assert.equal(evidence.platform,id);
-  assert.equal(evidence.native,true);assert.equal(evidence.checks.length,11);assert.equal(evidence.imageId,image.imageId);
+  assert.equal(evidence.native,true);assert.equal(evidence.checks.length,12);assert(evidence.checks.some(check=>check.case?.startsWith("management-cli:")));assert.equal(evidence.imageId,image.imageId);
   assert.equal(evidence.arch,targets[id].arch==='x64'?'amd64':'arm64');assert.equal(image.arch,evidence.arch);
   assert.equal(evidence.archiveSha256,archiveSha256,'Docker runtime evidence must bind the actual loaded archive');
 }

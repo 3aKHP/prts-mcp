@@ -14,7 +14,7 @@
 
 | 包名 | 角色 | 提供的命令与职责 |
 | --- | --- | --- |
-| `prts-mcp` | 3.x 新主入口包 | 提供 `prts-mcp` 命令：默认启动 Streamable HTTP（`:3000/mcp`），设 `PRTS_TRANSPORT=stdio` 切换为 stdio。 |
+| `prts-mcp` | 3.x 新主入口包 | 提供 `prtsctl` 管理命令及 `prts-mcp` 服务器命令：默认启动 Streamable HTTP（`:3000/mcp`），设 `PRTS_TRANSPORT=stdio` 切换为 stdio。 |
 | `prts-mcp-ts` | 2.x 命令兼容入口包 | 提供 `prts-mcp-ts`、`prts-mcp-ts-bun`（固定 HTTP）与 `prts-mcp-ts-stdio`（固定 stdio），底层同样调用 Rust 二进制，无需安装 Bun。 |
 | `@3akhp/prts-mcp-runtime` | 共享启动桥 | 不含业务逻辑；负责按当前 OS/CPU 定向解析平台二进制与内置数据目录、透传标准流与退出信号。 |
 | `@3akhp/prts-mcp-data` | 共享只读备用数据包 | 打包经过校验的 `gamedata/`、`gamedata-levels/` 与 `storyjson/` 备用快照（含 `BUNDLE.json` 与 `SHA256SUMS`）。 |

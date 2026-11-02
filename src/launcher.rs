@@ -14,11 +14,14 @@ pub fn watch_parent() {
         fn WaitForSingleObject(handle: Handle, milliseconds: u32) -> u32;
         fn CloseHandle(handle: Handle) -> i32;
     }
-    let args: Vec<_> = std::env::args().collect();
+    let args: Vec<_> = std::env::args_os().collect();
     let Some(index) = args.iter().position(|arg| arg == "--launcher-parent-pid") else {
         return;
     };
-    let pid = args.get(index + 1).and_then(|raw| raw.parse::<u32>().ok());
+    let pid = args
+        .get(index + 1)
+        .and_then(|raw| raw.to_str())
+        .and_then(|raw| raw.parse::<u32>().ok());
     let Some(pid) = pid.filter(|pid| *pid != 0 && *pid != std::process::id()) else {
         crate::log_err("Invalid internal npm launcher parent PID");
         std::process::exit(1);

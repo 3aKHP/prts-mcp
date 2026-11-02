@@ -148,7 +148,7 @@ impl BundleRoots {
 /// Internal `--bundle-root <dir>` launcher argument (npm shims pass it
 /// explicitly; not a public environment variable — docs/04).
 pub fn bundle_root_from_argv() -> Option<PathBuf> {
-    let args: Vec<String> = std::env::args().collect();
+    let args: Vec<_> = std::env::args_os().collect();
     let idx = args.iter().position(|a| a == "--bundle-root")?;
     args.get(idx + 1).map(PathBuf::from)
 }

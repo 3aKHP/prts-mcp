@@ -6,6 +6,7 @@
 //! the thin binaries under `src/bin/` only assemble and run it.
 
 pub mod app;
+pub mod cli;
 pub mod config;
 pub mod contracts;
 pub mod diagnostics;

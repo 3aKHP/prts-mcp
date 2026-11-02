@@ -8,7 +8,9 @@ import subprocess
 import sys
 
 
-def resolve_executable():
+def resolve_executable(profile="prts-mcp-ghcr"):
+    if profile not in ("prts-mcp-ghcr", "prtsctl"):
+        raise ValueError("unsupported native entry")
     root = Path(__file__).resolve().parent
     receipt = json.loads((root / "NATIVE.json").read_text(encoding="utf-8"))
     build = json.loads((root / "BUILD.json").read_text(encoding="utf-8"))
@@ -17,16 +19,16 @@ def resolve_executable():
             or receipt["commit"] != build["commit"]
             or receipt["platform"] != build["platform"]):
         raise ValueError("installed native program and package versions differ")
-    name = "prts-mcp-ghcr.exe" if os.name == "nt" else "prts-mcp-ghcr"
+    name = profile + (".exe" if os.name == "nt" else "")
     executable = root / "_native" / name
     if not executable.is_file():
         raise FileNotFoundError("installed native program is missing")
     return executable
 
 
-def main():
+def run(profile):
     try:
-        executable = resolve_executable()
+        executable = resolve_executable(profile)
         args = [str(executable)]
         if os.name == "nt":
             args += ["--launcher-parent-pid", str(os.getpid())]
@@ -44,6 +46,14 @@ def main():
     except (OSError, ValueError, KeyError, importlib.metadata.PackageNotFoundError) as error:
         print(f"PRTS-MCP: {error}", file=sys.stderr)
         return 1
+
+
+def main():
+    return run("prts-mcp-ghcr")
+
+
+def management_main():
+    return run("prtsctl")
 
 
 if __name__ == "__main__":

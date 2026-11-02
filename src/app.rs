@@ -12,7 +12,7 @@ use std::sync::{Arc, RwLock};
 
 use crate::config::{DataBackend, RuntimeConfig};
 
-mod json;
+pub(crate) mod json;
 use crate::diagnostics::RuntimeMetrics;
 use crate::protocol::http::{self, Shared};
 use crate::protocol::session::SessionTable;

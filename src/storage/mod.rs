@@ -5,6 +5,7 @@ pub mod database;
 pub(crate) mod frozen;
 pub mod generation;
 pub(crate) mod identity;
+pub(crate) mod inspection;
 pub(crate) mod json_view;
 mod objects;
 pub(crate) mod projection;

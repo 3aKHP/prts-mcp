@@ -50,7 +50,7 @@ In CI, [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) calls [`.git
 
 1. **MSRV & Unit Tests (`build.mjs`)**: checks compilation against Rust `1.89.0` and runs native library, regex corpus, text normalization, and story-index tests.
 2. **Detached Archive Execution (`probe.mjs`)**: extracts the archive outside the repository checkout into a directory path containing spaces and Chinese characters, clears `PATH`, and launches the binaries directly:
-   - Verifies all 5 entry point binaries (`prts-mcp`, `prts-mcp-ts`, `prts-mcp-ts-bun`, `prts-mcp-ts-stdio`, `prts-mcp-ghcr`);
+   - Verifies all 6 entry point binaries (`prtsctl`, `prts-mcp`, `prts-mcp-ts`, `prts-mcp-ts-bun`, `prts-mcp-ts-stdio`, `prts-mcp-ghcr`);
    - Verifies both `stdio` and Streamable HTTP transports, plus legacy session-based and modern (`2026-07-28`) protocol envelopes;
    - Verifies `24` tools (`23` with `IMAGES_ENABLED=false`), operator profile/stats rendering, and Chinese regex lookbehind search against the committed smoke fixture ([`tests/fixtures/native-smoke/README.md`](../../tests/fixtures/native-smoke/README.md));
    - On Linux, `probe.mjs <platform> --baseline` additionally runs the extracted binary inside a clean AlmaLinux 8 (`glibc 2.28`) container with no compiler or language runtime installed.
@@ -61,7 +61,7 @@ In CI, [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) calls [`.git
 
 `tools/native/pack.mjs` outputs stage-1 SDK archives under `artifacts/native/<platform>/`, while `tools/release/pack-native.mjs` adds the verified read-only fallback `data/` directory to produce the public candidate archives under `artifacts/candidate/<platform>/`:
 
-- **`bin/`**: the 5 production entry executables (`prts-mcp`, `prts-mcp-ts`, `prts-mcp-ts-bun`, `prts-mcp-ts-stdio`, `prts-mcp-ghcr`; the internal test harness binary `prts-mcp-rust` is excluded).
+- **`bin/`**: the 6 production entry executables (`prtsctl`, `prts-mcp`, `prts-mcp-ts`, `prts-mcp-ts-bun`, `prts-mcp-ts-stdio`, `prts-mcp-ghcr`; the internal test harness binary `prts-mcp-rust` is excluded).
 - **`data/`** *(in public candidate archives)*: verified read-only fallback snapshot of `gamedata/`, `gamedata-levels/`, and `storyjson/` plus `data/BUNDLE.json` and `data/SHA256SUMS`.
 - **Legal & Provenance Metadata**:
   - `LICENSE`, `NOTICE`, and `licenses/` (upstream license files for locked Cargo dependencies, Rust standard library notices, and QuickJS regexp notices);

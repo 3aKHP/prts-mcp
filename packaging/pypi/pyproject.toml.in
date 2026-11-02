@@ -20,6 +20,7 @@ Repository = "https://github.com/3aKHP/prts-mcp"
 
 [project.scripts]
 prts-mcp = "prts_mcp.server:main"
+prtsctl = "prts_mcp.server:management_main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["prts_mcp"]
