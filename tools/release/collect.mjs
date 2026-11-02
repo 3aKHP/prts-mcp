@@ -40,7 +40,10 @@ for(const [id,target]of Object.entries(targets)){
   const nativeHash = nativeSums.trim().split('\n').find(line => line.slice(66) === binary)?.slice(0,64);
   assert.match(nativeHash ?? '', /^[0-9a-f]{64}$/);
   const pypiDir = join(input,`pypi-${id}`);
-  const wheel = verifyPypi(pypiDir,id,version,commit,nativeHash);
+  const managementBinary = `bin/prtsctl${target.os === 'win32' ? '.exe' : ''}`;
+  const managementHash = nativeSums.trim().split('\n').find(line => line.slice(66) === managementBinary)?.slice(0,64);
+  assert.match(managementHash ?? '', /^[0-9a-f]{64}$/);
+  const wheel = verifyPypi(pypiDir,id,version,commit,nativeHash,managementHash);
   retain(join(pypiDir,'wheels',wheel.filename),wheel.filename,'pypi');
   retain(join(pypiDir,'package.json'),`${id}-pypi-package.json`,'evidence');
   retain(join(pypiDir,'pypi-evidence.json'),`${id}-pypi-evidence.json`,'evidence');

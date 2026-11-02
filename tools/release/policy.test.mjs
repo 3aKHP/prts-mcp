@@ -23,14 +23,15 @@ test('stable policy requires explicit M5 enablement',()=>{
 });
 test('same-version npm evidence from different tarballs or CPUs is rejected',()=>{
   const receipt={version:'3.0.0-alpha.1',packages:[{name:'prts-mcp',sha256:'current'}]};
-  const evidence={version:receipt.version,packages:receipt.packages,platform:'linux-x64',arch:'x64',native:true,checks:Array(17).fill({})};
+  const evidence={version:receipt.version,packages:receipt.packages,platform:'linux-x64',arch:'x64',native:true,checks:[...Array(17).fill({}),{case:'management-cli',npx:true,globalShim:true,project:true}]};
   verifyNpmEvidence(receipt,evidence,'linux-x64');
   assert.throws(()=>verifyNpmEvidence(receipt,{...evidence,packages:[{name:'prts-mcp',sha256:'previous'}]},'linux-x64'));
   assert.throws(()=>verifyNpmEvidence(receipt,{...evidence,arch:'arm64'},'linux-x64'));
+  assert.throws(()=>verifyNpmEvidence(receipt,{...evidence,checks:Array(20).fill({})},'linux-x64'));
 });
 test('self-consistent replacement Docker archive cannot reuse another archive runtime proof',()=>{
   const image={commit:'source',version:'3.0.0-alpha.1',imageId:'image',arch:'amd64'};
-  const evidence={...image,platform:'linux-x64',native:true,checks:Array(11).fill({}),archiveSha256:'actually-loaded'};
+  const evidence={...image,platform:'linux-x64',native:true,checks:[...Array(11).fill({}),{case:'management-cli: fixture'}],archiveSha256:'actually-loaded'};
   verifyDockerEvidence(image,evidence,'actually-loaded','linux-x64');
   assert.throws(()=>verifyDockerEvidence(image,evidence,'replacement-with-its-own-sidecar','linux-x64'));
   assert.throws(()=>verifyDockerEvidence(image,{...evidence,commit:'old-source'},'actually-loaded','linux-x64'));

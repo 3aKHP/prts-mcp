@@ -25,6 +25,7 @@ English readers: the root [README](../README.md#english) and [Security Policy](.
 
 面向在服务器、NAS、工作站或容器环境中部署与维护 PRTS-MCP 的系统管理员（Administrator / Operator）：
 
+- [admin/cli.md](admin/cli.md) / [English](admin/cli.en.md)：`prtsctl` 管理命令、TOML 配置、JSON 输出及 Shell 使用。
 - [admin/deployment.md](admin/deployment.md)：服务端部署与容器运维指南（Streamable HTTP 独立服务、Docker 整卷/分卷/Bind Mount 挂载、非 root 与 `--read-only` 加固、`systemd` 守护进程托管、升级与回滚）。
 - [admin/data-and-sync.md](admin/data-and-sync.md)：数据同步、离线包与立绘存储管理（数据目录结构、内置备用数据 vs 用户数据优先级、GitHub Token 与镜像加速、挂载自定义离线数据源、`LOCAL_IMAGE=true` 全量立绘与原图分片规划、数据卷备份与恢复）。
 - [admin/environment-variables.md](admin/environment-variables.md)：运行时环境变量完整参考（全量配置字典、默认值、布尔与端口解析规则）。

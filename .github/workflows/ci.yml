@@ -78,6 +78,12 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+      - name: Install shell probe dependencies
+        run: |
+          if ! command -v zsh >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y zsh
+          fi
       - name: Install pinned Rust toolchain and check components
         run: |
           rustup show

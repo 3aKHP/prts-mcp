@@ -93,7 +93,7 @@ node tools/release/probe-native.mjs linux-x64
 
 ## 5. Cargo 源码发行
 
-[`cargo-source.yml`](../../.github/workflows/cargo-source.yml) 在 Linux x64 从同一提交生成 `cargo-source-candidate`，包含 `.crate` 与 `SOURCE.json`。`node tools/cargo/verify.mjs` 在仓库外解包并实际安装所有默认二进制，核对仅包含五个公开入口，再验证 stdio、HTTP、协议版本、离线夹具查询与进程退出。源码包包含原生 C 源码、契约和许可证，不包含备用数据。用户安装命令为 `cargo install prts-mcp --locked --bin prts-mcp`，需 Rust >=1.89 与 C 编译器。首个 crates.io 版本为 `3.2.1`。
+[`cargo-source.yml`](../../.github/workflows/cargo-source.yml) 在 Linux x64 从同一提交生成 `cargo-source-candidate`，包含 `.crate` 与 `SOURCE.json`。`node tools/cargo/verify.mjs` 在仓库外解包并实际安装所有默认二进制，核对仅包含六个公开入口（含 `prtsctl`），再验证 stdio、HTTP、协议版本、离线夹具查询与进程退出。源码包包含原生 C 源码、契约和许可证，不包含备用数据。用户安装命令为 `cargo install prts-mcp --locked --bin prts-mcp`，需 Rust >=1.89 与 C 编译器。首个 crates.io 版本为 `3.2.1`。
 
 首次发布使用维护者已有的 Cargo 登录凭据。在正式 tag 的干净 checkout 完成源码验证后，以该 tag 设置 `GITHUB_REF`，并设置 `RUST_STABLE_RELEASE_ENABLED=true`、`RUST_CRATES_PUBLISH_ENABLED=true`，运行 `node tools/cargo/publish.mjs`。开发版本拒绝发布；预发布继续遵守第 3 节的分支规则。本机确需绕过显式代理时，两个 Cargo 脚本均可设置 `PRTS_CARGO_DIRECT=true`，不改变全局代理配置。
 
@@ -105,9 +105,9 @@ Cargo 发布会重新生成源码归档，这是源码渠道对“发布阶段�
 
 ## 6. PyPI 原生候选（尚未公开发布）
 
-五平台 CI 在原生 ABI 审计后使用 `uv run --locked --project tools/pypi python tools/pypi/pack.py <platform>` 打包，并用 `uv run --locked --project tools/pypi node tools/pypi/probe.mjs <platform>` 实际安装、启动和退出验证。工具依赖由 `tools/pypi/uv.lock` 固定。候选目录为 `artifacts/pypi/<platform>/`，包含 Wheel、来源与摘要清单、实际安装证据；候选汇总核对五个平台以及对应原生程序的 SHA-256。
+五平台 CI 在原生 ABI 审计后使用 `uv run --locked --project tools/pypi python tools/pypi/pack.py <platform>` 打包，并用 `uv run --locked --project tools/pypi node tools/pypi/probe.mjs <platform>` 实际安装、启动和退出验证。工具依赖由 `tools/pypi/uv.lock` 固定。候选目录为 `artifacts/pypi/<platform>/`，包含 Wheel、来源与摘要清单、实际安装证据；候选汇总核对五个平台以及对应服务器与管理程序各自的 SHA-256。
 
-Wheel 需要 Python >=3.11，保留默认 stdio 的 `prts-mcp` 与 `python -m prts_mcp.server`，不包含备用数据或 Python 业务依赖。数据由首次同步或 `GAMEDATA_PATH` / `STORYJSON_PATH` 提供。源码安装使用 Cargo。正式上架等待最小 CLI 后的统一发布，当前 PyPI 仍为 2.8.x；不要把本地开发 Wheel 当作公开版本。决策见 [ADR-0020](adr/ADR-0020-pypi-native-wheels.md)。
+Wheel 需要 Python >=3.11，提供 `prtsctl`，并保留默认 stdio 的 `prts-mcp` 与 `python -m prts_mcp.server`，不包含备用数据或 Python 业务依赖。数据由首次同步或 `GAMEDATA_PATH` / `STORYJSON_PATH` 提供。源码安装使用 Cargo。正式上架等待最小 CLI 后的统一发布，当前 PyPI 仍为 2.8.x；不要把本地开发 Wheel 当作公开版本。决策见 [ADR-0020](adr/ADR-0020-pypi-native-wheels.md)。
 
 `RUST_PYPI_PUBLISH_ENABLED` 默认关闭，只有显式设为 `true` 才允许正式 tag 的 push 事件执行 PyPI 上传。Publisher 使用 `release-rust.yml` 与 `rust-release` environment；发布 job 下载候选快照，核对完整性与正式版本条件后，通过 PyPA action 使用 OIDC 和 attestations 上传，无须 API Token。手动运行不执行此渠道上传。
 

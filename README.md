@@ -151,6 +151,7 @@ Public Rust native archives, Docker images, and npm packages ship with a verifie
 
 ### Development
 
+- [Management CLI](docs/admin/cli.en.md) — `prtsctl` configuration, diagnostics and data management in the developing 3.2.2 release.
 - [Documentation Index](docs/README.md) — overview of user, administrator, developer, and migration guides.
 - [Project Status](STATUS.md) · [Changelog](CHANGELOG.md) · [Roadmap](ROADMAP.md) · [Security Policy](SECURITY.md#english)
 - [Contributing Guide](CONTRIBUTING.md) and [Development Environment Setup](docs/dev/ENVIRONMENT.md) — instructions for building and testing on Linux/WSL, Windows, and macOS.
@@ -299,6 +300,7 @@ docker run -d --name prts-mcp -p 127.0.0.1:3000:3000 -e PRTS_TRANSPORT=http -v p
 
 ### 开发与贡献
 
+- [管理 CLI](docs/admin/cli.md) — 开发中 3.2.2 的 `prtsctl` 配置、诊断与数据管理。
 - [文档总目录](docs/README.md) — 汇总用户指南、运维手册、开发规范与迁移文档。
 - [项目状态](STATUS.zh-CN.md) · [更新日志](CHANGELOG.zh-CN.md) · [路线图](ROADMAP.zh-CN.md) · [安全政策](SECURITY.md#中文)
 - [贡献指南](CONTRIBUTING.zh-CN.md) 与 [开发环境指南](docs/dev/ENVIRONMENT.md) — 介绍 Linux/WSL、Windows 与 macOS 下的构建与验证流程。

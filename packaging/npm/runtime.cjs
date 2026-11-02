@@ -6,7 +6,7 @@ const os = require("node:os");
 const { spawn } = require("node:child_process");
 const meta = require("./package.json");
 const targets = require("./platforms.json");
-const profiles = new Set(["prts-mcp", "prts-mcp-ts", "prts-mcp-ts-bun", "prts-mcp-ts-stdio"]);
+const profiles = new Set(["prtsctl", "prts-mcp", "prts-mcp-ts", "prts-mcp-ts-bun", "prts-mcp-ts-stdio"]);
 
 function resolve(profile) {
   if (!profiles.has(profile)) throw new Error("不支持的 PRTS-MCP 启动入口。");

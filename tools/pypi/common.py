@@ -89,16 +89,21 @@ def inspect_wheel(path, receipt):
         if any(not n.startswith(allowed) for n in names):
             raise ValueError("Unexpected wheel payload")
         native = "prts_mcp/_native/prts-mcp-ghcr" + (".exe" if receipt["platform"] == "windows-x64" else "")
-        if sorted(n for n in names if n.startswith("prts_mcp/_native/")) != [native]:
-            raise ValueError("Wheel must contain exactly the public compatibility executable")
-        expected_payload = {"prts_mcp/" + n for n in ("__init__.py", "server.py", "BUILD.json", "ABI.json", "THIRD-PARTY.json", "NATIVE.json")} | {native}
+        management = "prts_mcp/_native/prtsctl" + (".exe" if receipt["platform"] == "windows-x64" else "")
+        if sorted(n for n in names if n.startswith("prts_mcp/_native/")) != sorted([native, management]):
+            raise ValueError("Wheel must contain the server and management executables")
+        expected_payload = {"prts_mcp/" + n for n in ("__init__.py", "server.py", "BUILD.json", "ABI.json", "THIRD-PARTY.json", "NATIVE.json")} | {native, management}
         if {n for n in names if n.startswith("prts_mcp/")} != expected_payload:
             raise ValueError("Unexpected package payload, including bundled data")
-        digest = hashlib.sha256(wheel.read(native)).hexdigest()
-        if digest != receipt["nativeSha256"]:
-            raise ValueError("Native executable changed")
-        if receipt["platform"] != "windows-x64" and not (wheel.getinfo(native).external_attr >> 16) & 0o111:
-            raise ValueError("Native executable lost its executable bit")
+        for executable, key in ((native,"nativeSha256"),(management,"managementSha256")):
+            digest = hashlib.sha256(wheel.read(executable)).hexdigest()
+            if digest != receipt[key]:
+                raise ValueError("Native executable changed")
+            if receipt["platform"] != "windows-x64" and not (wheel.getinfo(executable).external_attr >> 16) & 0o111:
+                raise ValueError("Native executable lost its executable bit")
+        entrypoints = wheel.read(dist + "/entry_points.txt").decode()
+        if "prtsctl = prts_mcp.server:management_main" not in entrypoints or "prts-mcp = prts_mcp.server:main" not in entrypoints:
+            raise ValueError("Wheel entry points differ")
         meta = BytesParser().parsebytes(wheel.read(dist + "/METADATA"))
         if (meta["Name"] != "prts-mcp" or meta["Version"] != version
                 or meta["Requires-Python"] != ">=3.11" or meta.get_all("Requires-Dist")):
@@ -107,6 +112,9 @@ def inspect_wheel(path, receipt):
             raise ValueError("Wheel platform metadata differs")
         build = json.loads(wheel.read("prts_mcp/BUILD.json"))
         native_receipt = json.loads(wheel.read("prts_mcp/NATIVE.json"))
+        for key in ("nativeSha256", "managementSha256"):
+            if native_receipt.get(key) != receipt[key]:
+                raise ValueError("Wheel native receipt differs")
         for key in ("commit", "platform"):
             if build[key] != receipt[key] or native_receipt[key] != receipt[key]:
                 raise ValueError("Wheel provenance differs")

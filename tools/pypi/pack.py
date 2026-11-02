@@ -48,14 +48,18 @@ def pack(platform, native_dir, output):
             shutil.copy2(src, stage / name)
     for name in ("BUILD.json", "ABI.json", "THIRD-PARTY.json"):
         shutil.copy2(native_dir / name, stage / "prts_mcp" / name)
-    executable = "prts-mcp-ghcr" + (".exe" if platform == "windows-x64" else "")
-    dest = stage / "prts_mcp/_native" / executable
-    dest.parent.mkdir()
-    shutil.copy2(native_dir / "bin" / executable, dest)
-    if platform != "windows-x64":
-        dest.chmod(0o755)
+    (stage / "prts_mcp/_native").mkdir()
+    hashes = {}
+    for profile in ("prts-mcp-ghcr", "prtsctl"):
+        executable = profile + (".exe" if platform == "windows-x64" else "")
+        dest = stage / "prts_mcp/_native" / executable
+        shutil.copy2(native_dir / "bin" / executable, dest)
+        if platform != "windows-x64":
+            dest.chmod(0o755)
+        hashes[profile] = sha(dest)
     receipt = {"schema": "prts-mcp-pypi/v1", "productVersion": version, "version": pyversion,
-               "platform": platform, "commit": build["commit"], "nativeSha256": sha(dest)}
+               "platform": platform, "commit": build["commit"], "nativeSha256": hashes["prts-mcp-ghcr"],
+               "managementSha256": hashes["prtsctl"]}
     write(stage / "prts_mcp/NATIVE.json", receipt)
     wheels = output / "wheels"
     wheels.mkdir(exist_ok=True)

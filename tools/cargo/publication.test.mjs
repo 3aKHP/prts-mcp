@@ -27,7 +27,7 @@ function fixture(mode) {
   put('artifacts/cargo/SOURCE.json', JSON.stringify({ schema: 'prts-mcp-cargo/v1', version: '3.2.1',
     commit: git(['rev-parse', 'HEAD']), dirty: false, cargoVersion: 'cargo fixture', filename: 'prts-mcp-3.2.1.crate',
     sha256: checksum, bins: publicBins, runtime: { sourceInstallation: true, extractedOutsideCheckout: true, pathEmpty: true,
-      checks: [...publicBins.map(bin => ({ bin, transport: 'stdio', exit: 'EOF -> 0' })),
+      checks: [...publicBins.map(bin => bin === 'prtsctl' ? ({bin,case:'management-cli'}) : ({ bin, transport: 'stdio', exit: 'EOF -> 0' })),
         { bin: 'prts-mcp', transport: 'http', legacy: true, modern: true }] } }));
   put('mock/cargo', `#!${process.execPath}
 const fs = require('node:fs');

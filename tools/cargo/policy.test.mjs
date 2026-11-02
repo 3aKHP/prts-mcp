@@ -7,7 +7,7 @@ function receipt() {
   return { schema: 'prts-mcp-cargo/v1', version: expected.version, commit: expected.commit, dirty: false,
     cargoVersion: expected.cargoVersion, filename: 'prts-mcp-3.2.1.crate', sha256: expected.checksum, bins: publicBins,
     runtime: { sourceInstallation: true, extractedOutsideCheckout: true, pathEmpty: true,
-      checks: [...publicBins.map(bin => ({ bin, transport: 'stdio', exit: 'EOF -> 0' })),
+      checks: [...publicBins.map(bin => bin === 'prtsctl' ? ({bin,case:'management-cli'}) : ({ bin, transport: 'stdio', exit: 'EOF -> 0' })),
         { bin: 'prts-mcp', transport: 'http', legacy: true, modern: true }] } };
 }
 test('source publication binds installed archive, commit and Cargo toolchain', () => {

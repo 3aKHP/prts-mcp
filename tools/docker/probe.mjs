@@ -149,6 +149,13 @@ try {
  assert.match(JSON.stringify(await sqliteRecovery.call('get_operator_basic_info',{name:'阿米娅'})),/阿米娅/);
  await stop(`${prefix}-sqlite-offline`);assert.deepEqual(payloadHashes(sqliteVol),sqliteBefore);
  checks.push({case:'unconfigured backend synchronizes SQLite, reports effective SQLite, and restarts offline with the validated DB'});
+ const cliRun=args=>docker(['run','--rm','--read-only','--network','none','--entrypoint','/app/bin/prtsctl',image,...args]);
+ assert.equal(cliRun(['--version']).trim(),`prtsctl ${version}`);
+ assert.match(cliRun(['--help']),/config/);
+ const cliState=JSON.parse(cliRun(['data','status','-o','json']));
+ assert.equal(cliState.scope,'local');assert.equal(cliState.available_backend,'json');
+ assert.equal(JSON.parse(cliRun(['config','show','-o','json'])).scope,'invocation');
+ checks.push({case:'management-cli: help/version/config and offline readonly data inspection'});
  const rollback=spawn('bun',[join(root,'.reference/ts-v2.8.1/ts/dist/server-stdio.js')],{cwd:temp,env:{...tsEnv,GAMEDATA_PATH:join(synced,'gamedata'),STORYJSON_PATH:join(synced,'storyjson/zh_CN.zip')},stdio:['pipe','pipe','pipe']});
  checks.push({case:'fixed old TS reads container-written data (scoped read-back, not M4 release rollback)',...await stdio(rollback,'2.8.1')});
  json(join(out,'docker-evidence.json'),{platform:id,native:true,arch,version,commit:receipt.commit,imageId:receipt.imageId,archiveSha256:sha(archive),checks,publicPublication:false,

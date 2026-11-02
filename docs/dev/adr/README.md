@@ -93,3 +93,4 @@
 | [ADR-0018](ADR-0018-sqlite-default-with-json-fallback.md) | 3.2 默认 SQLite 后端与 JSON 自动备用 | Accepted | 2026-10-31 |
 | [ADR-0019](ADR-0019-cargo-source-distribution.md) | Cargo 源码发行与首次发布引导 | Accepted | 2026-11-01 |
 | [ADR-0020](ADR-0020-pypi-native-wheels.md) | PyPI 原生 Wheel 与兼容启动桥 | Accepted | 2026-11-02 |
+| [ADR-0021](ADR-0021-management-cli.md) | 兼容增量的管理 CLI 与配置文件 | Accepted | 2026-11-02 |

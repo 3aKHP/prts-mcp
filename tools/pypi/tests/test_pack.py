@@ -6,6 +6,7 @@ import tempfile
 import subprocess
 import platform as host_platform
 import venv
+import zipfile
 import unittest
 from unittest.mock import patch
 
@@ -44,6 +45,7 @@ class PackTests(unittest.TestCase):
                     executable.write_text(f'#!{sys.executable}\nimport sys\nprint(sys.argv[1:])\n')
                 else:
                     executable.write_bytes(b"synthetic native fixture")
+                shutil.copy2(executable, native / "bin" / ("prtsctl.exe" if platform == "windows-x64" else "prtsctl"))
                 write(native / "BUILD.json", dict(version="3.2.2-dev.0", commit="abc", platform=platform, target=targets[platform]["target"], dirty=False))
                 write(native / "ABI.json", dict(platform=targets[platform]["target"]))
                 (native / "SHA256SUMS").write_text("".join(f"{sha(p)}  {p.relative_to(native).as_posix()}\n" for p in sorted(native.rglob("*")) if p.is_file() and p.name != "SHA256SUMS"))
@@ -56,9 +58,23 @@ class PackTests(unittest.TestCase):
                     venv.EnvBuilder(with_pip=True).create(environment)
                     interpreter = environment / 'bin/python'
                     subprocess.run([str(interpreter), '-m', 'pip', 'install', '--no-index', '--no-deps', str(wheel)], check=True, capture_output=True)
-                    for command in [[str(environment / 'bin/prts-mcp')], [str(interpreter), '-m', 'prts_mcp.server']]:
+                    for command in [[str(environment / 'bin/prts-mcp')], [str(environment / 'bin/prtsctl')], [str(interpreter), '-m', 'prts_mcp.server']]:
                         result = subprocess.run(command + ['--version', '中文 空格'], capture_output=True, text=True, check=True)
                         self.assertEqual(result.stdout.strip(), "['--version', '中文 空格']")
+                for key in ("nativeSha256", "managementSha256"):
+                    with self.assertRaisesRegex(ValueError, "Native executable changed"):
+                        inspect_wheel(wheel, dict(receipt, **{key: "0" * 64}))
+                malformed_dir = directory / platform / "missing-entry"
+                malformed_dir.mkdir()
+                malformed = malformed_dir / wheel.name
+                with zipfile.ZipFile(wheel) as source, zipfile.ZipFile(malformed, "w") as target:
+                    for info in source.infolist():
+                        data = source.read(info.filename)
+                        if info.filename.endswith("/entry_points.txt"):
+                            data = b"[console_scripts]\nprts-mcp = prts_mcp.server:main\n"
+                        target.writestr(info, data)
+                with self.assertRaisesRegex(ValueError, "entry points"):
+                    inspect_wheel(malformed, dict(receipt, sha256=sha(malformed)))
                 bad = dict(receipt, sha256="0" * 64)
                 with self.assertRaisesRegex(ValueError, "identity/checksum"):
                     inspect_wheel(wheel, bad)

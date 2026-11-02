@@ -32,10 +32,25 @@ fn err(error: impl std::fmt::Display) -> String {
     error.to_string()
 }
 
-fn reader(path: &Path) -> Result<Connection, String> {
+fn reader_with_mode(path: &Path, immutable: bool) -> Result<Connection, String> {
+    let immutable_url = if immutable {
+        let absolute = std::path::absolute(path).map_err(err)?;
+        let mut url =
+            reqwest::Url::from_file_path(absolute).map_err(|_| "invalid database file path")?;
+        url.set_query(Some("immutable=1"));
+        Some(url.to_string())
+    } else {
+        None
+    };
     let connection = Connection::open_with_flags(
-        path,
-        OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+        immutable_url.as_ref().map(Path::new).unwrap_or(path),
+        OpenFlags::SQLITE_OPEN_READ_ONLY
+            | OpenFlags::SQLITE_OPEN_NO_MUTEX
+            | if immutable {
+                OpenFlags::SQLITE_OPEN_URI
+            } else {
+                OpenFlags::empty()
+            },
     )
     .map_err(err)?;
     connection.execute_batch("PRAGMA cache_size=-2048; PRAGMA mmap_size=0; PRAGMA query_only=ON; PRAGMA trusted_schema=OFF;").map_err(err)?;
@@ -115,7 +130,31 @@ impl GameDb {
         Self::open_checked(path, false)
     }
 
+    /// Administrative inspection must not create WAL/SHM files or validation stamps.
+    /// Callers check the observed identity after use; active writers invalidate the result.
+    pub(crate) fn for_inspection(path: &Path) -> Result<Arc<Self>, String> {
+        for suffix in ["-wal", "-journal"] {
+            let mut sidecar = path.as_os_str().to_owned();
+            sidecar.push(suffix);
+            match std::fs::metadata(PathBuf::from(sidecar)) {
+                Ok(meta) if meta.len() > 0 => {
+                    return Err(
+                        "数据库有未清理的 WAL/journal；请先由写入方关闭并完成 checkpoint".into(),
+                    )
+                }
+                Ok(_) => (),
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => (),
+                Err(e) => return Err(e.to_string()),
+            }
+        }
+        Self::open_checked_with(path, false, true)
+    }
+
     fn open_checked(path: &Path, quick: bool) -> Result<Arc<Self>, String> {
+        Self::open_checked_with(path, quick, false)
+    }
+
+    fn open_checked_with(path: &Path, quick: bool, immutable: bool) -> Result<Arc<Self>, String> {
         let observed = super::validation::Observation::begin(path)?;
         let quick = quick && !super::validation::contains(path, None);
         let lease_path = super::database::lease_path(path);
@@ -127,7 +166,7 @@ impl GameDb {
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
             Err(error) => return Err(error.to_string()),
         };
-        let connection = reader(path)?;
+        let connection = reader_with_mode(path, immutable)?;
         let application: i32 = connection
             .pragma_query_value(None, "application_id", |r| r.get(0))
             .map_err(err)?;
@@ -174,8 +213,11 @@ impl GameDb {
             identity: observed.identity().into(),
             checked: AtomicUsize::new(usize::from(quick)),
             connection: Mutex::new(connection),
-            scans: [Mutex::new(reader(path)?), Mutex::new(reader(path)?)],
-            searches: Mutex::new(reader(path)?),
+            scans: [
+                Mutex::new(reader_with_mode(path, immutable)?),
+                Mutex::new(reader_with_mode(path, immutable)?),
+            ],
+            searches: Mutex::new(reader_with_mode(path, immutable)?),
             objects: super::objects::Objects::default(),
             story_filters: super::block_filters::BlockFilters::default(),
             next_scan: AtomicUsize::new(0),

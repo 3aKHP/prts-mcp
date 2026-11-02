@@ -14,7 +14,7 @@ fn story_archive(path: &Path) -> Option<PathBuf> {
 /// TS `loadConfig`'s data-path half: pair pointer first, extract_meta
 /// fallback, completeness gates. The bundled-data fallback joins in P7 with
 /// the package layout.
-pub(super) fn resolve_view(config: &RuntimeConfig) -> DataView {
+pub(crate) fn resolve_view(config: &RuntimeConfig) -> DataView {
     resolve_view_with_legacy_story(config, Path::new("/data/storyjson/zh_CN.zip"))
 }
 

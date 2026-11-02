@@ -7,6 +7,7 @@ import { createServer } from 'node:net';
 import { once } from 'node:events';
 import { stdio } from '../npm/mcp.mjs';
 import { syncProbe, emptyOfflineProbe } from './sync-probe.mjs';
+import { managementProbe, serverCliProbe } from '../cli/probe.mjs';
 
 const root = resolve(import.meta.dirname, '../..'), id = process.argv[2];
 const target = JSON.parse(readFileSync(join(root, 'packaging/native/targets.json')))[id];
@@ -18,7 +19,8 @@ const temp = mkdtempSync(join(tmpdir(), 'prts-pypi 空格-'));
 const env = {...process.env};
 for (const key of Object.keys(env)) if (/^(PRTS_|GAMEDATA_PATH|STORYJSON_PATH|GITHUB_TOKEN|GITHUB_MIRRORS|PYTHONPATH|PIP_|UV_|PIPX_)/i.test(key)) delete env[key];
 const fixture = join(root, 'tests/fixtures/native-smoke');
-Object.assign(env, {PYTHONUTF8:'1', PYTHONIOENCODING:'utf-8', IMAGES_ENABLED: 'false', LOCAL_IMAGE: 'false',
+delete env.PORT; delete env.HOST;
+Object.assign(env, {XDG_CONFIG_HOME:join(temp,'config'),APPDATA:join(temp,'config'),PYTHONUTF8:'1', PYTHONIOENCODING:'utf-8', IMAGES_ENABLED: 'false', LOCAL_IMAGE: 'false',
   GAMEDATA_PATH: fixture, STORYJSON_PATH: join(fixture, 'storyjson/zh_CN.zip'),
   XDG_DATA_HOME: join(temp, 'user'), LOCALAPPDATA: join(temp, 'user'),
   GITHUB_MIRRORS: 'http://127.0.0.1:9', PIP_NO_INDEX: '1', PIP_DISABLE_PIP_VERSION_CHECK: '1',
@@ -29,6 +31,7 @@ Object.assign(env, {PYTHONUTF8:'1', PYTHONIOENCODING:'utf-8', IMAGES_ENABLED: 'f
 const run = (command, args) => execFileSync(command, args, {cwd: temp, env, encoding: 'utf8', stdio: ['ignore','pipe','pipe']});
 const pythonIn = dir => join(dir, process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python');
 const commandIn = dir => join(dir, process.platform === 'win32' ? 'Scripts/prts-mcp.exe' : 'bin/prts-mcp');
+const managementIn = dir => join(dir,process.platform === 'win32' ? 'Scripts/prtsctl.exe' : 'bin/prtsctl');
 const launch = (command, args = [], overrides = {}) => spawn(command, args, {cwd: temp, env: {...env, ...overrides}, stdio: ['pipe','pipe','pipe']});
 const checks = [];
 const delay = ms => new Promise(r => setTimeout(r, ms));
@@ -68,6 +71,13 @@ try {
   run('python',['-m','pipx','install','--python',python,'--pip-args=--no-deps',wheel]);
   await stdio(launch(commandIn(join(temp,'pipx/venvs/prts-mcp'))),receipt.productVersion);checks.push('pipx');
   await httpExit(command);checks.push('http-parent-exit');
+  serverCliProbe({command,env,cwd:temp,version:receipt.productVersion});
+  serverCliProbe({command:python,args:['-m','prts_mcp.server'],env,cwd:temp,version:receipt.productVersion});
+  managementProbe({command:managementIn(join(temp,'venv')),env,cwd:temp,version:receipt.productVersion,label:'pip'});
+  managementProbe({command:'uv',args:['tool','run','--no-index','--find-links',join(out,'wheels'),'--python',python,'--from',`prts-mcp==${receipt.version}`,'prtsctl'],env,cwd:temp,version:receipt.productVersion,label:'uvx'});
+  managementProbe({command:managementIn(join(temp,'pipx/venvs/prts-mcp')),env,cwd:temp,version:receipt.productVersion,label:'pipx'});
+  await stdio(launch(managementIn(join(temp,'venv')),['serve','--transport','stdio']),receipt.productVersion);
+  checks.push('management-cli');
   await syncProbe({root,temp,command,launch,version:receipt.productVersion});checks.push('first-sync-offline-cache');
   await emptyOfflineProbe({temp,command,launch});checks.push('empty-offline');
   const legacy = execFileSync('python',[join(root,'tools/pypi/legacy.py')],{cwd:root,encoding:'utf8'}).trim();
@@ -91,7 +101,7 @@ try {
   const broken = spawn(command,[],{cwd:temp,env,stdio:['ignore','pipe','pipe']});
   let stdout='',stderr='';broken.stdout.on('data',s=>stdout+=s);broken.stderr.on('data',s=>stderr+=s);
   const [code] = await once(broken,'close');assert.equal(code,1);assert.equal(stdout,'');assert.match(stderr,/missing/);checks.push('missing-native');
-  run(python,['-m','pip','uninstall','-y','prts-mcp']);assert(!existsSync(command));checks.push('uninstall');
+  run(python,['-m','pip','uninstall','-y','prts-mcp']);assert(!existsSync(command));assert(!existsSync(managementIn(join(temp,'venv'))));checks.push('uninstall');
   writeFileSync(join(out,'pypi-evidence.json'),JSON.stringify({...receipt,native:true,arch:process.arch,checks},null,2)+'\n');
   console.log(`PYPI_PROBE_PASS: ${id} ${checks.join(', ')}`);
 } finally { rmSync(temp,{recursive:true,force:true}); }
