@@ -251,7 +251,7 @@ unit = "prts-mcp.service"
 user = false
 ```
 
-`prtsctl runtime status --instance main -o json` 查询实际运行状态；`runtime config show` 查看服务器配置快照；`runtime data status` 查看服务器当前数据视图。查询不自动启动实例。在线同步任务见下文；配置热重载由后续增量提供。
+`prtsctl runtime status --instance main -o json` 查询实际运行状态；`runtime config show` 查看服务器配置快照；`runtime data status` 查看服务器当前数据视图。查询不自动启动实例。在线同步任务与配置热重载见下文。 `status` 和 `data status` 的响应预算为 30 秒，以容纳首次 SQLite 校验；握手、请求读取及其他命令仍限制为 5 秒。
 
 ## systemd 服务管理
 
@@ -287,3 +287,19 @@ prtsctl runtime jobs cancel <任务ID> -o json
 `runtime data sync` 返回任务 ID，服务器继续执行同步。CLI 断开不会取消任务；`jobs cancel` 请求取消网络传输和锁等待，正在提交的数据会先完成收尾。后台同步与手动同步共享目标占用，冲突请求返回正在占用目标的任务 ID。`--wait-timeout` 只控制跨进程锁等待，默认 30 秒。
 
 任务历史最多保留 100 个已结束任务，活动任务另计。重启清空历史，旧任务 ID 失效。`status` 可为 `running`、`cancelling`、`succeeded`、`failed` 或 `cancelled`。失败详情位于 `result`，命令自身成功仅表示请求成功，判断同步结果应检查任务状态。
+
+## 在线配置重载
+
+编辑服务器启动时选用的 TOML 文件，然后查询差异并使用返回的 `revision` 应用：
+
+```bash
+prtsctl runtime config show -o json
+prtsctl runtime config diff -o json
+prtsctl runtime config reload --expected-revision 1 -o json
+```
+
+可重载字段为 `PRTS_AUTO_SYNC_INTERVAL_SECONDS`、`GITHUB_TOKEN` 和 `GITHUB_MIRRORS`。配置以完整候选校验；只要包含需要重启的生效变更，整批不应用。其他管理员已经成功重载时，旧 revision 会被拒绝，应重新查询差异。
+
+服务器保留启动时的参数和环境变量快照，这些值仍优先于 TOML。修改 systemd 的 `EnvironmentFile` 需要重启服务。`runtime` 命令使用服务器选用的配置文件，CLI 的 `--config` 不会替换它。报告中的令牌和镜像始终脱敏。
+
+已有同步任务继续使用提交时的配置和 HTTP 客户端，后续任务使用新配置。修改同步周期会重新计时；设为 `0` 关闭后续周期检查，已有任务和启动失败重试仍可完成。

@@ -82,11 +82,106 @@ pub fn values(doc: &DocumentMut, path: &Path) -> Result<BTreeMap<String, String>
     }
     Ok(out)
 }
+/// The startup lookup context is immutable across reloads. Environment secrets
+/// stay in process memory and are never serialized into management reports.
+#[derive(Clone)]
+pub struct Context {
+    pub path: Option<PathBuf>,
+    required: bool,
+    env: BTreeMap<String, String>,
+    overrides: BTreeMap<String, String>,
+    home: Option<PathBuf>,
+    bundle: Option<PathBuf>,
+    profile: String,
+}
+impl Context {
+    #[cfg(test)]
+    pub(crate) fn isolated(
+        path: PathBuf,
+        env: BTreeMap<String, String>,
+        overrides: BTreeMap<String, String>,
+    ) -> Self {
+        Self {
+            path: Some(path),
+            required: true,
+            env,
+            overrides,
+            home: None,
+            bundle: None,
+            profile: "prts-mcp".into(),
+        }
+    }
+    pub fn capture(
+        path: Option<PathBuf>,
+        required: bool,
+        overrides: BTreeMap<String, String>,
+    ) -> Self {
+        Self {
+            profile: "prts-mcp".into(),
+            path,
+            required,
+            overrides,
+            env: std::env::vars_os()
+                .filter_map(|(k, v)| Some((k.into_string().ok()?, v.into_string().ok()?)))
+                .collect(),
+            home: std::env::home_dir(),
+            bundle: crate::config::resolve_bundle_root(),
+        }
+    }
+    pub fn set_profile(&mut self, profile: &str) {
+        self.profile = profile.to_owned();
+    }
+    pub fn read(&self) -> Result<Settings, String> {
+        let file = if let Some(path) = &self.path {
+            values(&document(path, self.required)?, path)?
+        } else {
+            BTreeMap::new()
+        };
+        let lookup = |key: &str| {
+            self.overrides
+                .get(key)
+                .or_else(|| environment_value(&self.env, key))
+                .or_else(|| file.get(key))
+                .cloned()
+        };
+        let mut config = RuntimeConfig::try_from_lookup_with_home(lookup, self.home.as_deref())?;
+        config.bundle_root = self.bundle.clone();
+        let transport_input = lookup("PRTS_TRANSPORT");
+        let requested = transport_input
+            .as_deref()
+            .unwrap_or("")
+            .trim()
+            .to_ascii_lowercase();
+        let stdio = match self.profile.as_str() {
+            "prts-mcp-ts-stdio" => true,
+            "prts-mcp-ghcr" => requested != "http",
+            "prts-mcp" => requested == "stdio",
+            _ => false,
+        };
+        let transport = if stdio { "stdio" } else { "http" }.to_owned();
+        let report = super::report::configuration(
+            &config,
+            &transport,
+            self.path.as_deref(),
+            &self.env,
+            &file,
+            &self.overrides,
+        );
+        Ok(Settings {
+            config,
+            transport,
+            report,
+            transport_input,
+            context: self.clone(),
+        })
+    }
+}
 pub struct Settings {
     pub config: RuntimeConfig,
     pub transport: String,
     pub report: Value,
     pub transport_input: Option<String>,
+    pub context: Context,
 }
 pub fn load(
     path: Option<&Path>,
@@ -94,39 +189,25 @@ pub fn load(
     overrides: &BTreeMap<String, String>,
 ) -> Result<Settings, String> {
     let explicit = path.is_some();
-    let path = if let Some(p) = path {
-        Some(p.to_path_buf())
+    let path = if let Some(path) = path {
+        Some(path.to_path_buf())
     } else if automatic {
         Some(default_path()?)
     } else {
         None
     };
-    let file = if let Some(p) = &path {
-        values(&document(p, explicit)?, p)?
-    } else {
-        BTreeMap::new()
-    };
-    let env: BTreeMap<_, _> = std::env::vars_os()
-        .filter_map(|(k, v)| Some((k.into_string().ok()?, v.into_string().ok()?)))
-        .collect();
-    let lookup = |k: &str| {
-        overrides
-            .get(k)
-            .or_else(|| environment_value(&env, k))
-            .or_else(|| file.get(k))
-            .cloned()
-    };
-    let mut config =
-        RuntimeConfig::try_from_lookup_with_home(lookup, std::env::home_dir().as_deref())?;
-    config.bundle_root = crate::config::resolve_bundle_root();
-    let transport = lookup("PRTS_TRANSPORT").unwrap_or_else(|| "http".into());
-    let report =
-        super::report::configuration(&config, &transport, path.as_deref(), &env, &file, overrides);
-    let transport_input = lookup("PRTS_TRANSPORT");
-    Ok(Settings {
-        config,
-        transport,
-        report,
-        transport_input,
-    })
+    // File-relative paths keep the startup directory even if process code
+    // subsequently changes its working directory.
+    let path = path
+        .map(|path| {
+            if path.is_absolute() {
+                Ok(path)
+            } else {
+                std::env::current_dir()
+                    .map(|cwd| cwd.join(path))
+                    .map_err(|e| e.to_string())
+            }
+        })
+        .transpose()?;
+    Context::capture(path, explicit, overrides.clone()).read()
 }

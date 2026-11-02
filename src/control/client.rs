@@ -4,6 +4,7 @@ use super::{
     wire::{self, Command, Outcome, Request, Response},
 };
 use serde_json::Value;
+#[cfg(windows)]
 use std::time::Duration;
 
 async fn exchange(
@@ -52,17 +53,23 @@ pub async fn request(instance: &Instance, command: Command) -> Result<Value, Str
     if !super::instances::valid_endpoint(&instance.endpoint) {
         return Err("无效的本机管理端点".into());
     }
-    tokio::time::timeout(Duration::from_secs(5), async {
-        let hello = exchange(instance, Command::Hello, None).await?;
-        if hello["instance"] != instance.name {
-            return Err("管理端点实例名称不匹配".into());
-        }
-        let startup = hello["startup_id"]
-            .as_str()
-            .ok_or("缺少实例启动标识")?
-            .to_owned();
-        exchange(instance, command, Some(startup)).await
-    })
+    let hello = tokio::time::timeout(
+        wire::HANDSHAKE_TIMEOUT,
+        exchange(instance, Command::Hello, None),
+    )
+    .await
+    .map_err(|_| "管理握手超时".to_string())??;
+    if hello["instance"] != instance.name {
+        return Err("管理端点实例名称不匹配".into());
+    }
+    let startup = hello["startup_id"]
+        .as_str()
+        .ok_or("缺少实例启动标识")?
+        .to_owned();
+    tokio::time::timeout(
+        command.response_timeout(),
+        exchange(instance, command, Some(startup)),
+    )
     .await
     .map_err(|_| "管理请求超时".to_string())?
 }

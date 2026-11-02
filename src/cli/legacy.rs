@@ -67,13 +67,14 @@ pub fn dispatch(profile: &str) {
         }
         Request::Config(path) => path,
     };
-    let loaded = match super::settings::load(Some(&path), false, &BTreeMap::new()) {
+    let mut loaded = match super::settings::load(Some(&path), false, &BTreeMap::new()) {
         Ok(loaded) => loaded,
         Err(error) => {
             eprintln!("{profile}: {error}");
             std::process::exit(2)
         }
     };
+    loaded.context.set_profile(profile);
     let requested = loaded
         .transport_input
         .unwrap_or_default()
@@ -94,6 +95,7 @@ pub fn dispatch(profile: &str) {
         }
     };
     app.startup_report = Some(loaded.report);
+    app.startup_context = Some(loaded.context);
     if stdio {
         std::process::exit(app.run_stdio())
     }

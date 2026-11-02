@@ -5,6 +5,7 @@ use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 pub const PROTOCOL_VERSION: u32 = 1;
 pub const MAX_FRAME_BYTES: usize = 1024 * 1024;
+pub const HANDSHAKE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -22,11 +23,24 @@ pub enum Command {
     Hello,
     Status,
     ConfigShow,
+    ConfigDiff,
+    ConfigReload { expected_revision: u64 },
     DataStatus,
     DataSync { target: String, wait_timeout: u64 },
     JobsList,
     JobShow { id: String },
     JobCancel { id: String },
+}
+
+impl Command {
+    /// A cold data view may verify the complete SQLite file before reporting.
+    pub fn response_timeout(&self) -> std::time::Duration {
+        if matches!(self, Self::Status | Self::DataStatus) {
+            std::time::Duration::from_secs(30)
+        } else {
+            HANDSHAKE_TIMEOUT
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
