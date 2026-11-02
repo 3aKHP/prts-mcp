@@ -61,14 +61,29 @@ async fn run(owner: &Arc<Coordinator>, dataset: Dataset, force: bool) -> Outcome
                 Dataset::Game => scheduler::run_gamedata_sync(cfg, &transport, force).await,
                 Dataset::Story => scheduler::run_story_sync(cfg, &transport, force).await,
                 Dataset::Images => scheduler::run_images_sync(cfg, &transport, force).await,
-                Dataset::Database => super::database::sync_with_source(
+                Dataset::Database => match super::database::sync_with_source(
                     &transport,
                     &cfg.database_dir,
                     cfg.validation_mode,
                     &cfg.data_source,
                 )
                 .await
-                .is_err(),
+                {
+                    Ok(updated) => {
+                        crate::log_info(if updated {
+                            "SQLite dataset updated."
+                        } else {
+                            "SQLite dataset is up to date."
+                        });
+                        false
+                    }
+                    Err(error) => {
+                        crate::log_warn(&format!(
+                            "SQLite sync failed; keeping cached/bundled data: {error}"
+                        ));
+                        true
+                    }
+                },
             }
         })
         .await;
@@ -81,7 +96,7 @@ async fn run(owner: &Arc<Coordinator>, dataset: Dataset, force: bool) -> Outcome
         } else {
             "succeeded"
         },
-        json!({"ok":!retry && !cancelled}),
+        json!({"ok":!retry && !cancelled,"message":if cancelled {"任务已取消"} else if retry {"后台同步失败；请查看服务器日志"} else {"同步完成"}}),
     );
     if cancelled {
         Outcome::Cancelled
@@ -155,5 +170,49 @@ async fn worker(owner: Arc<Coordinator>, dataset: Dataset) {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[tokio::test]
+    async fn background_image_lock_keeps_default_wait_and_remains_cancellable() {
+        let root = std::env::temp_dir().join(format!("prts-worker-test-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir(&root).unwrap();
+        let lock = std::fs::File::create(root.join(".images-writer.lock")).unwrap();
+        lock.lock().unwrap();
+        let cfg = RuntimeConfig::from_lookup(|key| match key {
+            "PRTS_IMAGE_DIR" => Some(root.to_string_lossy().into_owned()),
+            "LOCAL_IMAGE" => Some("true".into()),
+            _ => None,
+        });
+        let owner = Coordinator::new(
+            Arc::new(cfg),
+            Arc::new(super::super::transport::ReqwestTransport::new(vec![], None)),
+        );
+        let task = tokio::spawn({
+            let owner = owner.clone();
+            async move { run(&owner, Dataset::Images, false).await }
+        });
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        assert!(
+            !task.is_finished(),
+            "background lock contention must wait, not use the manual zero budget"
+        );
+        owner.stop();
+        assert!(matches!(
+            tokio::time::timeout(Duration::from_secs(2), task)
+                .await
+                .unwrap()
+                .unwrap(),
+            Outcome::Cancelled
+        ));
+        assert!(std::fs::File::open(root.join(".images-writer.lock"))
+            .unwrap()
+            .try_lock()
+            .is_err());
+        drop(lock);
+        std::fs::remove_dir_all(root).unwrap();
     }
 }

@@ -1,5 +1,5 @@
-//! Invocation-local wait budgets and cooperative cancellation for one-shot sync.
-//! Background tasks have no scope and retain their historical lock behavior.
+//! Scoped lock budgets and cooperative cancellation.
+//! Background scopes retain each synchronization primitive's default wait.
 use std::{
     future::Future,
     sync::{
@@ -11,7 +11,7 @@ use std::{
 use tokio::sync::Notify;
 
 pub struct Control {
-    remaining: Mutex<Duration>,
+    remaining: Mutex<Option<Duration>>,
     cancelled: AtomicI32,
     timeout: AtomicBool,
     wake: Notify,
@@ -20,7 +20,15 @@ tokio::task_local! { static CURRENT: Arc<Control>; }
 impl Control {
     pub fn new(wait: Duration) -> Arc<Self> {
         Arc::new(Self {
-            remaining: Mutex::new(wait),
+            remaining: Mutex::new(Some(wait)),
+            cancelled: AtomicI32::new(0),
+            timeout: AtomicBool::new(false),
+            wake: Notify::new(),
+        })
+    }
+    pub fn background() -> Arc<Self> {
+        Arc::new(Self {
+            remaining: Mutex::new(None),
             cancelled: AtomicI32::new(0),
             timeout: AtomicBool::new(false),
             wake: Notify::new(),
@@ -94,7 +102,7 @@ impl Wait {
         let control = current();
         let limit = control
             .as_ref()
-            .map(|c| *c.remaining.lock().expect("wait budget"))
+            .and_then(|c| *c.remaining.lock().expect("wait budget"))
             .unwrap_or(default);
         Self {
             control,
@@ -118,7 +126,9 @@ impl Drop for Wait {
     fn drop(&mut self) {
         if let Some(c) = &self.control {
             let mut remaining = c.remaining.lock().expect("wait budget");
-            *remaining = remaining.saturating_sub(self.start.elapsed());
+            if let Some(budget) = remaining.as_mut() {
+                *budget = budget.saturating_sub(self.start.elapsed());
+            }
         }
     }
 }
@@ -140,7 +150,7 @@ pub fn lock_source(file: &std::fs::File) -> Result<(), String> {
     if current().is_none() {
         return file.lock().map_err(|e| e.to_string());
     }
-    let wait = Wait::new(Duration::ZERO);
+    let wait = Wait::new(Duration::MAX);
     loop {
         checkpoint()?;
         match file.try_lock() {

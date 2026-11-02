@@ -119,7 +119,11 @@ impl Coordinator {
             ));
         }
         let id = uuid::Uuid::new_v4().to_string();
-        let control = Control::new(Duration::from_secs(wait));
+        let control = if origin == "background" {
+            Control::background()
+        } else {
+            Control::new(Duration::from_secs(wait))
+        };
         let snapshot = state.snapshot.clone();
         state.jobs.push_back(Job {
             value: json!({"schema_version":1,"id":id,"target":target,"origin":origin,"status":"running","config_revision":snapshot.revision,"result":null}),

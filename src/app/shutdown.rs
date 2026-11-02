@@ -1,7 +1,7 @@
 //! Register process signals before starting workers; drain publishers on exit.
 use crate::sync::jobs::Coordinator;
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
+    atomic::{AtomicBool, AtomicI32, Ordering},
     Arc,
 };
 use tokio::sync::watch;
@@ -16,7 +16,11 @@ impl Drop for Signals {
     }
 }
 impl Signals {
-    pub fn new(jobs: Arc<Coordinator>, ready: Arc<AtomicBool>) -> std::io::Result<Self> {
+    pub fn new(
+        jobs: Arc<Coordinator>,
+        ready: Arc<AtomicBool>,
+        reason: Arc<AtomicI32>,
+    ) -> std::io::Result<Self> {
         let (sender, receiver) = watch::channel(false);
         #[cfg(unix)]
         let signal = {
@@ -24,8 +28,10 @@ impl Signals {
                 tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
             let mut interrupt =
                 tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt())?;
+            let mut hangup =
+                tokio::signal::unix::signal(tokio::signal::unix::SignalKind::hangup())?;
             async move {
-                tokio::select! { _=term.recv()=>(), _=interrupt.recv()=>() }
+                tokio::select! { _=term.recv()=>15, _=interrupt.recv()=>2, _=hangup.recv()=>1 }
             }
         };
         #[cfg(windows)]
@@ -33,11 +39,11 @@ impl Signals {
             let mut interrupt = tokio::signal::windows::ctrl_c()?;
             let mut close = tokio::signal::windows::ctrl_close()?;
             async move {
-                tokio::select! { _=interrupt.recv()=>(), _=close.recv()=>() }
+                tokio::select! { _=interrupt.recv()=>2, _=close.recv()=>15 }
             }
         };
         let task = tokio::spawn(async move {
-            signal.await;
+            reason.store(signal.await, Ordering::Release);
             ready.store(false, Ordering::Release);
             jobs.stop();
             sender.send_replace(true);
@@ -61,5 +67,15 @@ pub async fn drain(jobs: &Coordinator) {
         crate::log_warn(
             "Sync shutdown exceeded 20 seconds; service manager timeout remains authoritative",
         );
+    }
+}
+
+/// Preserve native signal termination after cleanup (including container 143).
+pub fn finish(reason: &AtomicI32) {
+    let signal = reason.load(Ordering::Acquire);
+    if signal != 0 {
+        #[cfg(unix)]
+        let _ = signal_hook::low_level::emulate_default_handler(signal);
+        std::process::exit(128 + signal);
     }
 }

@@ -1,4 +1,4 @@
-//! Read-only administration of an actual running application.
+//! Local administration of an actual running application.
 use super::wire::{self, Command, Request, Response};
 use crate::app::DataState;
 use serde_json::{json, Value};

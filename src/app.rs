@@ -376,6 +376,8 @@ impl App {
             builder.max_blocking_threads(8);
         }
         let runtime = builder.enable_all().build()?;
+        let signal = Arc::new(std::sync::atomic::AtomicI32::new(0));
+        let reason = signal.clone();
         let result = runtime.block_on(async move {
             let jobs = self.sync_coordinator();
             let _control = self.start_control("http", jobs.clone()).await?;
@@ -383,7 +385,7 @@ impl App {
                 .as_ref()
                 .map(|c| c.ready.clone())
                 .unwrap_or_default();
-            let signals = shutdown::Signals::new(jobs.clone(), ready.clone())?;
+            let signals = shutdown::Signals::new(jobs.clone(), ready.clone(), reason)?;
             crate::sync::workers::start(jobs.clone());
             let metrics = self.config.metrics_enabled.then(|| {
                 Arc::new(RuntimeMetrics::new(
@@ -463,6 +465,7 @@ impl App {
             result
         });
         runtime.shutdown_timeout(std::time::Duration::from_secs(2));
+        shutdown::finish(&signal);
         result
     }
 
@@ -473,6 +476,8 @@ impl App {
             builder.max_blocking_threads(8);
         }
         let runtime = builder.enable_all().build().expect("tokio runtime builds");
+        let signal = Arc::new(std::sync::atomic::AtomicI32::new(0));
+        let reason = signal.clone();
         let result = runtime.block_on(async move {
             let jobs = self.sync_coordinator();
             let _control = match self.start_control("stdio", jobs.clone()).await {
@@ -486,7 +491,7 @@ impl App {
                 .as_ref()
                 .map(|c| c.ready.clone())
                 .unwrap_or_default();
-            let signals = match shutdown::Signals::new(jobs.clone(), ready.clone()) {
+            let signals = match shutdown::Signals::new(jobs.clone(), ready.clone(), reason) {
                 Ok(signals) => signals,
                 Err(error) => {
                     crate::log_err(&error.to_string());
@@ -512,6 +517,7 @@ impl App {
             result
         });
         runtime.shutdown_timeout(std::time::Duration::from_secs(2));
+        shutdown::finish(&signal);
         result
     }
 }
