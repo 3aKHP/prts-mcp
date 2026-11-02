@@ -73,10 +73,14 @@ windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Securit
 [target.'cfg(target_os = "linux")'.dependencies]
 zbus = { version = "4.4", default-features = false, features = ["tokio"] }
 
+[target."cfg(unix)".dependencies]
+signal-hook = "0.3"
+
 [features]
 default = []
 
 [dev-dependencies]
+tokio = { version = "1", features = ["test-util"] }
 # MCP SDK evaluated by the P1 probe (examples/rmcp_probe.rs): rmcp 3.5.1 could
 # not reproduce the oracle's wire behavior (SSE framing, priming events,
 # unknown-session body, discover version set, modern JSON responses); the

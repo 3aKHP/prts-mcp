@@ -23,6 +23,10 @@ pub enum Command {
     Status,
     ConfigShow,
     DataStatus,
+    DataSync { target: String, wait_timeout: u64 },
+    JobsList,
+    JobShow { id: String },
+    JobCancel { id: String },
 }
 
 #[derive(Debug, Serialize, Deserialize)]

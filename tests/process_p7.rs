@@ -550,7 +550,7 @@ async fn ghcr_profile_port_semantics() {
 fn signals_and_eof_exit_behavior() {
     // HTTP: SIGTERM/SIGINT kill promptly even while the sync retry ladder is
     // armed against a dead mirror (download completion is not a gate).
-    for sig in ["TERM", "INT"] {
+    for sig in ["TERM", "INT", "HUP"] {
         let mut child = spawn_bin(
             env!("CARGO_BIN_EXE_prts-mcp-rust"),
             &["--transport", "http"],
@@ -574,7 +574,11 @@ fn signals_and_eof_exit_behavior() {
         assert_eq!(status.code(), None, "terminated by signal");
         assert_eq!(
             std::os::unix::process::ExitStatusExt::signal(&status),
-            Some(if sig == "TERM" { 15 } else { 2 })
+            Some(match sig {
+                "TERM" => 15,
+                "INT" => 2,
+                _ => 1,
+            })
         );
     }
 

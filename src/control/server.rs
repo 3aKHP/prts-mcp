@@ -1,4 +1,4 @@
-//! Read-only administration of an actual running application.
+//! Local administration of an actual running application.
 use super::wire::{self, Command, Request, Response};
 use crate::app::DataState;
 use serde_json::{json, Value};
@@ -24,6 +24,7 @@ pub struct State {
     pub transport: &'static str,
     pub configuration: Value,
     pub data: Arc<DataState>,
+    pub jobs: Option<Arc<crate::sync::jobs::Coordinator>>,
     started: Instant,
 }
 impl State {
@@ -40,7 +41,22 @@ impl State {
             transport,
             configuration,
             data,
+            jobs: None,
             started: Instant::now(),
+        }
+    }
+    fn job_result(
+        &self,
+        action: impl FnOnce(&Arc<crate::sync::jobs::Coordinator>) -> Result<Value, String>,
+    ) -> Response {
+        match self
+            .jobs
+            .as_ref()
+            .ok_or_else(|| "同步管理不可用".into())
+            .and_then(action)
+        {
+            Ok(value) => Response::success(value),
+            Err(error) => Response::failure("job_operation", &error),
         }
     }
     fn respond(&self, request: Request) -> Response {
@@ -57,14 +73,28 @@ impl State {
         {
             return Response::failure("instance_restarted", "实例已经重启，请重新连接");
         }
+        if matches!(
+            request.command,
+            Command::DataSync { .. } | Command::JobCancel { .. }
+        ) && request.expected_startup_id.as_deref() != Some(&self.startup_id)
+        {
+            return Response::failure("startup_id_required", "写操作必须提供握手取得的 startup_id");
+        }
         let value = match request.command {
             Command::Hello => {
-                json!({"schema_version":1,"instance":self.instance,"startup_id":self.startup_id,"pid":std::process::id(),"server_version":crate::SERVER_VERSION,"capabilities":["status","config_show","data_status"]})
+                json!({"schema_version":1,"instance":self.instance,"startup_id":self.startup_id,"pid":std::process::id(),"server_version":crate::SERVER_VERSION,"capabilities":["status","config_show","data_status","data_sync","jobs_list","job_show","job_cancel"]})
             }
             Command::Status => {
                 json!({"schema_version":1,"instance":self.instance,"startup_id":self.startup_id,"pid":std::process::id(),"server_version":crate::SERVER_VERSION,"transport":self.transport,"ready":self.ready.load(Ordering::Acquire),"uptime_ms":self.started.elapsed().as_millis() as u64,"effective_backend":self.data.snapshot().effective_backend()})
             }
             Command::ConfigShow => self.configuration.clone(),
+            Command::DataSync {
+                target,
+                wait_timeout,
+            } => return self.job_result(|jobs| jobs.submit(&target, wait_timeout)),
+            Command::JobsList => return self.job_result(|jobs| Ok(jobs.list())),
+            Command::JobShow { id } => return self.job_result(|jobs| jobs.show(&id)),
+            Command::JobCancel { id } => return self.job_result(|jobs| jobs.cancel(&id)),
             Command::DataStatus => {
                 let view = self.data.snapshot();
                 json!({"schema_version":1,"scope":"runtime","effective_backend":view.effective_backend(),"database":view.database.as_ref().map(|db|db.path.to_string_lossy().into_owned()),"excel":view.excel_root.as_ref().map(|p|p.to_string_lossy().into_owned()),"levels":view.levels_root.as_ref().map(|p|p.to_string_lossy().into_owned()),"story":view.story_zip.as_ref().map(|p|p.to_string_lossy().into_owned())})
