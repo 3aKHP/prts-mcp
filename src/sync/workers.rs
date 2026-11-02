@@ -143,6 +143,7 @@ async fn worker(owner: Arc<Coordinator>, dataset: Dataset) {
                     let Some(delay) = [30, 120, 600].get(attempt).copied() else {
                         break;
                     };
+                    crate::log_info(&format!("{} sync will retry in {delay}s.", dataset.name()));
                     attempt += 1;
                     // Interval changes do not restart or skip a dense retry.
                     let until = tokio::time::Instant::now() + Duration::from_secs(delay);
