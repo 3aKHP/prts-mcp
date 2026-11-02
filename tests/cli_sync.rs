@@ -229,3 +229,69 @@ async fn source_ownership_lock_is_bounded_before_claiming_directory() {
     assert_eq!(control.exit_code(), Some(3));
     assert!(!cfg.database_dir.join(".prts-data-source.json").exists());
 }
+
+#[tokio::test(flavor = "current_thread")]
+async fn source_lock_wait_keeps_current_thread_cancellation_responsive() {
+    let f = Fixture::new();
+    let mut cfg = f.cfg("sqlite");
+    cfg.data_source = prts_mcp_rust::config::DataSource::parse(Some("fixture/source")).unwrap();
+    std::fs::create_dir(&cfg.database_dir).unwrap();
+    let owner = std::fs::File::create(cfg.database_dir.join(".prts-data-source.lock")).unwrap();
+    owner.lock().unwrap();
+    let control = Control::new(Duration::from_secs(30));
+    let cancellation = control.clone();
+    let signal = tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_millis(20)).await;
+        cancellation.cancel(130)
+    });
+    let transport = Offline::default();
+    let report = tokio::time::timeout(
+        Duration::from_secs(2),
+        once::run(&cfg, "game", &transport, control.clone()),
+    )
+    .await
+    .expect("cancellation must run while source lock waits")
+    .unwrap();
+    signal.await.unwrap();
+    assert!(report.cancelled);
+    assert_eq!(control.exit_code(), Some(130));
+    assert_eq!(transport.calls.load(Ordering::SeqCst), 0);
+    assert!(!cfg.database_dir.join(".prts-data-source.json").exists());
+}
+
+#[tokio::test]
+async fn sequential_contention_consumes_one_shared_budget() {
+    let f = Fixture::new();
+    let first = f.0.join("first.lock");
+    let second = f.0.join("second.lock");
+    let owner = std::fs::File::create(&first).unwrap();
+    owner.lock().unwrap();
+    let owner2 = std::fs::File::create(&second).unwrap();
+    owner2.lock().unwrap();
+    let control = Control::new(Duration::from_millis(500));
+    let release = tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_millis(300)).await;
+        drop(owner)
+    });
+    control
+        .scope(async {
+            let first = std::fs::File::open(first).unwrap();
+            prts_mcp_rust::sync::control::lock_async(&first, Duration::ZERO)
+                .await
+                .unwrap();
+            let second = std::fs::File::open(second).unwrap();
+            let started = std::time::Instant::now();
+            assert!(
+                prts_mcp_rust::sync::control::lock_async(&second, Duration::ZERO)
+                    .await
+                    .is_err()
+            );
+            assert!(
+                started.elapsed() < Duration::from_millis(400),
+                "second lock should have less than a fresh 500 ms budget"
+            );
+        })
+        .await;
+    release.await.unwrap();
+    assert_eq!(control.exit_code(), Some(3));
+}

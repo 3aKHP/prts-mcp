@@ -75,6 +75,20 @@ pub fn ensure(root: &Path, source: &DataSource) -> Result<(), String> {
     })
 }
 
+/// Scoped administrative callers must not block the async signal driver while
+/// acquiring the ownership lock. The same guard and wait budget run in a worker.
+pub async fn ensure_async(root: &Path, source: &DataSource) -> Result<(), String> {
+    if let Some(control) = super::control::current() {
+        let root = root.to_owned();
+        let source = source.clone();
+        tokio::task::spawn_blocking(move || control.blocking_scope(|| ensure(&root, &source)))
+            .await
+            .map_err(|error| error.to_string())?
+    } else {
+        ensure(root, source)
+    }
+}
+
 fn data_roots(config: &RuntimeConfig) -> Vec<PathBuf> {
     let mut roots = Vec::new();
     match config.data_backend {

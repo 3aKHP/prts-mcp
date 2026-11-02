@@ -27,7 +27,7 @@ pub async fn sync_with_source(
     mode: ValidationMode,
     source: &DataSource,
 ) -> Result<bool, String> {
-    super::source_guard::ensure(root, source)?;
+    super::source_guard::ensure_async(root, source).await?;
     std::fs::create_dir_all(root).map_err(|e| e.to_string())?;
     let lock = OpenOptions::new()
         .read(true)
@@ -43,7 +43,7 @@ pub async fn sync_with_source(
             .map_err(|e| format!("SQLite sync locked: {e}"))?;
     }
     let lock = Arc::new(lock);
-    super::source_guard::ensure(root, source)?;
+    super::source_guard::ensure_async(root, source).await?;
     io::clean_staging(root);
     let releases = discovery::list_releases(transport, source.owner(), source.repo(), 30_000)
         .await

@@ -26,6 +26,9 @@ impl Control {
             wake: Notify::new(),
         })
     }
+    pub(super) fn blocking_scope<T>(self: &Arc<Self>, run: impl FnOnce() -> T) -> T {
+        CURRENT.sync_scope(self.clone(), run)
+    }
     pub async fn scope<T>(self: &Arc<Self>, future: impl Future<Output = T>) -> T {
         CURRENT.scope(self.clone(), future).await
     }

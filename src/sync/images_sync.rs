@@ -179,7 +179,7 @@ pub async fn sync_images_with_source(
     opts: ImagesSyncOpts,
     source: &DataSource,
 ) -> SyncResult {
-    if let Err(error) = super::source_guard::ensure(image_dir, source) {
+    if let Err(error) = super::source_guard::ensure_async(image_dir, source).await {
         return SyncResult::new(SyncStatus::NoData, None, Some(error));
     }
     if let Err(err) = tokio::fs::create_dir_all(image_dir).await {
@@ -188,7 +188,7 @@ pub async fn sync_images_with_source(
     let shard_keys = needed_shard_keys(opts.include_original);
     let lock_dir = image_dir.to_path_buf();
     let locked = super::images_lock::with_images_lease(&lock_dir, |lease| async {
-        if let Err(error) = super::source_guard::ensure(image_dir, source) {
+        if let Err(error) = super::source_guard::ensure_async(image_dir, source).await {
             return SyncResult::new(SyncStatus::NoData, None, Some(error));
         }
         sync_images_locked(
