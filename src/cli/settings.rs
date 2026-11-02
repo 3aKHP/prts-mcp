@@ -7,6 +7,22 @@ use std::{
 };
 use toml_edit::DocumentMut;
 
+/// Preserve Windows environment lookup semantics after taking a snapshot.
+/// All recognized runtime/proxy keys are ASCII; Unix names remain case-sensitive.
+pub(super) fn environment_value<'a>(
+    env: &'a BTreeMap<String, String>,
+    key: &str,
+) -> Option<&'a String> {
+    env.get(key).or_else(|| {
+        if cfg!(windows) {
+            env.iter()
+                .find_map(|(name, value)| name.eq_ignore_ascii_case(key).then_some(value))
+        } else {
+            None
+        }
+    })
+}
+
 pub fn default_path() -> Result<PathBuf, String> {
     if cfg!(windows) {
         let root = std::env::var_os("APPDATA")
@@ -96,7 +112,7 @@ pub fn load(
     let lookup = |k: &str| {
         overrides
             .get(k)
-            .or_else(|| env.get(k))
+            .or_else(|| environment_value(&env, k))
             .or_else(|| file.get(k))
             .cloned()
     };

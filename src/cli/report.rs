@@ -1,4 +1,5 @@
 //! Stable management output; no Debug serialization of runtime secrets.
+use super::settings::environment_value;
 use crate::config::{DataBackend, RuntimeConfig};
 use serde_json::{json, Value};
 use std::{collections::BTreeMap, path::Path};
@@ -18,14 +19,15 @@ pub fn configuration(
 ) -> Value {
     let fields:Vec<_>=super::schema::FIELDS.iter().map(|field|{
         let key=field.key;
-        let source=if args.contains_key(key){"argument"}else if env.contains_key(key){"environment"}else if file.contains_key(key){"file"}else{"default"};
-        let raw=args.get(key).or_else(||env.get(key)).or_else(||file.get(key));
+        let source=if args.contains_key(key){"argument"}else if environment_value(env,key).is_some(){"environment"}else if file.contains_key(key){"file"}else{"default"};
+        let raw=args.get(key).or_else(||environment_value(env,key)).or_else(||file.get(key));
         let value=effective(cfg,transport,key);
         let input=if super::schema::redacted(key){raw.map(|_|"[redacted]")}else{raw.map(String::as_str)};
         json!({"key":key,"value":value,"input":input,"source":source,"explanation":explanation(cfg,key)})
     }).collect();
     let network:Vec<_>=["HTTP_PROXY","HTTPS_PROXY","ALL_PROXY","NO_PROXY","http_proxy","https_proxy","all_proxy","no_proxy","NODE_EXTRA_CA_CERTS"].iter().map(|key|{
-        json!({"key":key,"source":if env.contains_key(*key){"environment"}else{"unset"},"configured":env.contains_key(*key),"value":env.get(*key).map(|v|if super::schema::redacted(key){"[redacted]"}else{v.as_str()})})
+        let value=environment_value(env,key);
+        json!({"key":key,"source":if value.is_some(){"environment"}else{"unset"},"configured":value.is_some(),"value":value.map(|v|if super::schema::redacted(key){"[redacted]"}else{v.as_str()})})
     }).collect();
     json!({"schema_version":1,"scope":"invocation","config_file":path_value(path),"fields":fields,"network_environment":network,"derived":{
         "preferred_backend":backend(cfg),"allow_json_fallback":cfg.allow_json_fallback,

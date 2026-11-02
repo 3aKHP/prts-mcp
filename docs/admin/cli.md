@@ -50,6 +50,8 @@ prtsctl serve
 
 优先级为 **显式参数 > 环境变量 > 配置文件 > 默认值**。`--config` 选择单个文件，不与默认文件叠加。默认文件不存在时继续使用环境变量与默认值；显式文件不存在时报错。
 
+环境变量名称遵循操作系统规则：Windows 不区分大小写，Unix 区分大小写。TOML 字段名称始终区分大小写。
+
 `prtsctl` 自动读取的用户级路径：
 
 - Linux/macOS：`$XDG_CONFIG_HOME/prts-mcp/config.toml`；未设置时为 `~/.config/prts-mcp/config.toml`。

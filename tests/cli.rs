@@ -82,6 +82,50 @@ fn explicit_missing_config_fails_even_with_equals_syntax() {
     assert!(o.stdout.is_empty());
 }
 #[test]
+fn environment_names_follow_platform_case_rules() {
+    let f = Fixture::new();
+    let path = f.0.join("case.toml");
+    fs::write(&path, "schema_version=1\n[runtime]\nPORT=3100\n").unwrap();
+    let out = f
+        .command()
+        .arg("--config")
+        .arg(&path)
+        .env("pOrT", "3200")
+        .env("prts_data_backend", "json")
+        .env("prts_transport", "stdio")
+        .env("https_proxy", "http://127.0.0.1:9")
+        .args(["config", "show", "-o", "json"])
+        .output()
+        .unwrap();
+    assert!(out.status.success(), "{out:?}");
+    let report: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    let fields = report["fields"].as_array().unwrap();
+    let field = |key: &str| fields.iter().find(|v| v["key"] == key).unwrap();
+    assert_eq!(
+        field("PORT")["value"],
+        if cfg!(windows) { 3200 } else { 3100 }
+    );
+    assert_eq!(
+        field("PORT")["source"],
+        if cfg!(windows) { "environment" } else { "file" }
+    );
+    assert_eq!(
+        field("PRTS_DATA_BACKEND")["value"],
+        if cfg!(windows) { "json" } else { "sqlite" }
+    );
+    assert_eq!(
+        field("PRTS_TRANSPORT")["value"],
+        if cfg!(windows) { "stdio" } else { "http" }
+    );
+    let proxy = report["network_environment"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|v| v["key"] == "HTTPS_PROXY")
+        .unwrap();
+    assert_eq!(proxy["configured"], cfg!(windows));
+}
+#[test]
 fn edits_preserve_comments_and_environment_overrides() {
     let f = Fixture::new();
     let p = f.0.join("settings.toml");

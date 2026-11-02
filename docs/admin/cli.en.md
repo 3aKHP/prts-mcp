@@ -50,6 +50,8 @@ Help, version and completion bypass business configuration. Read-only commands d
 
 Precedence is **explicit arguments > environment > TOML file > defaults**. `--config` selects one file instead of layering it over the default file. A missing default file is allowed; a missing explicitly selected file is an error.
 
+Environment variable names follow the operating system: case-insensitive on Windows and case-sensitive on Unix. TOML field names remain case-sensitive.
+
 Automatic user file locations for `prtsctl`:
 
 - Linux/macOS: `$XDG_CONFIG_HOME/prts-mcp/config.toml`, or `~/.config/prts-mcp/config.toml` when unset.
