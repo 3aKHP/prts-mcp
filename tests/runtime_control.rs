@@ -1,0 +1,120 @@
+use std::{
+    fs,
+    io::Write,
+    path::PathBuf,
+    process::{Child, Command, Stdio},
+    time::{Duration, Instant},
+};
+
+struct Fixture {
+    root: PathBuf,
+    child: Option<Child>,
+}
+impl Drop for Fixture {
+    fn drop(&mut self) {
+        if let Some(child) = &mut self.child {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+        let _ = fs::remove_dir_all(&self.root);
+    }
+}
+
+#[test]
+fn stdio_instance_has_separate_management_and_preserves_protocol_output() {
+    let id = uuid::Uuid::new_v4();
+    let root = std::env::temp_dir().join(format!("prts-control-test-{id}"));
+    fs::create_dir(&root).unwrap();
+    #[cfg(unix)]
+    let endpoint = root.join("run/control.sock");
+    #[cfg(windows)]
+    let endpoint = PathBuf::from(format!(r"\\.\pipe\prts-mcp-test-{id}"));
+    let config = root.join("server.toml");
+    fs::write(
+        &config,
+        "schema_version=1\n[runtime]\nPRTS_TRANSPORT='stdio'\nHOST='fixture-host'\n",
+    )
+    .unwrap();
+    let mapping = root.join("instances.toml");
+    fs::write(
+        &mapping,
+        format!(
+            "schema_version=1\n[instances.main]\nendpoint='{}'\n",
+            endpoint.display()
+        ),
+    )
+    .unwrap();
+    let mut command = Command::new(env!("CARGO_BIN_EXE_prts-mcp"));
+    command
+        .env_clear()
+        .env("HOME", &root)
+        .env("USERPROFILE", &root)
+        .env("APPDATA", &root)
+        .env("XDG_DATA_HOME", &root)
+        .env("PRTS_CONTROL_ENDPOINT", &endpoint)
+        .env("GAMEDATA_PATH", "")
+        .env("STORYJSON_PATH", root.join("unused.zip"))
+        .env("IMAGES_ENABLED", "false")
+        .args(["--config"])
+        .arg(&config)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let mut fixture = Fixture {
+        root,
+        child: Some(command.spawn().unwrap()),
+    };
+    let query = |args: &[&str]| {
+        Command::new(env!("CARGO_BIN_EXE_prtsctl"))
+            .arg("runtime")
+            .args(args)
+            .arg("--instances-file")
+            .arg(&mapping)
+            .args(["-o", "json"])
+            .output()
+            .unwrap()
+    };
+    let deadline = Instant::now() + Duration::from_secs(10);
+    loop {
+        let out = query(&["status"]);
+        if out.status.success() {
+            let report: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+            assert_eq!(report["transport"], "stdio");
+            assert_eq!(report["instance"], "main");
+            break;
+        }
+        assert!(Instant::now() < deadline, "{out:?}");
+        std::thread::sleep(Duration::from_millis(25));
+    }
+    let out = query(&["config", "show"]);
+    assert!(out.status.success(), "{out:?}");
+    let report: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    let host = report["fields"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|f| f["key"] == "HOST")
+        .unwrap();
+    assert_eq!(host["value"], "fixture-host");
+    assert_eq!(host["source"], "file");
+    let mut child = fixture.child.take().unwrap();
+    let mut input = child.stdin.take().unwrap();
+    writeln!(input,r#"{{"jsonrpc":"2.0","id":1,"method":"initialize","params":{{"protocolVersion":"2025-03-26","capabilities":{{}},"clientInfo":{{"name":"control-test","version":"1"}}}}}}"#).unwrap();
+    drop(input);
+    let deadline = Instant::now() + Duration::from_secs(10);
+    while child.try_wait().unwrap().is_none() {
+        if Instant::now() > deadline {
+            let _ = child.kill();
+            panic!("stdio EOF did not stop server")
+        }
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    let out = child.wait_with_output().unwrap();
+    assert!(out.status.success(), "{out:?}");
+    for line in String::from_utf8(out.stdout).unwrap().lines() {
+        let value: serde_json::Value = serde_json::from_str(line).unwrap();
+        assert_eq!(value["jsonrpc"], "2.0");
+    }
+    #[cfg(unix)]
+    assert!(!endpoint.exists());
+}

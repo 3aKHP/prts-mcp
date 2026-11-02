@@ -114,3 +114,19 @@ Windows 当前目录中的原生程序使用 `.\prtsctl.exe`，Bash 使用 `./pr
 | `130` / `143` | 一次性同步被 Ctrl+C / SIGTERM 取消（适用平台） |
 
 这些退出码属于新管理命令；既有服务器入口保留原退出行为。`prtsctl` 一期不提供后台实例启停、热更新和数据删除命令。
+
+## 本机在线查询
+
+服务器显式设置 `PRTS_CONTROL_ENDPOINT` 后提供独立的本机管理通道，`PRTS_INSTANCE_NAME` 默认 `main`。Unix 使用绝对 socket 路径，父目录须属于服务用户且权限为 `0700`；Windows 使用 `\\.\pipe\prts-mcp-<name>` 命名管道。管理通道不占用 MCP 标准流，不沿用诊断 Token 的权限。
+
+CLI 默认读取用户配置目录中的 `instances.toml`，也可用 `--instances-file` 指定。实例映射不包含业务凭据：
+
+```toml
+schema_version = 1
+[instances.main]
+endpoint = "/run/prts-mcp-main/control.sock"
+unit = "prts-mcp.service"
+user = false
+```
+
+`prtsctl runtime status --instance main -o json` 查询实际运行状态；`runtime config show` 查看服务器配置快照；`runtime data status` 查看服务器当前数据视图。查询不自动启动实例。此阶段的在线接口只提供查询，服务生命周期和在线写操作由后续增量提供。

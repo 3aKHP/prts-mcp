@@ -114,3 +114,11 @@ For completion, write `prtsctl completion bash > prtsctl.bash` and run `source .
 | `130` / `143` | One-shot synchronization cancelled by Ctrl+C / SIGTERM where supported |
 
 These codes apply to new management commands. Existing server entries retain their exit behavior. Background instance management, hot reload and data deletion are outside this CLI release.
+
+## Local runtime queries
+
+Set `PRTS_CONTROL_ENDPOINT` on the server to enable local administration; `PRTS_INSTANCE_NAME` defaults to `main`. Unix endpoints require an absolute socket path inside a server-owned directory with mode `0700`; Windows uses a local named pipe named `\\.\pipe\prts-mcp-<name>`. The channel is separate from MCP streams and debug-token authorization.
+
+The CLI reads `instances.toml` beside its default user configuration, or the explicit `--instances-file`. Use `schema_version = 1` and an `[instances.main]` table containing the absolute `endpoint`, optional systemd `unit`, and boolean `user` scope. Mappings contain no credentials.
+
+`prtsctl runtime status --instance main -o json`, `runtime config show`, and `runtime data status` query the running server. They never start an instance. This increment provides read-only operations; lifecycle and online mutations follow separately.

@@ -10,6 +10,8 @@
 
 ### 新增
 
+- 新增显式启用的本机在线状态、配置和数据查询，通过 Unix socket 与 Windows named pipe 连接运行中实例。
+
 - 新增 `prtsctl`，提供 TOML 配置、前台启动、本地诊断、数据检查与校验、一次性同步，并支持稳定 JSON 输出和 Shell 补全。原服务器入口保持默认行为，新增帮助、版本和显式配置文件支持。详见[管理手册](docs/admin/cli.md)。
 
 - 准备 PyPI 原生发行：五平台 Wheel 复用已审计 Rust 程序，保留默认 stdio 的命令与 Python 模块入口，要求 Python >=3.11，不含备用游戏数据。当前仅构建和验证候选包，尚未发布至 PyPI。

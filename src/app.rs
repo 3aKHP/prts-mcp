@@ -282,6 +282,7 @@ pub enum HttpProfile {
 }
 
 pub struct App {
+    pub(crate) startup_report: Option<serde_json::Value>,
     pub config: Arc<RuntimeConfig>,
     pub data: Arc<DataState>,
     pub handle: AppHandle,
@@ -307,11 +308,48 @@ impl App {
         let data = Arc::new(DataState::new(Arc::clone(&config)));
         let handle = AppHandle::from_parts(Arc::clone(&data), &config);
         Ok(Self {
+            startup_report: None,
             handle,
             tools: Arc::new(registry_for(config.images_enabled)),
             config,
             data,
         })
+    }
+
+    async fn start_control(
+        &self,
+        transport: &'static str,
+    ) -> std::io::Result<Option<crate::control::server::Server>> {
+        if std::env::var_os("PRTS_CONTROL_ENDPOINT").is_none_or(|v| v.is_empty()) {
+            return Ok(None);
+        }
+        let mut report = self.startup_report.clone().unwrap_or_else(|| {
+            let env = std::env::vars_os()
+                .filter_map(|(k, v)| Some((k.into_string().ok()?, v.into_string().ok()?)))
+                .collect();
+            crate::cli::report::configuration(
+                &self.config,
+                transport,
+                None,
+                &env,
+                &Default::default(),
+                &Default::default(),
+            )
+        });
+        report["scope"] = serde_json::json!("runtime");
+        if let Some(fields) = report["fields"].as_array_mut() {
+            if let Some(field) = fields.iter_mut().find(|f| f["key"] == "PRTS_TRANSPORT") {
+                field["value"] = serde_json::json!(transport);
+            }
+        }
+        let name = std::env::var("PRTS_INSTANCE_NAME").unwrap_or_else(|_| "main".into());
+        crate::control::server::start(Arc::new(crate::control::server::State::new(
+            name,
+            transport,
+            report,
+            self.data.clone(),
+        )))
+        .await
     }
 
     /// Background sync tasks (startup cycle + retries + periodic loop).
@@ -340,6 +378,7 @@ impl App {
         }
         let runtime = builder.enable_all().build()?;
         runtime.block_on(async move {
+            let _control = self.start_control("http").await?;
             self.spawn_background_sync();
             let metrics = self.config.metrics_enabled.then(|| {
                 Arc::new(RuntimeMetrics::new(
@@ -398,7 +437,14 @@ impl App {
                     (port, line)
                 }
             };
-            http::run_http(shared, &host, bind_port, startup_line).await
+            http::run_http(
+                shared,
+                &host,
+                bind_port,
+                startup_line,
+                _control.as_ref().map(|c| c.ready.clone()),
+            )
+            .await
         })
     }
 
@@ -410,7 +456,19 @@ impl App {
         }
         let runtime = builder.enable_all().build().expect("tokio runtime builds");
         runtime.block_on(async move {
+            let _control = match self.start_control("stdio").await {
+                Ok(task) => task,
+                Err(error) => {
+                    crate::log_err(&format!("Local management startup failed: {error}"));
+                    return 1;
+                }
+            };
             self.spawn_background_sync();
+            if let Some(control) = &_control {
+                control
+                    .ready
+                    .store(true, std::sync::atomic::Ordering::Release);
+            }
             stdio::run_stdio(
                 self.handle,
                 (*self.tools).clone(),
