@@ -18,6 +18,7 @@
 | `docs/user/mcp-and-agent-basics.md` | 零基础新用户与创作者 | Agent 与 MCP 基础概念扫盲、运行模式对比、客户端选型建议与基本交互操作流程 |
 | `docs/user/quick-start.md` | MCP 客户端用户 | 各大 MCP 客户端接入配置、本地一键启动、输出通道与客户端常见问题 |
 | `docs/user/tools-guide.md` | 同人创作者与工具使用者、MCP 客户端集成者 | 24 个工具的场景化串联工作流、参数示例速查表、检索技巧与工具输出信任边界 |
+| `docs/admin/cli.md` | 服务端管理员与高级用户 | `prtsctl` 管理 CLI 命令、TOML 配置文件规则、一次性同步、JSON 机器输出与退出码契约 |
 | `docs/admin/deployment.md` | 服务端部署与运维管理员 | 独立 HTTP 服务部署、Docker 容器卷与权限加固、`systemd` 托管、生产升级与回滚 |
 | `docs/admin/data-and-sync.md` | 服务端部署与运维管理员 | 数据目录与代际结构、内置备用数据优先级、镜像/代理、离线挂载与全量立绘存储规划 |
 | `docs/admin/environment-variables.md` | 服务端管理员与高级用户 | 全部运行时环境变量、默认值、解析规则与路径推导逻辑 |
