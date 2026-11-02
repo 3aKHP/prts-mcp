@@ -77,8 +77,9 @@ where
 {
     let lock = lock_dir.join(lock_name);
     let owner = random_suffix();
-    let deadline = now_ms() + timing.timeout_ms;
+    let wait = super::control::Wait::new(Duration::from_millis(timing.timeout_ms));
     loop {
+        super::control::checkpoint().map_err(SyncError::Message)?;
         match std::fs::create_dir(&lock) {
             Ok(()) => break,
             Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists => {
@@ -116,7 +117,7 @@ where
                         Err(err) => return Err(err.into()),
                     }
                 }
-                if now_ms() >= deadline {
+                if wait.check().is_err() {
                     return Err(SyncError::Message(
                         ActivationLockTimeoutError(lock.display().to_string()).to_string(),
                     ));
@@ -127,6 +128,7 @@ where
         }
     }
 
+    drop(wait);
     let owner_path = lock.join("owner");
     if let Err(err) = std::fs::write(&owner_path, &owner) {
         let _ = std::fs::remove_dir_all(&lock);

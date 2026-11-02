@@ -5,11 +5,7 @@ use super::{
     activation::{with_archive_activation_lock, LockTiming},
     types::SyncError,
 };
-use std::{
-    future::Future,
-    path::Path,
-    time::{Duration, Instant},
-};
+use std::{future::Future, path::Path, time::Duration};
 
 pub async fn with_images_lock<T, F, Fut>(root: &Path, run: F) -> Result<T, SyncError>
 where
@@ -30,16 +26,12 @@ where
         .create(true)
         .truncate(false)
         .open(root.join(".images-writer.lock"))?;
-    let deadline = Instant::now() + Duration::from_millis(LockTiming::default().timeout_ms);
-    loop {
-        match lease.try_lock() {
-            Ok(()) => break,
-            Err(std::fs::TryLockError::WouldBlock) if Instant::now() < deadline => {
-                tokio::time::sleep(Duration::from_millis(50)).await;
-            }
-            Err(error) => return Err(SyncError::Message(format!("image writer lease: {error}"))),
-        }
-    }
+    super::control::lock_async(
+        &lease,
+        Duration::from_millis(LockTiming::default().timeout_ms),
+    )
+    .await
+    .map_err(SyncError::Message)?;
     let lease = std::sync::Arc::new(lease);
     let lock = root.join(".images.lock");
     let marker = lock.join("kernel-owner");

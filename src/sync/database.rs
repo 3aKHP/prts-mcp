@@ -36,8 +36,12 @@ pub async fn sync_with_source(
         .truncate(false)
         .open(root.join("sync.lock"))
         .map_err(|e| e.to_string())?;
-    lock.try_lock()
-        .map_err(|e| format!("SQLite sync locked: {e}"))?;
+    if super::control::current().is_some() {
+        super::control::lock_async(&lock, Duration::ZERO).await?;
+    } else {
+        lock.try_lock()
+            .map_err(|e| format!("SQLite sync locked: {e}"))?;
+    }
     let lock = Arc::new(lock);
     super::source_guard::ensure(root, source)?;
     io::clean_staging(root);
