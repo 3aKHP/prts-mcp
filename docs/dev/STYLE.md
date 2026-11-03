@@ -25,14 +25,19 @@
 
 ```text
 app.rs             ← 进程启动、配置加载与 DataState 编排
+cli/               ← prtsctl 管理 CLI、TOML 配置编辑、本地诊断/校验/同步与旧入口参数兼容
+control/           ← 本机运行期管理通道（Unix socket / Windows 命名管道）、systemd 协同、在线同步任务与配置热重载
 protocol/          ← stdio / Streamable HTTP 传输、JSON-RPC、协议时代与会话管理
 tools/             ← 24 个工具的 Schema 声明、参数校验、分发与输出通道包装
 domain/            ← 干员 / 敌人 / 关卡 / 物品 / 剧情 / 搜索 / 立绘等领域逻辑与缓存
-storage/           ← DirectoryStore / ZipStore 抽象、文件身份（FileIdentity）与代际解析
+storage/           ← DirectoryStore / ZipStore / SqliteStore 抽象、文件身份（FileIdentity）与代际解析
 sync/              ← GitHub Release 发现、下载、manifest/SHA-256 校验、跨进程锁与代际激活
 wiki/              ← PRTS MediaWiki API 客户端（搜索、页面解析、模板提取与图片拉取）
+diagnostics/       ← /debug/cache 与 /debug/metrics 指标聚合及 OS 常驻内存采样
 text/              ← 纯文本清洗、JS 数字/UTF-16 兼容处理与正则引擎封装
-config.rs          ← 命令行 Profile、启动路径与环境变量解析
+contracts/         ← AKDP 数据集与立绘元数据公共契约结构
+config.rs + config/← 命令行 Profile、启动路径、环境变量与自定义数据源解析
+launcher.rs        ← Windows 下 npm/PyPI 启动桥父进程句柄监听与联动退出
 native/ + vendor/  ← QuickJS libregexp 与 OS 进程内存统计的 C FFI 绑定
 ```
 
@@ -104,7 +109,7 @@ MCP 工具的 `description` 与参数 Schema 是 LLM 选择工具的核心依据
 
 ### `unsafe` 与原生 C 边界
 
-- 仓库中的 `unsafe` 限于已审查的原生边界：正则引擎绑定（`text/regex_compat.rs` + `native/regexp.c`）、进程内存统计（`diagnostics/` + `native/process_memory.c`）以及本机管理管道的 Windows 安全描述符封装（`control/windows.rs`）。
+- 仓库中的 `unsafe` 限于已审查的原生与 OS 系统调用边界：正则引擎绑定（`text/regex_compat.rs` + `native/regexp.c`）、进程内存统计（`diagnostics/` + `native/process_memory.c`）、本机管理通道的权限校验（`control/windows.rs` 的命名管道安全描述符与 `control/unix.rs` 的 `geteuid`）、Windows 启动桥父进程句柄监听（`launcher.rs`）以及 Windows 文件句柄唯一标识读取（`storage/identity.rs`）。
 - 每一处 `unsafe` 块必须注释说明指针有效性、缓冲区长度、生命周期与释放责任；严禁将裸指针泄露到高层业务模块。
 
 ### 标准流与进程生命周期
@@ -118,16 +123,17 @@ MCP 工具的 `description` 与参数 Schema 是 LLM 选择工具的核心依据
 
 ### 版本源与同步点
 
-版本语义与向后兼容承诺见 [`VERSIONING.md`](VERSIONING.md)。在 3.x 中，`Cargo.toml` 的 `[package].version` 是唯一的产品版本源，`Cargo.lock`、npm 包装包、Docker 镜像标签与 MCP `serverInfo.version` 均与其保持一致。
+版本语义与向后兼容承诺见 [`VERSIONING.md`](VERSIONING.md)。在 3.x 中，`Cargo.toml` 的 `[package].version` 是唯一的产品版本源，`Cargo.lock`、Cargo `.crate` 源码包、npm 包装包、PyPI 原生 Wheel（按 PEP 440 映射）、Docker 镜像标签与 MCP `serverInfo.version` 均与其保持一致。
 
 版本变更或发版时需同步检查以下位置：
 
 | 位置 | 维护内容 |
 | --- | --- |
 | `Cargo.toml` / `Cargo.lock` | 产品版本号与锁定依赖 |
+| `versions.json` 及登记文档 | 公开稳定版、开发版、LTS 补丁版本与 EOL 日期的一致性声明 |
 | `CHANGELOG.md` / `CHANGELOG.zh-CN.md` | 中英双语的用户可见变更记录与升级说明 |
 | `README.md` / `STATUS.*` / `ROADMAP.*` | 当前公开版本、候选版标签与阶段状态 |
-| 原生 / npm / Docker 打包产物 | 由同一干净 Commit 构建并校验版本一致性 |
+| 原生 / Cargo / npm / PyPI / Docker 打包产物 | 由同一干净 Commit 构建并校验版本一致性 |
 
 ### CHANGELOG 编写规则
 
@@ -166,4 +172,4 @@ MCP 工具的 `description` 与参数 Schema 是 LLM 选择工具的核心依据
 - **环境变量空值陷阱**：JSON 后端的 `GAMEDATA_PATH` 只要存在于进程环境中（哪怕值为空字符串）就会禁用游戏表与关卡自动同步；`STORYJSON_PATH` 设为非空值时禁用剧情自动同步。
 - **镜像与轮询语义**：`GITHUB_MIRRORS` 是直连失败后的回退前缀列表，而非“强制仅走镜像”；`PRTS_AUTO_SYNC_INTERVAL_SECONDS=0` 仅禁用后续定时轮询，启动时的首次同步检查仍会执行。
 - **跨进程锁机制**：共享数据卷上的同步锁 owner 是随机生成的不透明标识（而非 OS PID），依赖心跳与租约过期（lease）机制协调，切勿对正在运行的活跃数据卷手动删除锁文件或激活指针。
-- **管理入口与服务器入口分离**：`prtsctl` 无参数显示帮助，严格解析管理子命令；原有服务器入口保留无参数与未知参数兼容行为，新增帮助、版本和显式配置文件。只读命令不得构造 App 或调用会写入数据源标记、准入缓存的启动流程。详见[管理 CLI](../admin/cli.md)。
+- **管理入口与服务器入口分离**：`prtsctl` 无参数显示帮助，严格解析管理子命令；原有服务器入口保留无参数与未知参数兼容行为，新增帮助、版本和显式配置文件。只读命令不得构造 `App` 或调用会写入数据源标记、准入缓存的启动流程。详见[管理 CLI](../admin/cli.md)。

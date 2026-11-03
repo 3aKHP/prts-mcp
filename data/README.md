@@ -8,11 +8,12 @@
 
 | 子目录 | 对应归档包与内容 | 主要用途 |
 | --- | --- | --- |
-| `gamedata/` | `zh_CN-excel.zip` 及其解压后的 JSON 表格 | 干员基础档案、语音、敌方图鉴、关卡索引、物品材料、基建技能、时装与战斗技能等数据。 |
-| `gamedata-levels/` | `zh_CN-levels.zip` 及其解压内容 | 关卡战斗详细数据、敌方关卡级属性覆盖与实际刷怪波次。 |
-| `storyjson/` | `zh_CN.zip` | 剧情对话正文、章节梗概及包内索引（服务端直接从 ZIP 按需流式读取，无需预先解压全量文本）。 |
+| `database/`（用户数据根下） | `zh_CN.sqlite.gz` 解压后的受管 SQLite 数据库（3.2 起默认后端） | 聚合存放干员、技能、敌方、关卡、物品与剧情索引等结构化表；未显式设置后端时，首次校验完成前自动使用下方 JSON 备用数据。 |
+| `gamedata/` | `zh_CN-excel.zip` 及其解压后的 JSON 表格 | 干员基础档案、语音、敌方图鉴、关卡索引、物品材料、基建技能、时装与战斗技能等 JSON 数据（JSON 后端或默认 SQLite 的首次备用源）。 |
+| `gamedata-levels/` | `zh_CN-levels.zip` 及其解压内容 | 关卡战斗详细数据、敌方关卡级属性覆盖与实际刷怪波次（JSON 后端或默认 SQLite 的首次备用源）。 |
+| `storyjson/` | `zh_CN.zip` | 剧情对话正文、章节梗概及包内索引（JSON 后端或默认 SQLite 备用期间直接从 ZIP 按需流式读取，无需预先解压全量文本）。 |
 
-同步过程中生成的 `archives/`、`.releases/`、`release_meta.json`、`extract_meta.json`、`.gamedata_pair.json` 及锁文件均为本地同步状态元数据，已被 `.gitignore` 忽略。干员立绘资产不在本目录下设占位目录，而是根据 `LOCAL_IMAGE` 与 `PRTS_IMAGE_DIR` 配置单独存放在用户数据目录的 `images/` 下或按需从 PRTS MediaWiki 获取。
+同步过程中生成的 `archives/`、`.releases/`、`release_meta.json`、`extract_meta.json`、`.gamedata_pair.json`、`database/` 下的 `active` / `previous` / `.verified.json` 及锁文件均为本地同步状态元数据，已被 `.gitignore` 忽略。干员立绘资产不在本目录下设占位目录，而是根据 `LOCAL_IMAGE` 与 `PRTS_IMAGE_DIR` 配置单独存放在用户数据目录的 `images/` 下或按需从 PRTS MediaWiki 获取。
 
 ## 从源码运行时的默认路径
 
@@ -22,14 +23,14 @@
 - **Windows**：`%LOCALAPPDATA%\prts-mcp`（若未设置 `LOCALAPPDATA`，则回退至用户目录下的 `AppData\Local\prts-mcp`）
 - **Docker 容器**：`/data`
 
-> **注意**：若显式设置了 `GAMEDATA_PATH`（哪怕赋值为空）会立即禁用游戏表与关卡的自动同步；设置了非空 `STORYJSON_PATH` 会禁用剧情自动同步。因此，请勿将尚未同步完整的空目录设为自定义数据路径。详细规则见[环境变量参考](../docs/admin/environment-variables.md)与[数据同步管理](../docs/admin/data-and-sync.md)。
+> **注意**：在 JSON 后端下，只要显式设置了 `GAMEDATA_PATH`（哪怕赋值为空字符串）就会立即禁用游戏表与关卡的自动同步，且在未设置 `PRTS_DATA_BACKEND` 时指定非空 `GAMEDATA_PATH` 或 `STORYJSON_PATH` 会自动切回 JSON 后端；设置了非空 `STORYJSON_PATH` 会禁用剧情自动同步，设置了非空 `PRTS_DATA_DB` 会选择只读 SQLite 并禁用游戏数据自动同步。因此，请勿将尚未同步完整的空目录设为自定义数据路径。详细规则见[环境变量参考](../docs/admin/environment-variables.md)与[数据同步管理](../docs/admin/data-and-sync.md)。
 
 ## 正式发行物的内置备用数据
 
 公开发布的 3.x 原生归档包、npm 包（通过共享的 `@3akhp/prts-mcp-data`）与 Docker 镜像均内置了一份经过完整校验的只读备用游戏数据（由 `packaging/npm/data-release.json` 固定上游 Release 与 SHA-256，经 `node tools/npm/prepare-data.mjs` 与 `examples/package_data.rs` 校验打包）。
 
-- **备用与优先规则**：当用户数据目录为空且首次同步尚未完成（或网络不可用）时，服务自动回退读取内置备用数据；一旦用户数据目录中存在完整的同步数据，服务始终优先读取用户数据，且后台同步只写入可写的用户目录，绝不修改安装目录内的备用数据。
-- **Cargo 源码包**：`cargo package` 生成的源码包不包含体积庞大的游戏数据，从源码构建的安装依赖启动后自动同步或显式指定本地数据路径。
+- **备用与优先规则**：当用户数据目录为空且首次同步尚未完成（或网络不可用）时，服务自动回退读取内置 JSON 备用数据；一旦用户数据目录中存在完整的同步数据（默认 SQLite 后端下为已验收的数据库，JSON 后端下为完整的用户数据目录），服务始终优先读取用户数据，且后台同步只写入可写的用户目录，绝不修改安装目录内的备用数据。
+- **Cargo 源码包与 PyPI 原生 Wheel**：`cargo package` 生成的源码包以及 3.2.2+ 的五平台 PyPI Wheel 不包含体积庞大的游戏数据，安装后依赖启动时自动同步或显式指定本地数据路径。
 - **版权与许可**：第三方游戏数据与 Wiki 内容的知识产权声明见根目录 [NOTICE](../NOTICE)。
 
 ## 本地数据维护提示

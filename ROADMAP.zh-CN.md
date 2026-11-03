@@ -1,6 +1,8 @@
 # PRTS-MCP 路线图
 
-当前公开稳定版为 `3.2.1`，服务端已统一为单一的原生 Rust 实现，并完整保留 TS/v2.8.1 的产品与工具契约；主开发分支 `develop` 继续推进（`3.2.2-dev.0`）。[English](ROADMAP.md)。
+[English](ROADMAP.md)
+
+当前公开稳定版为 `3.2.2`，服务端已统一为单一的原生 Rust 实现，并完整保留 TS/v2.8.1 的产品与工具契约；主开发分支 `develop` 继续推进（`3.2.3-dev.0`）。
 
 ## 3.2 — 默认 SQLite 与 v2 图片
 
@@ -32,9 +34,9 @@
 
 3.0 阶段专注于 Rust 技术栈统一与分发渠道平滑切换。新功能与工具扩展均安排在 3.0.0 正式发布之后，按每次一个主题逐步推进：
 
-- **PyPI 原生发行**：候选 Wheel 打包、安装验证与最小 CLI 已就绪，首次上架待正式发版并启用发布渠道。要求 Python >=3.11，不含备用游戏数据。
-- **上架 crates.io（3.2.1）**：已实现源码安装与带条件校验的发布流程。首次注册使用维护者 Token，后续 OIDC 需配置 Trusted Publisher，见[候选发行流程](docs/dev/RELEASE-CANDIDATES.md#5-cargo-源码发行)。
-- **管理 CLI（3.2.2 开发中）**：`prtsctl` 提供配置、诊断和一次性数据操作，支持文本/JSON 输出，保持旧服务器入口兼容。详见[CLI 手册](docs/admin/cli.md)。同轮加入 systemd 生命周期管理、本机在线查询、同步任务和白名单配置重载；独立守护进程仍后置。
+- **PyPI 原生发行**：3.2.2 随管理 CLI 提供五平台原生 Wheel 与 OIDC 发布。要求 Python >=3.11，不含备用游戏数据。
+- **上架 crates.io（3.2.1）**：已实现源码安装与带条件校验的发布流程。首次注册使用维护者 Token，3.2.2 使用已配置的 OIDC Trusted Publisher，见[候选发行流程](docs/dev/RELEASE-CANDIDATES.md#5-cargo-源码发行)。
+- **管理 CLI（3.2.2）**：`prtsctl` 提供配置、诊断和一次性数据操作，支持文本/JSON 输出，保持旧服务器入口兼容。详见[CLI 手册](docs/admin/cli.md)。同轮加入 systemd 生命周期管理、本机在线查询、同步任务和白名单配置重载；独立守护进程仍后置。
 - **新工具与数据域扩展**：公开招募标签反查、干员模组数据、技能专精/升级材料消耗、攻击范围形状等。
 - **数据容灾与 AKDP 协同**：多源对象存储备份镜像及图片分片进一步优化。
 
@@ -53,7 +55,7 @@
 已于 2026-05-28 发布。发布详情见 [项目 CHANGELOG](CHANGELOG.zh-CN.md)。
 
 **关卡跨源融合**
-- `get_stage_enemies(stage_id)` — 该关卡出现的敌人 + **关卡级数值** （而非 `get_enemy_info` 返回的 level-0 默认值）。
+- `get_stage_enemies(stage_id)` — 该关卡出现的敌人 + **关卡级数值**（而非 `get_enemy_info` 返回的 level-0 默认值）。
 - `get_enemy_appearances(name)` — 反向查询：该敌人出现在哪些关卡。
 - `get_enemy_info(name)` 增加可选 `stage_id` 参数，返回该关卡下的具体数值变体。
 
@@ -108,7 +110,7 @@
 2.0 收窄但未取消两套实现之间事实上的角色分工。**已在 2.0 交付**：
 
 - npm 包和 PyPI 包的**能力面对等**——相同的 23 个工具名、参数、structuredContent 载荷，以及跨实现共享的 parity fixture。
-- 环境变量名称和默认值统一（`PRTS_OUTPUT_CHANNEL`、`GAMEDATA_PATH`、`STORYJSON_PATH`、 `GITHUB_TOKEN`、`GITHUB_MIRRORS`）。
+- 环境变量名称和默认值统一（`PRTS_OUTPUT_CHANNEL`、`GAMEDATA_PATH`、`STORYJSON_PATH`、`GITHUB_TOKEN`、`GITHUB_MIRRORS`）。
 
 **跨传输协议同步——已于 2.3.0 交付。** 原目标“两套实现都同时支持 stdio **和** Streamable HTTP”（Python 上 HTTP、TypeScript 上 stdio）曾后置到 2.0 之后，已在 2.3.0 交付。Python 经 `PRTS_TRANSPORT` 选择传输（stdio 默认 | http）；TypeScript 经 bin 选择（`prts-mcp-ts`[-bun] = HTTP，`prts-mcp-ts-stdio` = stdio）。自 2.3.0 起部署推荐为“按场景选择，而非按语言”。
 

@@ -32,8 +32,8 @@ PRTS-MCP maintains two legacy long-term support (LTS) lines alongside the 3.x Ru
 
 | Branch | Purpose |
 |--------|---------|
-| `main` | Latest public stable release line (native Rust `3.2.1`). |
-| `develop` | Active 3.x Rust integration branch (`3.2.2-dev.0`). Does not contain `python/` or `ts/` directories. |
+| `main` | Latest public stable release line (native Rust `3.2.2`). |
+| `develop` | Active 3.x Rust integration branch (`3.2.3-dev.0`). Does not contain `python/` or `ts/` directories. |
 | `lts/2.8` | Long-term 2.8.x Python/TypeScript maintenance branch, forked from the `2.8.1` release commit. |
 | `lts/1.7` | Long-term 1.7.x Python/TypeScript maintenance branch, forked from the `1.7.0` release commit. |
 
@@ -95,7 +95,7 @@ To prevent 2.8 maintenance releases from overwriting 3.x stable tags after cutov
 | **npm (`prts-mcp-ts`)** | Publishes with `--tag lts-2.8`; never updates `latest` or `lts-1.7`. |
 | **GHCR (`ghcr.io/3akhp/prts-mcp`)** | Publishes `:2.8.x` and `:2`; never updates `:latest` or `:3`. |
 | **GitHub Releases** | Publishes `python/v2.8.x` and `ts/v2.8.x` releases with `make_latest: false`. |
-| **PyPI (`prts-mcp`)** | Publishes `2.8.x` Python packages (3.x does not publish to PyPI; users can pin `'prts-mcp>=2.8,<2.9'`). |
+| **PyPI (`prts-mcp`)** | Publishes `2.8.x` Python packages; users staying on 2.8 LTS should pin `'prts-mcp>=2.8,<2.9'` (3.2.2+ provides 3.x native Rust wheels for `prts-mcp>=3,<4`). |
 
 Downstream users who wish to stay on the 2.8 maintenance line can pin:
 

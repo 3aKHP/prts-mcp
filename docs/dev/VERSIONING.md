@@ -52,7 +52,7 @@
      3. 技术上可行时，先将旧参数/别名标记为 `Deprecated` 并保留至少一个过渡 Minor 版本，再行移除。
 
 3. **Major 大版本升级**：
-   - 允许对公共契约或运行架构做不兼容调整，并须提供迁移指南（例如 2.0 将 32 个工具收敛为 23 个；3.0 将双语言实现统一为原生 Rust 并移除 PyPI 发布渠道）。
+   - 允许对公共契约或运行架构做不兼容调整，并须提供迁移指南（例如 2.0 将 32 个工具收敛为 23 个；3.0 将双语言实现统一为原生 Rust）。
 
 > **版本编排惯例**：虽然新增工具属于纯增量兼容变更（在 Patch 中发布亦不违背承诺），但由于 `README.md` 与测试套件均锚定了工具总数，新增公共工具通常优先安排在 **Minor** 版本发布。
 
@@ -65,9 +65,9 @@
 - **三段式 SemVer**：`Major.Minor.Patch`（例如 `3.0.0`）。
 - **预发布后缀**：Git tag、`Cargo.toml` 与 `package.json` 统一使用连字符形式：`-alpha.N`、`-beta.N`、`-rc.N`（例如 `3.0.0-alpha.3`）。
   - *注：在 `lts/1.7` 与 `lts/2.8` 旧线中，`python/pyproject.toml` 遵循 PEP 440 格式（如 `2.6.0a1`），旧线 CD 会自动将 tag 中的 `-alpha.` 归一化为 `a` 后比对。*
-- **3.x 单一版本源**：在 3.x Rust 工程中，`Cargo.toml` 是唯一版本源，`Cargo.lock`、9 个 npm 包、Docker 镜像与 MCP `serverInfo.version` 必须严格一致。3.x 发布使用裸版本 tag（`v3.x.y` 或 `v3.x.y-alpha.N`）；旧线继续使用成对前缀 tag（`python/v2.8.x` + `ts/v2.8.x`）。
-- **PyPI 版本表示**：原生 Wheel 从同一 Cargo 产品版本生成 PEP 440 元数据，例如 `3.2.2-rc.1` → `3.2.2rc1`、本地开发包 `3.2.2-dev.0` → `3.2.2.dev0`。MCP `serverInfo.version` 与 BUILD 仍保留原始产品版本；按映射关系校验，不另建渠道版本。开发包不公开发布。
-- **开发分支版本后缀**：`develop` 分支上的版本号始终设为**下一计划发布的目标版本 + `-dev.0`**（当前为 `3.2.2-dev.0`；旧线 Python 对应 `.dev0`）。
+- **3.x 单一版本源**：在 3.x Rust 工程中，`Cargo.toml` 是唯一版本源，`Cargo.lock`、Cargo `.crate` 源码包、9 个 npm 包、5 个 PyPI 原生 Wheel（按 PEP 440 映射）、Docker 镜像与 MCP `serverInfo.version` 必须严格一致。3.x 发布使用裸版本 tag（`v3.x.y` 或 `v3.x.y-alpha.N`）；旧线继续使用成对前缀 tag（`python/v2.8.x` + `ts/v2.8.x`）。
+- **PyPI 版本表示**：原生 Wheel 从同一 Cargo 产品版本生成 PEP 440 元数据（例如 `3.2.2-rc.1` → `3.2.2rc1`，本地开发包 `3.2.2-dev.0` → `3.2.2.dev0`），而 MCP `serverInfo.version` 与 `BUILD.json` 仍保留原始产品版本字符串；发布校验按该映射关系核对，不另建独立的渠道版本号，开发包不公开发布。
+- **开发分支版本后缀**：`develop` 分支上的版本号始终设为**下一计划发布的目标版本 + `-dev.0`**（当前为 `3.2.3-dev.0`；旧线 Python 对应 `.dev0`）。
 - **Patch 是日常累积更新的常规载体**：非紧急的缺陷修复、性能优化和小型兼容增补一律合入 `develop` 累积，随常规 Patch 版本发布；只有命中 [`WORKFLOW.md`](WORKFLOW.md) Hot-Fix 紧急修复标准的变更才走直通 `main` 的 Hot-Fix 流程。
 
 ### 发布回灌后的 `develop` 版本号推进规则
@@ -80,7 +80,7 @@
 | `develop` 正在开发 `3.1.0-dev.0`，期间 `main` 发布了 `3.0.1` Hot-Fix | 保持 `3.1.0-dev.0` 不变 |
 | `develop` 处于 `3.0.1-dev.0`，期间 `main` 紧急发布了 `3.0.1` Hot-Fix | 顺延推进为 `3.0.2-dev.0` |
 
-> **3.0 过渡期特别说明**：在 3.0.0 正式发布（M5）前，`main` 仍停留在 `2.8.1`。若期间 2.x 发生 Hot-Fix，修复合并至 `main` 与 `lts/2.8` 后，适用部分在 `develop` 的 Rust 代码中单独移植实现，绝不将 2.x 分支直接 merge 进 `develop`。
+> **跨版本线移植说明**：若 `lts/2.8` 或 `lts/1.7` 上的修复同样适用于 3.x，必须在 `develop` 的 Rust 代码中单独实现并验证，绝不将旧维护分支直接 merge 进 `develop`。
 
 ### 版本号唯一声明与漂移防护
 

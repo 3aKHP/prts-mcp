@@ -5,7 +5,7 @@ branch: "develop"
 
 # CLAUDE.md — AI 协作者说明
 
-PRTS-MCP 的 3.x 开发线是位于仓库根目录的原生 Rust 工程，业务行为与工具契约严格对齐冻结的 TS/v2.8.1 基线。当前公开稳定版为原生 Rust `3.2.1`；2.8.x 与 1.7.x 的 Python/TypeScript 实现分别在 `lts/2.8` 与 `lts/1.7` 分支维护，两线 EOL 均为 **2027-07-02**。
+PRTS-MCP 的 3.x 开发线是位于仓库根目录的原生 Rust 工程，业务行为与工具契约严格对齐冻结的 TS/v2.8.1 基线。当前公开稳定版为原生 Rust `3.2.2`；2.8.x 与 1.7.x 的 Python/TypeScript 实现分别在 `lts/2.8` 与 `lts/1.7` 分支维护，两线 EOL 均为 **2027-07-02**。
 
 ## 1. 必读文档导航
 
@@ -23,8 +23,8 @@ PRTS-MCP 的 3.x 开发线是位于仓库根目录的原生 Rust 工程，业务
 | CD 发布故障排查与重跑恢复 | [`docs/dev/RELEASE-CD-RECOVERY.md`](docs/dev/RELEASE-CD-RECOVERY.md) |
 | 全量 E2E 真机测试流程 | [`docs/dev/E2E.md`](docs/dev/E2E.md) |
 | 量化对照实验与贡献者私有环境配置 | [`docs/dev/COMPARATIVE-EVALUATION.md`](docs/dev/COMPARATIVE-EVALUATION.md) |
-| 客户端接入与工具使用工作流 | [`docs/user/quick-start.md`](docs/user/quick-start.md) · [`docs/user/tools-guide.md`](docs/user/tools-guide.md) |
-| 服务端部署、数据同步、环境变量与监控排障 | [`docs/admin/deployment.md`](docs/admin/deployment.md) · [`docs/admin/data-and-sync.md`](docs/admin/data-and-sync.md) · [`docs/admin/environment-variables.md`](docs/admin/environment-variables.md) · [`docs/admin/diagnostics-and-troubleshooting.md`](docs/admin/diagnostics-and-troubleshooting.md) |
+| 客户端接入与工具使用工作流 | [`docs/user/mcp-and-agent-basics.md`](docs/user/mcp-and-agent-basics.md) · [`docs/user/quick-start.md`](docs/user/quick-start.md) · [`docs/user/tools-guide.md`](docs/user/tools-guide.md) |
+| 服务端管理 CLI、部署、数据同步、环境变量与监控排障 | [`docs/admin/cli.md`](docs/admin/cli.md) · [`docs/admin/deployment.md`](docs/admin/deployment.md) · [`docs/admin/data-and-sync.md`](docs/admin/data-and-sync.md) · [`docs/admin/environment-variables.md`](docs/admin/environment-variables.md) · [`docs/admin/diagnostics-and-troubleshooting.md`](docs/admin/diagnostics-and-troubleshooting.md) |
 | 历史架构演进与技术复盘档案（1.0–3.0） | [`docs/archive/README.md`](docs/archive/README.md) |
 | 2.x → 3.0 升级迁移、项目状态、路线图与全仓文档目录 | [`docs/migration-2.x-to-3.0.md`](docs/migration-2.x-to-3.0.md) · [`STATUS.zh-CN.md`](STATUS.zh-CN.md) · [`ROADMAP.zh-CN.md`](ROADMAP.zh-CN.md) · [`docs/README.md`](docs/README.md) |
 | 项目术语与缩写的统一解释 | [`docs/glossary.md`](docs/glossary.md) |
@@ -71,8 +71,8 @@ PRTS-MCP 的 3.x 开发线是位于仓库根目录的原生 Rust 工程，业务
 
 | 分支 | 定位 | 版本与发布规则 |
 | --- | --- | --- |
-| `main` | 公开稳定版分支（当前为 `3.2.1`） | 承载最新正式版；自 M5 发布 `3.0.0` 起为 Rust 主线，正式版 tag 推进 `latest` 标签。 |
-| `develop` | 3.x Rust 开发集成分支（当前为 `3.2.2-dev.0`） | 根目录 Cargo 工程，不包含 `python/` 或 `ts/` 目录；日常功能与修复在此集成。 |
+| `main` | 公开稳定版分支（当前为 `3.2.2`） | 承载最新正式版；自 M5 发布 `3.0.0` 起为 Rust 主线，正式版 tag 推进 `latest` 标签。 |
+| `develop` | 3.x Rust 开发集成分支（当前为 `3.2.3-dev.0`） | 根目录 Cargo 工程，不包含 `python/` 或 `ts/` 目录；日常功能与修复在此集成。 |
 | `lts/2.8` | 2.8.x Python/TypeScript 长期维护线 | 使用 `python/v2.8.x` + `ts/v2.8.x` 成对 tag，发布至 npm `lts-2.8` 与 Docker `:2`，不更新 `latest`；EOL 为 `2027-07-02`。 |
 | `lts/1.7` | 1.7.x Python/TypeScript 长期维护线 | 使用 `python/v1.7.x` + `ts/v1.7.x` 成对 tag；EOL 为 `2027-07-02`。 |
 
@@ -102,7 +102,7 @@ Standard PR 及以上级别的改动采用**“远端 KHPilot Bot + 本地独立
 ## 6. 标准迭代路径（A–F）
 
 ### 路径 A：常规开发与修复（目标：`develop`）
-1. 查阅 `STATUS.zh-CN.md` 与 `ROADMAP.zh-CN.md`，从 `develop` 创建 `<type>/v3.0.1-<topic>` 短分支。
+1. 查阅 `STATUS.zh-CN.md` 与 `ROADMAP.zh-CN.md`，从 `develop` 创建 `<type>/v<version>-<topic>` 短分支（例如 `feat/v3.2.2-<topic>`）。
 2. 完成代码或文档修改；若涉及用户可见行为变化，同步更新权威文档与中英文 `CHANGELOG` 的 `Unreleased` 段落。
 3. 按 [`WORKFLOW.md`](docs/dev/WORKFLOW.md) 最小验证矩阵执行本地验证（如 `./scripts/check-runtime.sh --full`）。
 4. 推送分支并打开 PR 至 `develop`（写明 Summary、Test plan、未尽事宜及 `Closes #<issue>` / `Refs #<issue>`）。
@@ -125,5 +125,5 @@ Standard PR 及以上级别的改动采用**“远端 KHPilot Bot + 本地独立
 ### 路径 E：既有 LTS 分支发版
 按 `lts/2.8` 或 `lts/1.7` 分支内的发版流程更新双端版本号与 CHANGELOG，合并后推送成对的 `python/v*` 与 `ts/v*` tag（切勿使用 `git push --tags` 一次性乱推本地所有标签）。
 
-### 路径 F：3.0 过渡期预发布（`release/v3.x.y-alpha.N`）
-在 M5 正式切换 `main` 之前，从已审查的 `develop` 快照拉出 `release/v3.x.y-alpha.N`（或 `beta.N` / `rc.N`）短分支，将 `Cargo.toml` 与 `Cargo.lock` 设为对应预发布版本，通过 PR 完成独立审查与完整五平台 CI 后，直接在该远端发布分支的提交上打 `v3.x.y-alpha.N` tag 触发 [`release-rust.yml`](.github/workflows/release-rust.yml) 发布至 npm `@next`、GHCR 与 GitHub Prerelease（保持 `main` 与 `latest` 稳定标签不变）。
+### 路径 F：3.x 预发布（`release/v3.x.y-alpha.N` / `beta.N` / `rc.N`）
+当需要发布不推进 `main` 稳定标签的 3.x 候选版本时，从已审查的 `develop` 快照拉出 `release/v3.x.y-alpha.N`（或 `beta.N` / `rc.N`）短分支，将 `Cargo.toml` 与 `Cargo.lock` 设为对应预发布版本，通过 PR 完成独立审查与完整五平台 CI 后，直接在该远端发布分支的提交上打 `v3.x.y-alpha.N` tag 触发 [`release-rust.yml`](.github/workflows/release-rust.yml) 发布至 npm `@next`、GHCR 与 GitHub Prerelease（保持 `main` 与 `latest` 稳定标签不变）。

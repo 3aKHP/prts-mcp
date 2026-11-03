@@ -7,7 +7,7 @@
 - 全部运行时配置项字典与解析规则见[运行时环境变量完整参考](environment-variables.md)。
 - 运行中实例的 `/health` 与 `/debug/*` 在线诊断见[监控诊断与故障排查手册](diagnostics-and-troubleshooting.md)。
 
-> **版本可用性说明**：`prtsctl` 随开发中的 `3.2.2` 版本提供；公开稳定版中实际可用的命令与参数请以所安装版本的 `--help` 输出为准。
+> **版本可用性说明**：`prtsctl` 自 `3.2.2` 起提供；公开稳定版中实际可用的命令与参数请以所安装版本的 `--help` 输出为准。
 
 ---
 
@@ -46,7 +46,7 @@ prtsctl serve
 | --- | --- |
 | **预编译原生归档包** | 解压后位于 `bin/prtsctl`（Windows 下为 `bin\prtsctl.exe`），无运行时依赖。 |
 | **npm 包（`prts-mcp`）** | 全局安装主包后可直接运行 `prtsctl`；项目本地安装后使用 `npx prtsctl` 或 `node_modules/.bin/prtsctl`。临时调用可执行 `npx --yes --package prts-mcp prtsctl --help`（需目标发布渠道已包含 `3.2.2+`，预发布阶段可指定 `prts-mcp@next`）。 |
-| **PyPI Wheel（`prts-mcp`）** | 安装后直接提供 `prtsctl` 命令入口。 |
+| **PyPI Wheel（`prts-mcp`）** | 安装 `3.2.2+` 原生 Wheel 后直接提供 `prtsctl` 命令入口（旧 `2.8.x` LTS 不含 `prtsctl`）。 |
 | **Cargo 源码安装** | 默认 `cargo install prts-mcp --locked` 会一并安装 `prtsctl`；若仅需安装管理 CLI，可执行 `cargo install prts-mcp --locked --bin prtsctl`。 |
 | **Docker 容器镜像** | 通过覆盖入口点调用：`docker run --rm --entrypoint /app/bin/prtsctl <image> --help`。检查或操作生产数据时，请挂载相同的数据卷（如 `-v prts-data:/data`）并传入一致的环境变量。 |
 
@@ -54,11 +54,11 @@ prtsctl serve
 
 引入 `prtsctl` 后，原有的 `prts-mcp`、`prts-mcp-ts*` 与 Docker 默认入口 `prts-mcp-ghcr` **保持无参数启动行为不变**，现有部署与客户端配置无需迁移：
 
-- **新增通用参数**：原有服务器入口均新增 `--help`、`--version` 以及显式指定配置文件的 `--config <path>`。
+- **新增通用参数**：原有服务器入口均新增 `-h` / `--help`、`-V` / `--version` 以及显式指定配置文件的 `--config <path>`。
 - **不自动加载用户配置文件**：为避免安装新版本或创建用户级配置文件后悄然改变既有部署行为，原有服务器入口**只有在显式传入 `--config <path>` 时**才会读取 TOML 配置文件；仅 `prtsctl` 会自动读取默认用户路径下的 `config.toml`。
 - **默认传输模式与进程托管**：
   - `prtsctl serve` 在所有发行渠道下默认启动 **Streamable HTTP**；若作为 MCP 客户端的 `stdio` 子进程运行，请使用 `prtsctl serve --transport stdio`（此时标准输入输出专用于 MCP 协议通信）。
-  - 原生与 npm 主入口（`prts-mcp`）默认 HTTP；PyPI 与 Docker 服务器入口默认 `stdio`；`prts-mcp-ts` / `prts-mcp-ts-bun`（固定 HTTP）与 `prts-mcp-ts-stdio`（固定 `stdio`）保持各自固定传输模式。
+  - 原生、Cargo 与 npm 主入口（`prts-mcp`）默认 HTTP；PyPI（`3.2.2+`）与 Docker 服务器入口默认 `stdio`；`prts-mcp-ts` / `prts-mcp-ts-bun`（固定 HTTP）与 `prts-mcp-ts-stdio`（固定 `stdio`）保持各自固定传输模式。
   - `prtsctl serve` 始终在当前前台进程运行，不会自行转入后台守护进程；进程保活与生命周期仍由 MCP 客户端、Docker 或 `systemd` 等服务管理器负责。
 
 ---
@@ -79,16 +79,17 @@ prtsctl serve
 | `data verify` | 按当前生效的数据后端与立绘配置，对本地 SQLite、JSON/剧情 ZIP 或立绘分片执行完整校验 |
 | `data sync [--target game\|images\|all] [--wait-timeout <seconds>]` | 执行一次性同步并退出，不启动周期性后台轮询 |
 | `serve [--transport http\|stdio] [--host <address>] [--port <number>]` | 在当前进程中显式启动 MCP 服务器 |
-| `service status/start/stop/restart/enable/disable` | 通过 systemd 管理显式 unit 或实例映射中的服务；支持系统级与用户级服务 |
-| `service template` | 输出单元模板，由管理员安装 |
-| `runtime status`、`runtime data status` | 通过本机管理端点查询运行中实例与实际数据视图 |
-| `runtime config show/diff/reload` | 查看运行时配置、比较候选文件，并按 revision 原子重载允许字段 |
-| `runtime data sync`、`runtime jobs list/show/cancel` | 提交、查询或取消在线同步任务 |
+| `service [--instance <name>] [--instances-file <path>] [--unit <unit>] [--user] [--timeout <seconds>] <status\|start\|stop\|restart\|enable\|disable>` | 通过 `systemd` 管理显式 unit 或实例映射中的服务；支持系统级与用户级（`--user`）服务 |
+| `service template --config <path> --executable <path> --data-home <path> [--account <user> \| --user] [--instance <name>]` | 生成 `systemd` 服务单元模板，供管理员安装至系统或用户目录 |
+| `runtime [--instance <name>] [--instances-file <path>] <status \| data status>` | 通过本机管理端点查询运行中实例状态与实际数据视图 |
+| `runtime [--instance <name>] [--instances-file <path>] config <show \| diff \| reload --expected-revision <n>>` | 查看运行时配置快照、对比候选文件差异，并按 revision 原子重载白名单字段 |
+| `runtime [--instance <name>] [--instances-file <path>] data sync [--target game\|images\|all] [--wait-timeout <seconds>]` | 向运行中实例提交异步在线同步任务并返回任务 ID |
+| `runtime [--instance <name>] [--instances-file <path>] jobs <list \| show <job_id> \| cancel <job_id>>` | 列出、查看或请求取消运行中实例的在线同步任务 |
 | `completion <bash\|zsh\|powershell>` | 向标准输出打印对应 Shell 的命令补全脚本，供用户按需加载 |
 
 ### 2.2 全局选项与参数解析规则
 
-- **共享选项**：`--config <path>` 适用于包括 `serve` 在内的所有读取业务配置的子命令；`--output text|json`（简写为 `-o`）适用于各管理检查、配置与同步子命令（`serve` 不接受 `--output`，`completion` 忽略该选项并直接输出补全脚本）。这两个全局选项均可放在子命令之前或之后。
+- **共享选项**：`--config <path>` 适用于包括 `serve` 在内的所有读取本地业务配置的子命令；`--output text|json`（简写为 `-o`）适用于各管理检查、配置、同步、`service`（含 `service template`）与 `runtime` 子命令（`serve` 不接受 `--output`，`completion` 忽略该选项并直接输出补全脚本）。全局选项均可放在子命令之前或之后。
 - **参数语法**：所有选项与子命令名称均区分大小写，不支持长选项自动前缀缩写；带值选项同时支持 `--name value` 和 `--name=value` 两种写法，使用 `--` 可显式终止选项解析。
 - **零副作用保证**：`--help`、`--version` 与 `completion` 不读取任何业务配置；所有只读检查命令（`config show/validate`、`doctor`、`data status/verify`）均不会启动 MCP 服务、不会触发网络下载，也不会自动创建或初始化数据目录。
 
@@ -189,8 +190,8 @@ prts-mcp --config ./server.toml
 
 - **无损编辑与并发保护**：`config set` 与 `config unset` 会保留文件中无关的字段、空行与注释，并通过文件锁与原子替换防止并发写入导致文件损坏；传入 `--dry-run` 可预览修改结果而不实际写入磁盘或创建锁文件。
 - **环境变量覆盖提醒**：如果当前终端中设置了同名环境变量（优先级高于配置文件），`config set` 修改成功后会在输出中明确提示该字段当前仍被环境变量覆盖。
-- **符号链接与敏感凭据保护**：为防止路径穿越或误改外部文件，编辑命令拒绝直接操作符号链接（symlink）目标，请直接指定真实文件路径。出于安全考虑，`config set` **拒绝写入各类 Token 字段**（如 `GITHUB_TOKEN`、`PRTS_DEBUG_TOKEN`），长期凭据请优先通过环境变量注入；即便手工写入了配置文件或环境变量，所有诊断与配置输出都会对敏感值自动脱敏。
-- **生效时机**：修改配置文件不会热更新已在运行中的服务进程，将在下一次启动或执行命令读取该文件时生效。
+- **符号链接与敏感凭据保护**：为防止路径穿越或误改外部文件，编辑命令拒绝直接操作符号链接（symlink）目标，请直接指定真实文件路径。出于安全考虑，`config set` **拒绝写入各类 Token 字段**（如 `GITHUB_TOKEN`、`PRTS_DEBUG_TOKEN`），长期凭据请优先通过环境变量注入；即便手工写入了配置文件或环境变量，所有诊断与配置输出都会将 `GITHUB_TOKEN`、`PRTS_DEBUG_TOKEN`、`GITHUB_MIRRORS` 以及代理环境变量（`*_PROXY`）的值自动脱敏为 `"[redacted]"`。
+- **生效时机**：直接修改配置文件不会自动热更新已在运行中的服务进程，将在下一次启动或执行命令读取该文件时生效；如需对运行中实例应用白名单字段变更，请使用后文的 `prtsctl runtime config reload`。
 
 ---
 
@@ -202,7 +203,7 @@ prts-mcp --config ./server.toml
 
 - **通道隔离**：启用 `-o json` 时，标准输出（`stdout`）仅输出单个合法的完整 JSON 文档，所有运行日志与报错信息均输出至标准错误（`stderr`）。CLI 的 `--output` 仅控制管理命令自身的终端输出格式，与控制 MCP 工具返回结构的 `PRTS_OUTPUT_CHANNEL` 完全独立；`prtsctl serve` 不接受 `--output` 参数。
 - **Schema 稳定性承诺**：JSON 报告使用稳定的英文键名，数值与布尔值使用原生 JSON 类型，集合字段始终序列化为数组，并通过顶层 `schema_version` 标识报告结构版本。已有字段的类型与语义受版本兼容性承诺保护；编写消费脚本时请忽略未知的新增字段，且不要依赖 JSON 对象键的排列顺序。
-- **`config show` 字段结构**：`fields` 数组中的每个条目均包含 `key`（字段名）、`value`（最终生效值）、`input`（原始输入值）、`source`（来源：`argument`、`environment`、`file` 或 `default`）以及 `explanation`（联动说明）。
+- **`config show` 字段结构**：顶层包含 `schema_version`、`scope`（`"invocation"` 或 `"runtime"`）、`config_file`、`fields`、`network_environment`（代理与 CA 变量快照，代理地址自动脱敏）以及 `derived`（合并推导出的生效后端、备用策略与各同步开关）。`fields` 数组中的每个条目均包含 `key`（字段名）、`value`（最终生效值）、`input`（原始输入值）、`source`（来源：`argument`、`environment`、`file` 或 `default`）以及 `explanation`（联动说明）。
 
 **PowerShell 调用示例**：
 
@@ -242,11 +243,16 @@ prtsctl config show -o json | jq '.fields[] | select(.source == "environment")'
 | `3` | `data sync` 等待跨进程同步锁超时（超过 `--wait-timeout` 预算） |
 | `130` / `143` | 一次性同步（`data sync`）在受支持平台上被 `Ctrl+C`（`SIGINT`）或 `SIGTERM` 信号取消 |
 
-## 本机在线查询
+---
 
-服务器显式设置 `PRTS_CONTROL_ENDPOINT` 后提供独立的本机管理通道，`PRTS_INSTANCE_NAME` 默认 `main`。Unix 使用绝对 socket 路径，父目录须属于服务用户且权限为 `0700`；Windows 使用 `\\.\pipe\prts-mcp-<name>` 命名管道。管理通道不占用 MCP 标准流，不沿用诊断 Token 的权限。
+## 5. 本机在线查询（`runtime`）
 
-CLI 默认读取用户配置目录中的 `instances.toml`，也可用 `--instances-file` 指定。实例映射不包含业务凭据：
+当服务端显式设置环境变量 `PRTS_CONTROL_ENDPOINT` 时，会开启一条独立于 MCP 传输与诊断 Token 的本机管理通道（实例名 `PRTS_INSTANCE_NAME` 默认为 `main`）：
+
+- **Unix 控制端点与权限校验**：使用绝对 Unix domain socket 路径（如 `/run/prts-mcp-main/control.sock`）。若父目录不存在，服务端会尝试创建并设为 `0700`；若父目录已存在，则要求必须归属于服务端运行 UID 且无组/其他用户权限位（`0700`）。接受连接时，服务端通过内核 `peer_cred` 校验客户端进程 UID 必须与服务端相同或为 `root`（`0`）。
+- **Windows 命名管道与权限校验**：使用本机命名管道 `\\.\pipe\prts-mcp-<name>`，通过安全描述符（DACL）仅授权服务所有者、本地管理员组与 `SYSTEM` 访问，并拒绝远程客户端连接。
+
+CLI 默认从用户配置目录读取 `instances.toml`（也可通过 `--instances-file <path>` 指定）来定位目标实例，该映射文件不存储任何业务凭据：
 
 ```toml
 schema_version = 1
@@ -256,11 +262,19 @@ unit = "prts-mcp.service"
 user = false
 ```
 
-`prtsctl runtime status --instance main -o json` 查询实际运行状态；`runtime config show` 查看服务器配置快照；`runtime data status` 查看服务器当前数据视图。查询不自动启动实例。在线同步任务与配置热重载见下文。 `status` 和 `data status` 的响应预算为 30 秒，以容纳首次 SQLite 校验；握手、请求读取及其他命令仍限制为 5 秒。
+常用在线只读查询命令如下：
 
-## systemd 服务管理
+- **`prtsctl runtime status --instance main -o json`**：查询运行中实例的进程状态、版本与传输信息。
+- **`prtsctl runtime config show -o json`**：查看运行中实例当前生效的配置快照与当前 `revision`。
+- **`prtsctl runtime data status -o json`**：查看运行中实例当前加载的数据后端与激活代际视图。
 
-Linux 上可直接指定现有单元，或使用实例映射中的 `unit` 和 `user`：
+在线查询不会自动拉起未运行的实例。为容纳首次冷启动时的 SQLite 数据库校验耗时，`runtime status` 与 `runtime data status` 的响应超时预算为 **30 秒**；通道握手、请求读取及其他管理命令仍保持 **5 秒**超时上限。
+
+---
+
+## 6. `systemd` 服务管理（`service`）
+
+在 Linux 主机上，可通过 `prtsctl service` 直接指定单元名称（`--unit`），或复用 `instances.toml` 中配置的 `unit` 与 `user` 字段管理服务：
 
 ```bash
 prtsctl service --unit prts-mcp.service status -o json
@@ -268,9 +282,10 @@ prtsctl service --unit prts-mcp.service restart
 prtsctl service --user --unit prts-mcp.service stop
 ```
 
-命令包括 `status`、`start`、`stop`、`restart`、`enable` 和 `disable`。`enable` / `disable` 只修改开机启动设置。权限由 systemd 和 Polkit 决定；需要管理员权限时使用部署环境的提权方式。`--timeout` 默认 30 秒，超时后 systemd 操作可能继续，使用 `status` 查询结果。
-
-生成单元模板时指定原生 `prts-mcp` 的绝对路径、配置文件和数据目录：
+- **支持的生命周期动作**：`status`、`start`、`stop`、`restart`、`enable` 与 `disable`（其中 `enable` / `disable` 仅修改开机自启设置，不立即启停进程）。
+- **权限与超时控制**：操作权限由系统的 `systemd` 与 Polkit 决定，管理系统级服务时请按部署环境使用 `sudo` 等提权方式。`--timeout` 默认为 **30 秒**（有效范围 `1..86400` 秒）；若等待超时，底层 `systemd` 任务可能仍在继续执行，可通过 `service status` 复查最终状态。
+- **生成 `systemd` 单元模板（`service template`）**：
+  指定原生 `prts-mcp` 可执行文件、配置文件与数据目录的绝对路径即可向标准输出打印单元模板（若附加 `-o json` 则输出包含 `schema_version` 与 `template` 字段的 JSON 对象）：
 
 ```bash
 prtsctl service template --executable /opt/prts/bin/prts-mcp \
@@ -278,9 +293,15 @@ prtsctl service template --executable /opt/prts/bin/prts-mcp \
   --account prts-mcp > prts-mcp.service
 ```
 
-用户服务使用 `--user`，省略 `--account`。模板写入标准输出，安装及 `daemon-reload` 由管理员完成。服务启停适用于 Cargo、原生归档及 npm/Bun 部署；在线查询需要服务器启用本地管理端点。Windows 和 macOS 可使用 `runtime` 命令，本轮不提供 SCM 或 launchd 生命周期管理。
+  - **系统级服务（`--account <user>`）**：模板默认配置 `RuntimeDirectory=prts-mcp-<instance>`（控制端点位于 `/run/prts-mcp-<instance>/control.sock`），安装目标为 `multi-user.target`。
+  - **用户级服务（`--user`，省略 `--account`）**：模板使用 `%t/prts-mcp-<instance>/control.sock`（对应 `$XDG_RUNTIME_DIR`），安装目标为 `default.target`。
+  - **安装与平台范围**：模板仅打印到标准输出，写入单元目录及执行 `systemctl daemon-reload` 由管理员完成。`service` 子命令适用于 Linux 下的 Cargo、原生归档及 npm/Bun 部署；Windows 与 macOS 环境可使用 `runtime` 在线管理命令，目前暂不支持 Windows SCM 或 macOS `launchd` 服务生命周期管理。
 
-## 在线同步任务
+---
+
+## 7. 在线同步任务（`runtime data sync` 与 `runtime jobs`）
+
+通过本机管理通道，管理员可以向运行中的实例提交异步同步任务并跟踪进度：
 
 ```bash
 prtsctl runtime data sync --target game -o json
@@ -289,13 +310,20 @@ prtsctl runtime jobs show <任务ID> -o json
 prtsctl runtime jobs cancel <任务ID> -o json
 ```
 
-`runtime data sync` 返回任务 ID，服务器继续执行同步。CLI 断开不会取消任务；`jobs cancel` 请求取消网络传输和锁等待，正在提交的数据会先完成收尾。后台同步与手动同步共享目标占用，冲突请求返回正在占用目标的任务 ID。`--wait-timeout` 只控制跨进程锁等待，默认 30 秒。
+- **异步执行与占用互斥**：
+  - `runtime data sync` 提交成功后立即返回任务 ID，由服务端在后台继续执行同步，CLI 断开连接不会中断任务。
+  - 手动提交的在线同步与服务端定时后台同步共享目标占用锁；若目标数据集已有同步任务正在运行，冲突请求会返回正在占用该目标的任务 ID。`--wait-timeout` 仅控制跨进程文件锁的等待预算（默认 30 秒）。
+- **取消与停机收尾**：
+  - `runtime jobs cancel <任务ID>` 会请求中止网络下载与锁等待；若任务已进入最后的本地目录原子发布阶段，服务端会先完成该收尾动作再结束，避免留下半写入状态。
+- **任务状态与历史保留**：
+  - 任务 `status` 包括 `running`、`cancelling`、`succeeded`、`failed` 与 `cancelled`，失败原因记录在任务的 `result` 字段中（`runtime data sync` 命令自身返回 `0` 仅代表任务已成功提交，判断同步是否成功请检查任务状态）。
+  - 进程内最多保留最近 **100 条**已结束的任务记录（活动任务另计）；服务重启后任务历史清空，旧任务 ID 随之失效。
 
-任务历史最多保留 100 个已结束任务，活动任务另计。重启清空历史，旧任务 ID 失效。`status` 可为 `running`、`cancelling`、`succeeded`、`failed` 或 `cancelled`。失败详情位于 `result`，命令自身成功仅表示请求成功，判断同步结果应检查任务状态。
+---
 
-## 在线配置重载
+## 8. 在线配置重载（`runtime config reload`）
 
-编辑服务器启动时选用的 TOML 文件，然后查询差异并使用返回的 `revision` 应用：
+修改服务端启动时加载的 TOML 配置文件后，可先对比差异并获取当前 `revision`，再原子应用支持热重载的字段：
 
 ```bash
 prtsctl runtime config show -o json
@@ -303,8 +331,13 @@ prtsctl runtime config diff -o json
 prtsctl runtime config reload --expected-revision 1 -o json
 ```
 
-可重载字段为 `PRTS_AUTO_SYNC_INTERVAL_SECONDS`、`GITHUB_TOKEN` 和 `GITHUB_MIRRORS`。配置以完整候选校验；只要包含需要重启的生效变更，整批不应用。其他管理员已经成功重载时，旧 revision 会被拒绝，应重新查询差异。
-
-服务器保留启动时的参数和环境变量快照，这些值仍优先于 TOML。修改 systemd 的 `EnvironmentFile` 需要重启服务。`runtime` 命令使用服务器选用的配置文件，CLI 的 `--config` 不会替换它。报告中的令牌和镜像始终脱敏。
-
-已有同步任务继续使用提交时的配置和 HTTP 客户端，后续任务使用新配置。修改同步周期会重新计时；设为 `0` 关闭后续周期检查，已有任务和启动失败重试仍可完成。
+- **白名单字段与原子校验**：
+  - 支持在线热重载的字段为 `PRTS_AUTO_SYNC_INTERVAL_SECONDS`、`GITHUB_TOKEN` 与 `GITHUB_MIRRORS`。
+  - 重载时服务端会对整個候选配置文件执行完整校验：只要候选配置中包含任何需要重启才能生效的变更，或存在语法/类型错误，整批重载都会被原子拒绝。
+  - 若在查看差异后已有其他管理员完成了重载，旧的 `--expected-revision` 会被拒绝，请重新执行 `runtime config diff` 确认最新 `revision`。
+- **覆盖优先级与作用范围**：
+  - 服务端始终保留进程启动时的命令行参数与环境变量快照，这些启动覆盖项仍优先于 TOML 配置文件；若修改了 `systemd` 的 `Environment=` 或 `EnvironmentFile=`，仍需重启服务。
+  - `runtime config` 系列命令始终读取**服务端进程启动时选用的配置文件**，在 CLI 侧传入 `--config` 不会替换服务端的配置文件路径。报告中的令牌、镜像与代理地址始终自动脱敏。
+- **对同步任务的影响**：
+  - 已经在运行中的同步任务继续使用提交时的配置快照与 HTTP 客户端，新配置从下一次同步任务起生效。
+  - 修改 `PRTS_AUTO_SYNC_INTERVAL_SECONDS` 会立即重设定时轮询计时器；将其设为 `0` 会关闭后续周期性轮询，但不会中断已在运行的同步任务或启动期失败重试。

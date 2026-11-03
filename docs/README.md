@@ -50,8 +50,7 @@ English readers: the root [README](../README.md#english) and [Security Policy](.
 - **架构、编码与协作规范**
   - [dev/ENVIRONMENT.md](dev/ENVIRONMENT.md)：跨平台开发环境搭建与本地验证命令（Linux/WSL、Windows、macOS）。
   - [dev/STYLE.md](dev/STYLE.md)：Rust 架构分层、代码规范、CHANGELOG 编写规则与已知工程陷阱。
-  - [dev/adr/](dev/adr/)：架构决策记录（ADR）——自 3.1 起逐条记录影响契约、公开行为、数据语义、分发与安全姿态的决策，附编号、状态与撰写规范。
-  - [ADR-0017](dev/adr/ADR-0017-custom-github-data-source.md)：自定义 GitHub 数据源、信任边界与缓存目录归属。
+  - [dev/adr/README.md](dev/adr/README.md)：架构决策记录（ADR）索引与撰写规范——自 3.1 起逐条记录影响契约、公开行为、数据语义、分发与安全姿态的决策（含 ADR-0001 至 ADR-0022）。
   - [dev/DOCUMENTING.md](dev/DOCUMENTING.md)：公开文档写作、角色划分与审查规范。
   - [dev/WORKFLOW.md](dev/WORKFLOW.md)：变更分级、双轨 Code Review、普通与全量 CI 策略、最小验证矩阵及安全依赖更新分流。
   - [dev/VERSIONING.md](dev/VERSIONING.md)：版本号语义与向后兼容性承诺。
@@ -101,4 +100,3 @@ English readers: the root [README](../README.md#english) and [Security Policy](.
 - 源代码许可证：[LICENSE](../LICENSE)
 - 本地游戏数据目录说明：[data/README.md](../data/README.md)
 - 随仓原生组件与测试夹具说明：[vendor/quickjs-regexp/README.md](../vendor/quickjs-regexp/README.md)、[tests/fixtures/native-smoke/README.md](../tests/fixtures/native-smoke/README.md)
-- [ADR-0020：PyPI 原生 Wheel 与兼容启动桥](dev/adr/ADR-0020-pypi-native-wheels.md)

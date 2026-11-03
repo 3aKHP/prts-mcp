@@ -6,8 +6,8 @@
 
 | 分支 / 版本线 | 当前状态 |
 | --- | --- |
-| 公开稳定版（`main`） | [`3.2.1`](https://github.com/3aKHP/prts-mcp/releases/tag/v3.2.1)（原生 Rust），已发布至 npm（`latest`）、crates.io、GitHub Releases 与 GHCR（`:latest`、`:3`）。 |
-| 主开发分支（`develop`） | `3.2.2-dev.0`（根目录原生 Rust Cargo 工程）。 |
+| 公开稳定版（`main`） | [`3.2.2`](https://github.com/3aKHP/prts-mcp/releases/tag/v3.2.2)（原生 Rust），已发布至 npm（`latest`）、PyPI、crates.io、GitHub Releases 与 GHCR（`:latest`、`:3`）。 |
+| 主开发分支（`develop`） | `3.2.3-dev.0`（根目录原生 Rust Cargo 工程）。 |
 | `lts/2.8` | Python 与 TypeScript 2.8.x 长期维护线（最新补丁版本 `2.8.2`，功能基线 `2.8.1`，24 个工具）。 |
 | `lts/1.7` | Python 与 TypeScript 1.7.x 长期维护线（最新补丁版本 `1.7.3`，功能基线 `1.7.0`，32 个工具）。 |
 | LTS 维护截止日（EOL） | `lts/2.8` 与 `lts/1.7` 均维护至 **2027-07-02**。 |
@@ -17,10 +17,15 @@
 - **运行时**：仓库根目录为原生 Rust 工程，静态链接 C 正则引擎组件（`vendor/quickjs-regexp/`），无需 JavaScript 或 Python 业务运行时。
 - **核心能力**：提供 24 个 MCP 工具（`IMAGES_ENABLED=false` 时为 23 个），同时支持传统有状态会话（legacy）与 `2026-07-28` 无状态现代信封（modern）两代 MCP 协议，支持 Streamable HTTP 与 stdio 两种传输方式，并具备感知数据代际激活的游戏表、关卡、剧情与立绘自动同步能力。
 - **各入口默认传输方式**：
-  - `prts-mcp`（原生二进制与 npm 新主包）：默认使用 Streamable HTTP（`:3000/mcp`）；设置 `PRTS_TRANSPORT=stdio` 切换为 stdio。
+  - `prts-mcp`（原生二进制、Cargo 安装与 npm 新主包）：默认使用 Streamable HTTP（`:3000/mcp`）；设置 `PRTS_TRANSPORT=stdio` 切换为 stdio。
   - `prts-mcp-ts`、`prts-mcp-ts-bun`（HTTP）与 `prts-mcp-ts-stdio`（stdio）：底层调用 Rust 二进制，保留 2.x 固定传输行为。
-  - `prts-mcp-ghcr`（Docker 镜像默认入口）：保留默认 `stdio`；设置 `PRTS_TRANSPORT=http` 切换为 HTTP。
+  - `prts-mcp-ghcr`（Docker 镜像默认入口，3.2.2+ PyPI Wheel 启动桥同样调用该入口）：保留默认 `stdio`；设置 `PRTS_TRANSPORT=http` 切换为 HTTP。
+  - `prtsctl`（3.2.2 新增）：提供管理子命令（`config`、`doctor`、`data`、`service`、`runtime`、`serve`、`completion`），无参数运行时仅输出帮助信息。
 - **仓库目录结构**：根目录包含 `Cargo.toml`、`src/`、`native/`、`vendor/`、`tests/`、`contracts/`、`tools/`、`packaging/` 与 `Dockerfile`。旧 Python 与 TypeScript 实现在 `lts/2.8` 与 `lts/1.7` 分支独立维护（见 [LTS 维护政策](docs/dev/LTS.md)）。源码许可证与第三方内容版权声明分别见 [LICENSE](LICENSE) 与 [NOTICE](NOTICE)。
+
+## 3.2.2 管理 CLI 与 PyPI 原生发行
+
+`prtsctl` 提供本地配置、诊断、一次性同步、systemd 生命周期命令与显式启用的运行期管理。PyPI 提供五平台原生 Wheel，要求 Python >=3.11，不含备用数据；Cargo 安装包含全部六个公开二进制入口。两条渠道均使用 OIDC 发布。详见[CLI 手册](docs/admin/cli.md)与[候选发行流程](docs/dev/RELEASE-CANDIDATES.md)。
 
 ## 3.2.1 Cargo 源码发行
 

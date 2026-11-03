@@ -7,25 +7,26 @@
 
 ---
 
-3.2 默认使用 SQLite 后端，只同步 AKDP 的 `zh_CN.sqlite.gz`，使用独立的 `database/` 目录；也可用 `PRTS_DATA_DB` 指定只读离线 DB。未显式选择后端且没有有效 DB 时，立即使用 JSON 备用，后台 DB 就绪后新请求自动切换，进行中的请求继续读取原快照。显式 `PRTS_DATA_BACKEND=sqlite` 不回落 JSON。发行包保留较小的 JSON 备用数据。切回 `PRTS_DATA_BACKEND=json` 并重启即可使用旧卷；两套游戏数据不会同时同步。变量优先级见[环境变量参考](environment-variables.md)。
-
-SQLite 的 `PRTS_VALIDATION_MODE` 默认值为 `normal`。新同步产物在激活前校验整文件摘要、结构和外键。通常模式在进程重启后重新比对摘要，再复用匹配的结构验收记录；`strict` 会重新执行完整结构和外键检查。受管理 DB 旁的 `.verified.json` 是可重建缓存，缺失或失效时补做检查，无须重新下载健康 DB；无法写入记录也不影响已验收数据的使用。自定义只读 DB 不自动写入该记录，通常模式保留快速检查。
-
-3.x 继续支持显式 JSON 后端及已有自定义 JSON 路径。SQLite 容器持久化 `/data/database`（整卷挂载 `/data` 无须新增挂载）；旧分卷配置在选择 JSON 时保持不变。DB 原子切换、当前/上一代及更新暂存需要额外磁盘空间，切换后不自动删除另一后端的数据。
-
 ## 1. 数据集组成与目录结构
 
 PRTS-MCP 运行依赖两类外部数据源：
 1. **PRTS Wiki MediaWiki API**（`https://prts.wiki/api.php`）：实时查询世界观词条、页面章节与模板（在线请求，不在本地落盘全量词条库）。
 2. **`arknights-data-pipeline`（AKDP）GitHub Releases**（[`3aKHP/arknights-data-pipeline`](https://github.com/3aKHP/arknights-data-pipeline)）：定时发布结构化游戏数据包与干员立绘分片，由服务端在后台自动同步并落盘。
 
+### SQLite 默认后端与 JSON 后端切换（3.2+）
+
+- **默认 SQLite 策略**：自 3.2 起，服务默认使用 SQLite 后端，仅同步 AKDP 发布的 `zh_CN.sqlite.gz` 并写入独立的 `database/` 目录（也可通过 `PRTS_DATA_DB` 指定单个只读离线数据库）。当未显式设置 `PRTS_DATA_BACKEND`、`PRTS_DATA_DB` 且未配置自定义 JSON 路径时，若本地尚无通过校验的 SQLite 数据库，服务会立即使用内置或已有的 JSON 备用数据响应查询；后台 SQLite 同步并校验就绪后，新请求自动切换至 SQLite，进行中的请求继续读取原快照。
+- **显式后端选择**：显式设置 `PRTS_DATA_BACKEND=sqlite` 时采用严格模式，不回落读取 JSON 备用数据；设置 `PRTS_DATA_BACKEND=json` 并重启即可继续使用既有 JSON 数据卷（两种后端不会同时运行同步，切换后端也不会自动删除另一后端的数据）。发行包继续内置体积较小的 JSON 备用数据；变量优先级详见[环境变量参考](environment-variables.md)。
+- **SQLite 校验模式（`PRTS_VALIDATION_MODE`）**：默认值为 `normal`。新同步的数据库在激活前始终执行完整的整文件摘要、表结构与外键校验。在 `normal` 模式下，进程重启后会重新比对受管数据库的整文件 SHA-256，并在摘要匹配时直接复用同目录的 `.verified.json` 结构验收缓存（缺失或失效时自动补做完整检查，无需重新下载健康数据库；若目录只读无法写入 `.verified.json` 也不影响已验收数据的使用，自定义只读 `PRTS_DATA_DB` 在 `normal` 模式下执行快速检查）。设为 `strict` 时，每次进程启动都会重新执行完整的表结构与外键检查。
+- **磁盘空间与容器挂载规划**：单代解压后的 SQLite 数据库约 320 MiB（随游戏版本增长），首次更新后磁盘同时保留当前代与上一代（约 630 MiB），更新期间还需额外的下载与解压暂存空间（峰值约 1.1 GiB）。Docker 容器整卷挂载 `/data` 时会自动持久化 `/data/database`，无需修改挂载配置；若沿用 2.x 的子目录分卷挂载且使用默认 SQLite 后端，请额外挂载 `/data/database` 或设置 `PRTS_DATA_BACKEND=json`。
+
 ### 默认可写数据根目录
 
 | 运行环境 | 默认数据根目录 | 控制环境变量 |
 | --- | --- | --- |
 | **Docker 容器** | `/data` | 容器内预设 `PRTS_MCP_ROOT=/app`（非容器环境切勿设置 `PRTS_MCP_ROOT`） |
-| **Linux / macOS** | `${XDG_DATA_HOME:-~/.local/share}/prts-mcp` | `XDG_DATA_HOME` |
-| **Windows** | `%LOCALAPPDATA%\prts-mcp`（回退 `~\AppData\Local\prts-mcp`） | `LOCALAPPDATA` |
+| **Linux / macOS** | `${XDG_DATA_HOME:-~/.local/share}/prts-mcp` | `XDG_DATA_HOME`（请勿设为空字符串） |
+| **Windows** | `%LOCALAPPDATA%\prts-mcp`（回退 `~\AppData\Local\prts-mcp`） | `LOCALAPPDATA`（请勿设为空字符串） |
 
 在数据根目录下，各子目录与元数据文件的职责如下：
 
@@ -50,11 +51,13 @@ PRTS-MCP 运行依赖两类外部数据源：
     └── ...                      ← 实际 PNG 立绘与皮肤文件
 ```
 
-自动同步将游戏表与关卡数据解压至各自的 `.releases/<generation>/` 目录，活动目录由 `archives/extract_meta.json` 与根 `.gamedata_pair.json` 记录。旧版数据卷或手动挂载的数据也可能直接存放在 `gamedata/zh_CN/`、`gamedata-levels/zh_CN/` 下。
+自动同步将 JSON 游戏表与关卡数据解压至各自的 `.releases/<generation>/` 目录，活动代际由 `archives/extract_meta.json` 与根 `.gamedata_pair.json` 记录。旧版数据卷或手动挂载的数据也可能直接存放在 `gamedata/zh_CN/`、`gamedata-levels/zh_CN/` 下。
 
-3.2 的本地图片同步同时识别 v1 与 v2：v2 使用 `images2-*` 和 `images2-baseline-*`，按数据版本发现更新；同版本优先 v2。已经激活 v2 的目录在网络失败或 v2 发布暂时不可见时保留现有代际，不自动降回 v1。同 baseline 更新只读取活动版本之后的必要 delta；跨 baseline 按文件 SHA-256 复用已有图片，并跳过内容已满足的物理分片。下载、分片及成员校验全部成功后才切换代际，失败继续读取原代际。原图选择仍由 `ORIGINAL_IMAGE` 控制。
+### 本地图片同步代际与锁机制（v1 / v2）
 
-3.2 图片写入器在原有目录租约之外持有 `.images-writer.lock` 内核锁。正常运行期间保留该锁文件；进程退出或被终止后，内核会释放锁，后续 3.2 写入器可立即回收带有其标记的旧目录租约。未带标记的旧版本写入器仍使用原租约规则。不要手工删除正在使用的锁文件。
+- **v1 与 v2 多分片兼容**：3.2 起的本地立绘同步同时支持 v1 与 v2 发布格式（v2 使用 `images2-*` 与 `images2-baseline-*` 标签，按数据版本发现更新，同版本优先选择 v2）。已激活 v2 的目录在遇到网络故障或 v2 发布不可见时保留现有代际，不会自动降回 v1。
+- **增量更新与跨基线文件复用**：同一 baseline 下的更新仅拉取当前活动版本之后的必要 delta；跨 baseline 更新时会按整文件 SHA-256 复用本地已校验通过的 PNG，并跳过内容已全部满足的物理分片。所有下载、分片及成员校验全部通过后才原子切换代际指针，任一步失败均继续读取原代际；原图分片仍由 `ORIGINAL_IMAGE` 控制。
+- **写入器内核锁（`.images-writer.lock`）**：3.2 图片写入器在原有目录租约之外额外持有 `.images-writer.lock` 内核文件锁。进程正常运行期间保留该锁文件；一旦写入进程退出或被终止，操作系统内核会立即释放文件锁，后续 3.2 写入器无需等待旧租约超时即可安全回收带有 3.2 标记的目录租约（未带标记的旧版写入器仍遵循原租约过期规则）。运维期间请勿手动删除正在使用的锁文件。
 
 ### 自定义 GitHub 数据源
 
@@ -112,13 +115,13 @@ PRTS-MCP 运行依赖两类外部数据源：
 如果你在宿主机上自己维护了 `ArknightsGameData` 仓库克隆或离线 `zh_CN.zip` 剧情包，可通过 `GAMEDATA_PATH` 与 `STORYJSON_PATH` 指向本地路径：
 
 ```bash
-docker run -d --name prts-mcp -p 127.0.0.1:3000:3000 -e PRTS_TRANSPORT=http -v /srv/ArknightsGameData:/data/custom:ro -e GAMEDATA_PATH=/data/custom -v prts-data:/data ghcr.io/3akhp/prts-mcp:3.0.0
+docker run -d --name prts-mcp -p 127.0.0.1:3000:3000 -e PRTS_TRANSPORT=http -v /srv/ArknightsGameData:/data/custom:ro -e GAMEDATA_PATH=/data/custom -v prts-data:/data ghcr.io/3akhp/prts-mcp:3.2.2
 ```
 
 **管理员必须注意的三条路径规则**：
-1. **`GAMEDATA_PATH` 存在即停用同步**：只要进程环境变量中定义了 `GAMEDATA_PATH`（**哪怕赋值为空字符串 `GAMEDATA_PATH=`**），游戏表与关卡战斗数据的后台自动同步就会立即关闭。若使用默认自动同步，请保持该变量**未设置（unset）**。
-2. **`STORYJSON_PATH` 非空停用剧情同步**：当 `STORYJSON_PATH` 设为非空路径（指向本地 `zh_CN.zip`）时，剧情后台自动同步关闭。
-3. **相邻路径推导陷阱**：如果只设置了 `GAMEDATA_PATH`，而未显式设置 `STORYJSON_PATH` 或 `PRTS_IMAGE_DIR`，服务端会默认从 `GAMEDATA_PATH` 的**父目录**推导相邻的 `storyjson/zh_CN.zip` 与 `images/` 路径。因此，使用自定义 `GAMEDATA_PATH` 时，强烈建议把 `STORYJSON_PATH` 和 `PRTS_IMAGE_DIR` 也显式配齐。
+1. **`GAMEDATA_PATH` 存在即停用同步**：在 JSON 后端下，只要进程环境变量中定义了 `GAMEDATA_PATH`（**哪怕赋值为空字符串 `GAMEDATA_PATH=`**），游戏表与关卡战斗数据的后台自动同步就会立即关闭（且未显式设置 `PRTS_DATA_BACKEND` 时，非空 `GAMEDATA_PATH` 会自动选择 JSON 后端）。若使用默认自动同步，请保持该变量**未设置（unset）**。
+2. **`STORYJSON_PATH` 非空停用剧情同步**：当 `STORYJSON_PATH` 设为非空路径（指向本地 `zh_CN.zip`）时，剧情后台自动同步关闭；SQLite 后端下则可通过 `PRTS_DATA_DB` 指定只读预编译 `.sqlite` 文件并关闭游戏数据自动同步。
+3. **相邻路径推导陷阱**：如果只设置了 `GAMEDATA_PATH`，而未显式设置 `STORYJSON_PATH`、`PRTS_IMAGE_DIR` 或 `PRTS_DATA_DIR`，服务端会默认从 `GAMEDATA_PATH` 的**父目录**推导相邻的 `storyjson/zh_CN.zip` 与 `images/` 路径，并将 `PRTS_DATA_DIR` 推导为 `GAMEDATA_PATH/database`。因此，使用自定义 `GAMEDATA_PATH` 时，强烈建议把所需的其他路径变量也显式配齐。
 
 ---
 

@@ -8,6 +8,10 @@ The original per-implementation changelogs at the 2.8.1 baseline remain availabl
 
 ## [Unreleased]
 
+## [3.2.2] - 2026-11-03
+
+**PyPI upgrade notes**: Upgrading from 2.8.x switches to the native Rust implementation while preserving the default stdio entry points. Python >=3.11 and one of the five supported native platforms are required; wheels contain no fallback game data, so allow startup synchronization or provide local data. Pin `prts-mcp>=2.8,<2.9` to remain on Python LTS.
+
 ### Added
 
 - Add runtime configuration diff/reload for sync interval, GitHub token and mirrors. Reload preserves startup overrides, validates the entire candidate and rejects restart-required changes atomically using a configuration revision.
@@ -18,9 +22,9 @@ The original per-implementation changelogs at the 2.8.1 baseline remain availabl
 
 - Add opt-in local runtime status, configuration and data queries through Unix sockets and Windows named pipes. Snapshot queries allow 30 seconds for cold SQLite validation; handshake and other methods retain 5-second limits.
 
-- Add `prtsctl` for TOML configuration, foreground serving, local diagnostics, data inspection/verification and one-shot sync, with stable JSON output and shell completion. Existing server entries retain their default behavior and gain help, version and explicit configuration-file support. See the [management guide](docs/admin/cli.md).
+- Add `prtsctl` for TOML configuration, foreground serving, local diagnostics, data inspection/verification and one-shot sync, with stable JSON output and shell completion. Existing server entries retain their default behavior and gain help, version and explicit configuration-file support. See the [management guide](https://github.com/3aKHP/prts-mcp/blob/v3.2.2/docs/admin/cli.md).
 
-- Prepare the native PyPI distribution: five platform wheels reuse audited Rust executables, preserve stdio command and Python module entry points, require Python >=3.11, and exclude fallback game data. Candidate wheels are built and verified; no native PyPI version has been published.
+- Restore the PyPI channel with native Rust wheels: five platform wheels reuse audited Rust executables, preserve default-stdio command and Python module entry points, require Python >=3.11, and exclude fallback game data. Publish the five wheels through OIDC with attestations and verify their registry hashes. Cargo distribution includes all six public binaries, including `prtsctl`, and uses the configured OIDC publisher.
 
 ## [3.2.1] - 2026-11-01
 
@@ -30,12 +34,12 @@ The original per-implementation changelogs at the 2.8.1 baseline remain availabl
 
 ## [3.2.0] - 2026-10-31
 
-**Upgrade notes**: SQLite is now the default game-data backend. Deployments that set none of `PRTS_DATA_BACKEND`, `PRTS_DATA_DB` or custom JSON paths download an additional ~130 MiB `zh_CN.sqlite.gz` and gain a `database/` directory under the data root. One DB generation is ~320 MiB and grows with the data; after the first update the previous generation is kept as well (~630 MiB), and an update needs extra space for the download and decompression, peaking at ~1.1 GiB; JSON fallback keeps serving until the DB is ready. Docker deployments that mount the whole `/data` volume need no change. Deployments that keep the 2.x split-volume mounts, or run `--read-only` with `--tmpfs /data`, should add a volume for `/data/database` or set `PRTS_DATA_BACKEND=json` to keep the previous behaviour. See the [deployment guide](https://github.com/3aKHP/prts-mcp/blob/main/docs/admin/deployment.md) and [data and sync](https://github.com/3aKHP/prts-mcp/blob/main/docs/admin/data-and-sync.md).
+**Upgrade notes**: SQLite is now the default game-data backend. Deployments that set none of `PRTS_DATA_BACKEND`, `PRTS_DATA_DB` or custom JSON paths download an additional ~130 MiB `zh_CN.sqlite.gz` and gain a `database/` directory under the data root. One DB generation is ~320 MiB and grows with the data; after the first update the previous generation is kept as well (~630 MiB), and an update needs extra space for the download and decompression, peaking at ~1.1 GiB; JSON fallback keeps serving until the DB is ready. Docker deployments that mount the whole `/data` volume need no change. Deployments that keep the 2.x split-volume mounts, or run `--read-only` with `--tmpfs /data`, should add a volume for `/data/database` or set `PRTS_DATA_BACKEND=json` to keep the previous behaviour. See the [deployment guide](docs/admin/deployment.md) and [data and sync](docs/admin/data-and-sync.md).
 
 ### Added
 
 - Local artwork synchronization supports v2 multipart baselines and deltas alongside v1. Same-baseline updates fetch only required newer deltas; baseline changes reuse verified PNGs and skip satisfied parts. Activation stays atomic, and terminated 3.2 image writers recover without waiting for the old lease expiry.
-- **Tool output trust boundary**: [`docs/user/tools-guide.md`](https://github.com/3aKHP/prts-mcp/blob/main/docs/user/tools-guide.md#4-工具输出的信任边界面向-mcp-客户端集成者) and [`SECURITY.md`](https://github.com/3aKHP/prts-mcp/blob/main/SECURITY.md) now describe where tool output comes from, what TLS and SHA-256 checks do and do not prove, and how MCP clients should handle tool output as untrusted data.
+- **Tool output trust boundary**: [`docs/user/tools-guide.md`](docs/user/tools-guide.md#4-工具输出的信任边界面向-mcp-客户端集成者) and [`SECURITY.md`](SECURITY.md) now describe where tool output comes from, what TLS and SHA-256 checks do and do not prove, and how MCP clients should handle tool output as untrusted data.
 - `/debug/metrics` adds a `data_backend` field reporting the preferred backend, the backend actually serving requests, and whether JSON fallback is active.
 
 ### Changed
@@ -98,7 +102,7 @@ The original per-implementation changelogs at the 2.8.1 baseline remain availabl
 
 Implementation: Rust.
 
-3.0.0 is the first stable native Rust release. Tool names, parameters, output formats, and data synchronization semantics match 2.8.1, apart from the closed set of approved differences in `contracts/baseline.json`. See the [2.x → 3.0 migration guide](https://github.com/3aKHP/prts-mcp/blob/main/docs/migration-2.x-to-3.0.md) before upgrading. The `3.0.0-rc.1` through `3.0.0-rc.3` entries in `CHANGELOG.md` record the prerelease history.
+3.0.0 is the first stable native Rust release. Tool names, parameters, output formats, and data synchronization semantics match 2.8.1, apart from the closed set of approved differences in `contracts/baseline.json`. See the [2.x → 3.0 migration guide](docs/migration-2.x-to-3.0.md) before upgrading. The `3.0.0-rc.1` through `3.0.0-rc.3` entries in `CHANGELOG.md` record the prerelease history.
 
 ### Added
 
@@ -648,7 +652,7 @@ Implementation: Rust.
 
 #### Python
 
-- **Output channel design replaces the per-call `output_format` parameter (2.0 design decision).** The original roadmap proposed an optional `output_format=markdown|json` parameter with 2.0 flipping the default to `json`. **That shape was rejected during design.** The primary consumer is an LLM agent, and JSON inflates prompt tokens ~15–30% versus markdown — which would negate the context-budget savings the tool-surface consolidation delivers. 2.0 instead keeps markdown as the always-on `content` text and carries structured data on MCP's native `structuredContent` field, selected by a **connection-level** `output_channel` knob (`content` (default) / `structured` / `both`) via the `PRTS_OUTPUT_CHANNEL` env var. The default is **not** flipped to JSON. See [`docs/migration-1.x-to-2.0.md`](https://github.com/3aKHP/prts-mcp/blob/main/docs/migration-1.x-to-2.0.md) for the per-tool channel mapping and client configuration.
+- **Output channel design replaces the per-call `output_format` parameter (2.0 design decision).** The original roadmap proposed an optional `output_format=markdown|json` parameter with 2.0 flipping the default to `json`. **That shape was rejected during design.** The primary consumer is an LLM agent, and JSON inflates prompt tokens ~15–30% versus markdown — which would negate the context-budget savings the tool-surface consolidation delivers. 2.0 instead keeps markdown as the always-on `content` text and carries structured data on MCP's native `structuredContent` field, selected by a **connection-level** `output_channel` knob (`content` (default) / `structured` / `both`) via the `PRTS_OUTPUT_CHANNEL` env var. The default is **not** flipped to JSON. See [`docs/migration-1.x-to-2.0.md`](docs/migration-1.x-to-2.0.md) for the per-tool channel mapping and client configuration.
 
 - **Output channel (2.0).** Optional structured-content delivery via MCP's native `structuredContent` channel, controlled by a connection-level `PRTS_OUTPUT_CHANNEL` env var (`content` (default) / `structured` / `both`). The default `content` channel preserves the human-readable markdown content for clients that only consume MCP `content`. Migrated tools intentionally change the MCP manifest/wire shape by replacing FastMCP's automatic `outputSchema={result:string}` plus `structuredContent={"result": markdown}` wrapper with explicit `CallToolResult` delivery, so capable clients no longer receive duplicate markdown unless `both` is selected. `list_stages` is the pilot tool; its `structuredContent` carries both raw enums (e.g. `type=ACTIVITY`) and rendered labels (`type_label=活动`), and legitimate empty pages (filter no-match / offset past end) return structured empty payloads while preserving the original markdown text. The remaining structural tools and the TypeScript implementation follow in subsequent commits. Note: `structured` mode is intended for deployments known to use a structuredContent-capable client — an incapable client (e.g. Chatbox) receives only a one-line summary, so leave the default `content` unless the client is confirmed capable.
 
@@ -664,7 +668,7 @@ Implementation: Rust.
 
 #### TypeScript
 
-- **Output channel design replaces the per-call `output_format` parameter (2.0 design decision).** The original roadmap proposed an optional `output_format=markdown|json` parameter with 2.0 flipping the default to `json`. **That shape was rejected during design.** The primary consumer is an LLM agent, and JSON inflates prompt tokens ~15–30% versus markdown — which would negate the context-budget savings the tool-surface consolidation delivers. 2.0 instead keeps markdown as the always-on `content` text and carries structured data on MCP's native `structuredContent` field, selected by a **connection-level** `output_channel` knob (`content` (default) / `structured` / `both`) via query string / `x-prts-output-channel` header / `PRTS_OUTPUT_CHANNEL` env. The default is **not** flipped to JSON. See [`docs/migration-1.x-to-2.0.md`](https://github.com/3aKHP/prts-mcp/blob/main/docs/migration-1.x-to-2.0.md) for the per-tool channel mapping and client configuration. _(The Python implementation additionally documents a "narrative-tool wire slimming" entry for dropping FastMCP's automatic `outputSchema={result:string}` wrapper; the TS transport has no equivalent auto-wrapper, so narrative tools are simply part of the content-only delivery path here.)_
+- **Output channel design replaces the per-call `output_format` parameter (2.0 design decision).** The original roadmap proposed an optional `output_format=markdown|json` parameter with 2.0 flipping the default to `json`. **That shape was rejected during design.** The primary consumer is an LLM agent, and JSON inflates prompt tokens ~15–30% versus markdown — which would negate the context-budget savings the tool-surface consolidation delivers. 2.0 instead keeps markdown as the always-on `content` text and carries structured data on MCP's native `structuredContent` field, selected by a **connection-level** `output_channel` knob (`content` (default) / `structured` / `both`) via query string / `x-prts-output-channel` header / `PRTS_OUTPUT_CHANNEL` env. The default is **not** flipped to JSON. See [`docs/migration-1.x-to-2.0.md`](docs/migration-1.x-to-2.0.md) for the per-tool channel mapping and client configuration. _(The Python implementation additionally documents a "narrative-tool wire slimming" entry for dropping FastMCP's automatic `outputSchema={result:string}` wrapper; the TS transport has no equivalent auto-wrapper, so narrative tools are simply part of the content-only delivery path here.)_
 
 - **Output channel pilot (2.0).** Streamable HTTP sessions can opt into `output_channel=structured` or `output_channel=both` via query string, `x-prts-output-channel` header, or `PRTS_OUTPUT_CHANNEL`. This first TS migration slice enables structuredContent for `list_stages` while preserving the default content-only markdown output, including legitimate empty pages (filter no-match / offset past end) as structured empty payloads.
 
