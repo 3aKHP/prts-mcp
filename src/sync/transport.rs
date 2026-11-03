@@ -121,13 +121,24 @@ pub struct ReqwestTransport {
 }
 
 impl ReqwestTransport {
-    /// Proxy behavior comes from the ambient HTTP(S)_PROXY env (reqwest
-    /// default) — the same sources Bun/undici honor in the oracle.
+    /// Compatibility constructor for callers without an application snapshot.
     pub fn new(mirrors: Vec<String>, token: Option<String>) -> Self {
         Self::try_new(mirrors, token).expect("reqwest client builds")
     }
     pub fn try_new(mirrors: Vec<String>, token: Option<String>) -> Result<Self, String> {
-        let client = reqwest::Client::builder()
+        Self::with_network(
+            mirrors,
+            token,
+            &crate::config::network::NetworkConfig::from_env(),
+        )
+    }
+    pub fn with_network(
+        mirrors: Vec<String>,
+        token: Option<String>,
+        network: &crate::config::network::NetworkConfig,
+    ) -> Result<Self, String> {
+        let client = network
+            .client_builder()
             .build()
             .map_err(|_| "无法构建同步 HTTP 客户端")?;
         Ok(Self {

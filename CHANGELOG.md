@@ -8,6 +8,10 @@ The original per-implementation changelogs at the 2.8.1 baseline remain availabl
 
 ## [Unreleased]
 
+### Added
+
+- Support application-owned TOML proxy, Wiki CA and local management settings across server and CLI entry points; preserve environment overrides and report restart-required changes without exposing secrets.
+
 ## [3.2.2] - 2026-11-03
 
 **PyPI upgrade notes**: Upgrading from 2.8.x switches to the native Rust implementation while preserving the default stdio entry points. Python >=3.11 and one of the five supported native platforms are required; wheels contain no fallback game data, so allow startup synchronization or provide local data. Pin `prts-mcp>=2.8,<2.9` to remain on Python LTS.

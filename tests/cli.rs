@@ -407,3 +407,63 @@ fn native_config_filename_does_not_panic_during_json_reporting() {
     let value: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
     assert_eq!(value["scope"], "invocation");
 }
+
+#[test]
+fn file_network_configuration_reports_alias_overrides_and_relative_ca() {
+    let f = Fixture::new();
+    let path = f.0.join("network.toml");
+    fs::write(&path, "schema_version=1\n[runtime]\nHTTP_PROXY='http://file-user:file-secret@127.0.0.1:7000'\nNODE_EXTRA_CA_CERTS='roots.pem'\nPRTS_INSTANCE_NAME='test-instance'\n").unwrap();
+    let output = f
+        .command()
+        .env("http_proxy", "http://env-user:env-secret@127.0.0.1:8000")
+        .arg("--config")
+        .arg(&path)
+        .args(["config", "show", "-o", "json"])
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{output:?}");
+    let text = String::from_utf8(output.stdout).unwrap();
+    for secret in ["file-secret", "env-secret", "file-user", "env-user"] {
+        assert!(!text.contains(secret));
+    }
+    let report: serde_json::Value = serde_json::from_str(&text).unwrap();
+    let fields = report["fields"].as_array().unwrap();
+    let proxy = fields.iter().find(|v| v["key"] == "HTTP_PROXY").unwrap();
+    assert_eq!(proxy["source"], "environment");
+    assert_eq!(proxy["value"], "[redacted]");
+    let ca = fields
+        .iter()
+        .find(|v| v["key"] == "NODE_EXTRA_CA_CERTS")
+        .unwrap();
+    assert_eq!(ca["source"], "file");
+    assert_eq!(
+        ca["value"],
+        f.0.join("roots.pem").to_string_lossy().as_ref()
+    );
+    assert!(!f.0.join("data").exists());
+}
+
+#[test]
+fn invalid_management_and_proxy_file_values_are_rejected_without_secret_echo() {
+    let f = Fixture::new();
+    let path = f.0.join("bad.toml");
+    for entry in [
+        "PRTS_INSTANCE_NAME='not a name'",
+        "PRTS_CONTROL_ENDPOINT='relative.sock'",
+        "HTTPS_PROXY='http://private-secret@[invalid'",
+        "HTTP_PROXY='http://user:private-secret space@127.0.0.1:8080'",
+        "HTTP_PROXY='http://127.0.0.1:99999'",
+        "HTTP_PROXY='http://127.0.0.1:not-a-port'",
+    ] {
+        fs::write(&path, format!("schema_version=1\n[runtime]\n{entry}\n")).unwrap();
+        let output = f
+            .command()
+            .arg("--config")
+            .arg(&path)
+            .args(["config", "validate"])
+            .output()
+            .unwrap();
+        assert_eq!(output.status.code(), Some(2));
+        assert!(!String::from_utf8_lossy(&output.stderr).contains("private-secret"));
+    }
+}

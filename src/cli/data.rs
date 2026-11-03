@@ -31,7 +31,12 @@ pub async fn sync(
             signal_control.cancel(130);
         })
     };
-    let transport = ReqwestTransport::new(cfg.github_mirrors.clone(), cfg.github_token.clone());
+    let transport = ReqwestTransport::with_network(
+        cfg.github_mirrors.clone(),
+        cfg.github_token.clone(),
+        &cfg.network,
+    )
+    .expect("validated network configuration");
     // Do not drop the sync future on a signal: active blocking publishers retain
     // their locks until completion; cancelled network calls unwind normal cleanup.
     let result = crate::sync::once::run(cfg, target, &transport, control.clone()).await;
@@ -46,8 +51,13 @@ pub async fn sync(
 }
 pub async fn network(cfg: &RuntimeConfig) -> Vec<Value> {
     use crate::wiki::client::{ReqwestWikiTransport, WikiTransport};
-    let t = ReqwestTransport::new(cfg.github_mirrors.clone(), cfg.github_token.clone());
-    let wiki = ReqwestWikiTransport::new();
+    let t = ReqwestTransport::with_network(
+        cfg.github_mirrors.clone(),
+        cfg.github_token.clone(),
+        &cfg.network,
+    )
+    .expect("validated network configuration");
+    let wiki = ReqwestWikiTransport::with_network(&cfg.network);
     let limit = std::time::Duration::from_secs(5);
     let params = [
         ("action".into(), "query".into()),

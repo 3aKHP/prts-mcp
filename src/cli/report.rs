@@ -1,5 +1,5 @@
 //! Stable management output; no Debug serialization of runtime secrets.
-use super::settings::environment_value;
+use super::settings::{environment_value, runtime_environment_value};
 use crate::config::{DataBackend, RuntimeConfig};
 use serde_json::{json, Value};
 use std::{collections::BTreeMap, path::Path};
@@ -19,8 +19,8 @@ pub fn configuration(
 ) -> Value {
     let fields:Vec<_>=super::schema::FIELDS.iter().map(|field|{
         let key=field.key;
-        let source=if args.contains_key(key){"argument"}else if environment_value(env,key).is_some(){"environment"}else if file.contains_key(key){"file"}else{"default"};
-        let raw=args.get(key).or_else(||environment_value(env,key)).or_else(||file.get(key));
+        let source=if args.contains_key(key){"argument"}else if runtime_environment_value(env,key).is_some(){"environment"}else if file.contains_key(key){"file"}else{"default"};
+        let raw=args.get(key).or_else(||runtime_environment_value(env,key)).or_else(||file.get(key));
         let value=effective(cfg,transport,key);
         let input=if super::schema::redacted(key){raw.map(|_|"[redacted]")}else{raw.map(String::as_str)};
         json!({"key":key,"value":value,"input":input,"source":source,"explanation":explanation(cfg,key)})
@@ -30,6 +30,7 @@ pub fn configuration(
         json!({"key":key,"source":if value.is_some(){"environment"}else{"unset"},"configured":value.is_some(),"value":value.map(|v|if super::schema::redacted(key){"[redacted]"}else{v.as_str()})})
     }).collect();
     json!({"schema_version":1,"scope":"invocation","config_file":path_value(path),"fields":fields,"network_environment":network,"derived":{
+        "proxy_discovery":if cfg.network.uses_system_discovery(){"system"}else{"configured"},
         "preferred_backend":backend(cfg),"allow_json_fallback":cfg.allow_json_fallback,
         "game_sync_enabled":match cfg.data_backend{DataBackend::Sqlite=>cfg.custom_database.is_none(),DataBackend::Json=>!cfg.is_custom_gamedata},
         "story_sync_enabled":cfg.data_backend==DataBackend::Json&&cfg.story_sync_enabled,
@@ -45,6 +46,12 @@ pub fn backend(cfg: &RuntimeConfig) -> &'static str {
 }
 fn effective(c: &RuntimeConfig, transport: &str, key: &str) -> Value {
     match key {
+        "HTTP_PROXY" | "HTTPS_PROXY" | "ALL_PROXY" | "NO_PROXY" => {
+            json!(c.network.values.get(key).map(|_| "[redacted]"))
+        }
+        "NODE_EXTRA_CA_CERTS" => path_value(c.network.extra_ca.as_deref()),
+        "PRTS_CONTROL_ENDPOINT" => path_value(c.control_endpoint.as_deref()),
+        "PRTS_INSTANCE_NAME" => json!(c.instance_name),
         "PRTS_TRANSPORT" => json!(if transport.trim().eq_ignore_ascii_case("stdio") {
             "stdio"
         } else {

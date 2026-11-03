@@ -73,6 +73,10 @@ impl Configuration {
                     applied.config.github_mirrors != candidate.config.github_mirrors
                 }
                 "PRTS_DEBUG_TOKEN" => applied.config.debug_token != candidate.config.debug_token,
+                "HTTP_PROXY" | "HTTPS_PROXY" | "ALL_PROXY" | "NO_PROXY" => {
+                    applied.config.network.values.get(key)
+                        != candidate.config.network.values.get(key)
+                }
                 _ => old["value"] != new["value"],
             };
             if changed {
@@ -126,9 +130,10 @@ impl Configuration {
         }
         let mut report = json!({"schema_version":1,"revision":applied.revision,"restart_required":restart,"changes":changes,"applied":false});
         if expected.is_some() {
-            let transport = ReqwestTransport::try_new(
+            let transport = ReqwestTransport::with_network(
                 candidate.config.github_mirrors.clone(),
                 candidate.config.github_token.clone(),
+                &candidate.config.network,
             )?;
             let config = Arc::new(candidate.config);
             let revision =
@@ -263,6 +268,41 @@ mod tests {
         let diff = configuration.evaluate(None).unwrap();
         assert_eq!(diff["restart_required"], true);
         assert_eq!(diff["changes"][0]["key"], "PRTS_DEBUG_TOKEN");
+        assert!(configuration.evaluate(Some(1)).is_err());
+    }
+    #[tokio::test]
+    async fn redacted_proxy_and_management_changes_require_restart_atomically() {
+        let fixture = Fixture::new();
+        fixture.write(
+            "HTTP_PROXY='http://user:before@127.0.0.1:8080'\nPRTS_AUTO_SYNC_INTERVAL_SECONDS=60\n",
+        );
+        let (configuration, jobs) = fixture.load(BTreeMap::new(), BTreeMap::new());
+        fixture.write("HTTP_PROXY='http://user:after@127.0.0.1:8080'\nPRTS_AUTO_SYNC_INTERVAL_SECONDS=120\nPRTS_INSTANCE_NAME='other'\n");
+        let diff = configuration.evaluate(None).unwrap();
+        assert_eq!(diff["restart_required"], true);
+        assert!(diff["changes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|v| v["key"] == "HTTP_PROXY" && v["action"] == "restart"));
+        assert!(!diff.to_string().contains("user:"));
+        assert!(configuration.evaluate(Some(1)).is_err());
+        assert_eq!(jobs.snapshot().config.auto_sync_interval_ms, 60000);
+        assert_eq!(configuration.show()["revision"], 1);
+    }
+    #[tokio::test]
+    async fn masked_file_proxy_addition_still_requires_restart_when_discovery_changes() {
+        let fixture = Fixture::new();
+        fixture.write("");
+        let (configuration, _) = fixture.load(
+            BTreeMap::from([("HTTP_PROXY".into(), "http://127.0.0.1:8080".into())]),
+            BTreeMap::new(),
+        );
+        fixture.write("HTTP_PROXY='http://127.0.0.1:9000'\n");
+        assert_eq!(
+            configuration.evaluate(None).unwrap()["restart_required"],
+            true
+        );
         assert!(configuration.evaluate(Some(1)).is_err());
     }
 }

@@ -8,6 +8,7 @@
 use std::path::{Path, PathBuf};
 
 pub mod data_source;
+pub mod network;
 pub use data_source::DataSource;
 
 use crate::sync::scheduler::resolve_auto_sync_interval_ms;
@@ -71,6 +72,9 @@ impl ValidationMode {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct RuntimeConfig {
+    pub network: network::NetworkConfig,
+    pub control_endpoint: Option<PathBuf>,
+    pub instance_name: String,
     pub data_source: DataSource,
     pub data_backend: DataBackend,
     /// Default preference may serve JSON until a validated database is ready.
@@ -295,14 +299,19 @@ fn excel_path_of(root: &Path) -> PathBuf {
 
 impl RuntimeConfig {
     pub fn from_env() -> Self {
-        Self::try_from_lookup_with_home(
+        let mut config = Self::try_from_lookup_with_home(
             |name| std::env::var(name).ok(),
             std::env::home_dir().as_deref(),
         )
         .unwrap_or_else(|error| {
             crate::log_err(&error);
             std::process::exit(2);
-        })
+        });
+        config.network = network::NetworkConfig::from_env();
+        config.control_endpoint = std::env::var_os("PRTS_CONTROL_ENDPOINT")
+            .filter(|v| !v.is_empty())
+            .map(PathBuf::from);
+        config
     }
 
     /// Testable core: `lookup` supplies both runtime options and default-path
@@ -392,6 +401,11 @@ impl RuntimeConfig {
             DataBackend::Sqlite,
         )?;
         Ok(Self {
+            network: network::NetworkConfig::from_lookup(&lookup),
+            control_endpoint: lookup("PRTS_CONTROL_ENDPOINT")
+                .filter(|v| !v.is_empty())
+                .map(PathBuf::from),
+            instance_name: lookup("PRTS_INSTANCE_NAME").unwrap_or_else(|| "main".into()),
             data_source,
             validation_mode: ValidationMode::parse(lookup("PRTS_VALIDATION_MODE").as_deref())?,
             data_backend,
