@@ -20,6 +20,52 @@ pub struct Field {
 use Kind::*;
 pub const FIELDS: &[Field] = &[
     Field {
+        key: "HTTP_PROXY",
+        kind: String,
+        example: "",
+        description: "网络代理与免代理配置",
+    },
+    Field {
+        key: "HTTPS_PROXY",
+        kind: String,
+        example: "",
+        description: "网络代理与免代理配置",
+    },
+    Field {
+        key: "ALL_PROXY",
+        kind: String,
+        example: "",
+        description: "网络代理与免代理配置",
+    },
+    Field {
+        key: "NO_PROXY",
+        kind: String,
+        example: "",
+        description: "网络代理与免代理配置",
+    },
+    Field {
+        key: "NODE_EXTRA_CA_CERTS",
+        kind: Path,
+        example: "ca.pem",
+        description: "Wiki 请求的附加 CA 证书",
+    },
+    Field {
+        key: "PRTS_CONTROL_ENDPOINT",
+        kind: String,
+        example: if cfg!(windows) {
+            r"\\.\pipe\prts-mcp-main"
+        } else {
+            "/run/prts-mcp-main/control.sock"
+        },
+        description: "本机管理端点；空值关闭，Unix 使用绝对 socket 路径",
+    },
+    Field {
+        key: "PRTS_INSTANCE_NAME",
+        kind: String,
+        example: "main",
+        description: "本机管理实例名称",
+    },
+    Field {
         key: "PRTS_TRANSPORT",
         kind: Choice(&["http", "stdio"]),
         example: "http",
@@ -211,6 +257,23 @@ impl Field {
         };
         if self.key == "PRTS_DATA_SOURCE_REPO" {
             crate::config::DataSource::parse(Some(&raw))?;
+        }
+        match self.key {
+            "PRTS_INSTANCE_NAME" if !crate::control::instances::valid_name(&raw) => {
+                return Err(invalid())
+            }
+            "PRTS_CONTROL_ENDPOINT"
+                if !raw.is_empty()
+                    && !crate::control::instances::valid_endpoint(std::path::Path::new(&raw)) =>
+            {
+                return Err(invalid())
+            }
+            "HTTP_PROXY" | "HTTPS_PROXY" | "ALL_PROXY"
+                if !raw.is_empty() && !crate::config::network::NetworkConfig::valid_proxy(&raw) =>
+            {
+                return Err(invalid())
+            }
+            _ => (),
         }
         Ok(raw)
     }

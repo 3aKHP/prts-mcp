@@ -1,6 +1,6 @@
 [package]
 name = "prts-mcp"
-version = "3.2.2"
+version = "3.2.3"
 edition = "2021"
 rust-version = "1.89"
 publish = ["crates-io"]
@@ -24,6 +24,8 @@ path = "src/lib.rs"
 # ---------------------------------------------------------------------------
 
 [dependencies]
+hyper-util = { version = "0.1", features = ["client-proxy", "client-proxy-system"] }
+base64 = "0.22"
 # Async runtime + HTTP server.
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "time", "signal", "io-util", "io-std", "sync", "fs", "process"] }
 axum = { version = "0.8", default-features = false, features = ["http1", "json", "query", "tokio"] }

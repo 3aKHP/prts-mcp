@@ -1,14 +1,12 @@
 //! PRTS Wiki API client — port of TS `api/prtsWiki.ts` request half.
 //!
-//! Contract: global 1.5 s rate limiter whose slot is reserved BEFORE any
+//! Contract: application-shared 1.5 s rate limiter whose slot is reserved BEFORE any
 //! await (concurrent callers get distinct slots), 15 s per-request timeout,
 //! `PRTS API error: HTTP <status>` for non-2xx, JSON bodies. Proxy and CA
-//! behavior come from the ambient environment exactly like the oracle
-//! runtime: Bun reads lowercase `https_proxy` and `NODE_EXTRA_CA_CERTS`;
-//! reqwest reads the proxy env itself, and the extra CA file is honored for
-//! parity.
+//! behavior comes from the immutable application configuration. Legacy
+//! constructors capture environment and platform proxy discovery once.
 
-use std::sync::{Mutex, OnceLock};
+use std::sync::Mutex;
 use std::time::Duration;
 
 use async_trait::async_trait;
@@ -78,12 +76,15 @@ impl Default for ReqwestWikiTransport {
 
 impl ReqwestWikiTransport {
     pub fn new() -> Self {
-        let mut builder = reqwest::Client::builder();
+        Self::with_network(&crate::config::network::NetworkConfig::from_env())
+    }
+    pub fn with_network(network: &crate::config::network::NetworkConfig) -> Self {
+        let mut builder = network.client_builder();
         // Bun honors NODE_EXTRA_CA_CERTS; the replay differential relies on
         // the same env here, and production deployments behind TLS
         // interception get corporate roots for free.
-        if let Ok(path) = std::env::var("NODE_EXTRA_CA_CERTS") {
-            if let Ok(pem) = std::fs::read(&path) {
+        if let Some(path) = &network.extra_ca {
+            if let Ok(pem) = std::fs::read(path) {
                 if let Ok(cert) = reqwest::Certificate::from_pem(&pem) {
                     builder = builder.add_root_certificate(cert);
                 }
@@ -248,16 +249,40 @@ impl WikiTransport for ReqwestWikiTransport {
     }
 }
 
-static SHARED: OnceLock<ReqwestWikiTransport> = OnceLock::new();
-
-/// Process-wide transport (TS module state is process-global too).
-pub fn shared_transport() -> &'static ReqwestWikiTransport {
-    SHARED.get_or_init(ReqwestWikiTransport::new)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn application_proxy_is_used_by_wiki_client_without_ambient_lookup() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let proxy = format!("http://{}", listener.local_addr().unwrap());
+        let network = crate::config::network::NetworkConfig::from_lookup(|key| {
+            (key == "HTTP_PROXY").then(|| proxy.clone())
+        });
+        let server = tokio::spawn(async move {
+            let (mut socket, _) = listener.accept().await.unwrap();
+            let mut bytes = [0; 4096];
+            let n = socket.read(&mut bytes).await.unwrap();
+            assert!(String::from_utf8_lossy(&bytes[..n])
+                .starts_with("GET http://wiki-fixture.invalid/api "));
+            socket
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}")
+                .await
+                .unwrap();
+        });
+        let transport = ReqwestWikiTransport::with_network(&network);
+        let response = transport
+            .client
+            .get("http://wiki-fixture.invalid/api")
+            .timeout(std::time::Duration::from_secs(3))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), 200);
+        server.await.unwrap();
+    }
 
     #[test]
     fn limiter_reserves_distinct_slots_before_waiting() {

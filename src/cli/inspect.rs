@@ -309,9 +309,8 @@ pub fn local_doctor(cfg: &RuntimeConfig) -> Value {
             ));
         }
     }
-    if let Some(path) = std::env::var_os("NODE_EXTRA_CA_CERTS") {
-        let path = PathBuf::from(path);
-        let valid = std::fs::read(&path)
+    if let Some(path) = &cfg.network.extra_ca {
+        let valid = std::fs::read(path)
             .ok()
             .and_then(|pem| reqwest::Certificate::from_pem(&pem).ok())
             .is_some();
@@ -323,7 +322,7 @@ pub fn local_doctor(cfg: &RuntimeConfig) -> Value {
             } else {
                 "Wiki CA 文件不可读取或不是有效 PEM"
             },
-            Some(&path),
+            Some(path),
         ));
     }
     json!({"schema_version":1,"scope":"local","ok":successful(&checks),"checks":checks,"data":data})

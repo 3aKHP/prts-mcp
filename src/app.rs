@@ -324,7 +324,7 @@ impl App {
         transport: &'static str,
         jobs: Arc<Coordinator>,
     ) -> std::io::Result<Option<crate::control::server::Server>> {
-        if std::env::var_os("PRTS_CONTROL_ENDPOINT").is_none_or(|v| v.is_empty()) {
+        if self.config.control_endpoint.is_none() {
             return Ok(None);
         }
         let mut report = self.startup_report.clone().unwrap_or_else(|| {
@@ -346,7 +346,7 @@ impl App {
                 field["value"] = serde_json::json!(transport);
             }
         }
-        let name = std::env::var("PRTS_INSTANCE_NAME").unwrap_or_else(|_| "main".into());
+        let name = self.config.instance_name.clone();
         let mut state =
             crate::control::server::State::new(name, transport, report, self.data.clone());
         let context = self.startup_context.clone().unwrap_or_else(|| {
@@ -367,16 +367,21 @@ impl App {
             jobs.clone(),
         ));
         state.jobs = Some(jobs);
-        crate::control::server::start(Arc::new(state)).await
+        crate::control::server::start(Arc::new(state), self.config.control_endpoint.as_deref())
+            .await
     }
 
     /// Background sync tasks (startup cycle + retries + periodic loop).
     /// Spawned on the ambient runtime; cancelled when the process exits.
     fn sync_coordinator(&self) -> Arc<Coordinator> {
-        let transport = Arc::new(ReqwestTransport::new(
-            self.config.github_mirrors.clone(),
-            self.config.github_token.clone(),
-        ));
+        let transport = Arc::new(
+            ReqwestTransport::with_network(
+                self.config.github_mirrors.clone(),
+                self.config.github_token.clone(),
+                &self.config.network,
+            )
+            .expect("validated network configuration"),
+        );
         Coordinator::new(Arc::clone(&self.config), transport)
     }
 

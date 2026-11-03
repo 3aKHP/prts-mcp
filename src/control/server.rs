@@ -159,8 +159,11 @@ impl Drop for Server {
     }
 }
 
-pub async fn start(state: Arc<State>) -> io::Result<Option<Server>> {
-    let Some(endpoint) = std::env::var_os("PRTS_CONTROL_ENDPOINT").filter(|v| !v.is_empty()) else {
+pub async fn start(
+    state: Arc<State>,
+    endpoint: Option<&std::path::Path>,
+) -> io::Result<Option<Server>> {
+    let Some(endpoint) = endpoint else {
         return Ok(None);
     };
     if !super::instances::valid_name(&state.instance) {

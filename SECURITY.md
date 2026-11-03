@@ -12,7 +12,7 @@ PRTS-MCP provides security fixes for the latest stable release line as well as t
 
 | Version Line | Security Support |
 |--------------|------------------|
-| `3.2.x` (`main`) | Active stable line (native Rust, currently `3.2.2`); receives security, compatibility, and bug fixes. |
+| `3.2.x` (`main`) | Active stable line (native Rust, currently `3.2.3`); receives security, compatibility, and bug fixes. |
 | `2.8.x` | Supported as an LTS line through **2027-07-02** (Python and TypeScript maintained on `lts/2.8`). |
 | `1.7.x` | Supported as an LTS line through **2027-07-02** for security, compatibility, data-sync, and critical bug fixes. |
 | `< 1.7` | End of life; no longer supported. Please upgrade before reporting. |
@@ -84,7 +84,7 @@ PRTS-MCP 为最新稳定版本线以及 `1.7`、`2.8` 两条 LTS 长期支持线
 
 | 版本线 | 安全支持状态 |
 |--------------|------------------|
-| `3.2.x`（`main`） | 当前公开稳定线（原生 Rust，当前版本 `3.2.2`），持续提供安全性、兼容性与缺陷修复。 |
+| `3.2.x`（`main`） | 当前公开稳定线（原生 Rust，当前版本 `3.2.3`），持续提供安全性、兼容性与缺陷修复。 |
 | `2.8.x` | 作为 LTS 维护线支持至 **2027-07-02**（Python 与 TypeScript 实现在 `lts/2.8` 分支维护）。 |
 | `1.7.x` | 作为 LTS 维护线支持至 **2027-07-02**，支持范围涵盖安全性、兼容性、数据同步与关键缺陷修复。 |
 | `< 1.7` | 已停止支持，请先升级至受支持版本后再行验证和报告。 |

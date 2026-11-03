@@ -1423,15 +1423,17 @@ dependencies = [
 
 [[package]]
 name = "prts-mcp"
-version = "3.2.2"
+version = "3.2.3"
 dependencies = [
  "async-trait",
  "axum",
+ "base64 0.22.1",
  "cc",
  "clap",
  "clap_complete",
  "filetime",
  "flate2",
+ "hyper-util",
  "memchr",
  "reqwest",
  "ring",

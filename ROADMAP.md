@@ -2,7 +2,11 @@
 
 [简体中文](ROADMAP.zh-CN.md)
 
-The current public stable release is `3.2.2`, a single native Rust implementation that preserves the frozen TS/v2.8.1 tool contract. Active development continues on `develop` (`3.2.2-dev.0`).
+The current public stable release is `3.2.3`, a single native Rust implementation that preserves the frozen TS/v2.8.1 tool contract. Active development continues on `develop` (`3.2.3-dev.0`).
+
+## 3.2.3 — Unified Application Configuration
+
+Delivered TOML configuration for proxies, Wiki CA certificates and local management settings, shared across server and CLI entry points. Existing environment deployments remain compatible.
 
 ## 3.2 — SQLite Default and v2 Artwork
 

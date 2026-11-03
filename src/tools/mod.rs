@@ -46,6 +46,7 @@ pub enum DispatchResult {
 pub struct AppHandle {
     pub data: std::sync::Arc<crate::app::DataState>,
     pub excel_missing_message: String,
+    wiki: std::sync::Arc<std::sync::OnceLock<crate::wiki::client::ReqwestWikiTransport>>,
 }
 
 impl AppHandle {
@@ -60,6 +61,7 @@ impl AppHandle {
         Self {
             data,
             excel_missing_message,
+            wiki: Default::default(),
         }
     }
 
@@ -68,6 +70,13 @@ impl AppHandle {
             config.clone(),
         )));
         Self::from_parts(data, config)
+    }
+
+    /// All tools and cloned handles in one application share the pool and limiter.
+    pub fn wiki_transport(&self) -> &crate::wiki::client::ReqwestWikiTransport {
+        self.wiki.get_or_init(|| {
+            crate::wiki::client::ReqwestWikiTransport::with_network(&self.config().network)
+        })
     }
 
     /// One generation snapshot for a complete tool call.
@@ -263,4 +272,22 @@ pub fn registry_for(images_enabled: bool) -> Vec<ToolEntry> {
         ));
     }
     tools
+}
+
+#[cfg(test)]
+mod client_ownership_tests {
+    use super::AppHandle;
+
+    #[test]
+    fn clones_share_a_client_but_distinct_applications_do_not() {
+        let config = crate::config::RuntimeConfig::from_lookup(|_| None);
+        let first = AppHandle::from_config(&config);
+        let clone = first.clone();
+        let second = AppHandle::from_config(&config);
+        assert!(std::ptr::eq(first.wiki_transport(), clone.wiki_transport()));
+        assert!(!std::ptr::eq(
+            first.wiki_transport(),
+            second.wiki_transport()
+        ));
+    }
 }
