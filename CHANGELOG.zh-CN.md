@@ -6,6 +6,8 @@
 
 2.8.1 基线时的原始分语言更新日志可在 [`ts/v2.8.1` tag](https://github.com/3aKHP/prts-mcp/tree/ts/v2.8.1) 查看（[Python](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/python/CHANGELOG.md) · [TypeScript](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/ts/CHANGELOG.md)），1.7.1 与 1.7.2 的维护记录来自已发布的 [`python/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/python/v1.7.2/python/CHANGELOG.md) 与 [`ts/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/ts/v1.7.2/ts/CHANGELOG.md) 标签。
 
+## [Unreleased]
+
 ## [3.2.2] - 2026-11-03
 
 **PyPI 升级注意事项**：从 2.8.x 升级会切换至原生 Rust 实现，保留默认 stdio 启动入口。需要 Python >=3.11 及五个受支持原生平台之一；Wheel 不含备用游戏数据，须允许启动同步或提供本地数据。继续使用 Python LTS 请固定 `prts-mcp>=2.8,<2.9`。
