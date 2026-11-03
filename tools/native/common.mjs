@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 
 export const root = fileURLToPath(new URL('../../', import.meta.url));
 export const targets = JSON.parse(readFileSync(join(root, 'packaging/native/targets.json')));
-export const bins = ['prts-mcp', 'prts-mcp-ts', 'prts-mcp-ts-bun', 'prts-mcp-ts-stdio', 'prts-mcp-ghcr'];
+export const bins = ['prtsctl', 'prts-mcp', 'prts-mcp-ts', 'prts-mcp-ts-bun', 'prts-mcp-ts-stdio', 'prts-mcp-ghcr'];
 export const id = process.argv[2];
 export const config = targets[id];
 if (!config) throw new Error(`Usage: node tools/native/<build|pack|audit|probe>.mjs <${Object.keys(targets).join('|')}>`);

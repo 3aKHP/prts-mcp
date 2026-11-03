@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { root, version, run, sha, json, readJson, verifyVersion } from '../release/common.mjs';
 export { root, version, run, sha, json, readJson, verifyVersion };
-export const publicBins = ['prts-mcp', 'prts-mcp-ghcr', 'prts-mcp-ts', 'prts-mcp-ts-bun', 'prts-mcp-ts-stdio'];
+export const publicBins = ['prts-mcp', 'prts-mcp-ghcr', 'prts-mcp-ts', 'prts-mcp-ts-bun', 'prts-mcp-ts-stdio', 'prtsctl'];
 export const directory = join(root, 'artifacts/cargo');
 export const filename = `prts-mcp-${version}.crate`;
 export const packed = join(root, 'target/package', filename);
@@ -22,6 +22,7 @@ export function assertSourceReceipt(receipt, { version: product, commit, cargoVe
   assert.equal(receipt.runtime?.extractedOutsideCheckout, true);
   assert.equal(receipt.runtime?.pathEmpty, true);
   assert.deepEqual([...new Set(receipt.runtime.checks.map(check => check.bin))].sort(), publicBins);
+  assert(receipt.runtime.checks.some(check => check.bin === 'prtsctl' && check.case === 'management-cli'));
   assert(receipt.runtime.checks.some(check => check.transport === 'http' && check.legacy && check.modern));
   assert(receipt.runtime.checks.some(check => check.transport === 'stdio' && check.exit === 'EOF -> 0'));
 }

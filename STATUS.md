@@ -6,8 +6,8 @@
 
 | Line / Branch | Current State |
 | --- | --- |
-| Public stable (`main`) | [`3.2.1`](https://github.com/3aKHP/prts-mcp/releases/tag/v3.2.1) (native Rust), published on npm (`latest`), crates.io, GitHub Releases, and GHCR (`:latest`, `:3`). |
-| Active development (`develop`) | `3.2.1-dev.0` (native Rust Cargo project at the repository root). |
+| Public stable (`main`) | [`3.2.2`](https://github.com/3aKHP/prts-mcp/releases/tag/v3.2.2) (native Rust), published on npm (`latest`), PyPI, crates.io, GitHub Releases, and GHCR (`:latest`, `:3`). |
+| Active development (`develop`) | `3.2.2-dev.0` (native Rust Cargo project at the repository root). |
 | `lts/2.8` | Python and TypeScript 2.8.x maintenance branch (latest patch `2.8.2`, `2.8.1` feature baseline, 24 tools). |
 | `lts/1.7` | Python and TypeScript 1.7.x maintenance branch (latest patch `1.7.3`, `1.7.0` feature baseline, 32 tools). |
 | LTS End of Life | Both `lts/2.8` and `lts/1.7` are supported through **2027-07-02**. |
@@ -17,10 +17,15 @@
 - **Runtime**: Native Rust server at the repository root with a statically linked C regular-expression engine (`vendor/quickjs-regexp/`), requiring no JavaScript or Python business runtime.
 - **Capabilities**: 24 MCP tools (`23` when `IMAGES_ENABLED=false`), supporting both legacy session-based and modern stateless (`2026-07-28`) MCP protocol eras over Streamable HTTP and stdio, with generation-aware background sync for game tables, levels, stories, and artwork.
 - **Entry Point Defaults**:
-  - `prts-mcp` (native binary and npm main package) defaults to Streamable HTTP (`:3000/mcp`); set `PRTS_TRANSPORT=stdio` for stdio mode.
+  - `prts-mcp` (native binary, Cargo install, and npm main package) defaults to Streamable HTTP (`:3000/mcp`); set `PRTS_TRANSPORT=stdio` for stdio mode.
   - `prts-mcp-ts`, `prts-mcp-ts-bun` (HTTP), and `prts-mcp-ts-stdio` (stdio) preserve fixed 2.x transport modes on top of the Rust binary.
-  - `prts-mcp-ghcr` (Docker image entrypoint) preserves default `stdio`; set `PRTS_TRANSPORT=http` for HTTP mode.
+  - `prts-mcp-ghcr` (Docker image entrypoint, also used by the 3.2.2+ PyPI wheel bridge) preserves default `stdio`; set `PRTS_TRANSPORT=http` for HTTP mode.
+  - `prtsctl` (added on the 3.2.2 line) provides management subcommands (`config`, `doctor`, `data`, `service`, `runtime`, `serve`, `completion`) without starting the server when invoked with no arguments.
 - **Repository Structure**: The root directory holds `Cargo.toml`, `src/`, `native/`, `vendor/`, `tests/`, `contracts/`, `tools/`, `packaging/`, and `Dockerfile`. Legacy Python and TypeScript implementations are maintained on `lts/2.8` and `lts/1.7` (see [LTS Policy](docs/dev/LTS.md)). Code and third-party content licensing are documented in [LICENSE](LICENSE) and [NOTICE](NOTICE).
+
+## 3.2.2 Management CLI and Native PyPI Distribution
+
+`prtsctl` adds local configuration, diagnostics, one-shot sync, systemd lifecycle commands and opt-in runtime management. PyPI provides five native wheels with Python >=3.11 and no fallback data; Cargo installation includes all six public binaries. Both channels use OIDC publication. See the [CLI guide](docs/admin/cli.md) and [release candidates](docs/dev/RELEASE-CANDIDATES.md).
 
 ## 3.2.1 Cargo Source Distribution
 
@@ -42,11 +47,11 @@ Version 3.1 uses JSON by default with opt-in SQLite through `PRTS_DATA_BACKEND=s
 
 - **M0–M1 (Scope & Root Import — Complete)**: Froze the TS/v2.8.1 behavioral baseline (`contracts/`), isolated `lts/2.8` maintenance publishing, imported the Rust implementation to the repository root, and established Rust CI and source-package verification.
 - **M2 (Multi-Platform Native, npm & Docker Packaging — Complete)**:
-  - **M2A**: Verified native builds, ABI baselines, and standalone archive execution across all 5 target platforms (`linux-x64`, `linux-arm64`, `windows-x64`, `darwin-arm64`, `darwin-x64`; see [NATIVE-PLATFORMS.md](docs/dev/NATIVE-PLATFORMS.md)).
+  - **M2A**: Verified native builds, ABI baselines (Linux `glibc 2.28`, Windows static CRT, macOS `14.0`), and standalone archive execution across all 5 target platforms (`linux-x64`, `linux-arm64`, `windows-x64`, `darwin-arm64`, `darwin-x64`; see [NATIVE-PLATFORMS.md](docs/dev/NATIVE-PLATFORMS.md)).
   - **M2B**: Verified the 9-package npm layout (`prts-mcp`, `prts-mcp-ts`, `@3akhp/prts-mcp-runtime`, `@3akhp/prts-mcp-data`, and 5 platform packages) with bundled read-only fallback data across all 5 platforms (see [NPM-DISTRIBUTION.md](docs/dev/NPM-DISTRIBUTION.md)).
   - **M2C**: Verified Linux `x64`/`arm64` Docker images and backward-compatible volume layouts (see [DOCKER-DISTRIBUTION.md](docs/dev/DOCKER-DISTRIBUTION.md)).
 - **M3 (Candidate Release Automation — Complete)**: Published [`3.0.0-alpha.3`](https://github.com/3aKHP/prts-mcp/releases/tag/v3.0.0-alpha.3) via `.github/workflows/release-rust.yml` with npm OIDC provenance across all 9 packages, 44 GitHub Release assets, and dual-architecture GHCR manifests, while keeping `latest` and LTS channels untouched (see [RELEASE-CANDIDATES.md](docs/dev/RELEASE-CANDIDATES.md)).
-- **M4 (Candidate E2E, Upgrade & Rollback — Complete within Accepted Scope)**: Verified `3.0.0-alpha.3` on WSL across the full 24-tool harness, real MCP client operator/artwork workflows, game-data and artwork baseline/delta sync, and live upgrade/rollback against npm `2.8.1` user volumes (see [E2E.md](docs/dev/E2E.md)).
+- **M4 (Candidate E2E, Upgrade & Rollback — Complete)**: Verified `3.0.0-alpha.3` on WSL across the full 24-tool harness, real MCP client operator/artwork workflows, game-data and artwork baseline/delta sync, and live upgrade/rollback against npm `2.8.1` user volumes (see [E2E.md](docs/dev/E2E.md)).
 - **M5 (Stable 3.0.0 Release — Complete)**: `3.0.0-rc.3` passed production lifecycle observation, including a natural data and image generation update, and same-load memory comparison against 2.8.1. `3.0.0` was released from `main` with `latest` promoted on npm, GHCR, and GitHub Releases, then back-merged to `develop`. Standalone `crates.io` publication, management CLI, and new feature work are scheduled after 3.0.0.
 
 ## Release History (Python / TypeScript)

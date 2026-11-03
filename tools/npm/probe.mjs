@@ -2,13 +2,15 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir, release as osRelease } from 'node:os';
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 import { createServer } from 'node:net';
 import { once } from 'node:events';
 import { createRequire } from 'node:module';
 import { root,version,targets,readJson,json,sha,verifyInventory,verifyNotices } from './common.mjs';
 import { startRegistry,capture,npmSpawn } from './registry.mjs';
 import { stdio } from './mcp.mjs';
+import { managementProbe } from '../cli/probe.mjs';
+import { shellProbe } from '../cli/shells.mjs';
 
 const id = process.argv[2], target = targets[id];
 assert(target && target.os === process.platform && target.arch === process.arch,'npm runtime verification requires its native host');
@@ -32,9 +34,10 @@ const env = {...process.env};
 for (const key of Object.keys(env)) {
   if (/^(PRTS_|GAMEDATA_PATH|STORYJSON_PATH|GITHUB_TOKEN|GITHUB_MIRRORS|NODE_AUTH_TOKEN|NPM_TOKEN|NPM_CONFIG_)/i.test(key)) delete env[key];
 }
+delete env.HOST; delete env.PORT;
 const config = join(temp,'empty.npmrc'); writeFileSync(config,'');
 const globalConfig = join(temp,'global.npmrc'); writeFileSync(globalConfig,'');
-Object.assign(env,{NPM_CONFIG_USERCONFIG:config,NPM_CONFIG_GLOBALCONFIG:globalConfig,
+Object.assign(env,{XDG_CONFIG_HOME:join(temp,'config'),APPDATA:join(temp,'config'),NPM_CONFIG_USERCONFIG:config,NPM_CONFIG_GLOBALCONFIG:globalConfig,
   NPM_CONFIG_REGISTRY:registry.url,NPM_CONFIG_AUDIT:'false',NPM_CONFIG_FUND:'false',
   NPM_CONFIG_TIMING:'true',NPM_CONFIG_LOGS_DIR:join(out,'npm-logs'),
   IMAGES_ENABLED:'false',LOCAL_IMAGE:'false',PRTS_OUTPUT_CHANNEL:'content',
@@ -123,6 +126,11 @@ try {
     });
     checks.push({case:`npx ${name} with clean cache`,...result});
   }
+  const npxCli=await capture('npx',['--yes','--cache',join(temp,'npx-prts-mcp'),'--registry',registry.url,'--package',`prts-mcp@${version}`,'prtsctl','--version'],{cwd:temp,env});
+  assert.equal(npxCli.code,0,npxCli.stderr);assert.equal(npxCli.stdout.trim(),`prtsctl ${version}`);
+  const cliShim=join(prefix,process.platform==='win32'?'prtsctl.cmd':'bin/prtsctl');
+  const shellChecks=shellProbe({program:cliShim,env,cwd:temp,version,label:'npm-shim'});
+  if(process.platform==='win32')shellProbe({program:join(prefix,'prtsctl.ps1'),env,cwd:temp,version,label:'npm-ps1'});
   const project=join(temp,'locked-project');mkdirSync(project);
   console.log(`NPM_STAGE: ${id} locked project install and clean npm ci`);
   json(join(project,'package.json'),{name:'npm-install-probe',private:true,dependencies:{'prts-mcp':version,'prts-mcp-ts':version}});
@@ -136,6 +144,15 @@ try {
   const requireMain=createRequire(localMain), requireCompat=createRequire(localCompat);
   assert.equal(requireMain.resolve('@3akhp/prts-mcp-runtime'),requireCompat.resolve('@3akhp/prts-mcp-runtime'));
   checks.push({case:'npm ci with fresh cache and unchanged lockfile; shared runtime/data deduplicated',...await stdio(launch(localCompat),version)});
+  managementProbe({command:process.execPath,args:[join(project,'node_modules/prts-mcp/bin/prtsctl.cjs')],env,cwd:temp,version,label:'npm-local'});
+  checks.push({case:'management-cli',npx:true,globalShim:true,project:true,shells:shellChecks});
+  if(process.platform==='win32') {
+    const cancellation=execFileSync('python',[join(root,'tools/cli/windows-cancel.py'),process.execPath,
+      join(globalRoot,'prts-mcp/bin/prtsctl.cjs'),join(temp,'console-cancel')],
+      {cwd:temp,env,encoding:'utf8',timeout:45000,stdio:['ignore','pipe','pipe']});
+    assert.match(cancellation,/WINDOWS_CLI_CANCEL_PASS/);
+    checks.push({case:'management-cli-console-cancel',exit:130,cancelled:true});
+  }
   console.log(`NPM_STAGE: ${id} lifecycle and error diagnostics`);
   for(const signal of process.platform==='win32'?['SIGTERM']:['SIGTERM','SIGINT','SIGHUP']) await timed(`lifecycle-${signal}`,()=>signalCheck(main,signal));
   const occupied=createServer();occupied.listen(0,'127.0.0.1');await once(occupied,'listening');

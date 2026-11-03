@@ -78,6 +78,12 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+      - name: Install shell probe dependencies
+        run: |
+          if ! command -v zsh >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y zsh
+          fi
       - name: Install pinned Rust toolchain and check components
         run: |
           rustup show
@@ -100,6 +106,12 @@ jobs:
         with:
           path: .runtime/data
           key: frozen-oracle-data-${{ hashFiles('contracts/validation-assets.json') }}
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - uses: astral-sh/setup-uv@v9.0.0
+      - name: Native wheel packaging and launcher tests
+        run: uv run --locked --project tools/pypi python -m unittest discover -s tools/pypi/tests -v
       - name: Comparative evaluation contracts and evidence lifecycle
         run: python3 -m unittest discover -s tools/experiments/tests -p 'test_*.py'
       - name: Native tests, frozen differential suite and lifecycle
@@ -119,6 +131,20 @@ jobs:
           name: rust-validation-evidence
           path: artifacts/
           retention-days: 14
+  pypi-python:
+    needs: workflow-lint
+    if: needs.workflow-lint.outputs.run == 'true'
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        python: ['3.12', '3.13', '3.14', '3.15']
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: astral-sh/setup-uv@v9.0.0
+      - run: uv run --locked --project tools/pypi --python ${{ matrix.python }} python -m unittest discover -s tools/pypi/tests -v
   native:
     needs: workflow-lint
     if: needs.workflow-lint.outputs.run == 'true' && needs.workflow-lint.outputs.full == 'true'
@@ -126,7 +152,7 @@ jobs:
   result:
     name: ${{ format('CI result / {0} / {1} / {2} / {3}', github.event_name, github.event.pull_request.number || 0, github.base_ref || github.ref, needs.workflow-lint.outputs.full == 'true' && 'full' || 'ordinary') }}
     if: always() && needs.workflow-lint.outputs.run != 'false'
-    needs: [workflow-lint, msrv, rust-validation, native]
+    needs: [workflow-lint, msrv, rust-validation, pypi-python, native]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:

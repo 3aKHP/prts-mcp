@@ -154,6 +154,8 @@ pub async fn run_http(
     host: &str,
     bind_port: u16,
     startup_log_line: String,
+    ready: Option<Arc<std::sync::atomic::AtomicBool>>,
+    shutdown: impl std::future::Future<Output = ()> + Send + 'static,
 ) -> std::io::Result<()> {
     let app = Router::new()
         .route("/mcp", any(mcp_endpoint))
@@ -162,8 +164,13 @@ pub async fn run_http(
         .route("/debug/metrics", axum::routing::get(debug_metrics))
         .with_state(shared);
     let listener = tokio::net::TcpListener::bind((host, bind_port)).await?;
+    if let Some(ready) = ready {
+        ready.store(true, std::sync::atomic::Ordering::Release);
+    }
     crate::log_info(&startup_log_line);
-    axum::serve(listener, app).await
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown)
+        .await
 }
 
 async fn health() -> Response {

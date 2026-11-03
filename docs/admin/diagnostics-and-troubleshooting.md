@@ -16,10 +16,7 @@ curl -fsS http://127.0.0.1:3000/health
 # 正常响应（HTTP 200）：{"status":"ok"}
 ```
 
-> **注意“服务已监听”与“数据已同步”的区别**：
-> 服务端启动后会立即绑定端口并响应 `/health`，随后在后台异步执行首次数据同步。
-> - 对于官方原生归档包、npm 包与 Docker 镜像，由于内置了只读备用数据，服务一启动即可正常响应工具查询；
-> - 对于不含内置备用数据的源码构建版本，`/health` 返回 `ok` 时首次后台同步可能仍在进行中，需结合 `stderr` 日志或 `/debug/cache` 观察同步状态。
+> **注意“服务已监听”与“数据已同步”的区别**：服务端启动后会立即绑定端口并响应 `/health`，随后在后台异步执行首次数据同步。对于官方原生归档包、npm 包与 Docker 镜像，由于内置了只读备用数据，服务一启动即可正常响应工具查询；对于不含内置备用数据的源码构建、Cargo 安装或 3.2.2+ PyPI Wheel 版本，`/health` 返回 `ok` 时首次后台同步可能仍在进行中，需结合 `stderr` 日志或 `/debug/cache` 观察同步状态。
 
 ---
 
@@ -55,7 +52,8 @@ curl -fsS -H "Authorization: Bearer $PRTS_DEBUG_TOKEN" http://127.0.0.1:3000/deb
   - `process`: 包含 `runtime: "rust"`、`rss_bytes`（当前常驻内存 RSS / Working Set）与 `rss_high_water_bytes`（指标采样中观察到的最高 RSS），不再输出 V8/Python 堆字段；
   - `sessions`: 包含当前活跃的 HTTP Legacy 会话数、累计创建/关闭/超时驱逐计数、配置的 `idle_timeout_ms`、最长会话存续时间 `oldest_age_ms` 与最长空闲时间 `max_idle_age_ms`；
   - `data_backend`: `preference` 为配置偏好的后端（`sqlite` 或 `json`），`effective` 为当前实际服务的后端（`sqlite`、`json` 或 `unavailable`），`fallback` 为 `true` 时表示默认 SQLite 偏好下正在使用 JSON 备用；`fallback_reason` 在默认偏好下尚无已验收 DB 时为 `no_validated_database`（即使 JSON 备用也不可用），其余情况为 `null`；
-  - `requests` / `tool_calls`: 分别提供 HTTP 请求的聚合计数、错误数与耗时，以及工具调用的聚合计数与 `by_name` 分组耗时统计；不记录用户的具体查询词、响应内容或会话 ID。
+  - `requests` / `tool_calls`: 分别提供 HTTP 请求的聚合计数、错误数与耗时，以及工具调用的聚合计数与 `by_name` 分组耗时及采样峰值 RSS（`rss_after_max_bytes`）统计；不记录用户的具体查询词、响应内容或会话 ID；
+  - `cache`: 内嵌与 `/debug/cache` 相同结构的 11 领域缓存状态快照。
 
 ---
 
@@ -73,7 +71,7 @@ docker logs --tail 100 -f prts-mcp
 sudo journalctl -u prts-mcp -f
 
 # 调试一次性 stdio 容器时，仅将 stderr 重定向到文件（切勿使用 2>&1）
-docker run -i --rm -v prts-data:/data ghcr.io/3akhp/prts-mcp:3.0.0 2>prts-stderr.log
+docker run -i --rm -v prts-data:/data ghcr.io/3akhp/prts-mcp:3.2.2 2>prts-stderr.log
 ```
 
 **公开提交 Issue 前的日志脱敏检查**：虽然服务端自身不会将 `GITHUB_TOKEN` 或 `PRTS_DEBUG_TOKEN` 打印到日志中，但在贴出启动命令、环境变量列表或系统报错前，请务必手动隐去私有 Token、内部代理地址与个人敏感路径。

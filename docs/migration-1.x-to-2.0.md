@@ -66,7 +66,7 @@ The four operator tools now take `name`, matching the convention already used by
 
 The following tool names no longer exist on the 2.0 tool surface:
 
-```
+```text
 search_data, search_enemies, search_stages, search_items, list_search_scopes,
 read_prts_page, list_prts_sections, get_prts_categories, get_prts_links,
 get_prts_template, get_event_summary

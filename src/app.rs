@@ -12,13 +12,14 @@ use std::sync::{Arc, RwLock};
 
 use crate::config::{DataBackend, RuntimeConfig};
 
-mod json;
+pub(crate) mod json;
+mod shutdown;
 use crate::diagnostics::RuntimeMetrics;
 use crate::protocol::http::{self, Shared};
 use crate::protocol::session::SessionTable;
 use crate::protocol::stdio;
 
-use crate::sync::scheduler::start_background_sync;
+use crate::sync::jobs::Coordinator;
 use crate::sync::transport::ReqwestTransport;
 use crate::tools::{registry_for, AppHandle};
 
@@ -282,6 +283,8 @@ pub enum HttpProfile {
 }
 
 pub struct App {
+    pub(crate) startup_context: Option<crate::cli::settings::Context>,
+    pub(crate) startup_report: Option<serde_json::Value>,
     pub config: Arc<RuntimeConfig>,
     pub data: Arc<DataState>,
     pub handle: AppHandle,
@@ -307,6 +310,8 @@ impl App {
         let data = Arc::new(DataState::new(Arc::clone(&config)));
         let handle = AppHandle::from_parts(Arc::clone(&data), &config);
         Ok(Self {
+            startup_report: None,
+            startup_context: None,
             handle,
             tools: Arc::new(registry_for(config.images_enabled)),
             config,
@@ -314,14 +319,65 @@ impl App {
         })
     }
 
+    async fn start_control(
+        &self,
+        transport: &'static str,
+        jobs: Arc<Coordinator>,
+    ) -> std::io::Result<Option<crate::control::server::Server>> {
+        if std::env::var_os("PRTS_CONTROL_ENDPOINT").is_none_or(|v| v.is_empty()) {
+            return Ok(None);
+        }
+        let mut report = self.startup_report.clone().unwrap_or_else(|| {
+            let env = std::env::vars_os()
+                .filter_map(|(k, v)| Some((k.into_string().ok()?, v.into_string().ok()?)))
+                .collect();
+            crate::cli::report::configuration(
+                &self.config,
+                transport,
+                None,
+                &env,
+                &Default::default(),
+                &Default::default(),
+            )
+        });
+        report["scope"] = serde_json::json!("runtime");
+        if let Some(fields) = report["fields"].as_array_mut() {
+            if let Some(field) = fields.iter_mut().find(|f| f["key"] == "PRTS_TRANSPORT") {
+                field["value"] = serde_json::json!(transport);
+            }
+        }
+        let name = std::env::var("PRTS_INSTANCE_NAME").unwrap_or_else(|_| "main".into());
+        let mut state =
+            crate::control::server::State::new(name, transport, report, self.data.clone());
+        let context = self.startup_context.clone().unwrap_or_else(|| {
+            let mut context =
+                crate::cli::settings::Context::capture(None, false, Default::default());
+            context.set_profile(if transport == "stdio" {
+                "prts-mcp-ts-stdio"
+            } else {
+                "prts-mcp-ts"
+            });
+            context
+        });
+        state.reload = Some(crate::control::reload::Configuration::new(
+            context,
+            state.configuration.clone(),
+            transport,
+            self.config.clone(),
+            jobs.clone(),
+        ));
+        state.jobs = Some(jobs);
+        crate::control::server::start(Arc::new(state)).await
+    }
+
     /// Background sync tasks (startup cycle + retries + periodic loop).
     /// Spawned on the ambient runtime; cancelled when the process exits.
-    fn spawn_background_sync(&self) {
+    fn sync_coordinator(&self) -> Arc<Coordinator> {
         let transport = Arc::new(ReqwestTransport::new(
             self.config.github_mirrors.clone(),
             self.config.github_token.clone(),
         ));
-        start_background_sync(Arc::clone(&self.config), transport);
+        Coordinator::new(Arc::clone(&self.config), transport)
     }
 
     pub fn run_http(self) -> std::io::Result<()> {
@@ -339,8 +395,17 @@ impl App {
             builder.max_blocking_threads(8);
         }
         let runtime = builder.enable_all().build()?;
-        runtime.block_on(async move {
-            self.spawn_background_sync();
+        let signal = Arc::new(std::sync::atomic::AtomicI32::new(0));
+        let reason = signal.clone();
+        let result = runtime.block_on(async move {
+            let jobs = self.sync_coordinator();
+            let _control = self.start_control("http", jobs.clone()).await?;
+            let ready = _control
+                .as_ref()
+                .map(|c| c.ready.clone())
+                .unwrap_or_default();
+            let signals = shutdown::Signals::new(jobs.clone(), ready.clone(), reason)?;
+            crate::sync::workers::start(jobs.clone());
             let metrics = self.config.metrics_enabled.then(|| {
                 Arc::new(RuntimeMetrics::new(
                     self.tools.iter().map(|t| t.name.to_string()),
@@ -398,8 +463,29 @@ impl App {
                     (port, line)
                 }
             };
-            http::run_http(shared, &host, bind_port, startup_line).await
-        })
+            let serving = http::run_http(
+                shared,
+                &host,
+                bind_port,
+                startup_line,
+                Some(ready.clone()),
+                shutdown::wait(signals.receiver.clone()),
+            );
+            tokio::pin!(serving);
+            let result = tokio::select! {
+                result = &mut serving => result,
+                _ = shutdown::wait(signals.receiver.clone()) => {
+                    // Long-lived SSE sessions must not hold systemd stop open.
+                    tokio::time::timeout(std::time::Duration::from_secs(5), &mut serving).await.unwrap_or(Ok(()))
+                }
+            };
+            ready.store(false, std::sync::atomic::Ordering::Release);
+            shutdown::drain(&jobs).await;
+            result
+        });
+        runtime.shutdown_timeout(std::time::Duration::from_secs(2));
+        shutdown::finish(&signal);
+        result
     }
 
     pub fn run_stdio(self) -> i32 {
@@ -409,15 +495,49 @@ impl App {
             builder.max_blocking_threads(8);
         }
         let runtime = builder.enable_all().build().expect("tokio runtime builds");
-        runtime.block_on(async move {
-            self.spawn_background_sync();
-            stdio::run_stdio(
+        let signal = Arc::new(std::sync::atomic::AtomicI32::new(0));
+        let reason = signal.clone();
+        let result = runtime.block_on(async move {
+            let jobs = self.sync_coordinator();
+            let _control = match self.start_control("stdio", jobs.clone()).await {
+                Ok(task) => task,
+                Err(error) => {
+                    crate::log_err(&format!("Local management startup failed: {error}"));
+                    return 1;
+                }
+            };
+            let ready = _control
+                .as_ref()
+                .map(|c| c.ready.clone())
+                .unwrap_or_default();
+            let signals = match shutdown::Signals::new(jobs.clone(), ready.clone(), reason) {
+                Ok(signals) => signals,
+                Err(error) => {
+                    crate::log_err(&error.to_string());
+                    return 1;
+                }
+            };
+            crate::sync::workers::start(jobs.clone());
+            if let Some(control) = &_control {
+                control
+                    .ready
+                    .store(true, std::sync::atomic::Ordering::Release);
+            }
+            let result = tokio::select! {
+                code = stdio::run_stdio(
                 self.handle,
                 (*self.tools).clone(),
                 self.config.output_channel,
-            )
-            .await
-        })
+                ) => code,
+                _ = shutdown::wait(signals.receiver.clone()) => 0,
+            };
+            ready.store(false, std::sync::atomic::Ordering::Release);
+            shutdown::drain(&jobs).await;
+            result
+        });
+        runtime.shutdown_timeout(std::time::Duration::from_secs(2));
+        shutdown::finish(&signal);
+        result
     }
 }
 

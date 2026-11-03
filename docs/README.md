@@ -25,6 +25,7 @@ English readers: the root [README](../README.md#english) and [Security Policy](.
 
 面向在服务器、NAS、工作站或容器环境中部署与维护 PRTS-MCP 的系统管理员（Administrator / Operator）：
 
+- [admin/cli.md](admin/cli.md)：管理 CLI（`prtsctl`）使用指南（TOML 配置文件管理、本地诊断、数据校验与一次性同步、JSON 输出与 Shell 补全）。
 - [admin/deployment.md](admin/deployment.md)：服务端部署与容器运维指南（Streamable HTTP 独立服务、Docker 整卷/分卷/Bind Mount 挂载、非 root 与 `--read-only` 加固、`systemd` 守护进程托管、升级与回滚）。
 - [admin/data-and-sync.md](admin/data-and-sync.md)：数据同步、离线包与立绘存储管理（数据目录结构、内置备用数据 vs 用户数据优先级、GitHub Token 与镜像加速、挂载自定义离线数据源、`LOCAL_IMAGE=true` 全量立绘与原图分片规划、数据卷备份与恢复）。
 - [admin/environment-variables.md](admin/environment-variables.md)：运行时环境变量完整参考（全量配置字典、默认值、布尔与端口解析规则）。
@@ -49,8 +50,7 @@ English readers: the root [README](../README.md#english) and [Security Policy](.
 - **架构、编码与协作规范**
   - [dev/ENVIRONMENT.md](dev/ENVIRONMENT.md)：跨平台开发环境搭建与本地验证命令（Linux/WSL、Windows、macOS）。
   - [dev/STYLE.md](dev/STYLE.md)：Rust 架构分层、代码规范、CHANGELOG 编写规则与已知工程陷阱。
-  - [dev/adr/](dev/adr/)：架构决策记录（ADR）——自 3.1 起逐条记录影响契约、公开行为、数据语义、分发与安全姿态的决策，附编号、状态与撰写规范。
-  - [ADR-0017](dev/adr/ADR-0017-custom-github-data-source.md)：自定义 GitHub 数据源、信任边界与缓存目录归属。
+  - [dev/adr/README.md](dev/adr/README.md)：架构决策记录（ADR）索引与撰写规范——自 3.1 起逐条记录影响契约、公开行为、数据语义、分发与安全姿态的决策（含 ADR-0001 至 ADR-0022）。
   - [dev/DOCUMENTING.md](dev/DOCUMENTING.md)：公开文档写作、角色划分与审查规范。
   - [dev/WORKFLOW.md](dev/WORKFLOW.md)：变更分级、双轨 Code Review、普通与全量 CI 策略、最小验证矩阵及安全依赖更新分流。
   - [dev/VERSIONING.md](dev/VERSIONING.md)：版本号语义与向后兼容性承诺。

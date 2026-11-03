@@ -4,6 +4,7 @@
 
 - 容器、systemd 与 npm 服务部署示例见[服务端部署与容器运维指南](deployment.md)。
 - 数据同步、离线挂载与立绘存储规划见[数据同步、离线包与立绘存储管理](data-and-sync.md)。
+- TOML 文件与配置来源解释见[管理 CLI](cli.md)；原有入口仅在显式传入 `--config` 时读取文件。
 - 1.7 / 2.8 旧版配置请参阅对应 LTS 分支文档。
 
 ### 通用解析规则
@@ -24,16 +25,15 @@
 | `PRTS_DATA_DB` | 未设置 | 单个只读预编译 DB；后端未设置时选择 SQLite，并关闭游戏数据同步。与显式 `PRTS_DATA_BACKEND=json` 冲突。缺失或无效时报告缺数据，不读取原始 JSON。空值忽略。 |
 | `GAMEDATA_PATH` | 未设置 | JSON 后端的自定义游戏数据目录路径。**只要该环境变量存在（哪怕赋值为空字符串 `GAMEDATA_PATH=`），即会禁用游戏表与关卡战斗数据的后台自动同步。** 若指向含 `zh_CN/gamedata/levels/enemydata/enemy_database.json` 的完整 `ArknightsGameData` 根目录，关卡数据直接从该目录读取；否则使用相邻的 `gamedata-levels` 目录。 |
 | `STORYJSON_PATH` | 未设置 | JSON 后端的自定义本地剧情数据压缩包（`zh_CN.zip`）路径。**设为非空值时会禁用剧情后台自动同步**；切勿将其设为空字符串占位。 |
-| `XDG_DATA_HOME` | `~/.local/share` | Linux 与 macOS 下的默认数据根目录。非 Docker 运行时，`gamedata`、`gamedata-levels`、`storyjson` 与 `images` 默认存放在 `$XDG_DATA_HOME/prts-mcp/` 下。 |
-| `LOCALAPPDATA` | `~/AppData/Local` | Windows 下的默认数据根目录，数据默认存放在 `%LOCALAPPDATA%\prts-mcp` 下。 |
+| `XDG_DATA_HOME` | `~/.local/share` | Linux 与 macOS 下的默认数据根目录（仅在变量未设置时回退默认值，请勿设为空字符串）。非 Docker 运行时，`database`、`gamedata`、`gamedata-levels`、`storyjson` 与 `images` 默认存放在 `$XDG_DATA_HOME/prts-mcp/` 下。 |
+| `LOCALAPPDATA` | `~/AppData/Local` | Windows 下的默认数据根目录（仅在变量未设置时回退默认值，请勿设为空字符串），数据默认存放在 `%LOCALAPPDATA%\prts-mcp` 下。 |
 | `PRTS_MCP_ROOT` | 容器内预设为 `/app` | 用于标识官方 Docker 容器环境，将默认可写数据根目录切换至 `/data`（如 `/data/gamedata`）。**非容器环境下请勿设置此变量。** |
 | `PRTS_IMAGE_DIR` | Docker 下为 `/data/images`；本地为数据根下的 `images/` | `LOCAL_IMAGE=true` 时，AKDP 本地立绘资产的同步存储目录。 |
 
-显式 SQLite 模式不读取或同步原始游戏 JSON/ZIP；默认 SQLite 策略允许在 DB 缺失时读取 JSON 备用，但只同步 SQLite。发行包内置较小的 JSON 备用数据，显式离线 SQLite 须预置 DB。未设置后端时，自定义 JSON 路径继续选择 JSON；显式 `PRTS_DATA_DB` 优先选择 SQLite。切换时已有请求保留原数据快照。图片行为不变。
-
-> **路径推导与空值注意事项**：
-> 1. 当设置了 `GAMEDATA_PATH` 但未显式设置 `STORYJSON_PATH` 或 `PRTS_IMAGE_DIR` 时，默认剧情与立绘路径会从 `GAMEDATA_PATH` 的父目录相邻推导。因此，使用自定义 `GAMEDATA_PATH` 时，建议将 `STORYJSON_PATH` 与 `PRTS_IMAGE_DIR` 也显式配齐。
-> 2. 请勿将 `.env.example` 中注释掉的 `GAMEDATA_PATH=` 或 `STORYJSON_PATH=` 取消注释后以空值导出——要使用默认路径与自动同步，请直接保持变量**未设置（unset）**。
+> **后端联动与路径推导注意事项**：
+> 1. **SQLite 与 JSON 优先级**：未显式设置 `PRTS_DATA_BACKEND` 时，若设置了非空 `PRTS_DATA_DB` 则选择只读 SQLite；否则若设置了自定义 JSON 路径（`GAMEDATA_PATH` 或非空 `STORYJSON_PATH`）则保持 JSON 后端；均未设置时默认使用可写 SQLite 后端（在首次数据库校验就绪前自动读取只读 JSON 备用数据，但后台仅同步 SQLite）。显式设置 `PRTS_DATA_BACKEND=sqlite` 时不读取或同步 JSON/ZIP，离线环境须预先准备有效数据库。
+> 2. **相邻路径推导**：当设置了 `GAMEDATA_PATH` 但未显式设置 `STORYJSON_PATH`、`PRTS_IMAGE_DIR` 或 `PRTS_DATA_DIR` 时，默认剧情与立绘路径会从 `GAMEDATA_PATH` 的父目录相邻推导，而 `PRTS_DATA_DIR` 默认为其下的 `GAMEDATA_PATH/database`。因此，使用自定义 `GAMEDATA_PATH` 时，建议将其他相关路径变量也显式配齐。
+> 3. **切勿导出空值占位**：请勿将 `.env.example` 中注释掉的 `GAMEDATA_PATH=`、`STORYJSON_PATH=`、`XDG_DATA_HOME=` 或 `LOCALAPPDATA=` 取消注释后以空值导出——要使用默认路径与自动同步，请直接保持变量**未设置（unset）**。
 
 ---
 
@@ -80,6 +80,17 @@
 | `SESSION_IDLE_TIMEOUT_MS` | `86400000`（24 小时） | HTTP 有状态会话（legacy 模式）的最大空闲超时毫秒数；设为 `<= 0` 或非法值时禁用空闲会话自动清理。 |
 | `PRTS_DEBUG_TOKEN` | 未设置 | 访问 `/debug/cache` 与 `/debug/metrics` 诊断端点的必需 Bearer Token。未设置或请求头令牌不匹配时直接返回 `404 Not Found`（即默认关闭）。请勿将诊断端点暴露至公网，也不要将 Token 写入共享日志或客户端配置。 |
 | `PRTS_METRICS_ENABLED` | `false` | 必须设为精确的小写字符串 `true`（且已配置 `PRTS_DEBUG_TOKEN`）才会开启 `/debug/metrics`。返回的 JSON 遵循 Rust 指标结构（批准差异 `D-002`），仅包含聚合计数与内存指标，不记录用户查询参数、响应正文或会话 ID。 |
+
+---
+
+## 6. 本机管理端点（3.2.2+）
+
+| 变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `PRTS_CONTROL_ENDPOINT` | 未设置（管理通道关闭） | 显式启用本机管理通道。Unix 使用服务用户独占（`0700`）目录中的绝对 socket 路径；Windows 使用 `\\.\pipe\prts-mcp-<名称>` 本机命名管道。 |
+| `PRTS_INSTANCE_NAME` | `main` | 与 CLI 实例映射（`instances.toml`）一致的实例名称，限 1–64 个 ASCII 字母、数字、连字符（`-`）或下划线（`_`）。 |
+
+本机管理端点独立于 MCP 传输模式与 `PRTS_DEBUG_TOKEN`，在 `stdio` 与 HTTP 模式下均可启用。连接权限校验、实例映射配置及在线命令详见[管理 CLI 使用指南](cli.md)。
 
 ---
 

@@ -2,6 +2,7 @@
 //! lowercase first; exactly `http` picks HTTP, anything else stays stdio.
 
 fn main() {
+    prts_mcp_rust::cli::legacy::dispatch("prts-mcp-ghcr");
     let requested = std::env::var("PRTS_TRANSPORT")
         .map(|v| v.trim().to_lowercase())
         .unwrap_or_default();

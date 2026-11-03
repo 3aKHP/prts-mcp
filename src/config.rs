@@ -69,7 +69,7 @@ impl ValidationMode {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct RuntimeConfig {
     pub data_source: DataSource,
     pub data_backend: DataBackend,
@@ -148,7 +148,7 @@ impl BundleRoots {
 /// Internal `--bundle-root <dir>` launcher argument (npm shims pass it
 /// explicitly; not a public environment variable — docs/04).
 pub fn bundle_root_from_argv() -> Option<PathBuf> {
-    let args: Vec<String> = std::env::args().collect();
+    let args: Vec<_> = std::env::args_os().collect();
     let idx = args.iter().position(|a| a == "--bundle-root")?;
     args.get(idx + 1).map(PathBuf::from)
 }
@@ -234,30 +234,33 @@ pub fn levels_complete(root: &Path) -> bool {
 }
 
 #[cfg(not(windows))]
-fn home_local_share() -> PathBuf {
-    std::env::var("HOME")
+fn home_local_share(lookup: &impl Fn(&str) -> Option<String>) -> PathBuf {
+    lookup("HOME")
         .map(|h| PathBuf::from(h).join(".local").join("share"))
-        .unwrap_or_else(|_| PathBuf::from(".local").join("share"))
+        .unwrap_or_else(|| PathBuf::from(".local").join("share"))
 }
 
-fn default_gamedata_path() -> PathBuf {
-    if std::env::var("PRTS_MCP_ROOT").as_deref() == Ok("/app") {
+fn default_gamedata_path(
+    lookup: &impl Fn(&str) -> Option<String>,
+    _home: Option<&Path>,
+) -> PathBuf {
+    if lookup("PRTS_MCP_ROOT").as_deref() == Some("/app") {
         return PathBuf::from("/data/gamedata");
     }
     #[cfg(windows)]
     {
-        // The TS baseline uses LOCALAPPDATA ?? homedir()/AppData/Local.
-        // Rust >=1.85 resolves USERPROFILE or the Windows user-profile API,
-        // matching Node's homedir() without assuming a Unix HOME variable.
-        #[allow(deprecated)]
-        let home = std::env::home_dir().unwrap_or_else(|| PathBuf::from("."));
-        return windows_default_gamedata(std::env::var("LOCALAPPDATA").ok().as_deref(), &home);
+        // Keep the process profile path lossless (Windows paths may contain
+        // unpaired UTF-16 surrogates); injected tests provide their own PathBuf.
+        return windows_default_gamedata(
+            lookup("LOCALAPPDATA").as_deref(),
+            _home.unwrap_or(Path::new(".")),
+        );
     }
     #[cfg(not(windows))]
     {
-        let base = std::env::var("XDG_DATA_HOME")
+        let base = lookup("XDG_DATA_HOME")
             .map(PathBuf::from)
-            .unwrap_or_else(|_| home_local_share());
+            .unwrap_or_else(|| home_local_share(lookup));
         base.join("prts-mcp").join("gamedata")
     }
 }
@@ -269,14 +272,18 @@ fn levels_path_of(gamedata_root: &Path) -> PathBuf {
         .join("gamedata-levels")
 }
 
-fn resolve_levels_path(gamedata_root: &Path, gamedata_env_set: bool) -> PathBuf {
+fn resolve_levels_path(
+    gamedata_root: &Path,
+    gamedata_env_set: bool,
+    lookup: &impl Fn(&str) -> Option<String>,
+) -> PathBuf {
     if gamedata_env_set {
         if levels_complete(gamedata_root) {
             return gamedata_root.to_path_buf();
         }
         return levels_path_of(gamedata_root);
     }
-    if std::env::var("PRTS_MCP_ROOT").as_deref() == Ok("/app") {
+    if lookup("PRTS_MCP_ROOT").as_deref() == Some("/app") {
         return PathBuf::from("/data/gamedata-levels");
     }
     levels_path_of(gamedata_root)
@@ -288,25 +295,39 @@ fn excel_path_of(root: &Path) -> PathBuf {
 
 impl RuntimeConfig {
     pub fn from_env() -> Self {
-        Self::try_from_lookup(|name| std::env::var(name).ok()).unwrap_or_else(|error| {
+        Self::try_from_lookup_with_home(
+            |name| std::env::var(name).ok(),
+            std::env::home_dir().as_deref(),
+        )
+        .unwrap_or_else(|error| {
             crate::log_err(&error);
             std::process::exit(2);
         })
     }
 
-    /// Testable core: `lookup` stands in for the process environment. Tests
-    /// inject GAMEDATA_PATH so the default-path branch stays inert.
+    /// Testable core: `lookup` supplies both runtime options and default-path
+    /// inputs, so callers never mix injected settings with ambient variables.
     pub fn from_lookup(lookup: impl Fn(&str) -> Option<String>) -> Self {
         Self::try_from_lookup(lookup).expect("valid runtime configuration")
     }
 
     pub fn try_from_lookup(lookup: impl Fn(&str) -> Option<String>) -> Result<Self, String> {
+        let home = lookup("USERPROFILE").map(PathBuf::from);
+        Self::try_from_lookup_with_home(lookup, home.as_deref())
+    }
+
+    /// The native home path is separate from environment strings so Windows
+    /// profile paths survive even when they cannot be represented as UTF-8.
+    pub(crate) fn try_from_lookup_with_home(
+        lookup: impl Fn(&str) -> Option<String>,
+        home: Option<&Path>,
+    ) -> Result<Self, String> {
         let data_source = DataSource::parse(lookup("PRTS_DATA_SOURCE_REPO").as_deref())?;
         let is_custom_gamedata = lookup("GAMEDATA_PATH").is_some();
         let gamedata_path = lookup("GAMEDATA_PATH")
             .map(PathBuf::from)
             .unwrap_or_else(|| {
-                let default = default_gamedata_path();
+                let default = default_gamedata_path(&lookup, home);
                 data_source
                     .data_root(default.parent().expect("default data root"))
                     .join("gamedata")
@@ -315,7 +336,7 @@ impl RuntimeConfig {
         let levels_path = if !data_source.is_default() && !is_custom_gamedata {
             levels_path_of(&gamedata_path)
         } else {
-            resolve_levels_path(&gamedata_path, is_custom_gamedata)
+            resolve_levels_path(&gamedata_path, is_custom_gamedata, &lookup)
         };
 
         let default_storyjson_zip = gamedata_path
@@ -843,5 +864,58 @@ mod validation_mode_tests {
         for raw in ["STRICT", "off", "0", "true", "normla"] {
             assert!(ValidationMode::parse(Some(raw)).is_err());
         }
+    }
+}
+
+#[cfg(test)]
+mod injected_path_tests {
+    use super::*;
+
+    #[cfg(windows)]
+    #[test]
+    fn native_home_retains_unpaired_utf16() {
+        use std::os::windows::ffi::OsStringExt;
+        let home = PathBuf::from(std::ffi::OsString::from_wide(&[
+            67, 58, 92, 117, 115, 101, 114, 115, 92, 0xd800,
+        ]));
+        let cfg = RuntimeConfig::try_from_lookup_with_home(|_| None, Some(&home)).unwrap();
+        assert_eq!(
+            cfg.gamedata_path,
+            home.join("AppData/Local/prts-mcp/gamedata")
+        );
+    }
+
+    #[test]
+    fn default_paths_use_the_injected_environment() {
+        let config = RuntimeConfig::from_lookup(|name| match name {
+            "HOME" | "USERPROFILE" => Some("fixture-home".into()),
+            "XDG_DATA_HOME" | "LOCALAPPDATA" => Some("fixture-data".into()),
+            _ => None,
+        });
+        assert_eq!(
+            config.gamedata_path,
+            PathBuf::from("fixture-data/prts-mcp/gamedata")
+        );
+        assert_eq!(
+            config.levels_path,
+            PathBuf::from("fixture-data/prts-mcp/gamedata-levels")
+        );
+        assert_eq!(
+            config.database_dir,
+            PathBuf::from("fixture-data/prts-mcp/database")
+        );
+        assert!(!config.is_custom_gamedata);
+    }
+
+    #[test]
+    fn injected_container_layout_controls_both_default_roots() {
+        let config = RuntimeConfig::from_lookup(|name| match name {
+            "PRTS_MCP_ROOT" => Some("/app".into()),
+            "XDG_DATA_HOME" | "LOCALAPPDATA" => Some("unused".into()),
+            _ => None,
+        });
+        assert_eq!(config.gamedata_path, PathBuf::from("/data/gamedata"));
+        assert_eq!(config.levels_path, PathBuf::from("/data/gamedata-levels"));
+        assert!(!config.is_custom_gamedata);
     }
 }

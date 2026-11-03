@@ -17,7 +17,7 @@
 - **存疑向上分级**：难以判断某次变更属于哪一等级时，一律**向上分级**。
 - **如实披露验证边界**：因环境或条件限制未能执行的验证项，必须在 PR 描述或交接记录中明确标注为“未验证”，严禁当作已通过。
 - **CI 触发与成本控制**：PR 仅在目标分支为 `main` 或带有 `ci:full` 标签时运行全量五平台矩阵，其余 PR 运行普通 Linux CI。添加或移除标签、修改合并目标及更新 PR HEAD 时均重新判断，并自动取消同一 PR 的在途旧运行。短分支日常 push 不单独运行 CI；`main` / `develop` 的 push 运行普通 CI。原生矩阵保留手动运行入口，`v3.*` tag 的发布工作流继续构建和验证完整候选产物。
-- **普通 CI 验证范围**：保留 fmt、clippy、全量 Rust 单元与集成测试、384 项冻结差分、进程生命周期、扩展正则、源码包和发布策略校验。普通 CI 额外运行 `package_data` 辅助程序测试，并行执行 Rust `1.89.0` 的 `--bins --example package_data` 检查。热缓存耗时以约 5 分钟为目标，冷构建和排队时间单独记录；完整数据打包、跨平台 npm 安装、Docker 与候选聚合由全量 CI 执行。
+- **普通 CI 验证范围**：涵盖 `cargo fmt`、`cargo clippy`、全量 Rust 单元与集成测试、JSON/SQLite 双后端的 384 项冻结差分、进程生命周期、扩展正则、Shell 补全探针、源码包安装、对照实验工具单测（`tools/experiments/tests`）、PyPI 打包脚本在 Python `3.11`–`3.15` 下的兼容测试（`pypi-python`）以及发布策略校验。同时普通 CI 会运行 `package_data` 辅助程序测试，并并行执行 Rust `1.89.0`（MSRV）的 `--bins --example package_data` 编译检查。热缓存耗时以约 5 分钟为目标；完整数据打包、五平台原生构建、跨平台 npm/PyPI 安装探测、Docker 构建与候选聚合由全量 CI 执行。
 - **CI 合并门禁**：`CI gate` 从运行开始即等待验证结果。`CI result` 要求选中的全部检查成功，失败、取消或意外跳过均不能通过。选择与最终门禁均核对 PR 当前 HEAD、目标分支和验证级别，过期运行须改用最新 PR 运行。标题、描述及无关标签的编辑复用最近一次匹配的验证结果并刷新门禁，不重跑昂贵验证，也不取消有效运行。重跑失败任务时须覆盖 `CI result`，不确定时选择 `Re-run all jobs`。
 - **分支保护部署**：`develop` 须要求 `CI gate`，`main` 还须要求 `Full CI gate`；普通 CI 不生成全量检查名。启用相应分支保护前，须先将新工作流部署到该目标分支；手动运行的检查不替代 PR 事件产生的合并门禁。当前以 GitHub Rulesets 落地（`main-protect` / `develop-protect`），配置快照导出在 [tools/ci/rulesets/](../../tools/ci/rulesets/)；仓库迁移或规则丢失时在仓库 Rules 设置页导入对应 JSON 即可恢复。
 
@@ -79,9 +79,9 @@
 ### Hot-Fix
 仅用于修复 `main` 或已发布稳定版上的**阻断性生产回归**（如服务无法启动、工具全面报错、数据卷损坏或凭据泄露），或维护者判断**需立即发布的安全漏洞**；非紧急的日常修复一律走 `develop`。流程：从 `main` 创建 `fix/vX.Y.Z-<topic>` → 最小化修复与回归测试 → 更新 CHANGELOG → 打开 PR 至 `main` 并完成审查 → 合并打 tag → 将适用修复同步至维护线与 `develop`（版本号衔接规则见 [`VERSIONING.md`](VERSIONING.md)）。
 
-### Release 与 3.0 过渡期预发布
+### Release 与 3.x 预发布
 - **正式版发布（Release）**：按 `CLAUDE.md` 路径 D 执行，至少完成 Standard PR 级别的双轨审查与发布产物核对，合并至 `main` 打 tag 后原分支回灌 `develop`。
-- **3.0 过渡期预发布（M5 前）**：在 `main` 仍为 2.8.1 期间，Rust 候选版（`3.0.0-alpha.N` / `beta.N` / `rc.N`）从已审查的 `develop` 快照拉出 `release/v3.x.y-...` 短分支，完成独立审查与完整 CI 后直接在该远端发布分支的提交上打 `v3.*` tag 触发 [`release-rust.yml`](../../.github/workflows/release-rust.yml)，过渡期内不提前合并进 `main`，也不改变 `develop` 的 `-dev.0` 版本号。
+- **3.x 预发布（`-alpha.N` / `-beta.N` / `-rc.N`）**：当需要发布不推进 `main` 稳定标签的 3.x 候选版本时，从已审查的 `develop` 快照拉出 `release/v3.x.y-...` 短分支，完成独立审查与完整 CI 后直接在该远端发布分支的提交上打 `v3.*` tag 触发 [`release-rust.yml`](../../.github/workflows/release-rust.yml)，预发布分支不提前合并进 `main`，也不改变 `develop` 的 `-dev.0` 版本号。
 
 ---
 

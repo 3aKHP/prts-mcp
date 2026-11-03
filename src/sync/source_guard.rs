@@ -33,6 +33,7 @@ fn check_marker(root: &Path, source: &DataSource) -> Result<bool, String> {
 /// Bind empty custom-source directories; never adopt existing unmarked data.
 /// Default-source legacy volumes remain byte-for-byte unchanged.
 pub fn ensure(root: &Path, source: &DataSource) -> Result<(), String> {
+    super::control::checkpoint()?;
     let result = (|| {
         if source.is_default() {
             check_marker(root, source)?;
@@ -47,7 +48,7 @@ pub fn ensure(root: &Path, source: &DataSource) -> Result<(), String> {
             .truncate(false)
             .open(root.join(LOCK))
             .map_err(|e| e.to_string())?;
-        lock.lock().map_err(|e| e.to_string())?;
+        super::control::lock_source(&lock)?;
         if check_marker(root, source)? {
             return Ok(());
         }
@@ -72,6 +73,20 @@ pub fn ensure(root: &Path, source: &DataSource) -> Result<(), String> {
             source.slug()
         )
     })
+}
+
+/// Scoped administrative callers must not block the async signal driver while
+/// acquiring the ownership lock. The same guard and wait budget run in a worker.
+pub async fn ensure_async(root: &Path, source: &DataSource) -> Result<(), String> {
+    if let Some(control) = super::control::current() {
+        let root = root.to_owned();
+        let source = source.clone();
+        tokio::task::spawn_blocking(move || control.blocking_scope(|| ensure(&root, &source)))
+            .await
+            .map_err(|error| error.to_string())?
+    } else {
+        ensure(root, source)
+    }
 }
 
 fn data_roots(config: &RuntimeConfig) -> Vec<PathBuf> {

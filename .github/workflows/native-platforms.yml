@@ -58,6 +58,13 @@ jobs:
           # Keep fallback restores within this generation to avoid carrying both layouts.
           key: native-v2-${{ matrix.platform }}-${{ hashFiles('Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', 'build.rs', 'native/**', 'vendor/**', 'packaging/native/targets.json', 'tools/native/build.mjs', 'tools/native/common.mjs', 'tools/native/linux-build.sh') }}
           restore-keys: native-v2-${{ matrix.platform }}-
+      - name: Install Unix shell verification dependencies
+        if: runner.os == 'Linux'
+        run: |
+          if ! command -v zsh >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y zsh
+          fi
       - name: Native build, minimum Rust check and native corpus
         run: node tools/native/build.mjs ${{ matrix.platform }}
       - name: Package binaries, notices and audited ABI
@@ -67,6 +74,24 @@ jobs:
       - name: Run Linux archive in minimal glibc 2.28 runtime
         if: runner.os == 'Linux'
         run: node tools/native/probe.mjs ${{ matrix.platform }} --baseline
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - uses: astral-sh/setup-uv@v9.0.0
+      - name: Pack and install native Python wheels without publishing
+        run: |
+          uv run --locked --project tools/pypi python tools/pypi/pack.py ${{ matrix.platform }}
+          uv run --locked --project tools/pypi node tools/pypi/probe.mjs ${{ matrix.platform }}
+      - name: Retain native wheels and installation evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: pypi-${{ matrix.platform }}
+          path: |
+            artifacts/pypi/${{ matrix.platform }}/wheels/*.whl
+            artifacts/pypi/${{ matrix.platform }}/package.json
+            artifacts/pypi/${{ matrix.platform }}/pypi-evidence.json
+          retention-days: 14
       - uses: actions/cache@v6
         with:
           path: .runtime/npm-data

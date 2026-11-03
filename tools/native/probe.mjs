@@ -2,6 +2,8 @@
 // with an empty PATH. With --npm-root Node also runs the installed thin npm
 // bridge; all server behavior still executes in the native Rust child.
 import assert from 'node:assert/strict';
+import { managementProbe, serverCliProbe } from '../cli/probe.mjs';
+import { shellProbe } from '../cli/shells.mjs';
 import { cpSync, mkdtempSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { join, resolve, relative, isAbsolute } from 'node:path';
 import { tmpdir, release as osRelease } from 'node:os';
@@ -190,6 +192,17 @@ async function http(bin, overrides) {
   } finally { if (state.child.exitCode === null) state.child.kill(); }
 }
 try {
+  const cliEnv={...env,XDG_CONFIG_HOME:join(temp,'config'),APPDATA:join(temp,'config')};
+  const invocation=bin=>{
+    const executable=join(installed,'bin',bin+suffix);
+    if(npmRoot)return {command:process.execPath,args:[join(npmRoot,['prts-mcp','prtsctl'].includes(bin)?'prts-mcp':'prts-mcp-ts','bin',`${bin}.cjs`)]};
+    if(baseline)return {command:'docker',args:['run','--rm','--user',`${process.getuid()}:${process.getgid()}`,'-v',`${temp}:${temp}`,'-w',temp,...Object.entries(cliEnv).filter(([k,v])=>v!==undefined && /^(PATH|PRTS_.*|GAMEDATA_PATH|STORYJSON_PATH|IMAGES_ENABLED|HOST|PORT|GITHUB_MIRRORS|XDG_CONFIG_HOME|APPDATA)$/.test(k)).flatMap(([k,v])=>['-e',`${k}=${v}`]),'--entrypoint',executable,config.runtimeImage]};
+    return {command:executable};
+  };
+  managementProbe({...invocation('prtsctl'),env:baseline?process.env:cliEnv,cwd:temp,version,label:npmRoot?'npm':'native'});
+  for(const bin of ['prts-mcp','prts-mcp-ts','prts-mcp-ts-bun','prts-mcp-ts-stdio',...(!npmRoot?['prts-mcp-ghcr']:[])])serverCliProbe({...invocation(bin),env:baseline?process.env:cliEnv,cwd:temp,version});
+  checks.push({bin:'prtsctl',case:'management-cli',output:'json',isolatedConfig:true});
+  if(!baseline&&!npmRoot)checks.push({bin:'prtsctl',case:'shells',shells:shellProbe({program:join(installed,'bin','prtsctl'+suffix),env:cliEnv,cwd:temp,version})});
   await stdio('prts-mcp', { PRTS_TRANSPORT: ' StDiO ' });
   await stdio('prts-mcp', { PRTS_TRANSPORT: 'stdio' }, true);
   await stdio('prts-mcp-ts-stdio', { PRTS_TRANSPORT: 'http' });

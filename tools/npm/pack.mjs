@@ -17,7 +17,7 @@ assert.equal(build.version, version);
 assert.equal(build.dirty, false, 'Only clean, audited native payloads may become npm platform packages');
 const abi = readJson(join(nativeDir, 'ABI.json'));
 assert.equal(abi.platform, target.target);
-assert.equal(abi.binaries.length, 5);
+assert.equal(abi.binaries.length, 6);
 const nativeFiles = verifyInventory(nativeDir);
 verifyNotices(nativeDir);
 const out = join(root, 'artifacts/npm', id);
@@ -75,7 +75,7 @@ make('@3akhp/prts-mcp-runtime', { description: 'Shared native launch bridge for 
   cpSync(join(root,'packaging/npm/runtime.cjs'),join(dir,'runtime.cjs'));
   json(join(dir,'platforms.json'),Object.fromEntries(Object.entries(targets).map(([p,t])=>[p,{os:t.os,arch:t.arch,target:t.target}])));
 });
-for (const [name, commands] of [['prts-mcp',['prts-mcp']],['prts-mcp-ts',['prts-mcp-ts','prts-mcp-ts-bun','prts-mcp-ts-stdio']]]) {
+for (const [name, commands] of [['prts-mcp',['prts-mcp','prtsctl']],['prts-mcp-ts',['prts-mcp-ts','prts-mcp-ts-bun','prts-mcp-ts-stdio']]]) {
   make(name, { description: name === 'prts-mcp' ? 'PRTS-MCP native Rust MCP server' : 'PRTS-MCP legacy command compatibility with the native Rust server',
     license: 'MIT', files: ['bin/','README.md','LICENSE','NOTICE'],
     bin: Object.fromEntries(commands.map(bin => [bin,`bin/${bin}.cjs`])),

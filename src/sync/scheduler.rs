@@ -140,7 +140,11 @@ impl SingleFlight {
     }
 }
 
-async fn run_gamedata_sync(cfg: &RuntimeConfig, transport: &dyn Transport, force: bool) -> bool {
+pub(crate) async fn run_gamedata_sync(
+    cfg: &RuntimeConfig,
+    transport: &dyn Transport,
+    force: bool,
+) -> bool {
     if let Err(error) = super::source_guard::prepare(cfg) {
         log_err(&error);
         return true;
@@ -163,7 +167,11 @@ async fn run_gamedata_sync(cfg: &RuntimeConfig, transport: &dyn Transport, force
     gamedata_pair_needs_retry(excel_result.status, levels_result.status)
 }
 
-async fn run_story_sync(cfg: &RuntimeConfig, transport: &dyn Transport, force: bool) -> bool {
+pub(crate) async fn run_story_sync(
+    cfg: &RuntimeConfig,
+    transport: &dyn Transport,
+    force: bool,
+) -> bool {
     if let Err(error) = super::source_guard::prepare(cfg) {
         log_err(&error);
         return true;
@@ -245,7 +253,11 @@ async fn run_cycle(
 
 /// One images cycle: full baseline/delta chain, ORIGINAL_IMAGE picks the
 /// shard set; offline/no_data arm the dense retry chain like the others.
-async fn run_images_sync(cfg: &RuntimeConfig, transport: &dyn Transport, force: bool) -> bool {
+pub(crate) async fn run_images_sync(
+    cfg: &RuntimeConfig,
+    transport: &dyn Transport,
+    force: bool,
+) -> bool {
     let result = super::images_sync::sync_images_with_source(
         &cfg.images_path,
         transport,

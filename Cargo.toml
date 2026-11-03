@@ -1,6 +1,6 @@
 [package]
 name = "prts-mcp"
-version = "3.2.1"
+version = "3.2.2"
 edition = "2021"
 rust-version = "1.89"
 publish = ["crates-io"]
@@ -60,14 +60,27 @@ thiserror = "2"
 memchr = "2"
 rusqlite = { version = "0.40.2", features = ["bundled"] }
 flate2 = "1"
+clap = { version = "4", features = ["derive"] }
+clap_complete = "4"
+toml_edit = "0.22"
 
 [build-dependencies]
 cc = "1"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Authorization"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+zbus = { version = "4.4", default-features = false, features = ["tokio"] }
+
+[target."cfg(unix)".dependencies]
+signal-hook = "0.3"
 
 [features]
 default = []
 
 [dev-dependencies]
+tokio = { version = "1", features = ["test-util"] }
 # MCP SDK evaluated by the P1 probe (examples/rmcp_probe.rs): rmcp 3.5.1 could
 # not reproduce the oracle's wire behavior (SSE framing, priming events,
 # unknown-session body, discover version set, modern JSON responses); the

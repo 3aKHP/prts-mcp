@@ -4,6 +4,6 @@ These seven upstream C/header files are copied unmodified from the `quickjs/` di
 
 Only `libregexp.c`, `libunicode.c`, and our [`native/regexp.c`](../../native/regexp.c) FFI bridge are compiled by [`build.rs`](../../build.rs) into a static C library. `quickjs.c`, the JavaScript VM/evaluator, and module loaders are excluded. Together, these components provide ECMAScript regular-expression matching (including lookahead/lookbehind and Unicode property escapes) in pure C with no runtime dependency on Node.js, Bun, or PCRE.
 
-A C compiler is required only when building PRTS-MCP from source; prebuilt native archives, npm platform packages, and Docker images statically link this library across all five supported targets (`linux-x64`, `linux-arm64`, `windows-x64`, `darwin-arm64`, and `darwin-x64`).
+A C compiler is required only when building PRTS-MCP from source (including `cargo install prts-mcp` from `crates.io`); prebuilt native archives, npm platform packages, PyPI platform wheels, and Docker images statically link this library across all five supported targets (`linux-x64`, `linux-arm64`, `windows-x64`, `darwin-arm64`, and `darwin-x64`).
 
 If you update these vendored files, verify the bytecode-prefix bridge in `native/regexp.c`, update `SOURCE.json`, and run the full regex and sanitizer verification suite (`./scripts/check-runtime.sh --full` and `node tools/check-native-regexp.mjs`).

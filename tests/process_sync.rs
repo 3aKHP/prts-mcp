@@ -268,13 +268,13 @@ fn handle(
 
 /// Isolated env: XDG data root under a temp dir, direct GitHub unreachable
 /// (dead proxy), mirror reachable, auto-sync startup-only.
-fn sync_env(port: u16, mirror_port: u16) -> Vec<(String, String)> {
+fn sync_env(port: u16, mirror_port: u16, xdg: &std::path::Path) -> Vec<(String, String)> {
     vec![
         ("PORT".to_string(), port.to_string()),
         ("HOST".to_string(), "127.0.0.1".to_string()),
         (
             "XDG_DATA_HOME".to_string(),
-            xdg_root().to_string_lossy().into_owned(),
+            xdg.to_string_lossy().into_owned(),
         ),
         (
             "GITHUB_MIRRORS".to_string(),
@@ -292,8 +292,7 @@ fn sync_env(port: u16, mirror_port: u16) -> Vec<(String, String)> {
 }
 
 fn xdg_root() -> std::path::PathBuf {
-    let dir = std::env::temp_dir().join(format!("prts-sync-proc-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&dir);
+    let dir = std::env::temp_dir().join(format!("prts-sync-proc-{}", uuid::Uuid::new_v4()));
     std::fs::create_dir_all(&dir).unwrap();
     dir
 }
@@ -389,7 +388,7 @@ async fn missing_data_background_sync_readable_without_restart() {
     let mirror = start_mirror();
     let port = free_port();
     let xdg = xdg_root();
-    let mut child = spawn_binary(&["--transport", "http"], &sync_env(port, mirror.port));
+    let mut child = spawn_binary(&["--transport", "http"], &sync_env(port, mirror.port, &xdg));
     let stderr_log = drain_stderr(&mut child);
     let origin = format!("http://127.0.0.1:{port}");
     wait_health(&origin).await;

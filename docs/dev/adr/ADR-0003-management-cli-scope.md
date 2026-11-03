@@ -1,6 +1,6 @@
 # ADR-0003：3.x 管理 CLI 的范围与时序裁决
 
-- 状态：Accepted（补录）
+- 状态：Accepted（补录；3.2.2 阶段的 `prtsctl` 与本机运行期管理落地见 [ADR-0021](ADR-0021-management-cli.md) 与 [ADR-0022](ADR-0022-local-runtime-management.md)）
 - 决策日期：2026-10-13（初始评估记录于 2026-10-11）
 - 关联：[3.0 统一技术栈选型档案](../../archive/3.0-unified-rust-stack-assessment.md)、[ROADMAP.zh-CN.md](../../../ROADMAP.zh-CN.md)、[STATUS.zh-CN.md](../../../STATUS.zh-CN.md)
 

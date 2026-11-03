@@ -14,12 +14,14 @@ PRTS-MCP 3.x 的核心服务为单一原生 Rust 二进制（静态链接 C 正�
 
 | 部署形态 | 适用场景 | 系统与运行时要求 | 默认传输模式 |
 | --- | --- | --- | --- |
-| **Docker 容器（推荐生产使用）** | 服务器常驻 HTTP 服务、多容器编排或隔离的 `stdio` 进程 | 支持 Linux `x64`（`amd64`）与 `arm64`；镜像内无语言运行时或编译器，宿主机仅需安装 Docker。 | 默认 `stdio`；传入 `-e PRTS_TRANSPORT=http` 切换为 HTTP。 |
+| **Docker 容器** | 服务器常驻 HTTP 服务、多容器编排或隔离的 `stdio` 进程 | 支持 Linux `x64`（`amd64`）与 `arm64`；镜像内无语言运行时或编译器，宿主机仅需安装 Docker。 | 默认 `stdio`；传入 `-e PRTS_TRANSPORT=http` 切换为 HTTP。 |
+| **Cargo 原生安装 + systemd（推荐 Linux 主机部署）** | 常驻 HTTP 服务，直接管理 Rust 进程 | 安装时需要 `Rust >= 1.89` 与 C 编译器（可通过 `crates.io` 或源码安装）；源码安装不包含备用游戏数据，运行时无需 Rust 工具链。 | 原生 `prts-mcp` 默认 HTTP；设 `PRTS_TRANSPORT=stdio` 切为 stdio。 |
 | **预编译原生归档包** | 直接通过 `systemd` 或进程管理器在裸机/虚拟机上托管 | Linux `x64`/`arm64`（需 `glibc >= 2.28`）、Windows `x64`（静态 CRT，无需 VC++ 运行库）、macOS `14.0+`（`arm64`/`x64`）。无需安装任何运行时。 | `prts-mcp` 默认启动 Streamable HTTP（`:3000/mcp`）；设 `PRTS_TRANSPORT=stdio` 切为 stdio。 |
 | **npm 全局安装** | 已具备 Node.js 环境的服务器或开发机 | 需 `Node.js >= 22`、`npm >= 10`（作为轻量启动桥拉起同平台的预编译 Rust 二进制，无需 Bun）。 | `prts-mcp` 默认 HTTP；兼容命令 `prts-mcp-ts` / `prts-mcp-ts-bun` 固定 HTTP，`prts-mcp-ts-stdio` 固定 stdio。 |
+| **PyPI 安装（`prts-mcp`）** | Python 生态环境下的本地或容器化接入 | `3.2.2+` 提供五平台原生 Rust Wheel（要求 `Python >= 3.11`，不含内置备用数据）。 | `prts-mcp` 与 `python -m prts_mcp.server` 默认 `stdio`；设 `PRTS_TRANSPORT=http` 切为 HTTP。 |
 | **从源码编译** | 自定义构建或不受预编译归档支持的系统 | 需安装 Rust 工具链（`>= 1.89`）与 C 编译器；源码构建不含内置备用数据，依赖启动后自动同步或挂载本地数据。 | 同原生二进制。 |
 
-> **版本标签说明**：当前公开稳定版为 `3.2.1`（npm `latest`，GHCR `:latest` 与 `:3`）。继续使用 2.8.x 的部署可固定 npm `prts-mcp-ts@lts-2.8` 或 GHCR `:2`。生产环境建议始终固定具体版本号（如 `3.2.1`）或镜像 digest。各平台 ABI 审计细节见 [`NATIVE-PLATFORMS.md`](../dev/NATIVE-PLATFORMS.md)。
+> **版本标签说明**：当前公开稳定版为 `3.2.2`（npm `latest`，GHCR `:latest` 与 `:3`）。继续使用 2.8.x 的部署可固定 npm `prts-mcp-ts@lts-2.8` 或 GHCR `:2`。生产环境建议始终固定具体版本号（如 `3.2.2`）或镜像 digest。各平台 ABI 审计细节见 [`NATIVE-PLATFORMS.md`](../dev/NATIVE-PLATFORMS.md)。
 
 ---
 
@@ -28,7 +30,7 @@ PRTS-MCP 3.x 的核心服务为单一原生 Rust 二进制（静态链接 C 正�
 ### 2.1 拉取镜像
 
 ```bash
-docker pull ghcr.io/3akhp/prts-mcp:3.2.1
+docker pull ghcr.io/3akhp/prts-mcp:3.2.2
 ```
 
 容器使用 `tini` 作为 PID 1（`ENTRYPOINT ["tini", "-g", "--", "/app/bin/prts-mcp-ghcr"]`），可正确转发 `SIGTERM` / `SIGINT` 信号并回收子进程，确保 `docker stop` 立即优雅退出。
@@ -38,7 +40,7 @@ docker pull ghcr.io/3akhp/prts-mcp:3.2.1
 作为供局域网或多客户端共享的 HTTP 服务运行时，需显式设置 `-e PRTS_TRANSPORT=http` 并挂载 `/data` 持久化卷：
 
 ```bash
-docker run -d --name prts-mcp --restart unless-stopped -p 127.0.0.1:3000:3000 -v prts-data:/data -e PRTS_TRANSPORT=http ghcr.io/3akhp/prts-mcp:3.2.1
+docker run -d --name prts-mcp --restart unless-stopped -p 127.0.0.1:3000:3000 -v prts-data:/data -e PRTS_TRANSPORT=http ghcr.io/3akhp/prts-mcp:3.2.2
 ```
 
 - **监听地址与端点**：容器内默认监听 `0.0.0.0:3000`（可通过 `HOST` / `PORT` 调整），MCP 端点为 `/mcp`，健康检查端点为 `/health`。
@@ -71,7 +73,7 @@ docker run -d --name prts-mcp --restart unless-stopped -p 127.0.0.1:3000:3000 -v
 2. **兼容 2.x 的多子卷挂载**：
    - 若从 2.x 升级且原有部署使用了 3 个或 4 个独立子目录命名卷，无需迁移数据，原挂载命令可直接沿用：
      ```bash
-     docker run -d --name prts-mcp -p 127.0.0.1:3000:3000 -e PRTS_TRANSPORT=http -v prts-mcp-data:/data/gamedata -v prts-mcp-levels:/data/gamedata-levels -v prts-mcp-storyjson:/data/storyjson ghcr.io/3akhp/prts-mcp:3.2.1
+     docker run -d --name prts-mcp -p 127.0.0.1:3000:3000 -e PRTS_TRANSPORT=http -v prts-mcp-data:/data/gamedata -v prts-mcp-levels:/data/gamedata-levels -v prts-mcp-storyjson:/data/storyjson ghcr.io/3akhp/prts-mcp:3.2.2
      ```
    - 在分卷挂载下，容器重建后会根据各子卷内的 `archives/extract_meta.json` 自动恢复激活状态。
    - 3.2 起默认使用 SQLite 后端，DB 写入 `/data/database`。沿用上面的分卷命令时，该目录不在任何卷中，每次重建容器都要重新下载约 130 MiB 的 DB，下载完成前服务使用 JSON 备用数据。二选一处理：
@@ -91,26 +93,36 @@ docker run -d --name prts-mcp --restart unless-stopped -p 127.0.0.1:3000:3000 -v
 mkdir -p /srv/prts-data
 chown -R 10001:10001 /srv/prts-data
 
-docker run -d --name prts-mcp --user 10001:10001 --read-only --tmpfs /tmp:rw,nosuid,nodev,mode=1777 -p 127.0.0.1:3000:3000 -e PRTS_TRANSPORT=http -v /srv/prts-data:/data ghcr.io/3akhp/prts-mcp:3.2.1
+docker run -d --name prts-mcp --user 10001:10001 --read-only --tmpfs /tmp:rw,nosuid,nodev,mode=1777 -p 127.0.0.1:3000:3000 -e PRTS_TRANSPORT=http -v /srv/prts-data:/data ghcr.io/3akhp/prts-mcp:3.2.2
 ```
 
 > **注意**：若在 `--read-only` 模式下使用 4 个独立子目录分卷挂载（而非整卷挂载 `/data`），还需额外添加 `--tmpfs /data:rw,nosuid,nodev,mode=1777`，以便父目录 `/data` 能够写入跨进程同步锁与 `.gamedata_pair.json`。这种情况下默认 SQLite 后端会把 DB 写进 tmpfs：单代约 320 MiB，更新后保留两代，更新期间峰值约 1.1 GiB，全部占用内存且重启即丢失，请同时为 `/data/database` 挂载一个卷，或设置 `PRTS_DATA_BACKEND=json`。
 
 ---
 
-## 3. 原生归档包与 `systemd` 守护进程部署
+## 3. 原生程序与 `systemd` 守护进程部署
 
 ### 3.1 解压与目录结构要求
 
-从 [3.2.1 Release](https://github.com/3aKHP/prts-mcp/releases/tag/v3.2.1) 下载对应平台的归档包与 `SHA256SUMS` 校验清单：
+从 [3.2.2 Release](https://github.com/3aKHP/prts-mcp/releases/tag/v3.2.2) 下载对应平台的归档包与 `SHA256SUMS` 校验清单：
 
 ```bash
 sha256sum --ignore-missing -c SHA256SUMS
 sudo mkdir -p /opt/prts-mcp
-sudo tar -xzf prts-mcp-3.2.1-linux-x64.tar.gz -C /opt/prts-mcp
+sudo tar -xzf prts-mcp-3.2.2-linux-x64.tar.gz -C /opt/prts-mcp
 ```
 
 > **切勿破坏目录相对结构**：`/opt/prts-mcp/bin/prts-mcp` 启动时会自动从相邻的 `../data`（即 `/opt/prts-mcp/data`）定位内置只读备用数据。如果只把 `bin/prts-mcp` 单独复制到 `/usr/local/bin`，程序将无法找到内置备用数据。
+
+### 3.1.1 Cargo 安装
+
+通过 `crates.io` 同时安装 `3.2.2` 服务端与管理 CLI：
+
+```bash
+cargo install prts-mcp --version 3.2.2 --locked --bin prts-mcp --bin prtsctl
+```
+
+将 `systemd` 的 `ExecStart` 指向安装后的 `prts-mcp` 绝对路径，并确保服务用户可执行该文件。生产升级应保留上一版本二进制、unit 与配置，继续使用原数据目录。源码安装没有内置备用数据，首次部署需要同步网络或预先准备本地数据。
 
 ### 3.2 配置 `systemd` 常驻服务（Linux）
 
@@ -152,6 +164,10 @@ sudo systemctl enable --now prts-mcp
 curl -fsS http://127.0.0.1:3000/health
 ```
 
+### 3.3 使用 `prtsctl` 生成与管理 `systemd` 服务（3.2.2+）
+
+在 `3.2.2+` 中，可通过 `prtsctl service --unit prts-mcp.service status` 查询上述服务状态，或执行 `start`、`stop`、`restart`、`enable`、`disable`。如需同时启用本机在线管理端点（`PRTS_CONTROL_ENDPOINT`），可使用 `prtsctl service template` 直接生成包含私有运行目录与控制端点的单元文件，并在 `instances.toml` 中配置实例映射。详细参数、权限校验与在线配置重载规则见[管理 CLI 使用指南](cli.md)。
+
 ---
 
 ## 4. 通过 npm 部署常驻服务
@@ -160,11 +176,11 @@ curl -fsS http://127.0.0.1:3000/health
 
 ```bash
 # 安装 3.x 主包（提供 prts-mcp 命令，默认启动 HTTP）
-npm install -g prts-mcp@3.2.1
+npm install -g prts-mcp@3.2.2
 prts-mcp
 
 # 若需保留 2.x 旧启动脚本中的命令名，可同时或单独安装兼容包：
-npm install -g prts-mcp-ts@3.2.1
+npm install -g prts-mcp-ts@3.2.2
 ```
 
 - **切勿使用 `--omit=optional`**：平台对应的预编译 Rust 二进制通过 `optionalDependencies` 分发，禁用可选依赖会导致启动失败。
