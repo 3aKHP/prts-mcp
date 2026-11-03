@@ -451,6 +451,7 @@ fn invalid_management_and_proxy_file_values_are_rejected_without_secret_echo() {
         "PRTS_INSTANCE_NAME='not a name'",
         "PRTS_CONTROL_ENDPOINT='relative.sock'",
         "HTTPS_PROXY='http://private-secret@[invalid'",
+        "HTTP_PROXY='http://user:private-secret space@127.0.0.1:8080'",
     ] {
         fs::write(&path, format!("schema_version=1\n[runtime]\n{entry}\n")).unwrap();
         let output = f

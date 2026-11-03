@@ -30,6 +30,7 @@ pub fn configuration(
         json!({"key":key,"source":if value.is_some(){"environment"}else{"unset"},"configured":value.is_some(),"value":value.map(|v|if super::schema::redacted(key){"[redacted]"}else{v.as_str()})})
     }).collect();
     json!({"schema_version":1,"scope":"invocation","config_file":path_value(path),"fields":fields,"network_environment":network,"derived":{
+        "proxy_discovery":if cfg.network.uses_system_discovery(){"system"}else{"configured"},
         "preferred_backend":backend(cfg),"allow_json_fallback":cfg.allow_json_fallback,
         "game_sync_enabled":match cfg.data_backend{DataBackend::Sqlite=>cfg.custom_database.is_none(),DataBackend::Json=>!cfg.is_custom_gamedata},
         "story_sync_enabled":cfg.data_backend==DataBackend::Json&&cfg.story_sync_enabled,

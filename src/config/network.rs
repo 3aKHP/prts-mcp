@@ -10,6 +10,7 @@ pub struct NetworkConfig {
     pub values: BTreeMap<String, String>,
     pub extra_ca: Option<PathBuf>,
     resolver: Arc<Matcher>,
+    system_discovery: bool,
 }
 impl fmt::Debug for NetworkConfig {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -20,7 +21,9 @@ impl fmt::Debug for NetworkConfig {
 }
 impl PartialEq for NetworkConfig {
     fn eq(&self, other: &Self) -> bool {
-        self.values == other.values && self.extra_ca == other.extra_ca
+        self.values == other.values
+            && self.extra_ca == other.extra_ca
+            && self.system_discovery == other.system_discovery
     }
 }
 impl NetworkConfig {
@@ -48,16 +51,29 @@ impl NetworkConfig {
             values,
             extra_ca: lookup("NODE_EXTRA_CA_CERTS").map(PathBuf::from),
             resolver: Arc::new(resolver),
+            system_discovery: false,
         }
     }
     /// Capture platform discovery once; no client performs its own environment lookup.
     pub fn from_env() -> Self {
         let mut result = Self::from_lookup(|key| std::env::var(key).ok());
         result.resolver = Arc::new(Matcher::from_system());
+        result.system_discovery = true;
         result
     }
     pub fn retain_system_resolver(&mut self, startup: &Self) {
         self.resolver = startup.resolver.clone();
+        self.system_discovery = true;
+    }
+    pub fn uses_system_discovery(&self) -> bool {
+        self.system_discovery
+    }
+    pub fn valid_proxy(value: &str) -> bool {
+        Matcher::builder()
+            .all(value)
+            .build()
+            .intercept(&"http://validation.invalid".parse().expect("static URI"))
+            .is_some()
     }
     pub fn client_builder(&self) -> reqwest::ClientBuilder {
         let resolver = self.resolver.clone();
@@ -72,11 +88,15 @@ impl NetworkConfig {
                         .ok()?;
                     let decoded = String::from_utf8(decoded).ok()?;
                     let (user, password) = decoded.split_once(':')?;
-                    proxy.set_username(user).ok()?;
-                    proxy.set_password(Some(password)).ok()?;
+                    proxy.set_username(&user.replace('%', "%25")).ok()?;
+                    proxy
+                        .set_password(Some(&password.replace('%', "%25")))
+                        .ok()?;
                 } else if let Some((user, password)) = target.raw_auth() {
-                    proxy.set_username(user).ok()?;
-                    proxy.set_password(Some(password)).ok()?;
+                    proxy.set_username(&user.replace('%', "%25")).ok()?;
+                    proxy
+                        .set_password(Some(&password.replace('%', "%25")))
+                        .ok()?;
                 }
                 Some(proxy)
             }))
@@ -137,16 +157,26 @@ mod tests {
     }
     #[tokio::test]
     async fn sync_client_uses_explicit_authenticated_proxy() {
+        authenticated_proxy("user:password", "user:password").await;
+        authenticated_proxy("user:literal%2541", "user:literal%41").await;
+        authenticated_proxy("user%25:pa%25ss%3Aword", "user%:pa%ss:word").await;
+    }
+    async fn authenticated_proxy(encoded: &str, expected: &str) {
         use crate::sync::transport::{ReqwestTransport, Transport};
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let proxy = format!("http://user:password@{}", listener.local_addr().unwrap());
+        let proxy = format!("http://{encoded}@{}", listener.local_addr().unwrap());
+        let expected = format!(
+            "proxy-authorization: Basic {}",
+            base64::engine::general_purpose::STANDARD.encode(expected)
+        )
+        .to_ascii_lowercase();
         let server = tokio::spawn(async move {
             let (mut socket, _) = listener.accept().await.unwrap();
             let mut bytes = vec![0; 4096];
             let n = socket.read(&mut bytes).await.unwrap();
             let request = String::from_utf8_lossy(&bytes[..n]).to_ascii_lowercase();
             assert!(request.starts_with("get http://fixture.invalid/data "));
-            assert!(request.contains("proxy-authorization: basic dxnlcjpwyxnzd29yza=="));
+            assert!(request.contains(&expected));
             socket
                 .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}")
                 .await

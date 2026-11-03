@@ -269,7 +269,9 @@ impl Field {
                 return Err(invalid())
             }
             "HTTP_PROXY" | "HTTPS_PROXY" | "ALL_PROXY" if !raw.is_empty() => {
-                reqwest::Proxy::all(&raw).map_err(|_| invalid())?;
+                if !crate::config::network::NetworkConfig::valid_proxy(&raw) {
+                    return Err(invalid());
+                }
             }
             _ => (),
         }

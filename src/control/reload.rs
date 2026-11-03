@@ -290,4 +290,19 @@ mod tests {
         assert_eq!(jobs.snapshot().config.auto_sync_interval_ms, 60000);
         assert_eq!(configuration.show()["revision"], 1);
     }
+    #[tokio::test]
+    async fn masked_file_proxy_addition_still_requires_restart_when_discovery_changes() {
+        let fixture = Fixture::new();
+        fixture.write("");
+        let (configuration, _) = fixture.load(
+            BTreeMap::from([("HTTP_PROXY".into(), "http://127.0.0.1:8080".into())]),
+            BTreeMap::new(),
+        );
+        fixture.write("HTTP_PROXY='http://127.0.0.1:9000'\n");
+        assert_eq!(
+            configuration.evaluate(None).unwrap()["restart_required"],
+            true
+        );
+        assert!(configuration.evaluate(Some(1)).is_err());
+    }
 }
