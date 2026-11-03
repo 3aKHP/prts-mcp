@@ -8,7 +8,7 @@
 //! reqwest reads the proxy env itself, and the extra CA file is honored for
 //! parity.
 
-use std::sync::{Mutex, OnceLock};
+use std::sync::Mutex;
 use std::time::Duration;
 
 use async_trait::async_trait;
@@ -246,13 +246,6 @@ impl WikiTransport for ReqwestWikiTransport {
     async fn download_image(&self, url: &str) -> Result<Vec<u8>, String> {
         self.download_image_safe(url).await
     }
-}
-
-static SHARED: OnceLock<ReqwestWikiTransport> = OnceLock::new();
-
-/// Process-wide transport (TS module state is process-global too).
-pub fn shared_transport() -> &'static ReqwestWikiTransport {
-    SHARED.get_or_init(ReqwestWikiTransport::new)
 }
 
 #[cfg(test)]

@@ -12,7 +12,6 @@ use super::zodish::{validation_error, Args};
 use super::{AppHandle, DispatchFuture, DispatchResult};
 use crate::domain::artwork::local::{get_artwork_local, list_artworks_local, ArtworkOutcome};
 use crate::domain::artwork::mediawiki;
-use crate::wiki::client;
 
 fn invalid_args(tool: &str, joined: String) -> DispatchResult {
     DispatchResult::Outcome(ToolOutcome::error_text(validation_error(tool, &joined)))
@@ -98,11 +97,11 @@ pub fn operator_artwork<'a>(app: &'a AppHandle, arguments: &'a Value) -> Dispatc
                 outcome
             }
         } else if action == "list" {
-            mediawiki::list_artworks_mediawiki(client::shared_transport(), &operator_name).await
+            mediawiki::list_artworks_mediawiki(app.wiki_transport(), &operator_name).await
         } else {
             let artwork_id = artwork_id.unwrap_or_default();
             mediawiki::get_artwork_mediawiki(
-                client::shared_transport(),
+                app.wiki_transport(),
                 &operator_name,
                 &artwork_id,
                 variant.as_deref(),
