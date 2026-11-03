@@ -74,8 +74,9 @@ impl AppHandle {
 
     /// All tools and cloned handles in one application share the pool and limiter.
     pub fn wiki_transport(&self) -> &crate::wiki::client::ReqwestWikiTransport {
-        self.wiki
-            .get_or_init(crate::wiki::client::ReqwestWikiTransport::new)
+        self.wiki.get_or_init(|| {
+            crate::wiki::client::ReqwestWikiTransport::with_network(&self.config().network)
+        })
     }
 
     /// One generation snapshot for a complete tool call.

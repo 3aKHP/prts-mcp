@@ -23,6 +23,18 @@ pub(super) fn environment_value<'a>(
     })
 }
 
+pub(super) fn runtime_environment_value<'a>(
+    env: &'a BTreeMap<String, String>,
+    key: &str,
+) -> Option<&'a String> {
+    environment_value(env, key).or_else(|| {
+        crate::config::network::PROXY_KEYS
+            .contains(&key)
+            .then(|| environment_value(env, &key.to_ascii_lowercase()))
+            .flatten()
+    })
+}
+
 pub fn default_path() -> Result<PathBuf, String> {
     if cfg!(windows) {
         let root = std::env::var_os("APPDATA")
@@ -93,6 +105,8 @@ pub struct Context {
     home: Option<PathBuf>,
     bundle: Option<PathBuf>,
     profile: String,
+    network: crate::config::network::NetworkConfig,
+    control_endpoint: Option<PathBuf>,
 }
 impl Context {
     #[cfg(test)]
@@ -102,6 +116,13 @@ impl Context {
         overrides: BTreeMap<String, String>,
     ) -> Self {
         Self {
+            network: crate::config::network::NetworkConfig::from_lookup(|key| {
+                env.get(key).cloned()
+            }),
+            control_endpoint: env
+                .get("PRTS_CONTROL_ENDPOINT")
+                .filter(|v| !v.is_empty())
+                .map(PathBuf::from),
             path: Some(path),
             required: true,
             env,
@@ -118,6 +139,10 @@ impl Context {
     ) -> Self {
         Self {
             profile: "prts-mcp".into(),
+            network: crate::config::network::NetworkConfig::from_env(),
+            control_endpoint: std::env::var_os("PRTS_CONTROL_ENDPOINT")
+                .filter(|v| !v.is_empty())
+                .map(PathBuf::from),
             path,
             required,
             overrides,
@@ -140,11 +165,20 @@ impl Context {
         let lookup = |key: &str| {
             self.overrides
                 .get(key)
-                .or_else(|| environment_value(&self.env, key))
+                .or_else(|| runtime_environment_value(&self.env, key))
                 .or_else(|| file.get(key))
                 .cloned()
         };
         let mut config = RuntimeConfig::try_from_lookup_with_home(lookup, self.home.as_deref())?;
+        if !crate::config::network::PROXY_KEYS
+            .iter()
+            .any(|key| file.contains_key(*key))
+        {
+            config.network.retain_system_resolver(&self.network);
+        }
+        if let Some(endpoint) = &self.control_endpoint {
+            config.control_endpoint = Some(endpoint.clone());
+        }
         config.bundle_root = self.bundle.clone();
         let transport_input = lookup("PRTS_TRANSPORT");
         let requested = transport_input

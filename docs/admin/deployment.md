@@ -132,7 +132,23 @@ cargo install prts-mcp --version 3.2.2 --locked --bin prts-mcp --bin prtsctl
 sudo useradd --system --home-dir /var/lib/prts-mcp --create-home --shell /usr/sbin/nologin prts-mcp
 ```
 
-创建 `/etc/systemd/system/prts-mcp.service`：
+3.2.3 起推荐将应用设置集中到 `/etc/prts-mcp/config.toml`（由服务用户读取，权限 `0600`），避免在 unit 或 drop-in 中重复设置业务环境变量。示例采用原生归档安装；Cargo 安装须将下面的可执行文件路径替换为服务用户实际的 Cargo 安装路径。
+
+```toml
+schema_version = 1
+[runtime]
+PRTS_TRANSPORT = "http"
+HOST = "127.0.0.1"
+PORT = 3000
+PRTS_DATA_BACKEND = "sqlite"
+PRTS_DATA_DIR = "/var/lib/prts-mcp/database"
+PRTS_IMAGE_DIR = "/var/lib/prts-mcp/images"
+PRTS_AUTO_SYNC_INTERVAL_SECONDS = 3600
+PRTS_INSTANCE_NAME = "main"
+PRTS_CONTROL_ENDPOINT = "/run/prts-mcp-main/control.sock"
+```
+
+需要代理、镜像、图片或监控时，将对应应用字段添加到同一 `[runtime]` 表。systemd 保留用户、进程重启和运行目录管理职责。创建 `/etc/systemd/system/prts-mcp.service`：
 
 ```ini
 [Unit]
@@ -144,11 +160,9 @@ Wants=network-online.target
 Type=simple
 User=prts-mcp
 Group=prts-mcp
-Environment=HOST=127.0.0.1
-Environment=PORT=3000
-Environment=XDG_DATA_HOME=/var/lib/prts-mcp
-Environment=PRTS_AUTO_SYNC_INTERVAL_SECONDS=3600
-ExecStart=/opt/prts-mcp/bin/prts-mcp
+RuntimeDirectory=prts-mcp-main
+RuntimeDirectoryMode=0700
+ExecStart=/opt/prts-mcp/bin/prts-mcp --config /etc/prts-mcp/config.toml
 Restart=on-failure
 RestartSec=5
 
@@ -166,7 +180,7 @@ curl -fsS http://127.0.0.1:3000/health
 
 ### 3.3 使用 `prtsctl` 生成与管理 `systemd` 服务（3.2.2+）
 
-在 `3.2.2+` 中，可通过 `prtsctl service --unit prts-mcp.service status` 查询上述服务状态，或执行 `start`、`stop`、`restart`、`enable`、`disable`。如需同时启用本机在线管理端点（`PRTS_CONTROL_ENDPOINT`），可使用 `prtsctl service template` 直接生成包含私有运行目录与控制端点的单元文件，并在 `instances.toml` 中配置实例映射。详细参数、权限校验与在线配置重载规则见[管理 CLI 使用指南](cli.md)。
+在 `3.2.2+` 中，可通过 `prtsctl service --unit prts-mcp.service status` 查询上述服务状态，或执行 `start`、`stop`、`restart`、`enable`、`disable`。如需同时启用本机在线管理端点（`PRTS_CONTROL_ENDPOINT`），可使用兼容环境变量部署的 `prtsctl service template` 直接生成包含私有运行目录与控制端点的单元文件，并在 `instances.toml` 中配置实例映射。详细参数、权限校验与在线配置重载规则见[管理 CLI 使用指南](cli.md)。
 
 ---
 

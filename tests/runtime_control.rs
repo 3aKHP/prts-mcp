@@ -22,6 +22,17 @@ impl Drop for Fixture {
 
 #[test]
 fn stdio_instance_has_separate_management_and_preserves_protocol_output() {
+    managed_instance(false, false);
+}
+#[test]
+fn native_entry_loads_management_from_toml() {
+    managed_instance(true, false);
+}
+#[test]
+fn serve_entry_loads_management_from_toml() {
+    managed_instance(true, true);
+}
+fn managed_instance(file_control: bool, serve: bool) {
     let id = uuid::Uuid::new_v4();
     // Darwin's per-user temp prefix can exceed sockaddr_un's small limit.
     #[cfg(unix)]
@@ -34,6 +45,16 @@ fn stdio_instance_has_separate_management_and_preserves_protocol_output() {
     #[cfg(windows)]
     let endpoint = PathBuf::from(format!(r"\\.\pipe\prts-mcp-test-{id}"));
     let config = root.join("server.toml");
+    let control_fields = if file_control {
+        format!(
+            "PRTS_CONTROL_ENDPOINT='{}'\nPRTS_INSTANCE_NAME='main'\n",
+            endpoint.display()
+        )
+    } else {
+        String::new()
+    };
+    let write_configuration =
+        |text: &str| fs::write(&config, format!("{text}{control_fields}")).unwrap();
     fs::write(
         &config,
         "schema_version=1\n[runtime]\nPRTS_TRANSPORT='stdio'\nHOST='fixture-host'\n",
@@ -48,7 +69,20 @@ fn stdio_instance_has_separate_management_and_preserves_protocol_output() {
         ),
     )
     .unwrap();
-    let mut command = Command::new(env!("CARGO_BIN_EXE_prts-mcp"));
+    if file_control {
+        let mut file = fs::OpenOptions::new().append(true).open(&config).unwrap();
+        writeln!(
+            file,
+            "PRTS_CONTROL_ENDPOINT='{}'\nPRTS_INSTANCE_NAME='main'",
+            endpoint.display()
+        )
+        .unwrap();
+    }
+    let mut command = Command::new(if serve {
+        env!("CARGO_BIN_EXE_prtsctl")
+    } else {
+        env!("CARGO_BIN_EXE_prts-mcp")
+    });
     command
         .env_clear()
         .env("HOME", &root)
@@ -64,6 +98,12 @@ fn stdio_instance_has_separate_management_and_preserves_protocol_output() {
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
+    if file_control {
+        command.env_remove("PRTS_CONTROL_ENDPOINT");
+    }
+    if serve {
+        command.arg("serve");
+    }
     let mut fixture = Fixture {
         root,
         child: Some(command.spawn().unwrap()),
@@ -153,7 +193,7 @@ fn stdio_instance_has_separate_management_and_preserves_protocol_output() {
     assert!(out.status.success(), "{out:?}");
     let report: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
     assert_eq!(report["schema_version"], 1);
-    fs::write(&config, "schema_version=1\n[runtime]\nPRTS_TRANSPORT='stdio'\nHOST='fixture-host'\nPRTS_AUTO_SYNC_INTERVAL_SECONDS=120\n").unwrap();
+    write_configuration("schema_version=1\n[runtime]\nPRTS_TRANSPORT='stdio'\nHOST='fixture-host'\nPRTS_AUTO_SYNC_INTERVAL_SECONDS=120\n");
     let out = query(&["config", "diff"]);
     assert!(out.status.success(), "{out:?}");
     let diff: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
@@ -168,7 +208,7 @@ fn stdio_instance_has_separate_management_and_preserves_protocol_output() {
     assert!(!query(&["config", "reload", "--expected-revision", "1"])
         .status
         .success());
-    fs::write(&config, "schema_version=1\n[runtime]\nPRTS_TRANSPORT='stdio'\nHOST='changed-host'\nPRTS_AUTO_SYNC_INTERVAL_SECONDS=240\n").unwrap();
+    write_configuration("schema_version=1\n[runtime]\nPRTS_TRANSPORT='stdio'\nHOST='changed-host'\nPRTS_AUTO_SYNC_INTERVAL_SECONDS=240\n");
     assert!(!query(&["config", "reload", "--expected-revision", "2"])
         .status
         .success());
