@@ -268,10 +268,10 @@ impl Field {
             {
                 return Err(invalid())
             }
-            "HTTP_PROXY" | "HTTPS_PROXY" | "ALL_PROXY" if !raw.is_empty() => {
-                if !crate::config::network::NetworkConfig::valid_proxy(&raw) {
-                    return Err(invalid());
-                }
+            "HTTP_PROXY" | "HTTPS_PROXY" | "ALL_PROXY"
+                if !raw.is_empty() && !crate::config::network::NetworkConfig::valid_proxy(&raw) =>
+            {
+                return Err(invalid())
             }
             _ => (),
         }
