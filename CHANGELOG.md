@@ -8,6 +8,8 @@ The original per-implementation changelogs at the 2.8.1 baseline remain availabl
 
 ## [Unreleased]
 
+## [3.2.3] - 2026-11-03
+
 ### Added
 
 - Support application-owned TOML proxy, Wiki CA and local management settings across server and CLI entry points; preserve environment overrides and report restart-required changes without exposing secrets.

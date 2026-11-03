@@ -21,7 +21,7 @@ PRTS-MCP 3.x 的核心服务为单一原生 Rust 二进制（静态链接 C 正�
 | **PyPI 安装（`prts-mcp`）** | Python 生态环境下的本地或容器化接入 | `3.2.2+` 提供五平台原生 Rust Wheel（要求 `Python >= 3.11`，不含内置备用数据）。 | `prts-mcp` 与 `python -m prts_mcp.server` 默认 `stdio`；设 `PRTS_TRANSPORT=http` 切为 HTTP。 |
 | **从源码编译** | 自定义构建或不受预编译归档支持的系统 | 需安装 Rust 工具链（`>= 1.89`）与 C 编译器；源码构建不含内置备用数据，依赖启动后自动同步或挂载本地数据。 | 同原生二进制。 |
 
-> **版本标签说明**：当前公开稳定版为 `3.2.2`（npm `latest`，GHCR `:latest` 与 `:3`）。继续使用 2.8.x 的部署可固定 npm `prts-mcp-ts@lts-2.8` 或 GHCR `:2`。生产环境建议始终固定具体版本号（如 `3.2.2`）或镜像 digest。各平台 ABI 审计细节见 [`NATIVE-PLATFORMS.md`](../dev/NATIVE-PLATFORMS.md)。
+> **版本标签说明**：当前公开稳定版为 `3.2.3`（npm `latest`，GHCR `:latest` 与 `:3`）。继续使用 2.8.x 的部署可固定 npm `prts-mcp-ts@lts-2.8` 或 GHCR `:2`。生产环境建议始终固定具体版本号（如 `3.2.3`）或镜像 digest。各平台 ABI 审计细节见 [`NATIVE-PLATFORMS.md`](../dev/NATIVE-PLATFORMS.md)。
 
 ---
 
@@ -30,7 +30,7 @@ PRTS-MCP 3.x 的核心服务为单一原生 Rust 二进制（静态链接 C 正�
 ### 2.1 拉取镜像
 
 ```bash
-docker pull ghcr.io/3akhp/prts-mcp:3.2.2
+docker pull ghcr.io/3akhp/prts-mcp:3.2.3
 ```
 
 容器使用 `tini` 作为 PID 1（`ENTRYPOINT ["tini", "-g", "--", "/app/bin/prts-mcp-ghcr"]`），可正确转发 `SIGTERM` / `SIGINT` 信号并回收子进程，确保 `docker stop` 立即优雅退出。
@@ -40,7 +40,7 @@ docker pull ghcr.io/3akhp/prts-mcp:3.2.2
 作为供局域网或多客户端共享的 HTTP 服务运行时，需显式设置 `-e PRTS_TRANSPORT=http` 并挂载 `/data` 持久化卷：
 
 ```bash
-docker run -d --name prts-mcp --restart unless-stopped -p 127.0.0.1:3000:3000 -v prts-data:/data -e PRTS_TRANSPORT=http ghcr.io/3akhp/prts-mcp:3.2.2
+docker run -d --name prts-mcp --restart unless-stopped -p 127.0.0.1:3000:3000 -v prts-data:/data -e PRTS_TRANSPORT=http ghcr.io/3akhp/prts-mcp:3.2.3
 ```
 
 - **监听地址与端点**：容器内默认监听 `0.0.0.0:3000`（可通过 `HOST` / `PORT` 调整），MCP 端点为 `/mcp`，健康检查端点为 `/health`。
@@ -73,7 +73,7 @@ docker run -d --name prts-mcp --restart unless-stopped -p 127.0.0.1:3000:3000 -v
 2. **兼容 2.x 的多子卷挂载**：
    - 若从 2.x 升级且原有部署使用了 3 个或 4 个独立子目录命名卷，无需迁移数据，原挂载命令可直接沿用：
      ```bash
-     docker run -d --name prts-mcp -p 127.0.0.1:3000:3000 -e PRTS_TRANSPORT=http -v prts-mcp-data:/data/gamedata -v prts-mcp-levels:/data/gamedata-levels -v prts-mcp-storyjson:/data/storyjson ghcr.io/3akhp/prts-mcp:3.2.2
+     docker run -d --name prts-mcp -p 127.0.0.1:3000:3000 -e PRTS_TRANSPORT=http -v prts-mcp-data:/data/gamedata -v prts-mcp-levels:/data/gamedata-levels -v prts-mcp-storyjson:/data/storyjson ghcr.io/3akhp/prts-mcp:3.2.3
      ```
    - 在分卷挂载下，容器重建后会根据各子卷内的 `archives/extract_meta.json` 自动恢复激活状态。
    - 3.2 起默认使用 SQLite 后端，DB 写入 `/data/database`。沿用上面的分卷命令时，该目录不在任何卷中，每次重建容器都要重新下载约 130 MiB 的 DB，下载完成前服务使用 JSON 备用数据。二选一处理：
@@ -93,7 +93,7 @@ docker run -d --name prts-mcp --restart unless-stopped -p 127.0.0.1:3000:3000 -v
 mkdir -p /srv/prts-data
 chown -R 10001:10001 /srv/prts-data
 
-docker run -d --name prts-mcp --user 10001:10001 --read-only --tmpfs /tmp:rw,nosuid,nodev,mode=1777 -p 127.0.0.1:3000:3000 -e PRTS_TRANSPORT=http -v /srv/prts-data:/data ghcr.io/3akhp/prts-mcp:3.2.2
+docker run -d --name prts-mcp --user 10001:10001 --read-only --tmpfs /tmp:rw,nosuid,nodev,mode=1777 -p 127.0.0.1:3000:3000 -e PRTS_TRANSPORT=http -v /srv/prts-data:/data ghcr.io/3akhp/prts-mcp:3.2.3
 ```
 
 > **注意**：若在 `--read-only` 模式下使用 4 个独立子目录分卷挂载（而非整卷挂载 `/data`），还需额外添加 `--tmpfs /data:rw,nosuid,nodev,mode=1777`，以便父目录 `/data` 能够写入跨进程同步锁与 `.gamedata_pair.json`。这种情况下默认 SQLite 后端会把 DB 写进 tmpfs：单代约 320 MiB，更新后保留两代，更新期间峰值约 1.1 GiB，全部占用内存且重启即丢失，请同时为 `/data/database` 挂载一个卷，或设置 `PRTS_DATA_BACKEND=json`。
@@ -104,22 +104,22 @@ docker run -d --name prts-mcp --user 10001:10001 --read-only --tmpfs /tmp:rw,nos
 
 ### 3.1 解压与目录结构要求
 
-从 [3.2.2 Release](https://github.com/3aKHP/prts-mcp/releases/tag/v3.2.2) 下载对应平台的归档包与 `SHA256SUMS` 校验清单：
+从 [3.2.3 Release](https://github.com/3aKHP/prts-mcp/releases/tag/v3.2.3) 下载对应平台的归档包与 `SHA256SUMS` 校验清单：
 
 ```bash
 sha256sum --ignore-missing -c SHA256SUMS
 sudo mkdir -p /opt/prts-mcp
-sudo tar -xzf prts-mcp-3.2.2-linux-x64.tar.gz -C /opt/prts-mcp
+sudo tar -xzf prts-mcp-3.2.3-linux-x64.tar.gz -C /opt/prts-mcp
 ```
 
 > **切勿破坏目录相对结构**：`/opt/prts-mcp/bin/prts-mcp` 启动时会自动从相邻的 `../data`（即 `/opt/prts-mcp/data`）定位内置只读备用数据。如果只把 `bin/prts-mcp` 单独复制到 `/usr/local/bin`，程序将无法找到内置备用数据。
 
 ### 3.1.1 Cargo 安装
 
-通过 `crates.io` 同时安装 `3.2.2` 服务端与管理 CLI：
+通过 `crates.io` 同时安装 `3.2.3` 服务端与管理 CLI：
 
 ```bash
-cargo install prts-mcp --version 3.2.2 --locked --bin prts-mcp --bin prtsctl
+cargo install prts-mcp --version 3.2.3 --locked --bin prts-mcp --bin prtsctl
 ```
 
 将 `systemd` 的 `ExecStart` 指向安装后的 `prts-mcp` 绝对路径，并确保服务用户可执行该文件。生产升级应保留上一版本二进制、unit 与配置，继续使用原数据目录。源码安装没有内置备用数据，首次部署需要同步网络或预先准备本地数据。
@@ -148,7 +148,7 @@ PRTS_INSTANCE_NAME = "main"
 PRTS_CONTROL_ENDPOINT = "/run/prts-mcp-main/control.sock"
 ```
 
-**使用当前稳定版 3.2.2 时**，从以上 TOML 删除 `PRTS_INSTANCE_NAME` 与 `PRTS_CONTROL_ENDPOINT` 两行，并在下面 unit 的 `[Service]` 中加入 `Environment=PRTS_INSTANCE_NAME=main` 和 `Environment=PRTS_CONTROL_ENDPOINT=/run/prts-mcp-main/control.sock`；3.2.3 起才支持将这两项也集中到 TOML。
+**继续使用 3.2.2 时**，从以上 TOML 删除 `PRTS_INSTANCE_NAME` 与 `PRTS_CONTROL_ENDPOINT` 两行，并在下面 unit 的 `[Service]` 中加入 `Environment=PRTS_INSTANCE_NAME=main` 和 `Environment=PRTS_CONTROL_ENDPOINT=/run/prts-mcp-main/control.sock`；3.2.3 起才支持将这两项也集中到 TOML。
 
 上例的数据路径用于新部署。已有部署须沿用实际缓存目录，可先用 `prtsctl runtime data status` 核对；旧示例的 `XDG_DATA_HOME=/var/lib/prts-mcp` 对应 `/var/lib/prts-mcp/prts-mcp/database` 和 `/var/lib/prts-mcp/prts-mcp/images`，不要因切换配置来源而改动数据路径。
 
@@ -194,11 +194,11 @@ curl -fsS http://127.0.0.1:3000/health
 
 ```bash
 # 安装 3.x 主包（提供 prts-mcp 命令，默认启动 HTTP）
-npm install -g prts-mcp@3.2.2
+npm install -g prts-mcp@3.2.3
 prts-mcp
 
 # 若需保留 2.x 旧启动脚本中的命令名，可同时或单独安装兼容包：
-npm install -g prts-mcp-ts@3.2.2
+npm install -g prts-mcp-ts@3.2.3
 ```
 
 - **切勿使用 `--omit=optional`**：平台对应的预编译 Rust 二进制通过 `optionalDependencies` 分发，禁用可选依赖会导致启动失败。
