@@ -148,7 +148,11 @@ PRTS_INSTANCE_NAME = "main"
 PRTS_CONTROL_ENDPOINT = "/run/prts-mcp-main/control.sock"
 ```
 
-需要代理、镜像、图片或监控时，将对应应用字段添加到同一 `[runtime]` 表。systemd 保留用户、进程重启和运行目录管理职责。创建 `/etc/systemd/system/prts-mcp.service`：
+**使用当前稳定版 3.2.2 时**，从以上 TOML 删除 `PRTS_INSTANCE_NAME` 与 `PRTS_CONTROL_ENDPOINT` 两行，并在下面 unit 的 `[Service]` 中加入 `Environment=PRTS_INSTANCE_NAME=main` 和 `Environment=PRTS_CONTROL_ENDPOINT=/run/prts-mcp-main/control.sock`；3.2.3 起才支持将这两项也集中到 TOML。
+
+上例的数据路径用于新部署。已有部署须沿用实际缓存目录，可先用 `prtsctl runtime data status` 核对；旧示例的 `XDG_DATA_HOME=/var/lib/prts-mcp` 对应 `/var/lib/prts-mcp/prts-mcp/database` 和 `/var/lib/prts-mcp/prts-mcp/images`，不要因切换配置来源而改动数据路径。
+
+需要代理、镜像、图片或监控时，将对应应用字段添加到同一 `[runtime]` 表（3.2.2 的代理与附加 CA 仍通过环境变量设置）。systemd 保留用户、进程重启和运行目录管理职责。创建 `/etc/systemd/system/prts-mcp.service`：
 
 ```ini
 [Unit]

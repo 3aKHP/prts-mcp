@@ -73,6 +73,7 @@ impl NetworkConfig {
             .all(value)
             .build()
             .intercept(&"http://validation.invalid".parse().expect("static URI"))
+            .and_then(proxy_url)
             .is_some()
     }
     pub fn client_builder(&self) -> reqwest::ClientBuilder {
@@ -81,26 +82,30 @@ impl NetworkConfig {
             .no_proxy()
             .proxy(reqwest::Proxy::custom(move |url| {
                 let target = resolver.intercept(&url.as_str().parse().ok()?)?;
-                let mut proxy = reqwest::Url::parse(&target.uri().to_string()).ok()?;
-                if let Some(auth) = target.basic_auth() {
-                    let decoded = base64::engine::general_purpose::STANDARD
-                        .decode(auth.to_str().ok()?.strip_prefix("Basic ")?)
-                        .ok()?;
-                    let decoded = String::from_utf8(decoded).ok()?;
-                    let (user, password) = decoded.split_once(':')?;
-                    proxy.set_username(&user.replace('%', "%25")).ok()?;
-                    proxy
-                        .set_password(Some(&password.replace('%', "%25")))
-                        .ok()?;
-                } else if let Some((user, password)) = target.raw_auth() {
-                    proxy.set_username(&user.replace('%', "%25")).ok()?;
-                    proxy
-                        .set_password(Some(&password.replace('%', "%25")))
-                        .ok()?;
-                }
-                Some(proxy)
+                proxy_url(target)
             }))
     }
+}
+
+fn proxy_url(target: hyper_util::client::proxy::matcher::Intercept) -> Option<reqwest::Url> {
+    let mut proxy = reqwest::Url::parse(&target.uri().to_string()).ok()?;
+    if let Some(auth) = target.basic_auth() {
+        let decoded = base64::engine::general_purpose::STANDARD
+            .decode(auth.to_str().ok()?.strip_prefix("Basic ")?)
+            .ok()?;
+        let decoded = String::from_utf8(decoded).ok()?;
+        let (user, password) = decoded.split_once(':')?;
+        proxy.set_username(&user.replace('%', "%25")).ok()?;
+        proxy
+            .set_password(Some(&password.replace('%', "%25")))
+            .ok()?;
+    } else if let Some((user, password)) = target.raw_auth() {
+        proxy.set_username(&user.replace('%', "%25")).ok()?;
+        proxy
+            .set_password(Some(&password.replace('%', "%25")))
+            .ok()?;
+    }
+    Some(proxy)
 }
 
 #[cfg(test)]

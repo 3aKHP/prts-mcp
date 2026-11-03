@@ -146,7 +146,7 @@ prtsctl serve
   - 配置文件内部书写的相对路径，统一**相对于该配置文件所在的目录**解析；而通过环境变量或命令行参数传入的相对路径，则保持相对于当前工作目录（CWD）解析。
   - 环境变量名遵循操作系统大小写规则（Windows 下不区分大小写，Unix 下区分大小写）；TOML 配置文件中的键名在所有平台下**始终区分大小写**。
 
-未在 TOML 中设置代理字段时，保留启动时捕获的环境与系统代理发现结果；显式使用 TOML 代理字段后，以合并环境覆盖后的配置为准，不再隐式读取系统代理。应用运行期间不会因进程环境变化重新选择代理。`NODE_EXTRA_CA_CERTS` 仍只影响 Wiki 请求。
+未在 TOML 中设置代理字段时，保留启动时捕获的环境与系统代理发现结果；显式使用 TOML 代理字段后，以合并环境覆盖后的配置为准，不再隐式读取系统代理。代理地址必须能由实际网络客户端解析；凭据中的空格、非 ASCII 字符或保留字符应使用百分号编码。应用运行期间不会因进程环境变化重新选择代理。`NODE_EXTRA_CA_CERTS` 仍只影响 Wiki 请求。
 
 ### 3.2 配置文件结构与编写规范
 
@@ -165,7 +165,7 @@ LOCAL_IMAGE = false
 
 编写与修改配置文件时请注意：
 
-- **字段命名与范围**：`[runtime]` 表下的键名直接沿用[运行时环境变量完整参考](environment-variables.md)中的业务变量名。操作系统基础目录发现（如 `XDG_DATA_HOME`、`LOCALAPPDATA`）、容器内部布局标记（`PRTS_MCP_ROOT`）以及内部启动桥参数不属于配置文件字段；自 3.2.3 起，网络代理（`HTTP_PROXY`、`HTTPS_PROXY`、`ALL_PROXY`、`NO_PROXY`）、Wiki 附加 CA（`NODE_EXTRA_CA_CERTS`）和本机管理设置（`PRTS_CONTROL_ENDPOINT`、`PRTS_INSTANCE_NAME`）也可写入 `[runtime]`。网络字段的环境变量兼容小写别名，仍优先于文件；代理、镜像与令牌输出自动脱敏。
+- **字段命名与范围**：`[runtime]` 表下的键名直接沿用[运行时环境变量完整参考](environment-variables.md)中的业务变量名。操作系统基础目录发现（如 `XDG_DATA_HOME`、`LOCALAPPDATA`）、容器内部布局标记（`PRTS_MCP_ROOT`）以及内部启动桥参数不属于配置文件字段；自 3.2.3 起，网络代理（`HTTP_PROXY`、`HTTPS_PROXY`、`ALL_PROXY`、`NO_PROXY`）、Wiki 附加 CA（`NODE_EXTRA_CA_CERTS`）和本机管理设置（`PRTS_CONTROL_ENDPOINT`、`PRTS_INSTANCE_NAME`）也可写入 `[runtime]`。代理字段的环境变量兼容小写别名，仍优先于文件；代理、镜像与令牌输出自动脱敏。
 - **强类型校验**：不同于环境变量的宽松回退，TOML 文件中的字段执行严格校验——布尔开关必须使用原生布尔字面量 `true` / `false`，端口与同步间隔秒数使用整数，会话超时毫秒数允许有限数值，路径必须为非空字符串。未知字段名、非法枚举值或互相冲突的配置组合均会被拒绝。
 - **切勿盲目取消所有注释**：模板中被注释掉的高级选项具有特定联动语义。例如，显式写入 `PRTS_DATA_BACKEND = "sqlite"` 会关闭首次同步完成前的默认 JSON 备用回退；写入 `GAMEDATA_PATH` 则会直接关闭对应的 JSON 自动同步。只需取消注释你需要修改的字段即可。
 

@@ -147,7 +147,15 @@ impl Context {
             required,
             overrides,
             env: std::env::vars_os()
-                .filter_map(|(k, v)| Some((k.into_string().ok()?, v.into_string().ok()?)))
+                .filter_map(|(k, v)| {
+                    let k = k.into_string().ok()?;
+                    let v = if k == "PRTS_CONTROL_ENDPOINT" {
+                        v.to_string_lossy().into_owned()
+                    } else {
+                        v.into_string().ok()?
+                    };
+                    Some((k, v))
+                })
                 .collect(),
             home: std::env::home_dir(),
             bundle: crate::config::resolve_bundle_root(),
