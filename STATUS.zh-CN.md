@@ -6,7 +6,7 @@
 
 | 分支 / 版本线 | 当前状态 |
 | --- | --- |
-| 公开稳定版（`main`） | [`3.2.2`](https://github.com/3aKHP/prts-mcp/releases/tag/v3.2.2)（原生 Rust），已发布至 npm（`latest`）、PyPI、crates.io、GitHub Releases 与 GHCR（`:latest`、`:3`）。 |
+| 公开稳定版（`main`） | [`3.2.3`](https://github.com/3aKHP/prts-mcp/releases/tag/v3.2.3)（原生 Rust），已发布至 npm（`latest`）、PyPI、crates.io、GitHub Releases 与 GHCR（`:latest`、`:3`）。 |
 | 主开发分支（`develop`） | `3.2.3-dev.0`（根目录原生 Rust Cargo 工程）。 |
 | `lts/2.8` | Python 与 TypeScript 2.8.x 长期维护线（最新补丁版本 `2.8.2`，功能基线 `2.8.1`，24 个工具）。 |
 | `lts/1.7` | Python 与 TypeScript 1.7.x 长期维护线（最新补丁版本 `1.7.3`，功能基线 `1.7.0`，32 个工具）。 |
@@ -22,6 +22,10 @@
   - `prts-mcp-ghcr`（Docker 镜像默认入口，3.2.2+ PyPI Wheel 启动桥同样调用该入口）：保留默认 `stdio`；设置 `PRTS_TRANSPORT=http` 切换为 HTTP。
   - `prtsctl`（3.2.2 新增）：提供管理子命令（`config`、`doctor`、`data`、`service`、`runtime`、`serve`、`completion`），无参数运行时仅输出帮助信息。
 - **仓库目录结构**：根目录包含 `Cargo.toml`、`src/`、`native/`、`vendor/`、`tests/`、`contracts/`、`tools/`、`packaging/` 与 `Dockerfile`。旧 Python 与 TypeScript 实现在 `lts/2.8` 与 `lts/1.7` 分支独立维护（见 [LTS 维护政策](docs/dev/LTS.md)）。源码许可证与第三方内容版权声明分别见 [LICENSE](LICENSE) 与 [NOTICE](NOTICE)。
+
+## 3.2.3 统一应用配置
+
+TOML 现可集中配置代理、Wiki 附加 CA、本机管理通道及已有运行参数。服务器与 CLI 客户端共用启动配置，保留环境变量覆盖；网络和管理通道变更要求重启。详见[CLI 手册](docs/admin/cli.md)。
 
 ## 3.2.2 管理 CLI 与 PyPI 原生发行
 

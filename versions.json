@@ -1,6 +1,6 @@
 {
   "$doc": "版本号唯一声明。发版时的更新次序见 docs/dev/VERSIONING.md；tools/ci/versions.mjs 校验 occurrences 登记的每一处与本文件一致（锚点无匹配或捕获值不符均失败）。",
-  "stable": "3.2.2",
+  "stable": "3.2.3",
   "develop": "3.2.3-dev.0",
   "lts": {
     "1.7": "1.7.3",
@@ -9,6 +9,20 @@
   "ltsEol": "2027-07-02",
   "occurrences": {
     "stable": [
+      {"file": "README.md", "pattern": "On crates\\.io, install `prts-mcp` \\(`([0-9]+\\.[0-9]+\\.[0-9]+)`\\)"},
+      {"file": "README.md", "pattern": "通过 crates\\.io 安装可使用 `prts-mcp`（`([0-9]+\\.[0-9]+\\.[0-9]+)`）"},
+      {"file": "STATUS.md", "pattern": "Public stable[^\\n]+releases/tag/v([0-9]+\\.[0-9]+\\.[0-9]+)"},
+      {"file": "STATUS.zh-CN.md", "pattern": "公开稳定版[^\\n]+releases/tag/v([0-9]+\\.[0-9]+\\.[0-9]+)"},
+      {"file": "docs/admin/deployment.md", "pattern": "同时安装 `([0-9]+\\.[0-9]+\\.[0-9]+)` 服务端"},
+      {"file": "docs/admin/deployment.md", "pattern": "cargo install prts-mcp --version ([0-9]+\\.[0-9]+\\.[0-9]+)"},
+      {"file": "README.md", "pattern": "pip install(?: --upgrade)? prts-mcp==([0-9]+\\.[0-9]+\\.[0-9]+)"},
+      {"file": "docs/user/quick-start.md", "pattern": "pip install(?: --upgrade)? prts-mcp==([0-9]+\\.[0-9]+\\.[0-9]+)"},
+      {"file": "docs/migration-2.x-to-3.0.md", "pattern": "pip install(?: --upgrade)? prts-mcp==([0-9]+\\.[0-9]+\\.[0-9]+)"},
+      {"file": "docs/admin/diagnostics-and-troubleshooting.md", "pattern": "ghcr\\.io/3akhp/prts-mcp:([0-9]+\\.[0-9]+\\.[0-9]+)"},
+      {"file": "docs/admin/data-and-sync.md", "pattern": "ghcr\\.io/3akhp/prts-mcp:([0-9]+\\.[0-9]+\\.[0-9]+)"},
+      {"file": "docs/dev/DOCKER-DISTRIBUTION.md", "pattern": "ghcr\\.io/3akhp/prts-mcp:([0-9]+\\.[0-9]+\\.[0-9]+)"},
+      {"file": "docs/migration-2.x-to-3.0.md", "pattern": "`@([0-9]+\\.[0-9]+\\.[0-9]+)`"},
+      {"file": "docs/migration-2.x-to-3.0.md", "pattern": "（`:([0-9]+\\.[0-9]+\\.[0-9]+)`"},
       {"file": "README.md", "pattern": "cargo install prts-mcp --version ([0-9]+\\.[0-9]+\\.[0-9]+)"},
       {"file": ".mcp.example.json", "pattern": "ghcr\\.io/3akhp/prts-mcp:([0-9]+\\.[0-9]+\\.[0-9]+)"},
       {"file": ".mcp.example.json", "pattern": "prts-mcp-ts@([0-9]+\\.[0-9]+\\.[0-9]+)"},
