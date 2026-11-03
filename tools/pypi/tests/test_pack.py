@@ -11,7 +11,7 @@ import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from common import ROOT, TAGS, inspect_wheel, python_version, sha, write
+from common import ROOT, TAGS, inspect_wheel, product_version, python_version, sha, write
 import pack
 
 
@@ -46,7 +46,7 @@ class PackTests(unittest.TestCase):
                 else:
                     executable.write_bytes(b"synthetic native fixture")
                 shutil.copy2(executable, native / "bin" / ("prtsctl.exe" if platform == "windows-x64" else "prtsctl"))
-                write(native / "BUILD.json", dict(version="3.2.2-dev.0", commit="abc", platform=platform, target=targets[platform]["target"], dirty=False))
+                write(native / "BUILD.json", dict(version=product_version(), commit="abc", platform=platform, target=targets[platform]["target"], dirty=False))
                 write(native / "ABI.json", dict(platform=targets[platform]["target"]))
                 (native / "SHA256SUMS").write_text("".join(f"{sha(p)}  {p.relative_to(native).as_posix()}\n" for p in sorted(native.rglob("*")) if p.is_file() and p.name != "SHA256SUMS"))
                 with patch.object(pack, "git", side_effect=lambda *args: "" if args[0] == "status" else "abc"):
