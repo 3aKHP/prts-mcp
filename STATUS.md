@@ -6,7 +6,7 @@
 
 | Line / Branch | Current State |
 | --- | --- |
-| Public stable (`main`) | [`3.2.1`](https://github.com/3aKHP/prts-mcp/releases/tag/v3.2.1) (native Rust), published on npm (`latest`), crates.io, GitHub Releases, and GHCR (`:latest`, `:3`). |
+| Public stable (`main`) | [`3.2.2`](https://github.com/3aKHP/prts-mcp/releases/tag/v3.2.2) (native Rust), published on npm (`latest`), PyPI, crates.io, GitHub Releases, and GHCR (`:latest`, `:3`). |
 | Active development (`develop`) | `3.2.2-dev.0` (native Rust Cargo project at the repository root). |
 | `lts/2.8` | Python and TypeScript 2.8.x maintenance branch (latest patch `2.8.2`, `2.8.1` feature baseline, 24 tools). |
 | `lts/1.7` | Python and TypeScript 1.7.x maintenance branch (latest patch `1.7.3`, `1.7.0` feature baseline, 32 tools). |
@@ -22,6 +22,10 @@
   - `prts-mcp-ghcr` (Docker image entrypoint, also used by the 3.2.2+ PyPI wheel bridge) preserves default `stdio`; set `PRTS_TRANSPORT=http` for HTTP mode.
   - `prtsctl` (added on the 3.2.2 line) provides management subcommands (`config`, `doctor`, `data`, `service`, `runtime`, `serve`, `completion`) without starting the server when invoked with no arguments.
 - **Repository Structure**: The root directory holds `Cargo.toml`, `src/`, `native/`, `vendor/`, `tests/`, `contracts/`, `tools/`, `packaging/`, and `Dockerfile`. Legacy Python and TypeScript implementations are maintained on `lts/2.8` and `lts/1.7` (see [LTS Policy](docs/dev/LTS.md)). Code and third-party content licensing are documented in [LICENSE](LICENSE) and [NOTICE](NOTICE).
+
+## 3.2.2 Management CLI and Native PyPI Distribution
+
+`prtsctl` adds local configuration, diagnostics, one-shot sync, systemd lifecycle commands and opt-in runtime management. PyPI provides five native wheels with Python >=3.11 and no fallback data; Cargo installation includes all six public binaries. Both channels use OIDC publication. See the [CLI guide](docs/admin/cli.md) and [release candidates](docs/dev/RELEASE-CANDIDATES.md).
 
 ## 3.2.1 Cargo Source Distribution
 

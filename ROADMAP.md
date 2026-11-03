@@ -2,7 +2,7 @@
 
 [简体中文](ROADMAP.zh-CN.md)
 
-The current public stable release is `3.2.1`, a single native Rust implementation that preserves the frozen TS/v2.8.1 tool contract. Active development continues on `develop` (`3.2.2-dev.0`).
+The current public stable release is `3.2.2`, a single native Rust implementation that preserves the frozen TS/v2.8.1 tool contract. Active development continues on `develop` (`3.2.2-dev.0`).
 
 ## 3.2 — SQLite Default and v2 Artwork
 
@@ -34,9 +34,9 @@ JSON/ZIP remains the default, preserving existing paths, volumes and sync switch
 
 Version 3.0 focuses strictly on the Rust runtime migration and distribution parity. New features and architectural additions are deferred until after 3.0.0 stable and will be prioritized one theme at a time:
 
-- **Native PyPI distribution**: Candidate wheel packaging, installation verification and the minimum CLI are implemented. First publication awaits a formal release and channel enablement. Wheels require Python >=3.11 and exclude fallback game data.
-- **crates.io publication (3.2.1)**: Source installation and guarded publication are implemented. First registration uses a maintainer token; subsequent OIDC requires Trusted Publisher setup. See [release candidates](docs/dev/RELEASE-CANDIDATES.md#5-cargo-源码发行).
-- **Management CLI (3.2.2 development)**: `prtsctl` covers configuration, diagnostics and one-shot data operations with text/JSON output. Existing server entries remain compatible. See the [CLI guide](docs/admin/cli.md). The same iteration adds systemd lifecycle control, local runtime queries, sync jobs and allowlisted configuration reload; a separate daemon remains deferred.
+- **Native PyPI distribution**: Version 3.2.2 adds five-platform native wheels and OIDC publication alongside the management CLI. Wheels require Python >=3.11 and exclude fallback game data.
+- **crates.io publication (3.2.1)**: Source installation and guarded publication are implemented. First registration used a maintainer token; 3.2.2 uses the configured OIDC Trusted Publisher. See [release candidates](docs/dev/RELEASE-CANDIDATES.md#5-cargo-源码发行).
+- **Management CLI (3.2.2)**: `prtsctl` covers configuration, diagnostics and one-shot data operations with text/JSON output. Existing server entries remain compatible. See the [CLI guide](docs/admin/cli.md). The same iteration adds systemd lifecycle control, local runtime queries, sync jobs and allowlisted configuration reload; a separate daemon remains deferred.
 - **New tools and data domains**: Recruitment tag reverse-lookup, operator module (模组) data, skill upgrade material costs, and attack-range visualizations.
 - **Data resilience & AKDP integration**: Backup object-storage mirrors and further pipeline/image optimizations.
 

@@ -6,7 +6,9 @@ This file records user-visible changes across PRTS-MCP implementations: Python a
 
 The original per-implementation changelogs at the 2.8.1 baseline remain available on the [`ts/v2.8.1` tag](https://github.com/3aKHP/prts-mcp/tree/ts/v2.8.1) ([Python](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/python/CHANGELOG.md) · [TypeScript](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/ts/CHANGELOG.md)), and the 1.7.1/1.7.2 maintenance records come from the published [`python/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/python/v1.7.2/python/CHANGELOG.md) and [`ts/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/ts/v1.7.2/ts/CHANGELOG.md) tags.
 
-## [Unreleased]
+## [3.2.2] - 2026-11-03
+
+**PyPI upgrade notes**: Upgrading from 2.8.x switches to the native Rust implementation while preserving the default stdio entry points. Python >=3.11 and one of the five supported native platforms are required; wheels contain no fallback game data, so allow startup synchronization or provide local data. Pin `prts-mcp>=2.8,<2.9` to remain on Python LTS.
 
 ### Added
 
@@ -18,9 +20,9 @@ The original per-implementation changelogs at the 2.8.1 baseline remain availabl
 
 - Add opt-in local runtime status, configuration and data queries through Unix sockets and Windows named pipes. Snapshot queries allow 30 seconds for cold SQLite validation; handshake and other methods retain 5-second limits.
 
-- Add `prtsctl` for TOML configuration, foreground serving, local diagnostics, data inspection/verification and one-shot sync, with stable JSON output and shell completion. Existing server entries retain their default behavior and gain help, version and explicit configuration-file support. See the [management guide](docs/admin/cli.md).
+- Add `prtsctl` for TOML configuration, foreground serving, local diagnostics, data inspection/verification and one-shot sync, with stable JSON output and shell completion. Existing server entries retain their default behavior and gain help, version and explicit configuration-file support. See the [management guide](https://github.com/3aKHP/prts-mcp/blob/v3.2.2/docs/admin/cli.md).
 
-- Prepare the native PyPI distribution: five platform wheels reuse audited Rust executables, preserve default-stdio command and Python module entry points, require Python >=3.11, and exclude fallback game data. Candidate wheels are built and verified; no native PyPI version has been published.
+- Restore the PyPI channel with native Rust wheels: five platform wheels reuse audited Rust executables, preserve default-stdio command and Python module entry points, require Python >=3.11, and exclude fallback game data. Publish the five wheels through OIDC with attestations and verify their registry hashes. Cargo distribution includes all six public binaries, including `prtsctl`, and uses the configured OIDC publisher.
 
 ## [3.2.1] - 2026-11-01
 

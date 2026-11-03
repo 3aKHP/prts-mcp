@@ -6,7 +6,9 @@
 
 2.8.1 基线时的原始分语言更新日志可在 [`ts/v2.8.1` tag](https://github.com/3aKHP/prts-mcp/tree/ts/v2.8.1) 查看（[Python](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/python/CHANGELOG.md) · [TypeScript](https://github.com/3aKHP/prts-mcp/blob/ts/v2.8.1/ts/CHANGELOG.md)），1.7.1 与 1.7.2 的维护记录来自已发布的 [`python/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/python/v1.7.2/python/CHANGELOG.md) 与 [`ts/v1.7.2`](https://github.com/3aKHP/prts-mcp/blob/ts/v1.7.2/ts/CHANGELOG.md) 标签。
 
-## [Unreleased]
+## [3.2.2] - 2026-11-03
+
+**PyPI 升级注意事项**：从 2.8.x 升级会切换至原生 Rust 实现，保留默认 stdio 启动入口。需要 Python >=3.11 及五个受支持原生平台之一；Wheel 不含备用游戏数据，须允许启动同步或提供本地数据。继续使用 Python LTS 请固定 `prts-mcp>=2.8,<2.9`。
 
 ### 新增
 
@@ -18,9 +20,9 @@
 
 - 新增显式启用的本机在线状态、配置和数据查询，通过 Unix socket 与 Windows named pipe 连接运行中实例。快照查询允许首次 SQLite 校验耗时最多 30 秒；握手与其他命令保留 5 秒限制。
 
-- 新增 `prtsctl`，提供 TOML 配置、前台启动、本地诊断、数据检查与校验、一次性同步，并支持稳定 JSON 输出和 Shell 补全。原服务器入口保持默认行为，新增帮助、版本和显式配置文件支持。详见[管理手册](docs/admin/cli.md)。
+- 新增 `prtsctl`，提供 TOML 配置、前台启动、本地诊断、数据检查与校验、一次性同步，并支持稳定 JSON 输出和 Shell 补全。原服务器入口保持默认行为，新增帮助、版本和显式配置文件支持。详见[管理手册](https://github.com/3aKHP/prts-mcp/blob/v3.2.2/docs/admin/cli.md)。
 
-- 准备 PyPI 原生发行：五平台 Wheel 复用已审计 Rust 程序，保留默认 stdio 的命令与 Python 模块入口，要求 Python >=3.11，不含备用游戏数据。当前仅构建和验证候选包，尚未发布至 PyPI。
+- 恢复 PyPI 渠道并改用原生 Rust Wheel：五平台 Wheel 复用已审计 Rust 程序，保留默认 stdio 的命令与 Python 模块入口，要求 Python >=3.11，不含备用游戏数据。五平台 Wheel 通过 OIDC 与 attestations 发布，并核对注册表摘要。Cargo 发行包含 `prtsctl` 在内的六个公开入口，使用已配置的 OIDC Publisher。
 
 ## [3.2.1] - 2026-11-01
 

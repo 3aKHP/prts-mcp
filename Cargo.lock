@@ -1423,7 +1423,7 @@ dependencies = [
 
 [[package]]
 name = "prts-mcp"
-version = "3.2.2-dev.0"
+version = "3.2.2"
 dependencies = [
  "async-trait",
  "axum",

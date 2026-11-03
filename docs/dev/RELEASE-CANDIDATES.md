@@ -123,6 +123,6 @@ uv run --locked --project tools/pypi node tools/pypi/probe.mjs linux-x64
   - 产出目录为 `artifacts/pypi/<platform>/`，包含平台 `.whl`、来源与摘要清单及实际安装运行回执；`collect.mjs` 汇总时会核对全部五个平台 Wheel 以及包内服务器与管理二进制各自的 SHA-256。
   - Wheel 要求 `Python >= 3.11`，提供 `prtsctl` 管理入口，并保留默认 `stdio` 的 `prts-mcp` 命令与 `python -m prts_mcp.server` 模块入口。包内不包含备用游戏数据或 Python 业务依赖，游戏数据由首次启动同步或本地路径变量（`PRTS_DATA_DB`、`GAMEDATA_PATH`、`STORYJSON_PATH`）提供。架构背景见 [ADR-0020](adr/ADR-0020-pypi-native-wheels.md)。
 - **发布开关与 OIDC 校验（`publish-pypi`）**：
-  - 仓库变量 `RUST_PYPI_PUBLISH_ENABLED` 默认关闭（当前公开 PyPI `latest` 仍为 `2.8.x` LTS）；显式设为 `true` 后，正式版或预发布 tag 的 `push` 事件会执行 `publish-pypi` 任务（手动 `workflow_dispatch` 不触发上传）。
+  - 仓库变量 `RUST_PYPI_PUBLISH_ENABLED` 未设置时关闭；3.2.2 起启用为 `true` 后，正式版或预发布 tag 的 `push` 事件会执行 `publish-pypi` 任务（手动 `workflow_dispatch` 不触发上传）。
   - 发布任务下载 `rust-release-candidate` 快照，在上传前先查询 PyPI JSON API：若远端已存在同文件名且 SHA-256 一致的 Wheel 则自动跳过，仅补传缺失平台的 Wheel；若摘要冲突或文件已被 yank 则立即中止。
   - 通过校验后，使用 PyPA 官方发布 Action 配合 GitHub OIDC Trusted Publisher（工作流 `release-rust.yml`、环境 `rust-release`）及 PEP 740 attestations 上传，并在有界时间窗口内轮询确认 PyPI JSON 索引中的版本号、`Requires-Python`、依赖声明与全部五个 Wheel 的 SHA-256 均已就位。启用该开关时，`publish-non-npm` 会等待 `publish-pypi` 成功后方才执行。

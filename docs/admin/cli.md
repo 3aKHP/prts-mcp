@@ -7,7 +7,7 @@
 - 全部运行时配置项字典与解析规则见[运行时环境变量完整参考](environment-variables.md)。
 - 运行中实例的 `/health` 与 `/debug/*` 在线诊断见[监控诊断与故障排查手册](diagnostics-and-troubleshooting.md)。
 
-> **版本可用性说明**：`prtsctl` 随开发中的 `3.2.2` 版本提供；公开稳定版中实际可用的命令与参数请以所安装版本的 `--help` 输出为准。
+> **版本可用性说明**：`prtsctl` 自 `3.2.2` 起提供；公开稳定版中实际可用的命令与参数请以所安装版本的 `--help` 输出为准。
 
 ---
 
@@ -46,7 +46,7 @@ prtsctl serve
 | --- | --- |
 | **预编译原生归档包** | 解压后位于 `bin/prtsctl`（Windows 下为 `bin\prtsctl.exe`），无运行时依赖。 |
 | **npm 包（`prts-mcp`）** | 全局安装主包后可直接运行 `prtsctl`；项目本地安装后使用 `npx prtsctl` 或 `node_modules/.bin/prtsctl`。临时调用可执行 `npx --yes --package prts-mcp prtsctl --help`（需目标发布渠道已包含 `3.2.2+`，预发布阶段可指定 `prts-mcp@next`）。 |
-| **PyPI Wheel（`prts-mcp`）** | 安装 `3.2.2+` 原生 Wheel 后直接提供 `prtsctl` 命令入口（当前公开 PyPI `latest` 仍为 `2.8.x` LTS，不含 `prtsctl`）。 |
+| **PyPI Wheel（`prts-mcp`）** | 安装 `3.2.2+` 原生 Wheel 后直接提供 `prtsctl` 命令入口（旧 `2.8.x` LTS 不含 `prtsctl`）。 |
 | **Cargo 源码安装** | 默认 `cargo install prts-mcp --locked` 会一并安装 `prtsctl`；若仅需安装管理 CLI，可执行 `cargo install prts-mcp --locked --bin prtsctl`。 |
 | **Docker 容器镜像** | 通过覆盖入口点调用：`docker run --rm --entrypoint /app/bin/prtsctl <image> --help`。检查或操作生产数据时，请挂载相同的数据卷（如 `-v prts-data:/data`）并传入一致的环境变量。 |
 

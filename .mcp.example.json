@@ -2,11 +2,11 @@
   "mcpServers": {
     "prts_wiki_docker": {
       "command": "docker",
-      "args": ["run", "-i", "--rm", "-v", "prts-data:/data", "ghcr.io/3akhp/prts-mcp:3.2.1"]
+      "args": ["run", "-i", "--rm", "-v", "prts-data:/data", "ghcr.io/3akhp/prts-mcp:3.2.2"]
     },
     "prts_wiki_npm_stdio": {
       "command": "npx",
-      "args": ["-y", "--package=prts-mcp-ts@3.2.1", "prts-mcp-ts-stdio"]
+      "args": ["-y", "--package=prts-mcp-ts@3.2.2", "prts-mcp-ts-stdio"]
     }
   }
 }
