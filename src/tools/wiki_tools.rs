@@ -8,7 +8,7 @@ use serde_json::Value;
 use super::output::ToolOutcome;
 use super::zodish::{validation_error, Args};
 use super::{AppHandle, DispatchFuture, DispatchResult};
-use crate::wiki::{client, page, search};
+use crate::wiki::{page, search};
 
 fn invalid_args(tool: &str, joined: String) -> DispatchResult {
     DispatchResult::Outcome(ToolOutcome::error_text(validation_error(tool, &joined)))
@@ -22,14 +22,13 @@ pub fn search_prts<'a>(app: &'a AppHandle, arguments: &'a Value) -> DispatchFutu
     let filter_technical = args.boolean_default("filter_technical", true);
     let invalid = args.finish().err();
     Box::pin(async move {
-        let _ = app; // no local data: the Wiki client is process-global (TS parity)
         if invalid.is_some() {
             return invalid_args("search_prts", invalid.unwrap_or_default());
         }
         let Some(query) = query else {
             unreachable!("required fields reported by finish()")
         };
-        let transport = client::shared_transport();
+        let transport = app.wiki_transport();
         match search::build_prts_search(transport, &query, limit, &search_mode, filter_technical)
             .await
         {
@@ -62,14 +61,13 @@ pub fn prts_page<'a>(app: &'a AppHandle, arguments: &'a Value) -> DispatchFuture
     let limit = args.int_default("limit", 1, Some(100), 30);
     let invalid = args.finish().err();
     Box::pin(async move {
-        let _ = app;
         if invalid.is_some() {
             return invalid_args("prts_page", invalid.unwrap_or_default());
         }
         let (Some(page_title), Some(action)) = (page_title, action) else {
             unreachable!("required fields reported by finish()")
         };
-        let transport = client::shared_transport();
+        let transport = app.wiki_transport();
         match action.as_str() {
             "read" => match page::read_page(transport, &page_title, section_index).await {
                 Ok(text) => DispatchResult::Outcome(ToolOutcome::text(text)),
