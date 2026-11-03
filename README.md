@@ -27,7 +27,7 @@ Starting with 3.x, PRTS-MCP is unified into a single native Rust implementation 
 | Line | Version | Tools | Status |
 |------|---------|-------|--------|
 | Public stable (`main`) | 3.2.3 | 24 | Native Rust stable release on npm (`latest`), PyPI, crates.io, GitHub Releases, and GHCR (`:latest`, `:3`). |
-| Rust (`develop`) | 3.2.3-dev.0 | 24 | Active 3.x development line (`prtsctl` CLI, local runtime control, and PyPI wheel packaging). |
+| Rust (`develop`) | 3.2.4-dev.0 | 24 | Active 3.x development line (`prtsctl` CLI, local runtime control, and PyPI wheel packaging). |
 | `lts/2.8` | 2.8.x | 24 | Python/TypeScript long-term maintenance (PyPI `>=2.8,<2.9`, npm `lts-2.8`, GHCR `:2`); EOL 2027-07-02. |
 | `lts/1.7` | 1.7.x | 32 | Python/TypeScript long-term maintenance; EOL 2027-07-02. |
 
@@ -209,7 +209,7 @@ Public Rust native archives, Docker images, and npm packages ship with a verifie
 | 版本线 | 版本 | 工具数 | 状态 |
 |--------|------|--------|------|
 | 公开稳定版（`main`） | 3.2.3 | 24 | 原生 Rust 正式版，已发布至 npm（`latest`）、PyPI、crates.io、GitHub Releases 与 GHCR（`:latest`、`:3`）。 |
-| Rust 开发线（`develop`） | 3.2.3-dev.0 | 24 | 3.x 主开发线（含 `prtsctl` 管理 CLI、本机在线控制与 PyPI Wheel 打包）。 |
+| Rust 开发线（`develop`） | 3.2.4-dev.0 | 24 | 3.x 主开发线（含 `prtsctl` 管理 CLI、本机在线控制与 PyPI Wheel 打包）。 |
 | `lts/2.8` | 2.8.x | 24 | Python/TypeScript 长期维护线（PyPI `>=2.8,<2.9`、npm `lts-2.8`、GHCR `:2`），维护至 2027-07-02（EOL）。 |
 | `lts/1.7` | 1.7.x | 32 | Python/TypeScript 长期维护线，维护至 2027-07-02（EOL）。 |
 
