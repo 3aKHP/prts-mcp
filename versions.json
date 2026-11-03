@@ -10,6 +10,16 @@
   "occurrences": {
     "stable": [
       {"file": "README.md", "pattern": "cargo install prts-mcp --version ([0-9]+\\.[0-9]+\\.[0-9]+)"},
+      {"file": ".mcp.example.json", "pattern": "ghcr\\.io/3akhp/prts-mcp:([0-9]+\\.[0-9]+\\.[0-9]+)"},
+      {"file": ".mcp.example.json", "pattern": "prts-mcp-ts@([0-9]+\\.[0-9]+\\.[0-9]+)"},
+      {"file": "SECURITY.md", "pattern": "native Rust, currently `([0-9]+\\.[0-9]+\\.[0-9]+)`"},
+      {"file": "SECURITY.md", "pattern": "原生 Rust，当前版本 `([0-9]+\\.[0-9]+\\.[0-9]+)`"},
+      {"file": "docs/user/quick-start.md", "pattern": "当前公开稳定版为 `([0-9]+\\.[0-9]+\\.[0-9]+)`"},
+      {"file": "docs/user/quick-start.md", "pattern": "从 \\[([0-9]+\\.[0-9]+\\.[0-9]+) Release\\]"},
+      {"file": "docs/user/quick-start.md", "pattern": "releases/tag/v([0-9]+\\.[0-9]+\\.[0-9]+)"},
+      {"file": "docs/user/quick-start.md", "pattern": "cargo install prts-mcp --version ([0-9]+\\.[0-9]+\\.[0-9]+)"},
+      {"file": "docs/user/quick-start.md", "pattern": "ghcr\\.io/3akhp/prts-mcp:([0-9]+\\.[0-9]+\\.[0-9]+)"},
+      {"file": "docs/user/quick-start.md", "pattern": "prts-mcp-ts@([0-9]+\\.[0-9]+\\.[0-9]+)"},
       {"file": "docs/admin/deployment.md", "pattern": "当前公开稳定版为 `([0-9]+\\.[0-9]+\\.[0-9]+)`"},
       {"file": "docs/admin/deployment.md", "pattern": "具体版本号（如 `([0-9]+\\.[0-9]+\\.[0-9]+)`"},
       {"file": "docs/admin/deployment.md", "pattern": "ghcr\\.io/3akhp/prts-mcp:([0-9]+\\.[0-9]+\\.[0-9]+)"},

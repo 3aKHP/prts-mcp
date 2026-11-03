@@ -61,7 +61,7 @@ cargo build --locked
 2. `cargo fmt --all -- --check` 与 `cargo clippy --locked --all-targets -- -D warnings`；
 3. 全量 Rust 单元与集成测试（`cargo test --locked`）及打包辅助程序测试（`cargo test --locked --example package_data`）；
 4. Release 二进制与打包辅助程序联合构建（`cargo build --locked --release --bins --example package_data`）；
-5. 384 个冻结 MCP 差分对照用例、进程级生命周期测试与扩展原生正则测试。
+5. 分别在 JSON 与 SQLite 两种数据后端下执行 384 个冻结 MCP 差分对照用例，并运行进程级生命周期测试与扩展原生正则测试。
 
 开发与测试构建默认只保留文件名和行号所需的调试信息（`debug = "line-tables-only"`），并启用增量编译，以减少本地产物占用。需要在调试器中查看变量和类型时，可临时使用 `CARGO_PROFILE_DEV_DEBUG=2 cargo build --locked`；测试使用 `CARGO_PROFILE_TEST_DEBUG=2 cargo test --locked`。Release 构建仍关闭调试信息。
 
@@ -76,7 +76,7 @@ cargo build --locked --release --bins
 cargo package --locked
 ```
 
-> `cargo package --locked` 验证源码归档包的可构建性。`node tools/cargo/verify.mjs` 进一步在工作树外执行默认 `cargo install`，核对五个公开入口，并复用原生 MCP 协议与进程退出探测。源码包不含内部测试入口 `prts-mcp-rust`，不含备用游戏数据，也不承诺稳定 Rust 库 API。开发中可加 `--allow-dirty`，但该回执不可用于发布。普通 CI 在 Linux x64 执行这项独立安装验证。
+> `cargo package --locked` 用于验证源码归档包的可构建性，`node tools/cargo/verify.mjs` 则进一步在工作树外执行默认 `cargo install`，核对全部六个公开入口（含 `prtsctl`），并复用原生 MCP 协议与进程退出探测。源码包不包含内部测试入口 `prts-mcp-rust` 与备用游戏数据，也不承诺稳定的内部 Rust 库 API。本地开发调试时可附加 `--allow-dirty`，正式发布必须基于干净的工作树执行。普通 CI 会在 Linux `x64` 上运行这项独立安装验证。
 
 ### 原生 Windows（PowerShell 7）
 

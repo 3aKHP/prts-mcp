@@ -17,9 +17,10 @@
 - **运行时**：仓库根目录为原生 Rust 工程，静态链接 C 正则引擎组件（`vendor/quickjs-regexp/`），无需 JavaScript 或 Python 业务运行时。
 - **核心能力**：提供 24 个 MCP 工具（`IMAGES_ENABLED=false` 时为 23 个），同时支持传统有状态会话（legacy）与 `2026-07-28` 无状态现代信封（modern）两代 MCP 协议，支持 Streamable HTTP 与 stdio 两种传输方式，并具备感知数据代际激活的游戏表、关卡、剧情与立绘自动同步能力。
 - **各入口默认传输方式**：
-  - `prts-mcp`（原生二进制与 npm 新主包）：默认使用 Streamable HTTP（`:3000/mcp`）；设置 `PRTS_TRANSPORT=stdio` 切换为 stdio。
+  - `prts-mcp`（原生二进制、Cargo 安装与 npm 新主包）：默认使用 Streamable HTTP（`:3000/mcp`）；设置 `PRTS_TRANSPORT=stdio` 切换为 stdio。
   - `prts-mcp-ts`、`prts-mcp-ts-bun`（HTTP）与 `prts-mcp-ts-stdio`（stdio）：底层调用 Rust 二进制，保留 2.x 固定传输行为。
-  - `prts-mcp-ghcr`（Docker 镜像默认入口）：保留默认 `stdio`；设置 `PRTS_TRANSPORT=http` 切换为 HTTP。
+  - `prts-mcp-ghcr`（Docker 镜像默认入口，3.2.2+ PyPI Wheel 启动桥同样调用该入口）：保留默认 `stdio`；设置 `PRTS_TRANSPORT=http` 切换为 HTTP。
+  - `prtsctl`（3.2.2 开发线新增）：提供管理子命令（`config`、`doctor`、`data`、`service`、`runtime`、`serve`、`completion`），无参数运行时仅输出帮助信息。
 - **仓库目录结构**：根目录包含 `Cargo.toml`、`src/`、`native/`、`vendor/`、`tests/`、`contracts/`、`tools/`、`packaging/` 与 `Dockerfile`。旧 Python 与 TypeScript 实现在 `lts/2.8` 与 `lts/1.7` 分支独立维护（见 [LTS 维护政策](docs/dev/LTS.md)）。源码许可证与第三方内容版权声明分别见 [LICENSE](LICENSE) 与 [NOTICE](NOTICE)。
 
 ## 3.2.1 Cargo 源码发行

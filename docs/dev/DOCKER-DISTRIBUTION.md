@@ -12,7 +12,7 @@
 
 公开发布的 3.x 镜像（`ghcr.io/3akhp/prts-mcp`）支持 **`linux/amd64`（`linux-x64`）与 `linux/arm64`（`linux-arm64`）** 双原生架构：
 
-- **精简运行时**：基于固定 digest 的 Ubuntu 24.04 基础镜像，仅安装 `ca-certificates` 与 `tini`，内置预编译 Rust 二进制（`/app/bin/prts-mcp-ghcr`）与经过校验的只读备用游戏数据（`/app/data`），不包含 Node.js、Bun、Python 或任何编译工具链。
+- **精简运行时**：基于固定 digest 的 Ubuntu 24.04 基础镜像，仅安装 `ca-certificates` 与 `tini`，内置预编译 Rust 二进制（含默认入口 `/app/bin/prts-mcp-ghcr` 与管理 CLI `/app/bin/prtsctl`）以及经过校验的只读备用游戏数据（`/app/data`），不包含 Node.js、Bun、Python 或任何编译工具链。
 - **PID 1 与信号处理**：容器 `ENTRYPOINT` 为 `tini -g -- /app/bin/prts-mcp-ghcr`。由 `tini` 作为 PID 1 负责转发 `SIGTERM` / `SIGINT` 并回收子进程，确保 `docker stop` 时服务能够立即优雅退出，而不会卡死等待超时强杀。
 - **延续 2.x 容器默认行为**：
   - 默认以 **`stdio` 模式**启动（便于 MCP 客户端直接通过 `docker run -i --rm` 调用）；
@@ -43,8 +43,8 @@ node tools/docker/probe.mjs linux-x64
   1. 容器内全部二进制、内置数据哈希与第三方许可证完整性，且不存在 JS/Python 运行时或编译器；
   2. 默认 `stdio` 握手、工具调用与 EOF 退出；
   3. 显式 `PRTS_TRANSPORT=http` 下的 legacy 与 modern 双协议时代调用、非法 `PORT` 报错退出，以及 `tini` 信号停机行为；
-  4. `--user` 非 root 运行与 `--read-only` 只读根文件系统模式；
-  5. `/data` 整卷挂载、2.x 遗留的四子目录分卷挂载、已有用户数据优先于 `/app/data` 内置备用数据，以及与 TS/v2.8.1 旧数据卷的读写兼容。
+  4. `--user` 非 root 运行与 `--read-only` 只读根文件系统模式（含只读断网环境下的 `/app/bin/prtsctl` 配置与数据状态检查）；
+  5. `/data` 整卷挂载、默认 SQLite 后端同步与重启恢复、2.x 遗留的四子目录分卷挂载、已有用户数据优先于 `/app/data` 内置备用数据，以及与 TS/v2.8.1 旧数据卷的读写兼容。
 
 ### 方式 B：源码开发镜像（不含内置备用数据）
 
@@ -60,16 +60,16 @@ docker build -f packaging/docker/Dockerfile.source -t prts-mcp:source-dev .
 
 ## 3. 数据卷布局与非 root / 只读根文件系统
 
-容器将 `/app/data` 作为只读内置备用数据源，将 `/data` 作为可写的用户数据根目录（包含 `/data/gamedata`、`/data/gamedata-levels`、`/data/storyjson`、`/data/images` 及根配对指针 `/data/.gamedata_pair.json`）：
+容器将 `/app/data` 作为只读内置备用数据源，将 `/data` 作为可写的用户数据根目录（包含 `/data/database`、`/data/gamedata`、`/data/gamedata-levels`、`/data/storyjson`、`/data/images` 及根配对指针 `/data/.gamedata_pair.json`）：
 
 - **整卷挂载（推荐）**：
   ```bash
-  docker run --rm -i -v prts-data:/data ghcr.io/3akhp/prts-mcp:3.0.0
+  docker run --rm -i -v prts-data:/data ghcr.io/3akhp/prts-mcp:3.2.1
   ```
-- **兼容 2.x 分卷挂载**：原有的 3 个或 4 个独立子目录命名卷无需迁移格式即可直接挂载使用。
+- **兼容 2.x 分卷挂载**：原有的 3 个或 4 个独立子目录命名卷无需迁移格式即可直接挂载使用（3.2+ 默认启用 SQLite 后端，分卷部署请额外挂载 `/data/database` 或设置 `PRTS_DATA_BACKEND=json`）。
 - **非 root 与只读根文件系统（`--read-only`）**：
   若以非 root UID/GID 配合 `--read-only` 运行，请确保宿主机挂载目录已赋权给该 UID/GID，并挂载 `/tmp` 临时文件系统：
   ```bash
-  docker run --rm -i --user "$(id -u):$(id -g)" --read-only --tmpfs /tmp:rw,nosuid,nodev,mode=1777 -v "$PWD/host-data:/data" ghcr.io/3akhp/prts-mcp:3.0.0
+  docker run --rm -i --user "$(id -u):$(id -g)" --read-only --tmpfs /tmp:rw,nosuid,nodev,mode=1777 -v "$PWD/host-data:/data" ghcr.io/3akhp/prts-mcp:3.2.1
   ```
   > 若在 `--read-only` 模式下仍使用 4 个独立子目录分卷挂载（而非挂载整个 `/data`），需额外加上 `--tmpfs /data:rw,nosuid,nodev,mode=1777`，以便父目录 `/data` 能够写入跨进程同步锁与 `.gamedata_pair.json` 配对指针。

@@ -25,15 +25,14 @@
 - **精确同版依赖**：`prts-mcp` 与 `prts-mcp-ts` 均以精确版本号依赖 `@3akhp/prts-mcp-runtime`；`runtime` 以精确版本号依赖 `@3akhp/prts-mcp-data`，并将 5 个平台包列为精确版本的 `optionalDependencies`。
 - **按平台自动筛选**：每个平台包在 `package.json` 中声明了对应的 `os`、`cpu`（以及 Linux 下的 `libc: ["glibc"]`）字段。`npm install` 时仅会下载匹配当前机器的那个平台包，无需在用户机器上执行 `postinstall` 下载脚本或现场编译（因此 `npm install --ignore-scripts` 也可正常工作）。
 - **环境要求**：npm 安装及默认入口要求 `Node.js >= 22`、`npm >= 10`，Linux 下额外检查 `glibc >= 2.28`。若安装时传入了 `--omit=optional` 导致平台包缺失，或在不支持的 `musl`/架构上运行，启动桥会向 `stderr` 输出明确错误并以非零状态码退出。
-
-- **沿用 Bun**：Linux `x64` 已验证使用 Bun `1.3.14` 显式运行兼容入口，例如 `bun /usr/bin/prts-mcp-ts-bun`。既有 Bun 服务可保留启动方式，Node 作为兼容路径。两种启动桥的业务逻辑均由 Rust 子进程执行；直接执行 npm bin 时仍按 Node shebang 启动。
+- **沿用 Bun**：Linux `x64` 已验证使用 Bun `1.3.14` 显式运行兼容入口（例如 `bun /usr/bin/prts-mcp-ts-bun`），既有 Bun 部署可继续保持原有启动方式。无论通过 Node 还是 Bun 启动桥拉起，业务逻辑均由同一 Rust 子进程执行；直接调用 npm bin 时默认按文件头部的 Node shebang 启动。
 
 ---
 
 ## 2. 内置备用数据与优先级
 
 1. **独立版本固定**：[`packaging/npm/data-release.json`](../../packaging/npm/data-release.json) 固定了发行备用数据所使用的上游 `arknights-data-pipeline` Release、manifest 与三个 ZIP 的 SHA-256（与开发测试专用的 `contracts/validation-assets.json` 互不干扰）。
-2. **数据准备与校验**：`node tools/npm/prepare-data.mjs` 下载并校验三个上游归档后，调用 `cargo run --locked --release --example package_data` 执行安全解压、必需表格校验、剧情引用检查，并生成 `BUNDLE.json` 与 `SHA256SUMS`。原生 CI 使用 `node tools/npm/prepare-data.mjs <platform>`，执行同一次原生 release 构建生成的内部 `package_data` 工具，避免再次编译；JSON 校验使用带缓冲的 ZIP 读取，仍完整解析每个 JSON 并检查归档 CRC。
+2. **数据准备与校验**：`node tools/npm/prepare-data.mjs` 下载并校验三个上游归档后，调用 `cargo run --locked --release --example package_data` 执行安全解压、必需表格校验、剧情引用检查，并生成 `BUNDLE.json` 与 `SHA256SUMS`。在原生 CI 中，传入平台标识（`node tools/npm/prepare-data.mjs <platform>`）可直接复用同一次原生 release 构建生成的内部 `package_data` 可执行文件，无需重复编译；JSON 校验使用带缓冲的 ZIP 读取，完整解析每个 JSON 条目并核对归档 CRC。
 3. **运行时优先级**：启动桥通过内部参数将 `@3akhp/prts-mcp-data` 的路径传给 Rust 进程作为只读备用源。当用户数据目录已有完整数据时，服务优先读取用户数据；后台同步始终写入可写的用户数据目录，绝不修改 `node_modules` 内的备用数据包。
 
 ---

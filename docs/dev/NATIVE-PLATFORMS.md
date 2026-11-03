@@ -48,9 +48,9 @@ In CI, [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) calls [`.git
 
 ### What the Build and Probe Scripts Verify
 
-1. **MSRV & Unit Tests (`build.mjs`)**: checks compilation against Rust `1.89.0` and runs native library, regex corpus, text normalization, and story-index tests.
+1. **MSRV & Integration Tests (`build.mjs`)**: checks compilation against Rust `1.89.0` (including the `package_data` and `data_compiler` examples) and runs the native library, regex corpus, text normalization, story-index, CLI/control (`cli`, `cli_inspection`, `cli_process`, `runtime_control`, `runtime_jobs`, `service_systemd`, `cli_sync`), and SQLite backend (`data_backends`, `database_sync`) test suites.
 2. **Detached Archive Execution (`probe.mjs`)**: extracts the archive outside the repository checkout into a directory path containing spaces and Chinese characters, clears `PATH`, and launches the binaries directly:
-   - Verifies all 6 entry point binaries (`prtsctl`, `prts-mcp`, `prts-mcp-ts`, `prts-mcp-ts-bun`, `prts-mcp-ts-stdio`, `prts-mcp-ghcr`);
+   - Verifies all 6 entry point binaries (`prtsctl`, `prts-mcp`, `prts-mcp-ts`, `prts-mcp-ts-bun`, `prts-mcp-ts-stdio`, `prts-mcp-ghcr`), including `prtsctl` management subcommands, `--help` / `--version` / `--config` handling across server binaries, and shell completion generation;
    - Verifies both `stdio` and Streamable HTTP transports, plus legacy session-based and modern (`2026-07-28`) protocol envelopes;
    - Verifies `24` tools (`23` with `IMAGES_ENABLED=false`), operator profile/stats rendering, and Chinese regex lookbehind search against the committed smoke fixture ([`tests/fixtures/native-smoke/README.md`](../../tests/fixtures/native-smoke/README.md));
    - On Linux, `probe.mjs <platform> --baseline` additionally runs the extracted binary inside a clean AlmaLinux 8 (`glibc 2.28`) container with no compiler or language runtime installed.

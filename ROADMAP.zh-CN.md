@@ -1,6 +1,8 @@
 # PRTS-MCP 路线图
 
-当前公开稳定版为 `3.2.1`，服务端已统一为单一的原生 Rust 实现，并完整保留 TS/v2.8.1 的产品与工具契约；主开发分支 `develop` 继续推进（`3.2.2-dev.0`）。[English](ROADMAP.md)。
+[English](ROADMAP.md)
+
+当前公开稳定版为 `3.2.1`，服务端已统一为单一的原生 Rust 实现，并完整保留 TS/v2.8.1 的产品与工具契约；主开发分支 `develop` 继续推进（`3.2.2-dev.0`）。
 
 ## 3.2 — 默认 SQLite 与 v2 图片
 
@@ -53,7 +55,7 @@
 已于 2026-05-28 发布。发布详情见 [项目 CHANGELOG](CHANGELOG.zh-CN.md)。
 
 **关卡跨源融合**
-- `get_stage_enemies(stage_id)` — 该关卡出现的敌人 + **关卡级数值** （而非 `get_enemy_info` 返回的 level-0 默认值）。
+- `get_stage_enemies(stage_id)` — 该关卡出现的敌人 + **关卡级数值**（而非 `get_enemy_info` 返回的 level-0 默认值）。
 - `get_enemy_appearances(name)` — 反向查询：该敌人出现在哪些关卡。
 - `get_enemy_info(name)` 增加可选 `stage_id` 参数，返回该关卡下的具体数值变体。
 
@@ -108,7 +110,7 @@
 2.0 收窄但未取消两套实现之间事实上的角色分工。**已在 2.0 交付**：
 
 - npm 包和 PyPI 包的**能力面对等**——相同的 23 个工具名、参数、structuredContent 载荷，以及跨实现共享的 parity fixture。
-- 环境变量名称和默认值统一（`PRTS_OUTPUT_CHANNEL`、`GAMEDATA_PATH`、`STORYJSON_PATH`、 `GITHUB_TOKEN`、`GITHUB_MIRRORS`）。
+- 环境变量名称和默认值统一（`PRTS_OUTPUT_CHANNEL`、`GAMEDATA_PATH`、`STORYJSON_PATH`、`GITHUB_TOKEN`、`GITHUB_MIRRORS`）。
 
 **跨传输协议同步——已于 2.3.0 交付。** 原目标“两套实现都同时支持 stdio **和** Streamable HTTP”（Python 上 HTTP、TypeScript 上 stdio）曾后置到 2.0 之后，已在 2.3.0 交付。Python 经 `PRTS_TRANSPORT` 选择传输（stdio 默认 | http）；TypeScript 经 bin 选择（`prts-mcp-ts`[-bun] = HTTP，`prts-mcp-ts-stdio` = stdio）。自 2.3.0 起部署推荐为“按场景选择，而非按语言”。
 

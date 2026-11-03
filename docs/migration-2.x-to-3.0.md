@@ -2,7 +2,7 @@
 
 PRTS-MCP 3.0 将底层业务实现统一为原生 Rust，同时完整保留 2.8.1 的 24 个 MCP 工具契约、参数结构与数据目录格式。本文面向从 2.x（Python 或 TypeScript）升级到 3.x 的部署者。
 
-当前公开稳定版为 `3.0.0`，npm `latest`、GHCR `:latest` 与 `:3` 均已指向 3.0.0。客户端配置见[客户端接入指南](user/quick-start.md)，容器与服务端运维见[服务端部署指南](admin/deployment.md)。
+自 3.0.0 发布起，npm `latest`、GHCR `:latest` 与 `:3` 均已指向 3.x Rust 稳定线（当前公开稳定版见 [STATUS.zh-CN.md](../STATUS.zh-CN.md)）。客户端配置见[客户端接入指南](user/quick-start.md)，容器与服务端运维见[服务端部署指南](admin/deployment.md)。
 
 ---
 
@@ -10,10 +10,10 @@ PRTS-MCP 3.0 将底层业务实现统一为原生 Rust，同时完整保留 2.8.
 
 | 2.x 原安装方式 | 3.x 升级选择 | 关键变化说明 |
 | --- | --- | --- |
-| **npm (`prts-mcp-ts`)** | 继续使用 `prts-mcp-ts`，或切换至新主包 `prts-mcp` | 两个 npm 包在 3.x 下均执行预编译 Rust 二进制（需 `Node >= 22`、`npm >= 10` 作为启动桥，不再需要 Bun）。不带版本标签安装即获得 3.x，也可指定 `@3.0.0`。 |
-| **Python / PyPI (`prts-mcp`)** | 改用预编译原生归档包、npm 或 Docker | 3.x 不再向 PyPI 发布 Rust 包装包；执行 `pip install -U prts-mcp` 会停留在 2.8.x，不会升级到 3.x。 |
-| **Docker (`ghcr.io/3akhp/prts-mcp`)** | 拉取同一镜像仓库的 `3.x` 标签（`:3.0.0`、`:3` 或 `:latest`） | 保持默认 `stdio` 与 `/data` 数据卷约定不变，移除容器内 Python 运行时。 |
-| **本地 `python/` 或 `ts/` 源码** | 切换为根目录 Cargo 工程或直接使用预编译归档包 | 3.x 主开发分支不再保留 `python/` 与 `ts/` 目录；2.x 源码维护在 `lts/2.8` 分支进行。 |
+| **npm (`prts-mcp-ts`)** | 继续使用 `prts-mcp-ts`，或切换至新主包 `prts-mcp` | 两个 npm 包在 3.x 下均执行预编译 Rust 二进制（需 `Node >= 22`、`npm >= 10` 作为启动桥，不再需要 Bun）。不带版本标签安装即获得最新 3.x 稳定版，也可指定精确版本号（如 `@3.2.1`）。 |
+| **Python / PyPI (`prts-mcp`)** | 改用预编译原生归档包、npm、Docker 或 Cargo（3.2.2+ 另备有原生 PyPI Wheel） | 3.0–3.2.1 未向 PyPI 发布 Rust 包，执行 `pip install 'prts-mcp>=2.8,<2.9'` 会保持在 2.8.x LTS；3.2.2 开发线已准备要求 `Python >= 3.11` 的五平台原生 Wheel（不含内置备用数据，待随正式版启用发布）。 |
+| **Docker (`ghcr.io/3akhp/prts-mcp`)** | 拉取同一镜像仓库的 `3.x` 标签（`:3.2.1`、`:3` 或 `:latest`） | 保持默认 `stdio` 与 `/data` 数据卷约定不变，移除容器内 Python 运行时。 |
+| **本地 `python/` 或 `ts/` 源码** | 切换为根目录 Cargo 工程、`crates.io`（`cargo install prts-mcp`）或预编译归档包 | 3.x 主开发分支不再保留 `python/` 与 `ts/` 目录；2.x 源码维护在 `lts/2.8` 分支进行。 |
 
 ```bash
 # 方案 A：保留 2.x 的 prts-mcp-ts 命令名，直接升级到 3.x
@@ -52,8 +52,8 @@ npm install -g prts-mcp@3.0.0
 1. **升级前备份**：升级前请先停止旧版服务进程，并完整备份数据目录或 Docker 卷（包含 `.gamedata_pair.json`、`archives/`、`.releases/` 等隐藏元数据及已下载的 PNG）。
 2. **用户数据优先**：3.x 发行包内置了只读备用数据，但只要本地可写数据目录或挂载卷中已有完整的用户数据，服务就会优先读取用户数据，并将后续增量更新继续写入该目录。
 3. **Docker 卷挂载方式**：
-   - **既有分卷挂载（3 个或 4 个子目录卷）**：可直接沿用原挂载参数启动 3.x 容器，无需立即合卷。
-   - **新部署或整理卷结构**：推荐直接将单个卷挂载到 `/data`（`-v prts-data:/data`），使根目录下的 `.gamedata_pair.json` 配对指针一并持久化。若从分卷切换为整卷，请先将各子卷内容拷入新卷的对应子目录。
+   - **既有分卷挂载（3 个或 4 个子目录卷）**：可直接沿用原挂载参数启动 3.x 容器，无需立即合卷。注意：若直接升级至 **3.2+**，由于默认数据后端切换为 SQLite（写入 `/data/database`），沿用 2.x 三子卷挂载时需额外挂载 `-v prts-mcp-database:/data/database`，或设置 `-e PRTS_DATA_BACKEND=json` 继续使用原三个子卷中的 JSON 数据（详见[服务端部署指南](admin/deployment.md#24-数据卷挂载策略整卷-vs-兼容-2x-分卷)）。
+   - **新部署或整理卷结构**：推荐直接将单个卷挂载到 `/data`（`-v prts-data:/data`），使 `/data/database` 与根目录下的 `.gamedata_pair.json` 配对指针一并持久化。若从分卷切换为整卷，请先将各子卷内容拷入新卷的对应子目录。
 4. **自定义路径变量检查**：
    - 在 3.x 与 2.8.1 中，只要环境变量中存在 `GAMEDATA_PATH`（即使是空值 `GAMEDATA_PATH=`），都会禁用游戏表与关卡自动同步；非空 `STORYJSON_PATH` 会禁用剧情自动同步。升级时请确认没有误传空值占位符。完整规则见[环境变量参考](admin/environment-variables.md)。
 

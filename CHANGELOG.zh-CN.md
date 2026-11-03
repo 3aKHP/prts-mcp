@@ -30,12 +30,12 @@
 
 ## [3.2.0] - 2026-10-31
 
-**升级注意事项**：游戏数据默认后端改为 SQLite。未设置 `PRTS_DATA_BACKEND`、`PRTS_DATA_DB` 与自定义 JSON 路径的部署会额外下载约 130 MiB 的 `zh_CN.sqlite.gz`，并在数据根目录下新增 `database/`：单代 DB 约 320 MiB 且随数据版本增长，首次更新后同时保留上一代（约 630 MiB），更新期间另需下载与解压暂存，峰值约 1.1 GiB；DB 就绪前继续使用 JSON 备用数据。整卷挂载 `/data` 的 Docker 部署无须调整。沿用 2.x 分卷挂载或 `--read-only` 加 `--tmpfs /data` 的部署，需要为 `/data/database` 增加卷，或设置 `PRTS_DATA_BACKEND=json` 保持原行为。详见[部署指南](https://github.com/3aKHP/prts-mcp/blob/main/docs/admin/deployment.md)与[数据同步说明](https://github.com/3aKHP/prts-mcp/blob/main/docs/admin/data-and-sync.md)。
+**升级注意事项**：游戏数据默认后端改为 SQLite。未设置 `PRTS_DATA_BACKEND`、`PRTS_DATA_DB` 与自定义 JSON 路径的部署会额外下载约 130 MiB 的 `zh_CN.sqlite.gz`，并在数据根目录下新增 `database/`：单代 DB 约 320 MiB 且随数据版本增长，首次更新后同时保留上一代（约 630 MiB），更新期间另需下载与解压暂存，峰值约 1.1 GiB；DB 就绪前继续使用 JSON 备用数据。整卷挂载 `/data` 的 Docker 部署无须调整。沿用 2.x 分卷挂载或 `--read-only` 加 `--tmpfs /data` 的部署，需要为 `/data/database` 增加卷，或设置 `PRTS_DATA_BACKEND=json` 保持原行为。详见[部署指南](docs/admin/deployment.md)与[数据同步说明](docs/admin/data-and-sync.md)。
 
 ### 新增
 
 - 本地图片同步支持 v2 多分片 baseline 与 delta，并继续兼容 v1。同 baseline 更新只获取必要的新 delta；跨 baseline 复用校验通过的 PNG，跳过内容已满足的分片。完整校验后原子激活，3.2 图片写入器被终止后无须等待旧租约过期即可恢复。
-- **工具输出信任边界说明**：[`docs/user/tools-guide.md`](https://github.com/3aKHP/prts-mcp/blob/main/docs/user/tools-guide.md#4-工具输出的信任边界面向-mcp-客户端集成者) 与 [`SECURITY.md`](https://github.com/3aKHP/prts-mcp/blob/main/SECURITY.md) 新增说明，介绍工具输出的来源、TLS 与 SHA-256 校验能证明和不能证明什么，以及 MCP 客户端如何把工具输出当作不可信数据处理。
+- **工具输出信任边界说明**：[`docs/user/tools-guide.md`](docs/user/tools-guide.md#4-工具输出的信任边界面向-mcp-客户端集成者) 与 [`SECURITY.md`](SECURITY.md) 新增说明，介绍工具输出的来源、TLS 与 SHA-256 校验能证明和不能证明什么，以及 MCP 客户端如何把工具输出当作不可信数据处理。
 - `/debug/metrics` 新增 `data_backend` 字段，报告偏好后端、实际服务的后端以及是否正在使用 JSON 备用。
 
 ### 变更
@@ -98,7 +98,7 @@
 
 实现：Rust。
 
-3.0.0 是首个原生 Rust 正式版。工具名、参数、输出格式与数据同步语义与 2.8.1 一致，仅保留 `contracts/baseline.json` 中封闭枚举的已批准差异。升级前请阅读 [2.x → 3.0 迁移指南](https://github.com/3aKHP/prts-mcp/blob/main/docs/migration-2.x-to-3.0.md)。`CHANGELOG.zh-CN.md` 中的 `3.0.0-rc.1` 至 `3.0.0-rc.3` 条目记录了预发布历史。
+3.0.0 是首个原生 Rust 正式版。工具名、参数、输出格式与数据同步语义与 2.8.1 一致，仅保留 `contracts/baseline.json` 中封闭枚举的已批准差异。升级前请阅读 [2.x → 3.0 迁移指南](docs/migration-2.x-to-3.0.md)。`CHANGELOG.zh-CN.md` 中的 `3.0.0-rc.1` 至 `3.0.0-rc.3` 条目记录了预发布历史。
 
 ### 新增
 
@@ -648,7 +648,7 @@
 
 #### Python
 
-- **输出通道设计替代每次调用的 `output_format` 参数（2.0 设计决策）。** 原路线图提出可选的 `output_format=markdown|json` 参数，并在 2.0 将默认值改为 `json`。**这一形式在设计过程中被否决。** 主要使用者是 LLM Agent，JSON 相比 Markdown 使提示词 token 增加约 15–30%，会抵消工具接口整合节省的上下文预算。2.0 因而保留始终输出的 Markdown `content` 文本，并通过 MCP 原生 `structuredContent` 字段承载结构化数据；使用**连接级** `output_channel` 开关，经 `PRTS_OUTPUT_CHANNEL` 环境变量选择 `content`（默认）/ `structured` / `both`。默认值**没有**改为 JSON。各工具通道映射及客户端配置见 [`docs/migration-1.x-to-2.0.md`](https://github.com/3aKHP/prts-mcp/blob/main/docs/migration-1.x-to-2.0.md)。
+- **输出通道设计替代每次调用的 `output_format` 参数（2.0 设计决策）。** 原路线图提出可选的 `output_format=markdown|json` 参数，并在 2.0 将默认值改为 `json`。**这一形式在设计过程中被否决。** 主要使用者是 LLM Agent，JSON 相比 Markdown 使提示词 token 增加约 15–30%，会抵消工具接口整合节省的上下文预算。2.0 因而保留始终输出的 Markdown `content` 文本，并通过 MCP 原生 `structuredContent` 字段承载结构化数据；使用**连接级** `output_channel` 开关，经 `PRTS_OUTPUT_CHANNEL` 环境变量选择 `content`（默认）/ `structured` / `both`。默认值**没有**改为 JSON。各工具通道映射及客户端配置见 [`docs/migration-1.x-to-2.0.md`](docs/migration-1.x-to-2.0.md)。
 
 - **输出通道（2.0）。** 可通过 MCP 原生 `structuredContent` 通道选择交付结构化内容，由连接级 `PRTS_OUTPUT_CHANNEL` 环境变量控制（`content` 默认 / `structured` / `both`）。默认 `content` 通道为仅消费 MCP `content` 的客户端保留人类可读的 Markdown 内容。迁移后的工具有意改变 MCP manifest/传输形状，将 FastMCP 自动生成的 `outputSchema={result:string}` 和 `structuredContent={"result": markdown}` 包装替换为显式 `CallToolResult` 交付，因此支持结构化内容的客户端只有选择 `both` 时才收到重复 Markdown。`list_stages` 为试点工具，其 `structuredContent` 同时包含原始枚举（如 `type=ACTIVITY`）及渲染标签（`type_label=活动`）；合法空页（筛选无匹配/offset 超出末尾）返回结构化空载荷，同时保留原始 Markdown 文本。其他结构化工具及 TypeScript 实现在后续提交跟进。说明：`structured` 模式用于已确认客户端支持 structuredContent 的部署；不支持的客户端（如 Chatbox）只收到一行摘要，因此未确认支持前应保留默认 `content`。
 
@@ -664,7 +664,7 @@
 
 #### TypeScript
 
-- **输出通道设计替代每次调用的 `output_format` 参数（2.0 设计决策）。** 原路线图提出可选的 `output_format=markdown|json` 参数，并在 2.0 将默认值改为 `json`。**这一形式在设计过程中被否决。** 主要使用者是 LLM Agent，JSON 相比 Markdown 使提示词 token 增加约 15–30%，会抵消工具接口整合节省的上下文预算。2.0 因而保留始终输出的 Markdown `content` 文本，并通过 MCP 原生 `structuredContent` 字段承载结构化数据；使用**连接级** `output_channel` 开关，经查询字符串 / `x-prts-output-channel` 请求头 / `PRTS_OUTPUT_CHANNEL` 环境变量选择 `content`（默认）/ `structured` / `both`。默认值**没有**改为 JSON。各工具通道映射及客户端配置见 [`docs/migration-1.x-to-2.0.md`](https://github.com/3aKHP/prts-mcp/blob/main/docs/migration-1.x-to-2.0.md)。_（Python 实现另有“叙事工具传输输出精简”条目，记录移除 FastMCP 自动 `outputSchema={result:string}` 包装；TS 传输没有对应的自动包装，因此叙事工具在本侧直接属于纯 content 交付路径。）_
+- **输出通道设计替代每次调用的 `output_format` 参数（2.0 设计决策）。** 原路线图提出可选的 `output_format=markdown|json` 参数，并在 2.0 将默认值改为 `json`。**这一形式在设计过程中被否决。** 主要使用者是 LLM Agent，JSON 相比 Markdown 使提示词 token 增加约 15–30%，会抵消工具接口整合节省的上下文预算。2.0 因而保留始终输出的 Markdown `content` 文本，并通过 MCP 原生 `structuredContent` 字段承载结构化数据；使用**连接级** `output_channel` 开关，经查询字符串 / `x-prts-output-channel` 请求头 / `PRTS_OUTPUT_CHANNEL` 环境变量选择 `content`（默认）/ `structured` / `both`。默认值**没有**改为 JSON。各工具通道映射及客户端配置见 [`docs/migration-1.x-to-2.0.md`](docs/migration-1.x-to-2.0.md)。_（Python 实现另有“叙事工具传输输出精简”条目，记录移除 FastMCP 自动 `outputSchema={result:string}` 包装；TS 传输没有对应的自动包装，因此叙事工具在本侧直接属于纯 content 交付路径。）_
 
 - **输出通道试点（2.0）。** Streamable HTTP 会话可通过查询字符串、`x-prts-output-channel` 请求头或 `PRTS_OUTPUT_CHANNEL` 选择 `output_channel=structured` 或 `output_channel=both`。这一首批 TS 迁移为 `list_stages` 启用 structuredContent，保留默认纯 content Markdown 输出；合法空页（筛选无匹配/offset 超出末尾）也提供结构化空载荷。
 

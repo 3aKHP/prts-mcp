@@ -10,8 +10,8 @@
 ## 1. 核心原则：严禁重建覆盖已部分公开的版本
 
 `release-rust.yml` 采用**“先构建汇总、后分渠道发布”**的两阶段设计：
-1. 构建与汇总阶段生成唯一且经过完整校验的 `rust-release-candidate` 工件（内含 5 平台原生包、9 个 npm tarball、2 个 Docker 镜像归档及 `RELEASE.json` 哈希清单，并含预生成的 `github/` 公开附件）；
-2. `publish-npm` 与 `publish-non-npm`（GHCR + GitHub Release）两个发布任务只读取该工件，核对 SHA-256 后向外发布，绝不现场重新打包。
+1. 构建与汇总阶段生成唯一且经过完整校验的 `rust-release-candidate` 工件（内含 5 平台原生包、9 个 npm tarball、5 个 PyPI 原生 Wheel、2 个 Docker 镜像归档及 `RELEASE.json` 哈希清单，并含预生成的 `github/` 公开附件）以及独立的 `cargo-source-candidate` 源码包工件；
+2. `publish-npm`、`publish-crates`、`publish-pypi` 与 `publish-non-npm`（GHCR + GitHub Release）四个发布任务只读取已验证的候选工件并核对 SHA-256 后向外发布，不在发布阶段重新编译二进制或容器镜像。
 
 一旦某个版本的任意一个 npm 包、Docker 镜像或 GitHub Release 资产已经对外公开，该版本的字节内容即视为**不可变（Immutable）**：
 - **切勿点击“Re-run all jobs”全量重跑**：全量重跑会重新执行五平台编译和容器构建，导致归档时间戳、OS 基础包或镜像 digest 发生变化，从而与已公开的包产生哈希冲突。
@@ -78,6 +78,10 @@ gh run rerun "$release_run_id" --failed
 
 > **哈希算法核对提示**：比对校验值时请注意区分算法——仓库 `SHA256SUMS` 与 `.sha256` 文件使用 **SHA-256**（十六进制），npm `dist.integrity` 使用 **SHA-512 SRI**（`sha512-...` Base64），而 `dist.shasum` 为 **SHA-1**，三者不可直接跨算法字面比较。
 
-## PyPI 原生 Wheel 恢复
+## 4. PyPI 原生 Wheel 恢复
 
-PyPI 发布默认关闭。启用后若只上传了部分平台或 JSON 索引可见性超时，保留原运行的 `rust-release-candidate`，重跑失败发布任务。发布脚本会核对已上传文件的摘要，仅补传缺失的同一候选文件；冲突或 yanked 文件拒绝继续。不要删除已发布文件、改 tag、重建 Wheel 或用 `skip-existing` 掩盖内容冲突。首次真实发布前，本路径通过本地模拟注册表状态测试，公开上传尚未验收。
+当 `RUST_PYPI_PUBLISH_ENABLED=true` 启用后，若 `publish-pypi` 任务仅上传了部分平台 Wheel 或在轮询 PyPI JSON 索引可见性时超时，请直接复用原始 workflow run 的 `rust-release-candidate` 工件并执行 `gh run rerun <id> --failed`：
+
+- 发布脚本会逐个比对 PyPI 上已存在文件的 SHA-256，自动跳过已成功落地的同摘要 Wheel，仅补传缺失平台的候选文件；
+- 若发现远端同名文件摘要不匹配或版本已被 yank，脚本会立即中止以保护已公开制品；
+- 切勿手动删除已发布的 PyPI 文件、移动 Git tag、重新编译构建 Wheel，或使用 `--skip-existing` 掩盖内容哈希冲突。

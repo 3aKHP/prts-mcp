@@ -15,9 +15,10 @@ PRTS-MCP 3.x 的核心服务为单一原生 Rust 二进制（静态链接 C 正�
 | 部署形态 | 适用场景 | 系统与运行时要求 | 默认传输模式 |
 | --- | --- | --- | --- |
 | **Docker 容器** | 服务器常驻 HTTP 服务、多容器编排或隔离的 `stdio` 进程 | 支持 Linux `x64`（`amd64`）与 `arm64`；镜像内无语言运行时或编译器，宿主机仅需安装 Docker。 | 默认 `stdio`；传入 `-e PRTS_TRANSPORT=http` 切换为 HTTP。 |
-| **Cargo 原生安装 + systemd（推荐 Linux 主机部署）** | 常驻 HTTP 服务，直接管理 Rust 进程 | 安装时需要 Rust >=1.89 与 C 编译器；源码安装不包含备用游戏数据。 | 原生 `prts-mcp` 默认 HTTP；运行时无需 Rust 工具链。 |
+| **Cargo 原生安装 + systemd（推荐 Linux 主机部署）** | 常驻 HTTP 服务，直接管理 Rust 进程 | 安装时需要 `Rust >= 1.89` 与 C 编译器（可通过 `crates.io` 或源码安装）；源码安装不包含备用游戏数据，运行时无需 Rust 工具链。 | 原生 `prts-mcp` 默认 HTTP；设 `PRTS_TRANSPORT=stdio` 切为 stdio。 |
 | **预编译原生归档包** | 直接通过 `systemd` 或进程管理器在裸机/虚拟机上托管 | Linux `x64`/`arm64`（需 `glibc >= 2.28`）、Windows `x64`（静态 CRT，无需 VC++ 运行库）、macOS `14.0+`（`arm64`/`x64`）。无需安装任何运行时。 | `prts-mcp` 默认启动 Streamable HTTP（`:3000/mcp`）；设 `PRTS_TRANSPORT=stdio` 切为 stdio。 |
 | **npm 全局安装** | 已具备 Node.js 环境的服务器或开发机 | 需 `Node.js >= 22`、`npm >= 10`（作为轻量启动桥拉起同平台的预编译 Rust 二进制，无需 Bun）。 | `prts-mcp` 默认 HTTP；兼容命令 `prts-mcp-ts` / `prts-mcp-ts-bun` 固定 HTTP，`prts-mcp-ts-stdio` 固定 stdio。 |
+| **PyPI 安装（`prts-mcp`）** | Python 生态环境下的本地或容器化接入 | 当前公开 PyPI `latest` 为 `2.8.x` LTS；`3.2.2+` 提供五平台原生 Rust Wheel（要求 `Python >= 3.11`，不含内置备用数据）。 | `prts-mcp` 与 `python -m prts_mcp.server` 默认 `stdio`；设 `PRTS_TRANSPORT=http` 切为 HTTP。 |
 | **从源码编译** | 自定义构建或不受预编译归档支持的系统 | 需安装 Rust 工具链（`>= 1.89`）与 C 编译器；源码构建不含内置备用数据，依赖启动后自动同步或挂载本地数据。 | 同原生二进制。 |
 
 > **版本标签说明**：当前公开稳定版为 `3.2.1`（npm `latest`，GHCR `:latest` 与 `:3`）。继续使用 2.8.x 的部署可固定 npm `prts-mcp-ts@lts-2.8` 或 GHCR `:2`。生产环境建议始终固定具体版本号（如 `3.2.1`）或镜像 digest。各平台 ABI 审计细节见 [`NATIVE-PLATFORMS.md`](../dev/NATIVE-PLATFORMS.md)。
@@ -115,13 +116,13 @@ sudo tar -xzf prts-mcp-3.2.1-linux-x64.tar.gz -C /opt/prts-mcp
 
 ### 3.1.1 Cargo 安装
 
-3.2.2 开发版可从对应源码检出安装服务器和管理 CLI：
+可通过 `crates.io` 安装当前公开稳定版服务端（`cargo install prts-mcp --version 3.2.1 --locked --bin prts-mcp`），或在 `3.2.2` 开发版源码检出目录中同时安装服务端与管理 CLI：
 
 ```bash
 cargo install --path . --locked --bin prts-mcp --bin prtsctl
 ```
 
-将 systemd 的 `ExecStart` 指向安装后的 `prts-mcp` 绝对路径，并确保服务用户可执行该文件。生产升级应保留上一版本二进制、unit 与配置，继续使用原数据目录。源码安装没有内置备用数据，首次部署需要同步网络或预先准备本地数据。
+将 `systemd` 的 `ExecStart` 指向安装后的 `prts-mcp` 绝对路径，并确保服务用户可执行该文件。生产升级应保留上一版本二进制、unit 与配置，继续使用原数据目录。源码安装没有内置备用数据，首次部署需要同步网络或预先准备本地数据。
 
 ### 3.2 配置 `systemd` 常驻服务（Linux）
 
@@ -163,9 +164,11 @@ sudo systemctl enable --now prts-mcp
 curl -fsS http://127.0.0.1:3000/health
 ```
 
----
+### 3.3 使用 `prtsctl` 生成与管理 `systemd` 服务（3.2.2+）
 
-3.2.2 可通过 `prtsctl service --unit prts-mcp.service status` 查询上述服务，也可执行 `start`、`stop`、`restart`、`enable`、`disable`。启用在线管理时，使用 `service template` 生成含私有运行目录和控制端点的单元，再配置实例映射。具体参数、权限和重载规则见 [CLI 指南](cli.md)。
+在 `3.2.2+` 中，可通过 `prtsctl service --unit prts-mcp.service status` 查询上述服务状态，或执行 `start`、`stop`、`restart`、`enable`、`disable`。如需同时启用本机在线管理端点（`PRTS_CONTROL_ENDPOINT`），可使用 `prtsctl service template` 直接生成包含私有运行目录与控制端点的单元文件，并在 `instances.toml` 中配置实例映射。详细参数、权限校验与在线配置重载规则见[管理 CLI 使用指南](cli.md)。
+
+---
 
 ## 4. 通过 npm 部署常驻服务
 
