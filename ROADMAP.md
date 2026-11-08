@@ -2,7 +2,7 @@
 
 [简体中文](ROADMAP.zh-CN.md)
 
-The current public stable release is `3.2.4`, a single native Rust implementation that preserves the frozen TS/v2.8.1 tool contract. Active development continues on `develop` (`3.2.4-dev.0`).
+The current public stable release is `3.2.4`, a single native Rust implementation that preserves the frozen TS/v2.8.1 tool contract. Active development continues on `develop` (`3.2.5-dev.0`).
 
 ## 3.2.4 — Artwork Fix and Dependency Maintenance
 
