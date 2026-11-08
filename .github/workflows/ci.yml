@@ -114,6 +114,8 @@ jobs:
         run: uv run --locked --project tools/pypi python -m unittest discover -s tools/pypi/tests -v
       - name: Comparative evaluation contracts and evidence lifecycle
         run: python3 -m unittest discover -s tools/experiments/tests -p 'test_*.py'
+      - name: Check locked dependency license inventory
+        run: node tools/ci/dependency-licenses.mjs
       - name: Native tests, frozen differential suite and lifecycle
         run: ./scripts/check-runtime.sh --full
       - name: Verify candidate publication and channel guards
