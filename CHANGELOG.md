@@ -8,6 +8,12 @@ The original per-implementation changelogs at the 2.8.1 baseline remain availabl
 
 ## [Unreleased]
 
+## [3.2.4] - 2026-11-09
+
+### Changed
+
+- Generate and check the locked dependency license inventory in CI, including CLI and service-management dependencies.
+
 ### Security
 
 - Upgrade `zip` to 9.0.5 to address four upstream security advisories. Existing archive features and application-owned extraction remain in use.

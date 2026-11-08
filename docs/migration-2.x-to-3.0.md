@@ -10,9 +10,9 @@ PRTS-MCP 3.0 将底层业务实现统一为原生 Rust，同时完整保留 2.8.
 
 | 2.x 原安装方式 | 3.x 升级选择 | 关键变化说明 |
 | --- | --- | --- |
-| **npm (`prts-mcp-ts`)** | 继续使用 `prts-mcp-ts`，或切换至新主包 `prts-mcp` | 两个 npm 包在 3.x 下均执行预编译 Rust 二进制（需 `Node >= 22`、`npm >= 10` 作为启动桥，不再需要 Bun）。不带版本标签安装即获得最新 3.x 稳定版，也可指定精确版本号（如 `@3.2.3`）。 |
-| **Python / PyPI (`prts-mcp`)** | 改用预编译原生归档包、npm、Docker 或 Cargo，或升级到 3.2.2+ 原生 PyPI Wheel | 3.0–3.2.1 未向 PyPI 发布 Rust 包，执行 `pip install 'prts-mcp>=2.8,<2.9'` 会保持在 2.8.x LTS；3.2.2 起提供要求 `Python >= 3.11` 的五平台原生 Wheel（不含内置备用数据）；使用 `pip install --upgrade prts-mcp==3.2.3` 升级。 |
-| **Docker (`ghcr.io/3akhp/prts-mcp`)** | 拉取同一镜像仓库的 `3.x` 标签（`:3.2.3`、`:3` 或 `:latest`） | 保持默认 `stdio` 与 `/data` 数据卷约定不变，移除容器内 Python 运行时。 |
+| **npm (`prts-mcp-ts`)** | 继续使用 `prts-mcp-ts`，或切换至新主包 `prts-mcp` | 两个 npm 包在 3.x 下均执行预编译 Rust 二进制（需 `Node >= 22`、`npm >= 10` 作为启动桥，不再需要 Bun）。不带版本标签安装即获得最新 3.x 稳定版，也可指定精确版本号（如 `@3.2.4`）。 |
+| **Python / PyPI (`prts-mcp`)** | 改用预编译原生归档包、npm、Docker 或 Cargo，或升级到 3.2.2+ 原生 PyPI Wheel | 3.0–3.2.1 未向 PyPI 发布 Rust 包，执行 `pip install 'prts-mcp>=2.8,<2.9'` 会保持在 2.8.x LTS；3.2.2 起提供要求 `Python >= 3.11` 的五平台原生 Wheel（不含内置备用数据）；使用 `pip install --upgrade prts-mcp==3.2.4` 升级。 |
+| **Docker (`ghcr.io/3akhp/prts-mcp`)** | 拉取同一镜像仓库的 `3.x` 标签（`:3.2.4`、`:3` 或 `:latest`） | 保持默认 `stdio` 与 `/data` 数据卷约定不变，移除容器内 Python 运行时。 |
 | **本地 `python/` 或 `ts/` 源码** | 切换为根目录 Cargo 工程、`crates.io`（`cargo install prts-mcp`）或预编译归档包 | 3.x 主开发分支不再保留 `python/` 与 `ts/` 目录；2.x 源码维护在 `lts/2.8` 分支进行。 |
 
 ```bash

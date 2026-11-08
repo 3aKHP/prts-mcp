@@ -64,12 +64,12 @@ docker build -f packaging/docker/Dockerfile.source -t prts-mcp:source-dev .
 
 - **整卷挂载（推荐）**：
   ```bash
-  docker run --rm -i -v prts-data:/data ghcr.io/3akhp/prts-mcp:3.2.3
+  docker run --rm -i -v prts-data:/data ghcr.io/3akhp/prts-mcp:3.2.4
   ```
 - **兼容 2.x 分卷挂载**：原有的 3 个或 4 个独立子目录命名卷无需迁移格式即可直接挂载使用（3.2+ 默认启用 SQLite 后端，分卷部署请额外挂载 `/data/database` 或设置 `PRTS_DATA_BACKEND=json`）。
 - **非 root 与只读根文件系统（`--read-only`）**：
   若以非 root UID/GID 配合 `--read-only` 运行，请确保宿主机挂载目录已赋权给该 UID/GID，并挂载 `/tmp` 临时文件系统：
   ```bash
-  docker run --rm -i --user "$(id -u):$(id -g)" --read-only --tmpfs /tmp:rw,nosuid,nodev,mode=1777 -v "$PWD/host-data:/data" ghcr.io/3akhp/prts-mcp:3.2.3
+  docker run --rm -i --user "$(id -u):$(id -g)" --read-only --tmpfs /tmp:rw,nosuid,nodev,mode=1777 -v "$PWD/host-data:/data" ghcr.io/3akhp/prts-mcp:3.2.4
   ```
   > 若在 `--read-only` 模式下仍使用 4 个独立子目录分卷挂载（而非挂载整个 `/data`），需额外加上 `--tmpfs /data:rw,nosuid,nodev,mode=1777`，以便父目录 `/data` 能够写入跨进程同步锁与 `.gamedata_pair.json` 配对指针。
