@@ -83,10 +83,7 @@ pub fn validate_storyjson_zip(zip_path: &Path) -> Result<Vec<String>, String> {
         "zh_CN/gamedata/excel/story_review_table.json",
         "zh_CN/storyinfo.json",
     ] {
-        if !entry_names(&mut archive)?
-            .iter()
-            .any(|name| name == required)
-        {
+        if !names.contains(required) {
             missing.push(required.to_string());
         }
     }
