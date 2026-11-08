@@ -58,11 +58,12 @@ fn check_json_entries(path: &Path) -> Result<usize> {
     let mut count = 0;
     for index in 0..archive.len() {
         let mut entry = archive.by_index(index)?;
-        if !entry.is_dir() && entry.name().ends_with(".json") {
+        let name = entry.name()?.into_owned();
+        if !entry.is_dir() && name.ends_with(".json") {
             // serde_json's reader requests individual bytes. Buffer the
             // decompressor while retaining full Value/EOF/CRC validation.
             let _: Value = serde_json::from_reader(BufReader::with_capacity(64 * 1024, &mut entry))
-                .map_err(|e| format!("Invalid JSON in {}: {e}", entry.name()))?;
+                .map_err(|e| format!("Invalid JSON in {name}: {e}"))?;
             count += 1;
         }
     }

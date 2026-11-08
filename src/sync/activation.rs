@@ -304,7 +304,10 @@ pub fn safe_extract_zip(zip_path: &Path, local_root: &Path) -> Result<(), SyncEr
             if entry.is_dir() {
                 continue;
             }
-            let name = entry.name().to_string();
+            let name = entry
+                .name()
+                .map_err(|e| SyncError::Message(e.to_string()))?
+                .into_owned();
             let dest = resolve_inside_lexical(&root, &name)
                 .ok_or_else(|| SyncError::Message(format!("Unsafe zip member path: {name}")))?;
             if let Some(parent) = dest.parent() {
@@ -628,6 +631,27 @@ mod tests {
             .join("zh_CN/gamedata/levels/enemydata/enemy_database.json")
             .is_file());
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn inconsistent_zip_headers_cannot_escape_extraction_root() {
+        let (dir, spec) = temp_spec("dual-header");
+        write_zip_entries(&spec.local_zip, &[("safe.txt", b"payload")]).unwrap();
+        let mut bytes = std::fs::read(&spec.local_zip).unwrap();
+        assert_eq!(&bytes[..4], b"PK\x03\x04");
+        // Equal-length names keep offsets valid; only the local header is changed.
+        assert_eq!(u16::from_le_bytes([bytes[26], bytes[27]]), 8);
+        bytes[30..38].copy_from_slice(b"../x.txt");
+        std::fs::write(&spec.local_zip, bytes).unwrap();
+        let result = safe_extract_zip(&spec.local_zip, &spec.local_root);
+        assert!(!dir.join("x.txt").exists());
+        if result.is_ok() {
+            assert_eq!(
+                std::fs::read(spec.local_root.join("safe.txt")).unwrap(),
+                b"payload"
+            );
+        }
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]

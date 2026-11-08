@@ -156,6 +156,8 @@ prtsctl serve
 schema_version = 1
 
 [runtime]
+# Wiki 图片下载上限，正整数字节数；修改后重启
+# PRTS_MAX_IMAGE_BYTES = 8388608
 PRTS_TRANSPORT = "http"
 HOST = "127.0.0.1"
 PORT = 3000

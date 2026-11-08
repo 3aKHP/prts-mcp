@@ -28,9 +28,16 @@ fn not_a_zip(zip_path: &Path, message: &str) -> String {
     )
 }
 
-fn entry_names(archive: &mut zip::ZipArchive<std::fs::File>) -> Vec<String> {
+fn entry_names(archive: &mut zip::ZipArchive<std::fs::File>) -> Result<Vec<String>, String> {
     (0..archive.len())
-        .filter_map(|i| archive.by_index(i).ok().map(|e| e.name().to_string()))
+        .filter_map(|i| {
+            archive.by_index(i).ok().map(|entry| {
+                entry
+                    .name()
+                    .map(|name| name.into_owned())
+                    .map_err(|e| e.to_string())
+            })
+        })
         .collect()
 }
 
@@ -49,7 +56,7 @@ pub fn validate_archive_zip(
     required_files: &[String],
 ) -> Result<Vec<String>, String> {
     let mut archive = open_archive(zip_path)?;
-    let names: BTreeSet<String> = entry_names(&mut archive)
+    let names: BTreeSet<String> = entry_names(&mut archive)?
         .into_iter()
         .filter(|name| !name.ends_with('/'))
         .collect();
@@ -67,12 +74,16 @@ const STORYJSON_SUPPLEMENT: &str = "zh_CN/story_supplement.json";
 /// review table (and the optional supplement catalog) references must exist.
 pub fn validate_storyjson_zip(zip_path: &Path) -> Result<Vec<String>, String> {
     let mut archive = open_archive(zip_path)?;
+    let names: BTreeSet<String> = archive
+        .file_names()
+        .map(|name| name.map(|n| n.into_owned()).map_err(|e| e.to_string()))
+        .collect::<Result<_, _>>()?;
     let mut missing: Vec<String> = Vec::new();
     for required in [
         "zh_CN/gamedata/excel/story_review_table.json",
         "zh_CN/storyinfo.json",
     ] {
-        if !archive.file_names().any(|name| name == required) {
+        if !names.contains(required) {
             missing.push(required.to_string());
         }
     }
@@ -94,7 +105,6 @@ pub fn validate_storyjson_zip(zip_path: &Path) -> Result<Vec<String>, String> {
         }
     };
 
-    let names: BTreeSet<String> = archive.file_names().map(str::to_string).collect();
     let mut story_paths: BTreeSet<String> = BTreeSet::new();
     let story_path = |key: &str| format!("zh_CN/gamedata/story/{key}.json");
     if let Some(entries) = table.as_object() {
@@ -201,6 +211,18 @@ mod tests {
         assert!(validate_archive_zip(&zip, &["zh_CN/".to_string()])
             .unwrap()
             .contains(&"zh_CN/".to_string()));
+    }
+
+    #[test]
+    fn archive_validation_does_not_accept_unreadable_required_member() {
+        let zip = temp_zip("bad-local-header", &[("required.json", b"{}")]);
+        let mut bytes = std::fs::read(&zip).unwrap();
+        bytes[..4].copy_from_slice(b"NOPE");
+        std::fs::write(&zip, bytes).unwrap();
+        assert_eq!(
+            validate_archive_zip(&zip, &["required.json".into()]).unwrap(),
+            vec!["required.json"]
+        );
     }
 
     #[test]

@@ -26,12 +26,12 @@ Starting with 3.x, PRTS-MCP is unified into a single native Rust implementation 
 
 | Line | Version | Tools | Status |
 |------|---------|-------|--------|
-| Public stable (`main`) | 3.2.3 | 24 | Native Rust stable release on npm (`latest`), PyPI, crates.io, GitHub Releases, and GHCR (`:latest`, `:3`). |
-| Rust (`develop`) | 3.2.3-dev.0 | 24 | Active 3.x development line (`prtsctl` CLI, local runtime control, and PyPI wheel packaging). |
+| Public stable (`main`) | 3.2.4 | 24 | Native Rust stable release on npm (`latest`), PyPI, crates.io, GitHub Releases, and GHCR (`:latest`, `:3`). |
+| Rust (`develop`) | 3.2.4-dev.0 | 24 | Active 3.x development line (`prtsctl` CLI, local runtime control, and PyPI wheel packaging). |
 | `lts/2.8` | 2.8.x | 24 | Python/TypeScript long-term maintenance (PyPI `>=2.8,<2.9`, npm `lts-2.8`, GHCR `:2`); EOL 2027-07-02. |
 | `lts/1.7` | 1.7.x | 32 | Python/TypeScript long-term maintenance; EOL 2027-07-02. |
 
-On npm, install `prts-mcp` (or pin `3.2.3`). If you want to keep existing 2.x command names (`prts-mcp-ts`, `prts-mcp-ts-bun`, `prts-mcp-ts-stdio`), install `prts-mcp-ts`; from 3.0.0 it is also backed by the Rust binary. On crates.io, install `prts-mcp` (`3.2.3`). To stay on 2.8.x, pin `prts-mcp-ts@lts-2.8`, `ghcr.io/3akhp/prts-mcp:2`, or `pip install 'prts-mcp>=2.8,<2.9'`. See the [roadmap](ROADMAP.md), [2.x → 3.0 migration guide](docs/migration-2.x-to-3.0.md), and [2.8.1 documentation](https://github.com/3aKHP/prts-mcp/tree/ts/v2.8.1).
+On npm, install `prts-mcp` (or pin `3.2.4`). If you want to keep existing 2.x command names (`prts-mcp-ts`, `prts-mcp-ts-bun`, `prts-mcp-ts-stdio`), install `prts-mcp-ts`; from 3.0.0 it is also backed by the Rust binary. On crates.io, install `prts-mcp` (`3.2.4`). To stay on 2.8.x, pin `prts-mcp-ts@lts-2.8`, `ghcr.io/3akhp/prts-mcp:2`, or `pip install 'prts-mcp>=2.8,<2.9'`. See the [roadmap](ROADMAP.md), [2.x → 3.0 migration guide](docs/migration-2.x-to-3.0.md), and [2.8.1 documentation](https://github.com/3aKHP/prts-mcp/tree/ts/v2.8.1).
 
 Prebuilt binaries are provided for **Linux x64/ARM64** (`glibc >= 2.28`), **Windows x64**, and **macOS ARM64/x64** (macOS 14.0+). Linux musl/Alpine and other CPU architectures are not supported by the prebuilt native archives. Docker images are published for Linux x64 and ARM64. See [NATIVE-PLATFORMS.md](docs/dev/NATIVE-PLATFORMS.md) for platform ABI baselines and verification details.
 
@@ -41,21 +41,21 @@ Prebuilt binaries are provided for **Linux x64/ARM64** (`glibc >= 2.28`), **Wind
 
 ```bash
 # Install globally and start Streamable HTTP (default on port 3000):
-npm install -g prts-mcp@3.2.3
+npm install -g prts-mcp@3.2.4
 prts-mcp
 
 # Or run in stdio mode for local MCP clients:
 PRTS_TRANSPORT=stdio prts-mcp
 
 # Or keep legacy 2.x command names via the compatibility package:
-npm install -g prts-mcp-ts@3.2.3
+npm install -g prts-mcp-ts@3.2.4
 prts-mcp-ts-stdio
 ```
 
 For a one-off trial without global installation:
 
-- **HTTP mode**: `npx -y prts-mcp@3.2.3`
-- **stdio mode**: `npx -y --package=prts-mcp-ts@3.2.3 prts-mcp-ts-stdio`
+- **HTTP mode**: `npx -y prts-mcp@3.2.4`
+- **stdio mode**: `npx -y --package=prts-mcp-ts@3.2.4 prts-mcp-ts-stdio`
 
 Default transport behavior by entry point:
 
@@ -67,15 +67,15 @@ Default transport behavior by entry point:
 
 ```bash
 # Run as an HTTP service with persistent data:
-docker run -d --name prts-mcp -p 127.0.0.1:3000:3000 -e PRTS_TRANSPORT=http -v prts-data:/data ghcr.io/3akhp/prts-mcp:3.2.3
+docker run -d --name prts-mcp -p 127.0.0.1:3000:3000 -e PRTS_TRANSPORT=http -v prts-data:/data ghcr.io/3akhp/prts-mcp:3.2.4
 
 # Or run in stdio mode (default for the Docker image) for local MCP clients:
-docker run -i --rm -v prts-data:/data ghcr.io/3akhp/prts-mcp:3.2.3
+docker run -i --rm -v prts-data:/data ghcr.io/3akhp/prts-mcp:3.2.4
 ```
 
 #### 3. Prebuilt Native Archives
 
-Download the archive for your OS and CPU from the [3.2.3 GitHub Release](https://github.com/3aKHP/prts-mcp/releases/tag/v3.2.3), verify its SHA-256 checksum, extract it while keeping the `bin/` and `data/` directory structure intact, and run `bin/prts-mcp` (`bin\prts-mcp.exe` on Windows; set `PRTS_TRANSPORT=stdio` for stdio clients).
+Download the archive for your OS and CPU from the [3.2.4 GitHub Release](https://github.com/3aKHP/prts-mcp/releases/tag/v3.2.4), verify its SHA-256 checksum, extract it while keeping the `bin/` and `data/` directory structure intact, and run `bin/prts-mcp` (`bin\prts-mcp.exe` on Windows; set `PRTS_TRANSPORT=stdio` for stdio clients).
 
 #### 4. Cargo (`crates.io`) & Source Builds
 
@@ -83,7 +83,7 @@ Installing from `crates.io` or building from a Git checkout requires `Rust >= 1.
 
 ```bash
 # Install the server binary from crates.io:
-cargo install prts-mcp --version 3.2.3 --locked --bin prts-mcp
+cargo install prts-mcp --version 3.2.4 --locked --bin prts-mcp
 prts-mcp
 
 # Or run in stdio mode for local MCP clients:
@@ -101,7 +101,7 @@ From 3.2.2, PyPI distributes five-platform native Rust wheels (`Python >= 3.11`,
 
 ```bash
 # Install the native package from PyPI (defaults to stdio):
-pip install prts-mcp==3.2.3
+pip install prts-mcp==3.2.4
 prts-mcp
 
 # Or run via the Python module entry point:
@@ -208,12 +208,12 @@ Public Rust native archives, Docker images, and npm packages ship with a verifie
 
 | 版本线 | 版本 | 工具数 | 状态 |
 |--------|------|--------|------|
-| 公开稳定版（`main`） | 3.2.3 | 24 | 原生 Rust 正式版，已发布至 npm（`latest`）、PyPI、crates.io、GitHub Releases 与 GHCR（`:latest`、`:3`）。 |
-| Rust 开发线（`develop`） | 3.2.3-dev.0 | 24 | 3.x 主开发线（含 `prtsctl` 管理 CLI、本机在线控制与 PyPI Wheel 打包）。 |
+| 公开稳定版（`main`） | 3.2.4 | 24 | 原生 Rust 正式版，已发布至 npm（`latest`）、PyPI、crates.io、GitHub Releases 与 GHCR（`:latest`、`:3`）。 |
+| Rust 开发线（`develop`） | 3.2.4-dev.0 | 24 | 3.x 主开发线（含 `prtsctl` 管理 CLI、本机在线控制与 PyPI Wheel 打包）。 |
 | `lts/2.8` | 2.8.x | 24 | Python/TypeScript 长期维护线（PyPI `>=2.8,<2.9`、npm `lts-2.8`、GHCR `:2`），维护至 2027-07-02（EOL）。 |
 | `lts/1.7` | 1.7.x | 32 | Python/TypeScript 长期维护线，维护至 2027-07-02（EOL）。 |
 
-通过 npm 安装时，请安装 `prts-mcp`（或指定精确版本 `3.2.3`）。若希望保留 2.x 的旧命令名（`prts-mcp-ts`、`prts-mcp-ts-bun`、`prts-mcp-ts-stdio`），可安装兼容包 `prts-mcp-ts`，它自 3.0.0 起同样运行 Rust 二进制。通过 crates.io 安装可使用 `prts-mcp`（`3.2.3`）。如需继续使用 2.8.x，请固定 `prts-mcp-ts@lts-2.8`、`ghcr.io/3akhp/prts-mcp:2` 或 `pip install 'prts-mcp>=2.8,<2.9'`。详见[路线图](ROADMAP.zh-CN.md)、[2.x → 3.0 迁移指南](docs/migration-2.x-to-3.0.md)与 [2.8.1 旧版文档](https://github.com/3aKHP/prts-mcp/tree/ts/v2.8.1)。
+通过 npm 安装时，请安装 `prts-mcp`（或指定精确版本 `3.2.4`）。若希望保留 2.x 的旧命令名（`prts-mcp-ts`、`prts-mcp-ts-bun`、`prts-mcp-ts-stdio`），可安装兼容包 `prts-mcp-ts`，它自 3.0.0 起同样运行 Rust 二进制。通过 crates.io 安装可使用 `prts-mcp`（`3.2.4`）。如需继续使用 2.8.x，请固定 `prts-mcp-ts@lts-2.8`、`ghcr.io/3akhp/prts-mcp:2` 或 `pip install 'prts-mcp>=2.8,<2.9'`。详见[路线图](ROADMAP.zh-CN.md)、[2.x → 3.0 迁移指南](docs/migration-2.x-to-3.0.md)与 [2.8.1 旧版文档](https://github.com/3aKHP/prts-mcp/tree/ts/v2.8.1)。
 
 预编译二进制支持 **Linux x64/ARM64**（`glibc >= 2.28`）、**Windows x64** 与 **macOS ARM64/x64**（macOS 14.0+）；暂不支持 Linux musl/Alpine 及其他 CPU 架构。Docker 镜像支持 Linux x64 与 ARM64。各平台的 ABI 基线与验证详情见[原生平台说明](docs/dev/NATIVE-PLATFORMS.md)。
 
@@ -223,21 +223,21 @@ Public Rust native archives, Docker images, and npm packages ship with a verifie
 
 ```bash
 # 全局安装并启动 Streamable HTTP 服务（默认监听 3000 端口）：
-npm install -g prts-mcp@3.2.3
+npm install -g prts-mcp@3.2.4
 prts-mcp
 
 # 本地客户端以 stdio 子进程方式接入：
 PRTS_TRANSPORT=stdio prts-mcp
 
 # 若需保留 2.x 旧命令配置，可安装兼容入口包：
-npm install -g prts-mcp-ts@3.2.3
+npm install -g prts-mcp-ts@3.2.4
 prts-mcp-ts-stdio
 ```
 
 免安装临时试用可直接通过 `npx` 启动：
 
-- **HTTP 模式**：`npx -y prts-mcp@3.2.3`
-- **stdio 模式**：`npx -y --package=prts-mcp-ts@3.2.3 prts-mcp-ts-stdio`
+- **HTTP 模式**：`npx -y prts-mcp@3.2.4`
+- **stdio 模式**：`npx -y --package=prts-mcp-ts@3.2.4 prts-mcp-ts-stdio`
 
 各入口的默认传输方式如下：
 
@@ -249,15 +249,15 @@ prts-mcp-ts-stdio
 
 ```bash
 # 以 HTTP 模式后台运行镜像，并挂载数据卷：
-docker run -d --name prts-mcp -p 127.0.0.1:3000:3000 -e PRTS_TRANSPORT=http -v prts-data:/data ghcr.io/3akhp/prts-mcp:3.2.3
+docker run -d --name prts-mcp -p 127.0.0.1:3000:3000 -e PRTS_TRANSPORT=http -v prts-data:/data ghcr.io/3akhp/prts-mcp:3.2.4
 
 # 或以默认 stdio 模式供本地 MCP 客户端直接调用：
-docker run -i --rm -v prts-data:/data ghcr.io/3akhp/prts-mcp:3.2.3
+docker run -i --rm -v prts-data:/data ghcr.io/3akhp/prts-mcp:3.2.4
 ```
 
 #### 3. 预编译原生归档包
 
-从 [3.2.3 Release](https://github.com/3aKHP/prts-mcp/releases/tag/v3.2.3) 下载对应系统与架构的归档包，校验 SHA-256 后解压（请完整保留解压目录内的 `bin/` 与 `data/` 相对结构），直接运行 `bin/prts-mcp`（Windows 为 `bin\prts-mcp.exe`；本地客户端接入可设 `PRTS_TRANSPORT=stdio`）。
+从 [3.2.4 Release](https://github.com/3aKHP/prts-mcp/releases/tag/v3.2.4) 下载对应系统与架构的归档包，校验 SHA-256 后解压（请完整保留解压目录内的 `bin/` 与 `data/` 相对结构），直接运行 `bin/prts-mcp`（Windows 为 `bin\prts-mcp.exe`；本地客户端接入可设 `PRTS_TRANSPORT=stdio`）。
 
 #### 4. Cargo（`crates.io`）安装与源码构建
 
@@ -265,7 +265,7 @@ docker run -i --rm -v prts-data:/data ghcr.io/3akhp/prts-mcp:3.2.3
 
 ```bash
 # 从 crates.io 编译安装服务端二进制：
-cargo install prts-mcp --version 3.2.3 --locked --bin prts-mcp
+cargo install prts-mcp --version 3.2.4 --locked --bin prts-mcp
 prts-mcp
 
 # 本地客户端以 stdio 子进程方式接入：
@@ -283,7 +283,7 @@ cargo build --locked --release --bins
 
 ```bash
 # 从 PyPI 安装原生版本（默认启动 stdio）：
-pip install prts-mcp==3.2.3
+pip install prts-mcp==3.2.4
 prts-mcp
 
 # 或通过 Python 模块入口启动：
@@ -375,9 +375,9 @@ python -m prts_mcp.server
 
 ## Rust Compatibility / Rust 兼容性说明
 
-Tool names, parameters, output channels, and data semantics match the frozen TS/v2.8.1 baseline, with seven approved implementation differences (`D-001` through `D-007`, covering runtime identity, native diagnostics schema, and specific Unicode regex case-folding edges) documented in [`contracts/baseline.json`](contracts/baseline.json). Full JSON Schemas for all tool inputs are recorded in [`contracts/tool-declarations.json`](contracts/tool-declarations.json).
+Tool names, parameters, output channels, and data semantics match the frozen TS/v2.8.1 baseline, with eight approved implementation differences (`D-001` through `D-008`, covering runtime identity, native diagnostics schema, specific Unicode regex case-folding edges, and the configurable Wiki image limit) documented in [`contracts/baseline.json`](contracts/baseline.json). Full JSON Schemas for all tool inputs are recorded in [`contracts/tool-declarations.json`](contracts/tool-declarations.json).
 
-3.x 的工具名、参数、输出通道与数据语义严格对齐 TS/v2.8.1 基线；7 项经批准的实现差异（`D-001` 至 `D-007`，涉及运行时标识、原生诊断结构及部分 Unicode 正则大小写折叠边界）完整记录于 [`contracts/baseline.json`](contracts/baseline.json)，所有工具的参数 Schema 见 [`contracts/tool-declarations.json`](contracts/tool-declarations.json)。
+3.x 的工具名、参数、输出通道与数据语义严格对齐 TS/v2.8.1 基线；8 项经批准的实现差异（`D-001` 至 `D-008`，涉及运行时标识、原生诊断结构、部分 Unicode 正则大小写折叠边界及可配置的 Wiki 图片上限）完整记录于 [`contracts/baseline.json`](contracts/baseline.json)，所有工具的参数 Schema 见 [`contracts/tool-declarations.json`](contracts/tool-declarations.json)。
 
 ## License / 许可说明
 

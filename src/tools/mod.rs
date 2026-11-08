@@ -75,7 +75,10 @@ impl AppHandle {
     /// All tools and cloned handles in one application share the pool and limiter.
     pub fn wiki_transport(&self) -> &crate::wiki::client::ReqwestWikiTransport {
         self.wiki.get_or_init(|| {
-            crate::wiki::client::ReqwestWikiTransport::with_network(&self.config().network)
+            crate::wiki::client::ReqwestWikiTransport::with_image_limit(
+                &self.config().network,
+                self.config().max_image_bytes,
+            )
         })
     }
 

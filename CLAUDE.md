@@ -5,7 +5,7 @@ branch: "develop"
 
 # CLAUDE.md — AI 协作者说明
 
-PRTS-MCP 的 3.x 开发线是位于仓库根目录的原生 Rust 工程，业务行为与工具契约严格对齐冻结的 TS/v2.8.1 基线。当前公开稳定版为原生 Rust `3.2.3`；2.8.x 与 1.7.x 的 Python/TypeScript 实现分别在 `lts/2.8` 与 `lts/1.7` 分支维护，两线 EOL 均为 **2027-07-02**。
+PRTS-MCP 的 3.x 开发线是位于仓库根目录的原生 Rust 工程，业务行为与工具契约严格对齐冻结的 TS/v2.8.1 基线。当前公开稳定版为原生 Rust `3.2.4`；2.8.x 与 1.7.x 的 Python/TypeScript 实现分别在 `lts/2.8` 与 `lts/1.7` 分支维护，两线 EOL 均为 **2027-07-02**。
 
 ## 1. 必读文档导航
 
@@ -41,7 +41,7 @@ PRTS-MCP 的 3.x 开发线是位于仓库根目录的原生 Rust 工程，业务
    - 严禁直接向 `main`、`develop`、`lts/2.8` 或 `lts/1.7` 推送提交；所有改动一律在 `<type>/v<version>-<topic>` 短分支上进行并通过 PR 合并。
    - 每个 PR 聚焦单一主要意图；提交信息遵循 Conventional Commits（`<type>(<scope>): <subject>`，小写祈使语气，≤72 字符），保持每个中间提交可独立编译通过。
 2. **契约与架构红线**：
-   - 工具名、参数、输出格式与数据同步语义严格对齐 TS/v2.8.1 基线；7 项已批准的实现差异封闭枚举在 [`contracts/baseline.json`](contracts/baseline.json) 中，未经维护者批准不得扩大差异或重录 golden 快照。
+   - 工具名、参数、输出格式与数据同步语义严格对齐 TS/v2.8.1 基线；8 项已批准的实现差异封闭枚举在 [`contracts/baseline.json`](contracts/baseline.json) 中，未经维护者批准不得扩大差异或重录 golden 快照。
    - `stdout` 仅用于输出 MCP 协议报文，所有日志必须输出到 `stderr`。
    - 原生主命令 `prts-mcp`（默认 HTTP）、兼容命令 `prts-mcp-ts*`（各自固定传输模式）与 Docker 入口 `prts-mcp-ghcr`（默认 stdio）的入口行为分别维护，不得相互混淆。
 3. **仓库卫生**：
@@ -71,8 +71,8 @@ PRTS-MCP 的 3.x 开发线是位于仓库根目录的原生 Rust 工程，业务
 
 | 分支 | 定位 | 版本与发布规则 |
 | --- | --- | --- |
-| `main` | 公开稳定版分支（当前为 `3.2.3`） | 承载最新正式版；自 M5 发布 `3.0.0` 起为 Rust 主线，正式版 tag 推进 `latest` 标签。 |
-| `develop` | 3.x Rust 开发集成分支（当前为 `3.2.3-dev.0`） | 根目录 Cargo 工程，不包含 `python/` 或 `ts/` 目录；日常功能与修复在此集成。 |
+| `main` | 公开稳定版分支（当前为 `3.2.4`） | 承载最新正式版；自 M5 发布 `3.0.0` 起为 Rust 主线，正式版 tag 推进 `latest` 标签。 |
+| `develop` | 3.x Rust 开发集成分支（当前为 `3.2.4-dev.0`） | 根目录 Cargo 工程，不包含 `python/` 或 `ts/` 目录；日常功能与修复在此集成。 |
 | `lts/2.8` | 2.8.x Python/TypeScript 长期维护线 | 使用 `python/v2.8.x` + `ts/v2.8.x` 成对 tag，发布至 npm `lts-2.8` 与 Docker `:2`，不更新 `latest`；EOL 为 `2027-07-02`。 |
 | `lts/1.7` | 1.7.x Python/TypeScript 长期维护线 | 使用 `python/v1.7.x` + `ts/v1.7.x` 成对 tag；EOL 为 `2027-07-02`。 |
 

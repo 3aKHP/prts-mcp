@@ -101,7 +101,7 @@ pub(super) fn extract(
     for i in 0..zip.len() {
         use std::io::Read;
         let mut entry = zip.by_index(i).map_err(|e| e.to_string())?;
-        let name = entry.name().to_owned();
+        let name = entry.name().map_err(|e| e.to_string())?.into_owned();
         let member = part.members.get(&name).ok_or("unexpected ZIP member")?;
         if !seen.insert(name.clone()) {
             return Err("duplicate ZIP member".into());

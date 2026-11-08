@@ -11,6 +11,16 @@ pub mod data_source;
 pub mod network;
 pub use data_source::DataSource;
 
+pub const DEFAULT_MAX_IMAGE_BYTES: usize = 8 * 1024 * 1024;
+
+/// Positive decimal byte count shared by environment and TOML settings.
+pub fn parse_max_image_bytes(raw: &str) -> Result<usize, String> {
+    raw.parse::<usize>()
+        .ok()
+        .filter(|n| *n > 0 && raw.bytes().all(|b| b.is_ascii_digit()))
+        .ok_or_else(|| "PRTS_MAX_IMAGE_BYTES must be a positive integer byte count".into())
+}
+
 use crate::sync::scheduler::resolve_auto_sync_interval_ms;
 use crate::sync::transport::parse_mirrors;
 use crate::tools::output::OutputChannel;
@@ -100,6 +110,7 @@ pub struct RuntimeConfig {
     pub local_image: bool,
     pub original_image: bool,
     pub prts_image_cache: bool,
+    pub max_image_bytes: usize,
     pub images_path: PathBuf,
     /// PRTS_AUTO_SYNC_INTERVAL_SECONDS: 0 = startup sync only; invalid
     /// spellings fall back to the 3600s default.
@@ -422,6 +433,10 @@ impl RuntimeConfig {
             local_image: env_bool_from(&lookup, "LOCAL_IMAGE", false),
             original_image: env_bool_from(&lookup, "ORIGINAL_IMAGE", false),
             prts_image_cache: env_bool_from(&lookup, "PRTS_IMAGE_CACHE", true),
+            max_image_bytes: lookup("PRTS_MAX_IMAGE_BYTES")
+                .map(|raw| parse_max_image_bytes(&raw))
+                .transpose()?
+                .unwrap_or(DEFAULT_MAX_IMAGE_BYTES),
             images_path,
             auto_sync_interval_ms: resolve_auto_sync_interval_ms(
                 lookup("PRTS_AUTO_SYNC_INTERVAL_SECONDS").as_deref(),

@@ -467,3 +467,61 @@ fn invalid_management_and_proxy_file_values_are_rejected_without_secret_echo() {
         assert!(!String::from_utf8_lossy(&output.stderr).contains("private-secret"));
     }
 }
+
+#[test]
+fn wiki_image_limit_configuration() {
+    let f = Fixture::new();
+    let path = f.0.join("images.toml");
+    fs::write(
+        &path,
+        "schema_version=1\n[runtime]\nPRTS_MAX_IMAGE_BYTES=2097152\n",
+    )
+    .unwrap();
+    for (file, env, expected) in [
+        (false, None, 8388608),
+        (true, None, 2097152),
+        (true, Some("4194304"), 4194304),
+    ] {
+        let mut cmd = f.command();
+        if file {
+            cmd.arg("--config").arg(&path);
+        }
+        if let Some(value) = env {
+            cmd.env("PRTS_MAX_IMAGE_BYTES", value);
+        }
+        let out = cmd.args(["-o", "json", "config", "show"]).output().unwrap();
+        assert!(out.status.success(), "{out:?}");
+        let report: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+        let field = report["fields"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|v| v["key"] == "PRTS_MAX_IMAGE_BYTES")
+            .unwrap();
+        assert_eq!(field["value"], expected);
+    }
+    for value in ["", "0", "-1", "1.5", "8M", "18446744073709551616"] {
+        let out = f
+            .command()
+            .env("PRTS_MAX_IMAGE_BYTES", value)
+            .args(["config", "validate"])
+            .output()
+            .unwrap();
+        assert_eq!(out.status.code(), Some(2), "{value}: {out:?}");
+    }
+    for value in ["0", "-1", "1.5", "'8M'"] {
+        fs::write(
+            &path,
+            format!("schema_version=1\n[runtime]\nPRTS_MAX_IMAGE_BYTES={value}\n"),
+        )
+        .unwrap();
+        let out = f
+            .command()
+            .arg("--config")
+            .arg(&path)
+            .args(["config", "validate"])
+            .output()
+            .unwrap();
+        assert_eq!(out.status.code(), Some(2), "{value}: {out:?}");
+    }
+}

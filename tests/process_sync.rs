@@ -61,7 +61,7 @@ fn release_assets() -> Vec<(String, Vec<u8>)> {
     {
         let mut cursor = std::io::Cursor::new(&mut excel);
         let mut zip = zip::ZipWriter::new(&mut cursor);
-        let options: zip::write::FileOptions<'_, ()> = zip::write::FileOptions::default();
+        let options: zip::write::SimpleFileOptions = zip::write::FileOptions::default();
         for (name, bytes) in &refs {
             zip.start_file(*name, options).unwrap();
             zip.write_all(bytes).unwrap();
@@ -72,7 +72,7 @@ fn release_assets() -> Vec<(String, Vec<u8>)> {
     {
         let mut cursor = std::io::Cursor::new(&mut levels);
         let mut zip = zip::ZipWriter::new(&mut cursor);
-        let options: zip::write::FileOptions<'_, ()> = zip::write::FileOptions::default();
+        let options: zip::write::SimpleFileOptions = zip::write::FileOptions::default();
         zip.start_file(
             "zh_CN/gamedata/levels/enemydata/enemy_database.json",
             options,
@@ -85,7 +85,7 @@ fn release_assets() -> Vec<(String, Vec<u8>)> {
     {
         let mut cursor = std::io::Cursor::new(&mut story);
         let mut zip = zip::ZipWriter::new(&mut cursor);
-        let options: zip::write::FileOptions<'_, ()> = zip::write::FileOptions::default();
+        let options: zip::write::SimpleFileOptions = zip::write::FileOptions::default();
         zip.start_file("zh_CN/gamedata/excel/story_review_table.json", options)
             .unwrap();
         zip.write_all(b"{}").unwrap();
