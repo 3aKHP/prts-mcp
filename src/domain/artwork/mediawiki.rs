@@ -312,8 +312,7 @@ pub async fn get_artwork_mediawiki(
     }
     if variant == Some("original") {
         return ArtworkOutcome::Message(
-            "LOCAL_IMAGE=false 模式不提供 original 变体（PRTS 原图常超 1 MiB 安全上限）。请使用 large 或 preview。"
-                .to_string(),
+            "LOCAL_IMAGE=false 模式不提供 original 变体。请使用 large 或 preview。".to_string(),
         );
     }
     let chosen = variant.unwrap_or("large");

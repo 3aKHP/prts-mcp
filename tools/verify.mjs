@@ -98,6 +98,8 @@ function childEnv(dataset, extra = {}) {
     STORYJSON_PATH: existsSync(storyZip) ? storyZip : join(data, "does-not-exist.zip"),
     GITHUB_MIRRORS: "",
     IMAGES_ENABLED: "true",
+    // Exercise the frozen 1 MiB policy; the new default has dedicated regression tests.
+    PRTS_MAX_IMAGE_BYTES: "1048576",
     HOST: "127.0.0.1",
     ...extra,
   };
@@ -509,6 +511,14 @@ function compareObservables(expected, actual, c) {
   const dataset = c.dataset ?? "minimal-gamedata-v1";
   expected = normalizeObservable(expected, c, dataset);
   actual = normalizeObservable(actual, c, dataset);
+  // D-008: only the obsolete fixed-size rationale changes in this one result.
+  if (c.id === "artwork.mw.get.original-rejected") {
+    expected = structuredClone(expected);
+    const text = expected.body?.result?.content?.[0];
+    if (text?.text === "LOCAL_IMAGE=false 模式不提供 original 变体（PRTS 原图常超 1 MiB 安全上限）。请使用 large 或 preview。") {
+      text.text = "LOCAL_IMAGE=false 模式不提供 original 变体。请使用 large 或 preview。";
+    }
+  }
   const diffs = [];
   if (expected.status !== actual.status) diffs.push(`status: ${expected.status} !== ${actual.status}`);
   if (expected.content_type !== actual.content_type) diffs.push(`content_type: ${expected.content_type} !== ${actual.content_type}`);

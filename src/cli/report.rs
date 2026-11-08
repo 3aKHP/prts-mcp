@@ -46,6 +46,7 @@ pub fn backend(cfg: &RuntimeConfig) -> &'static str {
 }
 fn effective(c: &RuntimeConfig, transport: &str, key: &str) -> Value {
     match key {
+        "PRTS_MAX_IMAGE_BYTES" => json!(c.max_image_bytes),
         "HTTP_PROXY" | "HTTPS_PROXY" | "ALL_PROXY" | "NO_PROXY" => {
             json!(c.network.values.get(key).map(|_| "[redacted]"))
         }

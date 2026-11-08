@@ -41,7 +41,7 @@ PRTS-MCP 的 3.x 开发线是位于仓库根目录的原生 Rust 工程，业务
    - 严禁直接向 `main`、`develop`、`lts/2.8` 或 `lts/1.7` 推送提交；所有改动一律在 `<type>/v<version>-<topic>` 短分支上进行并通过 PR 合并。
    - 每个 PR 聚焦单一主要意图；提交信息遵循 Conventional Commits（`<type>(<scope>): <subject>`，小写祈使语气，≤72 字符），保持每个中间提交可独立编译通过。
 2. **契约与架构红线**：
-   - 工具名、参数、输出格式与数据同步语义严格对齐 TS/v2.8.1 基线；7 项已批准的实现差异封闭枚举在 [`contracts/baseline.json`](contracts/baseline.json) 中，未经维护者批准不得扩大差异或重录 golden 快照。
+   - 工具名、参数、输出格式与数据同步语义严格对齐 TS/v2.8.1 基线；8 项已批准的实现差异封闭枚举在 [`contracts/baseline.json`](contracts/baseline.json) 中，未经维护者批准不得扩大差异或重录 golden 快照。
    - `stdout` 仅用于输出 MCP 协议报文，所有日志必须输出到 `stderr`。
    - 原生主命令 `prts-mcp`（默认 HTTP）、兼容命令 `prts-mcp-ts*`（各自固定传输模式）与 Docker 入口 `prts-mcp-ghcr`（默认 stdio）的入口行为分别维护，不得相互混淆。
 3. **仓库卫生**：

@@ -59,6 +59,7 @@ pub trait WikiTransport: Send + Sync {
 pub struct ReqwestWikiTransport {
     client: reqwest::Client,
     limiter: RateLimiter,
+    max_image_bytes: usize,
 }
 
 fn now_ms() -> i64 {
@@ -79,6 +80,14 @@ impl ReqwestWikiTransport {
         Self::with_network(&crate::config::network::NetworkConfig::from_env())
     }
     pub fn with_network(network: &crate::config::network::NetworkConfig) -> Self {
+        Self::with_image_limit(network, crate::config::DEFAULT_MAX_IMAGE_BYTES)
+    }
+
+    /// Construct the application client with its startup image byte limit.
+    pub fn with_image_limit(
+        network: &crate::config::network::NetworkConfig,
+        max_image_bytes: usize,
+    ) -> Self {
         let mut builder = network.client_builder();
         // Bun honors NODE_EXTRA_CA_CERTS; the replay differential relies on
         // the same env here, and production deployments behind TLS
@@ -93,6 +102,7 @@ impl ReqwestWikiTransport {
         Self {
             client: builder.build().expect("reqwest client builds"),
             limiter: RateLimiter::new(RATE_LIMIT_INTERVAL_MS),
+            max_image_bytes,
         }
     }
 
@@ -154,10 +164,9 @@ const INVALID_JSON_MESSAGE: &str = "Failed to parse JSON";
 
 /// `downloadImageSafe` boundary set (prtsWiki.ts): HTTPS only, the single
 /// allowed image host, final-URL recheck after redirects, MIME allow-list,
-/// and the 1 MiB cap counted on the HTTP response body bytes.
+/// and the configured cap counted on the decoded HTTP response body bytes.
 const ALLOWED_IMAGE_HOSTS: [&str; 1] = ["media.prts.wiki"];
 const ALLOWED_IMAGE_MIMES: [&str; 3] = ["image/png", "image/jpeg", "image/webp"];
-const MAX_IMAGE_BYTES: usize = 1024 * 1024;
 const IMAGE_TIMEOUT_MS: u64 = 30_000;
 
 /// `imageMagicOk`: PNG/JPEG/WebP signature bytes.
@@ -218,16 +227,23 @@ impl ReqwestWikiTransport {
         if !ALLOWED_IMAGE_MIMES.contains(&ctype.as_str()) {
             return Err(format!("bad content-type: {}\"", ctype));
         }
-        // The cap counts the response body bytes as they stream in.
+        self.read_image_body(response, &ctype).await
+    }
+
+    async fn read_image_body(
+        &self,
+        response: reqwest::Response,
+        ctype: &str,
+    ) -> Result<Vec<u8>, String> {
         let mut stream = response;
         let mut body: Vec<u8> = Vec::new();
         while let Some(chunk) = stream.chunk().await.map_err(|e| map_network_error(&e))? {
-            body.extend_from_slice(&chunk);
-            if body.len() > MAX_IMAGE_BYTES {
-                return Err(format!("image exceeds {MAX_IMAGE_BYTES} byte cap"));
+            if chunk.len() > self.max_image_bytes.saturating_sub(body.len()) {
+                return Err(format!("image exceeds {} byte cap", self.max_image_bytes));
             }
+            body.extend_from_slice(&chunk);
         }
-        if !image_magic_ok(&body, &ctype) {
+        if !image_magic_ok(&body, ctype) {
             return Err(format!("magic bytes mismatch for \"{ctype}\""));
         }
         Ok(body)
@@ -252,6 +268,69 @@ impl WikiTransport for ReqwestWikiTransport {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn image_body_limit_counts_decoded_bytes_and_preserves_payload() {
+        use std::io::Write;
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        async fn read(size: usize, limit: usize, gzip: bool) -> Result<Vec<u8>, String> {
+            let mut payload = vec![0; size];
+            payload[..8].copy_from_slice(&[0x89, b'P', b'N', b'G', 13, 10, 26, 10]);
+            let wire = if gzip {
+                let mut encoder =
+                    flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+                encoder.write_all(&payload).unwrap();
+                encoder.finish().unwrap()
+            } else {
+                payload.clone()
+            };
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let address = listener.local_addr().unwrap();
+            let server = tokio::spawn(async move {
+                let (mut socket, _) = listener.accept().await.unwrap();
+                let mut request = [0; 4096];
+                socket.read(&mut request).await.unwrap();
+                let encoding = if gzip {
+                    "Content-Encoding: gzip\r\n"
+                } else {
+                    ""
+                };
+                let headers = format!("HTTP/1.1 200 OK\r\nContent-Type: image/png\r\n{encoding}Content-Length: {}\r\nConnection: close\r\n\r\n", wire.len());
+                socket.write_all(headers.as_bytes()).await.unwrap();
+                let _ = socket.write_all(&wire).await;
+            });
+            let network = crate::config::network::NetworkConfig::from_lookup(|_| None);
+            let transport = ReqwestWikiTransport::with_image_limit(&network, limit);
+            let response = transport
+                .client
+                .get(format!("http://{address}/image"))
+                .send()
+                .await
+                .unwrap();
+            let result = transport.read_image_body(response, "image/png").await;
+            server.await.unwrap();
+            if let Ok(bytes) = &result {
+                assert_eq!(bytes, &payload);
+            }
+            result
+        }
+        let default = crate::config::DEFAULT_MAX_IMAGE_BYTES;
+        assert_eq!(
+            read(2_286_778, default, false).await.unwrap().len(),
+            2_286_778
+        );
+        assert_eq!(read(default, default, false).await.unwrap().len(), default);
+        for gzip in [false, true] {
+            assert_eq!(
+                read(default + 1, default, gzip).await.unwrap_err(),
+                format!("image exceeds {default} byte cap")
+            );
+        }
+        assert_eq!(
+            read(1025, 1024, false).await.unwrap_err(),
+            "image exceeds 1024 byte cap"
+        );
+    }
 
     #[tokio::test]
     async fn application_proxy_is_used_by_wiki_client_without_ambient_lookup() {

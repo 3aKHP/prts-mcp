@@ -375,9 +375,9 @@ python -m prts_mcp.server
 
 ## Rust Compatibility / Rust 兼容性说明
 
-Tool names, parameters, output channels, and data semantics match the frozen TS/v2.8.1 baseline, with seven approved implementation differences (`D-001` through `D-007`, covering runtime identity, native diagnostics schema, and specific Unicode regex case-folding edges) documented in [`contracts/baseline.json`](contracts/baseline.json). Full JSON Schemas for all tool inputs are recorded in [`contracts/tool-declarations.json`](contracts/tool-declarations.json).
+Tool names, parameters, output channels, and data semantics match the frozen TS/v2.8.1 baseline, with eight approved implementation differences (`D-001` through `D-008`, covering runtime identity, native diagnostics schema, specific Unicode regex case-folding edges, and the configurable Wiki image limit) documented in [`contracts/baseline.json`](contracts/baseline.json). Full JSON Schemas for all tool inputs are recorded in [`contracts/tool-declarations.json`](contracts/tool-declarations.json).
 
-3.x 的工具名、参数、输出通道与数据语义严格对齐 TS/v2.8.1 基线；7 项经批准的实现差异（`D-001` 至 `D-007`，涉及运行时标识、原生诊断结构及部分 Unicode 正则大小写折叠边界）完整记录于 [`contracts/baseline.json`](contracts/baseline.json)，所有工具的参数 Schema 见 [`contracts/tool-declarations.json`](contracts/tool-declarations.json)。
+3.x 的工具名、参数、输出通道与数据语义严格对齐 TS/v2.8.1 基线；8 项经批准的实现差异（`D-001` 至 `D-008`，涉及运行时标识、原生诊断结构、部分 Unicode 正则大小写折叠边界及可配置的 Wiki 图片上限）完整记录于 [`contracts/baseline.json`](contracts/baseline.json)，所有工具的参数 Schema 见 [`contracts/tool-declarations.json`](contracts/tool-declarations.json)。
 
 ## License / 许可说明
 

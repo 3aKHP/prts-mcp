@@ -9,6 +9,7 @@ pub enum Kind {
     Port,
     Interval,
     Milliseconds,
+    Bytes,
     Choice(&'static [&'static str]),
 }
 pub struct Field {
@@ -19,6 +20,12 @@ pub struct Field {
 }
 use Kind::*;
 pub const FIELDS: &[Field] = &[
+    Field {
+        key: "PRTS_MAX_IMAGE_BYTES",
+        kind: Bytes,
+        example: "8388608",
+        description: "Wiki 图片下载上限（字节），正整数；修改后重启",
+    },
     Field {
         key: "HTTP_PROXY",
         kind: String,
@@ -217,7 +224,7 @@ impl Field {
         let value = match self.kind {
             String | Path | Choice(_) => Value::from(raw),
             Bool => Value::from(raw.parse::<bool>().map_err(|_| invalid())?),
-            Port | Interval => Value::from(raw.parse::<i64>().map_err(|_| invalid())?),
+            Port | Interval | Bytes => Value::from(raw.parse::<i64>().map_err(|_| invalid())?),
             Milliseconds => Value::from(raw.parse::<f64>().map_err(|_| invalid())?),
         };
         self.read(&Item::Value(value.clone()))?;
@@ -226,6 +233,11 @@ impl Field {
     pub fn read(&self, item: &Item) -> Result<std::string::String, std::string::String> {
         let invalid = || format!("配置字段类型或取值无效: {}", self.key);
         let raw = match self.kind {
+            Bytes => {
+                let raw = item.as_integer().ok_or_else(invalid)?.to_string();
+                crate::config::parse_max_image_bytes(&raw)?;
+                raw
+            }
             String => item.as_str().ok_or_else(invalid)?.to_owned(),
             Path => item
                 .as_str()
