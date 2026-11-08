@@ -2,7 +2,11 @@
 
 [简体中文](ROADMAP.zh-CN.md)
 
-The current public stable release is `3.2.3`, a single native Rust implementation that preserves the frozen TS/v2.8.1 tool contract. Active development continues on `develop` (`3.2.4-dev.0`).
+The current public stable release is `3.2.4`, a single native Rust implementation that preserves the frozen TS/v2.8.1 tool contract. Active development continues on `develop` (`3.2.4-dev.0`).
+
+## 3.2.4 — Artwork Fix and Dependency Maintenance
+
+Wiki artwork downloads now default to an 8 MiB limit, configurable through `PRTS_MAX_IMAGE_BYTES` in the environment or TOML, while preserving original image bytes. ZIP is upgraded to 9.0.5, and the dependency license inventory is generated and checked in CI.
 
 ## 3.2.3 — Unified Application Configuration
 
