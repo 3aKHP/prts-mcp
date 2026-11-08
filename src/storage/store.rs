@@ -385,7 +385,7 @@ pub fn write_zip_entries(zip_path: &Path, entries: &[(&str, &[u8])]) -> std::io:
     }
     let file = std::fs::File::create(zip_path)?;
     let mut zip = zip::ZipWriter::new(file);
-    let options: zip::write::FileOptions<'_, ()> = zip::write::FileOptions::default();
+    let options: zip::write::SimpleFileOptions = zip::write::FileOptions::default();
     for (name, bytes) in entries {
         zip.start_file(*name, options)?;
         std::io::Write::write_all(&mut zip, bytes)?;
