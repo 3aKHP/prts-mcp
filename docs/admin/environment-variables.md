@@ -61,6 +61,7 @@
 | `IMAGES_ENABLED` | `true` | 立绘工具总开关。设为 `false` 时隐藏 `operator_artwork`（注册工具数从 24 变为 23）。 |
 | `LOCAL_IMAGE` | `false` | 数据源模式开关：`false`（默认）按需从 PRTS MediaWiki 实时获取立绘（不预先同步全量包，但调用工具取图时仍会产生网络下载）；`true` 在后台同步 AKDP 全量本地 PNG 资产包（GB 量级，请预留充足磁盘空间）。 |
 | `ORIGINAL_IMAGE` | `false` | 设为 `true` 时额外同步未缩放的原图分辨率分片（进一步增加磁盘与流量消耗）；仅在 `LOCAL_IMAGE=true` 时生效。 |
+| `PRTS_MAX_IMAGE_BYTES` | `8388608`（8 MiB） | Wiki 图片下载的响应体上限，按 HTTP 解压后的字节计数；必须为正整数字节数，非法值使启动失败。支持 TOML 同名字段，修改后重启。较大值会增加图片和 Base64 响应的内存及传输成本；仅用于 `LOCAL_IMAGE=false`。 |
 | `PRTS_IMAGE_CACHE` | `true` | 为 MediaWiki 模式（`LOCAL_IMAGE=false`）开启上限 256 MiB 的内存 LRU 图片缓存。 |
 
 ---

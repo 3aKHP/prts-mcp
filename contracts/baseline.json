@@ -20,7 +20,8 @@
     "D-004-local-packaging",
     "D-005-input-surrogate-rejection",
     "D-006-unparseable-body-json-error",
-    "D-007-native-regex-unicode-folding"
+    "D-007-native-regex-unicode-folding",
+    "D-008-wiki-image-limit"
   ],
   "approved_differences_log": {
     "D-005-input-surrogate-rejection": {
@@ -43,7 +44,14 @@
       "decision": "retain-existing-rust-semantics",
       "scope": "Retain the existing Rust Unicode simple case folding behavior for the identified categories: ASCII character ranges and Unicode property escapes (including inverted properties), instead of adding Bun-specific exceptions. This approval does not waive unrelated regex differences.",
       "evidence": "contracts/cases/native-regex-differences.json; reports/P9-native-performance.md"
+    },
+    "D-008-wiki-image-limit": {
+      "approved_by": "maintainer",
+      "approved_at": "2026-11-08",
+      "decision": "raise-default-and-allow-configuration",
+      "scope": "Issue #339: Wiki image response-body limit defaults to 8 MiB and accepts a positive PRTS_MAX_IMAGE_BYTES startup setting. Original variant remains unsupported in Wiki mode; remove the obsolete fixed-1-MiB rationale from its rejection message. Frozen differential runs explicitly set the historical 1 MiB limit; dedicated regression tests verify the new default and configuration.",
+      "evidence": "tests/cli.rs; src/wiki/client.rs image_body_limit_counts_decoded_bytes_and_preserves_payload; ADR-0023"
     }
   },
-  "rust_implementation_status": "P0-P8 complete (24 tools); P9 native performance complete; approved differences D-001 through D-007"
+  "rust_implementation_status": "P0-P8 complete (24 tools); P9 native performance complete; approved differences D-001 through D-008"
 }

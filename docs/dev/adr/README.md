@@ -95,3 +95,4 @@
 | [ADR-0020](ADR-0020-pypi-native-wheels.md) | PyPI 原生 Wheel 与兼容启动桥 | Accepted | 2026-11-02 |
 | [ADR-0021](ADR-0021-management-cli.md) | 兼容增量的管理 CLI 与配置文件 | Accepted | 2026-11-02 |
 | [ADR-0022](ADR-0022-local-runtime-management.md) | 本机运行实例管理与 systemd 托管 | Accepted | 2026-11-03 |
+| [ADR-0023](ADR-0023-wiki-image-byte-limit.md) | Wiki 立绘下载大小上限 | Accepted | 2026-11-08 |

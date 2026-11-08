@@ -8,6 +8,10 @@ The original per-implementation changelogs at the 2.8.1 baseline remain availabl
 
 ## [Unreleased]
 
+### Fixed
+
+- Allow Wiki artwork thumbnails larger than 1 MiB (#339). The default download limit is now 8 MiB; set `PRTS_MAX_IMAGE_BYTES` in the environment or TOML to override it. Images retain their original bytes and format.
+
 ## [3.2.3] - 2026-11-03
 
 ### Added
