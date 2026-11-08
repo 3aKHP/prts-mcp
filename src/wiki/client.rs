@@ -289,7 +289,8 @@ mod tests {
             let server = tokio::spawn(async move {
                 let (mut socket, _) = listener.accept().await.unwrap();
                 let mut request = [0; 4096];
-                socket.read(&mut request).await.unwrap();
+                let received = socket.read(&mut request).await.unwrap();
+                assert!(received > 0);
                 let encoding = if gzip {
                     "Content-Encoding: gzip\r\n"
                 } else {
