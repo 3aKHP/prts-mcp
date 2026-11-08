@@ -117,5 +117,6 @@ node tools/native/probe.mjs windows-x64
 ## 5. 锁文件与本地配置卫生
 
 - **锁文件纪律**：日常 Cargo 命令统一带上 `--locked`。如需修改依赖，请同时审查 `Cargo.toml`、`Cargo.lock`、MSRV（`1.89`）、C 编译兼容性与第三方许可证清单（`contracts/dependency-licenses.json`）。
+- **许可证清单**：运行 `node tools/ci/dependency-licenses.mjs` 校验全量锁定 registry 依赖（含开发、构建与平台依赖）。更新依赖后运行 `node tools/ci/dependency-licenses.mjs --write` 并审查生成差异；`flagged` 中的人工处置结论须与当前包版本及许可证一致。
 - **冻结对照基线**：`.reference/` 下的 TS/v2.8.1 对照环境与 `contracts/` 下的 golden 快照是固定的历史基线，不随日常功能开发重录。
 - **本地 AI 配置隔离**：根目录 `AGENTS.md` 与 `CLAUDE.md` 是全仓共享的公共协作规范。请勿将个人机器上的绝对路径、私有镜像或个人 shell 配置提交进这两个文件；提交前请通过 `git diff HEAD -- AGENTS.md CLAUDE.md` 复核。
