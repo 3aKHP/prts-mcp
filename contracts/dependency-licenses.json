@@ -19,9 +19,9 @@
     "BSD-3-Clause": 1,
     "CDLA-Permissive-2.0": 1,
     "ISC": 2,
-    "MIT": 57,
+    "MIT": 58,
     "MIT AND BSD-3-Clause": 1,
-    "MIT OR Apache-2.0": 164,
+    "MIT OR Apache-2.0": 163,
     "MIT OR Apache-2.0 OR LGPL-2.1-or-later": 1,
     "MIT OR Apache-2.0 OR Zlib": 1,
     "MIT OR Zlib OR Apache-2.0": 1,
@@ -99,12 +99,6 @@
       "version": "3.0.11",
       "license": "MIT OR Apache-2.0",
       "repository": "https://github.com/rust-cli/anstyle.git"
-    },
-    {
-      "name": "arbitrary",
-      "version": "1.5.0",
-      "license": "MIT OR Apache-2.0",
-      "repository": "https://github.com/rust-fuzz/arbitrary/"
     },
     {
       "name": "async-broadcast",
@@ -375,12 +369,6 @@
       "version": "0.24.1",
       "license": "MIT",
       "repository": "https://github.com/TedDriggs/darling"
-    },
-    {
-      "name": "derive_arbitrary",
-      "version": "1.5.0",
-      "license": "MIT OR Apache-2.0",
-      "repository": "https://github.com/rust-fuzz/arbitrary"
     },
     {
       "name": "digest",
@@ -841,6 +829,12 @@
     {
       "name": "nix",
       "version": "0.29.0",
+      "license": "MIT",
+      "repository": "https://github.com/nix-rust/nix"
+    },
+    {
+      "name": "nix",
+      "version": "0.31.3",
       "license": "MIT",
       "repository": "https://github.com/nix-rust/nix"
     },
@@ -1469,6 +1463,12 @@
       "repository": "https://github.com/seanmonstar/try-lock"
     },
     {
+      "name": "typed-path",
+      "version": "0.12.4",
+      "license": "MIT OR Apache-2.0",
+      "repository": "https://github.com/chipsenkbeil/typed-path"
+    },
+    {
       "name": "typenum",
       "version": "1.20.1",
       "license": "MIT OR Apache-2.0",
@@ -1818,9 +1818,9 @@
     },
     {
       "name": "zip",
-      "version": "6.0.0",
+      "version": "9.0.5",
       "license": "MIT",
-      "repository": "https://github.com/zip-rs/zip2.git"
+      "repository": "https://github.com/zip-rs/zip2"
     },
     {
       "name": "zlib-rs",

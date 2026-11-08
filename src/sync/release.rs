@@ -937,7 +937,7 @@ mod tests {
         {
             let mut cursor = std::io::Cursor::new(&mut bytes);
             let mut zip = zip::ZipWriter::new(&mut cursor);
-            let options: zip::write::FileOptions<'_, ()> = zip::write::FileOptions::default();
+            let options: zip::write::SimpleFileOptions = zip::write::FileOptions::default();
             use std::io::Write as _;
             zip.start_file("zh_CN/gamedata/excel/story_review_table.json", options)
                 .unwrap();
@@ -1363,7 +1363,7 @@ mod tests {
             use std::io::Write as _;
             let mut cursor = std::io::Cursor::new(&mut bytes);
             let mut zip = zip::ZipWriter::new(&mut cursor);
-            let options: zip::write::FileOptions<'_, ()> = zip::write::FileOptions::default();
+            let options: zip::write::SimpleFileOptions = zip::write::FileOptions::default();
             zip.start_file("wrong/path.json", options).unwrap();
             zip.write_all(b"{}").unwrap();
             zip.finish().unwrap();

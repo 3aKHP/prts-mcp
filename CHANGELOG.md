@@ -8,6 +8,10 @@ The original per-implementation changelogs at the 2.8.1 baseline remain availabl
 
 ## [Unreleased]
 
+### Security
+
+- Upgrade `zip` to 9.0.5 to address four upstream security advisories. Existing archive features and application-owned extraction remain in use.
+
 ### Fixed
 
 - Allow Wiki artwork thumbnails larger than 1 MiB (#339). The default download limit is now 8 MiB; set `PRTS_MAX_IMAGE_BYTES` in the environment or TOML to override it. Images retain their original bytes and format.

@@ -28,9 +28,10 @@ fn not_a_zip(zip_path: &Path, message: &str) -> String {
     )
 }
 
-fn entry_names(archive: &mut zip::ZipArchive<std::fs::File>) -> Vec<String> {
-    (0..archive.len())
-        .filter_map(|i| archive.by_index(i).ok().map(|e| e.name().to_string()))
+fn entry_names(archive: &mut zip::ZipArchive<std::fs::File>) -> Result<Vec<String>, String> {
+    archive
+        .file_names()
+        .map(|name| name.map(|n| n.into_owned()).map_err(|e| e.to_string()))
         .collect()
 }
 
@@ -49,7 +50,7 @@ pub fn validate_archive_zip(
     required_files: &[String],
 ) -> Result<Vec<String>, String> {
     let mut archive = open_archive(zip_path)?;
-    let names: BTreeSet<String> = entry_names(&mut archive)
+    let names: BTreeSet<String> = entry_names(&mut archive)?
         .into_iter()
         .filter(|name| !name.ends_with('/'))
         .collect();
@@ -72,7 +73,10 @@ pub fn validate_storyjson_zip(zip_path: &Path) -> Result<Vec<String>, String> {
         "zh_CN/gamedata/excel/story_review_table.json",
         "zh_CN/storyinfo.json",
     ] {
-        if !archive.file_names().any(|name| name == required) {
+        if !entry_names(&mut archive)?
+            .iter()
+            .any(|name| name == required)
+        {
             missing.push(required.to_string());
         }
     }
@@ -94,7 +98,10 @@ pub fn validate_storyjson_zip(zip_path: &Path) -> Result<Vec<String>, String> {
         }
     };
 
-    let names: BTreeSet<String> = archive.file_names().map(str::to_string).collect();
+    let names: BTreeSet<String> = archive
+        .file_names()
+        .map(|name| name.map(|n| n.into_owned()).map_err(|e| e.to_string()))
+        .collect::<Result<_, _>>()?;
     let mut story_paths: BTreeSet<String> = BTreeSet::new();
     let story_path = |key: &str| format!("zh_CN/gamedata/story/{key}.json");
     if let Some(entries) = table.as_object() {

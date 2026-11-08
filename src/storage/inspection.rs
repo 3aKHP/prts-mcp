@@ -43,7 +43,7 @@ pub(crate) fn json_tree(root: &Path, required: &[String]) -> Result<usize, Strin
     let store = DirectoryStore::new(root);
     for name in required {
         store
-            .read_json(name)
+            .read_json(&name)
             .map_err(|_| format!("必需 JSON 缺失或无效: {name}"))?;
     }
     let mut pending = vec![root.to_owned()];
@@ -94,9 +94,13 @@ pub(crate) fn story(path: &Path) -> Result<usize, String> {
     let archive = zip::ZipArchive::new(file).map_err(|e| e.to_string())?;
     let store = ZipStore::new(path);
     let mut count = 0;
-    for name in archive.file_names().filter(|name| name.ends_with(".json")) {
+    for name in archive.file_names() {
+        let name = name.map_err(|e| e.to_string())?;
+        if !name.ends_with(".json") {
+            continue;
+        }
         store
-            .read_json(name)
+            .read_json(&name)
             .map_err(|_| format!("剧情 JSON 无效: {name}"))?;
         count += 1;
     }

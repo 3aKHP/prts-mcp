@@ -111,7 +111,7 @@ fn archive(db: &Connection, namespace: &str, path: &Path, prefix: &str) -> Resul
         if entry.is_symlink() {
             return Err("Source ZIP contains symlink".into());
         }
-        let original = entry.name().to_string();
+        let original = entry.name()?.into_owned();
         let relative = original
             .strip_prefix(prefix)
             .ok_or_else(|| format!("Unexpected archive path: {original}"))?;

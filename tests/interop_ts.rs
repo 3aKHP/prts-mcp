@@ -306,7 +306,7 @@ async fn rust_story_pack_swap_is_visible_to_ts() {
         let mut bytes = Vec::new();
         let mut cursor = std::io::Cursor::new(&mut bytes);
         let mut zip = zip::ZipWriter::new(&mut cursor);
-        let options: zip::write::FileOptions<'_, ()> = zip::write::FileOptions::default();
+        let options: zip::write::SimpleFileOptions = zip::write::FileOptions::default();
         zip.start_file("zh_CN/gamedata/excel/story_review_table.json", options)
             .unwrap();
         zip.write_all(b"{}").unwrap();
@@ -358,7 +358,7 @@ async fn release_meta_format_matches_ts_bytes() {
         let mut bytes = Vec::new();
         let mut cursor = std::io::Cursor::new(&mut bytes);
         let mut zip = zip::ZipWriter::new(&mut cursor);
-        let options: zip::write::FileOptions<'_, ()> = zip::write::FileOptions::default();
+        let options: zip::write::SimpleFileOptions = zip::write::FileOptions::default();
         zip.start_file("zh_CN/storyinfo.json", options).unwrap();
         zip.write_all(b"{}").unwrap();
         zip.finish().unwrap();
